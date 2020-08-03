@@ -1,0 +1,18 @@
+option('jpeg',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable JPEG format support')
+option('gif',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable GIF format support')
+
+#option('bash',
+#       type: 'boolean',
+#       value: true,
+#       description: 'Install bash shell completions.')
+
+#option('man',
+#       type: 'feature',
+#       value: 'auto',
+#       description: 'Generate and install man pages')
