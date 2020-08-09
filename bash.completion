@@ -1,0 +1,17 @@
+# swayimg(1) completion
+
+_swayimg()
+{
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local prev="${COMP_WORDS[COMP_CWORD - 1]}"
+    local opts="-a --appid -g --geometry -s --scale -v --version -h --help"
+
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+    elif [[ ${prev} != -* ]]; then
+        COMPREPLY=($(compgen -f -- "${cur}"))
+    fi
+} &&
+complete -F _swayimg swayimg
+
+# ex: filetype=sh

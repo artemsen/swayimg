@@ -27,6 +27,7 @@ json  = dependency('json-c')
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
 gif   = cc.find_library('gif', required: get_option('gif'))
 rt    = cc.find_library('rt')
+bash  = dependency('bash-completion', required: get_option('bash'))
 
 # configuration file
 conf = configuration_data()
@@ -39,6 +40,18 @@ configure_file(output: 'config.h', configuration: conf)
 # man installation
 if get_option('man')
   install_man('swayimg.1')
+endif
+
+# bash completion installation
+if bash.found()
+  datadir = get_option('datadir')
+  bash_install_dir = bash.get_pkgconfig_variable(
+    'completionsdir',
+    define_variable: ['datadir', datadir]
+  )
+  install_data('bash.completion',
+               install_dir: bash_install_dir,
+               rename: 'swayimg')
 endif
 
 # XDG shell Wayland protocol

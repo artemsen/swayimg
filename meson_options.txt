@@ -7,10 +7,10 @@ option('gif',
        value: 'auto',
        description: 'Enable GIF format support')
 
-#option('bash',
-#       type: 'boolean',
-#       value: true,
-#       description: 'Install bash shell completions.')
+option('bash',
+       type: 'feature',
+       value: 'auto',
+       description: 'Install bash completions')
 
 option('man',
        type: 'boolean',
