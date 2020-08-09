@@ -12,7 +12,7 @@ option('gif',
 #       value: true,
 #       description: 'Install bash shell completions.')
 
-#option('man',
-#       type: 'feature',
-#       value: 'auto',
-#       description: 'Generate and install man pages')
+option('man',
+       type: 'boolean',
+       value: true,
+       description: 'Install man page')

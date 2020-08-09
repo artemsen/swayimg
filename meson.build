@@ -37,9 +37,9 @@ conf.set_quoted('APP_NAME', meson.project_name())
 configure_file(output: 'config.h', configuration: conf)
 
 # man installation
-#if get_option('man')
-#  install_man('swayimg.1')
-#endif
+if get_option('man')
+  install_man('swayimg.1')
+endif
 
 # XDG shell Wayland protocol
 xdg_shell_c = custom_target(

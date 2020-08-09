@@ -1,0 +1,58 @@
+.TH swayimg 1 "August 2020" "swayimg" "User Commands"
+.SH NAME
+swayimg \- image viewer for Sway
+.SH SYNOPSIS
+swayimg [\fIOPTIONS\fR...] \fIFILE\fR
+.SH DESCRIPTION
+The \fBswayimg\fR utility can be used for preview images inside the currently
+focused window (container).
+.PP
+The program uses Sway IPC to determine the geometry of the currently focused
+workspace and window.
+These data is used calculate the position and size for a new window.
+Then the program adds two rules to the Sway: "floating enable" and
+"move position" for \fBswayimg\fR application, creates a new Wayland window and
+draws an image from the specified file.
+.
+.SH OPTIONS
+.PP
+.IP "\fB\-h\fR, \fB\-\-help\fR"
+Display help message.
+.IP "\fB\-v\fR, \fB\-\-version\fR"
+Display version information and list of supported image formats.
+.IP "\fB\-a\fR, \fB\-\-appid\fR\fB=\fR\fINAME\fR"
+Set the application Id. if not specified, the default value will be used:
+\fBswayimg_\fRTIMESTAMP.
+.IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
+Set the absolute position and size of the window, for example
+\fI10,20,100,200\fR creates a window at position 10x20 (top left corner) with
+a size of 100x200. If this parameter is not specified, the geometry of the
+currently focused window will be used.
+.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fIPERCENT\fR"
+Set initial scale of the image. The default value is \fB0\fR (auto): if the
+image is greater than the window, it will be zoomed out to fit the window.
+.
+.SH KEYBINDINGS
+.IP "\fBArrows\fR and vim-like moving keys (\fBhjkl\fR)"
+Move view point.
+.IP "\fB+\fP, \fB=\fR"
+Zoom in.
+.IP "\fB-\fP"
+Zoom out.
+.IP "\fBBackspace\fP"
+Set optimal scale: 100% or fit to window.
+.IP "\fB0\fP"
+Set scale to 100%.
+.IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP, \fBe\fP, \fBx\fP"
+Exit the program.
+.
+.SH ENVIRONMENT
+.PP
+.IP \fISWAYSOCK\fR
+Path to the socket file used for Sway IPC.
+.
+.SH NOTES
+For suggestions, comments, bug reports etc. visit https://github.com/artemsen/swayimg
+.SH AUTHOR
+Artem Senichev <artemsen@gmail.com>
+.
