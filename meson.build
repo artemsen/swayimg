@@ -7,7 +7,7 @@ project(
     'c_std=c99',
     'warning_level=3',
   ],
-  license: 'Apache-2.0',
+  license: 'MIT',
   version: '1.0',
 )
 

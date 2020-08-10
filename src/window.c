@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 // ftruncate() support
