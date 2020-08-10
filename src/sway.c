@@ -85,7 +85,7 @@ static bool sock_write(int fd, const void* buf, size_t len)
  * @return IPC response as json object, NULL on errors
  */
 static struct json_object* ipc_message(int ipc, enum ipc_msg_type type,
-        const char* payload)
+                                       const char* payload)
 {
     struct ipc_header hdr;
     memcpy(hdr.magic, ipc_magic, sizeof(ipc_magic));
@@ -142,7 +142,7 @@ static bool ipc_command(int ipc, const char* app, const char* command)
         struct json_object* val = json_object_array_get_idx(response, 0);
         if (val) {
             rc = json_object_object_get_ex(val, "success", &val) &&
-                json_object_get_boolean(val);
+                 json_object_get_boolean(val);
         }
         if (!rc) {
             fprintf(stderr, "Bad IPC response\n");
@@ -154,6 +154,28 @@ static bool ipc_command(int ipc, const char* app, const char* command)
 }
 
 /**
+ * Read numeric value from JSON node.
+ * @param[in] node JSON parent node
+ * @param[in] name name of the rect node
+ * @param[out] value value from JSON field
+ * @return true if operation completed successfully
+ */
+static bool read_int(json_object* node, const char* name, int* value)
+{
+    struct json_object* val;
+    if (!json_object_object_get_ex(node, name, &val)) {
+        fprintf(stderr, "JSON scheme error: field %s not found\n", name);
+        return false;
+    }
+    *value = json_object_get_int(val);
+    if (*value == 0 && errno == EINVAL) {
+        fprintf(stderr, "JSON scheme error: field %s not a number\n", name);
+        return false;
+    }
+    return true;
+}
+
+/**
  * Read rectange geometry from JSON node.
  * @param[in] node JSON parent node
  * @param[in] name name of the rect node
@@ -162,66 +184,34 @@ static bool ipc_command(int ipc, const char* app, const char* command)
  */
 static bool read_rect(json_object* node, const char* name, struct rect* rect)
 {
-    struct json_object* rect_node;
-    if (!json_object_object_get_ex(node, name, &rect_node)) {
+    struct json_object* rn;
+    if (!json_object_object_get_ex(node, name, &rn)) {
         fprintf(stderr, "Failed to read rect: node %s not found\n", name);
         return false;
     }
-
-    struct rdata {
-        const char* name;
-        int* val;
-    } const rdata[] = {
-        { "x",      &rect->x },
-        { "y",      &rect->y },
-        { "width",  &rect->width },
-        { "height", &rect->height },
-    };
-
-    for (size_t i = 0; i < sizeof(rdata) / sizeof(rdata[0]); ++i) {
-        struct json_object* val;
-        if (!json_object_object_get_ex(rect_node, rdata[i].name, &val)) {
-            fprintf(stderr, "Failed to read rect: field %s not found\n",
-                    rdata[i].name);
-            return false;
-        }
-        *rdata[i].val = json_object_get_int(val);
-        if (*rdata[i].val == 0 && errno == EINVAL) {
-            fprintf(stderr,
-                    "Failed to read rect: field %s has invalid format\n",
-                    rdata[i].name);
-            return false;
-        }
-    }
-
-    return true;
+    return read_int(rn, "x", &rect->x) &&
+           read_int(rn, "y", &rect->y) &&
+           read_int(rn, "width", &rect->width) &&
+           read_int(rn, "height", &rect->height);
 }
 
 /**
- * Get geometry for currently focused workspace.
- * @param[in] ipc IPC context (socket file descriptor)
- * @param[out] workspace rectangle geometry
- * @return true if operation completed successfully
+ * Get currently focused workspace.
+ * @param[in] node parent JSON node
+ * @return pointer to focused workspace node or NULL if not found
  */
-static bool workspace_geometry(int ipc, struct rect* workspace)
+static struct json_object* current_workspace(json_object* node)
 {
-    bool found = false;
-
-    json_object* response = ipc_message(ipc, IPC_GET_WORKSPACES, NULL);
-    if (response) {
-        int idx = json_object_array_length(response);
-        while (!found && --idx >= 0) {
-            struct json_object* wks;
-            struct json_object* focused;
-            wks = json_object_array_get_idx(response, idx);
-            found = json_object_object_get_ex(wks, "focused", &focused) &&
-                    json_object_get_boolean(focused) &&
-                    read_rect(wks, "rect", workspace);
+    int idx = json_object_array_length(node);
+    while (--idx >= 0) {
+        struct json_object* focused;
+        struct json_object* wks = json_object_array_get_idx(node, idx);
+        if (json_object_object_get_ex(wks, "focused", &focused) &&
+            json_object_get_boolean(focused)) {
+            return wks;
         }
-        json_object_put(response);
     }
-
-    return found;
+    return NULL;
 }
 
 /**
@@ -229,7 +219,7 @@ static bool workspace_geometry(int ipc, struct rect* workspace)
  * @param[in] node parent JSON node
  * @return pointer to focused window node or NULL if not found
  */
-static struct json_object* get_focused(json_object* node)
+static struct json_object* current_window(json_object* node)
 {
     struct json_object* focused;
     if (json_object_object_get_ex(node, "focused", &focused) &&
@@ -242,7 +232,7 @@ static struct json_object* get_focused(json_object* node)
         int idx = json_object_array_length(nodes);
         while (--idx >= 0) {
             struct json_object* sub = json_object_array_get_idx(nodes, idx);
-            struct json_object* focus = get_focused(sub);
+            struct json_object* focus = current_window(sub);
             if (focus) {
                 return focus;
             }
@@ -292,31 +282,48 @@ void sway_disconnect(int ipc)
     close(ipc);
 }
 
-bool sway_get_focused(int ipc, struct rect* rect)
+bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)
 {
     bool rc = false;
 
-    json_object* response = ipc_message(ipc, IPC_GET_TREE, NULL);
-    if (response) {
-        struct json_object* focus = get_focused(response);
-        if (focus) {
-            struct rect workspace;
-            if (workspace_geometry(ipc, &workspace)) {
-                struct rect global;
-                struct rect window;
-                if (read_rect(focus, "rect", &global) &&
-                    read_rect(focus, "window_rect", &window)) {
-                    rect->x = global.x + window.x - workspace.x;
-                    rect->y = global.y + window.y - workspace.y;
-                    rect->width = window.width;
-                    rect->height = window.height;
-                    rc = true;
-                }
-            }
-        }
-        json_object_put(response);
+    // get currently focused window
+    json_object* tree = ipc_message(ipc, IPC_GET_TREE, NULL);
+    if (!tree) {
+        return false;
+    }
+    json_object* cur_wnd = current_window(tree);
+    if (!cur_wnd || !read_rect(cur_wnd, "window_rect", wnd)) {
+        goto done;
     }
 
+    // get full screen mode flag
+    int fs_mode;
+    *fullscreen = read_int(cur_wnd, "fullscreen_mode", &fs_mode) && fs_mode;
+    if (*fullscreen) {
+        rc = true;
+        goto done;
+    }
+
+    // if we are not in the full screen mode - calculate client area offset
+    json_object* workspaces = ipc_message(ipc, IPC_GET_WORKSPACES, NULL);
+    if (!workspaces) {
+        goto done;
+    }
+    json_object* cur_wks = current_workspace(workspaces);
+    if (cur_wks) {
+        struct rect workspace;
+        struct rect global;
+        rc = read_rect(cur_wks, "rect", &workspace) &&
+             read_rect(cur_wnd, "rect", &global);
+        if (rc) {
+            wnd->x += global.x - workspace.x;
+            wnd->y += global.y - workspace.y;
+        }
+    }
+    json_object_put(workspaces);
+
+done:
+    json_object_put(tree);
     return rc;
 }
 

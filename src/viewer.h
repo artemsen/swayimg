@@ -8,10 +8,11 @@
 
 /** Viewer parameters. */
 struct viewer {
-    const char* file;    ///< Path to image file to show
+    const char* file;    ///< Path to the image file
     const char* app_id;  ///< Application ID (NULL=auto)
     int scale;           ///< Image scale (0=auto)
-    struct rect* wnd;    ///< Window geometry
+    struct rect* wnd;    ///< Window geometry (NULL=auto)
+    bool fullscreen;     ///< Full screen mode
 };
 
 /**

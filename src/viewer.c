@@ -263,6 +263,14 @@ static void redraw(cairo_surface_t* window)
     cairo_destroy(cr);
 }
 
+/** Window resize handler, see window::on_resize */
+static void resize(cairo_surface_t* window)
+{
+    ctx.wnd_width = cairo_image_surface_get_width(window);
+    ctx.wnd_height = cairo_image_surface_get_height(window);
+    change_scale(optimal_scale);
+}
+
 /** Keyboard handler, see window::on_keyboard. */
 static bool handle_key(uint32_t key)
 {
@@ -318,8 +326,8 @@ static bool handle_key(uint32_t key)
 
 /**
  * Allocate and format string.
- * @param[in] fmt srting format
- * @param[in] ... formatted arguments
+ * @param[in] fmt string format
+ * @param[in] ... arguments
  * @return formatted string, caller must free the string
  */
 static char* format_string(const char* fmt, ...)
@@ -331,6 +339,10 @@ static char* format_string(const char* fmt, ...)
     va_end(args);
 
     char* buf = malloc(len);
+    if (!buf) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
+    }
     va_start(args, fmt);
     vsnprintf(buf, len, fmt, args);
     va_end(args);
@@ -342,54 +354,74 @@ bool show_image(const struct viewer* params)
 {
     bool rc = false;
     char* app_id = NULL;
-    struct rect geometry = { 0, 0, 0, 0 };
-    struct window wnd;
+    char* title = NULL;
 
     ctx.img = load_image(params->file);
     if (!ctx.img) {
-        return false;
+        goto done;
     }
 
-    // prepare title and app id
-    wnd.title = format_string(APP_NAME ": %s", params->file);
-    if (params->app_id) {
-        wnd.app_id = params->app_id;
-    } else {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        app_id = format_string(APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
-        wnd.app_id = app_id;
+    title = format_string(APP_NAME ": %s", params->file);
+    if (!title) {
+        goto done;
     }
 
-    // setup window position
-    int sway_ipc = sway_connect();
-    if (sway_ipc != -1) {
-        bool geo_ok = true;
-        if (params->wnd) {
-            // set by user
-            memcpy(&geometry, params->wnd, sizeof(geometry));
-        } else {
-            // get from currently focused window
-            geo_ok = sway_get_focused(sway_ipc, &geometry);
+    struct window wnd = {
+        .redraw = redraw,
+        .resize = resize,
+        .keyboard = handle_key,
+        .width = 0,
+        .height = 0,
+        .fullscreen = params->fullscreen,
+        .app_id = params->app_id ? params->app_id : APP_NAME,
+        .title = title
+    };
+
+    // setup window position viw Sway IPC
+    if (!wnd.fullscreen) {
+        const int ipc = sway_connect();
+        if (ipc != -1) {
+            bool rc = true;
+            struct rect rect;
+            if (params->wnd) {
+                rect = *params->wnd;
+            } else {
+                // get currently focused window state
+                rc = sway_current(ipc, &rect, &wnd.fullscreen);
+            }
+            if (rc) {
+                wnd.width = rect.width;
+                wnd.height = rect.height;
+                if (!wnd.fullscreen) {
+                    if (!params->app_id) {
+                        // create unique app id
+                        struct timeval tv;
+                        gettimeofday(&tv, NULL);
+                        app_id = format_string(APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
+                        if (!app_id) {
+                            sway_disconnect(ipc);
+                            goto done;
+                        }
+                        wnd.app_id = app_id;
+                    }
+                    sway_add_rules(ipc, wnd.app_id, rect.x, rect.y);
+                }
+            }
+            sway_disconnect(ipc);
         }
-        if (geo_ok) {
-            sway_add_rules(sway_ipc, wnd.app_id, geometry.x, geometry.y);
-        }
-        sway_disconnect(sway_ipc);
-    }
-    if (!geometry.width) {
-        geometry.width = cairo_image_surface_get_width(ctx.img);
-    }
-    if (!geometry.height) {
-        geometry.height = cairo_image_surface_get_height(ctx.img);
     }
 
-    wnd.redraw = redraw;
-    wnd.keyboard = handle_key;
-    wnd.width = ctx.wnd_width = geometry.width;
-    wnd.height = ctx.wnd_height = geometry.height;
+    // normalize window size
+    if (!wnd.width) {
+        wnd.width = cairo_image_surface_get_width(ctx.img);
+    }
+    if (!wnd.height) {
+        wnd.height = cairo_image_surface_get_height(ctx.img);
+    }
+    ctx.wnd_width = wnd.width;
+    ctx.wnd_height = wnd.height;
 
-    // setup initial scale and position
+    // setup initial scale and position of the image
     if (params->scale <= 0) {
         change_scale(optimal_scale);
     } else {
@@ -399,12 +431,17 @@ bool show_image(const struct viewer* params)
     // create and show gui window
     rc = show_window(&wnd);
 
+done:
     // clean
-    cairo_surface_destroy(ctx.img);
+    if (ctx.img) {
+        cairo_surface_destroy(ctx.img);
+    }
     if (app_id) {
         free(app_id);
     }
-    free((void*)wnd.title);
+    if (title) {
+        free(title);
+    }
 
     return rc;
 }

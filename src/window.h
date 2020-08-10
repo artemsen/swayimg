@@ -15,6 +15,12 @@
 typedef void (*on_redraw)(cairo_surface_t* window);
 
 /**
+ * Window resize handler.
+ * @param[in] window surface to draw on
+ */
+typedef void (*on_resize)(cairo_surface_t* window);
+
+/**
  * Key press handler.
  * @param[in] key code of key pressed
  * @return true if state was changed and window must be redrawn
@@ -24,9 +30,11 @@ typedef bool (*on_keyboard)(uint32_t key);
 /** Window properties */
 struct window {
     on_redraw redraw;
+    on_resize resize;
     on_keyboard keyboard;
     size_t width;
     size_t height;
+    bool fullscreen;
     const char* app_id;
     const char* title;
 };

@@ -28,10 +28,11 @@ void sway_disconnect(int ipc);
 /**
  * Get geometry for currently focused window.
  * @param[in] ipc IPC context
- * @param[out] rect geometry of currently focused window
+ * @param[out] wnd geometry of currently focused window
+ * @param[out] fullscreen current full screen mode
  * @return true if operation completed successfully
  */
-bool sway_get_focused(int ipc, struct rect* rect);
+bool sway_current(int ipc, struct rect* wnd, bool* fullscreen);
 
 /**
  * Add rules for Sway for application's window:

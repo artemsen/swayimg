@@ -54,6 +54,7 @@ struct context {
 
     struct handlers {
         on_redraw redraw;
+        on_resize resize;
         on_keyboard keyboard;
     } handlers;
 
@@ -109,6 +110,41 @@ static int create_shmem(size_t sz, void** data)
     }
 
     return fd;
+}
+
+/**
+ * (Re)create buffer.
+ * @return true if operation completed successfully
+ */
+static bool create_buffer(void)
+{
+    // free previous allocated buffer
+    if (ctx.surface.cairo) {
+        cairo_surface_destroy(ctx.surface.cairo);
+        ctx.surface.cairo = NULL;
+    }
+    if (ctx.surface.buffer) {
+        wl_buffer_destroy(ctx.surface.buffer);
+        ctx.surface.buffer = NULL;
+    }
+
+    // create new buffer
+    const size_t stride = ctx.size.width * 4 /* argb */;
+    const size_t buf_sz = stride * ctx.size.height;
+    void* buf_data;
+    const int fd = create_shmem(buf_sz, &buf_data);
+    if (fd == -1) {
+        return false;
+    }
+    struct wl_shm_pool* pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
+    close(fd);
+    ctx.surface.buffer = wl_shm_pool_create_buffer(pool, 0, ctx.size.width,
+        ctx.size.height, stride, WL_SHM_FORMAT_XRGB8888);
+    wl_shm_pool_destroy(pool);
+    ctx.surface.cairo = cairo_image_surface_create_for_data(buf_data,
+        CAIRO_FORMAT_ARGB32, ctx.size.width, ctx.size.height, stride);
+
+    return true;
 }
 
 /*******************************************************************************
@@ -190,23 +226,9 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
 {
     xdg_surface_ack_configure(surface, serial);
 
-    if (!ctx.surface.buffer) {
-        // create shared buffer
-        const size_t stride = ctx.size.width * 4 /* argb */;
-        const size_t buf_sz = stride * ctx.size.height;
-        void* buf_data;
-        const int fd = create_shmem(buf_sz, &buf_data);
-        if (fd == -1) {
-            ctx.state = state_error;
-            return;
-        }
-        struct wl_shm_pool* pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
-        close(fd);
-        ctx.surface.buffer = wl_shm_pool_create_buffer(pool, 0, ctx.size.width,
-            ctx.size.height, stride, WL_SHM_FORMAT_XRGB8888);
-        wl_shm_pool_destroy(pool);
-        ctx.surface.cairo = cairo_image_surface_create_for_data(buf_data,
-            CAIRO_FORMAT_ARGB32, ctx.size.width, ctx.size.height, stride);
+    if (!ctx.surface.buffer && !create_buffer()) {
+        ctx.state = state_error;
+        return;
     }
 
     redraw();
@@ -227,8 +249,19 @@ static const struct xdg_wm_base_listener xdg_base_listener = {
 
 static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
                                           int32_t width, int32_t height,
-                                          struct wl_array* state)
-{}
+                                          struct wl_array* states)
+{
+    if (width && height && (width != (int32_t)ctx.size.width ||
+                            height != (int32_t)ctx.size.height)) {
+        ctx.size.width = width;
+        ctx.size.height = height;
+        if (create_buffer()) {
+            ctx.handlers.resize(ctx.surface.cairo);
+        } else {
+            ctx.state = state_error;
+        }
+    }
+}
 
 static void handle_xdg_toplevel_close(void* data, struct xdg_toplevel* top)
 {
@@ -276,6 +309,7 @@ bool show_window(const struct window* wnd)
     ctx.size.height = wnd->height;
     ctx.handlers.redraw = wnd->redraw;
     ctx.handlers.keyboard = wnd->keyboard;
+    ctx.handlers.resize = wnd->resize;
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {
@@ -301,11 +335,14 @@ bool show_window(const struct window* wnd)
         goto done;
     }
     xdg_surface_add_listener(ctx.xdg.surface, &xdg_surface_listener, NULL);
-
     ctx.xdg.toplevel = xdg_surface_get_toplevel(ctx.xdg.surface);
     xdg_toplevel_add_listener(ctx.xdg.toplevel, &xdg_toplevel_listener, NULL);
     xdg_toplevel_set_title(ctx.xdg.toplevel, wnd->title);
     xdg_toplevel_set_app_id(ctx.xdg.toplevel, wnd->app_id);
+    if (wnd->fullscreen) {
+        xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
+    }
+
     wl_surface_commit(ctx.wl.surface);
 
     // working loop

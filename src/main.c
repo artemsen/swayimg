@@ -18,6 +18,7 @@ static void print_help(void)
     puts("Usage: " APP_NAME " [OPTION...] FILE");
     puts("  -a, --appid=NAME         Set application id");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
+    puts("  -f, --fullscreen         Full screen mode");
     puts("  -s, --scale=PERCENT      Set initial image scale");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
@@ -68,8 +69,14 @@ struct rect* parse_rect(const char* arg)
     if (i != sizeof(nums) / sizeof(nums[0]) - 1) {
         free(rect);
         rect = NULL;
-        fprintf(stderr, "Invalid argument format: %s\n", arg);
+        fprintf(stderr, "Invalid window geometry: %s\n", arg);
         fprintf(stderr, "Expected geometry, e.g. \"0,100,200,1000\"\n");
+    }
+    if (rect->width < 0 || rect->height < 0) {
+        free(rect);
+        rect = NULL;
+        fprintf(stderr, "Invalid window geometry: %s\n", arg);
+        fprintf(stderr, "Window size can not be negative\n");
     }
 
     return rect;
@@ -80,18 +87,21 @@ struct rect* parse_rect(const char* arg)
  */
 int main(int argc, char* argv[])
 {
+    bool rc = false;
+
     struct viewer view;
     memset(&view, 0, sizeof(view));
 
     const struct option long_opts[] = {
-        { "appid",    required_argument, NULL, 'a' },
-        { "geometry", required_argument, NULL, 'g' },
-        { "scale",    required_argument, NULL, 's' },
-        { "version",  no_argument,       NULL, 'v' },
-        { "help",     no_argument,       NULL, 'h' },
-        { NULL,       0,                 NULL,  0  }
+        { "appid",      required_argument, NULL, 'a' },
+        { "geometry",   required_argument, NULL, 'g' },
+        { "fullscreen", no_argument,       NULL, 'f' },
+        { "scale",      required_argument, NULL, 's' },
+        { "version",    no_argument,       NULL, 'v' },
+        { "help",       no_argument,       NULL, 'h' },
+        { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "a:g:s:vh";
+    const char* short_opts = "a:g:fs:vh";
 
     opterr = 0; // prevent native error messages
 
@@ -105,36 +115,48 @@ int main(int argc, char* argv[])
             case 'g':
                 view.wnd = parse_rect(optarg);
                 if (!view.wnd) {
-                    return EXIT_FAILURE;
+                    goto done;
                 }
+                break;
+            case 'f':
+                view.fullscreen = true;
                 break;
             case 's':
                 view.scale = atoi(optarg);
                 break;
             case 'v':
                 print_version();
-                return EXIT_SUCCESS;
+                rc = true;
+                goto done;
             case 'h':
                 print_help();
-                return EXIT_SUCCESS;
+                rc = true;
+                goto done;
             default:
                 fprintf(stderr, "Invalid argument: %s\n", argv[optind - 1]);
-                return EXIT_FAILURE;
+                goto done;
         }
+    }
+
+    if (view.fullscreen && view.wnd) {
+        fprintf(stderr, "Incompatible arguments: "
+                        "can not set geometry for full screen mode\n");
+        goto done;
     }
 
     if (optind == argc) {
         fprintf(stderr, "File name expected, use `" APP_NAME " --help`.\n");
-        return EXIT_FAILURE;
+        goto done;
     }
     view.file = argv[optind];
     if (!*view.file) {
         fprintf(stderr, "File name can not be empty\n");
-        return EXIT_FAILURE;
+        goto done;
     }
 
-    const bool rc = show_image(&view);
+    rc = show_image(&view);
 
+done:
     if (view.wnd) {
         free(view.wnd);
     }

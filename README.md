@@ -39,7 +39,3 @@ meson build
 ninja -C build
 sudo ninja -C build install
 ```
-
-## Known bugs
-
-Does not work in fullscreen mode yet.
