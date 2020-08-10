@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+// ftruncate() support
+#define _POSIX_C_SOURCE 200112
+
 #include "window.h"
 #include "xdg-shell-protocol.h"
 #include "config.h"
@@ -79,7 +82,7 @@ static int create_shmem(size_t sz, void** data)
     char path[64];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    snprintf(path, sizeof(path), "/" APP_NAME "_%lx", tv.tv_usec);
+    snprintf(path, sizeof(path), "/" APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
 
     int fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1) {

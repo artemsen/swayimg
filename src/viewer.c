@@ -357,7 +357,7 @@ bool show_image(const struct viewer* params)
     } else {
         struct timeval tv;
         gettimeofday(&tv, NULL);
-        app_id = format_string(APP_NAME "_%lx", tv.tv_usec);
+        app_id = format_string(APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
         wnd.app_id = app_id;
     }
 
