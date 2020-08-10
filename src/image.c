@@ -109,25 +109,26 @@ cairo_surface_t* load_jpg(const char* file, const uint8_t* header)
         uint8_t* line = raw + jpg.output_scanline * stride;
         jpeg_read_scanlines(&jpg, &line, 1);
 
-#ifdef LIBJPEG_TURBO_VERSION
-        if (jpg.out_color_components != 1) {
-            continue;
-        }
-#endif // LIBJPEG_TURBO_VERSION
-
-        // convert to argb
-        uint32_t* pixel = (uint32_t*)line;
-        for (int x = jpg.output_width - 1; x >= 0; --x) {
-            if (jpg.out_color_components == 1) {
-                // grayscale to argb
+        // convert grayscale to argb
+        if (jpg.out_color_components == 1) {
+            uint32_t* pixel = (uint32_t*)line;
+            for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t src = *(line + x);
                 pixel[x] = 0xff000000 | src << 16 | src << 8 | src;
-            } else {
-                // rgb to argb
+            }
+        }
+
+#ifndef LIBJPEG_TURBO_VERSION
+        // convert rgb to argb
+        if (jpg.out_color_components == 3) {
+            uint32_t* pixel = (uint32_t*)line;
+            for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t* src = line + x * 3;
                 pixel[x] = 0xff000000 | src[0] << 16 | src[1] << 8 | src[2];
             }
         }
+#endif // LIBJPEG_TURBO_VERSION
+
     }
 
     cairo_surface_mark_dirty(img);
