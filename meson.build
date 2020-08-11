@@ -11,7 +11,6 @@ project(
   version: '1.0',
 )
 
-# most of Wayland callback functions are not used
 add_project_arguments(
   [
     '-Wno-unused-parameter',
@@ -38,6 +37,31 @@ conf.set_quoted('APP_VERSION', meson.project_version())
 conf.set_quoted('APP_NAME', meson.project_name())
 configure_file(output: 'config.h', configuration: conf)
 
+# Wayland protocols
+wlproto = dependency('wayland-protocols')
+wlproto_dir = wlproto.get_pkgconfig_variable('pkgdatadir')
+wlscan = dependency('wayland-scanner', required: false, native: true)
+if wlscan.found()
+  wl_scanner = find_program(wlscan.get_pkgconfig_variable('wayland_scanner'), native: true)
+else
+  wl_scanner = find_program('wayland-scanner', native: true)
+endif
+
+# XDG shell Wayland protocol
+xdg_shell_xml = join_paths(wlproto_dir, 'stable/xdg-shell/xdg-shell.xml')
+xdg_shell_c = custom_target(
+  'xdg-shell-protocol.c',
+  output: 'xdg-shell-protocol.c',
+  input: xdg_shell_xml,
+  command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+)
+xdg_shell_h = custom_target(
+  'xdg-shell-protocol.h',
+  output: 'xdg-shell-protocol.h',
+  input: xdg_shell_xml,
+  command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)
+
 # man installation
 if get_option('man')
   install_man('swayimg.1')
@@ -54,20 +78,6 @@ if bash.found()
                install_dir: bash_install_dir,
                rename: 'swayimg')
 endif
-
-# XDG shell Wayland protocol
-xdg_shell_c = custom_target(
-  'xdg-shell-protocol.c',
-  output: 'xdg-shell-protocol.c',
-  input: '/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml',
-  command: ['wayland-scanner', 'private-code', '@INPUT@', '@OUTPUT@'],
-)
-xdg_shell_h = custom_target(
-  'xdg-shell-protocol.h',
-  output: 'xdg-shell-protocol.h',
-  input: '/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml',
-  command: ['wayland-scanner', 'client-header', '@INPUT@', '@OUTPUT@'],
-)
 
 executable(
   'swayimg',
