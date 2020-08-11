@@ -1,5 +1,7 @@
 # Swayimg: image viewer for Sway/Wayland
 
+![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
+
 The _swayimg_ utility can be used for preview images inside the currently
 focused window (container).
 

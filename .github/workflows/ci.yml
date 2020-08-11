@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install dependencies
+      run: >
+          sudo apt install --no-install-recommends --yes
+          build-essential meson pkg-config wayland-protocols
+          libwayland-dev libcairo-dev libjson-c-dev libgif-dev libjpeg-dev
+    - name: meson
+      run: meson ./build
+    - name: ninja
+      run: ninja -C ./build
+    - name: check
+      run: ./build/swayimg --version
