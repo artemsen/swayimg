@@ -59,7 +59,6 @@ cairo_surface_t* load_jpg(const char* file, const uint8_t* header)
 {
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
-    cairo_surface_t* img = NULL;
 
     // check signature
     static const uint8_t jpg_sig[] = { 0xff, 0xd8 };
@@ -78,11 +77,9 @@ cairo_surface_t* load_jpg(const char* file, const uint8_t* header)
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
         fprintf(stderr, "Unable to decode JPEG\n");
-        if (img) {
-            cairo_surface_destroy(img);
-            img = NULL;
-        }
-        goto done;
+        jpeg_destroy_decompress(&jpg);
+        fclose(fd);
+        return NULL;
     }
 
     jpeg_create_decompress(&jpg);
@@ -94,13 +91,14 @@ cairo_surface_t* load_jpg(const char* file, const uint8_t* header)
 #endif // LIBJPEG_TURBO_VERSION
 
     // create canvas
-    img = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
+    cairo_surface_t* img = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
                                      jpg.output_width, jpg.output_height);
     if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
         fprintf(stderr, "Unable to create cairo surface\n");
         cairo_surface_destroy(img);
-        img = NULL;
-        goto done;
+        jpeg_destroy_decompress(&jpg);
+        fclose(fd);
+        return NULL;
     }
 
     uint8_t* raw = cairo_image_surface_get_data(img);
@@ -134,7 +132,6 @@ cairo_surface_t* load_jpg(const char* file, const uint8_t* header)
     cairo_surface_mark_dirty(img);
     jpeg_finish_decompress(&jpg);
 
-done:
     jpeg_destroy_decompress(&jpg);
     fclose(fd);
 
@@ -149,6 +146,8 @@ done:
 #include <gif_lib.h>
 cairo_surface_t* load_gif(const char* file, const uint8_t* header)
 {
+    cairo_surface_t* img = NULL;
+
     // check signature
     static const uint8_t gif_sig[] = { 'G', 'I', 'F' };
     if (memcmp(header, gif_sig, sizeof(gif_sig))) {
@@ -173,8 +172,7 @@ cairo_surface_t* load_gif(const char* file, const uint8_t* header)
     }
 
     // create canvas
-    cairo_surface_t* img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-            gif->SWidth, gif->SHeight);
+    img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight);
     if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
         fprintf(stderr, "Unable to create cairo surface\n");
         cairo_surface_destroy(img);
