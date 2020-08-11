@@ -41,3 +41,5 @@ meson build
 ninja -C build
 sudo ninja -C build install
 ```
+
+Arch users can install the program via [AUR](https://aur.archlinux.org/packages/swayimg).
