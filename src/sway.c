@@ -41,12 +41,12 @@ static bool sock_read(int fd, void* buf, size_t len)
     while (len) {
         const ssize_t rcv = recv(fd, buf, len, 0);
         if (rcv == 0) {
-            fprintf(stderr, "No data in IPC channel\n");
+            fprintf(stderr, "IPC error: no data\n");
             return false;
         }
         if (rcv == -1) {
-            fprintf(stderr, "Unable to read IPC socket: [%i] %s\n", errno,
-                    strerror(errno));
+            const int ec = errno;
+            fprintf(stderr, "IPC read error: [%i] %s\n", ec, strerror(ec));
             return false;
         }
         len -= rcv;
@@ -67,8 +67,8 @@ static bool sock_write(int fd, const void* buf, size_t len)
     while (len) {
         const ssize_t rcv = write(fd, buf, len);
         if (rcv == -1) {
-            fprintf(stderr, "Unable to write IPC socket: [%i] %s\n", errno,
-                    strerror(errno));
+            const int ec = errno;
+            fprintf(stderr, "IPC write error: [%i] %s\n", ec, strerror(ec));
             return false;
         }
         len -= rcv;
@@ -78,7 +78,7 @@ static bool sock_write(int fd, const void* buf, size_t len)
 }
 
 /**
- * @brief IPC message exchange.
+ * IPC message exchange.
  * @param[in] ipc IPC context (socket file descriptor)
  * @param[in] type message type
  * @param[in] payload payload data
@@ -117,7 +117,7 @@ static struct json_object* ipc_message(int ipc, enum ipc_msg_type type,
     if (!response) {
         fprintf(stderr, "Invalid IPC response\n");
     }
-    
+
     free(raw);
 
     return response;
@@ -260,7 +260,8 @@ int sway_connect(void)
 
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd == -1) {
-        fprintf(stderr, "Failed to create IPC socket\n");
+        const int ec = errno;
+        fprintf(stderr, "Failed to create IPC socket: [%i] %s\n", ec, strerror(ec));
         return -1;
     }
 
@@ -269,7 +270,8 @@ int sway_connect(void)
 
     len += sizeof(sa) - sizeof(sa.sun_path);
     if (connect(fd, (struct sockaddr*)&sa, len) == -1) {
-        fprintf(stderr, "Failed to connect IPC socket\n");
+        const int ec = errno;
+        fprintf(stderr, "Failed to connect IPC socket: [%i] %s\n", ec, strerror(ec));
         close(fd);
         return -1;
     }
