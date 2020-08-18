@@ -29,7 +29,7 @@ static void print_help(void)
  */
 static void print_version(void)
 {
-    const char* formats = "Supported formats: png"
+    const char* formats = "Supported formats: png, bmp"
 #ifdef HAVE_LIBJPEG
         ", jpeg"
 #endif // HAVE_LIBJPEG

@@ -18,7 +18,8 @@ draws an image from the specified file.
 
 - PNG (via cairo);
 - JPEG (via libjpeg);
-- GIF (via giflib, without animation).
+- GIF (via giflib, without animation);
+- BMP (without compression, 8/24/32 bits per pixel only).
 
 ## Usage
 
