@@ -228,7 +228,7 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
     struct __attribute__((__packed__)) bmp_info_header {
         uint32_t hdr_size;
         uint32_t width;
-        uint32_t height;
+        int32_t  height;
         uint16_t planes;
         uint16_t bpp;
         uint32_t compression;
@@ -291,7 +291,7 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
         goto done;
     }
     const size_t stride = 4 * ((bmp_ih.width * bmp_ih.bpp + 31) / 32);
-    const size_t size = bmp_ih.height * stride;
+    const size_t size = abs(bmp_ih.height) * stride;
     buffer = malloc(size);
     if (!buffer) {
         fprintf(stderr, "Not enough memory\n");
@@ -304,20 +304,9 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
     }
 
     // create canvas
-    cairo_format_t fmt;
-    switch (bmp_ih.bpp) {
-        case 8:
-        case 24:
-            fmt = CAIRO_FORMAT_RGB24;
-            break;
-        case 32:
-            fmt = CAIRO_FORMAT_ARGB32;
-            break;
-        default:
-            fprintf(stderr, "Unsupported pixel size: %i bits\n", bmp_ih.bpp);
-            goto done;
-    }
-    img = cairo_image_surface_create(fmt, bmp_ih.width, bmp_ih.height);
+    img = cairo_image_surface_create(
+            bmp_ih.bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+            bmp_ih.width, abs(bmp_ih.height));
     if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
         fprintf(stderr, "Unable to create cairo surface\n");
         cairo_surface_destroy(img);
@@ -326,31 +315,57 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
     }
 
     // flip and convert to argb (cairo internal format)
-    uint32_t* pixel = (uint32_t*)cairo_image_surface_get_data(img);
-    for (ssize_t y = bmp_ih.height - 1; y >= 0; --y) {
-        uint8_t* src_y = buffer + y * stride;
+    uint8_t* dst_data = cairo_image_surface_get_data(img);
+    const size_t dst_stride = cairo_image_surface_get_stride(img);
+    const size_t bpb = 8; // bits per byte
+    for (size_t y = 0; y < abs(bmp_ih.height); ++y) {
+        uint8_t* dst_y = dst_data + y * dst_stride;
+        uint8_t* src_y;
+        if (bmp_ih.height > 0) {
+            src_y = buffer + (bmp_ih.height - y - 1) * stride;
+        } else {
+            src_y = buffer + y * stride; // top-down format (rarely used)
+        }
         for (size_t x = 0; x < bmp_ih.width; ++x) {
-            uint8_t* src_x = src_y + x * (bmp_ih.bpp / 8);
             uint8_t a = 0xff, r = 0, g = 0, b = 0;
-            if (bmp_ih.bpp == 32) {
-                a = src_x[3];
-                r = src_x[2];
-                g = src_x[1];
-                b = src_x[0];
+            if (bmp_ih.bpp > bpb) {
+                const uint8_t* src = src_y + x * (bmp_ih.bpp / bpb);
+                switch (bmp_ih.bpp) {
+                    case 32:
+                        a = src[3];
+                        r = src[2];
+                        g = src[1];
+                        b = src[0];
+                        break;
+                    case 24:
+                        r = src[2];
+                        g = src[1];
+                        b = src[0];
+                        break;
+                    case 16:
+                        //todo
+                        a = (src[0] >> 4) << 4;
+                        r = (src[0] & 0xf) << 4;
+                        g = (src[1] >> 4) << 4;
+                        b = (src[1] & 0xf) << 4;
+                        break;
+                }
+            } else {
+                // indexed colors
+                const size_t bits_offset = x * bmp_ih.bpp;
+                const size_t byte_offset = bits_offset / bpb;
+                const size_t start_bit = bits_offset - byte_offset * bpb;
+                const uint8_t val = *(src_y + byte_offset) >> (bpb - bmp_ih.bpp - start_bit);
+                const uint8_t idx = val & (0xff >> (bpb - bmp_ih.bpp));
+                if (idx < color_map_sz) {
+                    const uint8_t* clr = (uint8_t*)&color_map[idx];
+                    r = clr[2];
+                    g = clr[1];
+                    b = clr[0];
+                }
             }
-            else if (bmp_ih.bpp == 24) {
-                r = src_x[2];
-                g = src_x[1];
-                b = src_x[0];
-            }
-            else if (*src_x < color_map_sz) {
-                const uint8_t* clr = (uint8_t*)&color_map[*src_x];
-                r = clr[2];
-                g = clr[1];
-                b = clr[0];
-            }
-            *pixel = a << 24 | r << 16 | g << 8 | b;
-            ++pixel;
+            uint32_t* dst_x = (uint32_t*)(dst_y + x * 4 /*argb*/);
+            *dst_x = a << 24 | r << 16 | g << 8 | b;
         }
     }
 
