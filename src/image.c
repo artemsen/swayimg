@@ -208,6 +208,36 @@ done:
 }
 #endif // HAVE_LIBGIF
 
+/**
+ * Get number of the consecutive zero bits (trailing) on the right.
+ * @param[in] val source value
+ * @return number of zero bits
+ */
+static size_t right_zeros(uint32_t val)
+{
+    size_t count = sizeof(uint32_t) * 8;
+    val &= -(int32_t)val;
+    if (val) --count;
+    if (val & 0x0000ffff) count -= 16;
+    if (val & 0x00ff00ff) count -= 8;
+    if (val & 0x0f0f0f0f) count -= 4;
+    if (val & 0x33333333) count -= 2;
+    if (val & 0x55555555) count -= 1;
+    return count;
+}
+
+/**
+ * Get number of bits set.
+ * @param[in] val source value
+ * @return number of bits set
+ */
+static size_t bits_set(uint32_t val)
+{
+    val = val - ((val >> 1) & 0x55555555);
+    val = (val & 0x33333333) + ((val >> 2) & 0x33333333);
+    return (((val + (val >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // BMP image support
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +246,6 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
     cairo_surface_t* img = NULL;
     uint8_t* buffer = NULL;
     uint32_t* color_map = NULL;
-    size_t color_map_sz = 0;
 
     struct __attribute__((__packed__)) bmp_file_header {
         uint16_t type;
@@ -225,8 +254,8 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
         uint32_t offset;
     };
 
-    struct __attribute__((__packed__)) bmp_info_header {
-        uint32_t hdr_size;
+    struct __attribute__((__packed__)) bmp_core_info {
+        uint32_t dib_size;
         uint32_t width;
         int32_t  height;
         uint16_t planes;
@@ -237,6 +266,9 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
         uint32_t vres;
         uint32_t clr_palette;
         uint32_t clr_important;
+        uint32_t red_mask;
+        uint32_t green_mask;
+        uint32_t blue_mask;
     };
 
     // check signature
@@ -252,61 +284,70 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
         return NULL;
     }
 
-    struct bmp_file_header bmp_fh;
-    struct bmp_info_header bmp_ih;
-    if (read(fd, &bmp_fh, sizeof(bmp_fh)) != sizeof(bmp_fh) ||
-        read(fd, &bmp_ih, sizeof(bmp_ih)) != sizeof(bmp_ih)) {
+    // read file and bmp headers
+    struct bmp_file_header fhdr;
+    if (read(fd, &fhdr, sizeof(fhdr)) != sizeof(fhdr)) {
         const int ec = errno;
-        fprintf(stderr, "Unable to read file: [%i] %s\n", ec, strerror(ec));
+        fprintf(stderr, "Unable to read file header: [%i] %s\n", ec, strerror(ec));
         goto done;
     }
 
-    if (bmp_ih.planes != 1) {
-        fprintf(stderr, "Too many planes: %i\n", bmp_ih.planes);
-        goto done;
-    }
-    if (bmp_ih.compression != 0) {
-        fprintf(stderr, "BMP compression is not supported: %i\n", bmp_ih.compression);
+    struct bmp_core_info bmp;
+    if (read(fd, &bmp, sizeof(bmp)) != sizeof(bmp)) {
+        const int ec = errno ? errno : ENODATA;
+        fprintf(stderr, "Unable to read bmp info: [%i] %s\n", ec, strerror(ec));
         goto done;
     }
 
-    if (bmp_ih.clr_palette) {
-        color_map_sz = bmp_ih.clr_palette * sizeof(uint32_t);
-        color_map = malloc(color_map_sz);
+    // RLE is not supported yet
+    if (bmp.compression != 0 /* BI_RGB */ && bmp.compression != 3 /* BI_BITFIELDS */) {
+        fprintf(stderr, "BMP compression format %i is not supported\n", bmp.compression);
+        goto done;
+    }
+
+    if (bmp.clr_palette) {
+        // read color palette
+        if (lseek(fd, sizeof(struct bmp_file_header) + bmp.dib_size, SEEK_SET) == -1) {
+            const int ec = errno;
+            fprintf(stderr, "Unable to set position: [%i] %s\n", ec, strerror(ec));
+            goto done;
+        }
+        const size_t map_sz = bmp.clr_palette * sizeof(uint32_t);
+        color_map = malloc(map_sz);
         if (!color_map) {
             fprintf(stderr, "Not enough memory\n");
             goto done;
         }
-        if (read(fd, color_map, color_map_sz) != (ssize_t)color_map_sz) {
-            const int ec = errno;
+        if (read(fd, color_map, map_sz) != (ssize_t)map_sz) {
+            const int ec = errno ? errno : ENODATA;
             fprintf(stderr, "Unable to read file: [%i] %s\n", ec, strerror(ec));
             goto done;
         }
     }
 
     // read pixel data
-    if (lseek(fd, bmp_fh.offset, SEEK_SET) == -1) {
+    if (lseek(fd, fhdr.offset, SEEK_SET) == -1) {
         const int ec = errno;
         fprintf(stderr, "Unable to set position: [%i] %s\n", ec, strerror(ec));
         goto done;
     }
-    const size_t stride = 4 * ((bmp_ih.width * bmp_ih.bpp + 31) / 32);
-    const size_t size = abs(bmp_ih.height) * stride;
+    const size_t stride = 4 * ((bmp.width * bmp.bpp + 31) / 32);
+    const size_t size = abs(bmp.height) * stride;
     buffer = malloc(size);
     if (!buffer) {
         fprintf(stderr, "Not enough memory\n");
         goto done;
     }
     if (read(fd, buffer, size) != (ssize_t)size) {
-        const int ec = errno;
+        const int ec = errno ? errno : ENODATA;
         fprintf(stderr, "Unable to read file: [%i] %s\n", ec, strerror(ec));
         goto done;
     }
 
     // create canvas
     img = cairo_image_surface_create(
-            bmp_ih.bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
-            bmp_ih.width, abs(bmp_ih.height));
+            bmp.bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+            bmp.width, abs(bmp.height));
     if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
         fprintf(stderr, "Unable to create cairo surface\n");
         cairo_surface_destroy(img);
@@ -314,60 +355,72 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
         goto done;
     }
 
+    // default mask 5:5:5
+    if (!bmp.red_mask && !bmp.green_mask && !bmp.blue_mask) {
+        bmp.red_mask = 0x001f;
+        bmp.green_mask = 0x03e0;
+        bmp.blue_mask = 0x7c00;
+    }
+
     // flip and convert to argb (cairo internal format)
+    const size_t bpb = 8; // bits per byte
     uint8_t* dst_data = cairo_image_surface_get_data(img);
     const size_t dst_stride = cairo_image_surface_get_stride(img);
-    const size_t bpb = 8; // bits per byte
-    for (size_t y = 0; y < abs(bmp_ih.height); ++y) {
+    const int8_t red_shift = right_zeros(bmp.red_mask) + bits_set(bmp.red_mask) - bpb;
+    const int8_t green_shift = right_zeros(bmp.green_mask) + bits_set(bmp.green_mask) - bpb;
+    const int8_t blue_shift = right_zeros(bmp.blue_mask) + bits_set(bmp.blue_mask) - bpb;
+    for (size_t y = 0; y < abs(bmp.height); ++y) {
         uint8_t* dst_y = dst_data + y * dst_stride;
         uint8_t* src_y;
-        if (bmp_ih.height > 0) {
-            src_y = buffer + (bmp_ih.height - y - 1) * stride;
+        if (bmp.height > 0) {
+            src_y = buffer + (bmp.height - y - 1) * stride;
         } else {
             src_y = buffer + y * stride; // top-down format (rarely used)
         }
-        for (size_t x = 0; x < bmp_ih.width; ++x) {
+        for (size_t x = 0; x < bmp.width; ++x) {
             uint8_t a = 0xff, r = 0, g = 0, b = 0;
-            if (bmp_ih.bpp > bpb) {
-                const uint8_t* src = src_y + x * (bmp_ih.bpp / bpb);
-                switch (bmp_ih.bpp) {
-                    case 32:
-                        a = src[3];
-                        r = src[2];
-                        g = src[1];
-                        b = src[0];
-                        break;
-                    case 24:
-                        r = src[2];
-                        g = src[1];
-                        b = src[0];
-                        break;
-                    case 16:
-                        //todo
-                        a = (src[0] >> 4) << 4;
-                        r = (src[0] & 0xf) << 4;
-                        g = (src[1] >> 4) << 4;
-                        b = (src[1] & 0xf) << 4;
-                        break;
-                }
-            } else {
-                // indexed colors
-                const size_t bits_offset = x * bmp_ih.bpp;
-                const size_t byte_offset = bits_offset / bpb;
-                const size_t start_bit = bits_offset - byte_offset * bpb;
-                const uint8_t val = 
-                    (*(src_y + byte_offset) >> (bpb - bmp_ih.bpp - start_bit)) &
-                    (0xff >> (bpb - bmp_ih.bpp));
-                if (val < color_map_sz) {
-                    const uint8_t* clr = (uint8_t*)&color_map[val];
-                    r = clr[2];
-                    g = clr[1];
-                    b = clr[0];
-                } else {
-                    // color value without color table
-                    r = ((val >> 0) & 1) * 0xff;
-                    g = ((val >> 1) & 1) * 0xff;
-                    b = ((val >> 2) & 1) * 0xff;
+            const uint8_t* src = src_y + x * (bmp.bpp / bpb);
+            switch (bmp.bpp) {
+                case 32:
+                    a = src[3];
+                    r = src[2];
+                    g = src[1];
+                    b = src[0];
+                    break;
+                case 24:
+                    r = src[2];
+                    g = src[1];
+                    b = src[0];
+                    break;
+                case 16: {
+                    const uint16_t val = *(uint16_t*)src;
+                    r = red_shift > 0 ? (val & bmp.red_mask) >> red_shift :
+                                        (val & bmp.red_mask) << -red_shift;
+                    g = green_shift > 0 ? (val & bmp.green_mask) >> green_shift :
+                                          (val & bmp.green_mask) << -green_shift;
+                    b = blue_shift > 0 ? (val & bmp.blue_mask) >> blue_shift :
+                                         (val & bmp.blue_mask) << -blue_shift;
+                    }
+                    break;
+                default: {
+                    // indexed colors
+                    const size_t bits_offset = x * bmp.bpp;
+                    const size_t byte_offset = bits_offset / bpb;
+                    const size_t start_bit = bits_offset - byte_offset * bpb;
+                    const uint8_t val =
+                        (*(src_y + byte_offset) >> (bpb - bmp.bpp - start_bit)) &
+                        (0xff >> (bpb - bmp.bpp));
+                    if (color_map && val < bmp.clr_palette) {
+                        const uint8_t* clr = (uint8_t*)&color_map[val];
+                        r = clr[2];
+                        g = clr[1];
+                        b = clr[0];
+                    } else {
+                        // color without palette?
+                        r = ((val >> 0) & 1) * 0xff;
+                        g = ((val >> 1) & 1) * 0xff;
+                        b = ((val >> 2) & 1) * 0xff;
+                    }
                 }
             }
             uint32_t* dst_x = (uint32_t*)(dst_y + x * 4 /*argb*/);
@@ -427,7 +480,7 @@ cairo_surface_t* load_image(const char* file)
         return NULL;
     }
     if (read(fd, header, sizeof(header)) != sizeof(header)) {
-        const int ec = errno;
+        const int ec = errno ? errno : ENODATA;
         fprintf(stderr, "Unable to read file: [%i] %s\n", ec, strerror(ec));
         close(fd);
         return NULL;
