@@ -355,13 +355,19 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
                 const size_t bits_offset = x * bmp_ih.bpp;
                 const size_t byte_offset = bits_offset / bpb;
                 const size_t start_bit = bits_offset - byte_offset * bpb;
-                const uint8_t val = *(src_y + byte_offset) >> (bpb - bmp_ih.bpp - start_bit);
-                const uint8_t idx = val & (0xff >> (bpb - bmp_ih.bpp));
-                if (idx < color_map_sz) {
-                    const uint8_t* clr = (uint8_t*)&color_map[idx];
+                const uint8_t val = 
+                    (*(src_y + byte_offset) >> (bpb - bmp_ih.bpp - start_bit)) &
+                    (0xff >> (bpb - bmp_ih.bpp));
+                if (val < color_map_sz) {
+                    const uint8_t* clr = (uint8_t*)&color_map[val];
                     r = clr[2];
                     g = clr[1];
                     b = clr[0];
+                } else {
+                    // color value without color table
+                    r = ((val >> 0) & 1) * 0xff;
+                    g = ((val >> 1) & 1) * 0xff;
+                    b = ((val >> 2) & 1) * 0xff;
                 }
             }
             uint32_t* dst_x = (uint32_t*)(dst_y + x * 4 /*argb*/);
