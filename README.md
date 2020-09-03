@@ -19,7 +19,7 @@ draws an image from the specified file.
 - PNG (via cairo);
 - JPEG (via libjpeg);
 - GIF (via giflib, without animation);
-- BMP (without compression, 8/24/32 bits per pixel only).
+- BMP (without RLE compression).
 
 ## Usage
 
@@ -33,7 +33,7 @@ See `swayimg --help` or `man swayimg` for details.
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
 - `Backspace`: Set optimal scale: 100% or fit to window;
-- `i`: Show/hide image preperties;
+- `i`: Show/hide image properties;
 - `Esc`, `Enter`, `F10`, `q`, `e`, `x`: Exit the program.
 
 ## Build and install
