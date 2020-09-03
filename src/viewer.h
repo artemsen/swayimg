@@ -13,6 +13,7 @@ struct viewer {
     int scale;           ///< Image scale (0=auto)
     struct rect* wnd;    ///< Window geometry (NULL=auto)
     bool fullscreen;     ///< Full screen mode
+    bool show_info;      ///< Show image info
 };
 
 /**

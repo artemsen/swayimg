@@ -20,6 +20,7 @@ static void print_help(void)
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -s, --scale=PERCENT      Set initial image scale");
+    puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
 }
@@ -97,11 +98,12 @@ int main(int argc, char* argv[])
         { "geometry",   required_argument, NULL, 'g' },
         { "fullscreen", no_argument,       NULL, 'f' },
         { "scale",      required_argument, NULL, 's' },
+        { "info",       no_argument,       NULL, 'i' },
         { "version",    no_argument,       NULL, 'v' },
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "a:g:fs:vh";
+    const char* short_opts = "a:g:fs:ivh";
 
     opterr = 0; // prevent native error messages
 
@@ -123,6 +125,9 @@ int main(int argc, char* argv[])
                 break;
             case 's':
                 view.scale = atoi(optarg);
+                break;
+            case 'i':
+                view.show_info = true;
                 break;
             case 'v':
                 print_version();

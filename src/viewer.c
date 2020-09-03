@@ -12,6 +12,9 @@
 #include <sys/time.h>
 #include <linux/input.h>
 
+// font size used for displaying image info and help
+#define FONT_SIZE 16
+
 // see image.c for details
 cairo_surface_t* load_image(const char* file);
 
@@ -41,6 +44,8 @@ struct context {
     int img_y;
     int wnd_width;
     int wnd_height;
+    bool show_info;
+    const char* file;
 };
 static struct context ctx;
 
@@ -235,6 +240,33 @@ static void chess_background(cairo_t* cr)
     }
 }
 
+/**
+ * Draw formatted text line with shadow.
+ * @param[in] cr cairo paint context
+ * @param[in] x horizontal coordinate
+ * @param[in] y vertical coordinate
+ * @param[in] text text to display
+ */
+static void draw_text(cairo_t* cr, int x, int y, const char* text, ...)
+{
+    char buf[128];
+
+    va_list args;
+    va_start(args, text);
+    vsnprintf(buf, sizeof(buf), text, args);
+    va_end(args);
+
+    cairo_select_font_face (cr, "monospace",
+                            CAIRO_FONT_SLANT_NORMAL,
+                            CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, FONT_SIZE);
+    for (int i = 0; i <= 1; ++i) {
+        cairo_set_source_rgb(cr, i * 0.7, i * 0.7, i * 0.7); 
+        cairo_move_to(cr, 1 - i, y + 1 - i + FONT_SIZE);
+        cairo_show_text(cr, buf);
+    }
+}
+
 /** Draw handler, see window::on_redraw */
 static void redraw(cairo_surface_t* window)
 {
@@ -259,7 +291,20 @@ static void redraw(cairo_surface_t* window)
     cairo_set_source_surface(cr, ctx.img, 0, 0);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_paint(cr);
+    cairo_identity_matrix(cr);
 
+    // image info: path to the file, format, size, ...
+    if (ctx.show_info) {
+        int y = 0;
+        draw_text(cr, 0, y, "File:  %s", ctx.file);
+        y += 2 + FONT_SIZE;
+        draw_text(cr, 0, y, "Size:  %ix%i",
+                            cairo_image_surface_get_width(ctx.img),
+                            cairo_image_surface_get_height(ctx.img));
+        y += 2 + FONT_SIZE;
+        draw_text(cr, 0, y, "Scale: %i%%", (int)(ctx.scale * 100));
+    }
+ 
     cairo_destroy(cr);
 }
 
@@ -308,6 +353,9 @@ static bool handle_key(uint32_t key)
             return true;
         case KEY_BACKSPACE:
             change_scale(optimal_scale);
+            return true;
+        case KEY_I:
+            ctx.show_info = !ctx.show_info;
             return true;
         case KEY_ESC:
         case KEY_ENTER:
@@ -427,6 +475,9 @@ bool show_image(const struct viewer* params)
     } else {
         ctx.scale = (double)(params->scale) / 100.0;
     }
+
+    ctx.file = params->file;
+    ctx.show_info = params->show_info;
 
     // create and show gui window
     rc = show_window(&wnd);

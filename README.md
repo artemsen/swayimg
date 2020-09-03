@@ -33,6 +33,7 @@ See `swayimg --help` or `man swayimg` for details.
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
 - `Backspace`: Set optimal scale: 100% or fit to window;
+- `i`: Show/hide image preperties;
 - `Esc`, `Enter`, `F10`, `q`, `e`, `x`: Exit the program.
 
 ## Build and install
