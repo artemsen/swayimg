@@ -19,7 +19,8 @@ draws an image from the specified file.
 - PNG (via cairo);
 - JPEG (via libjpeg);
 - GIF (via giflib, without animation);
-- BMP (without RLE compression).
+- BMP (without RLE compression);
+- SVG (via librsvg).
 
 ## Usage
 

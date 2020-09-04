@@ -17,7 +17,8 @@ jobs:
       run: >
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
-          libwayland-dev libcairo-dev libjson-c-dev libgif-dev libjpeg-dev
+          libwayland-dev libcairo-dev libjson-c-dev
+          libgif-dev libjpeg-dev librsvg2-dev
     - name: meson
       run: meson ./build
     - name: ninja

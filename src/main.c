@@ -37,6 +37,9 @@ static void print_version(void)
 #ifdef HAVE_LIBGIF
         ", gif"
 #endif // HAVE_LIBGIF
+#ifdef HAVE_LIBRSVG
+        ", svg"
+#endif // HAVE_LIBRSVG
     ".";
     puts(APP_NAME " version " APP_VERSION ".");
     puts(formats);

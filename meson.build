@@ -25,6 +25,7 @@ wlcln = dependency('wayland-client')
 cairo = dependency('cairo')
 json  = dependency('json-c')
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
+rsvg  = dependency('librsvg-2.0', required: get_option('svg'))
 gif   = cc.find_library('gif', required: get_option('gif'))
 rt    = cc.find_library('rt')
 bash  = dependency('bash-completion', required: get_option('bash'))
@@ -33,6 +34,7 @@ bash  = dependency('bash-completion', required: get_option('bash'))
 conf = configuration_data()
 conf.set('HAVE_LIBJPEG', jpeg.found())
 conf.set('HAVE_LIBGIF', gif.found())
+conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set_quoted('APP_VERSION', meson.project_version())
 conf.set_quoted('APP_NAME', meson.project_name())
 configure_file(output: 'config.h', configuration: conf)
@@ -95,6 +97,7 @@ executable(
     cairo,
     json,
     jpeg,
+    rsvg,
     gif,
     rt,
   ],

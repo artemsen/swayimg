@@ -6,6 +6,10 @@ option('gif',
        type: 'feature',
        value: 'auto',
        description: 'Enable GIF format support')
+option('svg',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable SVG format support')
 
 option('bash',
        type: 'feature',

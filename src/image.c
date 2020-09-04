@@ -442,6 +442,55 @@ done:
     return img;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// SVG image support
+////////////////////////////////////////////////////////////////////////////////
+#ifdef HAVE_LIBRSVG
+#include <librsvg/rsvg.h>
+cairo_surface_t* load_svg(const char* file, const uint8_t* header)
+{
+    // check signature
+    static const uint8_t svg_sig[] = { '<', '?', 'x', 'm', 'l' };
+    if (memcmp(header, svg_sig, sizeof(svg_sig))) {
+        return NULL; // not an SVG file
+    }
+
+    GError* err = NULL;
+    RsvgHandle* svg = rsvg_handle_new_from_file(file, &err);
+    if (!svg) {
+        fprintf(stderr, "Unable to load SVG");
+        if (err && err->message) {
+            fprintf(stderr, ": %s\n", err->message);
+        } else {
+            fprintf(stderr, "\n");
+        }
+        return NULL;
+    }
+
+    RsvgDimensionData dim;
+    rsvg_handle_get_dimensions(svg, &dim);
+
+    // create surface
+    cairo_surface_t* img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                                      dim.width, dim.height);
+    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create cairo surface\n");
+        cairo_surface_destroy(img);
+        g_object_unref(svg);
+        return NULL;
+    }
+
+    // render svg to surface
+    cairo_t* cr = cairo_create(img);
+    rsvg_handle_render_cairo(svg, cr);
+    cairo_destroy(cr);
+
+    g_object_unref(svg);
+
+    return img;
+}
+#endif // HAVE_LIBRSVG
+
 /**
  * Image loader function.
  * @param[in] file path to the image file
@@ -460,6 +509,9 @@ static const load loaders[] = {
     load_gif,
 #endif // HAVE_LIBGIF
     load_bmp,
+#ifdef HAVE_LIBRSVG
+    load_svg,
+#endif // HAVE_LIBRSVG
 };
 
 /**
