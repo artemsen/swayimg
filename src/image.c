@@ -491,6 +491,95 @@ cairo_surface_t* load_svg(const char* file, const uint8_t* header)
 }
 #endif // HAVE_LIBRSVG
 
+////////////////////////////////////////////////////////////////////////////////
+// WebP image support
+////////////////////////////////////////////////////////////////////////////////
+#ifdef HAVE_LIBWEBP
+#include <webp/decode.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+static int multiply_alpha (int alpha, int color)
+{
+    int temp = (alpha * color) + 0x80;
+    return ((temp + (temp >> 8)) >> 8);
+}
+cairo_surface_t* load_webp(const char* file, const uint8_t* header)
+{
+    // check signature
+    static const uint8_t webp_sig[] = { 'R', 'I', 'F', 'F' };
+    if (memcmp(header, webp_sig, sizeof(webp_sig))) {
+        return NULL; // not a WebP file
+    }
+
+    // load file to the buffer
+    const int fd = open(file, O_RDONLY);
+    if (fd == -1) {
+        const int ec = errno;
+        fprintf(stderr, "Unable to open file: [%i] %s\n", ec, strerror(ec));
+        return NULL;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) == -1)
+    {
+        perror("Error in fstat");
+        return NULL;
+    }
+    void* addr = mmap(NULL,st.st_size,PROT_READ,MAP_SHARED,fd,0);
+    if (addr == MAP_FAILED)
+    {
+        perror("Error in mmap");
+        return NULL;
+    }
+
+    // get image properties
+    WebPBitstreamFeatures features;
+    VP8StatusCode rc = WebPGetFeatures(addr,st.st_size,&features);
+    if (rc != VP8_STATUS_OK) {
+        perror("FUCK");
+        return NULL;
+    }
+
+    // create surface
+    cairo_surface_t* img = cairo_image_surface_create(
+            features.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+            features.width, features.height);
+    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create cairo surface\n");
+        cairo_surface_destroy(img);
+        return NULL;
+    }
+
+    uint8_t* dst_data = cairo_image_surface_get_data(img);
+    const size_t dst_stride = cairo_image_surface_get_stride(img);
+    WebPDecodeBGRAInto(addr, st.st_size, dst_data, dst_stride * features.height, dst_stride);
+
+    for (size_t i = 0; i < dst_stride * features.height; i+=4) {
+        uint8_t  alpha = dst_data[i+3];
+        if (alpha != 0xff) {
+            uint8_t  red   = dst_data[i+0];
+            uint8_t  green = dst_data[i+1];
+            uint8_t  blue  = dst_data[i+2];
+
+            red   = multiply_alpha(alpha, red);
+            green = multiply_alpha(alpha, green);
+            blue  = multiply_alpha(alpha, blue);
+
+            dst_data[i+0]=red;
+            dst_data[i+1]=green;
+            dst_data[i+2]=blue;
+        }
+    }
+
+    cairo_surface_mark_dirty(img);
+
+    munmap(addr,st.st_size);
+    close(fd);
+
+    return img;
+}
+#endif // HAVE_LIBWEBP
+
 /**
  * Image loader function.
  * @param[in] file path to the image file
@@ -512,6 +601,9 @@ static const load loaders[] = {
 #ifdef HAVE_LIBRSVG
     load_svg,
 #endif // HAVE_LIBRSVG
+#ifdef HAVE_LIBWEBP
+    load_webp,
+#endif // HAVE_LIBWEBP
 };
 
 /**

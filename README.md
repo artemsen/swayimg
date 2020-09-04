@@ -20,7 +20,8 @@ draws an image from the specified file.
 - JPEG (via libjpeg);
 - GIF (via giflib, without animation);
 - BMP (without RLE compression);
-- SVG (via librsvg).
+- SVG (via librsvg);
+- WebP (via libwebp).
 
 ## Usage
 

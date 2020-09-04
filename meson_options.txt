@@ -10,6 +10,10 @@ option('svg',
        type: 'feature',
        value: 'auto',
        description: 'Enable SVG format support')
+option('webp',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable WebP format support')
 
 option('bash',
        type: 'feature',

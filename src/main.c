@@ -40,6 +40,9 @@ static void print_version(void)
 #ifdef HAVE_LIBRSVG
         ", svg"
 #endif // HAVE_LIBRSVG
+#ifdef HAVE_LIBWEBP
+        ", webp"
+#endif // HAVE_LIBWEBP
     ".";
     puts(APP_NAME " version " APP_VERSION ".");
     puts(formats);
