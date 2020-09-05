@@ -83,17 +83,34 @@ if bash.found()
                rename: 'swayimg')
 endif
 
+# source files
+sources = [
+  'src/image.c',
+  'src/image_png.c',
+  'src/image_bmp.c',
+  'src/main.c',
+  'src/sway.c',
+  'src/viewer.c',
+  'src/window.c',
+  xdg_shell_h,
+  xdg_shell_c,
+]
+if jpeg.found()
+  sources += 'src/image_jpeg.c'
+endif
+if gif.found()
+  sources += 'src/image_gif.c'
+endif
+if rsvg.found()
+  sources += 'src/image_svg.c'
+endif
+if webp.found()
+  sources += 'src/image_webp.c'
+endif
+
 executable(
   'swayimg',
-  [
-    'src/image.c',
-    'src/main.c',
-    'src/sway.c',
-    'src/viewer.c',
-    'src/window.c',
-    xdg_shell_h,
-    xdg_shell_c,
-  ],
+  sources,
   dependencies: [
     wlcln,
     cairo,

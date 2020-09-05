@@ -2,6 +2,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
+#include "image.h"
 #include "viewer.h"
 #include "window.h"
 
@@ -14,9 +15,6 @@
 
 // font size used for displaying image info and help
 #define FONT_SIZE 16
-
-// see image.c for details
-cairo_surface_t* load_image(const char* file);
 
 /** Scale operation types. */
 enum scale_op {
