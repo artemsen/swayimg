@@ -13,8 +13,9 @@
 #include <sys/time.h>
 #include <linux/input.h>
 
-// font size used for displaying image info and help
-#define FONT_SIZE 16
+// text render parameters
+#define FONT_SIZE    16
+#define LINE_SPACING 2
 
 /** Scale operation types. */
 enum scale_op {
@@ -265,6 +266,41 @@ static void draw_text(cairo_t* cr, int x, int y, const char* text, ...)
     }
 }
 
+/**
+ * Print image information.
+ * @param[in] cr cairo paint context
+ */
+static void print_info(cairo_t* cr)
+{
+    int y = 0;
+
+    // file name
+    const char* name = strrchr(ctx.file, '/');
+    if (name) {
+        ++name; // skip delimeter
+    } else {
+        name = ctx.file;
+    }
+    draw_text(cr, 0, y, "File:   %s", name);
+
+    // image format
+    const char* fmt = cairo_surface_get_user_data(ctx.img, &meta_fmt_name);
+    if (fmt) {
+        y += LINE_SPACING + FONT_SIZE;
+        draw_text(cr, 0, y, "Format: %s", fmt);
+    }
+
+    // image size
+    y += LINE_SPACING + FONT_SIZE;
+    draw_text(cr, 0, y, "Size:   %ix%i",
+                        cairo_image_surface_get_width(ctx.img),
+                        cairo_image_surface_get_height(ctx.img));
+
+    // current sacle
+    y += LINE_SPACING + FONT_SIZE;
+    draw_text(cr, 0, y, "Scale:  %i%%", (int)(ctx.scale * 100));
+}
+
 /** Draw handler, see window::on_redraw */
 static void redraw(cairo_surface_t* window)
 {
@@ -293,14 +329,7 @@ static void redraw(cairo_surface_t* window)
 
     // image info: path to the file, format, size, ...
     if (ctx.show_info) {
-        int y = 0;
-        draw_text(cr, 0, y, "File:  %s", ctx.file);
-        y += 2 + FONT_SIZE;
-        draw_text(cr, 0, y, "Size:  %ix%i",
-                            cairo_image_surface_get_width(ctx.img),
-                            cairo_image_surface_get_height(ctx.img));
-        y += 2 + FONT_SIZE;
-        draw_text(cr, 0, y, "Scale: %i%%", (int)(ctx.scale * 100));
+        print_info(cr);
     }
  
     cairo_destroy(cr);

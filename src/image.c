@@ -11,6 +11,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+// meta data
+const cairo_user_data_key_t meta_fmt_name;
+
 // loaders declaration
 cairo_surface_t* load_png(const char* file, const uint8_t* header);
 cairo_surface_t* load_bmp(const char* file, const uint8_t* header);

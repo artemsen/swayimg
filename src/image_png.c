@@ -31,5 +31,7 @@ cairo_surface_t* load_png(const char* file, const uint8_t* header)
         img = NULL;
     }
 
+    cairo_surface_set_user_data(img, &meta_fmt_name, (void*)format_name, NULL);
+
     return img;
 }

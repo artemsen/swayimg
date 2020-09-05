@@ -60,6 +60,8 @@ cairo_surface_t* load_svg(const char* file, const uint8_t* header)
     rsvg_handle_render_cairo(svg, cr);
     cairo_destroy(cr);
 
+    cairo_surface_set_user_data(img, &meta_fmt_name, (void*)format_name, NULL);
+
     g_object_unref(svg);
 
     return img;

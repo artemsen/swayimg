@@ -23,5 +23,15 @@ typedef cairo_surface_t* (*load)(const char* file, const uint8_t* header);
  */
 cairo_surface_t* load_image(const char* file);
 
+/**
+ * Output error information.
+ * @param[in] name format name
+ * @param[in] errcode system error code
+ * @param[in] fmt string format
+ * @param[in] ... data for format
+ */
 __attribute__((format (printf, 3, 4)))
 void log_error(const char* name, int errcode, const char* fmt, ...);
+
+// meta data keys
+extern const cairo_user_data_key_t meta_fmt_name;

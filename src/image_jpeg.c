@@ -115,8 +115,9 @@ cairo_surface_t* load_jpeg(const char* file, const uint8_t* header)
     }
 
     cairo_surface_mark_dirty(img);
-    jpeg_finish_decompress(&jpg);
+    cairo_surface_set_user_data(img, &meta_fmt_name, (void*)format_name, NULL);
 
+    jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
     fclose(fd);
 

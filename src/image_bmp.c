@@ -246,6 +246,7 @@ cairo_surface_t* load_bmp(const char* file, const uint8_t* header)
     }
 
     cairo_surface_mark_dirty(img);
+    cairo_surface_set_user_data(img, &meta_fmt_name, (void*)format_name, NULL);
 
 done:
     if (color_map) {
