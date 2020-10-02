@@ -255,9 +255,9 @@ static void draw_text(cairo_t* cr, int x, int y, const char* text, ...)
     vsnprintf(buf, sizeof(buf), text, args);
     va_end(args);
 
-    cairo_select_font_face (cr, "monospace",
-                            CAIRO_FONT_SLANT_NORMAL,
-                            CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_select_font_face(cr, "monospace",
+                           CAIRO_FONT_SLANT_NORMAL,
+                           CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, FONT_SIZE);
     for (int i = 0; i <= 1; ++i) {
         cairo_set_source_rgb(cr, i * 0.7, i * 0.7, i * 0.7); 
@@ -277,7 +277,7 @@ static void print_info(cairo_t* cr)
     // file name
     const char* name = strrchr(ctx.file, '/');
     if (name) {
-        ++name; // skip delimeter
+        ++name; // skip delimiter
     } else {
         name = ctx.file;
     }
@@ -296,7 +296,7 @@ static void print_info(cairo_t* cr)
                         cairo_image_surface_get_width(ctx.img),
                         cairo_image_surface_get_height(ctx.img));
 
-    // current sacle
+    // current scale
     y += LINE_SPACING + FONT_SIZE;
     draw_text(cr, 0, y, "Scale:  %i%%", (int)(ctx.scale * 100));
 }
@@ -452,7 +452,7 @@ bool show_image(const struct viewer* params)
         .title = title
     };
 
-    // setup window position viw Sway IPC
+    // setup window position via Sway IPC
     if (!wnd.fullscreen) {
         const int ipc = sway_connect();
         if (ipc != -1) {
@@ -506,7 +506,7 @@ bool show_image(const struct viewer* params)
     ctx.file = params->file;
     ctx.show_info = params->show_info;
 
-    // create and show gui window
+    // create and show GUI window
     rc = show_window(&wnd);
 
 done:

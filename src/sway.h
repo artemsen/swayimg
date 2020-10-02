@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 
-/** Rectangle descrition. */
+/** Rectangle description. */
 struct rect {
     int x;
     int y;
