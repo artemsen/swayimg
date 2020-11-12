@@ -52,11 +52,7 @@ struct context {
         size_t height;
     } size;
 
-    struct handlers {
-        on_redraw redraw;
-        on_resize resize;
-        on_keyboard keyboard;
-    } handlers;
+    struct handlers handlers;
 
     enum state state;
 };
@@ -66,7 +62,7 @@ static struct context ctx;
 /** Redraw window */
 static void redraw(void)
 {
-    ctx.handlers.redraw(ctx.surface.cairo);
+    ctx.handlers.on_redraw(ctx.surface.cairo);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.size.width, ctx.size.height);
     wl_surface_commit(ctx.wl.surface);
@@ -180,7 +176,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
                             uint32_t state)
 {
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        if (ctx.handlers.keyboard(key)) {
+        if (ctx.handlers.on_keyboard(key)) {
             redraw();
         }
     }
@@ -256,7 +252,7 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
         ctx.size.width = width;
         ctx.size.height = height;
         if (create_buffer()) {
-            ctx.handlers.resize(ctx.surface.cairo);
+            ctx.handlers.on_resize(ctx.surface.cairo);
         } else {
             ctx.state = state_error;
         }
@@ -307,9 +303,7 @@ bool show_window(const struct window* wnd)
 {
     ctx.size.width = wnd->width;
     ctx.size.height = wnd->height;
-    ctx.handlers.redraw = wnd->redraw;
-    ctx.handlers.keyboard = wnd->keyboard;
-    ctx.handlers.resize = wnd->resize;
+    ctx.handlers = wnd->handlers;
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {

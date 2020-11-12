@@ -8,30 +8,31 @@
 #include <stdbool.h>
 #include <cairo/cairo.h>
 
-/**
- * Redraw handler.
- * @param[in] window surface to draw on
- */
-typedef void (*on_redraw)(cairo_surface_t* window);
+/** UI event handlers. */
+struct handlers {
+    /**
+     * Redraw handler.
+     * @param[in] window surface to draw on
+     */
+    void (*on_redraw)(cairo_surface_t* window);
 
-/**
- * Window resize handler.
- * @param[in] window surface to draw on
- */
-typedef void (*on_resize)(cairo_surface_t* window);
+    /**
+     * Window resize handler.
+     * @param[in] window surface to draw on
+     */
+    void (*on_resize)(cairo_surface_t* window);
 
-/**
- * Key press handler.
- * @param[in] key code of key pressed
- * @return true if state was changed and window must be redrawn
- */
-typedef bool (*on_keyboard)(uint32_t key);
+    /**
+     * Key press handler.
+     * @param[in] key code of key pressed
+     * @return true if state was changed and window must be redrawn
+     */
+    bool (*on_keyboard)(uint32_t key);
+};
 
 /** Window properties */
 struct window {
-    on_redraw redraw;
-    on_resize resize;
-    on_keyboard keyboard;
+    struct handlers handlers;
     size_t width;
     size_t height;
     bool fullscreen;

@@ -298,8 +298,8 @@ static void print_info(cairo_t* cr)
     draw_text(cr, 0, y, "Scale:  %i%%", (int)(ctx.scale * 100));
 }
 
-/** Draw handler, see window::on_redraw */
-static void redraw(cairo_surface_t* window)
+/** Draw handler, see handlers::on_redraw */
+static void on_redraw(cairo_surface_t* window)
 {
     cairo_t* cr = cairo_create(window);
 
@@ -332,16 +332,16 @@ static void redraw(cairo_surface_t* window)
     cairo_destroy(cr);
 }
 
-/** Window resize handler, see window::on_resize */
-static void resize(cairo_surface_t* window)
+/** Window resize handler, see handlers::on_resize */
+static void on_resize(cairo_surface_t* window)
 {
     ctx.wnd_width = cairo_image_surface_get_width(window);
     ctx.wnd_height = cairo_image_surface_get_height(window);
     change_scale(optimal_scale);
 }
 
-/** Keyboard handler, see window::on_keyboard. */
-static bool handle_key(uint32_t key)
+/** Keyboard handler, see handlers::on_keyboard. */
+static bool on_keyboard(uint32_t key)
 {
     switch (key) {
         case KEY_LEFT:
@@ -439,9 +439,11 @@ bool show_image(const struct viewer* params)
     }
 
     struct window wnd = {
-        .redraw = redraw,
-        .resize = resize,
-        .keyboard = handle_key,
+        .handlers = {
+            .on_redraw = on_redraw,
+            .on_resize = on_resize,
+            .on_keyboard = on_keyboard
+        },
         .width = 0,
         .height = 0,
         .fullscreen = params->fullscreen,
