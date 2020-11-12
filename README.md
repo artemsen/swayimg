@@ -36,6 +36,7 @@ See `swayimg --help` or `man swayimg` for details.
 - `-`: Zoom out;
 - `Backspace`: Set optimal scale: 100% or fit to window;
 - `i`: Show/hide image properties;
+- `f`, `F11`: Toggle full screen mode;
 - `Esc`, `Enter`, `F10`, `q`, `e`, `x`: Exit the program.
 
 ## Build and install

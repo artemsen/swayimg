@@ -381,6 +381,10 @@ static bool on_keyboard(uint32_t key)
         case KEY_I:
             ctx.show_info = !ctx.show_info;
             return true;
+        case KEY_F11:
+        case KEY_F:
+            toggle_fullscreen();
+            return false;
         case KEY_ESC:
         case KEY_ENTER:
         case KEY_KPENTER:

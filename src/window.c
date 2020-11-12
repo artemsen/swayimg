@@ -50,6 +50,7 @@ struct context {
     struct size {
         size_t width;
         size_t height;
+        bool fullscreen;
     } size;
 
     struct handlers handlers;
@@ -249,6 +250,14 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
 {
     if (width && height && (width != (int32_t)ctx.size.width ||
                             height != (int32_t)ctx.size.height)) {
+        uint32_t* state;
+        ctx.size.fullscreen = false;
+        wl_array_for_each(state, states) {
+            if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
+                ctx.size.fullscreen = true;
+            }
+        }
+
         ctx.size.width = width;
         ctx.size.height = height;
         if (create_buffer()) {
@@ -380,4 +389,13 @@ done:
 void close_window(void)
 {
     ctx.state = state_exit;
+}
+
+void toggle_fullscreen(void)
+{
+    if (ctx.size.fullscreen) {
+        xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
+    }else {
+        xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
+    }
 }

@@ -51,3 +51,8 @@ bool show_window(const struct window* wnd);
  * Close window.
  */
 void close_window(void);
+
+/**
+ * Toggle full screen mode.
+ */
+void toggle_fullscreen(void);
