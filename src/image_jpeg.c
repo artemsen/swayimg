@@ -10,7 +10,7 @@
 #error Invalid build configuration
 #endif
 
-#include "image.h"
+#include "image_loader.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,7 +21,7 @@
 #include <jpeglib.h>
 
 // Format name
-static const char* format_name = "JPEG";
+static const char* const format_name = "JPEG";
 
 // JPEG signature
 static const uint8_t signature[] = { 0xff, 0xd8 };
@@ -37,24 +37,25 @@ static void jpg_error_exit(j_common_ptr jpg)
 
     char msg[JMSG_LENGTH_MAX] = { 0 };
     (*(jpg->err->format_message))(jpg, msg);
-    log_error(format_name, 0, "Decode failed: %s", msg);
+    load_error(format_name, 0, "Decode failed: %s", msg);
 
     longjmp(err->setjmp, 1);
 }
 
-cairo_surface_t* load_jpeg(const char* file, const uint8_t* header)
+// implementation of struct loader::load
+static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
 {
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
     // check signature
-    if (memcmp(header, signature, sizeof(signature))) {
+    if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
         return NULL;
     }
 
     FILE* fd = fopen(file, "rb");
     if (!fd) {
-        log_error(format_name, errno, "Unable to open file");
+        load_error(format_name, errno, "Unable to open file");
         return NULL;
     }
 
@@ -78,8 +79,8 @@ cairo_surface_t* load_jpeg(const char* file, const uint8_t* header)
     cairo_surface_t* img = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
                                      jpg.output_width, jpg.output_height);
     if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
-        log_error(format_name, 0, "Unable to create surface: %s",
-                  cairo_status_to_string(cairo_surface_status(img)));
+        load_error(format_name, 0, "Unable to create surface: %s",
+                   cairo_status_to_string(cairo_surface_status(img)));
         cairo_surface_destroy(img);
         jpeg_destroy_decompress(&jpg);
         fclose(fd);
@@ -115,7 +116,6 @@ cairo_surface_t* load_jpeg(const char* file, const uint8_t* header)
     }
 
     cairo_surface_mark_dirty(img);
-    cairo_surface_set_user_data(img, &meta_fmt_name, (void*)format_name, NULL);
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
@@ -123,3 +123,9 @@ cairo_surface_t* load_jpeg(const char* file, const uint8_t* header)
 
     return img;
 }
+
+// declare format
+const struct loader jpeg_loader = {
+    .format = format_name,
+    .load = load
+};

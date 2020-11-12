@@ -3,86 +3,97 @@
 
 #include "config.h"
 #include "image.h"
+#include "image_loader.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-// meta data
-const cairo_user_data_key_t meta_fmt_name;
-
 // loaders declaration
-cairo_surface_t* load_png(const char* file, const uint8_t* header);
-cairo_surface_t* load_bmp(const char* file, const uint8_t* header);
+extern const struct loader png_loader;
 #ifdef HAVE_LIBJPEG
-cairo_surface_t* load_jpeg(const char* file, const uint8_t* header);
+extern const struct loader jpeg_loader;
 #endif
 #ifdef HAVE_LIBGIF
-cairo_surface_t* load_gif(const char* file, const uint8_t* header);
-#endif
-#ifdef HAVE_LIBRSVG
-cairo_surface_t* load_svg(const char* file, const uint8_t* header);
+extern const struct loader gif_loader;
 #endif
 #ifdef HAVE_LIBWEBP
-cairo_surface_t* load_webp(const char* file, const uint8_t* header);
+extern const struct loader webp_loader;
 #endif
+#ifdef HAVE_LIBRSVG
+extern const struct loader svg_loader;
+#endif
+extern const struct loader bmp_loader;
 
 // ordered list of available loaders
-static const load loaders[] = {
-    load_png,
+static const struct loader* loaders[] = {
+    &png_loader,
 #ifdef HAVE_LIBJPEG
-    load_jpeg,
+    &jpeg_loader,
 #endif
 #ifdef HAVE_LIBGIF
-    load_gif,
-#endif
-#ifdef HAVE_LIBRSVG
-    load_svg,
+    &gif_loader,
 #endif
 #ifdef HAVE_LIBWEBP
-    load_webp,
+    &webp_loader,
 #endif
-    load_bmp,
+#ifdef HAVE_LIBRSVG
+    &svg_loader,
+#endif
+    &bmp_loader
 };
 
-cairo_surface_t* load_image(const char* file)
+struct image* load_image(const char* file)
 {
-    cairo_surface_t* img = NULL;
-
     // read header
-    uint8_t header[HEADER_SIZE];
+    uint8_t header[16];
     const int fd = open(file, O_RDONLY);
     if (fd == -1) {
-        const int ec = errno;
-        fprintf(stderr, "Unable to open file %s: [%i] %s\n", file, ec, strerror(ec));
+        load_error(NULL, errno, "Unable to open file %s", file);
         return NULL;
     }
     if (read(fd, header, sizeof(header)) != sizeof(header)) {
-        const int ec = errno ? errno : ENODATA;
-        fprintf(stderr, "Unable to read file %s: [%i] %s\n", file, ec, strerror(ec));
+        load_error(NULL, errno ? errno : ENODATA, "Unable to read file %s", file);
         close(fd);
         return NULL;
     }
     close(fd);
 
     // try to decode
-    for (size_t i = 0; !img && i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        img = loaders[i](file, header);
+    for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
+        cairo_surface_t* cs = loaders[i]->load(file, header, sizeof(header));
+        if (cs) {
+            struct image* img = malloc(sizeof(struct image));
+            if (!img) {
+                load_error(NULL, errno, "Memory allocation error");
+                cairo_surface_destroy(cs);
+                return NULL;
+            }
+            img->image = cs;
+            img->format = loaders[i]->format;
+            return img;
+        }
     }
 
-    if (!img) {
-        fprintf(stderr, "Unsupported format: %s\n", file);
-    }
-
-    return img;
+    load_error(NULL, 0, "Unsupported format: %s\n", file);
+    return NULL;
 }
 
-void log_error(const char* name, int errcode, const char* fmt, ...)
+void free_image(struct image* img)
 {
-    fprintf(stderr, "%s: ", name);
+    cairo_surface_destroy(img->image);
+    free(img);
+}
+
+void load_error(const char* name, int errcode, const char* fmt, ...)
+{
+    if (name) {
+        fprintf(stderr, "%s: ", name);
+    }
 
     va_list args;
     va_start(args, fmt);

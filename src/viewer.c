@@ -37,7 +37,7 @@ enum move_op {
 
 /** Viewer context. */
 struct context {
-    cairo_surface_t* img;
+    struct image* img;
     double scale;
     int img_x;
     int img_y;
@@ -54,8 +54,8 @@ static struct context ctx;
  */
 static void change_position(enum move_op op)
 {
-    const int img_w = ctx.scale * cairo_image_surface_get_width(ctx.img);
-    const int img_h = ctx.scale * cairo_image_surface_get_height(ctx.img);
+    const int img_w = ctx.scale * cairo_image_surface_get_width(ctx.img->image);
+    const int img_h = ctx.scale * cairo_image_surface_get_height(ctx.img->image);
     const int step_x = ctx.wnd_width / 10;
     const int step_y = ctx.wnd_height / 10;
 
@@ -108,8 +108,8 @@ static void change_position(enum move_op op)
  */
 static void change_scale(enum scale_op op)
 {
-    const int img_w = cairo_image_surface_get_width(ctx.img);
-    const int img_h = cairo_image_surface_get_height(ctx.img);
+    const int img_w = cairo_image_surface_get_width(ctx.img->image);
+    const int img_h = cairo_image_surface_get_height(ctx.img->image);
     const double scale_step = ctx.scale / 10.0;
     double new_scale;
 
@@ -119,7 +119,7 @@ static void change_scale(enum scale_op op)
             new_scale = 1.0;
             break;
 
-        case optimal_scale: 
+        case optimal_scale:
             // 100% or less to fit the window
             new_scale = 1.0;
             if (ctx.wnd_width < img_w) {
@@ -152,11 +152,11 @@ static void change_scale(enum scale_op op)
         change_position(move_center_x);
         change_position(move_center_y);
     } else {
-        const int prev_w = ctx.scale * cairo_image_surface_get_width(ctx.img);
-        const int prev_h = ctx.scale * cairo_image_surface_get_height(ctx.img);
+        const int prev_w = ctx.scale * img_w;
+        const int prev_h = ctx.scale * img_h;
         ctx.scale = new_scale;
-        const int curr_w = ctx.scale * cairo_image_surface_get_width(ctx.img);
-        const int curr_h = ctx.scale * cairo_image_surface_get_height(ctx.img);
+        const int curr_w = ctx.scale * img_w;
+        const int curr_h = ctx.scale * img_h;
         if (curr_w < ctx.wnd_width) {
             // fits into window width
             change_position(move_center_x);
@@ -196,8 +196,8 @@ static void chess_background(cairo_t* cr)
     cairo_rectangle_int_t board = {
         .x = ctx.img_x,
         .y = ctx.img_y,
-        .width = ctx.scale * cairo_image_surface_get_width(ctx.img),
-        .height = ctx.scale * cairo_image_surface_get_height(ctx.img)
+        .width = ctx.scale * cairo_image_surface_get_width(ctx.img->image),
+        .height = ctx.scale * cairo_image_surface_get_height(ctx.img->image)
     };
     if (board.x < 0) {
         board.width += board.x;
@@ -260,7 +260,7 @@ static void draw_text(cairo_t* cr, int x, int y, const char* text, ...)
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, FONT_SIZE);
     for (int i = 0; i <= 1; ++i) {
-        cairo_set_source_rgb(cr, i * 0.7, i * 0.7, i * 0.7); 
+        cairo_set_source_rgb(cr, i * 0.7, i * 0.7, i * 0.7);
         cairo_move_to(cr, 1 - i, y + 1 - i + FONT_SIZE);
         cairo_show_text(cr, buf);
     }
@@ -284,17 +284,14 @@ static void print_info(cairo_t* cr)
     draw_text(cr, 0, y, "File:   %s", name);
 
     // image format
-    const char* fmt = cairo_surface_get_user_data(ctx.img, &meta_fmt_name);
-    if (fmt) {
-        y += LINE_SPACING + FONT_SIZE;
-        draw_text(cr, 0, y, "Format: %s", fmt);
-    }
+    y += LINE_SPACING + FONT_SIZE;
+    draw_text(cr, 0, y, "Format: %s", ctx.img->format);
 
     // image size
     y += LINE_SPACING + FONT_SIZE;
     draw_text(cr, 0, y, "Size:   %ix%i",
-                        cairo_image_surface_get_width(ctx.img),
-                        cairo_image_surface_get_height(ctx.img));
+                        cairo_image_surface_get_width(ctx.img->image),
+                        cairo_image_surface_get_height(ctx.img->image));
 
     // current scale
     y += LINE_SPACING + FONT_SIZE;
@@ -311,7 +308,7 @@ static void redraw(cairo_surface_t* window)
     cairo_paint(cr);
 
     // background
-    if (cairo_image_surface_get_format(ctx.img) == CAIRO_FORMAT_ARGB32) {
+    if (cairo_image_surface_get_format(ctx.img->image) == CAIRO_FORMAT_ARGB32) {
         chess_background(cr);
     }
 
@@ -322,7 +319,7 @@ static void redraw(cairo_surface_t* window)
     cairo_matrix_init_scale(&matrix, ctx.scale, ctx.scale);
     cairo_matrix_multiply(&matrix, &matrix, &translate);
     cairo_set_matrix(cr, &matrix);
-    cairo_set_source_surface(cr, ctx.img, 0, 0);
+    cairo_set_source_surface(cr, ctx.img->image, 0, 0);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_paint(cr);
     cairo_identity_matrix(cr);
@@ -331,7 +328,7 @@ static void redraw(cairo_surface_t* window)
     if (ctx.show_info) {
         print_info(cr);
     }
- 
+
     cairo_destroy(cr);
 }
 
@@ -488,10 +485,10 @@ bool show_image(const struct viewer* params)
 
     // normalize window size
     if (!wnd.width) {
-        wnd.width = cairo_image_surface_get_width(ctx.img);
+        wnd.width = cairo_image_surface_get_width(ctx.img->image);
     }
     if (!wnd.height) {
-        wnd.height = cairo_image_surface_get_height(ctx.img);
+        wnd.height = cairo_image_surface_get_height(ctx.img->image);
     }
     ctx.wnd_width = wnd.width;
     ctx.wnd_height = wnd.height;
@@ -512,7 +509,7 @@ bool show_image(const struct viewer* params)
 done:
     // clean
     if (ctx.img) {
-        cairo_surface_destroy(ctx.img);
+        free_image(ctx.img);
     }
     if (app_id) {
         free(app_id);
