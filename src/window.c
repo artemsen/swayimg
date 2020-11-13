@@ -391,6 +391,11 @@ void close_window(void)
     ctx.state = state_exit;
 }
 
+void set_window_title(const char* title)
+{
+    xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+}
+
 void toggle_fullscreen(void)
 {
     if (ctx.size.fullscreen) {

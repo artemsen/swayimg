@@ -53,6 +53,12 @@ bool show_window(const struct window* wnd);
 void close_window(void);
 
 /**
+ * Set window title.
+ * @param[in] title new window title
+ */
+void set_window_title(const char* title);
+
+/**
  * Toggle full screen mode.
  */
 void toggle_fullscreen(void);
