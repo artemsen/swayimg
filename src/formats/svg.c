@@ -10,7 +10,8 @@
 #error Invalid build configuration
 #endif
 
-#include "image_loader.h"
+#include "loader.h"
+
 #include <string.h>
 #include <librsvg/rsvg.h>
 

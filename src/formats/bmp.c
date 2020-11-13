@@ -5,7 +5,7 @@
 // BMP image format support
 //
 
-#include "image_loader.h"
+#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>

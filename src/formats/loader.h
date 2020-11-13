@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <cairo/cairo.h>
 
 /** Image loader description. */
@@ -21,6 +22,15 @@ struct loader {
      */
     cairo_surface_t* (*load)(const char* file, const uint8_t* header, size_t header_len);
 };
+
+/**
+ * Load image from file.
+ * @param[in] file path to the file to load
+ * @param[out] img image surface
+ * @param[out] format image format
+ * @return true if file was loaded
+ */
+bool load_image(const char* file, cairo_surface_t** img, const char** format);
 
 /**
  * Output error information.

@@ -2,20 +2,20 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
-#include "image.h"
 #include "viewer.h"
+#include "draw.h"
 #include "window.h"
+#include "formats/loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <sys/time.h>
 #include <linux/input.h>
 
-// text render parameters
-#define FONT_SIZE    16
-#define LINE_SPACING 2
+// Scale thresholds
+#define MIN_SCALE_PIXEL   10
+#define MAX_SCALE_PERCENT 10000
 
 /** Scale operation types. */
 enum scale_op {
@@ -35,18 +35,26 @@ enum move_op {
     move_down
 };
 
-/** Viewer context. */
-struct context {
-    struct image* img;
-    double scale;
-    int img_x;
-    int img_y;
-    int wnd_width;
-    int wnd_height;
-    bool show_info;
-    const char* file;
+/** File list. */
+struct file_list {
+    const char** files;
+    int total;
+    int current;
 };
-static struct context ctx;
+static struct file_list file_list;
+
+/** Currently displayed image. */
+struct image {
+    const char* format;
+    cairo_surface_t* surface;
+    double scale;
+    int x;
+    int y;
+};
+static struct image image;
+
+/** Viewer parameters. */
+struct viewer viewer;
 
 /**
  * Move viewport.
@@ -54,48 +62,50 @@ static struct context ctx;
  */
 static void change_position(enum move_op op)
 {
-    const int img_w = ctx.scale * cairo_image_surface_get_width(ctx.img->image);
-    const int img_h = ctx.scale * cairo_image_surface_get_height(ctx.img->image);
-    const int step_x = ctx.wnd_width / 10;
-    const int step_y = ctx.wnd_height / 10;
+    const int img_w = image.scale * cairo_image_surface_get_width(image.surface);
+    const int img_h = image.scale * cairo_image_surface_get_height(image.surface);
+    const int wnd_w = (int)get_window_width();
+    const int wnd_h = (int)get_window_height();
+    const int step_x = wnd_w / 10;
+    const int step_y = wnd_h / 10;
 
     switch (op) {
         case move_center_x:
-            ctx.img_x = ctx.wnd_width / 2 - img_w / 2;
+            image.x = wnd_w / 2 - img_w / 2;
             break;
         case move_center_y:
-            ctx.img_y = ctx.wnd_height / 2 - img_h / 2;
+            image.y = wnd_h / 2 - img_h / 2;
             break;
 
         case move_left:
-            if (ctx.img_x <= 0) {
-                ctx.img_x += step_x;
-                if (ctx.img_x > 0) {
-                    ctx.img_x = 0;
+            if (image.x <= 0) {
+                image.x += step_x;
+                if (image.x > 0) {
+                    image.x = 0;
                 }
             }
             break;
         case move_right:
-            if (ctx.img_x + img_w >= ctx.wnd_width) {
-                ctx.img_x -= step_x;
-                if (ctx.img_x + img_w < ctx.wnd_width) {
-                    ctx.img_x = ctx.wnd_width - img_w;
+            if (image.x + img_w >= wnd_w) {
+                image.x -= step_x;
+                if (image.x + img_w < wnd_w) {
+                    image.x = wnd_w - img_w;
                 }
             }
             break;
         case move_up:
-            if (ctx.img_y <= 0) {
-                ctx.img_y += step_y;
-                if (ctx.img_y > 0) {
-                    ctx.img_y = 0;
+            if (image.y <= 0) {
+                image.y += step_y;
+                if (image.y > 0) {
+                    image.y = 0;
                 }
             }
             break;
         case move_down:
-            if (ctx.img_y + img_h >= ctx.wnd_height) {
-                ctx.img_y -= step_y;
-                if (ctx.img_y + img_h < ctx.wnd_height) {
-                    ctx.img_y = ctx.wnd_height - img_h;
+            if (image.y + img_h >= wnd_h) {
+                image.y -= step_y;
+                if (image.y + img_h < wnd_h) {
+                    image.y = wnd_h - img_h;
                 }
             }
             break;
@@ -108,9 +118,11 @@ static void change_position(enum move_op op)
  */
 static void change_scale(enum scale_op op)
 {
-    const int img_w = cairo_image_surface_get_width(ctx.img->image);
-    const int img_h = cairo_image_surface_get_height(ctx.img->image);
-    const double scale_step = ctx.scale / 10.0;
+    const int img_w = cairo_image_surface_get_width(image.surface);
+    const int img_h = cairo_image_surface_get_height(image.surface);
+    const int wnd_w = (int)get_window_width();
+    const int wnd_h = (int)get_window_height();
+    const double scale_step = image.scale / 10.0;
     double new_scale;
 
     switch (op) {
@@ -122,11 +134,11 @@ static void change_scale(enum scale_op op)
         case optimal_scale:
             // 100% or less to fit the window
             new_scale = 1.0;
-            if (ctx.wnd_width < img_w) {
-                new_scale = 1.0 / ((double)img_w / ctx.wnd_width);
+            if (wnd_w < img_w) {
+                new_scale = 1.0 / ((double)img_w / wnd_w);
             }
-            if (ctx.wnd_height < img_h) {
-                const double scale = 1.0f / ((double)img_h / ctx.wnd_height);
+            if (wnd_h < img_h) {
+                const double scale = 1.0f / ((double)img_h / wnd_h);
                 if (new_scale > scale) {
                     new_scale = scale;
                 }
@@ -134,209 +146,164 @@ static void change_scale(enum scale_op op)
             break;
 
         case zoom_in:
-            new_scale = ctx.scale + scale_step;
+            new_scale = image.scale + scale_step;
+            if (new_scale > MAX_SCALE_PERCENT) {
+                new_scale = image.scale; // don't change
+            }
             break;
 
         case zoom_out:
-            new_scale = ctx.scale - scale_step;
-            // at least 10 pixel
-            if (new_scale * img_w < 10 || new_scale * img_h < 10) {
-                new_scale = ctx.scale; // don't change
+            new_scale = image.scale - scale_step;
+            if (new_scale * img_w < MIN_SCALE_PIXEL || new_scale * img_h < MIN_SCALE_PIXEL) {
+                new_scale = image.scale; // don't change
             }
             break;
     }
 
     // update image position
     if (op == actual_size || op == optimal_scale) {
-        ctx.scale = new_scale;
+        image.scale = new_scale;
         change_position(move_center_x);
         change_position(move_center_y);
     } else {
-        const int prev_w = ctx.scale * img_w;
-        const int prev_h = ctx.scale * img_h;
-        ctx.scale = new_scale;
-        const int curr_w = ctx.scale * img_w;
-        const int curr_h = ctx.scale * img_h;
-        if (curr_w < ctx.wnd_width) {
+        const int prev_w = image.scale * img_w;
+        const int prev_h = image.scale * img_h;
+        image.scale = new_scale;
+        const int curr_w = image.scale * img_w;
+        const int curr_h = image.scale * img_h;
+        if (curr_w < wnd_w) {
             // fits into window width
             change_position(move_center_x);
         } else {
             // move to save the center of previous image
             const int delta_w = prev_w - curr_w;
-            const int cntr_x = ctx.wnd_width / 2 - ctx.img_x;
-            ctx.img_x += ((double)cntr_x / prev_w) * delta_w;
-            if (ctx.img_x > 0) {
-                ctx.img_x = 0;
+            const int cntr_x = wnd_w / 2 - image.x;
+            image.x += ((double)cntr_x / prev_w) * delta_w;
+            if (image.x > 0) {
+                image.x = 0;
             }
         }
-        if (curr_h < ctx.wnd_height) {
+        if (curr_h < wnd_h) {
             // fits into window height
             change_position(move_center_y);
         } else {
             // move to save the center of previous image
             const int delta_h = prev_h - curr_h;
-            const int cntr_y = ctx.wnd_height / 2 - ctx.img_y;
-            ctx.img_y += ((double)cntr_y / prev_h) * delta_h;
-            if (ctx.img_y > 0) {
-                ctx.img_y = 0;
+            const int cntr_y = wnd_h / 2 - image.y;
+            image.y += ((double)cntr_y / prev_h) * delta_h;
+            if (image.y > 0) {
+                image.y = 0;
             }
         }
     }
 }
 
 /**
- * Draw chess board as background.
- * @param[in] cr cairo paint context
+ * Load image form specified file.
+ * @param[in] file path to the file to load
+ * @return true if file was loaded
  */
-static void chess_background(cairo_t* cr)
+static bool load_file(const char* file)
 {
-    const int step = 10;
+    cairo_surface_t* img;
+    const char* format;
 
-    // clip to window size
-    cairo_rectangle_int_t board = {
-        .x = ctx.img_x,
-        .y = ctx.img_y,
-        .width = ctx.scale * cairo_image_surface_get_width(ctx.img->image),
-        .height = ctx.scale * cairo_image_surface_get_height(ctx.img->image)
-    };
-    if (board.x < 0) {
-        board.width += board.x;
-        board.x = 0;
-    }
-    if (board.y < 0) {
-        board.height += board.y;
-        board.y = 0;
-    }
-    cairo_surface_t* window = cairo_get_target(cr);
-    int end_x = cairo_image_surface_get_width(window);
-    int end_y = cairo_image_surface_get_height(window);
-    if (ctx.img_x + board.width > end_x) {
-        board.width -= end_x - (ctx.img_x + board.width);
-    }
-    if (ctx.img_y + board.height > end_y) {
-        board.height -= end_y - (ctx.img_y + board.height);
+    if (!load_image(file, &img, &format)) {
+        return false;
     }
 
-    // fill with the first color
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgb(cr, 0.2, 0.2, 0.2);
-    cairo_rectangle(cr, board.x, board.y, board.width, board.height);
-    cairo_fill(cr);
-
-    // draw lighter cells
-    end_x = board.x + board.width;
-    end_y = board.y + board.height;
-    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
-    cairo_rectangle_int_t cell;
-    for (cell.y = board.y; cell.y < end_y; cell.y += step) {
-        cell.height = cell.y + step < end_y ? step : end_y - cell.y;
-        cell.x = board.x + (cell.y / step % 2 ? 0 : step);
-        for (; cell.x < end_x; cell.x += 2 * step) {
-            cell.width = cell.x + step < end_x ? step : end_x - cell.x;
-            cairo_rectangle(cr, cell.x, cell.y, cell.width, cell.height);
-            cairo_fill(cr);
-        }
+    if (image.surface) {
+        cairo_surface_destroy(image.surface);
     }
-}
+    image.surface = img;
+    image.format = format;
+    image.scale = 0.0;
+    image.x = 0;
+    image.y = 0;
 
-/**
- * Draw formatted text line with shadow.
- * @param[in] cr cairo paint context
- * @param[in] x horizontal coordinate
- * @param[in] y vertical coordinate
- * @param[in] text text to display
- */
-static void draw_text(cairo_t* cr, int x, int y, const char* text, ...)
-{
-    char buf[128];
-
-    va_list args;
-    va_start(args, text);
-    vsnprintf(buf, sizeof(buf), text, args);
-    va_end(args);
-
-    cairo_select_font_face(cr, "monospace",
-                           CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr, FONT_SIZE);
-    for (int i = 0; i <= 1; ++i) {
-        cairo_set_source_rgb(cr, i * 0.7, i * 0.7, i * 0.7);
-        cairo_move_to(cr, 1 - i, y + 1 - i + FONT_SIZE);
-        cairo_show_text(cr, buf);
-    }
-}
-
-/**
- * Print image information.
- * @param[in] cr cairo paint context
- */
-static void print_info(cairo_t* cr)
-{
-    int y = 0;
-
-    // file name
-    const char* name = strrchr(ctx.file, '/');
-    if (name) {
-        ++name; // skip delimiter
+    // setup initial scale and position of the image
+    if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_PERCENT) {
+        image.scale = (double)(viewer.scale) / 100.0;
+        change_position(move_center_x);
+        change_position(move_center_y);
     } else {
-        name = ctx.file;
+        change_scale(optimal_scale);
     }
-    draw_text(cr, 0, y, "File:   %s", name);
 
-    // image format
-    y += LINE_SPACING + FONT_SIZE;
-    draw_text(cr, 0, y, "Format: %s", ctx.img->format);
+    // change window title
+    char* title = malloc(strlen(APP_NAME) + strlen(file) + 4);
+    if (title) {
+        strcpy(title, APP_NAME);
+        strcat(title, ": ");
+        strcat(title, file);
+        set_window_title(title);
+        free(title);
+    }
 
-    // image size
-    y += LINE_SPACING + FONT_SIZE;
-    draw_text(cr, 0, y, "Size:   %ix%i",
-                        cairo_image_surface_get_width(ctx.img->image),
-                        cairo_image_surface_get_height(ctx.img->image));
+    return true;
+}
 
-    // current scale
-    y += LINE_SPACING + FONT_SIZE;
-    draw_text(cr, 0, y, "Scale:  %i%%", (int)(ctx.scale * 100));
+/**
+ * Open next file.
+ * @param[in] forward move direction (true=forward/false=backward).
+ * @return false if no file can be opened
+ */
+static bool load_next_file(bool forward)
+{
+    const int delta = forward ? 1 : -1;
+    int idx = file_list.current;
+    idx += delta;
+    while (idx != file_list.current) {
+        if (idx >= file_list.total) {
+            if (file_list.current < 0) {
+                return false; // no one valid file
+            }
+            idx = 0;
+        } else if (idx < 0) {
+            idx = file_list.total - 1;
+        }
+        if (load_file(file_list.files[idx])) {
+            file_list.current = idx;
+            return true;
+        }
+        idx += delta;
+    }
+    return false;
 }
 
 /** Draw handler, see handlers::on_redraw */
 static void on_redraw(cairo_surface_t* window)
 {
+    const int img_w = cairo_image_surface_get_width(image.surface);
+    const int img_h = cairo_image_surface_get_height(image.surface);
     cairo_t* cr = cairo_create(window);
 
     // clear canvas
     cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
     cairo_paint(cr);
 
-    // background
-    if (cairo_image_surface_get_format(ctx.img->image) == CAIRO_FORMAT_ARGB32) {
-        chess_background(cr);
+    // image with background
+    if (cairo_image_surface_get_format(image.surface) == CAIRO_FORMAT_ARGB32) {
+        draw_background(cr, image.x, image.y, image.scale * img_w, image.scale * img_h);
     }
+    draw_image(cr, image.surface, image.x, image.y, image.scale);
 
-    // scale, move and draw image
-    cairo_matrix_t matrix;
-    cairo_matrix_t translate;
-    cairo_matrix_init_translate(&translate, ctx.img_x, ctx.img_y);
-    cairo_matrix_init_scale(&matrix, ctx.scale, ctx.scale);
-    cairo_matrix_multiply(&matrix, &matrix, &translate);
-    cairo_set_matrix(cr, &matrix);
-    cairo_set_source_surface(cr, ctx.img->image, 0, 0);
-    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-    cairo_paint(cr);
-    cairo_identity_matrix(cr);
-
-    // image info: path to the file, format, size, ...
-    if (ctx.show_info) {
-        print_info(cr);
+    // image info: file name, format, size, ...
+    if (viewer.show_info) {
+        draw_text(cr, 10, 10, "File:   %s\n"
+                              "Format: %s\n"
+                              "Size:   %ix%i\n"
+                              "Scale:  %i%%",
+                              file_list.files[file_list.current], image.format,
+                              img_w, img_h, (int)(image.scale * 100));
     }
 
     cairo_destroy(cr);
 }
 
 /** Window resize handler, see handlers::on_resize */
-static void on_resize(cairo_surface_t* window)
+static void on_resize(void)
 {
-    ctx.wnd_width = cairo_image_surface_get_width(window);
-    ctx.wnd_height = cairo_image_surface_get_height(window);
     change_scale(optimal_scale);
 }
 
@@ -344,6 +311,12 @@ static void on_resize(cairo_surface_t* window)
 static bool on_keyboard(uint32_t key)
 {
     switch (key) {
+        case KEY_PAGEUP:
+        case KEY_KP9:
+            return load_next_file(false);
+        case KEY_PAGEDOWN:
+        case KEY_KP3:
+            return load_next_file(true);
         case KEY_LEFT:
         case KEY_KP4:
         case KEY_H:
@@ -379,11 +352,12 @@ static bool on_keyboard(uint32_t key)
             change_scale(optimal_scale);
             return true;
         case KEY_I:
-            ctx.show_info = !ctx.show_info;
+            viewer.show_info = !viewer.show_info;
             return true;
         case KEY_F11:
         case KEY_F:
-            toggle_fullscreen();
+            viewer.fullscreen = !viewer.fullscreen;
+            enable_fullscreen(viewer.fullscreen);
             return false;
         case KEY_ESC:
         case KEY_ENTER:
@@ -395,133 +369,59 @@ static bool on_keyboard(uint32_t key)
         case KEY_E:
         case KEY_X:
             close_window();
-            break;
+            return false;
     }
     return false;
 }
 
-/**
- * Allocate and format string.
- * @param[in] fmt string format
- * @param[in] ... arguments
- * @return formatted string, caller must free the string
- */
-static char* format_string(const char* fmt, ...)
-{
-    va_list args;
-
-    va_start(args, fmt);
-    const int len = vsnprintf(NULL, 0, fmt, args) + 1 /* last null */;
-    va_end(args);
-
-    char* buf = malloc(len);
-    if (!buf) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    va_start(args, fmt);
-    vsnprintf(buf, len, fmt, args);
-    va_end(args);
-
-    return buf;
-}
-
-bool show_image(const struct viewer* params)
+bool show_image(const char** files, size_t files_num)
 {
     bool rc = false;
-    char* app_id = NULL;
-    char* title = NULL;
 
-    ctx.img = load_image(params->file);
-    if (!ctx.img) {
-        goto done;
-    }
-
-    title = format_string(APP_NAME ": %s", params->file);
-    if (!title) {
-        goto done;
-    }
-
-    struct window wnd = {
-        .handlers = {
-            .on_redraw = on_redraw,
-            .on_resize = on_resize,
-            .on_keyboard = on_keyboard
-        },
-        .width = 0,
-        .height = 0,
-        .fullscreen = params->fullscreen,
-        .app_id = params->app_id ? params->app_id : APP_NAME,
-        .title = title
+    const struct handlers handlers = {
+        .on_redraw = on_redraw,
+        .on_resize = on_resize,
+        .on_keyboard = on_keyboard
     };
 
+    file_list.files = files;
+    file_list.total = files_num;
+    file_list.current = -1;
+
+    // create unique application id
+    char app_id[64];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    snprintf(app_id, sizeof(app_id), APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
+
     // setup window position via Sway IPC
-    if (!wnd.fullscreen) {
-        const int ipc = sway_connect();
-        if (ipc != -1) {
-            bool rc = true;
-            struct rect rect;
-            if (params->wnd) {
-                rect = *params->wnd;
-            } else {
-                // get currently focused window state
-                rc = sway_current(ipc, &rect, &wnd.fullscreen);
-            }
-            if (rc) {
-                wnd.width = rect.width;
-                wnd.height = rect.height;
-                if (!wnd.fullscreen) {
-                    if (!params->app_id) {
-                        // create unique app id
-                        struct timeval tv;
-                        gettimeofday(&tv, NULL);
-                        app_id = format_string(APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
-                        if (!app_id) {
-                            sway_disconnect(ipc);
-                            goto done;
-                        }
-                        wnd.app_id = app_id;
-                    }
-                    sway_add_rules(ipc, wnd.app_id, rect.x, rect.y);
-                }
-            }
-            sway_disconnect(ipc);
+    const int ipc = sway_connect();
+    if (ipc != -1) {
+        bool fullscreen = false;
+        if (!viewer.wnd.width) {
+            // get currently focused window state
+            sway_current(ipc, &viewer.wnd, &fullscreen);
         }
+        if (!fullscreen && viewer.wnd.width) {
+            sway_add_rules(ipc, app_id, viewer.wnd.x, viewer.wnd.y);
+        }
+        sway_disconnect(ipc);
     }
-
-    // normalize window size
-    if (!wnd.width) {
-        wnd.width = cairo_image_surface_get_width(ctx.img->image);
-    }
-    if (!wnd.height) {
-        wnd.height = cairo_image_surface_get_height(ctx.img->image);
-    }
-    ctx.wnd_width = wnd.width;
-    ctx.wnd_height = wnd.height;
-
-    // setup initial scale and position of the image
-    if (params->scale <= 0) {
-        change_scale(optimal_scale);
-    } else {
-        ctx.scale = (double)(params->scale) / 100.0;
-    }
-
-    ctx.file = params->file;
-    ctx.show_info = params->show_info;
 
     // create and show GUI window
-    rc = show_window(&wnd);
+    if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
+        goto done;
+    }
+    if (!load_next_file(true)) {
+        goto done;
+    }
+    show_window();
 
 done:
     // clean
-    if (ctx.img) {
-        free_image(ctx.img);
-    }
-    if (app_id) {
-        free(app_id);
-    }
-    if (title) {
-        free(title);
+    destroy_window();
+    if (image.surface) {
+        cairo_surface_destroy(image.surface);
     }
 
     return rc;

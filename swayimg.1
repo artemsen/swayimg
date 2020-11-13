@@ -2,7 +2,7 @@
 .SH NAME
 swayimg \- image viewer for Sway
 .SH SYNOPSIS
-swayimg [\fIOPTIONS\fR...] \fIFILE\fR
+swayimg [\fIOPTIONS\fR...] \fIFILE...\fR
 .SH DESCRIPTION
 The \fBswayimg\fR utility can be used for preview images inside the currently
 focused window (container).
@@ -20,25 +20,22 @@ draws an image from the specified file.
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
-.IP "\fB\-a\fR, \fB\-\-appid\fR\fB=\fR\fINAME\fR"
-Set the application Id. if not specified, the default value will be used:
-\fBswayimg_\fRTIMESTAMP.
 .IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
 Set the absolute position and size of the window, for example
 \fI10,20,100,200\fR creates a window at position 10x20 (top left corner) with
 a size of 100x200. If this parameter is not specified, the geometry of the
 currently focused window will be used.
-.IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
-Start in full screen mode.
 .IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fIPERCENT\fR"
 Set initial scale of the image. The default value is \fB0\fR (auto): if the
 image is greater than the window, it will be zoomed out to fit the window.
 .IP "\fB\-i\fR, \fB\-\-info\fR"
-Show image preperties on startup (path, size, current scale etc).
+Show image properties on startup (path, size, current scale etc).
 .
 .SH KEYBINDINGS
+.IP "\fBPgUp\fR, \fBPgDown\fR"
+Next/previous file.
 .IP "\fBArrows\fR and vim-like moving keys (\fBhjkl\fR)"
-Move view point.
+Move the view point.
 .IP "\fB+\fP, \fB=\fR"
 Zoom in.
 .IP "\fB-\fP"
@@ -48,7 +45,7 @@ Set optimal scale: 100% or fit to window.
 .IP "\fB0\fP"
 Set scale to 100%.
 .IP "\fBi\fP"
-Show/hide image preperties.
+Show/hide image properties.
 .IP "\fBf\fP, \fBF11\fP"
 Toggle full screen mode.
 .IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP, \fBe\fP, \fBx\fP"

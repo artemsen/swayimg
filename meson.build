@@ -85,27 +85,28 @@ endif
 
 # source files
 sources = [
-  'src/image.c',
-  'src/image_png.c',
-  'src/image_bmp.c',
+  'src/draw.c',
   'src/main.c',
   'src/sway.c',
   'src/viewer.c',
   'src/window.c',
+  'src/formats/loader.c',
+  'src/formats/png.c',
+  'src/formats/bmp.c',
   xdg_shell_h,
   xdg_shell_c,
 ]
 if jpeg.found()
-  sources += 'src/image_jpeg.c'
+  sources += 'src/formats/jpeg.c'
 endif
 if gif.found()
-  sources += 'src/image_gif.c'
+  sources += 'src/formats/gif.c'
 endif
 if rsvg.found()
-  sources += 'src/image_svg.c'
+  sources += 'src/formats/svg.c'
 endif
 if webp.found()
-  sources += 'src/image_webp.c'
+  sources += 'src/formats/webp.c'
 endif
 
 executable(

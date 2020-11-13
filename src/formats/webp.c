@@ -10,7 +10,7 @@
 #error Invalid build configuration
 #endif
 
-#include "image_loader.h"
+#include "loader.h"
 
 #include <string.h>
 #include <errno.h>

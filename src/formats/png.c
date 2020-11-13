@@ -5,7 +5,7 @@
 // PNG image format support
 //
 
-#include "image_loader.h"
+#include "loader.h"
 #include <string.h>
 
 // Format name

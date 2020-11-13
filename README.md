@@ -19,18 +19,19 @@ draws an image from the specified file.
 - PNG (via cairo);
 - JPEG (via libjpeg);
 - GIF (via giflib, without animation);
-- BMP (without RLE compression);
+- BMP (limited support);
 - SVG (via librsvg);
 - WebP (via libwebp).
 
 ## Usage
 
-`swayimg [OPTIONS...] FILE`
+`swayimg [OPTIONS...] FILE...`
 
 See `swayimg --help` or `man swayimg` for details.
 
 ### Key bindings
 
+- `PgUp`, `PgDown`: Next/previous file;
 - `Arrows` and vim-like moving keys (`hjkl`): Move view point;
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;

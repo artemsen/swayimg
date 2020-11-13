@@ -4,9 +4,7 @@ _swayimg()
 {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local prev="${COMP_WORDS[COMP_CWORD - 1]}"
-    local opts="-a --appid \
-                -g --geometry \
-                -f --fullscreen \
+    local opts="-g --geometry \
                 -s --scale \
                 -i --info \
                 -v --version \

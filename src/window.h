@@ -20,7 +20,7 @@ struct handlers {
      * Window resize handler.
      * @param[in] window surface to draw on
      */
-    void (*on_resize)(cairo_surface_t* window);
+    void (*on_resize)(void);
 
     /**
      * Key press handler.
@@ -30,27 +30,42 @@ struct handlers {
     bool (*on_keyboard)(uint32_t key);
 };
 
-/** Window properties */
-struct window {
-    struct handlers handlers;
-    size_t width;
-    size_t height;
-    bool fullscreen;
-    const char* app_id;
-    const char* title;
-};
-
 /**
- * Create window and run event handler loop.
- * @param[in] wnd window properties
+ * Create window.
+ * @param[in] handlers event handlers
+ * @param[in] width window width
+ * @param[in] height window height
+ * @param[in] app_id application id
  * @return true if operation completed successfully
  */
-bool show_window(const struct window* wnd);
+bool create_window(const struct handlers* handlers, size_t width, size_t height, const char* app_id);
+
+/**
+ * Show window and run event handler loop.
+ */
+void show_window(void);
+
+/**
+ * Destroy window.
+ */
+void destroy_window(void);
 
 /**
  * Close window.
  */
 void close_window(void);
+
+/**
+ * Get window width.
+ * @return window width
+ */
+size_t get_window_width(void);
+
+/**
+ * Get window height.
+ * @return window height
+ */
+size_t get_window_height(void);
 
 /**
  * Set window title.
@@ -59,6 +74,7 @@ void close_window(void);
 void set_window_title(const char* title);
 
 /**
- * Toggle full screen mode.
+ * Enable or disable full screen mode.
+ * @param[in] enable mode
  */
-void toggle_fullscreen(void);
+void enable_fullscreen(bool enable);

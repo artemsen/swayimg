@@ -50,7 +50,6 @@ struct context {
     struct size {
         size_t width;
         size_t height;
-        bool fullscreen;
     } size;
 
     struct handlers handlers;
@@ -250,18 +249,10 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
 {
     if (width && height && (width != (int32_t)ctx.size.width ||
                             height != (int32_t)ctx.size.height)) {
-        uint32_t* state;
-        ctx.size.fullscreen = false;
-        wl_array_for_each(state, states) {
-            if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
-                ctx.size.fullscreen = true;
-            }
-        }
-
         ctx.size.width = width;
         ctx.size.height = height;
         if (create_buffer()) {
-            ctx.handlers.on_resize(ctx.surface.cairo);
+            ctx.handlers.on_resize();
         } else {
             ctx.state = state_error;
         }
@@ -308,11 +299,11 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = on_registry_remove
 };
 
-bool show_window(const struct window* wnd)
+bool create_window(const struct handlers* handlers, size_t width, size_t height, const char* app_id)
 {
-    ctx.size.width = wnd->width;
-    ctx.size.height = wnd->height;
-    ctx.handlers = wnd->handlers;
+    ctx.size.width = width ? width : 800;
+    ctx.size.height = height ? height : 600;
+    ctx.handlers = *handlers;
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {
@@ -322,7 +313,8 @@ bool show_window(const struct window* wnd)
     ctx.wl.registry = wl_display_get_registry(ctx.wl.display);
     if (!ctx.wl.registry) {
         fprintf(stderr, "Failed to open registry\n");
-        goto done;
+        destroy_window();
+        return false;
     }
     wl_registry_add_listener(ctx.wl.registry, &registry_listener, NULL);
     wl_display_roundtrip(ctx.wl.display);
@@ -330,30 +322,34 @@ bool show_window(const struct window* wnd)
     ctx.wl.surface = wl_compositor_create_surface(ctx.wl.compositor);
     if (!ctx.wl.surface) {
         fprintf(stderr, "Failed to create surface\n");
-        goto done;
+        destroy_window();
+        return false;
     }
     ctx.xdg.surface = xdg_wm_base_get_xdg_surface(ctx.xdg.base, ctx.wl.surface);
     if (!ctx.xdg.surface) {
         fprintf(stderr, "Failed to create xdg surface\n");
-        goto done;
+        destroy_window();
+        return false;
     }
     xdg_surface_add_listener(ctx.xdg.surface, &xdg_surface_listener, NULL);
     ctx.xdg.toplevel = xdg_surface_get_toplevel(ctx.xdg.surface);
     xdg_toplevel_add_listener(ctx.xdg.toplevel, &xdg_toplevel_listener, NULL);
-    xdg_toplevel_set_title(ctx.xdg.toplevel, wnd->title);
-    xdg_toplevel_set_app_id(ctx.xdg.toplevel, wnd->app_id);
-    if (wnd->fullscreen) {
-        xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
-    }
+    xdg_toplevel_set_app_id(ctx.xdg.toplevel, app_id);
 
     wl_surface_commit(ctx.wl.surface);
 
-    // working loop
+    return true;
+}
+
+void show_window(void)
+{
     while (ctx.state == state_ok) {
         wl_display_dispatch(ctx.wl.display);
     }
+}
 
-done:
+void destroy_window(void)
+{
     if (ctx.surface.cairo) {
         cairo_surface_destroy(ctx.surface.cairo);
     }
@@ -382,8 +378,6 @@ done:
         wl_registry_destroy(ctx.wl.registry);
     }
     wl_display_disconnect(ctx.wl.display);
-
-    return ctx.state == state_exit;
 }
 
 void close_window(void)
@@ -391,16 +385,26 @@ void close_window(void)
     ctx.state = state_exit;
 }
 
+size_t get_window_width(void)
+{
+    return ctx.size.width;
+}
+
+size_t get_window_height(void)
+{
+    return ctx.size.height;
+}
+
 void set_window_title(const char* title)
 {
     xdg_toplevel_set_title(ctx.xdg.toplevel, title);
 }
 
-void toggle_fullscreen(void)
+void enable_fullscreen(bool enable)
 {
-    if (ctx.size.fullscreen) {
-        xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
-    }else {
+    if (enable) {
         xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
+    } else {
+        xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
     }
 }

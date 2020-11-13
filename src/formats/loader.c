@@ -2,8 +2,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
-#include "image.h"
-#include "image_loader.h"
+#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +14,7 @@
 
 // loaders declaration
 extern const struct loader png_loader;
+extern const struct loader bmp_loader;
 #ifdef HAVE_LIBJPEG
 extern const struct loader jpeg_loader;
 #endif
@@ -27,11 +27,11 @@ extern const struct loader webp_loader;
 #ifdef HAVE_LIBRSVG
 extern const struct loader svg_loader;
 #endif
-extern const struct loader bmp_loader;
 
-// ordered list of available loaders
+// list of available loaders
 static const struct loader* loaders[] = {
     &png_loader,
+    &bmp_loader,
 #ifdef HAVE_LIBJPEG
     &jpeg_loader,
 #endif
@@ -44,10 +44,9 @@ static const struct loader* loaders[] = {
 #ifdef HAVE_LIBRSVG
     &svg_loader,
 #endif
-    &bmp_loader
 };
 
-struct image* load_image(const char* file)
+bool load_image(const char* file, cairo_surface_t** img, const char** format)
 {
     // read header
     uint8_t header[16];
@@ -64,29 +63,17 @@ struct image* load_image(const char* file)
     close(fd);
 
     // try to decode
+    *img = NULL;
     for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        cairo_surface_t* cs = loaders[i]->load(file, header, sizeof(header));
-        if (cs) {
-            struct image* img = malloc(sizeof(struct image));
-            if (!img) {
-                load_error(NULL, errno, "Memory allocation error");
-                cairo_surface_destroy(cs);
-                return NULL;
-            }
-            img->image = cs;
-            img->format = loaders[i]->format;
-            return img;
+        *img = loaders[i]->load(file, header, sizeof(header));
+        if (*img) {
+            *format = loaders[i]->format;
+            return true;
         }
     }
 
     load_error(NULL, 0, "Unsupported format: %s\n", file);
-    return NULL;
-}
-
-void free_image(struct image* img)
-{
-    cairo_surface_destroy(img->image);
-    free(img);
+    return false;
 }
 
 void load_error(const char* name, int errcode, const char* fmt, ...)
