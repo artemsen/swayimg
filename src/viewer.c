@@ -59,9 +59,12 @@ struct viewer viewer;
 /**
  * Move viewport.
  * @param[in] op move operation
+ * @return true if position was changed
  */
-static void change_position(enum move_op op)
+static bool change_position(enum move_op op)
 {
+    const int prev_x = image.x;
+    const int prev_y = image.y;
     const int img_w = image.scale * cairo_image_surface_get_width(image.surface);
     const int img_h = image.scale * cairo_image_surface_get_height(image.surface);
     const int wnd_w = (int)get_window_width();
@@ -110,70 +113,75 @@ static void change_position(enum move_op op)
             }
             break;
     }
+
+    return image.x != prev_x || image.y != prev_y;
 }
 
 /**
  * Change scale.
  * @param[in] op scale operation
+ * @return true if zoom or position were changed
  */
-static void change_scale(enum scale_op op)
+static bool change_scale(enum scale_op op)
 {
+    bool changed;
+
     const int img_w = cairo_image_surface_get_width(image.surface);
     const int img_h = cairo_image_surface_get_height(image.surface);
     const int wnd_w = (int)get_window_width();
     const int wnd_h = (int)get_window_height();
     const double scale_step = image.scale / 10.0;
-    double new_scale;
+    double prev_scale = image.scale;
 
     switch (op) {
         case actual_size:
             // 100 %
-            new_scale = 1.0;
+            image.scale = 1.0;
             break;
 
         case optimal_scale:
             // 100% or less to fit the window
-            new_scale = 1.0;
+            image.scale = 1.0;
             if (wnd_w < img_w) {
-                new_scale = 1.0 / ((double)img_w / wnd_w);
+                image.scale = 1.0 / ((double)img_w / wnd_w);
             }
             if (wnd_h < img_h) {
                 const double scale = 1.0f / ((double)img_h / wnd_h);
-                if (new_scale > scale) {
-                    new_scale = scale;
+                if (image.scale > scale) {
+                    image.scale = scale;
                 }
             }
             break;
 
         case zoom_in:
-            new_scale = image.scale + scale_step;
-            if (new_scale > MAX_SCALE_TIMES) {
-                new_scale = MAX_SCALE_TIMES;
+            image.scale += scale_step;
+            if (image.scale > MAX_SCALE_TIMES) {
+                image.scale = MAX_SCALE_TIMES;
             }
             break;
 
         case zoom_out:
-            new_scale = image.scale - scale_step;
-            if (new_scale * img_w < MIN_SCALE_PIXEL || new_scale * img_h < MIN_SCALE_PIXEL) {
-                new_scale = image.scale; // don't change
+            image.scale -= scale_step;
+            if (image.scale * img_w < MIN_SCALE_PIXEL || image.scale * img_h < MIN_SCALE_PIXEL) {
+                image.scale = prev_scale; // don't change
             }
             break;
     }
 
+    changed = image.scale != prev_scale;
+
     // update image position
     if (op == actual_size || op == optimal_scale) {
-        image.scale = new_scale;
-        change_position(move_center_x);
-        change_position(move_center_y);
+        changed |= change_position(move_center_x);
+        changed |= change_position(move_center_y);
     } else {
-        const int prev_w = image.scale * img_w;
-        const int prev_h = image.scale * img_h;
-        image.scale = new_scale;
+        const int prev_w = prev_scale * img_w;
+        const int prev_h = prev_scale * img_h;
         const int curr_w = image.scale * img_w;
         const int curr_h = image.scale * img_h;
         if (curr_w < wnd_w) {
             // fits into window width
-            change_position(move_center_x);
+            changed |= change_position(move_center_x);
         } else {
             // move to save the center of previous image
             const int delta_w = prev_w - curr_w;
@@ -185,7 +193,7 @@ static void change_scale(enum scale_op op)
         }
         if (curr_h < wnd_h) {
             // fits into window height
-            change_position(move_center_y);
+            changed |= change_position(move_center_y);
         } else {
             // move to save the center of previous image
             const int delta_h = prev_h - curr_h;
@@ -196,6 +204,8 @@ static void change_scale(enum scale_op op)
             }
         }
     }
+
+    return changed;
 }
 
 /**
@@ -320,37 +330,29 @@ static bool on_keyboard(uint32_t key)
         case KEY_LEFT:
         case KEY_KP4:
         case KEY_H:
-            change_position(move_left);
-            return true;
+            return change_position(move_left);
         case KEY_RIGHT:
         case KEY_KP6:
         case KEY_L:
-            change_position(move_right);
-            return true;
+            return change_position(move_right);
         case KEY_UP:
         case KEY_KP8:
         case KEY_K:
-            change_position(move_up);
-            return true;
+            return change_position(move_up);
         case KEY_DOWN:
         case KEY_KP2:
         case KEY_J:
-            change_position(move_down);
-            return true;
+            return change_position(move_down);
         case KEY_EQUAL:
         case KEY_KPPLUS:
-            change_scale(zoom_in);
-            return true;
+            return change_scale(zoom_in);
         case KEY_MINUS:
         case KEY_KPMINUS:
-            change_scale(zoom_out);
-            return true;
+            return change_scale(zoom_out);
         case KEY_0:
-            change_scale(actual_size);
-            return true;
+            return change_scale(actual_size);
         case KEY_BACKSPACE:
-            change_scale(optimal_scale);
-            return true;
+            return change_scale(optimal_scale);
         case KEY_I:
             viewer.show_info = !viewer.show_info;
             return true;
