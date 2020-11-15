@@ -14,8 +14,8 @@
 #include <linux/input.h>
 
 // Scale thresholds
-#define MIN_SCALE_PIXEL   10
-#define MAX_SCALE_PERCENT 10000
+#define MIN_SCALE_PIXEL 10
+#define MAX_SCALE_TIMES 100
 
 /** Scale operation types. */
 enum scale_op {
@@ -147,8 +147,8 @@ static void change_scale(enum scale_op op)
 
         case zoom_in:
             new_scale = image.scale + scale_step;
-            if (new_scale > MAX_SCALE_PERCENT) {
-                new_scale = image.scale; // don't change
+            if (new_scale > MAX_SCALE_TIMES) {
+                new_scale = MAX_SCALE_TIMES;
             }
             break;
 
@@ -222,7 +222,7 @@ static bool load_file(const char* file)
     image.y = 0;
 
     // setup initial scale and position of the image
-    if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_PERCENT) {
+    if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_TIMES * 100) {
         image.scale = (double)(viewer.scale) / 100.0;
         change_position(move_center_x);
         change_position(move_center_y);
@@ -409,15 +409,12 @@ bool show_image(const char** files, size_t files_num)
     }
 
     // create and show GUI window
-    if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
-        goto done;
+    rc = create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id) &&
+         load_next_file(true);
+    if (rc) {
+        show_window();
     }
-    if (!load_next_file(true)) {
-        goto done;
-    }
-    show_window();
 
-done:
     // clean
     destroy_window();
     if (image.surface) {
