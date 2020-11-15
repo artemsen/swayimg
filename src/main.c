@@ -15,6 +15,7 @@
 static void print_help(void)
 {
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
+    puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -s, --scale=PERCENT      Set initial image scale");
     puts("  -i, --info               Show image properties");
@@ -84,6 +85,7 @@ bool parse_rect(const char* arg, struct rect* rect)
 int main(int argc, char* argv[])
 {
     const struct option long_opts[] = {
+        { "fullscreen", no_argument,       NULL, 'f' },
         { "geometry",   required_argument, NULL, 'g' },
         { "scale",      required_argument, NULL, 's' },
         { "info",       no_argument,       NULL, 'i' },
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "g:s:ivh";
+    const char* short_opts = "fg:s:ivh";
 
     opterr = 0; // prevent native error messages
 
@@ -99,6 +101,9 @@ int main(int argc, char* argv[])
     int opt;
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
         switch (opt) {
+            case 'f':
+                viewer.fullscreen = true;
+                break;
             case 'g':
                 if (!parse_rect(optarg, &viewer.wnd)) {
                     return EXIT_FAILURE;

@@ -399,24 +399,32 @@ bool show_image(const char** files, size_t files_num)
     // setup window position via Sway IPC
     const int ipc = sway_connect();
     if (ipc != -1) {
-        bool fullscreen = false;
+        bool sway_fullscreen = false;
         if (!viewer.wnd.width) {
             // get currently focused window state
-            sway_current(ipc, &viewer.wnd, &fullscreen);
+            sway_current(ipc, &viewer.wnd, &sway_fullscreen);
         }
-        if (!fullscreen && viewer.wnd.width) {
+        viewer.fullscreen |= sway_fullscreen;
+        if (!viewer.fullscreen && viewer.wnd.width) {
             sway_add_rules(ipc, app_id, viewer.wnd.x, viewer.wnd.y);
         }
         sway_disconnect(ipc);
     }
 
     // create and show GUI window
-    rc = create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id) &&
-         load_next_file(true);
-    if (rc) {
-        show_window();
+    if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
+        goto done;
     }
+    if (!load_next_file(true)) {
+        goto done;
+    }
+    if (viewer.fullscreen) {
+        enable_fullscreen(true);
+    }
+    show_window();
+    rc = true;
 
+done:
     // clean
     destroy_window();
     if (image.surface) {
