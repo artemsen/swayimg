@@ -19,7 +19,7 @@
 static const char* const format_name = "SVG";
 
 // SVG signature
-static const uint8_t signature[] = { '<', '?', 'x', 'm', 'l' };
+static const uint8_t signature[] = { '<' };
 
 // implementation of struct loader::load
 static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
