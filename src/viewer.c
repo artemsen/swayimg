@@ -323,9 +323,11 @@ static bool on_keyboard(uint32_t key)
     switch (key) {
         case KEY_PAGEUP:
         case KEY_KP9:
+        case KEY_P:
             return load_next_file(false);
         case KEY_PAGEDOWN:
         case KEY_KP3:
+        case KEY_N:
             return load_next_file(true);
         case KEY_LEFT:
         case KEY_KP4:

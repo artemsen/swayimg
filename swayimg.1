@@ -9,7 +9,7 @@ focused window (container).
 .PP
 The program uses Sway IPC to determine the geometry of the currently focused
 workspace and window.
-These data is used calculate the position and size for a new window.
+This data is used calculate the position and size of a new window.
 Then the program adds two rules to the Sway: "floating enable" and
 "move position" for \fBswayimg\fR application, creates a new Wayland window and
 draws an image from the specified file.
@@ -34,9 +34,9 @@ image is greater than the window, it will be zoomed out to fit the window.
 Show image properties on startup (path, size, current scale etc).
 .
 .SH KEYBINDINGS
-.IP "\fBPgUp\fR, \fBPgDown\fR"
+.IP "\fBPgUp\fR, \fBPgDown\fR or \fBp\fR, \fBn\fR"
 Next/previous file.
-.IP "\fBArrows\fR and vim-like moving keys (\fBhjkl\fR)"
+.IP "\fBArrows\fR and vim-like moving keys (\fBh\fR,\fBj\fR,\fBk\fR,\fBl\fR)"
 Move the view point.
 .IP "\fB+\fP, \fB=\fR"
 Zoom in.
