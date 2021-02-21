@@ -13,15 +13,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: install dependencies
+
+    - name: Install dependencies
       run: >
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
           libwayland-dev libcairo-dev libjson-c-dev
           libgif-dev libjpeg-dev librsvg2-dev libwebp-dev
-    - name: meson
-      run: meson ./build
-    - name: ninja
+
+    - name: Configure
+      run: meson --buildtype release --prefix /usr ./build
+    - name: Build
       run: ninja -C ./build
-    - name: check
-      run: ./build/swayimg --version
+    - name: Install
+      run: DESTDIR=install ninja -C ./build install
+    - name: Check
+      run: ./build/install/usr/bin/swayimg --version
+
+    - name: Create AppImage
+      run: |
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x ./linuxdeploy-x86_64.AppImage
+          ./linuxdeploy-x86_64.AppImage --appdir ./build/install --desktop-file swayimg.desktop --icon-file swayimg.png --output appimage
+
+    - uses: actions/upload-artifact@v2
+      with:
+          name: swayimg-x86_64
+          path: swayimg-*-x86_64.AppImage

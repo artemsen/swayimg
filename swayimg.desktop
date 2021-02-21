@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=swayimg
+Exec=swayimg
+Icon=swayimg
+Terminal=true
+Categories=Graphics
+Comment=Image viewer for Sway/Wayland
