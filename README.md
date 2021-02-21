@@ -2,17 +2,16 @@
 
 ![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
 
-The _swayimg_ utility can be used for preview images inside the currently
-focused window (container).
+Now you can view images directly in the current terminal window!
 
 ## How it works
 
 The program uses [Sway](https://swaywm.org) IPC to determine the geometry of the
-currently focused workspace and window.
-These data is used calculate the position and size for a new window.
-Then the program adds two rules to the Sway: "floating enable" and
-"move position" for _swayimg_ application, creates a new Wayland window and
-draws an image from the specified file.
+currently focused container. This data is used to calculate the position and
+size of the new "overlay" window that will be used to draw the image.
+In the next step, _swayimg_ adds two Sway rules for the self window: "floating
+enable" and "move position". Then it creates a new Wayland window and draws the
+image from the specified file.
 
 ## Supported image formats
 
@@ -31,7 +30,7 @@ See `swayimg --help` or `man swayimg` for details.
 
 ### Key bindings
 
-- `PgUp`, `PgDown`: Next/previous file;
+- `PgUp`, `PgDown`, `n`, `p`: Next/previous file;
 - `Arrows` and vim-like moving keys (`hjkl`): Move view point;
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
