@@ -2,18 +2,16 @@
 
 _swayimg()
 {
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-    local prev="${COMP_WORDS[COMP_CWORD - 1]}"
+    local cur=${COMP_WORDS[COMP_CWORD]}
     local opts="-g --geometry \
                 -f --fullscreen \
                 -s --scale \
                 -i --info \
                 -v --version \
                 -h --help"
-
     if [[ ${cur} == -* ]]; then
         COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-    elif [[ ${prev} != -* ]] || [[ ${prev} =~ --?f(ullscreen)? ]]; then
+     else
         COMPREPLY=($(compgen -f -- "${cur}"))
     fi
 } &&
