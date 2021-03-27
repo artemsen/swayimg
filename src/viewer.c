@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <linux/input.h>
 
 // Scale thresholds
 #define MIN_SCALE_PIXEL 10
@@ -318,60 +317,50 @@ static void on_resize(void)
 }
 
 /** Keyboard handler, see handlers::on_keyboard. */
-static bool on_keyboard(uint32_t key)
+static bool on_keyboard(xkb_keysym_t key)
 {
     switch (key) {
-        case KEY_PAGEUP:
-        case KEY_KP9:
-        case KEY_P:
+        case XKB_KEY_SunPageUp:
+        case XKB_KEY_p:
             return load_next_file(false);
-        case KEY_PAGEDOWN:
-        case KEY_KP3:
-        case KEY_N:
+        case XKB_KEY_SunPageDown:
+        case XKB_KEY_n:
             return load_next_file(true);
-        case KEY_LEFT:
-        case KEY_KP4:
-        case KEY_H:
+        case XKB_KEY_Left:
+        case XKB_KEY_h:
             return change_position(move_left);
-        case KEY_RIGHT:
-        case KEY_KP6:
-        case KEY_L:
+        case XKB_KEY_Right:
+        case XKB_KEY_l:
             return change_position(move_right);
-        case KEY_UP:
-        case KEY_KP8:
-        case KEY_K:
+        case XKB_KEY_Up:
+        case XKB_KEY_k:
             return change_position(move_up);
-        case KEY_DOWN:
-        case KEY_KP2:
-        case KEY_J:
+        case XKB_KEY_Down:
+        case XKB_KEY_j:
             return change_position(move_down);
-        case KEY_EQUAL:
-        case KEY_KPPLUS:
+        case XKB_KEY_equal:
+        case XKB_KEY_plus:
             return change_scale(zoom_in);
-        case KEY_MINUS:
-        case KEY_KPMINUS:
+        case XKB_KEY_minus:
             return change_scale(zoom_out);
-        case KEY_0:
+        case XKB_KEY_0:
             return change_scale(actual_size);
-        case KEY_BACKSPACE:
+        case XKB_KEY_BackSpace:
             return change_scale(optimal_scale);
-        case KEY_I:
+        case XKB_KEY_i:
             viewer.show_info = !viewer.show_info;
             return true;
-        case KEY_F11:
-        case KEY_F:
+        case XKB_KEY_F11:
+        case XKB_KEY_f:
             viewer.fullscreen = !viewer.fullscreen;
             enable_fullscreen(viewer.fullscreen);
             return false;
-        case KEY_ESC:
-        case KEY_ENTER:
-        case KEY_KPENTER:
-        case KEY_F3:
-        case KEY_F4:
-        case KEY_F10:
-        case KEY_Q:
-        case KEY_E:
-        case KEY_X:
+        case XKB_KEY_Escape:
+        case XKB_KEY_Return:
+        case XKB_KEY_F3:
+        case XKB_KEY_F4:
+        case XKB_KEY_F10:
+        case XKB_KEY_q:
             close_window();
             return false;
     }

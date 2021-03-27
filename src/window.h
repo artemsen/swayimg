@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <cairo/cairo.h>
+#include <xkbcommon/xkbcommon.h>
 
 /** UI event handlers. */
 struct handlers {
@@ -27,7 +28,7 @@ struct handlers {
      * @param[in] key code of key pressed
      * @return true if state was changed and window must be redrawn
      */
-    bool (*on_keyboard)(uint32_t key);
+    bool (*on_keyboard)(xkb_keysym_t key);
 };
 
 /**

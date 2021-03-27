@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <linux/input.h>
 
 /** Loop state */
 enum state {
@@ -41,6 +40,12 @@ struct context {
         struct xdg_surface* surface;
         struct xdg_toplevel* toplevel;
     } xdg;
+
+    struct xkb {
+        struct xkb_context* context;
+        struct xkb_keymap* keymap;
+        struct xkb_state* state;
+    } xkb;
 
     struct surface {
         cairo_surface_t* cairo;
@@ -159,7 +164,11 @@ static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
                                   uint32_t serial, uint32_t mods_depressed,
                                   uint32_t mods_latched, uint32_t mods_locked,
                                   uint32_t group)
-{}
+{
+    xkb_state_update_mask(ctx.xkb.state,
+                          mods_depressed, mods_latched, mods_locked,
+                          0, 0, group);
+}
 
 static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
                                     int32_t rate, int32_t delay)
@@ -168,7 +177,14 @@ static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
 static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
                                uint32_t format, int32_t fd, uint32_t size)
 {
+    char* keymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    xkb_keymap_unref(ctx.xkb.keymap);
+    ctx.xkb.keymap = xkb_keymap_new_from_string(ctx.xkb.context, keymap,
+        XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    munmap(keymap, size);
     close(fd);
+    xkb_state_unref(ctx.xkb.state);
+    ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
 }
 
 static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
@@ -176,7 +192,8 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
                             uint32_t state)
 {
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        if (ctx.handlers.on_keyboard(key)) {
+        xkb_keysym_t keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key + 8);
+        if (keysym != XKB_KEY_NoSymbol && ctx.handlers.on_keyboard(keysym)) {
             redraw();
         }
     }
@@ -310,6 +327,7 @@ bool create_window(const struct handlers* handlers, size_t width, size_t height,
         fprintf(stderr, "Failed to open display\n");
         return false;
     }
+    ctx.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     ctx.wl.registry = wl_display_get_registry(ctx.wl.display);
     if (!ctx.wl.registry) {
         fprintf(stderr, "Failed to open registry\n");

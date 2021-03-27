@@ -18,7 +18,7 @@ jobs:
       run: >
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
-          libwayland-dev libcairo-dev libjson-c-dev
+          libwayland-dev libcairo-dev libjson-c-dev libxkbcommon-dev
           libgif-dev libjpeg-dev librsvg2-dev libwebp-dev
 
     - name: Configure

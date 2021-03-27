@@ -20,15 +20,17 @@ add_project_arguments(
 
 cc = meson.get_compiler('c')
 
-# project dependencies
+# mandatory dependencies
 wlcln = dependency('wayland-client')
 cairo = dependency('cairo')
 json  = dependency('json-c')
+xkb   = dependency('xkbcommon')
+rt    = cc.find_library('rt')
+# optional dependencies
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
 rsvg  = dependency('librsvg-2.0', version: '>=2.14', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
 gif   = cc.find_library('gif', required: get_option('gif'))
-rt    = cc.find_library('rt')
 bash  = dependency('bash-completion', required: get_option('bash'))
 
 # configuration file
@@ -113,14 +115,15 @@ executable(
   'swayimg',
   sources,
   dependencies: [
-    wlcln,
     cairo,
-    json,
-    jpeg,
-    rsvg,
-    webp,
     gif,
+    jpeg,
+    json,
+    rsvg,
     rt,
+    webp,
+    wlcln,
+    xkb,
   ],
   install: true
 )
