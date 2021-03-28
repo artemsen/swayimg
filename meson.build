@@ -73,6 +73,14 @@ if get_option('man')
   install_man('swayimg.1')
 endif
 
+# desktop file + icon
+if get_option('desktop')
+  install_data('swayimg.desktop',
+    install_dir: join_paths(get_option('datadir'), 'applications'))
+  install_data('swayimg.png',
+    install_dir: join_paths(get_option('datadir'), 'icons/hicolor/64x64/apps'))
+endif
+
 # bash completion installation
 if bash.found()
   datadir = get_option('datadir')

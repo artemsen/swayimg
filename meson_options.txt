@@ -19,8 +19,11 @@ option('bash',
        type: 'feature',
        value: 'auto',
        description: 'Install bash completions')
-
 option('man',
        type: 'boolean',
        value: true,
        description: 'Install man page')
+option('desktop',
+       type: 'boolean',
+       value: true,
+       description: 'Install desktop file with icon')
