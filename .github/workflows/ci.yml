@@ -39,4 +39,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
           name: swayimg-x86_64
-          path: swayimg-*-x86_64.AppImage
+          path: Swayimg-*-x86_64.AppImage
