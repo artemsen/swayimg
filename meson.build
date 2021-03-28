@@ -8,7 +8,7 @@ project(
     'warning_level=3',
   ],
   license: 'MIT',
-  version: '1.2',
+  version: '1.3',
 )
 
 add_project_arguments(
