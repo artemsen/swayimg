@@ -48,3 +48,5 @@ sudo ninja -C build install
 ```
 
 Arch users can install the program via [AUR](https://aur.archlinux.org/packages/swayimg).
+
+AppImage is available in the [release assets](https://github.com/artemsen/swayimg/releases).
