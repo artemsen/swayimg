@@ -14,6 +14,7 @@ struct viewer {
     struct rect wnd;  ///< Window geometry (NULL=auto)
     bool fullscreen;  ///< Full screen mode
     bool show_info;   ///< Show image info
+    bool separate;    ///< Separate window from terminal
 };
 extern struct viewer viewer;
 
