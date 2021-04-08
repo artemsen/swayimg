@@ -17,6 +17,7 @@ static void print_help(void)
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
+    puts("  -p, --separate           Separate swayimg window from the terminal");
     puts("  -s, --scale=PERCENT      Set initial image scale");
     puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
@@ -91,9 +92,10 @@ int main(int argc, char* argv[])
         { "info",       no_argument,       NULL, 'i' },
         { "version",    no_argument,       NULL, 'v' },
         { "help",       no_argument,       NULL, 'h' },
+        { "separate",   no_argument,       NULL, 'p' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "fg:s:ivh";
+    const char* short_opts = "fg:s:ivh:p";
 
     opterr = 0; // prevent native error messages
 
@@ -121,6 +123,9 @@ int main(int argc, char* argv[])
             case 'h':
                 print_help();
                 return EXIT_SUCCESS;
+	    case 'p':
+		viewer.separate = true;
+		break;
             default:
                 fprintf(stderr, "Invalid argument: %s\n", argv[optind - 1]);
                 return EXIT_FAILURE;
