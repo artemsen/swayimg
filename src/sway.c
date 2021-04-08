@@ -333,6 +333,5 @@ bool sway_add_rules(int ipc, const char* app, int x, int y)
 {
     char move[64];
     snprintf(move, sizeof(move), "move position %i %i", x, y);
-    return ipc_command(ipc, app, "floating enable") &&
-           ipc_command(ipc, app, move);
+    return ipc_command(ipc, app, move);
 }
