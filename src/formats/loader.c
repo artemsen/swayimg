@@ -21,11 +21,14 @@ extern const struct loader jpeg_loader;
 #ifdef HAVE_LIBGIF
 extern const struct loader gif_loader;
 #endif
+#ifdef HAVE_LIBRSVG
+extern const struct loader svg_loader;
+#endif
 #ifdef HAVE_LIBWEBP
 extern const struct loader webp_loader;
 #endif
-#ifdef HAVE_LIBRSVG
-extern const struct loader svg_loader;
+#ifdef HAVE_LIBAVIF
+extern const struct loader avif_loader;
 #endif
 
 // list of available loaders
@@ -38,11 +41,14 @@ static const struct loader* loaders[] = {
 #ifdef HAVE_LIBGIF
     &gif_loader,
 #endif
+#ifdef HAVE_LIBRSVG
+    &svg_loader,
+#endif
 #ifdef HAVE_LIBWEBP
     &webp_loader,
 #endif
-#ifdef HAVE_LIBRSVG
-    &svg_loader,
+#ifdef HAVE_LIBAVIF
+    &avif_loader,
 #endif
 };
 

@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
+
+//
+// AV1 image format support (AVIF)
+//
+
+#include "config.h"
+#ifndef HAVE_LIBAVIF
+#error Invalid build configuration
+#endif
+
+#include "loader.h"
+
+#include <string.h>
+#include <avif/avif.h>
+
+// Format name
+static const char* const format_name = "AV1";
+
+// HEIF signature
+static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
+// Ignore first 4 bytes in header
+#define SIGNATURE_START 4
+
+// Number of components of rgba pixel
+#define RGBA_NUM 4
+
+// implementation of struct loader::load
+static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+{
+    avifResult rc;
+    avifRGBImage rgb;
+    avifDecoder* decoder = NULL;
+    cairo_surface_t* img = NULL;
+
+    memset(&rgb, 0, sizeof(rgb));
+
+    // check signature
+    if (header_len < SIGNATURE_START + sizeof(signature) ||
+        memcmp(header + SIGNATURE_START, signature, sizeof(signature))) {
+        return NULL;
+    }
+
+    // open file in decoder
+    decoder = avifDecoderCreate();
+    if (!decoder) {
+        load_error(format_name, 0, "Unable to construct decoder");
+        return NULL;
+    }
+    rc = avifDecoderSetIOFile(decoder, file);
+    if (rc == AVIF_RESULT_OK) {
+        rc = avifDecoderParse(decoder);
+    }
+    if (rc == AVIF_RESULT_OK) {
+        rc = avifDecoderNextImage(decoder); // first frame only
+    }
+    if (rc != AVIF_RESULT_OK) {
+        load_error(format_name, 0, "Decode error: %s", avifResultToString(rc));
+        goto done;
+    }
+
+    // setup decoder
+    avifRGBImageSetDefaults(&rgb, decoder->image);
+    rgb.format = AVIF_RGB_FORMAT_BGRA;
+    avifRGBImageAllocatePixels(&rgb);
+
+    // decode the frame
+    rc = avifImageYUVToRGB(decoder->image, &rgb);
+    if (rc != AVIF_RESULT_OK) {
+        load_error(format_name, 0, "YUV to RGB failed: %s", avifResultToString(rc));
+        goto done;
+    }
+
+    // create surface
+    img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
+    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
+        load_error(format_name, 0, "Unable to create surface: %s",
+                   cairo_status_to_string(cairo_surface_status(img)));
+        cairo_surface_destroy(img);
+        img = NULL;
+        goto done;
+    }
+
+    // put image on to cairo surface
+    uint8_t* data = cairo_image_surface_get_data(img);
+    if (rgb.depth == 8) {
+        // simple 8bit image
+        memcpy(data, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
+    } else {
+        // convert to 8bit image
+        const size_t max_clr = 1 << rgb.depth;
+        const size_t src_stride = rgb.width * RGBA_NUM * sizeof(uint16_t);
+        const size_t dst_stride = cairo_image_surface_get_stride(img);
+        for (size_t y = 0; y < rgb.height; ++y) {
+            const uint16_t* src_y = (const uint16_t*)(rgb.pixels + y * src_stride);
+            uint8_t* dst_y = data + y * dst_stride;
+            for (size_t x = 0; x < rgb.width; ++x) {
+                uint8_t* dst_x = dst_y + x * RGBA_NUM;
+                const uint16_t* src_x = src_y + x * RGBA_NUM;
+                dst_x[0] = (uint8_t)((float)src_x[0] / max_clr * 255);
+                dst_x[1] = (uint8_t)((float)src_x[1] / max_clr * 255);
+                dst_x[2] = (uint8_t)((float)src_x[2] / max_clr * 255);
+                dst_x[3] = (uint8_t)((float)src_x[3] / max_clr * 255);
+            }
+        }
+    }
+    cairo_surface_mark_dirty(img);
+
+done:
+    if (decoder) {
+        avifRGBImageFreePixels(&rgb);
+        avifDecoderDestroy(decoder);
+    }
+
+    return img;
+}
+
+// declare format
+const struct loader avif_loader = {
+    .format = format_name,
+    .load = load
+};

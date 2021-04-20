@@ -30,6 +30,7 @@ rt    = cc.find_library('rt')
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
 rsvg  = dependency('librsvg-2.0', version: '>=2.14', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
+avif  = dependency('libavif', required: get_option('avif'))
 gif   = cc.find_library('gif', required: get_option('gif'))
 bash  = dependency('bash-completion', required: get_option('bash'))
 
@@ -39,6 +40,7 @@ conf.set('HAVE_LIBJPEG', jpeg.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBWEBP', webp.found())
+conf.set('HAVE_LIBAVIF', avif.found())
 conf.set_quoted('APP_VERSION', meson.project_version())
 conf.set_quoted('APP_NAME', meson.project_name())
 configure_file(output: 'config.h', configuration: conf)
@@ -118,11 +120,16 @@ endif
 if webp.found()
   sources += 'src/formats/webp.c'
 endif
+if avif.found()
+  sources += 'src/formats/avif.c'
+endif
 
 executable(
   'swayimg',
   sources,
   dependencies: [
+    wlcln,
+    xkb,
     cairo,
     gif,
     jpeg,
@@ -130,8 +137,7 @@ executable(
     rsvg,
     rt,
     webp,
-    wlcln,
-    xkb,
+    avif,
   ],
   install: true
 )

@@ -41,6 +41,9 @@ static void print_version(void)
 #ifdef HAVE_LIBWEBP
         ", webp"
 #endif // HAVE_LIBWEBP
+#ifdef HAVE_LIBAVIF
+        ", avif"
+#endif // HAVE_LIBAVIF
     ".";
     puts(APP_NAME " version " APP_VERSION ".");
     puts(formats);

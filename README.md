@@ -20,7 +20,8 @@ image from the specified file.
 - GIF (via giflib, without animation);
 - BMP (limited support);
 - SVG (via librsvg);
-- WebP (via libwebp).
+- WebP (via libwebp);
+- AV1 (via libavif, first frame only).
 
 ## Usage
 
