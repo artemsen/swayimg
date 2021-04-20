@@ -325,6 +325,7 @@ static bool on_keyboard(xkb_keysym_t key)
             return load_next_file(false);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
+        case XKB_KEY_space:
             return load_next_file(true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
@@ -357,8 +358,6 @@ static bool on_keyboard(xkb_keysym_t key)
             return false;
         case XKB_KEY_Escape:
         case XKB_KEY_Return:
-        case XKB_KEY_F3:
-        case XKB_KEY_F4:
         case XKB_KEY_F10:
         case XKB_KEY_q:
             close_window();

@@ -31,14 +31,15 @@ See `swayimg --help` or `man swayimg` for details.
 
 ### Key bindings
 
-- `PgUp`, `PgDown`, `n`, `p`: Next/previous file;
 - `Arrows` and vim-like moving keys (`hjkl`): Move view point;
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
 - `Backspace`: Set optimal scale: 100% or fit to window;
 - `i`: Show/hide image properties;
 - `f`, `F11`: Toggle full screen mode;
-- `Esc`, `Enter`, `F10`, `q`, `e`, `x`: Exit the program.
+- `PgDown`, `Space`, `n`: Open next file;
+- `PgUp`, `p`: Open previous file;
+- `Esc`, `Enter`, `F10`, `q`: Exit the program.
 
 ## Build and install
 
