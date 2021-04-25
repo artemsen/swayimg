@@ -6,14 +6,15 @@
 #include <cairo/cairo.h>
 
 /**
- * Draw background for transparent images.
+ * Draw background grid for transparent images.
  * @param[in] cr cairo paint context
  * @param[in] x left offset
  * @param[in] y top offset
  * @param[in] width width of the background area
  * @param[in] height height of the background area
+ * @param[in] angle image angle
  */
-void draw_background(cairo_t* cr, int x, int y, int width, int height);
+void draw_grid(cairo_t* cr, int x, int y, int width, int height, int angle);
 
 /**
  * Draw image.
@@ -22,8 +23,11 @@ void draw_background(cairo_t* cr, int x, int y, int width, int height);
  * @param[in] x left offset
  * @param[in] y top offset
  * @param[in] scale image scale
+ * @param[in] angle image angle
  */
-void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale);
+void draw_image(cairo_t* cr, cairo_surface_t* image,
+                int x, int y,
+                double scale, int angle);
 
 /**
  * Draw formatted text.

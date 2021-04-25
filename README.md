@@ -35,6 +35,7 @@ See `swayimg --help` or `man swayimg` for details.
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
 - `Backspace`: Set optimal scale: 100% or fit to window;
+- `[`, `]`: Rotate;
 - `i`: Show/hide image properties;
 - `f`, `F11`: Toggle full screen mode;
 - `PgDown`, `Space`, `n`: Open next file;

@@ -40,6 +40,8 @@ struct context {
     struct image* image;
     /** Image scale, 1.0 = 100%. */
     double scale;
+    /** Image angle (0/90/180/270). */
+    int angle;
     /** Coordinates of the top left corner. */
     int x;
     int y;
@@ -139,19 +141,22 @@ static bool change_scale(enum scale_op op)
             ctx.scale = 1.0;
             break;
 
-        case optimal_scale:
+        case optimal_scale: {
             // 100% or less to fit the window
             ctx.scale = 1.0;
-            if (wnd_w < img_w) {
-                ctx.scale = 1.0 / ((double)img_w / wnd_w);
+            const int max_w = ctx.angle == 0 || ctx.angle == 180 ? img_w : img_h;
+            const int max_h = ctx.angle == 0 || ctx.angle == 180 ? img_h : img_w;
+            if (wnd_w < max_w) {
+                ctx.scale = 1.0 / ((double)max_w / wnd_w);
             }
-            if (wnd_h < img_h) {
-                const double scale = 1.0f / ((double)img_h / wnd_h);
+            if (wnd_h < max_h) {
+                const double scale = 1.0f / ((double)max_h / wnd_h);
                 if (ctx.scale > scale) {
                     ctx.scale = scale;
                 }
             }
             break;
+            }
 
         case zoom_in:
             ctx.scale += scale_step;
@@ -224,6 +229,7 @@ static bool load_file(const char* file)
 
     ctx.image = img;
     ctx.scale = 0.0;
+    ctx.angle = 0;
     ctx.x = 0;
     ctx.y = 0;
 
@@ -290,9 +296,9 @@ static void on_redraw(cairo_surface_t* window)
 
     // image with background
     if (cairo_image_surface_get_format(ctx.image->surface) == CAIRO_FORMAT_ARGB32) {
-        draw_background(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h);
+        draw_grid(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h, ctx.angle);
     }
-    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale);
+    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale, ctx.angle);
 
     // image info: file name, format, size, ...
     if (viewer.show_info) {
@@ -345,6 +351,15 @@ static bool on_keyboard(xkb_keysym_t key)
             return change_scale(actual_size);
         case XKB_KEY_BackSpace:
             return change_scale(optimal_scale);
+        case XKB_KEY_bracketleft:
+        case XKB_KEY_bracketright:
+            ctx.angle += key == XKB_KEY_bracketleft ? -90 : 90;
+            if (ctx.angle < 0) {
+                ctx.angle = 270;
+            } else if (ctx.angle >= 360) {
+                ctx.angle = 0;
+            }
+            return true;
         case XKB_KEY_i:
             viewer.show_info = !viewer.show_info;
             return true;

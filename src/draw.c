@@ -25,60 +25,53 @@
 #define GREEN(c) ((double)((c >> 8) & 0xff) / 255.0)
 #define BLUE(c)  ((double)(c & 0xff) / 255.0)
 
-void draw_background(cairo_t* cr, int x, int y, int width, int height)
+void draw_grid(cairo_t* cr, int x, int y, int width, int height, int angle)
 {
-    // clip invisible region
-    cairo_surface_t* window = cairo_get_target(cr);
-    const int wnd_width = cairo_image_surface_get_width(window);
-    const int wnd_height = cairo_image_surface_get_height(window);
-    if (x < 0) {
-        width += x;
-        x = 0;
-    }
-    if (x + width > wnd_width) {
-        width -= x + width - wnd_width;
-    }
-    if (y < 0) {
-        height += y;
-        y = 0;
-    }
-    if (y + height > wnd_height) {
-        height -= y + height - wnd_height;
+    cairo_translate(cr, x, y);
+
+    // rotate
+    if (angle == 90 || angle == 270) {
+        cairo_translate(cr, width / 2, height / 2);
+        cairo_rotate(cr, angle * 3.14159 / 180);
+        cairo_translate(cr, -width / 2, -height / 2);
     }
 
     // fill with the first color
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgb(cr, RED(GRID_COLOR1), GREEN(GRID_COLOR1), BLUE(GRID_COLOR1));
-    cairo_rectangle(cr, x, y, width, height);
+    cairo_rectangle(cr, 0, 0, width, height);
     cairo_fill(cr);
 
     // draw lighter cells with the second color
-    const int end_x = x + width;
-    const int end_y = y + height;
     cairo_set_source_rgb(cr, RED(GRID_COLOR2), GREEN(GRID_COLOR2), BLUE(GRID_COLOR2));
-    for (; y < end_y; y += GRID_STEP) {
-        const int cell_height = y + GRID_STEP < end_y ? GRID_STEP : end_y - y;
-        int cell_x = x + (y / GRID_STEP % 2 ? 0 : GRID_STEP);
-        for (; cell_x < end_x; cell_x += 2 * GRID_STEP) {
-            const int cell_width = cell_x + GRID_STEP < end_x ? GRID_STEP : end_x - cell_x;
+    for (y = 0; y < height; y += GRID_STEP) {
+        const int cell_height = y + GRID_STEP < height ? GRID_STEP : height - y;
+        int cell_x = y / GRID_STEP % 2 ? 0 : GRID_STEP;
+        for (x = 0; cell_x < width; cell_x += 2 * GRID_STEP) {
+            const int cell_width = cell_x + GRID_STEP < width ? GRID_STEP : width - cell_x;
             cairo_rectangle(cr, cell_x, y, cell_width, cell_height);
             cairo_fill(cr);
         }
     }
+
+    cairo_identity_matrix(cr);
 }
 
-void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale)
+void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale, int angle)
 {
-    // scale, move and draw image
-    cairo_matrix_t matrix;
-    cairo_matrix_t translate;
-    cairo_matrix_init_translate(&translate, x, y);
-    cairo_matrix_init_scale(&matrix, scale, scale);
-    cairo_matrix_multiply(&matrix, &matrix, &translate);
-    cairo_set_matrix(cr, &matrix);
+    cairo_translate(cr, x, y);
+    cairo_scale(cr, scale, scale);
+
+    const int width = cairo_image_surface_get_width(image);
+    const int height = cairo_image_surface_get_height(image);
+    cairo_translate(cr, width / 2, height / 2);
+    cairo_rotate(cr, angle * 3.14159 / 180);
+    cairo_translate(cr, -width / 2, -height / 2);
+
     cairo_set_source_surface(cr, image, 0, 0);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_paint(cr);
+
     cairo_identity_matrix(cr);
 }
 
