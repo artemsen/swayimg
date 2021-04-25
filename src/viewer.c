@@ -5,7 +5,7 @@
 #include "viewer.h"
 #include "draw.h"
 #include "window.h"
-#include "formats/loader.h"
+#include "image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,23 +34,24 @@ enum move_op {
     move_down
 };
 
-/** File list. */
-struct file_list {
-    const char** files;
-    int total;
-    int current;
-};
-static struct file_list file_list;
-
-/** Currently displayed image. */
-struct image {
-    const char* format;
-    cairo_surface_t* surface;
+/** Viewer context. */
+struct context {
+    /** Currently displayed image. */
+    struct image* image;
+    /** Image scale, 1.0 = 100%. */
     double scale;
+    /** Coordinates of the top left corner. */
     int x;
     int y;
+
+    /** File list. */
+    struct flist {
+        const char** files;
+        int total;
+        int current;
+    } flist;
 };
-static struct image image;
+static struct context ctx;
 
 /** Viewer parameters. */
 struct viewer viewer;
@@ -62,10 +63,10 @@ struct viewer viewer;
  */
 static bool change_position(enum move_op op)
 {
-    const int prev_x = image.x;
-    const int prev_y = image.y;
-    const int img_w = image.scale * cairo_image_surface_get_width(image.surface);
-    const int img_h = image.scale * cairo_image_surface_get_height(image.surface);
+    const int prev_x = ctx.x;
+    const int prev_y = ctx.y;
+    const int img_w = ctx.scale * cairo_image_surface_get_width(ctx.image->surface);
+    const int img_h = ctx.scale * cairo_image_surface_get_height(ctx.image->surface);
     const int wnd_w = (int)get_window_width();
     const int wnd_h = (int)get_window_height();
     const int step_x = wnd_w / 10;
@@ -73,47 +74,47 @@ static bool change_position(enum move_op op)
 
     switch (op) {
         case move_center_x:
-            image.x = wnd_w / 2 - img_w / 2;
+            ctx.x = wnd_w / 2 - img_w / 2;
             break;
         case move_center_y:
-            image.y = wnd_h / 2 - img_h / 2;
+            ctx.y = wnd_h / 2 - img_h / 2;
             break;
 
         case move_left:
-            if (image.x <= 0) {
-                image.x += step_x;
-                if (image.x > 0) {
-                    image.x = 0;
+            if (ctx.x <= 0) {
+                ctx.x += step_x;
+                if (ctx.x > 0) {
+                    ctx.x = 0;
                 }
             }
             break;
         case move_right:
-            if (image.x + img_w >= wnd_w) {
-                image.x -= step_x;
-                if (image.x + img_w < wnd_w) {
-                    image.x = wnd_w - img_w;
+            if (ctx.x + img_w >= wnd_w) {
+                ctx.x -= step_x;
+                if (ctx.x + img_w < wnd_w) {
+                    ctx.x = wnd_w - img_w;
                 }
             }
             break;
         case move_up:
-            if (image.y <= 0) {
-                image.y += step_y;
-                if (image.y > 0) {
-                    image.y = 0;
+            if (ctx.y <= 0) {
+                ctx.y += step_y;
+                if (ctx.y > 0) {
+                    ctx.y = 0;
                 }
             }
             break;
         case move_down:
-            if (image.y + img_h >= wnd_h) {
-                image.y -= step_y;
-                if (image.y + img_h < wnd_h) {
-                    image.y = wnd_h - img_h;
+            if (ctx.y + img_h >= wnd_h) {
+                ctx.y -= step_y;
+                if (ctx.y + img_h < wnd_h) {
+                    ctx.y = wnd_h - img_h;
                 }
             }
             break;
     }
 
-    return image.x != prev_x || image.y != prev_y;
+    return ctx.x != prev_x || ctx.y != prev_y;
 }
 
 /**
@@ -125,49 +126,49 @@ static bool change_scale(enum scale_op op)
 {
     bool changed;
 
-    const int img_w = cairo_image_surface_get_width(image.surface);
-    const int img_h = cairo_image_surface_get_height(image.surface);
+    const int img_w = cairo_image_surface_get_width(ctx.image->surface);
+    const int img_h = cairo_image_surface_get_height(ctx.image->surface);
     const int wnd_w = (int)get_window_width();
     const int wnd_h = (int)get_window_height();
-    const double scale_step = image.scale / 10.0;
-    double prev_scale = image.scale;
+    const double scale_step = ctx.scale / 10.0;
+    double prev_scale = ctx.scale;
 
     switch (op) {
         case actual_size:
             // 100 %
-            image.scale = 1.0;
+            ctx.scale = 1.0;
             break;
 
         case optimal_scale:
             // 100% or less to fit the window
-            image.scale = 1.0;
+            ctx.scale = 1.0;
             if (wnd_w < img_w) {
-                image.scale = 1.0 / ((double)img_w / wnd_w);
+                ctx.scale = 1.0 / ((double)img_w / wnd_w);
             }
             if (wnd_h < img_h) {
                 const double scale = 1.0f / ((double)img_h / wnd_h);
-                if (image.scale > scale) {
-                    image.scale = scale;
+                if (ctx.scale > scale) {
+                    ctx.scale = scale;
                 }
             }
             break;
 
         case zoom_in:
-            image.scale += scale_step;
-            if (image.scale > MAX_SCALE_TIMES) {
-                image.scale = MAX_SCALE_TIMES;
+            ctx.scale += scale_step;
+            if (ctx.scale > MAX_SCALE_TIMES) {
+                ctx.scale = MAX_SCALE_TIMES;
             }
             break;
 
         case zoom_out:
-            image.scale -= scale_step;
-            if (image.scale * img_w < MIN_SCALE_PIXEL || image.scale * img_h < MIN_SCALE_PIXEL) {
-                image.scale = prev_scale; // don't change
+            ctx.scale -= scale_step;
+            if (ctx.scale * img_w < MIN_SCALE_PIXEL || ctx.scale * img_h < MIN_SCALE_PIXEL) {
+                ctx.scale = prev_scale; // don't change
             }
             break;
     }
 
-    changed = image.scale != prev_scale;
+    changed = ctx.scale != prev_scale;
 
     // update image position
     if (op == actual_size || op == optimal_scale) {
@@ -176,18 +177,18 @@ static bool change_scale(enum scale_op op)
     } else {
         const int prev_w = prev_scale * img_w;
         const int prev_h = prev_scale * img_h;
-        const int curr_w = image.scale * img_w;
-        const int curr_h = image.scale * img_h;
+        const int curr_w = ctx.scale * img_w;
+        const int curr_h = ctx.scale * img_h;
         if (curr_w < wnd_w) {
             // fits into window width
             changed |= change_position(move_center_x);
         } else {
             // move to save the center of previous image
             const int delta_w = prev_w - curr_w;
-            const int cntr_x = wnd_w / 2 - image.x;
-            image.x += ((double)cntr_x / prev_w) * delta_w;
-            if (image.x > 0) {
-                image.x = 0;
+            const int cntr_x = wnd_w / 2 - ctx.x;
+            ctx.x += ((double)cntr_x / prev_w) * delta_w;
+            if (ctx.x > 0) {
+                ctx.x = 0;
             }
         }
         if (curr_h < wnd_h) {
@@ -196,10 +197,10 @@ static bool change_scale(enum scale_op op)
         } else {
             // move to save the center of previous image
             const int delta_h = prev_h - curr_h;
-            const int cntr_y = wnd_h / 2 - image.y;
-            image.y += ((double)cntr_y / prev_h) * delta_h;
-            if (image.y > 0) {
-                image.y = 0;
+            const int cntr_y = wnd_h / 2 - ctx.y;
+            ctx.y += ((double)cntr_y / prev_h) * delta_h;
+            if (ctx.y > 0) {
+                ctx.y = 0;
             }
         }
     }
@@ -214,25 +215,21 @@ static bool change_scale(enum scale_op op)
  */
 static bool load_file(const char* file)
 {
-    cairo_surface_t* img;
-    const char* format;
-
-    if (!load_image(file, &img, &format)) {
+    struct image* img = load_image(file);
+    if (!img) {
         return false;
     }
 
-    if (image.surface) {
-        cairo_surface_destroy(image.surface);
-    }
-    image.surface = img;
-    image.format = format;
-    image.scale = 0.0;
-    image.x = 0;
-    image.y = 0;
+    free_image(ctx.image);
+
+    ctx.image = img;
+    ctx.scale = 0.0;
+    ctx.x = 0;
+    ctx.y = 0;
 
     // setup initial scale and position of the image
     if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_TIMES * 100) {
-        image.scale = (double)(viewer.scale) / 100.0;
+        ctx.scale = (double)(viewer.scale) / 100.0;
         change_position(move_center_x);
         change_position(move_center_y);
     } else {
@@ -260,19 +257,19 @@ static bool load_file(const char* file)
 static bool load_next_file(bool forward)
 {
     const int delta = forward ? 1 : -1;
-    int idx = file_list.current;
+    int idx = ctx.flist.current;
     idx += delta;
-    while (idx != file_list.current) {
-        if (idx >= file_list.total) {
-            if (file_list.current < 0) {
+    while (idx != ctx.flist.current) {
+        if (idx >= ctx.flist.total) {
+            if (ctx.flist.current < 0) {
                 return false; // no one valid file
             }
             idx = 0;
         } else if (idx < 0) {
-            idx = file_list.total - 1;
+            idx = ctx.flist.total - 1;
         }
-        if (load_file(file_list.files[idx])) {
-            file_list.current = idx;
+        if (load_file(ctx.flist.files[idx])) {
+            ctx.flist.current = idx;
             return true;
         }
         idx += delta;
@@ -283,8 +280,8 @@ static bool load_next_file(bool forward)
 /** Draw handler, see handlers::on_redraw */
 static void on_redraw(cairo_surface_t* window)
 {
-    const int img_w = cairo_image_surface_get_width(image.surface);
-    const int img_h = cairo_image_surface_get_height(image.surface);
+    const int img_w = cairo_image_surface_get_width(ctx.image->surface);
+    const int img_h = cairo_image_surface_get_height(ctx.image->surface);
     cairo_t* cr = cairo_create(window);
 
     // clear canvas
@@ -292,10 +289,10 @@ static void on_redraw(cairo_surface_t* window)
     cairo_paint(cr);
 
     // image with background
-    if (cairo_image_surface_get_format(image.surface) == CAIRO_FORMAT_ARGB32) {
-        draw_background(cr, image.x, image.y, image.scale * img_w, image.scale * img_h);
+    if (cairo_image_surface_get_format(ctx.image->surface) == CAIRO_FORMAT_ARGB32) {
+        draw_background(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h);
     }
-    draw_image(cr, image.surface, image.x, image.y, image.scale);
+    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale);
 
     // image info: file name, format, size, ...
     if (viewer.show_info) {
@@ -303,8 +300,8 @@ static void on_redraw(cairo_surface_t* window)
                               "Format: %s\n"
                               "Size:   %ix%i\n"
                               "Scale:  %i%%",
-                              file_list.files[file_list.current], image.format,
-                              img_w, img_h, (int)(image.scale * 100));
+                              ctx.flist.files[ctx.flist.current], ctx.image->format,
+                              img_w, img_h, (int)(ctx.scale * 100));
     }
 
     cairo_destroy(cr);
@@ -376,9 +373,9 @@ bool show_image(const char** files, size_t files_num)
         .on_keyboard = on_keyboard
     };
 
-    file_list.files = files;
-    file_list.total = files_num;
-    file_list.current = -1;
+    ctx.flist.files = files;
+    ctx.flist.total = files_num;
+    ctx.flist.current = -1;
 
     // create unique application id
     char app_id[64];
@@ -417,9 +414,7 @@ bool show_image(const char** files, size_t files_num)
 done:
     // clean
     destroy_window();
-    if (image.surface) {
-        cairo_surface_destroy(image.surface);
-    }
+    free_image(ctx.image);
 
     return rc;
 }

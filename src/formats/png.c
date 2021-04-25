@@ -5,38 +5,50 @@
 // PNG image format support
 //
 
-#include "loader.h"
+#include "../image.h"
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-// Format name
-static const char* const format_name = "PNG";
-
 // PNG signature
-static const uint8_t signature[] = { 0x89, 0x50, 0x4E, 0x47,
-                                     0x0D, 0x0A, 0x1A, 0x0A };
+static const uint8_t signature[] = { 0x89, 0x50, 0x4e, 0x47,
+                                     0x0d, 0x0a, 0x1a, 0x0a };
 
-// implementation of struct loader::load
-static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+// PNG loader implementation
+struct image* load_png(const char* file, const uint8_t* header, size_t header_len)
 {
+    struct image* img = NULL;
+
     // check signature
     if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
         return NULL;
     }
 
-    // load png image via Cairo toy API
-    cairo_surface_t* img = cairo_image_surface_create_from_png(file);
-    cairo_status_t status = cairo_surface_status(img);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        load_error(format_name, 0, "Decode failed: %s", cairo_status_to_string(status));
-        cairo_surface_destroy(img);
-        img = NULL;
+    img = calloc(1, sizeof(struct image));
+    if (!img) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
     }
+
+    // load png image via Cairo toy API
+    img->surface = cairo_image_surface_create_from_png(file);
+    const cairo_status_t status = cairo_surface_status(img->surface);
+    if (status != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "PNG decode failed: %s\n",
+                cairo_status_to_string(status));
+        free_image(img);
+        return NULL;
+    }
+
+    img->format = malloc(4);
+    if (!img->format) {
+        fprintf(stderr, "Not enough memory\n");
+        free_image(img);
+        return NULL;
+    }
+    strcpy((char*)img->format, "PNG");
 
     return img;
 }
-
-// declare format
-const struct loader png_loader = {
-    .format = format_name,
-    .load = load
-};

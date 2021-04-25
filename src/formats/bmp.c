@@ -5,19 +5,17 @@
 // BMP image format support
 //
 
-#include "loader.h"
+#include "../image.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 #define BITS_IN_BYTE 8
-
-// Format name
-static const char* const format_name = "BMP";
 
 // BMP signature
 static const uint8_t signature[] = { 'B', 'M' };
@@ -89,10 +87,10 @@ static ssize_t mask_shift(uint32_t mask)
     return start - BITS_IN_BYTE;
 }
 
-// implementation of struct loader::load
-static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+// BMP loader implementation
+struct image* load_bmp(const char* file, const uint8_t* header, size_t header_len)
 {
-    cairo_surface_t* img = NULL;
+    struct image* img = NULL;
     uint8_t* buffer = NULL;
     uint32_t* color_map = NULL;
 
@@ -103,72 +101,68 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
 
     const int fd = open(file, O_RDONLY);
     if (fd == -1) {
-        load_error(format_name, errno, "Unable to open file");
+        perror("Unable to open BMP file");
         return NULL;
     }
 
     // read file/bmp headers
     struct bmp_file_header fhdr;
-    if (read(fd, &fhdr, sizeof(fhdr)) != sizeof(fhdr)) {
-        load_error(format_name, errno ? errno : ENODATA, "Unable to read file header");
-        goto done;
-    }
     struct bmp_core_info bmp;
-    if (read(fd, &bmp, sizeof(bmp)) != sizeof(bmp)) {
-        load_error(format_name, errno ? errno : ENODATA, "Unable to read bmp info");
+    if (read(fd, &fhdr, sizeof(fhdr)) != sizeof(fhdr) ||
+        read(fd, &bmp, sizeof(bmp)) != sizeof(bmp)) {
+        fprintf(stderr, "Unable to read BMP headers: %s\n",
+                strerror(errno ? errno : ENODATA));
         goto done;
     }
 
     // RLE is not supported yet
     if (bmp.compression != 0 /* BI_RGB */ && bmp.compression != 3 /* BI_BITFIELDS */) {
-        load_error(format_name, 0, "Compression (%i) is not supported", bmp.compression);
+        fprintf(stderr, "BMP compression (%i) not supported\n", bmp.compression);
         goto done;
     }
 
     // read color palette
     if (bmp.clr_palette) {
         if (lseek(fd, sizeof(struct bmp_file_header) + bmp.dib_size, SEEK_SET) == -1) {
-            load_error(format_name, errno, "Unable to set file offset");
+            perror("Invalid BMP format");
             goto done;
         }
         const size_t map_sz = bmp.clr_palette * sizeof(uint32_t);
         color_map = malloc(map_sz);
         if (!color_map) {
-            load_error(format_name, errno, "Memory allocation error");
+            perror("Memory allocation error");
             goto done;
         }
         if (read(fd, color_map, map_sz) != (ssize_t)map_sz) {
-            load_error(format_name, errno ? errno : ENODATA, "Unable to read palette");
+            fprintf(stderr, "Unable to read BMP palette: %s\n",
+                    strerror(errno ? errno : ENODATA));
             goto done;
         }
     }
 
     // read pixel data
     if (lseek(fd, fhdr.offset, SEEK_SET) == -1) {
-        load_error(format_name, errno, "Unable to set file offset");
+        perror("Invalid BMP format");
         goto done;
     }
     const size_t stride = 4 * ((bmp.width * bmp.bpp + 31) / 32);
     const size_t size = abs(bmp.height) * stride;
     buffer = malloc(size);
     if (!buffer) {
-        load_error(format_name, errno, "Memory allocation error");
+        perror("Memory allocation error");
         goto done;
     }
     if (read(fd, buffer, size) != (ssize_t)size) {
-        load_error(format_name, errno ? errno : ENODATA, "Unable to read pixel data");
+        fprintf(stderr, "Unable to read BMP pixels: %s\n",
+                strerror(errno ? errno : ENODATA));
         goto done;
     }
 
-    // create canvas
-    img = cairo_image_surface_create(
-            bmp.bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
-            bmp.width, abs(bmp.height));
-    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
-        load_error(format_name, 0, "Unable to create surface: %s",
-                   cairo_status_to_string(cairo_surface_status(img)));
-        cairo_surface_destroy(img);
-        img = NULL;
+    // create image instance
+    img = create_image(bmp.bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+                       bmp.width, abs(bmp.height),
+                       "BMP %dbit", bmp.bpp);
+    if (!img) {
         goto done;
     }
 
@@ -185,8 +179,8 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     const ssize_t blue_shift = mask_shift(bmp.blue_mask);
 
     // flip and convert to argb (cairo internal format)
-    uint8_t* dst_data = cairo_image_surface_get_data(img);
-    const size_t dst_stride = cairo_image_surface_get_stride(img);
+    uint8_t* dst_data = cairo_image_surface_get_data(img->surface);
+    const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
     for (size_t y = 0; y < abs(bmp.height); ++y) {
         uint8_t* dst_y = dst_data + y * dst_stride;
         uint8_t* src_y;
@@ -246,7 +240,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
         }
     }
 
-    cairo_surface_mark_dirty(img);
+    cairo_surface_mark_dirty(img->surface);
 
 done:
     if (color_map) {
@@ -259,9 +253,3 @@ done:
 
     return img;
 }
-
-// declare format
-const struct loader bmp_loader = {
-    .format = format_name,
-    .load = load
-};

@@ -10,13 +10,13 @@
 #error Invalid build configuration
 #endif
 
-#include "loader.h"
+#include "../image.h"
 
 #include <string.h>
-#include <avif/avif.h>
+#include <stdio.h>
+#include <stdint.h>
 
-// Format name
-static const char* const format_name = "AV1";
+#include <avif/avif.h>
 
 // HEIF signature
 static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
@@ -26,13 +26,13 @@ static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
 // Number of components of rgba pixel
 #define RGBA_NUM 4
 
-// implementation of struct loader::load
-static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+// AV1 loader implementation
+struct image* load_avif(const char* file, const uint8_t* header, size_t header_len)
 {
     avifResult rc;
     avifRGBImage rgb;
     avifDecoder* decoder = NULL;
-    cairo_surface_t* img = NULL;
+    struct image* img = NULL;
 
     memset(&rgb, 0, sizeof(rgb));
 
@@ -45,7 +45,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     // open file in decoder
     decoder = avifDecoderCreate();
     if (!decoder) {
-        load_error(format_name, 0, "Unable to construct decoder");
+        fprintf(stderr, "Error creating AV1 decoder\n");
         return NULL;
     }
     rc = avifDecoderSetIOFile(decoder, file);
@@ -56,7 +56,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
         rc = avifDecoderNextImage(decoder); // first frame only
     }
     if (rc != AVIF_RESULT_OK) {
-        load_error(format_name, 0, "Decode error: %s", avifResultToString(rc));
+        fprintf(stderr, "Error decoding AV1: %s\n", avifResultToString(rc));
         goto done;
     }
 
@@ -68,22 +68,20 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     // decode the frame
     rc = avifImageYUVToRGB(decoder->image, &rgb);
     if (rc != AVIF_RESULT_OK) {
-        load_error(format_name, 0, "YUV to RGB failed: %s", avifResultToString(rc));
+        fprintf(stderr, "YUV to RGB failed: %s", avifResultToString(rc));
         goto done;
     }
 
-    // create surface
-    img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
-    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
-        load_error(format_name, 0, "Unable to create surface: %s",
-                   cairo_status_to_string(cairo_surface_status(img)));
-        cairo_surface_destroy(img);
-        img = NULL;
+    // create image instance
+    img = create_image(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height,
+                       "AV1 %dbit %s", rgb.depth,
+                       avifPixelFormatToString(decoder->image->yuvFormat));
+    if (!img) {
         goto done;
     }
 
     // put image on to cairo surface
-    uint8_t* data = cairo_image_surface_get_data(img);
+    uint8_t* data = cairo_image_surface_get_data(img->surface);
     if (rgb.depth == 8) {
         // simple 8bit image
         memcpy(data, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
@@ -91,7 +89,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
         // convert to 8bit image
         const size_t max_clr = 1 << rgb.depth;
         const size_t src_stride = rgb.width * RGBA_NUM * sizeof(uint16_t);
-        const size_t dst_stride = cairo_image_surface_get_stride(img);
+        const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
         for (size_t y = 0; y < rgb.height; ++y) {
             const uint16_t* src_y = (const uint16_t*)(rgb.pixels + y * src_stride);
             uint8_t* dst_y = data + y * dst_stride;
@@ -105,7 +103,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
             }
         }
     }
-    cairo_surface_mark_dirty(img);
+    cairo_surface_mark_dirty(img->surface);
 
 done:
     if (decoder) {
@@ -115,9 +113,3 @@ done:
 
     return img;
 }
-
-// declare format
-const struct loader avif_loader = {
-    .format = format_name,
-    .load = load
-};

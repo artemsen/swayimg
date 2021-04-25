@@ -98,11 +98,11 @@ endif
 # source files
 sources = [
   'src/draw.c',
+  'src/image.c',
   'src/main.c',
   'src/sway.c',
   'src/viewer.c',
   'src/window.c',
-  'src/formats/loader.c',
   'src/formats/png.c',
   'src/formats/bmp.c',
   xdg_shell_h,

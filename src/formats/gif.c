@@ -10,23 +10,22 @@
 #error Invalid build configuration
 #endif
 
-#include "loader.h"
+#include "../image.h"
 
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <gif_lib.h>
 
-// Format name
-static const char* const format_name = "GIF";
-
 // GIF signature
 static const uint8_t signature[] = { 'G', 'I', 'F' };
 
-// implementation of struct loader::load
-static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+// GIF loader implementation
+struct image* load_gif(const char* file, const uint8_t* header, size_t header_len)
 {
-    cairo_surface_t* img = NULL;
+    struct image* img = NULL;
 
     // check signature
     if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
@@ -36,27 +35,23 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     int err;
     GifFileType* gif = DGifOpenFileName(file, &err);
     if (!gif) {
-        load_error(format_name, 0, "[%i] %s", err, GifErrorString(err));
+        fprintf(stderr, "Invalid GIF file: [%i] %s\n", err, GifErrorString(err));
         return NULL;
     }
 
     // decode with high-level API
     if (DGifSlurp(gif) != GIF_OK) {
-        load_error(format_name, 0, "Decoder error: %s", GifErrorString(gif->Error));
+        fprintf(stderr, "Invalid GIF format: [%i] %s\n", err, GifErrorString(err));
         goto done;
     }
     if (!gif->SavedImages) {
-        load_error(format_name, 0, "No saved images");
+        fprintf(stderr, "No saved images in GIF\n");
         goto done;
     }
 
-    // create canvas
-    img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight);
-    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
-        load_error(format_name, 0, "Unable to create surface: %s",
-                   cairo_status_to_string(cairo_surface_status(img)));
-        cairo_surface_destroy(img);
-        img = NULL;
+    // create image instance
+    img = create_image(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight, "GIF");
+    if (!img) {
         goto done;
     }
 
@@ -64,8 +59,8 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
     const GifColorType* colors = gif->SColorMap ? gif->SColorMap->Colors :
                                                   frame->ColorMap->Colors;
-    uint32_t* base = (uint32_t*)(cairo_image_surface_get_data(img) +
-                     frame->Top * cairo_image_surface_get_stride(img));
+    uint32_t* base = (uint32_t*)(cairo_image_surface_get_data(img->surface) +
+                     frame->Top * cairo_image_surface_get_stride(img->surface));
     for (int y = 0; y < frame->Height; ++y) {
         uint32_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
@@ -80,15 +75,9 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
         }
     }
 
-    cairo_surface_mark_dirty(img);
+    cairo_surface_mark_dirty(img->surface);
 
 done:
     DGifCloseFile(gif, NULL);
     return img;
 }
-
-// declare format
-const struct loader gif_loader = {
-    .format = format_name,
-    .load = load
-};

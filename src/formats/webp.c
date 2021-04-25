@@ -10,19 +10,18 @@
 #error Invalid build configuration
 #endif
 
-#include "loader.h"
+#include "../image.h"
 
-#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 
 #include <webp/decode.h>
-
-// Format name
-static const char* const format_name = "WebP";
 
 // WebP signature
 static const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
@@ -33,13 +32,13 @@ static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
     return ((temp + (temp >> 8)) >> 8);
 }
 
-// implementation of struct loader::load
-static cairo_surface_t* load(const char* file, const uint8_t* header, size_t header_len)
+// WebP loader implementation
+struct image* load_webp(const char* file, const uint8_t* header, size_t header_len)
 {
     int fd;
     void* fdata = MAP_FAILED;
     size_t fsize = 0;
-    cairo_surface_t* img = NULL;
+    struct image* img = NULL;
 
     // check signature
     if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
@@ -49,47 +48,58 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
     // map file
     fd = open(file, O_RDONLY);
     if (fd == -1) {
-        load_error(format_name, errno, "Unable to open file");
+        perror("Unable to open WebP file");
         return NULL;
     }
     struct stat st;
     if (fstat(fd, &st) == -1) {
-        load_error(format_name, errno, "Unable to get file stat");
+        perror("Unable to get WebP file stat");
         goto done;
     }
     fsize = st.st_size;
     fdata = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (fdata == MAP_FAILED) {
-        load_error(format_name, errno, "Unable to map file");
+        perror("Unable to map WebP file");
         goto done;
     }
 
     // get image properties
     WebPBitstreamFeatures prop;
-    VP8StatusCode rc = WebPGetFeatures(fdata, fsize, &prop);
-    if (rc != VP8_STATUS_OK) {
-        load_error(format_name, 0, "Unable to get image properties, error %i", rc);
+    VP8StatusCode status = WebPGetFeatures(fdata, fsize, &prop);
+    if (status != VP8_STATUS_OK) {
+        fprintf(stderr, "Unable to get WebP image properties: status %i\n", status);
         goto done;
     }
 
-    // create surface
-    img = cairo_image_surface_create(
-            prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
-            prop.width, prop.height);
-    if (cairo_surface_status(img) != CAIRO_STATUS_SUCCESS) {
-        load_error(format_name, 0, "Unable to create surface: %s",
-                   cairo_status_to_string(cairo_surface_status(img)));
-        cairo_surface_destroy(img);
-        img = NULL;
+    // format description
+    char format[32];
+    strcpy(format, "WebP");
+    if (prop.format == 1) {
+        strcat(format, " lossy");
+    } else if (prop.format == 2) {
+        strcat(format, " lossless");
+    }
+    if (prop.has_alpha) {
+        strcat(format, " +alpha");
+    }
+    if (prop.has_animation) {
+        strcat(format, " +animation");
+    }
+
+    // create image instance
+    img = create_image(prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+                       prop.width, prop.height,
+                       "%s", format);
+    if (!img) {
         goto done;
     }
 
-    uint8_t* data = cairo_image_surface_get_data(img);
-    const size_t stride = cairo_image_surface_get_stride(img);
+    uint8_t* data = cairo_image_surface_get_data(img->surface);
+    const size_t stride = cairo_image_surface_get_stride(img->surface);
     const size_t len = stride * prop.height;
     if (!WebPDecodeBGRAInto(fdata, fsize, data, len, stride)) {
-        load_error(format_name, 0, "Something went wrong");
-        cairo_surface_destroy(img);
+        fprintf(stderr, "Error decoding WebP\n");
+        free_image(img);
         img = NULL;
         goto done;
     }
@@ -106,7 +116,7 @@ static cairo_surface_t* load(const char* file, const uint8_t* header, size_t hea
         }
     }
 
-    cairo_surface_mark_dirty(img);
+    cairo_surface_mark_dirty(img->surface);
 
 done:
     if (fdata != MAP_FAILED) {
@@ -116,9 +126,3 @@ done:
 
     return img;
 }
-
-// declare format
-const struct loader webp_loader = {
-    .format = format_name,
-    .load = load
-};
