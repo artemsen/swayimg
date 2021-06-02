@@ -14,11 +14,12 @@
  */
 static void print_help(void)
 {
-    puts("Usage: " APP_NAME " [OPTION...] FILE...");
+    puts("Usage: " APP_NAME " [OPTION...] [FILE|DIR]...");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -s, --scale=PERCENT      Set initial image scale");
     puts("  -i, --info               Show image properties");
+    puts("  -r, --recursive          Open images in subdirectories recursively");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
 }
@@ -92,11 +93,12 @@ int main(int argc, char* argv[])
         { "geometry",   required_argument, NULL, 'g' },
         { "scale",      required_argument, NULL, 's' },
         { "info",       no_argument,       NULL, 'i' },
+        { "recursive",  no_argument,       NULL, 'r' },
         { "version",    no_argument,       NULL, 'v' },
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "fg:s:ivh";
+    const char* short_opts = "fg:s:irvh";
 
     opterr = 0; // prevent native error messages
 
@@ -117,6 +119,9 @@ int main(int argc, char* argv[])
                 break;
             case 'i':
                 viewer.show_info = true;
+                break;
+            case 'r':
+                viewer.recursive = true;
                 break;
             case 'v':
                 print_version();

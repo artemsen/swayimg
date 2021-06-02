@@ -2,7 +2,7 @@
 .SH NAME
 swayimg \- image viewer for Sway
 .SH SYNOPSIS
-swayimg [\fIOPTIONS\fR...] \fIFILE...\fR
+swayimg [\fIOPTIONS\fR...] [\fIFILE\fR|\fIDIR\fR]...
 .SH DESCRIPTION
 The \fBswayimg\fR utility can be used for preview images inside the currently
 focused window (container).
@@ -32,6 +32,8 @@ Set initial scale of the image. The default value is \fB0\fR (auto): if the
 image is greater than the window, it will be zoomed out to fit the window.
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image properties on startup (path, size, current scale etc).
+.IP "\fB\-r\fR, \fB\-\-recursive\fR"
+Display images from subdirectories recursively.
 .
 .SH KEYBINDINGS
 .IP "\fBArrows\fR and vim-like moving keys (\fBh\fR,\fBj\fR,\fBk\fR,\fBl\fR)"
