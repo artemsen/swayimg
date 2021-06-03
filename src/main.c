@@ -101,6 +101,7 @@ int main(int argc, char* argv[])
     const char* short_opts = "fg:s:irvh";
 
     opterr = 0; // prevent native error messages
+    bool recursive = false;
 
     // parse arguments
     int opt;
@@ -121,7 +122,7 @@ int main(int argc, char* argv[])
                 viewer.show_info = true;
                 break;
             case 'r':
-                viewer.recursive = true;
+                recursive = true;
                 break;
             case 'v':
                 print_version();
@@ -146,6 +147,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    return show_image((const char**)&argv[optind], (size_t)argc - optind) ?
+    return show_image((const char**)&argv[optind], (size_t)argc - optind, recursive) ?
            EXIT_SUCCESS : EXIT_FAILURE;
 }

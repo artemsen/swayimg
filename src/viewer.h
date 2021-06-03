@@ -4,6 +4,7 @@
 #pragma once
 
 #include "sway.h"
+#include "browser.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -14,7 +15,7 @@ struct viewer {
     struct rect wnd;  ///< Window geometry (NULL=auto)
     bool fullscreen;  ///< Full screen mode
     bool show_info;   ///< Show image info
-    bool recursive;   ///< Recurse into subdirectories
+    browser* browser;
 };
 extern struct viewer viewer;
 
@@ -22,6 +23,7 @@ extern struct viewer viewer;
  * Start viewer.
  * @param[in] files file list
  * @param[in] files_num number of files
+ * @param[in] recursive recurse into subdirectories
  * @return true if operation completed successfully
  */
-bool show_image(const char** files, size_t files_num);
+bool show_image(const char** paths, size_t paths_num, bool recursive);

@@ -97,6 +97,7 @@ endif
 
 # source files
 sources = [
+  'src/browser.c',
   'src/draw.c',
   'src/image.c',
   'src/main.c',

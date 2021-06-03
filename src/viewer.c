@@ -12,12 +12,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fts.h>
-#include <errno.h>
-#include <limits.h>
-
 #ifndef MAX_PATH
 #define MAX_PATH 4096
 #endif
@@ -55,14 +49,6 @@ struct context {
     /** Coordinates of the top left corner. */
     int x;
     int y;
-
-    /** File list. */
-    struct flist {
-        char** files;
-        int max;
-        int total;
-        int current;
-    } flist;
 };
 static struct context ctx;
 
@@ -273,23 +259,17 @@ static bool load_file(const char* file)
  */
 static bool load_next_file(bool forward)
 {
-    const int delta = forward ? 1 : -1;
-    int idx = ctx.flist.current;
-    idx += delta;
-    while (idx != ctx.flist.current) {
-        if (idx >= ctx.flist.total) {
-            if (ctx.flist.current < 0) {
-                return false; // no one valid file
-            }
-            idx = 0;
-        } else if (idx < 0) {
-            idx = ctx.flist.total - 1;
-        }
-        if (load_file(ctx.flist.files[idx])) {
-            ctx.flist.current = idx;
+    const char* file = next_file(viewer.browser, forward);
+    if (!file) {
+        return false;
+    }
+    while (file) {
+        if(load_file(file)) {
             return true;
+        } else {
+            delete_current_file(viewer.browser);
         }
-        idx += delta;
+        file = next_file(viewer.browser, forward);
     }
     return false;
 }
@@ -317,7 +297,7 @@ static void on_redraw(cairo_surface_t* window)
                               "Format: %s\n"
                               "Size:   %ix%i\n"
                               "Scale:  %i%%",
-                              ctx.flist.files[ctx.flist.current], ctx.image->format,
+                              current_file(viewer.browser), ctx.image->format,
                               img_w, img_h, (int)(ctx.scale * 100));
     }
 
@@ -389,85 +369,7 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-void add_file(const char* file)
-{
-    if (ctx.flist.max == ctx.flist.total) {
-        ctx.flist.max *= 2;
-        ctx.flist.files = realloc(ctx.flist.files, ctx.flist.max * sizeof(char*));
-        if (!ctx.flist.files) {
-            fprintf(stderr, "Not enough memory\n");
-            return;
-        }
-    }
-    size_t len = strlen(file);
-    ctx.flist.files[ctx.flist.total] = malloc(len + 1);
-    memcpy(ctx.flist.files[ctx.flist.total], file, len);
-    ctx.flist.files[ctx.flist.total][len] = '\0';
-    ctx.flist.total++;
-}
-
-int compare(const FTSENT** a, const FTSENT** b)
-{
-    return (strcmp((*a)->fts_name, (*b)->fts_name));
-}
-
-int is_directory(const char *path)
-{
-   struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
-   return S_ISDIR(statbuf.st_mode);
-}
-
-void load_directory(const char *dir) {
-    FTS* file_system = NULL;
-    FTSENT* child = NULL;
-    FTSENT* parent = NULL;
-
-    file_system = fts_open((char* const*)&dir, FTS_COMFOLLOW | FTS_NOCHDIR, &compare);
-
-    if (NULL != file_system) {
-        while( (parent = fts_read(file_system)) != NULL) {
-            child = fts_children(file_system, 0);
-            if (errno != 0) {
-                perror("fts_children");
-            }
-
-            char* file = malloc(PATH_MAX);
-            while (NULL != child && NULL != child->fts_link) {
-                child = child->fts_link;
-                if (child->fts_info == FTS_F && (child->fts_level == 1 || viewer.recursive)) {
-                    snprintf(file, PATH_MAX, "%s%s", child->fts_path, child->fts_name);
-                    add_file(file);
-                }
-            }
-            free(file);
-        }
-        fts_close(file_system);
-    }
-}
-
-void process_files(const char** files, size_t files_num)
-{
-    ctx.flist.max = 1024;
-    ctx.flist.total = 0;
-    ctx.flist.current = -1;
-    ctx.flist.files = (char**)malloc(ctx.flist.max * sizeof(char*));
-    if (!ctx.flist.files) {
-        fprintf(stderr, "Not enough memory\n");
-        return;
-    }
-
-    for (size_t i = 0; i < files_num; i++) {
-        if (is_directory(files[i])) {
-            load_directory(files[i]);
-        } else {
-            add_file(files[i]);
-        }
-    }
-}
-
-bool show_image(const char** files, size_t files_num)
+bool show_image(const char** paths, size_t paths_num, bool recursive)
 {
     bool rc = false;
 
@@ -477,7 +379,10 @@ bool show_image(const char** files, size_t files_num)
         .on_keyboard = on_keyboard
     };
 
-    process_files(files, files_num);
+    viewer.browser = create_browser(paths, paths_num, recursive);
+    if (!viewer.browser) {
+        goto done;
+    }
 
     // create unique application id
     char app_id[64];
