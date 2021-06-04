@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "viewer.h"
+#include "browser.h"
 #include "draw.h"
 #include "window.h"
 #include "image.h"
@@ -255,7 +256,7 @@ static bool load_file(const char* file)
  */
 static bool load_next_file(bool forward)
 {
-    const char* file = next_file(viewer.browser, forward);
+    const char* file = get_next_file(forward);
     if (!file) {
         return false;
     }
@@ -263,9 +264,9 @@ static bool load_next_file(bool forward)
         if(load_file(file)) {
             return true;
         } else {
-            skip_current_file(viewer.browser);
+            skip_current_file();
         }
-        file = next_file(viewer.browser, forward);
+        file = get_next_file(forward);
     }
     return false;
 }
@@ -293,7 +294,7 @@ static void on_redraw(cairo_surface_t* window)
                               "Format: %s\n"
                               "Size:   %ix%i\n"
                               "Scale:  %i%%",
-                              current_file(viewer.browser), ctx.image->format,
+                              get_current_file(), ctx.image->format,
                               img_w, img_h, (int)(ctx.scale * 100));
     }
 

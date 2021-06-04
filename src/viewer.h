@@ -4,7 +4,6 @@
 #pragma once
 
 #include "sway.h"
-#include "browser.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -15,7 +14,6 @@ struct viewer {
     struct rect wnd;  ///< Window geometry (NULL=auto)
     bool fullscreen;  ///< Full screen mode
     bool show_info;   ///< Show image info
-    browser* browser;
 };
 extern struct viewer viewer;
 

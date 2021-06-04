@@ -19,6 +19,8 @@ struct browser {
     bool recursive;
 };
 
+struct browser browser;
+
 typedef struct {
     char** files;
     int max;
@@ -87,7 +89,7 @@ static void load_directory(loader* loader, const char* dir, bool recursive)
     }
 }
 
-browser* create_browser(const char** paths, size_t paths_num, bool recursive)
+bool create_browser(const char** paths, size_t paths_num, bool recursive)
 {
     loader loader;
     loader.max = 128;
@@ -95,7 +97,7 @@ browser* create_browser(const char** paths, size_t paths_num, bool recursive)
     loader.files = (char**)malloc(loader.max * sizeof(char*));
     if (!loader.files) {
         fprintf(stderr, "Not enough memory\n");
-        return NULL;
+        return false;
     }
 
     if (paths_num > 0) {
@@ -110,61 +112,56 @@ browser* create_browser(const char** paths, size_t paths_num, bool recursive)
         char cwd[PATH_MAX];
         if (getcwd(cwd, PATH_MAX)) {
             fprintf(stderr, "Unable to get current directory: %s\n", strerror(errno));
-            return NULL;
+            return false;
         }
         load_directory(&loader, cwd, recursive);
     }
 
-    browser* browser = malloc(sizeof(struct browser));
-    if (!browser) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    browser->total = loader.total;
-    browser->current = -1;
-    browser->files = (char**)realloc(loader.files, loader.total * sizeof(char*));
-    return browser;
+    browser.total = loader.total;
+    browser.current = -1;
+    browser.files = (char**)realloc(loader.files, loader.total * sizeof(char*));
+    return true;
 }
 
-void destroy_browser(browser* context)
+void destroy_browser()
 {
-    for (int i = 0; i < context->total; i++) {
-        if (context->files[i]) {
-            free(context->files[i]);
+    for (int i = 0; i < browser.total; i++) {
+        if (browser.files[i]) {
+            free(browser.files[i]);
         }
     }
-    free(context->files);
+    free(browser.files);
 }
 
-const char* next_file(browser* context, bool forward)
+const char* get_next_file(bool forward)
 {
-    if (context->total == 0) {
+    if (browser.total == 0) {
         return NULL;
     }
-    int initial = context->current;
+    int initial = browser.current;
     const int delta = forward ? 1 : -1;
     do {
-        context->current += delta;
-        if (context->current == context->total) {
-            context->current = 0;
-        } else if (context->current < 0) {
-            context->current = context->total - 1;
+        browser.current += delta;
+        if (browser.current == browser.total) {
+            browser.current = 0;
+        } else if (browser.current < 0) {
+            browser.current = browser.total - 1;
         }
-        if (context->current == initial) {
+        if (browser.current == initial) {
             // we have looped around all files without finding anything
             return NULL;
         }
-    } while (!context->files[context->current]);
-    return context->files[context->current];
+    } while (!browser.files[browser.current]);
+    return browser.files[browser.current];
 }
 
-const char* current_file(browser* context)
+const char* get_current_file()
 {
-    return context->files[context->current];
+    return browser.files[browser.current];
 }
 
-void skip_current_file(browser* context)
+void skip_current_file()
 {
-    free(context->files[context->current]);
-    context->files[context->current] = NULL;
+    free(browser.files[browser.current]);
+    browser.files[browser.current] = NULL;
 }

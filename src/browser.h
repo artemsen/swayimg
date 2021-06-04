@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-typedef struct browser browser;
+struct browser;
+
+extern struct browser browser;
 
 /**
  * Initialize browser.
@@ -11,8 +13,8 @@ typedef struct browser browser;
  * @param[in] paths_num number of paths
  * @return browser instance or NULL on error
  */
-browser* create_browser(const char** paths, size_t paths_num, bool recursive);
-void destroy_browser(browser* context);
+bool init_browser(const char** paths, size_t paths_num, bool recursive);
+void destroy_browser();
 
 /**
  * Get next (or previous) file path.
@@ -20,17 +22,17 @@ void destroy_browser(browser* context);
  * @param[in] forward whether to iterate forwards (iterates backwards when false)
  * @return path of next file
  */
-const char* next_file(browser* context, bool forward);
+const char* get_next_file(bool forward);
 
 /**
  * Get current file path.
  * @param[in] context browser context
  * @return path of current file
  */
-const char* current_file(browser* context);
+const char* get_current_file();
 
 /**
  * Remove current file from browser. It won't be returned on subsequent iterations.
  * @param[in] context browser context
  */
-void skip_current_file(browser* context);
+void skip_current_file();

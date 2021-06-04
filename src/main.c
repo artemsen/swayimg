@@ -2,6 +2,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
+#include "browser.h"
 #include "viewer.h"
 
 #include <stdio.h>
@@ -142,13 +143,12 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    viewer.browser = create_browser((const char**)&argv[optind], (size_t)argc - optind, recursive);
-    if (!viewer.browser) {
+    if (!create_browser((const char**)&argv[optind], (size_t)argc - optind, recursive)) {
         return EXIT_FAILURE;
     }
 
     bool rc = show_image();
 
-    destroy_browser(viewer.browser);
+    destroy_browser();
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }
