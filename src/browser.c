@@ -115,7 +115,7 @@ browser* create_browser(const char** paths, size_t paths_num, bool recursive)
         load_directory(&loader, cwd, recursive);
     }
 
-    browser* browser = malloc(sizeof(browser));
+    browser* browser = malloc(sizeof(struct browser));
     if (!browser) {
         fprintf(stderr, "Not enough memory\n");
         return NULL;
