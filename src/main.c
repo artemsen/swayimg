@@ -142,11 +142,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (optind == argc) {
-        fprintf(stderr, "No files to view.\n");
-        return EXIT_FAILURE;
-    }
-
     return show_image((const char**)&argv[optind], (size_t)argc - optind, recursive) ?
            EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -410,6 +410,7 @@ bool show_image(const char** paths, size_t paths_num, bool recursive)
         goto done;
     }
     if (!load_next_file(true)) {
+        fprintf(stderr, "No supported files to view.\n");
         goto done;
     }
     if (viewer.fullscreen) {

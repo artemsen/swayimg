@@ -7,6 +7,7 @@
 #include <fts.h>
 #include <errno.h>
 #include <limits.h>
+#include <unistd.h>
 
 struct browser {
     /** File list. */
@@ -92,12 +93,22 @@ browser* create_browser(const char** paths, size_t paths_num, bool recursive)
         return NULL;
     }
 
-    for (size_t i = 0; i < paths_num; i++) {
-        if (is_directory(paths[i])) {
-            load_directory(browser, paths[i]);
-        } else {
-            add_file(browser, paths[i]);
+    if (paths_num > 0) {
+        for (size_t i = 0; i < paths_num; i++) {
+            if (is_directory(paths[i])) {
+                load_directory(browser, paths[i]);
+            } else {
+                add_file(browser, paths[i]);
+            }
         }
+    } else {
+        char cwd[PATH_MAX];
+        if (!cwd) {
+            fprintf(stderr, "Unable to get current directory: \n", strerror(errno));
+            return NULL;
+        }
+        getcwd(cwd, PATH_MAX);
+        load_directory(browser, cwd);
     }
     return browser;
 }
