@@ -12,10 +12,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-#ifndef MAX_PATH
-#define MAX_PATH 4096
-#endif
-
 // Scale thresholds
 #define MIN_SCALE_PIXEL 10
 #define MAX_SCALE_TIMES 100
@@ -267,7 +263,7 @@ static bool load_next_file(bool forward)
         if(load_file(file)) {
             return true;
         } else {
-            delete_current_file(viewer.browser);
+            skip_current_file(viewer.browser);
         }
         file = next_file(viewer.browser, forward);
     }
@@ -369,7 +365,7 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-bool show_image(const char** paths, size_t paths_num, bool recursive)
+bool show_image()
 {
     bool rc = false;
 
@@ -378,11 +374,6 @@ bool show_image(const char** paths, size_t paths_num, bool recursive)
         .on_resize = on_resize,
         .on_keyboard = on_keyboard
     };
-
-    viewer.browser = create_browser(paths, paths_num, recursive);
-    if (!viewer.browser) {
-        goto done;
-    }
 
     // create unique application id
     char app_id[64];

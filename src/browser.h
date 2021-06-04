@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -9,7 +11,8 @@ typedef struct browser browser;
  * @param[in] paths_num number of paths
  * @return browser instance or NULL on error
  */
-struct browser* create_browser(const char** paths, size_t paths_num, bool recursive);
+browser* create_browser(const char** paths, size_t paths_num, bool recursive);
+void destroy_browser(browser* context);
 
 /**
  * Get next (or previous) file path.
@@ -30,4 +33,4 @@ const char* current_file(browser* context);
  * Remove current file from browser. It won't be returned on subsequent iterations.
  * @param[in] context browser context
  */
-void delete_current_file(browser* context);
+void skip_current_file(browser* context);

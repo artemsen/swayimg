@@ -21,9 +21,6 @@ extern struct viewer viewer;
 
 /**
  * Start viewer.
- * @param[in] files file list
- * @param[in] files_num number of files
- * @param[in] recursive recurse into subdirectories
  * @return true if operation completed successfully
  */
-bool show_image(const char** paths, size_t paths_num, bool recursive);
+bool show_image();

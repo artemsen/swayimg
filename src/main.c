@@ -142,6 +142,13 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    return show_image((const char**)&argv[optind], (size_t)argc - optind, recursive) ?
-           EXIT_SUCCESS : EXIT_FAILURE;
+    viewer.browser = create_browser((const char**)&argv[optind], (size_t)argc - optind, recursive);
+    if (!viewer.browser) {
+        return EXIT_FAILURE;
+    }
+
+    bool rc = show_image();
+
+    destroy_browser(viewer.browser);
+    return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }

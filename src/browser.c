@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #include "browser.h"
 
 #include <stdio.h>
@@ -10,37 +12,42 @@
 #include <unistd.h>
 
 struct browser {
-    /** File list. */
     char** files;
     int max;
     int total;
     int current;
-    bool recursive;   ///< Recurse into subdirectories
+    bool recursive;
 };
 
-void add_file(browser* browser, const char* file)
+typedef struct {
+    char** files;
+    int max;
+    int total;
+} loader;
+
+static void add_file(loader* loader, const char* file)
 {
-    if (browser->max == browser->total) {
-        browser->max *= 2;
-        browser->files = realloc(browser->files, browser->max * sizeof(char*));
-        if (!browser->files) {
+    if (loader->max == loader->total) {
+        loader->max += 256;
+        loader->files = realloc(loader->files, loader->max * sizeof(char*));
+        if (!loader->files) {
             fprintf(stderr, "Not enough memory\n");
             return;
         }
     }
-    size_t len = strlen(file);
-    browser->files[browser->total] = malloc(len + 1);
-    memcpy(browser->files[browser->total], file, len);
-    browser->files[browser->total][len] = '\0';
-    browser->total++;
+    const size_t len = strlen(file);
+    loader->files[loader->total] = malloc(len + 1);
+    memcpy(loader->files[loader->total], file, len);
+    loader->files[loader->total][len] = '\0';
+    loader->total++;
 }
 
-int compare(const FTSENT** a, const FTSENT** b)
+static int compare(const FTSENT** a, const FTSENT** b)
 {
     return (strcmp((*a)->fts_name, (*b)->fts_name));
 }
 
-int is_directory(const char *path)
+static bool is_directory(const char *path)
 {
    struct stat statbuf;
    if (stat(path, &statbuf) != 0)
@@ -48,47 +55,45 @@ int is_directory(const char *path)
    return S_ISDIR(statbuf.st_mode);
 }
 
-void load_directory(browser* context, const char *dir) {
+static void load_directory(loader* loader, const char* dir, bool recursive)
+{
     FTS* file_system = NULL;
     FTSENT* child = NULL;
     FTSENT* parent = NULL;
 
-    file_system = fts_open((char* const*)&dir, FTS_COMFOLLOW | FTS_NOCHDIR, &compare);
+    char* const dirs[2] = { (char* const)dir, NULL };
+    file_system = fts_open(dirs, FTS_COMFOLLOW | FTS_NOCHDIR, &compare);
 
     if (file_system) {
+        char file[PATH_MAX];
         while( (parent = fts_read(file_system))) {
             child = fts_children(file_system, 0);
             if (errno != 0) {
                 fprintf(stderr, "Unable to load directory %s: %s\n", dir, strerror(errno));
+                break;
             }
 
-            char* file = malloc(PATH_MAX);
             while (child && child->fts_link) {
                 child = child->fts_link;
-                if (child->fts_info == FTS_F && (context->recursive || child->fts_level == 1)) {
+                if (child->fts_info == FTS_F && (recursive || child->fts_level == 1)) {
                     snprintf(file, PATH_MAX, "%s%s", child->fts_path, child->fts_name);
-                    add_file(context, file);
+                    add_file(loader, file);
                 }
             }
-            free(file);
         }
         fts_close(file_system);
+    } else {
+        fprintf(stderr, "Unable to traverse directory %s: %s\n", dir, strerror(errno));
     }
 }
 
 browser* create_browser(const char** paths, size_t paths_num, bool recursive)
 {
-    browser* browser = malloc(sizeof(browser));
-    if (!browser) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    browser->max = 1024;
-    browser->total = 0;
-    browser->current = -1;
-    browser->recursive = recursive;
-    browser->files = (char**)malloc(browser->max * sizeof(char*));
-    if (!browser->files) {
+    loader loader;
+    loader.max = 128;
+    loader.total = 0;
+    loader.files = (char**)malloc(loader.max * sizeof(char*));
+    if (!loader.files) {
         fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
@@ -96,21 +101,39 @@ browser* create_browser(const char** paths, size_t paths_num, bool recursive)
     if (paths_num > 0) {
         for (size_t i = 0; i < paths_num; i++) {
             if (is_directory(paths[i])) {
-                load_directory(browser, paths[i]);
+                load_directory(&loader, paths[i], recursive);
             } else {
-                add_file(browser, paths[i]);
+                add_file(&loader, paths[i]);
             }
         }
     } else {
         char cwd[PATH_MAX];
-        if (!cwd) {
-            fprintf(stderr, "Unable to get current directory: \n", strerror(errno));
+        if (getcwd(cwd, PATH_MAX)) {
+            fprintf(stderr, "Unable to get current directory: %s\n", strerror(errno));
             return NULL;
         }
-        getcwd(cwd, PATH_MAX);
-        load_directory(browser, cwd);
+        load_directory(&loader, cwd, recursive);
     }
+
+    browser* browser = malloc(sizeof(browser));
+    if (!browser) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
+    }
+    browser->total = loader.total;
+    browser->current = -1;
+    browser->files = (char**)realloc(loader.files, loader.total * sizeof(char*));
     return browser;
+}
+
+void destroy_browser(browser* context)
+{
+    for (int i = 0; i < context->total; i++) {
+        if (context->files[i]) {
+            free(context->files[i]);
+        }
+    }
+    free(context->files);
 }
 
 const char* next_file(browser* context, bool forward)
@@ -140,7 +163,7 @@ const char* current_file(browser* context)
     return context->files[context->current];
 }
 
-void delete_current_file(browser* context)
+void skip_current_file(browser* context)
 {
     free(context->files[context->current]);
     context->files[context->current] = NULL;
