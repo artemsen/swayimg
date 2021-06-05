@@ -30,7 +30,7 @@ typedef struct {
 static void add_file(loader* loader, const char* file)
 {
     if (loader->max == loader->total) {
-        loader->max += 256;
+        loader->max = (loader->max < 32) ? 32 : (loader->max + (loader->max >> 1));
         loader->files = realloc(loader->files, loader->max * sizeof(char*));
         if (!loader->files) {
             fprintf(stderr, "Not enough memory\n");
@@ -92,7 +92,7 @@ static void load_directory(loader* loader, const char* dir, bool recursive)
 bool create_browser(const char** paths, size_t paths_num, bool recursive)
 {
     loader loader;
-    loader.max = 128;
+    loader.max = paths_num;
     loader.total = 0;
     loader.files = (char**)malloc(loader.max * sizeof(char*));
     if (!loader.files) {
