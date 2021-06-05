@@ -24,6 +24,8 @@ void destroy_browser();
  */
 const char* get_next_file(bool forward);
 
+const char* get_next_directory(bool forward);
+
 /**
  * Get current file path.
  * @param[in] context browser context

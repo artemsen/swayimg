@@ -254,9 +254,9 @@ static bool load_file(const char* file)
  * @param[in] forward move direction (true=forward/false=backward).
  * @return false if no file can be opened
  */
-static bool load_next_file(bool forward)
+static bool load_next_file(bool forward, bool skip_dir)
 {
-    const char* file = get_next_file(forward);
+    const char* file = skip_dir ? get_next_directory(forward) : get_next_file(forward);
     if (!file) {
         return false;
     }
@@ -313,11 +313,15 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_next_file(false);
+            return load_next_file(false, false);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_next_file(true);
+            return load_next_file(true, false);
+        case XKB_KEY_P:
+            return load_next_file(false, true);
+        case XKB_KEY_N:
+            return load_next_file(true, true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return change_position(move_left);
@@ -401,7 +405,7 @@ bool show_image()
     if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
         goto done;
     }
-    if (!load_next_file(true)) {
+    if (!load_next_file(true, false)) {
         fprintf(stderr, "No supported files to view.\n");
         goto done;
     }

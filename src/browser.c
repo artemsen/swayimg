@@ -155,6 +155,31 @@ const char* get_next_file(bool forward)
     return browser.files[browser.current];
 }
 
+static int dirname_length(const char* dir)
+{
+    int length = strlen(dir);
+    while (length >= 0 && dir[length] != '/') {
+        length--;
+    }
+    return length;
+}
+
+const char* get_next_directory(bool forward)
+{
+    const char* current = browser.files[browser.current];
+    int current_dir_length = dirname_length(current);
+    const char* next = get_next_file(forward);
+    int next_dir_length = dirname_length(next);
+    while (next) {
+        if (current_dir_length != next_dir_length || strncmp(current, next, next_dir_length) != 0) {
+            return next;
+        }
+        next = get_next_file(forward);
+        next_dir_length = dirname_length(next);
+    }
+    return next;
+}
+
 const char* get_current_file()
 {
     return browser.files[browser.current];

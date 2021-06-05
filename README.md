@@ -40,6 +40,8 @@ See `swayimg --help` or `man swayimg` for details.
 - `f`, `F11`: Toggle full screen mode;
 - `PgDown`, `Space`, `n`: Open next file;
 - `PgUp`, `p`: Open previous file;
+- `N`: Skip to first file in next directory;
+- `P`: Skip to last file in previous directory;
 - `Esc`, `Enter`, `F10`, `q`: Exit the program.
 
 ## Build and install
