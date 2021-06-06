@@ -366,6 +366,12 @@ static bool on_keyboard(xkb_keysym_t key)
             return load_next_file(false, true);
         case XKB_KEY_N:
             return load_next_file(true, true);
+        case XKB_KEY_Home:
+            ctx.flist.current = -1;
+            return load_next_file(true, false);
+        case XKB_KEY_End:
+            ctx.flist.current = 0;
+            return load_next_file(false, false);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return change_position(move_left);

@@ -42,6 +42,8 @@ See `swayimg --help` or `man swayimg` for details.
 - `PgUp`, `p`: Open previous file;
 - `N`: Skip to first file in next directory;
 - `P`: Skip to last file in previous directory;
+- `Home`: Go to the first file;
+- `End`: Go to the last file;
 - `Esc`, `Enter`, `F10`, `q`: Exit the program.
 
 ## Build and install
