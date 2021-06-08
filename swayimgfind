@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+show_usage() {
+    echo 'Usage:'
+    echo '  swayimgfind find_arg... [-- swayimg_arg...]'
+    echo '  swayimgfind --help'
+}
+
+parse_options() {
+    SWAYIMG_OPTS=()
+    FIND_OPTS=()
+    ARGS="FIND_OPTS"
+    while [ $# -gt 0 ]; do
+        case $1 in
+        --help) show_usage; exit 0 ;;
+        --)     ARGS="SWAYIMG_OPTS" ;;
+        *)      eval "$ARGS+=($1)" ;;
+        esac
+        shift
+    done
+}
+
+main() {
+    set -e -o pipefail;
+    parse_options "$@"
+    find "${FIND_OPTS[@]}" | build/swayimg "${SWAYIMG_OPTS[@]}"
+}
+
+main "$@"
