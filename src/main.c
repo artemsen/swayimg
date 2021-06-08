@@ -4,10 +4,13 @@
 #include "config.h"
 #include "viewer.h"
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <limits.h>
+#include <fcntl.h>
 
 /**
  * Print help usage info.
@@ -82,6 +85,49 @@ bool parse_rect(const char* arg, struct rect* rect)
     return true;
 }
 
+char** read_filelist(size_t* files_num)
+{
+    size_t buffer_len = PATH_MAX;
+    char* buffer = NULL;
+    ssize_t line_len;
+
+    *files_num = 0;
+    size_t files_max = 32;
+    char** files = malloc(sizeof(char*) * files_max);
+    if(!files) {
+        fprintf(stderr, "Not enough memory!\n");
+        return NULL;
+    }
+
+    // set stdin to non-blocking, so it doesn't hang waiting for interactive input
+    int flags = fcntl(0, F_GETFL, 0);
+    fcntl(0, F_SETFL, flags | O_NONBLOCK);
+
+    line_len = getline(&buffer, &buffer_len, stdin);
+    while (line_len >= 0) {
+        while (buffer[line_len-1] == '\r' || buffer[line_len-1] == '\n') {
+            buffer[--line_len] = '\0';
+        }
+        if (*files_num == files_max) {
+            files_max += files_max >> 1;
+            files = realloc(files, sizeof(char*) * files_max);
+            if (!files) {
+                fprintf(stderr, "Not enough memory!\n");
+                free(buffer);
+                return NULL;
+            }
+        }
+
+        files[*files_num] = strdup(buffer);
+        (*files_num)++;
+
+        line_len = getline(&buffer, &buffer_len, stdin);
+    }
+
+    free(buffer);
+    return files;
+}
+
 /**
  * Application entry point.
  */
@@ -136,11 +182,17 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (optind == argc) {
+    char** files = &argv[optind];
+    size_t files_num = (size_t)argc - optind;
+
+    if (files_num == 0) {
+        files = read_filelist(&files_num);
+    }
+
+    if (files_num == 0) {
         fprintf(stderr, "No files to view.\n");
         return EXIT_FAILURE;
     }
 
-    return show_image((const char**)&argv[optind], (size_t)argc - optind) ?
-           EXIT_SUCCESS : EXIT_FAILURE;
+    return show_image((const char**)files, files_num) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
