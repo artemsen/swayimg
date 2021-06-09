@@ -255,30 +255,62 @@ static bool load_file(const char* file)
     return true;
 }
 
+static int dirname_length(const char* dir)
+{
+    int length = strlen(dir);
+    while (length >= 0 && dir[length] != '/') {
+        length--;
+    }
+    return length;
+}
+
+static const char* get_next_file(bool forward)
+{
+    if (ctx.flist.total == 0) {
+        return NULL;
+    }
+    ctx.flist.current += forward ? 1 : -1;
+    if (ctx.flist.current == ctx.flist.total) {
+        ctx.flist.current = 0;
+    } else if (ctx.flist.current < 0) {
+        ctx.flist.current = ctx.flist.total - 1;
+    }
+    return ctx.flist.files[ctx.flist.current];
+}
+
+static const char* get_next_directory(bool forward)
+{
+    const int initial = ctx.flist.current;
+    const char* current = ctx.flist.files[ctx.flist.current];
+    const int current_dir_length = dirname_length(current);
+    const char* next = get_next_file(forward);
+    int next_dir_length = dirname_length(next);
+    while (next && ctx.flist.current != initial) {
+        if (current_dir_length != next_dir_length || strncmp(current, next, next_dir_length) != 0) {
+            return next;
+        }
+        next = get_next_file(forward);
+        next_dir_length = dirname_length(next);
+    }
+    return next;
+}
+
 /**
  * Open next file.
  * @param[in] forward move direction (true=forward/false=backward).
  * @return false if no file can be opened
  */
-static bool load_next_file(bool forward)
+static bool load_next_file(bool forward, bool skip_dir)
 {
-    const int delta = forward ? 1 : -1;
-    int idx = ctx.flist.current;
-    idx += delta;
-    while (idx != ctx.flist.current) {
-        if (idx >= ctx.flist.total) {
-            if (ctx.flist.current < 0) {
-                return false; // no one valid file
-            }
-            idx = 0;
-        } else if (idx < 0) {
-            idx = ctx.flist.total - 1;
-        }
-        if (load_file(ctx.flist.files[idx])) {
-            ctx.flist.current = idx;
+    const char* file = skip_dir ? get_next_directory(forward) : get_next_file(forward);
+    if (!file) {
+        return false;
+    }
+    while (file) {
+        if(load_file(file)) {
             return true;
         }
-        idx += delta;
+        file = get_next_file(forward);
     }
     return false;
 }
@@ -325,11 +357,15 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_next_file(false);
+            return load_next_file(false, false);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_next_file(true);
+            return load_next_file(true, false);
+        case XKB_KEY_P:
+            return load_next_file(false, true);
+        case XKB_KEY_N:
+            return load_next_file(true, true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return change_position(move_left);
@@ -417,7 +453,7 @@ bool show_image(const char** files, size_t files_num)
     if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
         goto done;
     }
-    if (!load_next_file(true)) {
+    if (!load_next_file(true, false)) {
         goto done;
     }
     if (viewer.fullscreen) {
