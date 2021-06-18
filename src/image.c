@@ -12,33 +12,34 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 /**
  * Image loader function.
- * @param[in] file path to the image file
- * @param[in] header header data
- * @param[in] header_len length if header data in bytes
+ * @param[in] data raw image data
+ * @param[in] size size of image data in bytes
  * @return image instance or NULL if decode failed
  */
-typedef struct image* (*loader)(const char* file, const uint8_t* header, size_t header_len);
+typedef struct image* (*loader)(const uint8_t* data, size_t size);
 
 // declaration of loaders
-struct image* load_bmp(const char* file, const uint8_t* header, size_t header_len);
-struct image* load_png(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_bmp(const uint8_t* data, size_t size);
+struct image* load_png(const uint8_t* data, size_t size);
 #ifdef HAVE_LIBJPEG
-struct image* load_jpeg(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_jpeg(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBGIF
-struct image* load_gif(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_gif(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBRSVG
-struct image* load_svg(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_svg(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBWEBP
-struct image* load_webp(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_webp(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBAVIF
-struct image* load_avif(const char* file, const uint8_t* header, size_t header_len);
+struct image* load_avif(const uint8_t* data, size_t size);
 #endif
 
 // list of available loaders (functions from formats/*)
@@ -62,52 +63,59 @@ static const loader loaders[] = {
 #endif
 };
 
-struct image* load_image(const char* file)
+struct image* load_image(const void* data, size_t size)
 {
     struct image* img = NULL;
+    for (size_t i = 0; !img && i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
+        img = loaders[i]((const uint8_t*)data, size);
+    }
+    return img;
+}
 
-    // read header
-    uint8_t header[16];
-    const int fd = open(file, O_RDONLY);
+struct image* load_image_file(const char* file)
+{
+    struct image* img = NULL;
+    void* data = MAP_FAILED;
+    struct stat st;
+    int fd;
+
+    // open file
+    fd = open(file, O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "Unable to open file %s: %s\n", file, strerror(errno));
-        return NULL;
+        goto done;
     }
-    if (read(fd, header, sizeof(header)) != sizeof(header)) {
-        fprintf(stderr, "Unable to read file %s: %s\n", file,
-                strerror(errno ? errno : ENODATA));
-        close(fd);
-        return NULL;
+    // get file size
+    if (fstat(fd, &st) == -1) {
+        fprintf(stderr, "Unable to get file stat for %s: %s\n", file, strerror(errno));
+        goto done;
     }
-    close(fd);
-
-    // try to decode
-    for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        img = loaders[i](file, header, sizeof(header));
-        if (img) {
-            return img;
-        }
+    // map file to memory
+    data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (data == MAP_FAILED) {
+        fprintf(stderr, "Unable to map shared file: [%i] %s\n", errno,
+                strerror(errno));
+        goto done;
     }
 
-    fprintf(stderr, "Unsupported file format: %s\n", file);
-    return NULL;
-}
-
-void free_image(struct image* img)
-{
+    img = load_image(data, st.st_size);
     if (img) {
-        if (img->surface) {
-            cairo_surface_destroy(img->surface);
-        }
-        if (img->format) {
-            free((void*)img->format);
-        }
-        free(img);
+        img->name = file;
+    } else {
+        fprintf(stderr, "Unsupported file format: %s\n", file);
     }
+
+done:
+    if (data != MAP_FAILED) {
+        munmap(data, st.st_size);
+    }
+    if (fd == -1) {
+        close(fd);
+    }
+    return img;
 }
 
-struct image* create_image(cairo_format_t color, size_t width, size_t height,
-                           const char* format, ...)
+struct image* create_image(cairo_format_t color, size_t width, size_t height)
 {
     struct image* img = NULL;
 
@@ -126,25 +134,45 @@ struct image* create_image(cairo_format_t color, size_t width, size_t height,
         return NULL;
     }
 
+    return img;
+}
+
+void set_image_meta(struct image* img, const char* format, ...)
+{
+    int len;
+
     va_list args;
     va_start(args, format);
-    int sz = vsnprintf(NULL, 0, format, args);
+    len = vsnprintf(NULL, 0, format, args);
     va_end(args);
-    if (sz < 0) {
+    if (len < 0) {
         fprintf(stderr, "Invalid format description\n");
         free_image(img);
-        return NULL;
+        return;
     }
-    sz += 1; // including the terminating null
-    img->format = malloc(sz);
+
+    len += 1; // including the terminating null
+    img->format = malloc(len);
     if (!img->format) {
         fprintf(stderr, "Not enough memory\n");
         free_image(img);
-        return NULL;
+        return;
     }
-    va_start(args, format);
-    vsnprintf((char*)img->format, sz, format, args);
-    va_end(args);
 
-    return img;
+    va_start(args, format);
+    vsnprintf((char*)img->format, len, format, args);
+    va_end(args);
+}
+
+void free_image(struct image* img)
+{
+    if (img) {
+        if (img->format) {
+            free((void*)img->format);
+        }
+        if (img->surface) {
+            cairo_surface_destroy(img->surface);
+        }
+        free(img);
+    }
 }

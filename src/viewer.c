@@ -220,7 +220,7 @@ static bool change_scale(enum scale_op op)
  */
 static bool load_file(const char* file)
 {
-    struct image* img = load_image(file);
+    struct image* img = load_image_file(file);
     if (!img) {
         return false;
     }
@@ -306,7 +306,8 @@ static void on_redraw(cairo_surface_t* window)
                               "Format: %s\n"
                               "Size:   %ix%i\n"
                               "Scale:  %i%%",
-                              ctx.flist.files[ctx.flist.current], ctx.image->format,
+                              ctx.image->name ? ctx.image->name : "{STDIN}",
+                              ctx.image->format,
                               img_w, img_h, (int)(ctx.scale * 100));
     }
 

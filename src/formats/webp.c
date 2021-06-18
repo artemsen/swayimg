@@ -12,14 +12,9 @@
 
 #include "../image.h"
 
-#include <errno.h>
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 #include <webp/decode.h>
 
@@ -33,42 +28,19 @@ static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
 }
 
 // WebP loader implementation
-struct image* load_webp(const char* file, const uint8_t* header, size_t header_len)
+struct image* load_webp(const uint8_t* data, size_t size)
 {
-    int fd;
-    void* fdata = MAP_FAILED;
-    size_t fsize = 0;
-    struct image* img = NULL;
-
     // check signature
-    if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
+    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
-    }
-
-    // map file
-    fd = open(file, O_RDONLY);
-    if (fd == -1) {
-        perror("Unable to open WebP file");
-        return NULL;
-    }
-    struct stat st;
-    if (fstat(fd, &st) == -1) {
-        perror("Unable to get WebP file stat");
-        goto done;
-    }
-    fsize = st.st_size;
-    fdata = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (fdata == MAP_FAILED) {
-        perror("Unable to map WebP file");
-        goto done;
     }
 
     // get image properties
     WebPBitstreamFeatures prop;
-    VP8StatusCode status = WebPGetFeatures(fdata, fsize, &prop);
+    VP8StatusCode status = WebPGetFeatures(data, size, &prop);
     if (status != VP8_STATUS_OK) {
         fprintf(stderr, "Unable to get WebP image properties: status %i\n", status);
-        goto done;
+        return NULL;
     }
 
     // format description
@@ -87,42 +59,35 @@ struct image* load_webp(const char* file, const uint8_t* header, size_t header_l
     }
 
     // create image instance
-    img = create_image(prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
-                       prop.width, prop.height,
-                       "%s", format);
+    const cairo_format_t fmt = prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
+    struct image* img = create_image(fmt, prop.width, prop.height);
     if (!img) {
-        goto done;
+        return NULL;
     }
+    set_image_meta(img, "%s", format);
 
-    uint8_t* data = cairo_image_surface_get_data(img->surface);
+    uint8_t* dst_data = cairo_image_surface_get_data(img->surface);
     const size_t stride = cairo_image_surface_get_stride(img->surface);
     const size_t len = stride * prop.height;
-    if (!WebPDecodeBGRAInto(fdata, fsize, data, len, stride)) {
+    if (!WebPDecodeBGRAInto(data, size, dst_data, len, stride)) {
         fprintf(stderr, "Error decoding WebP\n");
         free_image(img);
-        img = NULL;
-        goto done;
+        return NULL;
     }
 
     // handle transparency
     if (prop.has_alpha) {
         for (size_t i = 0; i < len; i += 4 /* argb */) {
-            const uint8_t alpha = data[i + 3];
+            const uint8_t alpha = dst_data[i + 3];
             if (alpha != 0xff) {
-                data[i + 0] = multiply_alpha(alpha, data[i + 0]);
-                data[i + 1] = multiply_alpha(alpha, data[i + 1]);
-                data[i + 2] = multiply_alpha(alpha, data[i + 2]);
+                dst_data[i + 0] = multiply_alpha(alpha, dst_data[i + 0]);
+                dst_data[i + 1] = multiply_alpha(alpha, dst_data[i + 1]);
+                dst_data[i + 2] = multiply_alpha(alpha, dst_data[i + 2]);
             }
         }
     }
 
     cairo_surface_mark_dirty(img->surface);
-
-done:
-    if (fdata != MAP_FAILED) {
-        munmap(fdata, fsize);
-    }
-    close(fd);
 
     return img;
 }

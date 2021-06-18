@@ -41,20 +41,14 @@ static void jpg_error_exit(j_common_ptr jpg)
 }
 
 // JPEG loader implementation
-struct image* load_jpeg(const char* file, const uint8_t* header, size_t header_len)
+struct image* load_jpeg(const uint8_t* data, size_t size)
 {
     struct image* img = NULL;
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
     // check signature
-    if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
-        return NULL;
-    }
-
-    FILE* fd = fopen(file, "rb");
-    if (!fd) {
-        perror("Unable to open file");
+    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
@@ -63,12 +57,11 @@ struct image* load_jpeg(const char* file, const uint8_t* header, size_t header_l
     if (setjmp(err.setjmp)) {
         free_image(img);
         jpeg_destroy_decompress(&jpg);
-        fclose(fd);
         return NULL;
     }
 
     jpeg_create_decompress(&jpg);
-    jpeg_stdio_src(&jpg, fd);
+    jpeg_mem_src(&jpg, data, size);
     jpeg_read_header(&jpg, TRUE);
     jpeg_start_decompress(&jpg);
 #ifdef LIBJPEG_TURBO_VERSION
@@ -76,13 +69,12 @@ struct image* load_jpeg(const char* file, const uint8_t* header, size_t header_l
 #endif // LIBJPEG_TURBO_VERSION
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_RGB24, jpg.output_width, jpg.output_height,
-                       "JPEG %dbit", jpg.out_color_components * 8);
+    img = create_image(CAIRO_FORMAT_RGB24, jpg.output_width, jpg.output_height);
     if (!img) {
         jpeg_destroy_decompress(&jpg);
-        fclose(fd);
         return NULL;
     }
+    set_image_meta(img, "JPEG %dbit", jpg.out_color_components * 8);
 
     uint8_t* raw = cairo_image_surface_get_data(img->surface);
     const size_t stride = cairo_image_surface_get_stride(img->surface);
@@ -116,7 +108,6 @@ struct image* load_jpeg(const char* file, const uint8_t* header, size_t header_l
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
-    fclose(fd);
 
     return img;
 }

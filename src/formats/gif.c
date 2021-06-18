@@ -22,26 +22,49 @@
 // GIF signature
 static const uint8_t signature[] = { 'G', 'I', 'F' };
 
-// GIF loader implementation
-struct image* load_gif(const char* file, const uint8_t* header, size_t header_len)
-{
-    struct image* img = NULL;
+// Buffer description for GIF reader
+struct buffer {
+    const uint8_t* data;
+    const size_t size;
+    size_t position;
+};
 
+// GIF reader callback, see `InputFunc` in gif_lib.h
+static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
+{
+    struct buffer* buf = (struct buffer*)gif->UserData;
+    if (sz >= 0 && buf && buf->position + sz <= buf->size) {
+        memcpy(dst, buf->data + buf->position, sz);
+        buf->position += sz;
+        return sz;
+    }
+    return -1;
+}
+
+// GIF loader implementation
+struct image* load_gif(const uint8_t* data, size_t size)
+{
     // check signature
-    if (header_len < sizeof(signature) || memcmp(header, signature, sizeof(signature))) {
+    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
+    struct buffer buf = {
+        .data = data,
+        .size = size,
+        .position = 0,
+    };
+
     int err;
-    GifFileType* gif = DGifOpenFileName(file, &err);
+    GifFileType* gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        fprintf(stderr, "Invalid GIF file: [%i] %s\n", err, GifErrorString(err));
+        fprintf(stderr, "Unable to open GIF decoder: [%i] %s\n", err, GifErrorString(err));
         return NULL;
     }
 
     // decode with high-level API
     if (DGifSlurp(gif) != GIF_OK) {
-        fprintf(stderr, "Invalid GIF format: [%i] %s\n", err, GifErrorString(err));
+        fprintf(stderr, "Unable to decode GIF: [%i] %s\n", err, GifErrorString(err));
         goto done;
     }
     if (!gif->SavedImages) {
@@ -50,10 +73,12 @@ struct image* load_gif(const char* file, const uint8_t* header, size_t header_le
     }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight, "GIF");
+    struct image* img = NULL;
+    img = create_image(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight);
     if (!img) {
         goto done;
     }
+    set_image_meta(img, "GIF");
 
     // we don't support animation, show the first frame only
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;

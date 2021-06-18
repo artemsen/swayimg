@@ -12,9 +12,9 @@
 
 #include "../image.h"
 
-#include <string.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <avif/avif.h>
 
@@ -27,7 +27,7 @@ static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
 #define RGBA_NUM 4
 
 // AV1 loader implementation
-struct image* load_avif(const char* file, const uint8_t* header, size_t header_len)
+struct image* load_avif(const uint8_t* data, size_t size)
 {
     avifResult rc;
     avifRGBImage rgb;
@@ -37,8 +37,8 @@ struct image* load_avif(const char* file, const uint8_t* header, size_t header_l
     memset(&rgb, 0, sizeof(rgb));
 
     // check signature
-    if (header_len < SIGNATURE_START + sizeof(signature) ||
-        memcmp(header + SIGNATURE_START, signature, sizeof(signature))) {
+    if (size < SIGNATURE_START + sizeof(signature) ||
+        memcmp(data + SIGNATURE_START, signature, sizeof(signature))) {
         return NULL;
     }
 
@@ -48,7 +48,7 @@ struct image* load_avif(const char* file, const uint8_t* header, size_t header_l
         fprintf(stderr, "Error creating AV1 decoder\n");
         return NULL;
     }
-    rc = avifDecoderSetIOFile(decoder, file);
+    rc = avifDecoderSetIOMemory(decoder, data, size);
     if (rc == AVIF_RESULT_OK) {
         rc = avifDecoderParse(decoder);
     }
@@ -73,18 +73,18 @@ struct image* load_avif(const char* file, const uint8_t* header, size_t header_l
     }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height,
-                       "AV1 %dbit %s", rgb.depth,
-                       avifPixelFormatToString(decoder->image->yuvFormat));
+    img = create_image(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
     if (!img) {
         goto done;
     }
+    set_image_meta(img, "AV1 %dbit %s", rgb.depth,
+                        avifPixelFormatToString(decoder->image->yuvFormat));
 
     // put image on to cairo surface
-    uint8_t* data = cairo_image_surface_get_data(img->surface);
+    uint8_t* sdata = cairo_image_surface_get_data(img->surface);
     if (rgb.depth == 8) {
         // simple 8bit image
-        memcpy(data, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
+        memcpy(sdata, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
     } else {
         // convert to 8bit image
         const size_t max_clr = 1 << rgb.depth;
@@ -92,7 +92,7 @@ struct image* load_avif(const char* file, const uint8_t* header, size_t header_l
         const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
         for (size_t y = 0; y < rgb.height; ++y) {
             const uint16_t* src_y = (const uint16_t*)(rgb.pixels + y * src_stride);
-            uint8_t* dst_y = data + y * dst_stride;
+            uint8_t* dst_y = sdata + y * dst_stride;
             for (size_t x = 0; x < rgb.width; ++x) {
                 uint8_t* dst_x = dst_y + x * RGBA_NUM;
                 const uint16_t* src_x = src_y + x * RGBA_NUM;
