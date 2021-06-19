@@ -15,6 +15,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#define CURRENT_INIT  -1
+#define CURRENT_STDIN -2
+
 /** File list context. */
 struct context {
     struct image* image; ///< Currently displayed image
@@ -135,11 +138,66 @@ done:
     return img;
 }
 
+/**
+ * Load image from stdin data.
+ * @return image instance or NULL on errors
+ */
+static struct image* load_image_stdin(void)
+{
+    struct image* img = NULL;
+    uint8_t* data = NULL;
+    size_t size = 0;
+    size_t capacity = 0;
+
+    while(true) {
+        if (size == capacity) {
+            const size_t new_capacity = capacity + 256 * 1024;
+            uint8_t* new_buf = realloc(data, new_capacity);
+            if (!new_buf) {
+                fprintf(stderr, "Not enough memory\n");
+                goto done;
+            }
+            data = new_buf;
+            capacity = new_capacity;
+        }
+
+        const ssize_t rc = read(STDIN_FILENO, data + size, capacity - size);
+        if (rc == 0) {
+            break;
+        }
+        if (rc == -1 && errno != EAGAIN) {
+            perror("Error reading stdin");
+            goto done;
+        }
+        size += rc;
+    }
+
+    if (data) {
+        img = load_image_data(data, size);
+        if (img) {
+            img->name = "{STDIN}";
+        } else {
+            fprintf(stderr, "Unsupported file format\n");
+        }
+    }
+
+done:
+    if (data) {
+        free(data);
+    }
+    return img;
+}
+
 void loader_init(const char** files, size_t count)
 {
-    ctx.files = files;
-    ctx.total = count;
-    ctx.current = -1;
+    if (count) {
+        ctx.files = files;
+        ctx.total = count;
+        ctx.current = CURRENT_INIT;
+    } else {
+        ctx.image = load_image_stdin();
+        ctx.current = CURRENT_STDIN;
+    }
 }
 
 void loader_free(void)
@@ -151,6 +209,10 @@ void loader_free(void)
 
 struct image* load_next_file(bool forward)
 {
+    if (ctx.current == CURRENT_STDIN) {
+        return ctx.image;
+    }
+
     struct image* img = NULL;
 
     const ssize_t delta = forward ? 1 : -1;
@@ -159,7 +221,7 @@ struct image* load_next_file(bool forward)
     while (!img) {
         idx += delta;
         if (idx >= (ssize_t)ctx.total) {
-            if (ctx.current < 0) {
+            if (ctx.current == CURRENT_INIT) {
                 break; // no valid files found
             }
             idx = 0;

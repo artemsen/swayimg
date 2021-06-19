@@ -138,11 +138,17 @@ int main(int argc, char* argv[])
     }
 
     if (optind == argc) {
-        fprintf(stderr, "No files to view.\n");
+        fprintf(stderr, "No files specified for viewing, "
+                        "use '-' to read image data from stdin.\n");
         return EXIT_FAILURE;
     }
 
-    loader_init((const char**)&argv[optind], (size_t)argc - optind);
+    const int num_files = argc - optind;
+    if (num_files == 1 && strcmp(argv[optind], "-") == 0) {
+        loader_init(NULL, 0);
+    } else {
+        loader_init((const char**)&argv[optind], (size_t)num_files);
+    }
 
     const bool rc = run_viewer();
 

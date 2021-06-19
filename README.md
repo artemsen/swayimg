@@ -27,7 +27,11 @@ image from the specified file.
 
 `swayimg [OPTIONS...] FILE...`
 
-See `swayimg --help` or `man swayimg` for details.
+See `man swayimg` for details.
+
+Examples:
+- View multiple files: `swayimg photo.jpg logo.png`
+- View using pipes: `wget -O- https://example.com/image.jpg 2> /dev/null | swayimg -`
 
 ### Key bindings
 
