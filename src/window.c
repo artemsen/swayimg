@@ -177,14 +177,17 @@ static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
 static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
                                uint32_t format, int32_t fd, uint32_t size)
 {
-    char* keymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    xkb_state_unref(ctx.xkb.state);
     xkb_keymap_unref(ctx.xkb.keymap);
+
+    char* keymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+
     ctx.xkb.keymap = xkb_keymap_new_from_string(ctx.xkb.context, keymap,
         XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
+
     munmap(keymap, size);
     close(fd);
-    xkb_state_unref(ctx.xkb.state);
-    ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
 }
 
 static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
@@ -368,6 +371,12 @@ void show_window(void)
 
 void destroy_window(void)
 {
+    if (ctx.xkb.state) {
+        xkb_state_unref(ctx.xkb.state);
+    }
+    if (ctx.xkb.keymap) {
+        xkb_keymap_unref(ctx.xkb.keymap);
+    }
     if (ctx.surface.cairo) {
         cairo_surface_destroy(ctx.surface.cairo);
     }
