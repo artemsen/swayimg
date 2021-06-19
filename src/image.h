@@ -17,20 +17,6 @@ struct image {
 };
 
 /**
- * Load image from memory buffer.
- * @param[in] file path to the file to load
- * @return image instance or NULL on errors
- */
-struct image* load_image(const void* data, size_t size);
-
-/**
- * Load image from file.
- * @param[in] file path to the file to load
- * @return image instance or NULL on errors
- */
-struct image* load_image_file(const char* file);
-
-/**
  * Construct image instance.
  * @param[in] color color format (24/32 bpp)
  * @param[in] width width of the image

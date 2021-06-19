@@ -99,6 +99,7 @@ endif
 sources = [
   'src/draw.c',
   'src/image.c',
+  'src/loader.c',
   'src/main.c',
   'src/sway.c',
   'src/viewer.c',

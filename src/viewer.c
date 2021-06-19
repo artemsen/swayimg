@@ -2,10 +2,10 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
-#include "viewer.h"
 #include "draw.h"
+#include "loader.h"
+#include "viewer.h"
 #include "window.h"
-#include "image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,22 +36,11 @@ enum move_op {
 
 /** Viewer context. */
 struct context {
-    /** Currently displayed image. */
-    struct image* image;
-    /** Image scale, 1.0 = 100%. */
-    double scale;
-    /** Image angle (0/90/180/270). */
-    int angle;
-    /** Coordinates of the top left corner. */
-    int x;
-    int y;
-
-    /** File list. */
-    struct flist {
-        const char** files;
-        int total;
-        int current;
-    } flist;
+    struct image* image; ///< Currently displayed image
+    double scale;        ///< Image scale, 1.0 = 100%
+    int angle;           ///< Image angle (0/90/180/270)
+    int x;               ///< Coordinates of the top left corner
+    int y;               ///< Coordinates of the top left corner
 };
 static struct context ctx;
 
@@ -214,18 +203,16 @@ static bool change_scale(enum scale_op op)
 }
 
 /**
- * Load image form specified file.
- * @param[in] file path to the file to load
- * @return true if file was loaded
+ * Load next image file.
+ * @param[in] forward move direction (true=forward / false=backward).
+ * @return false if file was not loaded
  */
-static bool load_file(const char* file)
+static bool next_file(bool forward)
 {
-    struct image* img = load_image_file(file);
-    if (!img) {
+    struct image* img = load_next_file(forward);
+    if (img == ctx.image) {
         return false;
     }
-
-    free_image(ctx.image);
 
     ctx.image = img;
     ctx.scale = 0.0;
@@ -243,44 +230,16 @@ static bool load_file(const char* file)
     }
 
     // change window title
-    char* title = malloc(strlen(APP_NAME) + strlen(file) + 4);
+    char* title = malloc(strlen(APP_NAME) + strlen(img->name) + 3 /* ": " + "\0" */);
     if (title) {
         strcpy(title, APP_NAME);
         strcat(title, ": ");
-        strcat(title, file);
+        strcat(title, img->name);
         set_window_title(title);
         free(title);
     }
 
     return true;
-}
-
-/**
- * Open next file.
- * @param[in] forward move direction (true=forward/false=backward).
- * @return false if no file can be opened
- */
-static bool load_next_file(bool forward)
-{
-    const int delta = forward ? 1 : -1;
-    int idx = ctx.flist.current;
-    idx += delta;
-    while (idx != ctx.flist.current) {
-        if (idx >= ctx.flist.total) {
-            if (ctx.flist.current < 0) {
-                return false; // no one valid file
-            }
-            idx = 0;
-        } else if (idx < 0) {
-            idx = ctx.flist.total - 1;
-        }
-        if (load_file(ctx.flist.files[idx])) {
-            ctx.flist.current = idx;
-            return true;
-        }
-        idx += delta;
-    }
-    return false;
 }
 
 /** Draw handler, see handlers::on_redraw */
@@ -326,11 +285,11 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_next_file(false);
+            return next_file(false);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_next_file(true);
+            return next_file(true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return change_position(move_left);
@@ -379,19 +338,13 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-bool show_image(const char** files, size_t files_num)
+bool run_viewer(void)
 {
-    bool rc = false;
-
     const struct handlers handlers = {
         .on_redraw = on_redraw,
         .on_resize = on_resize,
         .on_keyboard = on_keyboard
     };
-
-    ctx.flist.files = files;
-    ctx.flist.total = files_num;
-    ctx.flist.current = -1;
 
     // create unique application id
     char app_id[64];
@@ -414,23 +367,22 @@ bool show_image(const char** files, size_t files_num)
         sway_disconnect(ipc);
     }
 
-    // create and show GUI window
+    // GUI prepare
     if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
-        goto done;
+        return false;
     }
-    if (!load_next_file(true)) {
-        goto done;
+    if (!next_file(true)) {
+        destroy_window();
+        return false;
     }
     if (viewer.fullscreen) {
         enable_fullscreen(true);
     }
+
+    // GUI loop
     show_window();
-    rc = true;
 
-done:
-    // clean
     destroy_window();
-    free_image(ctx.image);
 
-    return rc;
+    return true;
 }

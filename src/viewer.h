@@ -19,8 +19,6 @@ extern struct viewer viewer;
 
 /**
  * Start viewer.
- * @param[in] files file list
- * @param[in] files_num number of files
  * @return true if operation completed successfully
  */
-bool show_image(const char** files, size_t files_num);
+bool run_viewer(void);

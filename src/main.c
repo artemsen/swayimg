@@ -2,6 +2,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
+#include "loader.h"
 #include "viewer.h"
 
 #include <stdio.h>
@@ -141,6 +142,11 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    return show_image((const char**)&argv[optind], (size_t)argc - optind) ?
-           EXIT_SUCCESS : EXIT_FAILURE;
+    loader_init((const char**)&argv[optind], (size_t)argc - optind);
+
+    const bool rc = run_viewer();
+
+    loader_free();
+
+    return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }
