@@ -44,6 +44,8 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 // GIF loader implementation
 struct image* load_gif(const uint8_t* data, size_t size)
 {
+    struct image* img = NULL;
+
     // check signature
     if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
@@ -73,7 +75,6 @@ struct image* load_gif(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    struct image* img = NULL;
     img = create_image(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight);
     if (!img) {
         goto done;
