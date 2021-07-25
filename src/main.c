@@ -17,7 +17,7 @@ static void print_help(void)
 {
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
-    puts("  -g, --geometry=X,Y,W,H   Set window geometry");
+    puts("  -g, --geometry=X,Y WxH   Set window geometry");
     puts("  -s, --scale=PERCENT      Set initial image scale");
     puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
@@ -51,30 +51,47 @@ static void print_version(void)
 }
 
 /**
- * Parse geometry (position and size) from string "x,y,width,height".
+ * Validate that geometry has been read correctly
+ */
+bool good_geometry(const char* ptr, const char* arg)
+{
+    if (!ptr) {
+        fprintf(stderr, "Invalid window geometry: %s\n", arg);
+        fprintf(stderr, "Expected geometry, e.g. \"0,100 200x1000\"\n");
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Parse geometry (position and size) from string "X,Y WIDTHxHEIGHT".
  * @param[in] arg argument to parse
  * @param[out] rect parsed geometry
  * @return false if rect is invalid
  */
 bool parse_rect(const char* arg, struct rect* rect)
 {
-    int* nums[] = { &rect->x, &rect->y, &rect->width, &rect->height };
-    size_t i;
     const char* ptr = arg;
-    for (i = 0; i < sizeof(nums) / sizeof(nums[0]); ++i) {
-        *nums[i] = atoi(ptr);
-        ptr = strchr(ptr, ',');
-        if (!ptr) {
-            break;
-        }
-        ++ptr; // skip delimiter
-    }
-
-    if (i != sizeof(nums) / sizeof(nums[0]) - 1) {
-        fprintf(stderr, "Invalid window geometry: %s\n", arg);
-        fprintf(stderr, "Expected geometry, e.g. \"0,100,200,1000\"\n");
+    rect->x = atoi(ptr);
+    ptr = strchr(ptr, ',');
+    if (!good_geometry(ptr,arg)) {
         return false;
     }
+    ++ptr;
+    rect->y = atoi(ptr);
+    ptr = strchr(ptr, ' ');
+    if (!good_geometry(ptr,arg)) {
+        return false;
+    }
+    ++ptr;
+    rect->width = atoi(ptr);
+    ptr = strchr(ptr, 'x');
+    if (!good_geometry(ptr,arg)) {
+        return false;
+    }
+    ++ptr;
+    rect->height = atoi(ptr);
+
     if (rect->width <= 0 || rect->height <= 0) {
         fprintf(stderr, "Invalid window size: %s\n", arg);
         return false;
