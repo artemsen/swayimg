@@ -5,6 +5,7 @@
 #include "loader.h"
 #include "viewer.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,16 +63,19 @@ bool parse_rect(const char* arg, struct rect* rect)
     int* nums[] = { &rect->x, &rect->y, &rect->width, &rect->height };
     size_t i;
     const char* ptr = arg;
-    for (i = 0; i < sizeof(nums) / sizeof(nums[0]); ++i) {
+    for (i = 0; *ptr && i < sizeof(nums) / sizeof(nums[0]); ++i) {
         *nums[i] = atoi(ptr);
-        ptr = strchr(ptr, ',');
-        if (!ptr) {
-            break;
+        // skip digits
+        while (isdigit(*ptr)) {
+            ++ptr;
         }
-        ++ptr; // skip delimiter
+        // skip delimiter
+        while (*ptr && !isdigit(*ptr)) {
+            ++ptr;
+        }
     }
 
-    if (i != sizeof(nums) / sizeof(nums[0]) - 1) {
+    if (i != sizeof(nums) / sizeof(nums[0])) {
         fprintf(stderr, "Invalid window geometry: %s\n", arg);
         fprintf(stderr, "Expected geometry, e.g. \"0,100,200,1000\"\n");
         return false;
