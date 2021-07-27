@@ -38,7 +38,7 @@ Examples:
 - `Arrows` and vim-like moving keys (`hjkl`): Move view point;
 - `+`, `=`: Zoom in;
 - `-`: Zoom out;
-- `Backspace`: Set optimal scale: 100% or fit to window;
+- `Backspace`: Reset scale;
 - `[`, `]`: Rotate;
 - `i`: Show/hide image properties;
 - `f`, `F11`: Toggle full screen mode;

@@ -29,9 +29,10 @@ a size of 100x200. If this parameter is not specified, the geometry of the
 currently focused window will be used.
 .IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
 Start in full screen mode.
-.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fIPERCENT\fR"
-Set initial scale of the image. The default value is \fB0\fR (auto): if the
-image is greater than the window, it will be zoomed out to fit the window.
+.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"
+Set initial scale of the image. \fISCALE\fR can be a named value or absolute value in
+percent. \'default\': reduce the image to fit the window, but do not enlarge it.
+\'fit\': reduce or enlarge the image to fit the window.
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image properties on startup (path, size, current scale etc).
 .
@@ -43,7 +44,7 @@ Zoom in.
 .IP "\fB-\fP"
 Zoom out.
 .IP "\fBBackspace\fP"
-Set optimal scale: 100% or fit to window.
+Reset scale to defaults.
 .IP "\fB0\fP"
 Set scale to 100%.
 .IP "\fB[\fP, \fB]\fP"

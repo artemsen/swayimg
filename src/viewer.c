@@ -18,8 +18,8 @@
 
 /** Scale operation types. */
 enum scale_op {
-    actual_size,
-    optimal_scale,
+    reset_scale,
+    real_size,
     zoom_in,
     zoom_out
 };
@@ -45,7 +45,12 @@ struct context {
 static struct context ctx;
 
 /** Viewer parameters. */
-struct viewer viewer;
+struct viewer viewer = {
+    .scale = SCALE_REDUCE_OR_100,
+    .wnd = { 0, 0, 0, 0 },
+    .fullscreen = false,
+    .show_info = false
+};
 
 /**
  * Move viewport.
@@ -121,31 +126,38 @@ static bool change_scale(enum scale_op op)
     const int img_h = cairo_image_surface_get_height(ctx.image->surface);
     const int wnd_w = (int)get_window_width();
     const int wnd_h = (int)get_window_height();
+    const int max_w = ctx.angle == 0 || ctx.angle == 180 ? img_w : img_h;
+    const int max_h = ctx.angle == 0 || ctx.angle == 180 ? img_h : img_w;
     const double scale_step = ctx.scale / 10.0;
     double prev_scale = ctx.scale;
 
     switch (op) {
-        case actual_size:
+        case reset_scale:
+            if (viewer.scale == SCALE_REDUCE_OR_100) {
+                // 100% or less to fit the window
+                ctx.scale = 1.0;
+                if (wnd_w < max_w) {
+                    ctx.scale = 1.0 / ((double)max_w / wnd_w);
+                }
+                if (wnd_h < max_h) {
+                    const double scale = 1.0f / ((double)max_h / wnd_h);
+                    if (ctx.scale > scale) {
+                        ctx.scale = scale;
+                    }
+                }
+            } else if (viewer.scale == SCALE_FIT_TO_WINDOW) {
+                const double scale_w = 1.0 / ((double)max_w / wnd_w);
+                const double scale_h = 1.0 / ((double)max_h / wnd_h);
+                ctx.scale = scale_h < scale_w ? scale_h : scale_w;
+            } else {
+                ctx.scale = 100.0 / viewer.scale;
+            }
+            break;
+
+        case real_size:
             // 100 %
             ctx.scale = 1.0;
             break;
-
-        case optimal_scale: {
-            // 100% or less to fit the window
-            ctx.scale = 1.0;
-            const int max_w = ctx.angle == 0 || ctx.angle == 180 ? img_w : img_h;
-            const int max_h = ctx.angle == 0 || ctx.angle == 180 ? img_h : img_w;
-            if (wnd_w < max_w) {
-                ctx.scale = 1.0 / ((double)max_w / wnd_w);
-            }
-            if (wnd_h < max_h) {
-                const double scale = 1.0f / ((double)max_h / wnd_h);
-                if (ctx.scale > scale) {
-                    ctx.scale = scale;
-                }
-            }
-            break;
-            }
 
         case zoom_in:
             ctx.scale += scale_step;
@@ -165,7 +177,7 @@ static bool change_scale(enum scale_op op)
     changed = ctx.scale != prev_scale;
 
     // update image position
-    if (op == actual_size || op == optimal_scale) {
+    if (op == reset_scale) {
         changed |= change_position(move_center_x);
         changed |= change_position(move_center_y);
     } else {
@@ -226,7 +238,7 @@ static bool next_file(bool forward)
         change_position(move_center_x);
         change_position(move_center_y);
     } else {
-        change_scale(optimal_scale);
+        change_scale(reset_scale);
     }
 
     // change window title
@@ -276,7 +288,7 @@ static void on_redraw(cairo_surface_t* window)
 /** Window resize handler, see handlers::on_resize */
 static void on_resize(void)
 {
-    change_scale(optimal_scale);
+    change_scale(reset_scale);
 }
 
 /** Keyboard handler, see handlers::on_keyboard. */
@@ -308,9 +320,9 @@ static bool on_keyboard(xkb_keysym_t key)
         case XKB_KEY_minus:
             return change_scale(zoom_out);
         case XKB_KEY_0:
-            return change_scale(actual_size);
+            return change_scale(real_size);
         case XKB_KEY_BackSpace:
-            return change_scale(optimal_scale);
+            return change_scale(reset_scale);
         case XKB_KEY_bracketleft:
         case XKB_KEY_bracketright:
             ctx.angle += key == XKB_KEY_bracketleft ? -90 : 90;

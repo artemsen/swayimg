@@ -8,10 +8,16 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+// Initial scale: reduce the image to fit the window. If the image is smaller
+// then the window then use 100% scale.
+#define SCALE_REDUCE_OR_100   0
+// Initial scale: reduce or enlarge the image to fit the window.
+#define SCALE_FIT_TO_WINDOW  -1
+
 /** Viewer parameters. */
 struct viewer {
-    int scale;        ///< Initial image scale in percent (0=auto)
-    struct rect wnd;  ///< Window geometry (NULL=auto)
+    int scale;        ///< Initial image scale in percent or one of SCALE_* macros
+    struct rect wnd;  ///< Window geometry
     bool fullscreen;  ///< Full screen mode
     bool show_info;   ///< Show image info
 };

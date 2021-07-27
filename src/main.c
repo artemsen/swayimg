@@ -18,7 +18,8 @@ static void print_help(void)
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
-    puts("  -s, --scale=PERCENT      Set initial image scale");
+    puts("  -s, --scale=SCALE        Set initial image scale:");
+    puts("                             'default', 'fit' or percent value");
     puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
@@ -84,6 +85,28 @@ bool parse_rect(const char* arg, struct rect* rect)
 }
 
 /**
+ * Parse scale value.
+ * @param[in] arg argument to parse
+ * @param[out] scale pointer to output
+ * @return false if scale is invalid
+ */
+bool parse_scale(const char* arg, int* scale)
+{
+    if (strcmp(arg, "default") == 0) {
+        *scale = SCALE_REDUCE_OR_100;
+    } else if (strcmp(arg, "fit") == 0) {
+        *scale = SCALE_FIT_TO_WINDOW;
+    } else if (arg[0] >= '0' && arg[0] <= '9') {
+        *scale = atoi(arg);
+    } else {
+        fprintf(stderr, "Invalid scale: %s\n", arg);
+        fprintf(stderr, "Expected 'default', 'fit', or numeric value\n");
+        return false;
+    }
+    return true;
+}
+
+/**
  * Application entry point.
  */
 int main(int argc, char* argv[])
@@ -114,7 +137,9 @@ int main(int argc, char* argv[])
                 }
                 break;
             case 's':
-                viewer.scale = atoi(optarg);
+                if (!parse_scale(optarg, &viewer.scale)) {
+                    return EXIT_FAILURE;
+                }
                 break;
             case 'i':
                 viewer.show_info = true;
