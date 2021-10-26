@@ -28,7 +28,7 @@ xkb   = dependency('xkbcommon')
 rt    = cc.find_library('rt')
 # optional dependencies
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
-rsvg  = dependency('librsvg-2.0', version: '>=2.14', required: get_option('svg'))
+rsvg  = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
 avif  = dependency('libavif', required: get_option('avif'))
 gif   = cc.find_library('gif', required: get_option('gif'))

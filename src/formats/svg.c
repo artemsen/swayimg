@@ -18,6 +18,10 @@
 
 #include <librsvg/rsvg.h>
 
+// SVG uses physical units to store size,
+// these macro defines default viewport dimension in pixels
+#define VIEWPORT_SIZE 2048
+
 // SVG signature
 static const uint8_t signature[] = { '<' };
 
@@ -25,9 +29,10 @@ static const uint8_t signature[] = { '<' };
 struct image* load_svg(const uint8_t* data, size_t size)
 {
     RsvgHandle* svg;
-    RsvgDimensionData dim;
     GError* err = NULL;
-    cairo_t* cr;
+    gboolean has_viewport;
+    RsvgRectangle viewport;
+    cairo_t* cr = NULL;
     struct image* img = NULL;
 
     // check signature
@@ -46,21 +51,37 @@ struct image* load_svg(const uint8_t* data, size_t size)
         return NULL;
     }
 
-    rsvg_handle_get_dimensions(svg, &dim);
+    // define image size in pixels
+    rsvg_handle_get_intrinsic_dimensions(svg, NULL, NULL, NULL, NULL,
+                                         &has_viewport, &viewport);
+    if (!has_viewport) {
+        viewport.x = 0;
+        viewport.y = 0;
+        viewport.width = VIEWPORT_SIZE;
+        viewport.height = VIEWPORT_SIZE;
+    }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, dim.width, dim.height);
+    img = create_image(CAIRO_FORMAT_ARGB32, viewport.width, viewport.height);
     if (!img) {
-        g_object_unref(svg);
-        return NULL;
+        goto done;
     }
     set_image_meta(img, "SVG");
 
     // render svg to surface
     cr = cairo_create(img->surface);
-    rsvg_handle_render_cairo(svg, cr);
-    cairo_destroy(cr);
+    if (!rsvg_handle_render_document(svg, cr, &viewport, &err)) {
+        fprintf(stderr, "Invalid SVG format");
+        if (err && err->message) {
+            fprintf(stderr, ": %s\n", err->message);
+        } else {
+            fprintf(stderr, "\n");
+        }
+        goto done;
+    }
 
+done:
+    cairo_destroy(cr);
     g_object_unref(svg);
 
     return img;
