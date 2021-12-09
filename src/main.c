@@ -35,6 +35,9 @@ static void print_version(void)
 #ifdef HAVE_LIBJPEG
         ", jpeg"
 #endif // HAVE_LIBJPEG
+#ifdef HAVE_LIBJXL
+        ", jxl"
+#endif // HAVE_LIBJXL
 #ifdef HAVE_LIBGIF
         ", gif"
 #endif // HAVE_LIBGIF

@@ -28,6 +28,7 @@ xkb   = dependency('xkbcommon')
 rt    = cc.find_library('rt')
 # optional dependencies
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
+jxl   = cc.find_library('libjxl', required: get_option('jxl'))
 rsvg  = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
 avif  = dependency('libavif', required: get_option('avif'))
@@ -37,6 +38,7 @@ bash  = dependency('bash-completion', required: get_option('bash'))
 # configuration file
 conf = configuration_data()
 conf.set('HAVE_LIBJPEG', jpeg.found())
+conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBWEBP', webp.found())
@@ -112,6 +114,9 @@ sources = [
 if jpeg.found()
   sources += 'src/formats/jpeg.c'
 endif
+if jxl.found()
+  sources += 'src/formats/jxl.c'
+endif
 if gif.found()
   sources += 'src/formats/gif.c'
 endif
@@ -134,6 +139,7 @@ executable(
     cairo,
     gif,
     jpeg,
+    jxl,
     json,
     rsvg,
     rt,

@@ -17,6 +17,7 @@ image from the specified file.
 
 - PNG (via cairo);
 - JPEG (via libjpeg);
+- JPEG XL (via libjxl);
 - GIF (via giflib, without animation);
 - BMP (limited support);
 - SVG (via librsvg);
@@ -55,5 +56,3 @@ sudo ninja -C build install
 ```
 
 Arch users can install the program via [AUR](https://aur.archlinux.org/packages/swayimg).
-
-AppImage is available in the [release assets](https://github.com/artemsen/swayimg/releases).

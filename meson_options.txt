@@ -2,6 +2,10 @@ option('jpeg',
        type: 'feature',
        value: 'auto',
        description: 'Enable JPEG format support')
+option('jxl',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable JPEG XL format support')
 option('gif',
        type: 'feature',
        value: 'auto',

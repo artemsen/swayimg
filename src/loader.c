@@ -42,6 +42,9 @@ struct image* load_png(const uint8_t* data, size_t size);
 #ifdef HAVE_LIBJPEG
 struct image* load_jpeg(const uint8_t* data, size_t size);
 #endif
+#ifdef HAVE_LIBJXL
+struct image* load_jxl(const uint8_t* data, size_t size);
+#endif
 #ifdef HAVE_LIBGIF
 struct image* load_gif(const uint8_t* data, size_t size);
 #endif
@@ -61,6 +64,9 @@ static const loader loaders[] = {
     &load_bmp,
 #ifdef HAVE_LIBJPEG
     &load_jpeg,
+#endif
+#ifdef HAVE_LIBJXL
+    &load_jxl,
 #endif
 #ifdef HAVE_LIBGIF
     &load_gif,
