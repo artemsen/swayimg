@@ -74,14 +74,14 @@ xdg_shell_h = custom_target(
 
 # man installation
 if get_option('man')
-  install_man('swayimg.1')
+  install_man('extra/swayimg.1')
 endif
 
 # desktop file + icon
 if get_option('desktop')
-  install_data('swayimg.desktop',
+  install_data('extra/swayimg.desktop',
     install_dir: join_paths(get_option('datadir'), 'applications'))
-  install_data('swayimg.png',
+  install_data('extra/swayimg.png',
     install_dir: join_paths(get_option('datadir'), 'icons/hicolor/64x64/apps'))
 endif
 
@@ -92,7 +92,7 @@ if bash.found()
     'completionsdir',
     define_variable: ['datadir', datadir]
   )
-  install_data('bash.completion',
+  install_data('extra/bash.completion',
                install_dir: bash_install_dir,
                rename: 'swayimg')
 endif
