@@ -8,7 +8,7 @@ project(
     'warning_level=3',
   ],
   license: 'MIT',
-  version: '1.5',
+  version: '0.0.0',
 )
 
 add_project_arguments(
@@ -19,6 +19,7 @@ add_project_arguments(
 )
 
 cc = meson.get_compiler('c')
+version = get_option('version')
 
 # mandatory dependencies
 wlcln = dependency('wayland-client')
@@ -43,8 +44,8 @@ conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBWEBP', webp.found())
 conf.set('HAVE_LIBAVIF', avif.found())
-conf.set_quoted('APP_VERSION', meson.project_version())
 conf.set_quoted('APP_NAME', meson.project_name())
+conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'config.h', configuration: conf)
 
 # Wayland protocols

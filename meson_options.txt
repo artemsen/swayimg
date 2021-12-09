@@ -1,3 +1,4 @@
+# format support
 option('jpeg',
        type: 'feature',
        value: 'auto',
@@ -23,6 +24,7 @@ option('avif',
        value: 'auto',
        description: 'Enable AVIF format support')
 
+# extra files to install
 option('bash',
        type: 'feature',
        value: 'auto',
@@ -35,3 +37,9 @@ option('desktop',
        type: 'boolean',
        value: true,
        description: 'Install desktop file with icon')
+
+# project version
+option('version',
+       type : 'string',
+       value : '0.0.0',
+       description : 'project version')

@@ -19,8 +19,12 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Get version
+      run: echo "::set-output name=VERSION::$(git describe --tags --long --always | sed 's/^v//;s/-/./')"
+      id: version
+
     - name: Configure
-      run: meson --buildtype release --prefix /usr ./build
+      run: meson -Dversion=${{steps.version.outputs.VERSION}} --buildtype release --prefix /usr ./build
     - name: Build
       run: ninja -C ./build
     - name: Install
