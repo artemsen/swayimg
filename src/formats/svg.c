@@ -12,6 +12,7 @@
 
 #include "../image.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,7 +36,11 @@ struct image* load_svg(const uint8_t* data, size_t size)
     cairo_t* cr = NULL;
     struct image* img = NULL;
 
-    // check signature
+    // check signature, this an xml, so skip spaces from the start
+    while (size && isspace(*data) != 0) {
+        ++data;
+        --size;
+    }
     if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
