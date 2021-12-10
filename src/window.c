@@ -5,16 +5,17 @@
 #define _POSIX_C_SOURCE 200112
 
 #include "window.h"
-#include "xdg-shell-protocol.h"
-#include "config.h"
 
-#include <stdio.h>
-#include <string.h>
+#include "config.h"
+#include "xdg-shell-protocol.h"
+
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 /** Loop state */
 enum state {
@@ -84,7 +85,8 @@ static int create_shmem(size_t sz, void** data)
     char path[64];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    snprintf(path, sizeof(path), "/" APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
+    snprintf(path, sizeof(path), "/" APP_NAME "_%lx",
+             tv.tv_sec << 32 | tv.tv_usec);
 
     int fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1) {
@@ -139,11 +141,12 @@ static bool create_buffer(void)
     }
     struct wl_shm_pool* pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
     close(fd);
-    ctx.surface.buffer = wl_shm_pool_create_buffer(pool, 0, ctx.size.width,
-        ctx.size.height, stride, WL_SHM_FORMAT_XRGB8888);
+    ctx.surface.buffer =
+        wl_shm_pool_create_buffer(pool, 0, ctx.size.width, ctx.size.height,
+                                  stride, WL_SHM_FORMAT_XRGB8888);
     wl_shm_pool_destroy(pool);
-    ctx.surface.cairo = cairo_image_surface_create_for_data(buf_data,
-        CAIRO_FORMAT_ARGB32, ctx.size.width, ctx.size.height, stride);
+    ctx.surface.cairo = cairo_image_surface_create_for_data(
+        buf_data, CAIRO_FORMAT_ARGB32, ctx.size.width, ctx.size.height, stride);
 
     return true;
 }
@@ -154,25 +157,27 @@ static bool create_buffer(void)
 static void on_keyboard_enter(void* data, struct wl_keyboard* wl_keyboard,
                               uint32_t serial, struct wl_surface* surface,
                               struct wl_array* keys)
-{}
+{
+}
 
 static void on_keyboard_leave(void* data, struct wl_keyboard* wl_keyboard,
                               uint32_t serial, struct wl_surface* surface)
-{}
+{
+}
 
 static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
                                   uint32_t serial, uint32_t mods_depressed,
                                   uint32_t mods_latched, uint32_t mods_locked,
                                   uint32_t group)
 {
-    xkb_state_update_mask(ctx.xkb.state,
-                          mods_depressed, mods_latched, mods_locked,
-                          0, 0, group);
+    xkb_state_update_mask(ctx.xkb.state, mods_depressed, mods_latched,
+                          mods_locked, 0, 0, group);
 }
 
 static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
                                     int32_t rate, int32_t delay)
-{}
+{
+}
 
 static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
                                uint32_t format, int32_t fd, uint32_t size)
@@ -183,7 +188,8 @@ static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
     char* keymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
 
     ctx.xkb.keymap = xkb_keymap_new_from_string(ctx.xkb.context, keymap,
-        XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+                                                XKB_KEYMAP_FORMAT_TEXT_V1,
+                                                XKB_KEYMAP_COMPILE_NO_FLAGS);
     ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
 
     munmap(keymap, size);
@@ -214,8 +220,7 @@ static const struct wl_keyboard_listener keyboard_listener = {
 /*******************************************************************************
  * Seat handlers
  ******************************************************************************/
-static void on_seat_name(void* data, struct wl_seat* seat, const char* name)
-{}
+static void on_seat_name(void* data, struct wl_seat* seat, const char* name) { }
 
 static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
 {
@@ -228,11 +233,9 @@ static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
     }
 }
 
-static const struct wl_seat_listener seat_listener = {
-    .capabilities = on_seat_capabilities,
-    .name = on_seat_name
-};
-
+static const struct wl_seat_listener seat_listener = { .capabilities =
+                                                           on_seat_capabilities,
+                                                       .name = on_seat_name };
 
 /*******************************************************************************
  * XDG handlers
@@ -267,8 +270,9 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
                                           int32_t width, int32_t height,
                                           struct wl_array* states)
 {
-    if (width && height && (width != (int32_t)ctx.size.width ||
-                            height != (int32_t)ctx.size.height)) {
+    if (width && height &&
+        (width != (int32_t)ctx.size.width ||
+         height != (int32_t)ctx.size.height)) {
         ctx.size.width = width;
         ctx.size.height = height;
         if (create_buffer()) {
@@ -299,11 +303,11 @@ static void on_registry_global(void* data, struct wl_registry* registry,
     if (strcmp(interface, wl_shm_interface.name) == 0) {
         ctx.wl.shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        ctx.wl.compositor = wl_registry_bind(registry, name,
-                                             &wl_compositor_interface, 1);
+        ctx.wl.compositor =
+            wl_registry_bind(registry, name, &wl_compositor_interface, 1);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
-        ctx.xdg.base = wl_registry_bind(registry, name,
-                                        &xdg_wm_base_interface, 1);
+        ctx.xdg.base =
+            wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(ctx.xdg.base, &xdg_base_listener, NULL);
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
@@ -312,14 +316,15 @@ static void on_registry_global(void* data, struct wl_registry* registry,
 }
 
 void on_registry_remove(void* data, struct wl_registry* registry, uint32_t name)
-{}
+{
+}
 
 static const struct wl_registry_listener registry_listener = {
-    .global = on_registry_global,
-    .global_remove = on_registry_remove
+    .global = on_registry_global, .global_remove = on_registry_remove
 };
 
-bool create_window(const struct handlers* handlers, size_t width, size_t height, const char* app_id)
+bool create_window(const struct handlers* handlers, size_t width, size_t height,
+                   const char* app_id)
 {
     ctx.size.width = width ? width : 800;
     ctx.size.height = height ? height : 600;

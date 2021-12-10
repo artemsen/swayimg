@@ -12,11 +12,10 @@
 
 #include "../image.h"
 
+#include <jxl/decode.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <jxl/decode.h>
 
 // JPEG XL loader implementation
 struct image* load_jxl(const uint8_t* data, size_t size)
@@ -28,12 +27,10 @@ struct image* load_jxl(const uint8_t* data, size_t size)
     JxlBasicInfo info;
     JxlDecoderStatus status;
 
-    const JxlPixelFormat format = {
-        .num_channels = 4,  // ARBG
-        .data_type    = JXL_TYPE_UINT8,
-        .endianness   = JXL_NATIVE_ENDIAN,
-        .align        = 0
-    };
+    const JxlPixelFormat format = { .num_channels = 4, // ARBG
+                                    .data_type = JXL_TYPE_UINT8,
+                                    .endianness = JXL_NATIVE_ENDIAN,
+                                    .align = 0 };
 
     // check signature
     switch (JxlSignatureCheck(data, size)) {
@@ -57,7 +54,8 @@ struct image* load_jxl(const uint8_t* data, size_t size)
     }
 
     // process decoding
-    status = JxlDecoderSubscribeEvents(jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
+    status =
+        JxlDecoderSubscribeEvents(jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
     if (status != JXL_DEC_SUCCESS) {
         fprintf(stderr, "JPEG XL event subscription failed\n");
         goto error;
@@ -84,7 +82,8 @@ struct image* load_jxl(const uint8_t* data, size_t size)
                 // get image buffer size
                 rc = JxlDecoderImageOutBufferSize(jxl, &format, &buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
-                    fprintf(stderr, "Unable to get JPEG XL buffer size [%i]\n", rc);
+                    fprintf(stderr, "Unable to get JPEG XL buffer size [%i]\n",
+                            rc);
                     goto error;
                 }
                 // create cairo image
@@ -94,12 +93,14 @@ struct image* load_jxl(const uint8_t* data, size_t size)
                 }
                 // check buffer format
                 buffer = cairo_image_surface_get_data(img->surface);
-                if (buffer_sz != info.ysize * cairo_image_surface_get_stride(img->surface)) {
+                if (buffer_sz !=
+                    info.ysize * cairo_image_surface_get_stride(img->surface)) {
                     fprintf(stderr, "Unsupported JPEG XL buffer format\n");
                     goto error;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &format, buffer, buffer_sz);
+                rc = JxlDecoderSetImageOutBuffer(jxl, &format, buffer,
+                                                 buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     fprintf(stderr, "Unable to set JPEG XL buffer [%i]\n", rc);
                     goto error;
@@ -129,7 +130,8 @@ struct image* load_jxl(const uint8_t* data, size_t size)
 
     // format description: total number of bits per pixel
     set_image_meta(img, "JPEG XL %ubit",
-            info.bits_per_sample * info.num_color_channels + info.alpha_bits);
+                   info.bits_per_sample * info.num_color_channels +
+                       info.alpha_bits);
 
     JxlDecoderDestroy(jxl);
     return img;

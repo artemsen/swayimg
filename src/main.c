@@ -6,10 +6,10 @@
 #include "viewer.h"
 
 #include <ctype.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 
 /**
  * Print help usage info.
@@ -31,26 +31,26 @@ static void print_help(void)
  */
 static void print_version(void)
 {
-    const char* formats = "Supported formats: png, bmp"
+    const char* formats = "Supported formats: png,bmp"
 #ifdef HAVE_LIBJPEG
-        ", jpeg"
+                          ",jpeg"
 #endif // HAVE_LIBJPEG
 #ifdef HAVE_LIBJXL
-        ", jxl"
+                          ",jxl"
 #endif // HAVE_LIBJXL
 #ifdef HAVE_LIBGIF
-        ", gif"
+                          ",gif"
 #endif // HAVE_LIBGIF
 #ifdef HAVE_LIBRSVG
-        ", svg"
+                          ",svg"
 #endif // HAVE_LIBRSVG
 #ifdef HAVE_LIBWEBP
-        ", webp"
+                          ",webp"
 #endif // HAVE_LIBWEBP
 #ifdef HAVE_LIBAVIF
-        ", avif"
+                          ",avif"
 #endif // HAVE_LIBAVIF
-    ".";
+                          ".";
     puts(APP_NAME " version " APP_VERSION ".");
     puts(formats);
 }
@@ -118,6 +118,7 @@ bool parse_scale(const char* arg, int* scale)
  */
 int main(int argc, char* argv[])
 {
+    // clang-format off
     const struct option long_opts[] = {
         { "fullscreen", no_argument,       NULL, 'f' },
         { "geometry",   required_argument, NULL, 'g' },
@@ -128,6 +129,7 @@ int main(int argc, char* argv[])
         { NULL,         0,                 NULL,  0  }
     };
     const char* short_opts = "fg:s:ivh";
+    // clang-format on
 
     opterr = 0; // prevent native error messages
 
@@ -164,14 +166,16 @@ int main(int argc, char* argv[])
     }
 
     if (viewer.fullscreen && viewer.wnd.width) {
-        fprintf(stderr, "Incompatible arguments: "
-                        "can not set geometry for full screen mode\n");
+        fprintf(stderr,
+                "Incompatible arguments: "
+                "can not set geometry for full screen mode\n");
         return EXIT_FAILURE;
     }
 
     if (optind == argc) {
-        fprintf(stderr, "No files specified for viewing, "
-                        "use '-' to read image data from stdin.\n");
+        fprintf(stderr,
+                "No files specified for viewing, "
+                "use '-' to read image data from stdin.\n");
         return EXIT_FAILURE;
     }
 

@@ -12,11 +12,10 @@
 
 #include "../image.h"
 
+#include <avif/avif.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <avif/avif.h>
 
 // HEIF signature
 static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
@@ -78,7 +77,7 @@ struct image* load_avif(const uint8_t* data, size_t size)
         goto done;
     }
     set_image_meta(img, "AV1 %dbit %s", rgb.depth,
-                        avifPixelFormatToString(decoder->image->yuvFormat));
+                   avifPixelFormatToString(decoder->image->yuvFormat));
 
     // put image on to cairo surface
     uint8_t* sdata = cairo_image_surface_get_data(img->surface);
@@ -91,7 +90,8 @@ struct image* load_avif(const uint8_t* data, size_t size)
         const size_t src_stride = rgb.width * RGBA_NUM * sizeof(uint16_t);
         const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
         for (size_t y = 0; y < rgb.height; ++y) {
-            const uint16_t* src_y = (const uint16_t*)(rgb.pixels + y * src_stride);
+            const uint16_t* src_y =
+                (const uint16_t*)(rgb.pixels + y * src_stride);
             uint8_t* dst_y = sdata + y * dst_stride;
             for (size_t x = 0; x < rgb.width; ++x) {
                 uint8_t* dst_x = dst_y + x * RGBA_NUM;

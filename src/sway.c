@@ -3,24 +3,20 @@
 
 #include "sway.h"
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 #include <errno.h>
-#include <unistd.h>
-#include <sys/un.h>
-#include <sys/socket.h>
 #include <json.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 /** IPC magic header value */
 static const uint8_t ipc_magic[] = { 'i', '3', '-', 'i', 'p', 'c' };
 
 /** IPC message types (used only) */
-enum ipc_msg_type {
-    IPC_COMMAND = 0,
-    IPC_GET_WORKSPACES = 1,
-    IPC_GET_TREE = 4
-};
+enum ipc_msg_type { IPC_COMMAND = 0, IPC_GET_WORKSPACES = 1, IPC_GET_TREE = 4 };
 
 /** IPC header */
 struct __attribute__((__packed__)) ipc_header {
@@ -142,7 +138,7 @@ static bool ipc_command(int ipc, const char* app, const char* command)
         struct json_object* val = json_object_array_get_idx(response, 0);
         if (val) {
             rc = json_object_object_get_ex(val, "success", &val) &&
-                 json_object_get_boolean(val);
+                json_object_get_boolean(val);
         }
         if (!rc) {
             fprintf(stderr, "Bad IPC response\n");
@@ -189,10 +185,9 @@ static bool read_rect(json_object* node, const char* name, struct rect* rect)
         fprintf(stderr, "Failed to read rect: node %s not found\n", name);
         return false;
     }
-    return read_int(rn, "x", &rect->x) &&
-           read_int(rn, "y", &rect->y) &&
-           read_int(rn, "width", &rect->width) &&
-           read_int(rn, "height", &rect->height);
+    return read_int(rn, "x", &rect->x) && read_int(rn, "y", &rect->y) &&
+        read_int(rn, "width", &rect->width) &&
+        read_int(rn, "height", &rect->height);
 }
 
 /**
@@ -261,7 +256,8 @@ int sway_connect(void)
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd == -1) {
         const int ec = errno;
-        fprintf(stderr, "Failed to create IPC socket: [%i] %s\n", ec, strerror(ec));
+        fprintf(stderr, "Failed to create IPC socket: [%i] %s\n", ec,
+                strerror(ec));
         return -1;
     }
 
@@ -271,7 +267,8 @@ int sway_connect(void)
     len += sizeof(sa) - sizeof(sa.sun_path);
     if (connect(fd, (struct sockaddr*)&sa, len) == -1) {
         const int ec = errno;
-        fprintf(stderr, "Failed to connect IPC socket: [%i] %s\n", ec, strerror(ec));
+        fprintf(stderr, "Failed to connect IPC socket: [%i] %s\n", ec,
+                strerror(ec));
         close(fd);
         return -1;
     }
@@ -316,7 +313,7 @@ bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)
         struct rect workspace;
         struct rect global;
         rc = read_rect(cur_wks, "rect", &workspace) &&
-             read_rect(cur_wnd, "rect", &global);
+            read_rect(cur_wnd, "rect", &global);
         if (rc) {
             wnd->x += global.x - workspace.x;
             wnd->y += global.y - workspace.y;
@@ -334,5 +331,5 @@ bool sway_add_rules(int ipc, const char* app, int x, int y)
     char move[64];
     snprintf(move, sizeof(move), "move position %i %i", x, y);
     return ipc_command(ipc, app, "floating enable") &&
-           ipc_command(ipc, app, move);
+        ipc_command(ipc, app, move);
 }

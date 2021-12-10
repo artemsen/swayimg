@@ -12,12 +12,11 @@
 
 #include "../image.h"
 
+#include <gif_lib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <gif_lib.h>
 
 // GIF signature
 static const uint8_t signature[] = { 'G', 'I', 'F' };
@@ -47,7 +46,8 @@ struct image* load_gif(const uint8_t* data, size_t size)
     struct image* img = NULL;
 
     // check signature
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
@@ -60,13 +60,15 @@ struct image* load_gif(const uint8_t* data, size_t size)
     int err;
     GifFileType* gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        fprintf(stderr, "Unable to open GIF decoder: [%i] %s\n", err, GifErrorString(err));
+        fprintf(stderr, "Unable to open GIF decoder: [%i] %s\n", err,
+                GifErrorString(err));
         return NULL;
     }
 
     // decode with high-level API
     if (DGifSlurp(gif) != GIF_OK) {
-        fprintf(stderr, "Unable to decode GIF: [%i] %s\n", err, GifErrorString(err));
+        fprintf(stderr, "Unable to decode GIF: [%i] %s\n", err,
+                GifErrorString(err));
         goto done;
     }
     if (!gif->SavedImages) {
@@ -83,10 +85,11 @@ struct image* load_gif(const uint8_t* data, size_t size)
 
     // we don't support animation, show the first frame only
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
-    const GifColorType* colors = gif->SColorMap ? gif->SColorMap->Colors :
-                                                  frame->ColorMap->Colors;
-    uint32_t* base = (uint32_t*)(cairo_image_surface_get_data(img->surface) +
-                     frame->Top * cairo_image_surface_get_stride(img->surface));
+    const GifColorType* colors =
+        gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
+    uint32_t* base =
+        (uint32_t*)(cairo_image_surface_get_data(img->surface) +
+                    frame->Top * cairo_image_surface_get_stride(img->surface));
     for (int y = 0; y < frame->Height; ++y) {
         uint32_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
@@ -94,8 +97,8 @@ struct image* load_gif(const uint8_t* data, size_t size)
             const uint8_t color = raster[x];
             if (color != gif->SBackGroundColor) {
                 const GifColorType* rgb = &colors[color];
-                *pixel = 0xff000000 |
-                    rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
+                *pixel =
+                    0xff000000 | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
             }
             ++pixel;
         }

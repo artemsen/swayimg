@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include <cairo/cairo.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <cairo/cairo.h>
 #include <xkbcommon/xkbcommon.h>
 
 /** UI event handlers. */
@@ -39,7 +39,8 @@ struct handlers {
  * @param[in] app_id application id
  * @return true if operation completed successfully
  */
-bool create_window(const struct handlers* handlers, size_t width, size_t height, const char* app_id);
+bool create_window(const struct handlers* handlers, size_t width, size_t height,
+                   const char* app_id);
 
 /**
  * Show window and run event handler loop.

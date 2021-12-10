@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <cairo/cairo.h>
+#include <stddef.h>
 
 /** Image description. */
 struct image {
@@ -30,8 +30,8 @@ struct image* create_image(cairo_format_t color, size_t width, size_t height);
  * @param[in] format image format description
  * @param[in] ... data for format description
  */
-__attribute__((format (printf, 2, 3)))
-void set_image_meta(struct image* img, const char* format, ...);
+__attribute__((format(printf, 2, 3))) void
+set_image_meta(struct image* img, const char* format, ...);
 
 /**
  * Free image.

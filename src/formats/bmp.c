@@ -31,7 +31,7 @@ struct __attribute__((__packed__)) bmp_header {
 struct __attribute__((__packed__)) bmp_info {
     uint32_t dib_size;
     uint32_t width;
-    int32_t  height;
+    int32_t height;
     uint16_t planes;
     uint16_t bpp;
     uint32_t compression;
@@ -54,12 +54,18 @@ static size_t right_zeros(uint32_t val)
 {
     size_t count = sizeof(uint32_t) * BITS_IN_BYTE;
     val &= -(int32_t)val;
-    if (val) --count;
-    if (val & 0x0000ffff) count -= 16;
-    if (val & 0x00ff00ff) count -= 8;
-    if (val & 0x0f0f0f0f) count -= 4;
-    if (val & 0x33333333) count -= 2;
-    if (val & 0x55555555) count -= 1;
+    if (val)
+        --count;
+    if (val & 0x0000ffff)
+        count -= 16;
+    if (val & 0x00ff00ff)
+        count -= 8;
+    if (val & 0x0f0f0f0f)
+        count -= 4;
+    if (val & 0x33333333)
+        count -= 2;
+    if (val & 0x55555555)
+        count -= 1;
     return count;
 }
 
@@ -96,12 +102,15 @@ struct image* load_bmp(const uint8_t* data, size_t size)
     }
 
     const struct bmp_header* header = (const struct bmp_header*)data;
-    const struct bmp_info* bmp = (const struct bmp_info*)(data + sizeof(struct bmp_header));
+    const struct bmp_info* bmp =
+        (const struct bmp_info*)(data + sizeof(struct bmp_header));
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // RLE is not supported yet
-    if (bmp->compression != 0 /* BI_RGB */ && bmp->compression != 3 /* BI_BITFIELDS */) {
-        fprintf(stderr, "BMP compression (%i) not supported\n", bmp->compression);
+    if (bmp->compression != 0 /* BI_RGB */ &&
+        bmp->compression != 3 /* BI_BITFIELDS */) {
+        fprintf(stderr, "BMP compression (%i) not supported\n",
+                bmp->compression);
         return NULL;
     }
 
@@ -112,7 +121,8 @@ struct image* load_bmp(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    const cairo_format_t fmt = bmp->bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
+    const cairo_format_t fmt =
+        bmp->bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
     struct image* img = create_image(fmt, bmp->width, abs(bmp->height));
     if (!img) {
         return NULL;
@@ -156,25 +166,26 @@ struct image* load_bmp(const uint8_t* data, size_t size)
                     break;
                 case 16: {
                     const uint16_t val = *(uint16_t*)src;
-                    r = shift_r > 0 ? (val & mask_r) >> shift_r :
-                                      (val & mask_r) << -shift_r;
-                    g = shift_g > 0 ? (val & mask_g) >> shift_g :
-                                      (val & mask_g) << -shift_g;
-                    b = shift_b > 0 ? (val & mask_b) >> shift_b :
-                                      (val & mask_b) << -shift_b;
-                    }
-                    break;
+                    r = shift_r > 0 ? (val & mask_r) >> shift_r
+                                    : (val & mask_r) << -shift_r;
+                    g = shift_g > 0 ? (val & mask_g) >> shift_g
+                                    : (val & mask_g) << -shift_g;
+                    b = shift_b > 0 ? (val & mask_b) >> shift_b
+                                    : (val & mask_b) << -shift_b;
+                } break;
                 default: {
                     // indexed colors
                     const size_t bits_offset = x * bmp->bpp;
                     const size_t byte_offset = bits_offset / BITS_IN_BYTE;
-                    const size_t start_bit = bits_offset - byte_offset * BITS_IN_BYTE;
+                    const size_t start_bit =
+                        bits_offset - byte_offset * BITS_IN_BYTE;
                     const uint8_t val =
-                        (*(src_y + byte_offset) >> (BITS_IN_BYTE - bmp->bpp - start_bit)) &
+                        (*(src_y + byte_offset) >>
+                         (BITS_IN_BYTE - bmp->bpp - start_bit)) &
                         (0xff >> (BITS_IN_BYTE - bmp->bpp));
                     if (val < bmp->clr_palette) {
                         const uint8_t* clr = data + sizeof(struct bmp_header) +
-                                             bmp->dib_size + val * sizeof(uint32_t);
+                            bmp->dib_size + val * sizeof(uint32_t);
                         r = clr[2];
                         g = clr[1];
                         b = clr[0];

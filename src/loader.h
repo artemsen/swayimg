@@ -4,6 +4,7 @@
 #pragma once
 
 #include "image.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 

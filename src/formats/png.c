@@ -24,7 +24,8 @@ struct buffer {
 };
 
 // PNG reader callback, see cairo doc for details
-static cairo_status_t png_reader(void *closure, unsigned char *data, unsigned int length)
+static cairo_status_t png_reader(void* closure, unsigned char* data,
+                                 unsigned int length)
 {
     struct buffer* buf = (struct buffer*)closure;
     if (buf && buf->position + length <= buf->size) {
@@ -39,7 +40,8 @@ static cairo_status_t png_reader(void *closure, unsigned char *data, unsigned in
 struct image* load_png(const uint8_t* data, size_t size)
 {
     // check signature
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 

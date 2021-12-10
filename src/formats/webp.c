@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <webp/decode.h>
 
 // WebP signature
@@ -31,7 +30,8 @@ static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
 struct image* load_webp(const uint8_t* data, size_t size)
 {
     // check signature
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
@@ -39,7 +39,8 @@ struct image* load_webp(const uint8_t* data, size_t size)
     WebPBitstreamFeatures prop;
     VP8StatusCode status = WebPGetFeatures(data, size, &prop);
     if (status != VP8_STATUS_OK) {
-        fprintf(stderr, "Unable to get WebP image properties: status %i\n", status);
+        fprintf(stderr, "Unable to get WebP image properties: status %i\n",
+                status);
         return NULL;
     }
 
@@ -59,7 +60,8 @@ struct image* load_webp(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    const cairo_format_t fmt = prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
+    const cairo_format_t fmt =
+        prop.has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
     struct image* img = create_image(fmt, prop.width, prop.height);
     if (!img) {
         return NULL;

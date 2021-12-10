@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// must be the last include file (error in jpeglib.h)
 #include <jpeglib.h>
 
 // JPEG signature
@@ -48,7 +49,8 @@ struct image* load_jpeg(const uint8_t* data, size_t size)
     struct jpg_error_manager err;
 
     // check signature
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
@@ -101,7 +103,6 @@ struct image* load_jpeg(const uint8_t* data, size_t size)
             }
         }
 #endif // LIBJPEG_TURBO_VERSION
-
     }
 
     cairo_surface_mark_dirty(img->surface);

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "viewer.h"
+
 #include "config.h"
 #include "draw.h"
 #include "loader.h"
-#include "viewer.h"
 #include "window.h"
 
 #include <stdio.h>
@@ -17,12 +18,7 @@
 #define MAX_SCALE_TIMES 100
 
 /** Scale operation types. */
-enum scale_op {
-    reset_scale,
-    real_size,
-    zoom_in,
-    zoom_out
-};
+enum scale_op { reset_scale, real_size, zoom_in, zoom_out };
 
 /** Move operation types. */
 enum move_op {
@@ -45,12 +41,10 @@ struct context {
 static struct context ctx;
 
 /** Viewer parameters. */
-struct viewer viewer = {
-    .scale = SCALE_REDUCE_OR_100,
-    .wnd = { 0, 0, 0, 0 },
-    .fullscreen = false,
-    .show_info = false
-};
+struct viewer viewer = { .scale = SCALE_REDUCE_OR_100,
+                         .wnd = { 0, 0, 0, 0 },
+                         .fullscreen = false,
+                         .show_info = false };
 
 /**
  * Move viewport.
@@ -61,8 +55,10 @@ static bool change_position(enum move_op op)
 {
     const int prev_x = ctx.x;
     const int prev_y = ctx.y;
-    const int img_w = ctx.scale * cairo_image_surface_get_width(ctx.image->surface);
-    const int img_h = ctx.scale * cairo_image_surface_get_height(ctx.image->surface);
+    const int img_w =
+        ctx.scale * cairo_image_surface_get_width(ctx.image->surface);
+    const int img_h =
+        ctx.scale * cairo_image_surface_get_height(ctx.image->surface);
     const int wnd_w = (int)get_window_width();
     const int wnd_h = (int)get_window_height();
     const int step_x = wnd_w / 10;
@@ -168,7 +164,8 @@ static bool change_scale(enum scale_op op)
 
         case zoom_out:
             ctx.scale -= scale_step;
-            if (ctx.scale * img_w < MIN_SCALE_PIXEL || ctx.scale * img_h < MIN_SCALE_PIXEL) {
+            if (ctx.scale * img_w < MIN_SCALE_PIXEL ||
+                ctx.scale * img_h < MIN_SCALE_PIXEL) {
                 ctx.scale = prev_scale; // don't change
             }
             break;
@@ -242,7 +239,8 @@ static bool next_file(bool forward)
     }
 
     // change window title
-    char* title = malloc(strlen(APP_NAME) + strlen(img->name) + 3 /* ": " + "\0" */);
+    char* title =
+        malloc(strlen(APP_NAME) + strlen(img->name) + 3 /* ": " + "\0" */);
     if (title) {
         strcpy(title, APP_NAME);
         strcat(title, ": ");
@@ -266,20 +264,22 @@ static void on_redraw(cairo_surface_t* window)
     cairo_paint(cr);
 
     // image with background
-    if (cairo_image_surface_get_format(ctx.image->surface) == CAIRO_FORMAT_ARGB32) {
-        draw_grid(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h, ctx.angle);
+    if (cairo_image_surface_get_format(ctx.image->surface) ==
+        CAIRO_FORMAT_ARGB32) {
+        draw_grid(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h,
+                  ctx.angle);
     }
     draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale, ctx.angle);
 
     // image info: file name, format, size, ...
     if (viewer.show_info) {
-        draw_text(cr, 10, 10, "File:   %s\n"
-                              "Format: %s\n"
-                              "Size:   %ix%i\n"
-                              "Scale:  %i%%",
-                              ctx.image->name ? ctx.image->name : "{STDIN}",
-                              ctx.image->format,
-                              img_w, img_h, (int)(ctx.scale * 100));
+        draw_text(cr, 10, 10,
+                  "File:   %s\n"
+                  "Format: %s\n"
+                  "Size:   %ix%i\n"
+                  "Scale:  %i%%",
+                  ctx.image->name ? ctx.image->name : "{STDIN}",
+                  ctx.image->format, img_w, img_h, (int)(ctx.scale * 100));
     }
 
     cairo_destroy(cr);
@@ -352,17 +352,16 @@ static bool on_keyboard(xkb_keysym_t key)
 
 bool run_viewer(void)
 {
-    const struct handlers handlers = {
-        .on_redraw = on_redraw,
-        .on_resize = on_resize,
-        .on_keyboard = on_keyboard
-    };
+    const struct handlers handlers = { .on_redraw = on_redraw,
+                                       .on_resize = on_resize,
+                                       .on_keyboard = on_keyboard };
 
     // create unique application id
     char app_id[64];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    snprintf(app_id, sizeof(app_id), APP_NAME "_%lx", tv.tv_sec << 32 | tv.tv_usec);
+    snprintf(app_id, sizeof(app_id), APP_NAME "_%lx",
+             tv.tv_sec << 32 | tv.tv_usec);
 
     // setup window position via Sway IPC
     const int ipc = sway_connect();
@@ -380,7 +379,8 @@ bool run_viewer(void)
     }
 
     // GUI prepare
-    if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height, app_id)) {
+    if (!create_window(&handlers, viewer.wnd.width, viewer.wnd.height,
+                       app_id)) {
         return false;
     }
     if (!next_file(true)) {

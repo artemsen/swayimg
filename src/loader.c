@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
-#include "config.h"
 #include "loader.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-#define CURRENT_INIT  -1
+#define CURRENT_INIT -1
 #define CURRENT_STDIN -2
 
 /** File list context. */
@@ -60,8 +61,7 @@ struct image* load_avif(const uint8_t* data, size_t size);
 
 // list of available loaders (functions from formats/*)
 static const loader loaders[] = {
-    &load_png,
-    &load_bmp,
+    &load_png,  &load_bmp,
 #ifdef HAVE_LIBJPEG
     &load_jpeg,
 #endif
@@ -116,7 +116,8 @@ static struct image* load_image_file(const char* file)
     }
     // get file size
     if (fstat(fd, &st) == -1) {
-        fprintf(stderr, "Unable to get file stat for %s: %s\n", file, strerror(errno));
+        fprintf(stderr, "Unable to get file stat for %s: %s\n", file,
+                strerror(errno));
         goto done;
     }
     // map file to memory
@@ -155,7 +156,7 @@ static struct image* load_image_stdin(void)
     size_t size = 0;
     size_t capacity = 0;
 
-    while(true) {
+    while (true) {
         if (size == capacity) {
             const size_t new_capacity = capacity + 256 * 1024;
             uint8_t* new_buf = realloc(data, new_capacity);

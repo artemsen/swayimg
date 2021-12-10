@@ -3,9 +3,9 @@
 
 #include "image.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 
 struct image* create_image(cairo_format_t color, size_t width, size_t height)
 {

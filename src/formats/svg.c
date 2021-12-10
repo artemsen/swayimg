@@ -13,11 +13,10 @@
 #include "../image.h"
 
 #include <ctype.h>
+#include <librsvg/rsvg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <librsvg/rsvg.h>
 
 // SVG uses physical units to store size,
 // these macro defines default viewport dimension in pixels
@@ -41,7 +40,8 @@ struct image* load_svg(const uint8_t* data, size_t size)
         ++data;
         --size;
     }
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 

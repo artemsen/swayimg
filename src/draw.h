@@ -25,9 +25,8 @@ void draw_grid(cairo_t* cr, int x, int y, int width, int height, int angle);
  * @param[in] scale image scale
  * @param[in] angle image angle
  */
-void draw_image(cairo_t* cr, cairo_surface_t* image,
-                int x, int y,
-                double scale, int angle);
+void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale,
+                int angle);
 
 /**
  * Draw formatted text.
@@ -37,5 +36,5 @@ void draw_image(cairo_t* cr, cairo_surface_t* image,
  * @param[in] fmt string format
  * @param[in] ... data for format
  */
-__attribute__((format (printf, 4, 5)))
-void draw_text(cairo_t* cr, int x, int y, const char* fmt, ...);
+__attribute__((format(printf, 4, 5))) void draw_text(cairo_t* cr, int x, int y,
+                                                     const char* fmt, ...);
