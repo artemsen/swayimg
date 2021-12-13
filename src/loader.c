@@ -39,15 +39,20 @@ typedef struct image* (*loader)(const uint8_t* data, size_t size);
 
 // declaration of loaders
 struct image* load_bmp(const uint8_t* data, size_t size);
-struct image* load_png(const uint8_t* data, size_t size);
+#ifdef HAVE_LIBAVIF
+struct image* load_avif(const uint8_t* data, size_t size);
+#endif
+#ifdef HAVE_LIBGIF
+struct image* load_gif(const uint8_t* data, size_t size);
+#endif
 #ifdef HAVE_LIBJPEG
 struct image* load_jpeg(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBJXL
 struct image* load_jxl(const uint8_t* data, size_t size);
 #endif
-#ifdef HAVE_LIBGIF
-struct image* load_gif(const uint8_t* data, size_t size);
+#ifdef HAVE_LIBPNG
+struct image* load_png(const uint8_t* data, size_t size);
 #endif
 #ifdef HAVE_LIBRSVG
 struct image* load_svg(const uint8_t* data, size_t size);
@@ -55,30 +60,30 @@ struct image* load_svg(const uint8_t* data, size_t size);
 #ifdef HAVE_LIBWEBP
 struct image* load_webp(const uint8_t* data, size_t size);
 #endif
-#ifdef HAVE_LIBAVIF
-struct image* load_avif(const uint8_t* data, size_t size);
-#endif
 
 // list of available loaders (functions from formats/*)
 static const loader loaders[] = {
-    &load_png,  &load_bmp,
+    &load_bmp,
+#ifdef HAVE_LIBAVIF
+    &load_avif,
+#endif
+#ifdef HAVE_LIBGIF
+    &load_gif,
+#endif
 #ifdef HAVE_LIBJPEG
     &load_jpeg,
 #endif
 #ifdef HAVE_LIBJXL
     &load_jxl,
 #endif
-#ifdef HAVE_LIBGIF
-    &load_gif,
+#ifdef HAVE_LIBPNG
+    &load_png,
 #endif
 #ifdef HAVE_LIBRSVG
     &load_svg,
 #endif
 #ifdef HAVE_LIBWEBP
     &load_webp,
-#endif
-#ifdef HAVE_LIBAVIF
-    &load_avif,
 #endif
 };
 

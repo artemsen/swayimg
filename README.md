@@ -15,14 +15,16 @@ image from the specified file.
 
 ## Supported image formats
 
-- PNG (via cairo);
-- JPEG (via libjpeg);
-- JPEG XL (via libjxl);
-- GIF (via giflib, without animation);
-- BMP (limited support);
-- SVG (via librsvg);
-- WebP (via libwebp);
-- AV1 (via libavif, first frame only).
+- JPEG (via [libjpeg](http://libjpeg.sourceforge.net));
+- JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
+- PNG (via [libpng](http://www.libpng.org));
+- GIF (via [giflib](http://giflib.sourceforge.net));
+- SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
+- WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
+- AV1 (via [libavif](https://github.com/AOMediaCodec/libavif));
+- BMP (built-in limited support).
+
+_Note_: animation is not supported, only the first frame is displayed.
 
 ## Usage
 

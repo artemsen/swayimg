@@ -31,13 +31,16 @@ static void print_help(void)
  */
 static void print_version(void)
 {
-    const char* formats = "Supported formats: png,bmp"
+    const char* formats = "Supported formats: bmp"
 #ifdef HAVE_LIBJPEG
                           ",jpeg"
 #endif // HAVE_LIBJPEG
 #ifdef HAVE_LIBJXL
                           ",jxl"
 #endif // HAVE_LIBJXL
+#ifdef HAVE_LIBPNG
+                          ",png"
+#endif // HAVE_LIBPNG
 #ifdef HAVE_LIBGIF
                           ",gif"
 #endif // HAVE_LIBGIF

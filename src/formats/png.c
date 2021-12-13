@@ -5,74 +5,79 @@
 // PNG image format support
 //
 
+#include "config.h"
+#ifndef HAVE_LIBPNG
+#error Invalid build configuration
+#endif
+
 #include "../image.h"
 
+#include <png.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// PNG signature
-static const uint8_t signature[] = { 0x89, 0x50, 0x4e, 0x47,
-                                     0x0d, 0x0a, 0x1a, 0x0a };
-
-// Buffer description for PNG reader
-struct buffer {
-    const uint8_t* data;
-    const size_t size;
-    size_t position;
-};
-
-// PNG reader callback, see cairo doc for details
-static cairo_status_t png_reader(void* closure, unsigned char* data,
-                                 unsigned int length)
+static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
 {
-    struct buffer* buf = (struct buffer*)closure;
-    if (buf && buf->position + length <= buf->size) {
-        memcpy(data, buf->data + buf->position, length);
-        buf->position += length;
-        return CAIRO_STATUS_SUCCESS;
-    }
-    return CAIRO_STATUS_READ_ERROR;
+    const uint16_t temp = (alpha * color) + 0x80;
+    return ((temp + (temp >> 8)) >> 8);
 }
 
 // PNG loader implementation
 struct image* load_png(const uint8_t* data, size_t size)
 {
+    struct image* img = NULL;
+    png_image png;
+    uint8_t* buffer;
+    png_int_32 stride;
+
     // check signature
-    if (size < sizeof(signature) ||
-        memcmp(data, signature, sizeof(signature))) {
+    if (png_sig_cmp(data, 0, size) != 0) {
         return NULL;
     }
 
-    struct image* img = calloc(1, sizeof(struct image));
+    memset(&png, 0, sizeof(png));
+    png.version = PNG_IMAGE_VERSION;
+    if (!png_image_begin_read_from_memory(&png, data, size)) {
+        fprintf(stderr, "PNG decode failed\n");
+        return NULL;
+    }
+
+    // set destination format
+    png.format = PNG_FORMAT_BGRA;
+
+    // create image instance
+    img = create_image(CAIRO_FORMAT_ARGB32, png.width, png.height);
     if (!img) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
+        goto error;
+    }
+    set_image_meta(img, "PNG");
+
+    // decode image
+    buffer = cairo_image_surface_get_data(img->surface);
+    stride = cairo_image_surface_get_stride(img->surface);
+    if (!png_image_finish_read(&png, NULL, buffer, stride, NULL)) {
+        fprintf(stderr, "PNG decode failed\n");
+        goto error;
     }
 
-    // load png image via Cairo toy API
-    struct buffer buf = {
-        .data = data,
-        .size = size,
-        .position = 0,
-    };
-    img->surface = cairo_image_surface_create_from_png_stream(png_reader, &buf);
-    const cairo_status_t status = cairo_surface_status(img->surface);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "PNG decode failed: %s\n",
-                cairo_status_to_string(status));
-        free_image(img);
-        return NULL;
+    // handle transparency
+    for (size_t i = 0; i < png.width * png.height; ++i) {
+        uint8_t* pixel = buffer + i * 4;
+        const uint8_t alpha = pixel[3];
+        if (alpha != 0xff) {
+            pixel[0] = multiply_alpha(alpha, pixel[0]);
+            pixel[1] = multiply_alpha(alpha, pixel[1]);
+            pixel[2] = multiply_alpha(alpha, pixel[2]);
+        }
     }
 
-    img->format = malloc(4 /* "PNG\0" */);
-    if (!img->format) {
-        fprintf(stderr, "Not enough memory\n");
-        free_image(img);
-        return NULL;
-    }
-    strcpy((char*)img->format, "PNG");
+    cairo_surface_mark_dirty(img->surface);
 
     return img;
+
+error:
+    png_image_free(&png);
+    free_image(img);
+    return NULL;
 }

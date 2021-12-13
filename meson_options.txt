@@ -1,4 +1,12 @@
 # format support
+option('avif',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable AVIF format support')
+option('gif',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable GIF format support')
 option('jpeg',
        type: 'feature',
        value: 'auto',
@@ -7,10 +15,10 @@ option('jxl',
        type: 'feature',
        value: 'auto',
        description: 'Enable JPEG XL format support')
-option('gif',
+option('png',
        type: 'feature',
        value: 'auto',
-       description: 'Enable GIF format support')
+       description: 'Enable PNG format support')
 option('svg',
        type: 'feature',
        value: 'auto',
@@ -19,10 +27,6 @@ option('webp',
        type: 'feature',
        value: 'auto',
        description: 'Enable WebP format support')
-option('avif',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable AVIF format support')
 
 # extra files to install
 option('bash',
