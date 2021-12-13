@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// must be the last include file (error in jpeglib.h)
+// depends on stdio.h, uses FILE but desn't include the header
 #include <jpeglib.h>
 
 // JPEG signature

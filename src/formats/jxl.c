@@ -117,14 +117,12 @@ struct image* load_jxl(const uint8_t* data, size_t size)
         goto error;
     }
 
-    // convert data from the buffer of JPEG XL (RGBA) to ARGB32 cairo format
+    // convert colors: JPEG XL -> Cairo (RGBA -> ARGB)
     for (size_t i = 0; i < info.xsize * info.ysize; ++i) {
         uint8_t* pixel = buffer + i * format.num_channels;
-        const uint8_t tmp[] = { pixel[0], pixel[1], pixel[2], pixel[3] };
-        pixel[0] = tmp[2];
-        pixel[1] = tmp[1];
-        pixel[2] = tmp[0];
-        pixel[3] = tmp[3];
+        const uint8_t tmp = pixel[0];
+        pixel[0] = pixel[2];
+        pixel[2] = tmp;
     }
     cairo_surface_mark_dirty(img->surface);
 
