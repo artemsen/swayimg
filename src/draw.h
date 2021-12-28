@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cairo/cairo.h>
+#include <stdbool.h>
 
 /**
  * Draw background grid for transparent images.
@@ -24,9 +25,12 @@ void draw_grid(cairo_t* cr, int x, int y, int width, int height, int angle);
  * @param[in] y top offset
  * @param[in] scale image scale
  * @param[in] angle image angle
+ * @param[in] flip_ver image vertical flip mode
+ * @param[in] flip_hor image horizontal flip mode
+ * @param[in] angle image angle
  */
 void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale,
-                int angle);
+                int angle, bool flip_ver, bool flip_hor);
 
 /**
  * Draw formatted text.

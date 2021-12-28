@@ -61,17 +61,35 @@ void draw_grid(cairo_t* cr, int x, int y, int width, int height, int angle)
 }
 
 void draw_image(cairo_t* cr, cairo_surface_t* image, int x, int y, double scale,
-                int angle)
+                int angle, bool flip_ver, bool flip_hor)
 {
-    cairo_translate(cr, x, y);
-    cairo_scale(cr, scale, scale);
-
     const int width = cairo_image_surface_get_width(image);
     const int height = cairo_image_surface_get_height(image);
-    cairo_translate(cr, width / 2, height / 2);
-    cairo_rotate(cr, angle * 3.14159 / 180);
-    cairo_translate(cr, -width / 2, -height / 2);
+    const int center_x = width / 2;
+    const int center_y = height / 2;
 
+    cairo_matrix_t matrix;
+    cairo_get_matrix(cr, &matrix);
+
+    cairo_matrix_translate(&matrix, x, y);
+    cairo_matrix_scale(&matrix, scale, scale);
+
+    if (flip_ver || flip_hor) {
+        cairo_matrix_translate(&matrix, center_x, center_y);
+        if (flip_ver) {
+            matrix.yy = -matrix.yy;
+        }
+        if (flip_hor) {
+            matrix.xx = -matrix.xx;
+        }
+        cairo_matrix_translate(&matrix, -center_x, -center_y);
+    }
+
+    cairo_matrix_translate(&matrix, center_x, center_y);
+    cairo_matrix_rotate(&matrix, angle * 3.14159 / 180);
+    cairo_matrix_translate(&matrix, -center_x, -center_y);
+
+    cairo_set_matrix(cr, &matrix);
     cairo_set_source_surface(cr, image, 0, 0);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_paint(cr);

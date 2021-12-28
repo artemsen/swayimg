@@ -59,6 +59,11 @@ void set_image_meta(struct image* img, const char* format, ...)
 void free_image(struct image* img)
 {
     if (img) {
+#ifdef HAVE_LIBEXIF
+        if (img->exif) {
+            exif_data_unref(img->exif);
+        }
+#endif // HAVE_LIBEXIF
         if (img->format) {
             free((void*)img->format);
         }

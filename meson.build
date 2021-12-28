@@ -36,6 +36,7 @@ png   = dependency('libpng', required: get_option('png'))
 rsvg  = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
+exif  = dependency('libexif', required: get_option('exif'))
 bash  = dependency('bash-completion', required: get_option('bash'))
 
 # configuration file
@@ -47,6 +48,7 @@ conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBWEBP', webp.found())
+conf.set('HAVE_LIBEXIF', exif.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'config.h', configuration: conf)
@@ -142,6 +144,7 @@ executable(
   dependencies: [
     avif,
     cairo,
+    exif,
     gif,
     jpeg,
     json,

@@ -35,6 +35,8 @@ struct context {
     struct image* image; ///< Currently displayed image
     double scale;        ///< Image scale, 1.0 = 100%
     int angle;           ///< Image angle (0/90/180/270)
+    bool flip_ver;       ///< Image vertical flip mode
+    bool flip_hor;       ///< Image horizontal flip mode
     int x;               ///< Coordinates of the top left corner
     int y;               ///< Coordinates of the top left corner
 };
@@ -226,8 +228,48 @@ static bool next_file(bool forward)
     ctx.image = img;
     ctx.scale = 0.0;
     ctx.angle = 0;
+    ctx.flip_ver = false;
+    ctx.flip_hor = false;
     ctx.x = 0;
     ctx.y = 0;
+
+#ifdef HAVE_LIBEXIF
+    // set orientation from EXIF data
+    if (img->exif) {
+        const ExifByteOrder bord = exif_data_get_byte_order(img->exif);
+        ExifEntry* entry = exif_data_get_entry(img->exif, EXIF_TAG_ORIENTATION);
+        if (entry) {
+            const ExifShort orientation = exif_get_short(entry->data, bord);
+            switch (orientation) {
+                case 1: // the correct orientation
+                    break;
+                case 2: // flipped back-to-front
+                    ctx.flip_hor = true;
+                    break;
+                case 3: // upside down
+                    ctx.angle = 180;
+                    break;
+                case 4: // flipped back-to-front and upside down
+                    ctx.flip_ver = true;
+                    break;
+                case 5: // flipped back-to-front and on its side
+                    ctx.flip_hor = true;
+                    ctx.angle = 90;
+                    break;
+                case 6: // on its side
+                    ctx.angle = 90;
+                    break;
+                case 7: // flipped back-to-front and on its far side
+                    ctx.flip_ver = true;
+                    ctx.angle = 270;
+                    break;
+                case 8: // on its far side
+                    ctx.angle = 270;
+                    break;
+            }
+        }
+    }
+#endif // HAVE_LIBEXIF
 
     // setup initial scale and position of the image
     if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_TIMES * 100) {
@@ -269,7 +311,8 @@ static void on_redraw(cairo_surface_t* window)
         draw_grid(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h,
                   ctx.angle);
     }
-    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale, ctx.angle);
+    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale, ctx.angle,
+               ctx.flip_ver, ctx.flip_hor);
 
     // image info: file name, format, size, ...
     if (viewer.show_info) {
@@ -323,17 +366,28 @@ static bool on_keyboard(xkb_keysym_t key)
             return change_scale(real_size);
         case XKB_KEY_BackSpace:
             return change_scale(reset_scale);
+        case XKB_KEY_i:
+            viewer.show_info = !viewer.show_info;
+            return true;
+        case XKB_KEY_F5:
         case XKB_KEY_bracketleft:
-        case XKB_KEY_bracketright:
-            ctx.angle += key == XKB_KEY_bracketleft ? -90 : 90;
+            ctx.angle -= 90;
             if (ctx.angle < 0) {
                 ctx.angle = 270;
-            } else if (ctx.angle >= 360) {
+            }
+            return true;
+        case XKB_KEY_F6:
+        case XKB_KEY_bracketright:
+            ctx.angle += 90;
+            if (ctx.angle >= 360) {
                 ctx.angle = 0;
             }
             return true;
-        case XKB_KEY_i:
-            viewer.show_info = !viewer.show_info;
+        case XKB_KEY_F7:
+            ctx.flip_ver = !ctx.flip_ver;
+            return true;
+        case XKB_KEY_F8:
+            ctx.flip_hor = !ctx.flip_hor;
             return true;
         case XKB_KEY_F11:
         case XKB_KEY_f:

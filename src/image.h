@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include "config.h"
+
 #include <cairo/cairo.h>
 #include <stddef.h>
+
+#ifdef HAVE_LIBEXIF
+#include <libexif/exif-data.h>
+#endif // HAVE_LIBEXIF
 
 /** Image description. */
 struct image {
@@ -14,6 +20,10 @@ struct image {
     const char* format;
     /** Image surface. */
     cairo_surface_t* surface;
+#ifdef HAVE_LIBEXIF
+    /** EXIF data. */
+    ExifData* exif;
+#endif // HAVE_LIBEXIF
 };
 
 /**

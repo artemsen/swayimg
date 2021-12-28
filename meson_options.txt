@@ -28,6 +28,12 @@ option('webp',
        value: 'auto',
        description: 'Enable WebP format support')
 
+# EXIF support
+option('exif',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable EXIF reader support')
+
 # extra files to install
 option('bash',
        type: 'feature',

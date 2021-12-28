@@ -95,9 +95,20 @@ static const loader loaders[] = {
 static struct image* load_image_data(const void* data, size_t size)
 {
     struct image* img = NULL;
+
+    // decode image
     for (size_t i = 0; !img && i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
         img = loaders[i]((const uint8_t*)data, size);
     }
+
+#ifdef HAVE_LIBEXIF
+    // read EXIF
+    if (img) {
+        img->exif = exif_data_new_from_data((const unsigned char*)data,
+                                            (unsigned int)size);
+    }
+#endif // HAVE_LIBEXIF
+
     return img;
 }
 

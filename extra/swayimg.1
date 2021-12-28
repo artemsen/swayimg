@@ -1,4 +1,6 @@
-.TH swayimg 1 "August 2020" "swayimg" "User Commands"
+.\" Swayimg: image viewer for Sway/Wayland
+.\" Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
+.TH SWAYIMG 1 2021-12-28 swayimg "Swayimg manual"
 .SH NAME
 swayimg \- image viewer for Sway
 .SH SYNOPSIS
@@ -15,9 +17,8 @@ This data is used calculate the position and size of a new window.
 Then the program adds two rules to the Sway: "floating enable" and
 "move position" for \fBswayimg\fR application, creates a new Wayland window and
 draws an image from the specified file.
-.
+.\" options
 .SH OPTIONS
-.PP
 .IP "\fB\-h\fR, \fB\-\-help\fR"
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
@@ -36,7 +37,7 @@ percent. \'default\': reduce the image to fit the window, but do not enlarge it.
 \'fit\': reduce or enlarge the image to fit the window.
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image properties on startup (path, size, current scale etc).
-.
+.\" keys
 .SH KEYBINDINGS
 .IP "\fBArrows\fR and vim-like moving keys (\fBh\fR,\fBj\fR,\fBk\fR,\fBl\fR)"
 Move the view point.
@@ -44,12 +45,18 @@ Move the view point.
 Zoom in.
 .IP "\fB-\fP"
 Zoom out.
-.IP "\fBBackspace\fP"
-Reset scale to defaults.
 .IP "\fB0\fP"
 Set scale to 100%.
-.IP "\fB[\fP, \fB]\fP"
-Rotate image.
+.IP "\fBBackspace\fP"
+Reset scale to defaults.
+.IP "\fBF5\fP, \fB[\fP"
+Rotate 90 degrees anticlockwise.
+.IP "\fBF6\fP, \fB]\fP"
+Rotate 90 degrees clockwise.
+.IP "\fBF7\fP"
+Flip vertical.
+.IP "\fBF8\fP"
+Flip horizontal.
 .IP "\fBi\fP"
 Show/hide image properties.
 .IP "\fBf\fP, \fBF11\fP"
@@ -60,14 +67,12 @@ Show next file.
 Show previous file.
 .IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP"
 Exit the program.
-.
 .SH ENVIRONMENT
-.PP
 .IP \fISWAYSOCK\fR
 Path to the socket file used for Sway IPC.
-.
-.SH NOTES
-For suggestions, comments, bug reports etc. visit https://github.com/artemsen/swayimg
-.SH AUTHOR
-Artem Senichev <artemsen@gmail.com>
-.
+.\" link to homepage
+.SH BUGS
+For suggestions, comments, bug reports etc. visit the
+.UR https://github.com/artemsen/swayimg
+project homepage
+.UE .

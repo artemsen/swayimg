@@ -39,15 +39,19 @@ Examples:
 ### Key bindings
 
 - `Arrows` and vim-like moving keys (`hjkl`): Move view point;
-- `+`, `=`: Zoom in;
+- `+` or `=`: Zoom in;
 - `-`: Zoom out;
-- `Backspace`: Reset scale;
-- `[`, `]`: Rotate;
+- `0`: Set scale to 100%;
+- `Backspace`: Reset scale to default;
+- `F5` or `[`: Rotate 90 degrees anticlockwise;
+- `F6` or `]`: Rotate 90 degrees clockwise;
+- `F7`: Flip vertical;
+- `F8`: Flip horizontal;
 - `i`: Show/hide image properties;
-- `f`, `F11`: Toggle full screen mode;
-- `PgDown`, `Space`, `n`: Open next file;
-- `PgUp`, `p`: Open previous file;
-- `Esc`, `Enter`, `F10`, `q`: Exit the program.
+- `F11` or `f`: Toggle full screen mode;
+- `PgDown`, `Space`, or `n`: Open next file;
+- `PgUp` or `p`: Open previous file;
+- `Esc`, `Enter`, `F10` or `q`: Exit the program.
 
 ## Build and install
 
