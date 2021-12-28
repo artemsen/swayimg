@@ -110,7 +110,6 @@ struct image* load_png(const uint8_t* data, size_t size)
         png_destroy_read_struct(&png, &info, NULL);
         free(lines);
         free_image(img);
-        fprintf(stderr, "Error decoding PNG\n");
         return NULL;
     }
 
