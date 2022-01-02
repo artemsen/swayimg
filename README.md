@@ -3,6 +3,7 @@
 ![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
 
 Now you can view images directly in the current terminal window!
+![Screenshot](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/screenshot.png)
 
 ## How it works
 
