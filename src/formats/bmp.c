@@ -5,8 +5,7 @@
 // BMP image format support
 //
 
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -93,7 +92,8 @@ static ssize_t mask_shift(uint32_t mask)
 }
 
 // BMP loader implementation
-struct image* load_bmp(const uint8_t* data, size_t size)
+cairo_surface_t* load_bmp(const uint8_t* data, size_t size, char* format,
+                          size_t format_sz)
 {
     // check signature
     if (size < sizeof(struct bmp_header) + sizeof(struct bmp_info) ||
@@ -123,11 +123,13 @@ struct image* load_bmp(const uint8_t* data, size_t size)
     // create image instance
     const cairo_format_t fmt =
         bmp->bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
-    struct image* img = create_image(fmt, bmp->width, abs(bmp->height));
-    if (!img) {
+    cairo_surface_t* surface =
+        cairo_image_surface_create(fmt, bmp->width, abs(bmp->height));
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
         return NULL;
     }
-    set_image_meta(img, "BMP %dbit", bmp->bpp);
+    snprintf(format, format_sz, "BMP %dbit", bmp->bpp);
 
     // color channels (default 5:5:5)
     const bool def_mask = !bmp->red_mask && !bmp->green_mask && !bmp->blue_mask;
@@ -139,8 +141,8 @@ struct image* load_bmp(const uint8_t* data, size_t size)
     const ssize_t shift_b = mask_shift(mask_b);
 
     // flip and convert to argb (cairo internal format)
-    uint8_t* dst_data = cairo_image_surface_get_data(img->surface);
-    const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
+    uint8_t* dst_data = cairo_image_surface_get_data(surface);
+    const size_t dst_stride = cairo_image_surface_get_stride(surface);
     for (size_t y = 0; y < abs(bmp->height); ++y) {
         uint8_t* dst_y = dst_data + y * dst_stride;
         const uint8_t* src_y = data + header->offset;
@@ -202,7 +204,7 @@ struct image* load_bmp(const uint8_t* data, size_t size)
         }
     }
 
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
-    return img;
+    return surface;
 }

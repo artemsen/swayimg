@@ -3,48 +3,61 @@
 
 #pragma once
 
-#include "config.h"
-
 #include <cairo/cairo.h>
-#include <stddef.h>
 
-#ifdef HAVE_LIBEXIF
-#include <libexif/exif-data.h>
-#endif // HAVE_LIBEXIF
+// Max number of meta entries
+#define META_MAX_ENTRY 16
+
+// Orientation (top left corner projection)
+typedef enum {
+    ori_undefined,
+    ori_top_left,
+    ori_top_right,
+    ori_bottom_right,
+    ori_bottom_left,
+    ori_left_top,
+    ori_right_top,
+    ori_right_bottom,
+    ori_left_bottom,
+} orientation_t;
 
 /** Image description. */
-struct image {
-    /** File name. */
-    const char* name;
-    /** Format description. */
-    const char* format;
-    /** Image surface. */
-    cairo_surface_t* surface;
-#ifdef HAVE_LIBEXIF
-    /** EXIF data. */
-    ExifData* exif;
-#endif // HAVE_LIBEXIF
-};
+typedef struct {
+    const char* path;           ///< Path to the file
+    char* meta[META_MAX_ENTRY]; ///< Image meta info
+    orientation_t orientation;  ///< Image orientation
+    cairo_surface_t* surface;   ///< Image surface
+} image_t;
 
 /**
- * Construct image instance.
- * @param[in] color color format (24/32 bpp)
- * @param[in] width width of the image
- * @param[in] height height of the image
+ * Load image from file.
+ * @param[in] file path to the file to load
+ * @return image instance or NULL on errors
  */
-struct image* create_image(cairo_format_t color, size_t width, size_t height);
+image_t* image_from_file(const char* file);
 
 /**
- * Set image meta info (format description).
- * @param[in] img image instance
- * @param[in] format image format description
- * @param[in] ... data for format description
+ * Load image from stdin data.
+ * @return image instance or NULL on errors
  */
-__attribute__((format(printf, 2, 3))) void
-set_image_meta(struct image* img, const char* format, ...);
+image_t* image_from_stdin(void);
 
 /**
  * Free image.
  * @param[in] img image instance to free
  */
-void free_image(struct image* img);
+void image_free(image_t* img);
+
+/**
+ * Add meta property.
+ * @param[in] img image instance
+ * @param[in] name property name
+ * @param[in] value property value
+ */
+void add_image_meta(image_t* img, const char* name, const char* value);
+
+/**
+ * Get string with the names of the supported image formats.
+ * @return image instance or NULL on errors
+ */
+const char* supported_formats(void);

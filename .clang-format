@@ -3,6 +3,7 @@ Language: Cpp
 BasedOnStyle: WebKit
 AlignAfterOpenBracket: Align
 AlignEscapedNewlines: Left
+AlignConsecutiveMacros: true
 AlignTrailingComments: true
 AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false

@@ -5,14 +5,8 @@
 // AV1 image format support (AVIF)
 //
 
-#include "config.h"
-#ifndef HAVE_LIBAVIF
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
 #include <avif/avif.h>
+#include <cairo/cairo.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,12 +20,13 @@ static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
 #define RGBA_NUM 4
 
 // AV1 loader implementation
-struct image* load_avif(const uint8_t* data, size_t size)
+cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
+                           size_t format_sz)
 {
+    cairo_surface_t* surface = NULL;
     avifResult rc;
     avifRGBImage rgb;
     avifDecoder* decoder = NULL;
-    struct image* img = NULL;
 
     memset(&rgb, 0, sizeof(rgb));
 
@@ -72,15 +67,17 @@ struct image* load_avif(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
-    if (!img) {
-        goto done;
+    surface =
+        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
+        return NULL;
     }
-    set_image_meta(img, "AV1 %dbit %s", rgb.depth,
-                   avifPixelFormatToString(decoder->image->yuvFormat));
+    snprintf(format, format_sz, "AV1 %dbit %s", rgb.depth,
+             avifPixelFormatToString(decoder->image->yuvFormat));
 
     // put image on to cairo surface
-    uint8_t* sdata = cairo_image_surface_get_data(img->surface);
+    uint8_t* sdata = cairo_image_surface_get_data(surface);
     if (rgb.depth == 8) {
         // simple 8bit image
         memcpy(sdata, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
@@ -88,7 +85,7 @@ struct image* load_avif(const uint8_t* data, size_t size)
         // convert to 8bit image
         const size_t max_clr = 1 << rgb.depth;
         const size_t src_stride = rgb.width * RGBA_NUM * sizeof(uint16_t);
-        const size_t dst_stride = cairo_image_surface_get_stride(img->surface);
+        const size_t dst_stride = cairo_image_surface_get_stride(surface);
         for (size_t y = 0; y < rgb.height; ++y) {
             const uint16_t* src_y =
                 (const uint16_t*)(rgb.pixels + y * src_stride);
@@ -103,7 +100,7 @@ struct image* load_avif(const uint8_t* data, size_t size)
             }
         }
     }
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
 done:
     if (decoder) {
@@ -111,5 +108,5 @@ done:
         avifDecoderDestroy(decoder);
     }
 
-    return img;
+    return surface;
 }

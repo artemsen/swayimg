@@ -5,13 +5,7 @@
 // PNG image format support
 //
 
-#include "config.h"
-#ifndef HAVE_LIBPNG
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <png.h>
 #include <setjmp.h>
 #include <stdint.h>
@@ -51,14 +45,14 @@ static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
 
 /**
  * Create array with pointers to image lines.
- * @param[in] img target image
+ * @param[in] surface image surface
  * @return allocated buffer, the caller must free it
  */
-static png_bytep* get_lines(struct image* img)
+static png_bytep* get_lines(cairo_surface_t* surface)
 {
-    uint8_t* raw = cairo_image_surface_get_data(img->surface);
-    const size_t stride = cairo_image_surface_get_stride(img->surface);
-    const size_t height = cairo_image_surface_get_height(img->surface);
+    uint8_t* raw = cairo_image_surface_get_data(surface);
+    const size_t stride = cairo_image_surface_get_stride(surface);
+    const size_t height = cairo_image_surface_get_height(surface);
 
     png_bytep* lines = malloc(height * sizeof(png_bytep));
     if (!lines) {
@@ -72,9 +66,10 @@ static png_bytep* get_lines(struct image* img)
 }
 
 // PNG loader implementation
-struct image* load_png(const uint8_t* data, size_t size)
+cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
+                          size_t format_sz)
 {
-    struct image* img = NULL;
+    cairo_surface_t* surface = NULL;
     png_struct* png = NULL;
     png_info* info = NULL;
     png_bytep* lines = NULL;
@@ -109,7 +104,9 @@ struct image* load_png(const uint8_t* data, size_t size)
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
         free(lines);
-        free_image(img);
+        if (surface) {
+            cairo_surface_destroy(surface);
+        }
         return NULL;
     }
 
@@ -144,18 +141,18 @@ struct image* load_png(const uint8_t* data, size_t size)
     png_set_bgr(png);
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, width, height);
-    if (!img) {
-        png_destroy_read_struct(&png, &info, NULL);
+    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
         return NULL;
     }
-    set_image_meta(img, "PNG %dbit", bit_depth * 4);
+    snprintf(format, format_sz, "PNG %dbit", bit_depth);
 
     // allocate buffer for pointers to image lines
-    lines = get_lines(img);
+    lines = get_lines(surface);
     if (!lines) {
         png_destroy_read_struct(&png, &info, NULL);
-        free_image(img);
+        cairo_surface_destroy(surface);
         fprintf(stderr, "Not enough memory to decode PNG\n");
         return NULL;
     }
@@ -175,11 +172,11 @@ struct image* load_png(const uint8_t* data, size_t size)
             }
         }
     }
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
     // free resources
     png_destroy_read_struct(&png, &info, NULL);
     free(lines);
 
-    return img;
+    return surface;
 }

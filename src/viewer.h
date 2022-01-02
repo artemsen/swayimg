@@ -3,25 +3,30 @@
 
 #pragma once
 
+#include "canvas.h"
+#include "image.h"
 #include "sway.h"
 
-#include <stdbool.h>
 #include <stddef.h>
 
-// Initial scale: reduce the image to fit the window. If the image is smaller
-// then the window then use 100% scale.
-#define SCALE_REDUCE_OR_100 0
-// Initial scale: reduce or enlarge the image to fit the window.
-#define SCALE_FIT_TO_WINDOW -1
+/** Viewer context. */
+struct viewer_t {
+    struct {
+        const char** files; ///< List of files to view
+        size_t total;       ///< Total number of files in the list
+        size_t current;     ///< Index of currently displayed image in the list
+    } file_list;
 
-/** Viewer parameters. */
-struct viewer {
-    int scale; ///< Initial image scale in percent or one of SCALE_* macros
+    scale_t scale;   ///< Initial scale by default
     struct rect wnd; ///< Window geometry
     bool fullscreen; ///< Full screen mode
     bool show_info;  ///< Show image info
+
+    image_t* image;  ///< Currently displayed image
+    canvas_t canvas; ///< Canvas context
 };
-extern struct viewer viewer;
+
+extern struct viewer_t viewer;
 
 /**
  * Start viewer.

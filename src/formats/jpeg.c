@@ -5,13 +5,7 @@
 // JPEG image format support
 //
 
-#include "config.h"
-#ifndef HAVE_LIBJPEG
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <errno.h>
 #include <setjmp.h>
 #include <stdint.h>
@@ -42,9 +36,10 @@ static void jpg_error_exit(j_common_ptr jpg)
 }
 
 // JPEG loader implementation
-struct image* load_jpeg(const uint8_t* data, size_t size)
+cairo_surface_t* load_jpeg(const uint8_t* data, size_t size, char* format,
+                           size_t format_sz)
 {
-    struct image* img = NULL;
+    cairo_surface_t* surface = NULL;
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
@@ -57,7 +52,9 @@ struct image* load_jpeg(const uint8_t* data, size_t size)
     jpg.err = jpeg_std_error(&err.mgr);
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        free_image(img);
+        if (surface) {
+            cairo_surface_destroy(surface);
+        }
         jpeg_destroy_decompress(&jpg);
         return NULL;
     }
@@ -71,15 +68,17 @@ struct image* load_jpeg(const uint8_t* data, size_t size)
 #endif // LIBJPEG_TURBO_VERSION
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_RGB24, jpg.output_width, jpg.output_height);
-    if (!img) {
+    surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, jpg.output_width,
+                                         jpg.output_height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
         jpeg_destroy_decompress(&jpg);
         return NULL;
     }
-    set_image_meta(img, "JPEG %dbit", jpg.out_color_components * 8);
+    snprintf(format, format_sz, "JPEG %dbit", jpg.out_color_components * 8);
 
-    uint8_t* raw = cairo_image_surface_get_data(img->surface);
-    const size_t stride = cairo_image_surface_get_stride(img->surface);
+    uint8_t* raw = cairo_image_surface_get_data(surface);
+    const size_t stride = cairo_image_surface_get_stride(surface);
     while (jpg.output_scanline < jpg.output_height) {
         uint8_t* line = raw + jpg.output_scanline * stride;
         jpeg_read_scanlines(&jpg, &line, 1);
@@ -105,10 +104,10 @@ struct image* load_jpeg(const uint8_t* data, size_t size)
 #endif // LIBJPEG_TURBO_VERSION
     }
 
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
 
-    return img;
+    return surface;
 }

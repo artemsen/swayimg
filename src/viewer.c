@@ -3,214 +3,85 @@
 
 #include "viewer.h"
 
+#include "canvas.h"
 #include "config.h"
-#include "draw.h"
-#include "loader.h"
 #include "window.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
-// Scale thresholds
-#define MIN_SCALE_PIXEL 10
-#define MAX_SCALE_TIMES 100
-
-/** Scale operation types. */
-enum scale_op { reset_scale, real_size, zoom_in, zoom_out };
-
-/** Move operation types. */
-enum move_op {
-    move_center_x,
-    move_center_y,
-    move_left,
-    move_right,
-    move_up,
-    move_down
-};
-
 /** Viewer context. */
-struct context {
-    struct image* image; ///< Currently displayed image
-    double scale;        ///< Image scale, 1.0 = 100%
-    int angle;           ///< Image angle (0/90/180/270)
-    bool flip_ver;       ///< Image vertical flip mode
-    bool flip_hor;       ///< Image horizontal flip mode
-    int x;               ///< Coordinates of the top left corner
-    int y;               ///< Coordinates of the top left corner
-};
-static struct context ctx;
-
-/** Viewer parameters. */
-struct viewer viewer = { .scale = SCALE_REDUCE_OR_100,
-                         .wnd = { 0, 0, 0, 0 },
-                         .fullscreen = false,
-                         .show_info = false };
+struct viewer_t viewer;
 
 /**
- * Move viewport.
- * @param[in] op move operation
- * @return true if position was changed
+ * Load image from file or stdin.
+ * @param[in] file path to the file, NULL for reading stdin
+ * @return false if image was not loaded
  */
-static bool change_position(enum move_op op)
+static bool load_image(const char* file)
 {
-    const int prev_x = ctx.x;
-    const int prev_y = ctx.y;
-    const int img_w =
-        ctx.scale * cairo_image_surface_get_width(ctx.image->surface);
-    const int img_h =
-        ctx.scale * cairo_image_surface_get_height(ctx.image->surface);
-    const int wnd_w = (int)get_window_width();
-    const int wnd_h = (int)get_window_height();
-    const int step_x = wnd_w / 10;
-    const int step_y = wnd_h / 10;
+    image_t* image = NULL;
+    char* title;
 
-    switch (op) {
-        case move_center_x:
-            ctx.x = wnd_w / 2 - img_w / 2;
-            break;
-        case move_center_y:
-            ctx.y = wnd_h / 2 - img_h / 2;
-            break;
-
-        case move_left:
-            if (ctx.x <= 0) {
-                ctx.x += step_x;
-                if (ctx.x > 0) {
-                    ctx.x = 0;
-                }
-            }
-            break;
-        case move_right:
-            if (ctx.x + img_w >= wnd_w) {
-                ctx.x -= step_x;
-                if (ctx.x + img_w < wnd_w) {
-                    ctx.x = wnd_w - img_w;
-                }
-            }
-            break;
-        case move_up:
-            if (ctx.y <= 0) {
-                ctx.y += step_y;
-                if (ctx.y > 0) {
-                    ctx.y = 0;
-                }
-            }
-            break;
-        case move_down:
-            if (ctx.y + img_h >= wnd_h) {
-                ctx.y -= step_y;
-                if (ctx.y + img_h < wnd_h) {
-                    ctx.y = wnd_h - img_h;
-                }
-            }
-            break;
-    }
-
-    return ctx.x != prev_x || ctx.y != prev_y;
-}
-
-/**
- * Change scale.
- * @param[in] op scale operation
- * @return true if zoom or position were changed
- */
-static bool change_scale(enum scale_op op)
-{
-    bool changed;
-
-    const int img_w = cairo_image_surface_get_width(ctx.image->surface);
-    const int img_h = cairo_image_surface_get_height(ctx.image->surface);
-    const int wnd_w = (int)get_window_width();
-    const int wnd_h = (int)get_window_height();
-    const int max_w = ctx.angle == 0 || ctx.angle == 180 ? img_w : img_h;
-    const int max_h = ctx.angle == 0 || ctx.angle == 180 ? img_h : img_w;
-    const double scale_step = ctx.scale / 10.0;
-    double prev_scale = ctx.scale;
-
-    switch (op) {
-        case reset_scale:
-            if (viewer.scale == SCALE_REDUCE_OR_100) {
-                // 100% or less to fit the window
-                ctx.scale = 1.0;
-                if (wnd_w < max_w) {
-                    ctx.scale = 1.0 / ((double)max_w / wnd_w);
-                }
-                if (wnd_h < max_h) {
-                    const double scale = 1.0f / ((double)max_h / wnd_h);
-                    if (ctx.scale > scale) {
-                        ctx.scale = scale;
-                    }
-                }
-            } else if (viewer.scale == SCALE_FIT_TO_WINDOW) {
-                const double scale_w = 1.0 / ((double)max_w / wnd_w);
-                const double scale_h = 1.0 / ((double)max_h / wnd_h);
-                ctx.scale = scale_h < scale_w ? scale_h : scale_w;
-            } else {
-                ctx.scale = 100.0 / viewer.scale;
-            }
-            break;
-
-        case real_size:
-            // 100 %
-            ctx.scale = 1.0;
-            break;
-
-        case zoom_in:
-            ctx.scale += scale_step;
-            if (ctx.scale > MAX_SCALE_TIMES) {
-                ctx.scale = MAX_SCALE_TIMES;
-            }
-            break;
-
-        case zoom_out:
-            ctx.scale -= scale_step;
-            if (ctx.scale * img_w < MIN_SCALE_PIXEL ||
-                ctx.scale * img_h < MIN_SCALE_PIXEL) {
-                ctx.scale = prev_scale; // don't change
-            }
-            break;
-    }
-
-    changed = ctx.scale != prev_scale;
-
-    // update image position
-    if (op == reset_scale) {
-        changed |= change_position(move_center_x);
-        changed |= change_position(move_center_y);
+    if (file) {
+        image = image_from_file(file);
     } else {
-        const int prev_w = prev_scale * img_w;
-        const int prev_h = prev_scale * img_h;
-        const int curr_w = ctx.scale * img_w;
-        const int curr_h = ctx.scale * img_h;
-        if (curr_w < wnd_w) {
-            // fits into window width
-            changed |= change_position(move_center_x);
-        } else {
-            // move to save the center of previous image
-            const int delta_w = prev_w - curr_w;
-            const int cntr_x = wnd_w / 2 - ctx.x;
-            ctx.x += ((double)cntr_x / prev_w) * delta_w;
-            if (ctx.x > 0) {
-                ctx.x = 0;
-            }
-        }
-        if (curr_h < wnd_h) {
-            // fits into window height
-            changed |= change_position(move_center_y);
-        } else {
-            // move to save the center of previous image
-            const int delta_h = prev_h - curr_h;
-            const int cntr_y = wnd_h / 2 - ctx.y;
-            ctx.y += ((double)cntr_y / prev_h) * delta_h;
-            if (ctx.y > 0) {
-                ctx.y = 0;
-            }
-        }
+        image = image_from_stdin();
     }
 
-    return changed;
+    if (!image) {
+        return false;
+    }
+
+    image_free(viewer.image);
+    viewer.image = image;
+
+    reset_canvas(&viewer.canvas);
+
+    // fix orientation
+    switch (viewer.image->orientation) {
+        case ori_top_right: // flipped back-to-front
+            viewer.canvas.flip = flip_horizontal;
+            break;
+        case ori_bottom_right: // upside down
+            viewer.canvas.rotate = rotate_180;
+            break;
+        case ori_bottom_left: // flipped back-to-front and upside down
+            viewer.canvas.flip = flip_vertical;
+            break;
+        case ori_left_top: // flipped back-to-front and on its side
+            viewer.canvas.flip = flip_horizontal;
+            viewer.canvas.rotate = rotate_90;
+            break;
+        case ori_right_top: // on its side
+            viewer.canvas.rotate = rotate_90;
+            break;
+        case ori_right_bottom: // flipped back-to-front and on its far side
+            viewer.canvas.flip = flip_vertical;
+            viewer.canvas.rotate = rotate_270;
+            break;
+        case ori_left_bottom: // on its far side
+            viewer.canvas.rotate = rotate_270;
+            break;
+        default:
+            break;
+    }
+
+    // set initial scale and position of the image
+    apply_scale(&viewer.canvas, viewer.image->surface, viewer.scale);
+
+    // change window title (includes ": " and last null = 3 bytes)
+    title = malloc(strlen(APP_NAME) + strlen(viewer.image->path) + 3);
+    if (title) {
+        strcpy(title, APP_NAME);
+        strcat(title, ": ");
+        strcat(title, viewer.image->path);
+        set_window_title(title);
+        free(title);
+    }
+
+    return true;
 }
 
 /**
@@ -220,76 +91,41 @@ static bool change_scale(enum scale_op op)
  */
 static bool next_file(bool forward)
 {
-    struct image* img = load_next_file(forward);
-    if (img == ctx.image) {
-        return false;
+    size_t index = viewer.file_list.current;
+    bool initial = (viewer.image == NULL);
+
+    if (viewer.file_list.total == 0) {
+        // stdin mode, read only once
+        return viewer.image || load_image(NULL);
     }
 
-    ctx.image = img;
-    ctx.scale = 0.0;
-    ctx.angle = 0;
-    ctx.flip_ver = false;
-    ctx.flip_hor = false;
-    ctx.x = 0;
-    ctx.y = 0;
-
-#ifdef HAVE_LIBEXIF
-    // set orientation from EXIF data
-    if (img->exif) {
-        const ExifByteOrder bord = exif_data_get_byte_order(img->exif);
-        ExifEntry* entry = exif_data_get_entry(img->exif, EXIF_TAG_ORIENTATION);
-        if (entry) {
-            const ExifShort orientation = exif_get_short(entry->data, bord);
-            switch (orientation) {
-                case 1: // the correct orientation
-                    break;
-                case 2: // flipped back-to-front
-                    ctx.flip_hor = true;
-                    break;
-                case 3: // upside down
-                    ctx.angle = 180;
-                    break;
-                case 4: // flipped back-to-front and upside down
-                    ctx.flip_ver = true;
-                    break;
-                case 5: // flipped back-to-front and on its side
-                    ctx.flip_hor = true;
-                    ctx.angle = 90;
-                    break;
-                case 6: // on its side
-                    ctx.angle = 90;
-                    break;
-                case 7: // flipped back-to-front and on its far side
-                    ctx.flip_ver = true;
-                    ctx.angle = 270;
-                    break;
-                case 8: // on its far side
-                    ctx.angle = 270;
-                    break;
+    while (true) {
+        if (initial) {
+            initial = false;
+        } else {
+            if (forward) {
+                if (index < viewer.file_list.total - 1) {
+                    ++index;
+                } else {
+                    index = 0;
+                }
+            } else {
+                if (index > 0) {
+                    --index;
+                } else {
+                    index = viewer.file_list.total - 1;
+                }
+            }
+            if (index == viewer.file_list.current) {
+                return false; // all files enumerated
             }
         }
-    }
-#endif // HAVE_LIBEXIF
-
-    // setup initial scale and position of the image
-    if (viewer.scale > 0 && viewer.scale <= MAX_SCALE_TIMES * 100) {
-        ctx.scale = (double)(viewer.scale) / 100.0;
-        change_position(move_center_x);
-        change_position(move_center_y);
-    } else {
-        change_scale(reset_scale);
+        if (load_image(viewer.file_list.files[index])) {
+            break;
+        }
     }
 
-    // change window title
-    char* title =
-        malloc(strlen(APP_NAME) + strlen(img->name) + 3 /* ": " + "\0" */);
-    if (title) {
-        strcpy(title, APP_NAME);
-        strcat(title, ": ");
-        strcat(title, img->name);
-        set_window_title(title);
-        free(title);
-    }
+    viewer.file_list.current = index;
 
     return true;
 }
@@ -297,41 +133,36 @@ static bool next_file(bool forward)
 /** Draw handler, see handlers::on_redraw */
 static void on_redraw(cairo_surface_t* window)
 {
-    const int img_w = cairo_image_surface_get_width(ctx.image->surface);
-    const int img_h = cairo_image_surface_get_height(ctx.image->surface);
-    cairo_t* cr = cairo_create(window);
+    cairo_t* cairo = cairo_create(window);
 
     // clear canvas
-    cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(cr);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(cairo);
 
     // image with background
-    if (cairo_image_surface_get_format(ctx.image->surface) ==
+    if (cairo_image_surface_get_format(viewer.image->surface) ==
         CAIRO_FORMAT_ARGB32) {
-        draw_grid(cr, ctx.x, ctx.y, ctx.scale * img_w, ctx.scale * img_h,
-                  ctx.angle);
+        draw_background(&viewer.canvas, viewer.image->surface, cairo);
     }
-    draw_image(cr, ctx.image->surface, ctx.x, ctx.y, ctx.scale, ctx.angle,
-               ctx.flip_ver, ctx.flip_hor);
+    draw_image(&viewer.canvas, viewer.image->surface, cairo);
 
-    // image info: file name, format, size, ...
+    // image meta information: file name, format, exif, etc
     if (viewer.show_info) {
-        draw_text(cr, 10, 10,
-                  "File:   %s\n"
-                  "Format: %s\n"
-                  "Size:   %ix%i\n"
-                  "Scale:  %i%%",
-                  ctx.image->name ? ctx.image->name : "{STDIN}",
-                  ctx.image->format, img_w, img_h, (int)(ctx.scale * 100));
+        char scale[8];
+        snprintf(scale, sizeof(scale), "%i%%",
+                 (int)(viewer.canvas.scale * 100.0));
+        draw_text(cairo, 10, get_window_height() - 30, scale);
+        draw_lines(cairo, 10, 10, (const char**)viewer.image->meta);
     }
 
-    cairo_destroy(cr);
+    cairo_destroy(cairo);
 }
 
 /** Window resize handler, see handlers::on_resize */
 static void on_resize(void)
 {
-    change_scale(reset_scale);
+    viewer.canvas.scale = 0.0; // to force recalculate considering window size
+    apply_scale(&viewer.canvas, viewer.image->surface, viewer.scale);
 }
 
 /** Keyboard handler, see handlers::on_keyboard. */
@@ -347,47 +178,47 @@ static bool on_keyboard(xkb_keysym_t key)
             return next_file(true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
-            return change_position(move_left);
+            return move_viewpoint(&viewer.canvas, viewer.image->surface,
+                                  step_left);
         case XKB_KEY_Right:
         case XKB_KEY_l:
-            return change_position(move_right);
+            return move_viewpoint(&viewer.canvas, viewer.image->surface,
+                                  step_right);
         case XKB_KEY_Up:
         case XKB_KEY_k:
-            return change_position(move_up);
+            return move_viewpoint(&viewer.canvas, viewer.image->surface,
+                                  step_up);
         case XKB_KEY_Down:
         case XKB_KEY_j:
-            return change_position(move_down);
+            return move_viewpoint(&viewer.canvas, viewer.image->surface,
+                                  step_down);
         case XKB_KEY_equal:
         case XKB_KEY_plus:
-            return change_scale(zoom_in);
+            return apply_scale(&viewer.canvas, viewer.image->surface, zoom_in);
         case XKB_KEY_minus:
-            return change_scale(zoom_out);
+            return apply_scale(&viewer.canvas, viewer.image->surface, zoom_out);
         case XKB_KEY_0:
-            return change_scale(real_size);
+            return apply_scale(&viewer.canvas, viewer.image->surface,
+                               scale_100);
         case XKB_KEY_BackSpace:
-            return change_scale(reset_scale);
+            return apply_scale(&viewer.canvas, viewer.image->surface,
+                               viewer.scale);
         case XKB_KEY_i:
             viewer.show_info = !viewer.show_info;
             return true;
         case XKB_KEY_F5:
         case XKB_KEY_bracketleft:
-            ctx.angle -= 90;
-            if (ctx.angle < 0) {
-                ctx.angle = 270;
-            }
+            apply_rotate(&viewer.canvas, false);
             return true;
         case XKB_KEY_F6:
         case XKB_KEY_bracketright:
-            ctx.angle += 90;
-            if (ctx.angle >= 360) {
-                ctx.angle = 0;
-            }
+            apply_rotate(&viewer.canvas, true);
             return true;
         case XKB_KEY_F7:
-            ctx.flip_ver = !ctx.flip_ver;
+            apply_flip(&viewer.canvas, flip_vertical);
             return true;
         case XKB_KEY_F8:
-            ctx.flip_hor = !ctx.flip_hor;
+            apply_flip(&viewer.canvas, flip_horizontal);
             return true;
         case XKB_KEY_F11:
         case XKB_KEY_f:
@@ -409,7 +240,6 @@ bool run_viewer(void)
     const struct handlers handlers = { .on_redraw = on_redraw,
                                        .on_resize = on_resize,
                                        .on_keyboard = on_keyboard };
-
     // create unique application id
     char app_id[64];
     struct timeval tv;
@@ -437,10 +267,13 @@ bool run_viewer(void)
                        app_id)) {
         return false;
     }
+
+    // load first file
     if (!next_file(true)) {
         destroy_window();
         return false;
     }
+
     if (viewer.fullscreen) {
         enable_fullscreen(true);
     }
@@ -449,6 +282,8 @@ bool run_viewer(void)
     show_window();
 
     destroy_window();
+
+    image_free(viewer.image);
 
     return true;
 }

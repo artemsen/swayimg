@@ -5,13 +5,7 @@
 // SVG image format support
 //
 
-#include "config.h"
-#ifndef HAVE_LIBRSVG
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <ctype.h>
 #include <librsvg/rsvg.h>
 #include <stdint.h>
@@ -26,14 +20,15 @@
 static const uint8_t signature[] = { '<' };
 
 // SVG loader implementation
-struct image* load_svg(const uint8_t* data, size_t size)
+cairo_surface_t* load_svg(const uint8_t* data, size_t size, char* format,
+                          size_t format_sz)
 {
+    cairo_surface_t* surface = NULL;
     RsvgHandle* svg;
     GError* err = NULL;
     gboolean has_viewport;
     RsvgRectangle viewport;
     cairo_t* cr = NULL;
-    struct image* img = NULL;
 
     // check signature, this an xml, so skip spaces from the start
     while (size && isspace(*data) != 0) {
@@ -67,14 +62,16 @@ struct image* load_svg(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, viewport.width, viewport.height);
-    if (!img) {
+    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, viewport.width,
+                                         viewport.height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
         goto done;
     }
-    set_image_meta(img, "SVG");
+    snprintf(format, format_sz, "SVG");
 
     // render svg to surface
-    cr = cairo_create(img->surface);
+    cr = cairo_create(surface);
     if (!rsvg_handle_render_document(svg, cr, &viewport, &err)) {
         fprintf(stderr, "Invalid SVG format");
         if (err && err->message) {
@@ -89,5 +86,5 @@ done:
     cairo_destroy(cr);
     g_object_unref(svg);
 
-    return img;
+    return surface;
 }

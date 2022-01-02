@@ -2,7 +2,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
-#include "loader.h"
+#include "image.h"
 #include "viewer.h"
 
 #include <ctype.h>
@@ -20,7 +20,7 @@ static void print_help(void)
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -s, --scale=SCALE        Set initial image scale:");
-    puts("                             'default', 'fit' or percent value");
+    puts("                             'default', 'fit', or 'real'");
     puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
@@ -31,31 +31,8 @@ static void print_help(void)
  */
 static void print_version(void)
 {
-    const char* formats = "Supported formats: bmp"
-#ifdef HAVE_LIBJPEG
-                          ",jpeg"
-#endif // HAVE_LIBJPEG
-#ifdef HAVE_LIBJXL
-                          ",jxl"
-#endif // HAVE_LIBJXL
-#ifdef HAVE_LIBPNG
-                          ",png"
-#endif // HAVE_LIBPNG
-#ifdef HAVE_LIBGIF
-                          ",gif"
-#endif // HAVE_LIBGIF
-#ifdef HAVE_LIBRSVG
-                          ",svg"
-#endif // HAVE_LIBRSVG
-#ifdef HAVE_LIBWEBP
-                          ",webp"
-#endif // HAVE_LIBWEBP
-#ifdef HAVE_LIBAVIF
-                          ",avif"
-#endif // HAVE_LIBAVIF
-                          ".";
     puts(APP_NAME " version " APP_VERSION ".");
-    puts(formats);
+    printf("Supported formats: %s.\n", supported_formats());
 }
 
 /**
@@ -100,17 +77,17 @@ bool parse_rect(const char* arg, struct rect* rect)
  * @param[out] scale pointer to output
  * @return false if scale is invalid
  */
-bool parse_scale(const char* arg, int* scale)
+bool parse_scale(const char* arg, scale_t* scale)
 {
     if (strcmp(arg, "default") == 0) {
-        *scale = SCALE_REDUCE_OR_100;
+        *scale = scale_fit_or100;
     } else if (strcmp(arg, "fit") == 0) {
-        *scale = SCALE_FIT_TO_WINDOW;
-    } else if (arg[0] >= '0' && arg[0] <= '9') {
-        *scale = atoi(arg);
+        *scale = scale_fit_window;
+    } else if (strcmp(arg, "real") == 0) {
+        *scale = scale_100;
     } else {
         fprintf(stderr, "Invalid scale: %s\n", arg);
-        fprintf(stderr, "Expected 'default', 'fit', or numeric value\n");
+        fprintf(stderr, "Expected 'default', 'fit', or 'real'.\n");
         return false;
     }
     return true;
@@ -182,16 +159,10 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    const int num_files = argc - optind;
-    if (num_files == 1 && strcmp(argv[optind], "-") == 0) {
-        loader_init(NULL, 0);
-    } else {
-        loader_init((const char**)&argv[optind], (size_t)num_files);
+    if (strcmp(argv[optind], "-") != 0) {
+        viewer.file_list.total = (size_t)(argc - optind);
+        viewer.file_list.files = (const char**)&argv[optind];
     }
 
-    const bool rc = run_viewer();
-
-    loader_free();
-
-    return rc ? EXIT_SUCCESS : EXIT_FAILURE;
+    return run_viewer() ? EXIT_SUCCESS : EXIT_FAILURE;
 }

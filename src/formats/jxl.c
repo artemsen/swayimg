@@ -5,32 +5,27 @@
 // JPEG XL image format support
 //
 
-#include "config.h"
-#ifndef HAVE_LIBJXL
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <jxl/decode.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 // JPEG XL loader implementation
-struct image* load_jxl(const uint8_t* data, size_t size)
+cairo_surface_t* load_jxl(const uint8_t* data, size_t size, char* format,
+                          size_t format_sz)
 {
-    struct image* img = NULL;
+    cairo_surface_t* surface = NULL;
     uint8_t* buffer = NULL;
     size_t buffer_sz;
     JxlDecoder* jxl;
     JxlBasicInfo info;
     JxlDecoderStatus status;
 
-    const JxlPixelFormat format = { .num_channels = 4, // ARBG
-                                    .data_type = JXL_TYPE_UINT8,
-                                    .endianness = JXL_NATIVE_ENDIAN,
-                                    .align = 0 };
+    const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
+                                        .data_type = JXL_TYPE_UINT8,
+                                        .endianness = JXL_NATIVE_ENDIAN,
+                                        .align = 0 };
 
     // check signature
     switch (JxlSignatureCheck(data, size)) {
@@ -80,26 +75,28 @@ struct image* load_jxl(const uint8_t* data, size_t size)
                 break; // frame decoded, nothing to do
             case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
                 // get image buffer size
-                rc = JxlDecoderImageOutBufferSize(jxl, &format, &buffer_sz);
+                rc = JxlDecoderImageOutBufferSize(jxl, &jxl_format, &buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     fprintf(stderr, "Unable to get JPEG XL buffer size [%i]\n",
                             rc);
                     goto error;
                 }
                 // create cairo image
-                img = create_image(CAIRO_FORMAT_ARGB32, info.xsize, info.ysize);
-                if (!img) {
+                surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                                     info.xsize, info.ysize);
+                if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+                    fprintf(stderr, "Unable to create surface\n");
                     goto error;
                 }
                 // check buffer format
-                buffer = cairo_image_surface_get_data(img->surface);
+                buffer = cairo_image_surface_get_data(surface);
                 if (buffer_sz !=
-                    info.ysize * cairo_image_surface_get_stride(img->surface)) {
+                    info.ysize * cairo_image_surface_get_stride(surface)) {
                     fprintf(stderr, "Unsupported JPEG XL buffer format\n");
                     goto error;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &format, buffer,
+                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, buffer,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     fprintf(stderr, "Unable to set JPEG XL buffer [%i]\n", rc);
@@ -119,23 +116,24 @@ struct image* load_jxl(const uint8_t* data, size_t size)
 
     // convert colors: JPEG XL -> Cairo (RGBA -> ARGB)
     for (size_t i = 0; i < info.xsize * info.ysize; ++i) {
-        uint8_t* pixel = buffer + i * format.num_channels;
+        uint8_t* pixel = buffer + i * jxl_format.num_channels;
         const uint8_t tmp = pixel[0];
         pixel[0] = pixel[2];
         pixel[2] = tmp;
     }
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
     // format description: total number of bits per pixel
-    set_image_meta(img, "JPEG XL %ubit",
-                   info.bits_per_sample * info.num_color_channels +
-                       info.alpha_bits);
+    snprintf(format, format_sz, "JPEG XL %ubit",
+             info.bits_per_sample * info.num_color_channels + info.alpha_bits);
 
     JxlDecoderDestroy(jxl);
-    return img;
+    return surface;
 
 error:
     JxlDecoderDestroy(jxl);
-    free_image(img);
+    if (surface) {
+        cairo_surface_destroy(surface);
+    }
     return NULL;
 }

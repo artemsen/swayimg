@@ -5,13 +5,7 @@
 // GIF image format support
 //
 
-#include "config.h"
-#ifndef HAVE_LIBGIF
-#error Invalid build configuration
-#endif
-
-#include "../image.h"
-
+#include <cairo/cairo.h>
 #include <gif_lib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -41,9 +35,10 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 }
 
 // GIF loader implementation
-struct image* load_gif(const uint8_t* data, size_t size)
+cairo_surface_t* load_gif(const uint8_t* data, size_t size, char* format,
+                          size_t format_sz)
 {
-    struct image* img = NULL;
+    cairo_surface_t* surface = NULL;
 
     // check signature
     if (size < sizeof(signature) ||
@@ -77,19 +72,21 @@ struct image* load_gif(const uint8_t* data, size_t size)
     }
 
     // create image instance
-    img = create_image(CAIRO_FORMAT_ARGB32, gif->SWidth, gif->SHeight);
-    if (!img) {
-        goto done;
+    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, gif->SWidth,
+                                         gif->SHeight);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        fprintf(stderr, "Unable to create surface\n");
+        return NULL;
     }
-    set_image_meta(img, "GIF");
+    snprintf(format, format_sz, "GIF");
 
     // we don't support animation, show the first frame only
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
     const GifColorType* colors =
         gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
     uint32_t* base =
-        (uint32_t*)(cairo_image_surface_get_data(img->surface) +
-                    frame->Top * cairo_image_surface_get_stride(img->surface));
+        (uint32_t*)(cairo_image_surface_get_data(surface) +
+                    frame->Top * cairo_image_surface_get_stride(surface));
     for (int y = 0; y < frame->Height; ++y) {
         uint32_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
@@ -104,9 +101,9 @@ struct image* load_gif(const uint8_t* data, size_t size)
         }
     }
 
-    cairo_surface_mark_dirty(img->surface);
+    cairo_surface_mark_dirty(surface);
 
 done:
     DGifCloseFile(gif, NULL);
-    return img;
+    return surface;
 }

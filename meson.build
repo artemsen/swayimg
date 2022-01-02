@@ -105,9 +105,8 @@ endif
 
 # source files
 sources = [
-  'src/draw.c',
+  'src/canvas.c',
   'src/image.c',
-  'src/loader.c',
   'src/main.c',
   'src/sway.c',
   'src/viewer.c',
@@ -116,6 +115,9 @@ sources = [
   xdg_shell_h,
   xdg_shell_c,
 ]
+if exif.found()
+  sources += 'src/exif.c'
+endif
 if avif.found()
   sources += 'src/formats/avif.c'
 endif
