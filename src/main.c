@@ -6,6 +6,7 @@
 #include "viewer.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@ static void print_help(void)
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
+    puts("  -b, --background=XXXXXX  Set background color as hex RGB");
     puts("  -s, --scale=SCALE        Set initial image scale:");
     puts("                             'default', 'fit', or 'real'");
     puts("  -i, --info               Show image properties");
@@ -33,6 +35,27 @@ static void print_version(void)
 {
     puts(APP_NAME " version " APP_VERSION ".");
     printf("Supported formats: %s.\n", supported_formats());
+}
+
+/**
+ * Parse background type/color.
+ * @param[in] arg argument to parse
+ * @param[out] bkg parsed background
+ * @return false if rect is invalid
+ */
+static bool parse_bkg(const char* arg, uint32_t* bkg)
+{
+    if (strcmp(arg, "grid") == 0) {
+        *bkg = BACKGROUND_GRID;
+        return true;
+    }
+    *bkg = strtol(arg, NULL, 16);
+    if (*bkg > COLOR_MAX || (*bkg == 0 && errno == EINVAL) || errno == ERANGE) {
+        fprintf(stderr, "Invalid background: %s\n", arg);
+        fprintf(stderr, "Expected \"grid\" or RGB hex\n");
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -102,13 +125,14 @@ int main(int argc, char* argv[])
     const struct option long_opts[] = {
         { "fullscreen", no_argument,       NULL, 'f' },
         { "geometry",   required_argument, NULL, 'g' },
+        { "background", required_argument, NULL, 'b' },
         { "scale",      required_argument, NULL, 's' },
         { "info",       no_argument,       NULL, 'i' },
         { "version",    no_argument,       NULL, 'v' },
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "fg:s:ivh";
+    const char* short_opts = "fg:b:s:ivh";
     // clang-format on
 
     opterr = 0; // prevent native error messages
@@ -122,6 +146,11 @@ int main(int argc, char* argv[])
                 break;
             case 'g':
                 if (!parse_rect(optarg, &viewer.wnd)) {
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'b':
+                if (!parse_bkg(optarg, &viewer.bkg)) {
                     return EXIT_FAILURE;
                 }
                 break;

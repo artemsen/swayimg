@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 /** Viewer context. */
-struct viewer_t viewer;
+struct viewer_t viewer = { .bkg = BACKGROUND_GRID };
 
 /**
  * Load image from file or stdin.
@@ -142,7 +142,16 @@ static void on_redraw(cairo_surface_t* window)
     // image with background
     if (cairo_image_surface_get_format(viewer.image->surface) ==
         CAIRO_FORMAT_ARGB32) {
-        draw_background(&viewer.canvas, viewer.image->surface, cairo);
+        if (viewer.bkg == BACKGROUND_GRID) {
+            draw_background(&viewer.canvas, viewer.image->surface, cairo);
+        } else {
+            cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+            cairo_set_source_rgb(cairo,
+                                 ((double)((viewer.bkg >> 16) & 0xff) / 255.0),
+                                 ((double)((viewer.bkg >> 8) & 0xff) / 255.0),
+                                 ((double)(viewer.bkg & 0xff) / 255.0));
+            cairo_paint(cairo);
+        }
     }
     draw_image(&viewer.canvas, viewer.image->surface, cairo);
 
