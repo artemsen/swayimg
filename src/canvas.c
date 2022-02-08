@@ -20,11 +20,6 @@
 #define GRID_COLOR1 0x333333
 #define GRID_COLOR2 0x4c4c4c
 
-// Convert color components from bytes (hex rgb) to doubles
-#define RED(c)   ((double)((c >> 16) & 0xff) / 255.0)
-#define GREEN(c) ((double)((c >> 8) & 0xff) / 255.0)
-#define BLUE(c)  ((double)(c & 0xff) / 255.0)
-
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
 #define MAX_SCALE 100.0 // factor
@@ -83,8 +78,7 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
     cairo_identity_matrix(cairo);
 }
 
-void draw_background(const canvas_t* canvas, cairo_surface_t* image,
-                     cairo_t* cairo)
+void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
 {
     const int width = canvas->scale * cairo_image_surface_get_width(image);
     const int height = canvas->scale * cairo_image_surface_get_height(image);
@@ -102,14 +96,14 @@ void draw_background(const canvas_t* canvas, cairo_surface_t* image,
 
     // fill with the first color
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgb(cairo, RED(GRID_COLOR1), GREEN(GRID_COLOR1),
-                         BLUE(GRID_COLOR1));
+    cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR1), RGB_GREEN(GRID_COLOR1),
+                         RGB_BLUE(GRID_COLOR1));
     cairo_rectangle(cairo, 0, 0, width, height);
     cairo_fill(cairo);
 
     // draw lighter cells with the second color
-    cairo_set_source_rgb(cairo, RED(GRID_COLOR2), GREEN(GRID_COLOR2),
-                         BLUE(GRID_COLOR2));
+    cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR2), RGB_GREEN(GRID_COLOR2),
+                         RGB_BLUE(GRID_COLOR2));
     for (int y = 0; y < height; y += GRID_STEP) {
         const int cell_height = y + GRID_STEP < height ? GRID_STEP : height - y;
         int cell_x = y / GRID_STEP % 2 ? 0 : GRID_STEP;
@@ -133,14 +127,14 @@ void draw_text(cairo_t* cairo, int x, int y, const char* text)
     cairo_set_font_size(cairo, FONT_SIZE);
 
     // shadow
-    cairo_set_source_rgb(cairo, RED(TEXT_SHADOW), GREEN(TEXT_SHADOW),
-                         BLUE(TEXT_SHADOW));
+    cairo_set_source_rgb(cairo, RGB_RED(TEXT_SHADOW), RGB_GREEN(TEXT_SHADOW),
+                         RGB_BLUE(TEXT_SHADOW));
     cairo_move_to(cairo, x + 1, y + 1 + FONT_SIZE);
     cairo_show_text(cairo, text);
 
     // normal text
-    cairo_set_source_rgb(cairo, RED(TEXT_COLOR), GREEN(TEXT_COLOR),
-                         BLUE(TEXT_COLOR));
+    cairo_set_source_rgb(cairo, RGB_RED(TEXT_COLOR), RGB_GREEN(TEXT_COLOR),
+                         RGB_BLUE(TEXT_COLOR));
     cairo_move_to(cairo, x, y + FONT_SIZE);
     cairo_show_text(cairo, text);
 

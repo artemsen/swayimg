@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Special bacground color: grid
+#define BACKGROUND_GRID UINT32_MAX
+
+// Convert color components from RGB to float
+#define RGB_RED(c)   ((double)((c >> 16) & 0xff) / 255.0)
+#define RGB_GREEN(c) ((double)((c >> 8) & 0xff) / 255.0)
+#define RGB_BLUE(c)  ((double)(c & 0xff) / 255.0)
+
 /** Rotate angles. */
 typedef enum {
     rotate_0,   ///< No rotate
@@ -50,6 +58,14 @@ typedef struct {
     int y;           ///< Y-coordinate of the top left corner
 } canvas_t;
 
+/** Rectangle description. */
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} rect_t;
+
 /**
  * Reset canvas parameters to default values.
  * @param[in] canvas canvas context
@@ -70,8 +86,7 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
  * @param[in] image surface to draw
  * @param[in] cairo paint context
  */
-void draw_background(const canvas_t* canvas, cairo_surface_t* image,
-                     cairo_t* cairo);
+void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
 
 /**
  * Draw text line.

@@ -3,15 +3,9 @@
 
 #pragma once
 
-#include <stdbool.h>
+#include "canvas.h"
 
-/** Rectangle description. */
-struct rect {
-    int x;
-    int y;
-    int width;
-    int height;
-};
+#include <stdbool.h>
 
 /**
  * Connect to Sway.
@@ -32,7 +26,7 @@ void sway_disconnect(int ipc);
  * @param[out] fullscreen current full screen mode
  * @return true if operation completed successfully
  */
-bool sway_current(int ipc, struct rect* wnd, bool* fullscreen);
+bool sway_current(int ipc, rect_t* wnd, bool* fullscreen);
 
 /**
  * Add rules for Sway for application's window:

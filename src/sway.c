@@ -178,7 +178,7 @@ static bool read_int(json_object* node, const char* name, int* value)
  * @param[out] rect rectangle geometry
  * @return true if operation completed successfully
  */
-static bool read_rect(json_object* node, const char* name, struct rect* rect)
+static bool read_rect(json_object* node, const char* name, rect_t* rect)
 {
     struct json_object* rn;
     if (!json_object_object_get_ex(node, name, &rn)) {
@@ -281,7 +281,7 @@ void sway_disconnect(int ipc)
     close(ipc);
 }
 
-bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)
+bool sway_current(int ipc, rect_t* wnd, bool* fullscreen)
 {
     bool rc = false;
 
@@ -310,8 +310,8 @@ bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)
     }
     json_object* cur_wks = current_workspace(workspaces);
     if (cur_wks) {
-        struct rect workspace;
-        struct rect global;
+        rect_t workspace;
+        rect_t global;
         rc = read_rect(cur_wks, "rect", &workspace) &&
             read_rect(cur_wnd, "rect", &global);
         if (rc) {

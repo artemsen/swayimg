@@ -6,7 +6,7 @@
 
 #include "window.h"
 
-#include "config.h"
+#include "buildcfg.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>

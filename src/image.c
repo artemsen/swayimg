@@ -3,7 +3,7 @@
 
 #include "image.h"
 
-#include "config.h"
+#include "buildcfg.h"
 #include "exif.h"
 
 #include <errno.h>

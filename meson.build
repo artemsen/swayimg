@@ -51,7 +51,7 @@ conf.set('HAVE_LIBWEBP', webp.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
-configure_file(output: 'config.h', configuration: conf)
+configure_file(output: 'buildcfg.h', configuration: conf)
 
 # Wayland protocols
 wlproto = dependency('wayland-protocols')
@@ -106,6 +106,7 @@ endif
 # source files
 sources = [
   'src/canvas.c',
+  'src/config.c',
   'src/image.c',
   'src/main.c',
   'src/sway.c',

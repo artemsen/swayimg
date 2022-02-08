@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "buildcfg.h"
 #include "config.h"
 #include "image.h"
 #include "viewer.h"
 
-#include <ctype.h>
-#include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,15 +16,16 @@
  */
 static void print_help(void)
 {
+    // clang-format off
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
-    puts("  -g, --geometry=X,Y,W,H   Set window geometry");
+    puts("  -s, --scale=TYPE         Set initial image scale: default, fit, or real");
     puts("  -b, --background=XXXXXX  Set background color as hex RGB");
-    puts("  -s, --scale=SCALE        Set initial image scale:");
-    puts("                             'default', 'fit', or 'real'");
+    puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -i, --info               Show image properties");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
+    // clang-format on
 }
 
 /**
@@ -38,102 +38,29 @@ static void print_version(void)
 }
 
 /**
- * Parse background type/color.
- * @param[in] arg argument to parse
- * @param[out] bkg parsed background
- * @return false if rect is invalid
- */
-static bool parse_bkg(const char* arg, uint32_t* bkg)
-{
-    if (strcmp(arg, "grid") == 0) {
-        *bkg = BACKGROUND_GRID;
-        return true;
-    }
-    *bkg = strtol(arg, NULL, 16);
-    if (*bkg > COLOR_MAX || (*bkg == 0 && errno == EINVAL) || errno == ERANGE) {
-        fprintf(stderr, "Invalid background: %s\n", arg);
-        fprintf(stderr, "Expected \"grid\" or RGB hex\n");
-        return false;
-    }
-    return true;
-}
-
-/**
- * Parse geometry (position and size) from string "x,y,width,height".
- * @param[in] arg argument to parse
- * @param[out] rect parsed geometry
- * @return false if rect is invalid
- */
-bool parse_rect(const char* arg, struct rect* rect)
-{
-    int* nums[] = { &rect->x, &rect->y, &rect->width, &rect->height };
-    size_t i;
-    const char* ptr = arg;
-    for (i = 0; *ptr && i < sizeof(nums) / sizeof(nums[0]); ++i) {
-        *nums[i] = atoi(ptr);
-        // skip digits
-        while (isdigit(*ptr)) {
-            ++ptr;
-        }
-        // skip delimiter
-        while (*ptr && !isdigit(*ptr)) {
-            ++ptr;
-        }
-    }
-
-    if (i != sizeof(nums) / sizeof(nums[0])) {
-        fprintf(stderr, "Invalid window geometry: %s\n", arg);
-        fprintf(stderr, "Expected geometry, e.g. \"0,100,200,1000\"\n");
-        return false;
-    }
-    if (rect->width <= 0 || rect->height <= 0) {
-        fprintf(stderr, "Invalid window size: %s\n", arg);
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * Parse scale value.
- * @param[in] arg argument to parse
- * @param[out] scale pointer to output
- * @return false if scale is invalid
- */
-bool parse_scale(const char* arg, scale_t* scale)
-{
-    if (strcmp(arg, "default") == 0) {
-        *scale = scale_fit_or100;
-    } else if (strcmp(arg, "fit") == 0) {
-        *scale = scale_fit_window;
-    } else if (strcmp(arg, "real") == 0) {
-        *scale = scale_100;
-    } else {
-        fprintf(stderr, "Invalid scale: %s\n", arg);
-        fprintf(stderr, "Expected 'default', 'fit', or 'real'.\n");
-        return false;
-    }
-    return true;
-}
-
-/**
  * Application entry point.
  */
 int main(int argc, char* argv[])
 {
+    const char** files = NULL;
+    size_t files_num = 0;
+
     // clang-format off
     const struct option long_opts[] = {
         { "fullscreen", no_argument,       NULL, 'f' },
-        { "geometry",   required_argument, NULL, 'g' },
-        { "background", required_argument, NULL, 'b' },
         { "scale",      required_argument, NULL, 's' },
+        { "background", required_argument, NULL, 'b' },
+        { "geometry",   required_argument, NULL, 'g' },
         { "info",       no_argument,       NULL, 'i' },
         { "version",    no_argument,       NULL, 'v' },
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "fg:b:s:ivh";
+    const char* short_opts = "fs:b:g:ivh";
     // clang-format on
+
+    // default config
+    load_config();
 
     opterr = 0; // prevent native error messages
 
@@ -142,25 +69,31 @@ int main(int argc, char* argv[])
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
         switch (opt) {
             case 'f':
-                viewer.fullscreen = true;
+                config.fullscreen = true;
                 break;
-            case 'g':
-                if (!parse_rect(optarg, &viewer.wnd)) {
+            case 's':
+                if (!set_scale(optarg)) {
+                    fprintf(stderr, "Invalid scale: %s\n", optarg);
+                    fprintf(stderr, "Expected 'default', 'fit', or 'real'.\n");
                     return EXIT_FAILURE;
                 }
                 break;
             case 'b':
-                if (!parse_bkg(optarg, &viewer.bkg)) {
+                if (!set_background(optarg)) {
+                    fprintf(stderr, "Invalid background: %s\n", optarg);
+                    fprintf(stderr, "Expected \"grid\" or RGB hex value.\n");
                     return EXIT_FAILURE;
                 }
                 break;
-            case 's':
-                if (!parse_scale(optarg, &viewer.scale)) {
+            case 'g':
+                if (!set_geometry(optarg)) {
+                    fprintf(stderr, "Invalid window geometry: %s\n", optarg);
+                    fprintf(stderr, "Expected X,Y,W,H format.\n");
                     return EXIT_FAILURE;
                 }
                 break;
             case 'i':
-                viewer.show_info = true;
+                config.show_info = true;
                 break;
             case 'v':
                 print_version();
@@ -174,7 +107,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (viewer.fullscreen && viewer.wnd.width) {
+    if (config.fullscreen && config.window.width) {
         fprintf(stderr,
                 "Incompatible arguments: "
                 "can not set geometry for full screen mode\n");
@@ -189,9 +122,9 @@ int main(int argc, char* argv[])
     }
 
     if (strcmp(argv[optind], "-") != 0) {
-        viewer.file_list.total = (size_t)(argc - optind);
-        viewer.file_list.files = (const char**)&argv[optind];
+        files = (const char**)&argv[optind];
+        files_num = (size_t)(argc - optind);
     }
 
-    return run_viewer() ? EXIT_SUCCESS : EXIT_FAILURE;
+    return run_viewer(files, files_num) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
