@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-// ftruncate() support
-#define _POSIX_C_SOURCE 200112
-
 #include "window.h"
 
 #include "buildcfg.h"

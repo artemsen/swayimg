@@ -14,6 +14,7 @@ project(
 add_project_arguments(
   [
     '-Wno-unused-parameter',
+    '-D_POSIX_C_SOURCE=200809'
   ],
   language: 'c',
 )
