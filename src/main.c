@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
             case 'b':
                 if (!set_background(optarg)) {
                     fprintf(stderr, "Invalid background: %s\n", optarg);
-                    fprintf(stderr, "Expected \"grid\" or RGB hex value.\n");
+                    fprintf(stderr, "Expected 'grid' or RGB hex value.\n");
                     return EXIT_FAILURE;
                 }
                 break;

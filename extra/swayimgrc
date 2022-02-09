@@ -1,0 +1,21 @@
+# Swayimg configuration file.
+
+# This file contains the default configuration.
+# The viewer searches for the config file in the following locations:
+# 1. $XDG_CONFIG_HOME/swayimg/config
+# 2. $HOME/.config/swayimg/config
+# See `man swayimgrc` for details.
+
+# Initial scale (default, fit, or real)
+scale = default
+
+# Start in full screen mode (yes/no)
+fullscreen = no
+
+# Background mode/color (grid or RGB, e.g. 112233)
+background = grid
+
+# Show image info: format, size, EXIF, and current scale (yes/no)
+info = no
+
+# vim: filetype=dosini

@@ -82,6 +82,7 @@ xdg_shell_h = custom_target(
 # man installation
 if get_option('man')
   install_man('extra/swayimg.1')
+  install_man('extra/swayimgrc.5')
 endif
 
 # desktop file + icon

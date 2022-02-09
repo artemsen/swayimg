@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Special bacground color: grid
+// Grid background mode id
 #define BACKGROUND_GRID UINT32_MAX
 
 // Convert color components from RGB to float

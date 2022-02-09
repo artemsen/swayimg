@@ -54,6 +54,17 @@ Examples:
 - `PgUp` or `p`: Open previous file;
 - `Esc`, `Enter`, `F10` or `q`: Exit the program.
 
+## Configuration
+
+The viewer searches for the configuration file with name `config` in the
+following directories:
+- `$XDG_CONFIG_HOME/swayimg`
+- `$HOME/.config/swayimg`
+
+Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc).
+
+See `man swayimgrc` for details.
+
 ## Build and install
 
 ```

@@ -9,7 +9,7 @@
 typedef struct {
     scale_t scale;       ///< Initial scale
     rect_t window;       ///< Window geometry
-    uint32_t background; ///< Background color
+    uint32_t background; ///< Background mode/color
     bool fullscreen;     ///< Full screen mode
     bool show_info;      ///< Show image info
 } config_t;

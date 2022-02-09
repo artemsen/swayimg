@@ -1,0 +1,50 @@
+.\" Swayimg configuration file format.
+.\" Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
+.TH SWAYIMG 5 2022-02-09 swayimg "Swayimg configuration"
+.SH NAME
+swayimgrc \- Swayimg configuration file
+.\" possible file locations
+.SH SYNOPSIS
+.SY \fI$XDG_CONFIG_HOME\fR/swayimg/config
+.SY \fI$HOME\fR/.config/swayimg/config
+.\" format description
+.SH DESCRIPTION
+.SS General format description
+The Swayimg configuration file is a text-based INI file used to override the
+default settings.
+.PP
+The basic element contained in the INI file is the key or property.
+Every key has a name and a value, delimited by an equals sign (=).
+The name appears to the left of the equals sign. The value can contain any
+character. Kay and values are case sensitive.
+.PP
+The number sign (#) at the beginning of the line indicates a comment.
+Empty lines and comments are ignored.
+.SS Properties
+.PP
+.IP "\fBscale\fR: initial image scale:"
+.nf
+\fIdefault\fR: 100% or less to fit to window;
+\fIfit\fR: fit to window;
+\fIreal\fR: real size (100%);
+.IP "\fBfullscreen\fR: start in dull screen mode, possible values are \fIyes\fR or \fIno\fR"
+.IP "\fBbackground\fR: background mode or color, possible values are \fIgrid\fR or RGB hex color (e.g. \fI1a2b3c\fR)"
+.IP "\fBinfo\fR: show image meta information: format, size, EXIF, and current scale, possible values are \fIyes\fR or \fIno\fR"
+.\" example file
+.SH EXAMPLES
+.EX
+# comment
+scale = default
+fullscreen = no
+background = grid
+info = no
+.EE
+.\" related man pages
+.SH SEE ALSO
+swayimg(1)
+.\" link to homepage
+.SH BUGS
+For suggestions, comments, bug reports etc. visit the
+.UR https://github.com/artemsen/swayimg
+project homepage
+.UE .
