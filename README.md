@@ -60,6 +60,8 @@ The viewer searches for the configuration file with name `config` in the
 following directories:
 - `$XDG_CONFIG_HOME/swayimg`
 - `$HOME/.config/swayimg`
+- `$XDG_CONFIG_DIRS/swayimg`
+- `/etc/xdg/swayimg`
 
 Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc).
 
