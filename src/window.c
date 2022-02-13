@@ -338,23 +338,11 @@ static void on_output_scale(void* data, struct wl_output* output,
     }
 }
 
-static void on_output_name(void* data, struct wl_output* output,
-                           const char* name)
-{
-}
-
-static void on_output_description(void* data, struct wl_output* output,
-                                  const char* description)
-{
-}
-
 static const struct wl_output_listener wl_output_listener = {
     .geometry = on_output_geometry,
     .mode = on_output_mode,
     .done = on_output_done,
     .scale = on_output_scale,
-    .name = on_output_name,
-    .description = on_output_description,
 };
 
 static void handle_enter_surface(void* data, struct wl_surface* surface,
