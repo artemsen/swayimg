@@ -14,6 +14,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+// Max number of output displays
+#define MAX_OUTPUTS 4
+
 /** Loop state */
 enum state {
     state_ok,
@@ -50,24 +53,33 @@ struct context {
         struct wl_buffer* buffer;
     } surface;
 
-    struct size {
+    // window size and its scale factor
+    struct wnd {
         size_t width;
         size_t height;
-    } size;
+        int32_t scale;
+    } wnd;
+
+    // outputs and their scale factors
+    struct outputs {
+        struct wl_output* output;
+        int32_t scale;
+    } outputs[MAX_OUTPUTS];
 
     struct handlers handlers;
 
     enum state state;
 };
 
-static struct context ctx;
+static struct context ctx = { .wnd = { .scale = 1 } };
 
 /** Redraw window */
 static void redraw(void)
 {
     ctx.handlers.on_redraw(ctx.surface.cairo);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
-    wl_surface_damage(ctx.wl.surface, 0, 0, ctx.size.width, ctx.size.height);
+    wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
+    wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
     wl_surface_commit(ctx.wl.surface);
 }
 
@@ -118,6 +130,13 @@ static int create_shmem(size_t sz, void** data)
  */
 static bool create_buffer(void)
 {
+    const size_t stride = ctx.wnd.width * 4 /* argb */;
+    const size_t buf_sz = stride * ctx.wnd.height;
+    struct wl_shm_pool* pool;
+    void* buf_data;
+    int fd;
+    bool status;
+
     // free previous allocated buffer
     if (ctx.surface.cairo) {
         cairo_surface_destroy(ctx.surface.cairo);
@@ -129,23 +148,21 @@ static bool create_buffer(void)
     }
 
     // create new buffer
-    const size_t stride = ctx.size.width * 4 /* argb */;
-    const size_t buf_sz = stride * ctx.size.height;
-    void* buf_data;
-    const int fd = create_shmem(buf_sz, &buf_data);
-    if (fd == -1) {
-        return false;
+    fd = create_shmem(buf_sz, &buf_data);
+    status = (fd != -1);
+    if (status) {
+        pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
+        close(fd);
+        ctx.surface.buffer =
+            wl_shm_pool_create_buffer(pool, 0, ctx.wnd.width, ctx.wnd.height,
+                                      stride, WL_SHM_FORMAT_XRGB8888);
+        wl_shm_pool_destroy(pool);
+        ctx.surface.cairo = cairo_image_surface_create_for_data(
+            buf_data, CAIRO_FORMAT_ARGB32, ctx.wnd.width, ctx.wnd.height,
+            stride);
     }
-    struct wl_shm_pool* pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
-    close(fd);
-    ctx.surface.buffer =
-        wl_shm_pool_create_buffer(pool, 0, ctx.size.width, ctx.size.height,
-                                  stride, WL_SHM_FORMAT_XRGB8888);
-    wl_shm_pool_destroy(pool);
-    ctx.surface.cairo = cairo_image_surface_create_for_data(
-        buf_data, CAIRO_FORMAT_ARGB32, ctx.size.width, ctx.size.height, stride);
 
-    return true;
+    return status;
 }
 
 /*******************************************************************************
@@ -267,11 +284,11 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
                                           int32_t width, int32_t height,
                                           struct wl_array* states)
 {
-    if (width && height &&
-        (width != (int32_t)ctx.size.width ||
-         height != (int32_t)ctx.size.height)) {
-        ctx.size.width = width;
-        ctx.size.height = height;
+    const int32_t cur_width = (int32_t)(ctx.wnd.width / ctx.wnd.scale);
+    const int32_t cur_height = (int32_t)(ctx.wnd.height / ctx.wnd.scale);
+    if (width && height && (width != cur_width || height != cur_height)) {
+        ctx.wnd.width = width * ctx.wnd.scale;
+        ctx.wnd.height = height * ctx.wnd.scale;
         if (create_buffer()) {
             ctx.handlers.on_resize();
         } else {
@@ -291,6 +308,89 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 };
 
 /*******************************************************************************
+ * WL Output handlers
+ ******************************************************************************/
+static void on_output_geometry(void* data, struct wl_output* output, int32_t x,
+                               int32_t y, int32_t physical_width,
+                               int32_t physical_height, int32_t subpixel,
+                               const char* make, const char* model,
+                               int32_t transform)
+{
+}
+
+static void on_output_mode(void* data, struct wl_output* output, uint32_t flags,
+                           int32_t width, int32_t height, int32_t refresh)
+{
+}
+
+static void on_output_done(void* data, struct wl_output* output) { }
+
+static void on_output_scale(void* data, struct wl_output* output,
+                            int32_t factor)
+{
+    // save output scale factor
+    for (size_t i = 0; i < sizeof(ctx.outputs) / sizeof(ctx.outputs[0]); ++i) {
+        if (!ctx.outputs[i].output || ctx.outputs[i].output == output) {
+            ctx.outputs[i].output = output;
+            ctx.outputs[i].scale = factor;
+            break;
+        }
+    }
+}
+
+static void on_output_name(void* data, struct wl_output* output,
+                           const char* name)
+{
+}
+
+static void on_output_description(void* data, struct wl_output* output,
+                                  const char* description)
+{
+}
+
+static const struct wl_output_listener wl_output_listener = {
+    .geometry = on_output_geometry,
+    .mode = on_output_mode,
+    .done = on_output_done,
+    .scale = on_output_scale,
+    .name = on_output_name,
+    .description = on_output_description,
+};
+
+static void handle_enter_surface(void* data, struct wl_surface* surface,
+                                 struct wl_output* output)
+{
+    int32_t scale = 1;
+    for (size_t i = 0; i < sizeof(ctx.outputs) / sizeof(ctx.outputs[0]); ++i) {
+        if (ctx.outputs[i].output == output) {
+            scale = ctx.outputs[i].scale;
+            break;
+        }
+    }
+    if (scale != ctx.wnd.scale) {
+        ctx.wnd.width = (ctx.wnd.width / ctx.wnd.scale) * scale;
+        ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
+        ctx.wnd.scale = scale;
+        if (create_buffer()) {
+            ctx.handlers.on_resize();
+            redraw();
+        } else {
+            ctx.state = state_error;
+        }
+    }
+}
+
+static void handle_leave_surface(void* data, struct wl_surface* surface,
+                                 struct wl_output* output)
+{
+}
+
+static const struct wl_surface_listener wl_surface_listener = {
+    .enter = handle_enter_surface,
+    .leave = handle_leave_surface,
+};
+
+/*******************************************************************************
  * Registry handlers
  ******************************************************************************/
 static void on_registry_global(void* data, struct wl_registry* registry,
@@ -301,7 +401,11 @@ static void on_registry_global(void* data, struct wl_registry* registry,
         ctx.wl.shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
         ctx.wl.compositor =
-            wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+            wl_registry_bind(registry, name, &wl_compositor_interface, 3);
+    } else if (strcmp(interface, wl_output_interface.name) == 0) {
+        struct wl_output* output =
+            wl_registry_bind(registry, name, &wl_output_interface, 3);
+        wl_output_add_listener(output, &wl_output_listener, NULL);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         ctx.xdg.base =
             wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
@@ -323,8 +427,8 @@ static const struct wl_registry_listener registry_listener = {
 bool create_window(const struct handlers* handlers, size_t width, size_t height,
                    const char* app_id)
 {
-    ctx.size.width = width ? width : 800;
-    ctx.size.height = height ? height : 600;
+    ctx.wnd.width = width ? width : 800;
+    ctx.wnd.height = height ? height : 600;
     ctx.handlers = *handlers;
 
     ctx.wl.display = wl_display_connect(NULL);
@@ -348,6 +452,8 @@ bool create_window(const struct handlers* handlers, size_t width, size_t height,
         destroy_window();
         return false;
     }
+    wl_surface_add_listener(ctx.wl.surface, &wl_surface_listener, NULL);
+
     ctx.xdg.surface = xdg_wm_base_get_xdg_surface(ctx.xdg.base, ctx.wl.surface);
     if (!ctx.xdg.surface) {
         fprintf(stderr, "Failed to create xdg surface\n");
@@ -416,12 +522,12 @@ void close_window(void)
 
 size_t get_window_width(void)
 {
-    return ctx.size.width;
+    return ctx.wnd.width;
 }
 
 size_t get_window_height(void)
 {
-    return ctx.size.height;
+    return ctx.wnd.height;
 }
 
 void set_window_title(const char* title)
