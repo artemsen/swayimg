@@ -60,8 +60,8 @@ static FILE* open_file(void)
     size_t len;
     const char* postfix = "/swayimg/config";
     const size_t postfix_len = strlen(postfix);
-
     const char* config_dir = getenv("XDG_CONFIG_HOME");
+
     if (config_dir) {
         len = strlen(config_dir);
         if (len < sizeof(path)) {
@@ -86,6 +86,23 @@ static FILE* open_file(void)
     }
 
     if (len && len + postfix_len < sizeof(path)) {
+        memcpy(path + len, postfix, postfix_len + 1 /*last null*/);
+        FILE *fd = fopen(path, "r");
+        if (fd != NULL) {
+            return fd;
+        }
+    }
+
+    if ((config_dir = getenv("XDG_CONFIG_DIRS"))) {
+        // we use only the first directory to keep it simple
+        const char* colon = strchr(config_dir, ':');
+        len = colon ? (size_t)(colon - config_dir) : strlen(config_dir);
+    } else {
+        config_dir = "/etc/xdg";
+        len = strlen(config_dir);
+    }
+    if (len && len + postfix_len < sizeof(path)) {
+        memcpy(path, config_dir, len);
         memcpy(path + len, postfix, postfix_len + 1 /*last null*/);
         return fopen(path, "r");
     }

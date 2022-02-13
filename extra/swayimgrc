@@ -4,6 +4,8 @@
 # The viewer searches for the config file in the following locations:
 # 1. $XDG_CONFIG_HOME/swayimg/config
 # 2. $HOME/.config/swayimg/config
+# 3. $XDG_CONFIG_DIRS/swayimg/config
+# 4. /etc/xdg/swayimg/config
 # See `man swayimgrc` for details.
 
 # Initial scale (default, fit, or real)
