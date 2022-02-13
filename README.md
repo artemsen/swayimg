@@ -76,3 +76,5 @@ sudo ninja -C build install
 ```
 
 Arch users can install the program via [AUR](https://aur.archlinux.org/packages/swayimg).
+
+Alpine users can install the program from [swayimg](https://pkgs.alpinelinux.org/packages?name=swayimg) or [swayimg-full](https://pkgs.alpinelinux.org/packages?name=swayimg-full) package.
