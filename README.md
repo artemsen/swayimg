@@ -69,6 +69,10 @@ See `man swayimgrc` for details.
 
 ## Build and install
 
+<a href="https://repology.org/project/swayimg/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/swayimg.svg" alt="Packaging status" align="right">
+</a>
+
 ```
 meson build
 ninja -C build
