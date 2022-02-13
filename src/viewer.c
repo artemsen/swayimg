@@ -169,10 +169,16 @@ static void on_redraw(cairo_surface_t* window)
 
     // image meta information: file name, format, exif, etc
     if (config.show_info) {
-        char scale[8];
-        snprintf(scale, sizeof(scale), "%i%%",
+        char text[32];
+        snprintf(text, sizeof(text), "%i%%",
                  (int)(viewer.canvas.scale * 100.0));
-        draw_text(cairo, 10, get_window_height() - 30, scale);
+        draw_text(cairo, 10, get_window_height() - 30, text);
+        if (viewer.file_list.total > 1) {
+            const int len =
+                snprintf(text, sizeof(text), "%lu of %lu",
+                         viewer.file_list.current + 1, viewer.file_list.total);
+            draw_text(cairo, get_window_width() - 10 - len * 10, 10, text);
+        }
         draw_lines(cairo, 10, 10, (const char**)viewer.image->meta);
     }
 

@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 // Number of characters in the name field in meta info
-#define META_NAME_LEN 10
+#define META_NAME_LEN 12
 
 /**
  * Image loader function.
@@ -113,6 +113,38 @@ const char* supported_formats(void)
 }
 
 /**
+ * Convert file size to human readable text.
+ * @param[in] bytes file size in bytes
+ * @param[out] text output text
+ * @param[in] len size of output buffer
+ */
+static void human_size(uint64_t bytes, char* text, size_t len)
+{
+    const size_t kib = 1024;
+    const size_t mib = kib * 1024;
+    const size_t gib = mib * 1024;
+    const size_t tib = gib * 1024;
+
+    size_t multiplier;
+    char prefix;
+    if (bytes > tib) {
+        multiplier = tib;
+        prefix = 'T';
+    } else if (bytes >= gib) {
+        multiplier = gib;
+        prefix = 'G';
+    } else if (bytes >= mib) {
+        multiplier = mib;
+        prefix = 'M';
+    } else {
+        multiplier = kib;
+        prefix = 'K';
+    }
+
+    snprintf(text, len, "%.02f %ciB", (double)bytes / multiplier, prefix);
+}
+
+/**
  * Create image instance from memory buffer.
  * @param[in] path path to the image
  * @param[in] data raw image data
@@ -122,12 +154,12 @@ const char* supported_formats(void)
 static image_t* image_create(const char* path, const uint8_t* data, size_t size)
 {
     image_t* img;
-    char format[32];
+    char meta[32];
     cairo_surface_t* surface = NULL;
 
     // decode image
     for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        surface = loaders[i](data, size, format, sizeof(format));
+        surface = loaders[i](data, size, meta, sizeof(meta));
         if (surface) {
             break;
         }
@@ -148,13 +180,22 @@ static image_t* image_create(const char* path, const uint8_t* data, size_t size)
     img->surface = surface;
     img->path = path;
 
+    path = strrchr(path, '/');
+    if (path) {
+        ++path; // skip slash
+    } else {
+        path = img->path; // use full path
+    }
+
     // add general meta info
     add_image_meta(img, "File", path);
-    add_image_meta(img, "Format", format);
-    snprintf(format, sizeof(format), "%ix%i",
+    add_image_meta(img, "Format", meta);
+    human_size(size, meta, sizeof(meta));
+    add_image_meta(img, "File size", meta);
+    snprintf(meta, sizeof(meta), "%ix%i",
              cairo_image_surface_get_width(img->surface),
              cairo_image_surface_get_height(img->surface));
-    add_image_meta(img, "Size", format);
+    add_image_meta(img, "Image size", meta);
 
 #ifdef HAVE_LIBEXIF
     // handle EXIF data
