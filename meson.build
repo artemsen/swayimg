@@ -115,6 +115,7 @@ sources = [
   'src/viewer.c',
   'src/window.c',
   'src/formats/bmp.c',
+  'src/formats/common.c',
   xdg_shell_h,
   xdg_shell_c,
 ]

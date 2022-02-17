@@ -5,6 +5,8 @@
 // BMP image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -120,13 +122,10 @@ cairo_surface_t* load_bmp(const uint8_t* data, size_t size, char* format,
         return NULL;
     }
 
-    // create image instance
-    const cairo_format_t fmt =
-        bmp->bpp == 32 ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
+    // prepare surface and metadata
     cairo_surface_t* surface =
-        cairo_image_surface_create(fmt, bmp->width, abs(bmp->height));
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+        create_surface(bmp->width, abs(bmp->height), bmp->bpp == 32);
+    if (!surface) {
         return NULL;
     }
     snprintf(format, format_sz, "BMP %dbit", bmp->bpp);

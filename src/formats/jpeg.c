@@ -5,6 +5,8 @@
 // JPEG image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <errno.h>
 #include <setjmp.h>
@@ -67,11 +69,9 @@ cairo_surface_t* load_jpeg(const uint8_t* data, size_t size, char* format,
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    // create image instance
-    surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, jpg.output_width,
-                                         jpg.output_height);
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+    // prepare surface and metadata
+    surface = create_surface(jpg.output_width, jpg.output_height, false);
+    if (!surface) {
         jpeg_destroy_decompress(&jpg);
         return NULL;
     }

@@ -5,6 +5,8 @@
 // PNG image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <png.h>
 #include <setjmp.h>
@@ -29,18 +31,6 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
     } else {
         png_error(png, "No data in PNG reader");
     }
-}
-
-/**
- * Apply alpha to color.
- * @param[in] alpha alpha channel value
- * @param[in] color color value
- * @return color with applied alpha
- */
-static uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
-{
-    const uint16_t temp = (alpha * color) + 0x80;
-    return ((temp + (temp >> 8)) >> 8);
 }
 
 /**
@@ -140,10 +130,9 @@ cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
     png_set_packswap(png);
     png_set_bgr(png);
 
-    // create image instance
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+    // prepare surface and metadata
+    surface = create_surface(width, height, true);
+    if (!surface) {
         return NULL;
     }
     snprintf(format, format_sz, "PNG %dbit", bit_depth);
@@ -161,18 +150,7 @@ cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
     png_read_image(png, lines);
 
     // handle transparency
-    for (size_t y = 0; y < height; ++y) {
-        for (size_t x = 0; x < width; ++x) {
-            uint8_t* pixel = (uint8_t*)lines[y] + x * 4 /*argb*/;
-            const uint8_t alpha = pixel[3];
-            if (alpha != 0xff) {
-                pixel[0] = multiply_alpha(alpha, pixel[0]);
-                pixel[1] = multiply_alpha(alpha, pixel[1]);
-                pixel[2] = multiply_alpha(alpha, pixel[2]);
-            }
-        }
-    }
-    cairo_surface_mark_dirty(surface);
+    apply_alpha(surface);
 
     // free resources
     png_destroy_read_struct(&png, &info, NULL);

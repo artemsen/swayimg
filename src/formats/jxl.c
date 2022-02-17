@@ -5,6 +5,8 @@
 // JPEG XL image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <jxl/decode.h>
 #include <stdint.h>
@@ -81,11 +83,9 @@ cairo_surface_t* load_jxl(const uint8_t* data, size_t size, char* format,
                             rc);
                     goto error;
                 }
-                // create cairo image
-                surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-                                                     info.xsize, info.ysize);
-                if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-                    fprintf(stderr, "Unable to create surface\n");
+                // create image surface
+                surface = create_surface(info.xsize, info.ysize, true);
+                if (!surface) {
                     goto error;
                 }
                 // check buffer format

@@ -5,6 +5,8 @@
 // AV1 image format support (AVIF)
 //
 
+#include "common.h"
+
 #include <avif/avif.h>
 #include <cairo/cairo.h>
 #include <stdint.h>
@@ -66,11 +68,9 @@ cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
         goto done;
     }
 
-    // create image instance
-    surface =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rgb.width, rgb.height);
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+    // prepare surface and metadata
+    surface = create_surface(rgb.width, rgb.height, true);
+    if (!surface) {
         return NULL;
     }
     snprintf(format, format_sz, "AV1 %dbit %s", rgb.depth,

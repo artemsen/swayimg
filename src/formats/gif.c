@@ -5,6 +5,8 @@
 // GIF image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <gif_lib.h>
 #include <stdint.h>
@@ -71,11 +73,9 @@ cairo_surface_t* load_gif(const uint8_t* data, size_t size, char* format,
         goto done;
     }
 
-    // create image instance
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, gif->SWidth,
-                                         gif->SHeight);
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+    // prepare surface and metadata
+    surface = create_surface(gif->SWidth, gif->SHeight, true);
+    if (!surface) {
         return NULL;
     }
     snprintf(format, format_sz, "GIF");

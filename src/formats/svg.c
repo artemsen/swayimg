@@ -5,6 +5,8 @@
 // SVG image format support
 //
 
+#include "common.h"
+
 #include <cairo/cairo.h>
 #include <ctype.h>
 #include <librsvg/rsvg.h>
@@ -61,11 +63,9 @@ cairo_surface_t* load_svg(const uint8_t* data, size_t size, char* format,
         viewport.height = VIEWPORT_SIZE;
     }
 
-    // create image instance
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, viewport.width,
-                                         viewport.height);
-    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
-        fprintf(stderr, "Unable to create surface\n");
+    // prepare surface and metadata
+    surface = create_surface(viewport.width, viewport.height, true);
+    if (!surface) {
         goto done;
     }
     snprintf(format, format_sz, "SVG");
