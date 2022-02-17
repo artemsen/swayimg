@@ -12,18 +12,25 @@
 cairo_surface_t* create_surface(size_t width, size_t height, bool alpha)
 {
     cairo_surface_t* surface = NULL;
-    const cairo_format_t fmt = alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
-    cairo_status_t status;
 
-    surface = cairo_image_surface_create(fmt, width, height);
-    status = cairo_surface_status(surface);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        const char* desc = cairo_status_to_string(status);
-        fprintf(stderr, "Unable to create Cairo surface: %s\n",
-                desc ? desc : "Unknown error");
-        if (surface) {
-            cairo_surface_destroy(surface);
-            surface = NULL;
+    if (width > MAX_CAIRO_IMAGE_SIZE || height > MAX_CAIRO_IMAGE_SIZE) {
+        fprintf(stderr,
+                "Unable to create surface: image too big (%d pixels max)\n",
+                MAX_CAIRO_IMAGE_SIZE);
+    } else {
+        const cairo_format_t fmt =
+            alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24;
+        cairo_status_t status;
+        surface = cairo_image_surface_create(fmt, width, height);
+        status = cairo_surface_status(surface);
+        if (status != CAIRO_STATUS_SUCCESS) {
+            const char* desc = cairo_status_to_string(status);
+            fprintf(stderr, "Unable to create Cairo surface: %s\n",
+                    desc ? desc : "Unknown error");
+            if (surface) {
+                cairo_surface_destroy(surface);
+                surface = NULL;
+            }
         }
     }
 

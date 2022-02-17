@@ -7,6 +7,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// Max size of the image, based on Cairo surface limit,
+// see MAX_IMAGE_SIZE in {CAIRO}/src/cairo-image-surface.c
+#define MAX_CAIRO_IMAGE_SIZE 32767
+
 /**
  * Create Cairo surface.
  * @param[in] width image width in px

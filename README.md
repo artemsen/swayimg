@@ -26,6 +26,7 @@ image from the specified file.
 - BMP (built-in limited support).
 
 _Note_: animation is not supported, only the first frame is displayed.
+_Note_: image width or height cannot exceed 32767 pixels (Cairo limit).
 
 ## Usage
 
