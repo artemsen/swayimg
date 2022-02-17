@@ -12,7 +12,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
+#include <time.h>
 
 /** Viewer context. */
 typedef struct {
@@ -269,10 +269,10 @@ bool run_viewer(const char** files, size_t total)
                                        .on_keyboard = on_keyboard };
     // create unique application id
     char app_id[64];
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     snprintf(app_id, sizeof(app_id), APP_NAME "_%lx",
-             tv.tv_sec << 32 | tv.tv_usec);
+             (ts.tv_sec << 32) | ts.tv_nsec);
 
     // setup window position via Sway IPC
     const int ipc = sway_connect();

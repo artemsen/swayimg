@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 // Max number of output displays
@@ -92,10 +92,10 @@ static void redraw(void)
 static int create_shmem(size_t sz, void** data)
 {
     char path[64];
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     snprintf(path, sizeof(path), "/" APP_NAME "_%lx",
-             tv.tv_sec << 32 | tv.tv_usec);
+             (ts.tv_sec << 32) | ts.tv_nsec);
 
     int fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1) {
