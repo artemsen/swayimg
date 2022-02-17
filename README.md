@@ -1,7 +1,5 @@
 # Swayimg: image viewer for Sway/Wayland
 
-![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
-
 Now you can view images directly in the current terminal window!
 ![Screenshot](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/screenshot.png)
 
@@ -23,10 +21,12 @@ image from the specified file.
 - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
 - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
 - AV1 (via [libavif](https://github.com/AOMediaCodec/libavif));
-- BMP (built-in limited support).
+- BMP (built-in).
 
-_Note_: animation is not supported, only the first frame is displayed.
-_Note_: image width or height cannot exceed 32767 pixels (Cairo limit).
+## Known issues
+- Animation is not supported, only the first frame is displayed;
+- Image width or height cannot exceed 32767 pixels (Cairo limit);
+- BMP compressed images are not supported.
 
 ## Usage
 
@@ -37,6 +37,7 @@ See `man swayimg` for details.
 Examples:
 - View multiple files: `swayimg photo.jpg logo.png`
 - View using pipes: `wget -O- https://example.com/image.jpg 2> /dev/null | swayimg -`
+- View all images (reqursively) in random order: `swayimg $(find . -type f | shuf)`
 
 ### Key bindings
 
@@ -68,18 +69,25 @@ Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/
 
 See `man swayimgrc` for details.
 
-## Build and install
+## Install
 
 <a href="https://repology.org/project/swayimg/versions">
   <img src="https://repology.org/badge/vertical-allrepos/swayimg.svg" alt="Packaging status" align="right">
 </a>
 
+Arch users can install the program from AUR: [swayimg](https://aur.archlinux.org/packages/swayimg) or [swayimg-git](https://aur.archlinux.org/packages/swayimg-git) package.
+
+Alpine users can install the program from [swayimg](https://pkgs.alpinelinux.org/packages?name=swayimg) or [swayimg-full](https://pkgs.alpinelinux.org/packages?name=swayimg-full) package.
+
+Other users can [build](#build) from sources.
+
+## Build
+
+![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
+
+The project uses Meson build system:
 ```
 meson build
 ninja -C build
 sudo ninja -C build install
 ```
-
-Arch users can install the program via [AUR](https://aur.archlinux.org/packages/swayimg).
-
-Alpine users can install the program from [swayimg](https://pkgs.alpinelinux.org/packages?name=swayimg) or [swayimg-full](https://pkgs.alpinelinux.org/packages?name=swayimg-full) package.
