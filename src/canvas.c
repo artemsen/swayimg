@@ -5,6 +5,7 @@
 
 #include "window.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -80,42 +81,60 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
 
 void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
 {
-    const int width = canvas->scale * cairo_image_surface_get_width(image);
-    const int height = canvas->scale * cairo_image_surface_get_height(image);
+    int bkg_x1, bkg_x2, bkg_y1, bkg_y2;
 
-    cairo_translate(cairo, canvas->x, canvas->y);
+    // window size
+    const int wnd_w = (int)get_window_width();
+    const int wnd_h = (int)get_window_height();
 
-    // rotate
+    // image coordinates and size
+    rect_t img = {
+        .x = canvas->x,
+        .y = canvas->y,
+        .width = canvas->scale * cairo_image_surface_get_width(image),
+        .height = canvas->scale * cairo_image_surface_get_height(image),
+    };
+
+    // handle rotation
     if (canvas->rotate == rotate_90 || canvas->rotate == rotate_270) {
-        const int center_x = width / 2;
-        const int center_y = height / 2;
-        cairo_translate(cairo, center_x, center_y);
-        cairo_rotate(cairo, ROTATE_RAD(canvas->rotate));
-        cairo_translate(cairo, -center_x, -center_y);
+        // translate coordinates
+        const float s = sin(ROTATE_RAD(rotate_90));
+        const float c = cos(ROTATE_RAD(rotate_90));
+        const float cnt_x = img.width / 2;
+        const float cnt_y = img.height / 2;
+        img.x += cnt_x * c - cnt_y * s + cnt_x;
+        img.y -= cnt_x * s + cnt_y * c - cnt_y;
+        // swap width and height
+        const int swap = img.width;
+        img.width = img.height;
+        img.height = swap;
     }
+
+    // background area to fill
+    bkg_x1 = img.x > 0 ? img.x : 0;
+    bkg_x2 = bkg_x1 + img.width < wnd_w ? bkg_x1 + img.width : wnd_w;
+    bkg_y1 = img.y > 0 ? img.y : 0;
+    bkg_y2 = bkg_y1 + img.height < wnd_h ? bkg_y1 + img.height : wnd_h;
 
     // fill with the first color
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR1), RGB_GREEN(GRID_COLOR1),
                          RGB_BLUE(GRID_COLOR1));
-    cairo_rectangle(cairo, 0, 0, width, height);
+    cairo_rectangle(cairo, bkg_x1, bkg_y1, bkg_x2 - bkg_x1, bkg_y2 - bkg_y1);
     cairo_fill(cairo);
 
     // draw lighter cells with the second color
     cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR2), RGB_GREEN(GRID_COLOR2),
                          RGB_BLUE(GRID_COLOR2));
-    for (int y = 0; y < height; y += GRID_STEP) {
-        const int cell_height = y + GRID_STEP < height ? GRID_STEP : height - y;
-        int cell_x = y / GRID_STEP % 2 ? 0 : GRID_STEP;
-        for (; cell_x < width; cell_x += 2 * GRID_STEP) {
-            const int cell_width =
-                cell_x + GRID_STEP < width ? GRID_STEP : width - cell_x;
-            cairo_rectangle(cairo, cell_x, y, cell_width, cell_height);
-            cairo_fill(cairo);
+    for (int y = bkg_y1; y < bkg_y2; y += GRID_STEP) {
+        const int offset = y / GRID_STEP % 2 ? 0 : GRID_STEP;
+        const int height = y + GRID_STEP < bkg_y2 ? GRID_STEP : bkg_y2 - y;
+        for (int x = bkg_x1 + offset; x < bkg_x2; x += 2 * GRID_STEP) {
+            const int width = x + GRID_STEP < bkg_x2 ? GRID_STEP : bkg_x2 - x;
+            cairo_rectangle(cairo, x, y, width, height);
         }
     }
-
-    cairo_identity_matrix(cairo);
+    cairo_fill(cairo);
 }
 
 void draw_text(cairo_t* cairo, int x, int y, const char* text)
