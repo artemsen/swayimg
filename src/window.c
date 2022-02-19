@@ -8,9 +8,11 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/timerfd.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -48,6 +50,14 @@ struct context {
         struct xkb_state* state;
     } xkb;
 
+    // key repeat data
+    struct repeat {
+        int fd;           ///< Timer file descriptor
+        xkb_keysym_t key; ///< Key to repeat
+        uint32_t rate;    ///< Rate of repeating keys in characters per second
+        uint32_t delay;   ///< Delay in milliseconds
+    } repeat;
+
     struct surface {
         cairo_surface_t* cairo;
         struct wl_buffer* buffer;
@@ -71,7 +81,7 @@ struct context {
     enum state state;
 };
 
-static struct context ctx = { .wnd = { .scale = 1 } };
+static struct context ctx = { .wnd = { .scale = 1 }, .repeat = { .fd = -1 } };
 
 /** Redraw window */
 static void redraw(void)
@@ -191,6 +201,9 @@ static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
 static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
                                     int32_t rate, int32_t delay)
 {
+    // save keyboard repeat preferences
+    ctx.repeat.rate = rate;
+    ctx.repeat.delay = delay;
 }
 
 static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
@@ -210,14 +223,44 @@ static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
     close(fd);
 }
 
+/**
+ * Fill timespec structure.
+ * @param[in] ts destination structure
+ * @param[in] ms time in milliseconds
+ */
+static inline void set_timespec(struct timespec* ts, uint32_t ms)
+{
+    ts->tv_sec = ms / 1000;
+    ts->tv_nsec = (ms % 1000) * 1000000;
+}
+
 static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
                             uint32_t serial, uint32_t time, uint32_t key,
                             uint32_t state)
 {
-    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        xkb_keysym_t keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key + 8);
-        if (keysym != XKB_KEY_NoSymbol && ctx.handlers.on_keyboard(keysym)) {
-            redraw();
+    struct itimerspec ts = { 0 };
+
+    if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+        // stop key repeat timer
+        timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
+    } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        xkb_keysym_t keysym;
+        key += 8;
+        keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
+        if (keysym != XKB_KEY_NoSymbol) {
+            // handle key in viewer
+            if (ctx.handlers.on_keyboard(keysym)) {
+                redraw();
+            }
+            // handle key repeat
+            if (ctx.repeat.rate &&
+                xkb_keymap_key_repeats(ctx.xkb.keymap, key)) {
+                // start key repeat timer
+                ctx.repeat.key = keysym;
+                set_timespec(&ts.it_value, ctx.repeat.delay);
+                set_timespec(&ts.it_interval, 1000 / ctx.repeat.rate);
+                timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
+            }
         }
     }
 }
@@ -399,7 +442,7 @@ static void on_registry_global(void* data, struct wl_registry* registry,
             wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(ctx.xdg.base, &xdg_base_listener, NULL);
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
+        ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface, 4);
         wl_seat_add_listener(ctx.wl.seat, &seat_listener, NULL);
     }
 }
@@ -455,18 +498,62 @@ bool create_window(const struct handlers* handlers, size_t width, size_t height,
 
     wl_surface_commit(ctx.wl.surface);
 
+    ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+
     return true;
 }
 
 void show_window(void)
 {
+    // file descriptors to poll
+    struct pollfd fds[] = {
+        /* 0 */ { .fd = wl_display_get_fd(ctx.wl.display), .events = POLLIN },
+        /* 1 */ { .fd = ctx.repeat.fd, .events = POLLIN },
+    };
+
     while (ctx.state == state_ok) {
-        wl_display_dispatch(ctx.wl.display);
+        // prepare to read wayland events
+        while (wl_display_prepare_read(ctx.wl.display) != 0) {
+            wl_display_dispatch_pending(ctx.wl.display);
+        }
+        wl_display_flush(ctx.wl.display);
+
+        // poll events
+        if (poll(fds, sizeof(fds) / sizeof(fds[0]), -1) <= 0) {
+            wl_display_cancel_read(ctx.wl.display);
+            continue;
+        }
+
+        // read and handle wayland events
+        if (fds[0].revents & POLLIN) {
+            wl_display_read_events(ctx.wl.display);
+            wl_display_dispatch_pending(ctx.wl.display);
+        } else {
+            wl_display_cancel_read(ctx.wl.display);
+        }
+
+        // read and handle key repeat events from timer
+        if (fds[1].revents & POLLIN) {
+            uint64_t repeats;
+            if (read(ctx.repeat.fd, &repeats, sizeof(repeats)) ==
+                sizeof(repeats)) {
+                bool handled = false;
+                while (repeats--) {
+                    handled |= ctx.handlers.on_keyboard(ctx.repeat.key);
+                }
+                if (handled) {
+                    redraw();
+                }
+            }
+        }
     }
 }
 
 void destroy_window(void)
 {
+    if (ctx.repeat.fd != -1) {
+        close(ctx.repeat.fd);
+    }
     if (ctx.xkb.state) {
         xkb_state_unref(ctx.xkb.state);
     }
