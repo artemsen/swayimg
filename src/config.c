@@ -15,6 +15,54 @@ config_t config = {
     .background = BACKGROUND_GRID,
 };
 
+/** Config file location. */
+struct config_locations {
+    const char* prefix;  ///< Environment variable name
+    const char* postfix; ///< Constant postfix
+};
+static const struct config_locations config_locations[] = {
+    { "XDG_CONFIG_HOME", "/swayimg/config" },
+    { "HOME", "/.config/swayimg/config" },
+    { "XDG_CONFIG_DIRS", "/swayimg/config" },
+    { NULL, "/etc/xdg/swayimg/config" }
+};
+
+/**
+ * Expand path from environment variable.
+ * @param[in] prefix_env path prefix (var name)
+ * @param[in] postfix constant postfix
+ * @return allocated buffer with path, caller should free it after use
+ */
+static char* expand_path(const char* prefix_env, const char* postfix)
+{
+    char* path;
+    const char* prefix;
+    size_t prefix_len = 0;
+    size_t postfix_len = strlen(postfix);
+
+    if (prefix_env) {
+        const char* delim;
+        prefix = getenv(prefix_env);
+        if (!prefix || !*prefix) {
+            return NULL;
+        }
+        // use only the first directory if prefix is a list
+        delim = strchr(prefix, ':');
+        prefix_len = delim ? (size_t)(delim - prefix) : strlen(prefix);
+    }
+
+    // compose path
+    path = malloc(prefix_len + postfix_len + 1 /* last null*/);
+    if (path) {
+        if (prefix_len) {
+            memcpy(path, prefix, prefix_len);
+        }
+        memcpy(path + prefix_len, postfix, postfix_len + 1 /*last null*/);
+    }
+
+    return path;
+}
+
 /**
  * Apply property to configuration.
  * @param[in] key property key
@@ -50,73 +98,25 @@ static void apply_conf(const char* key, const char* value)
     }
 }
 
-/**
- * Open user's configuration file.
- * @return file descriptior or NULL on errors
- */
-static FILE* open_file(void)
-{
-    char path[64];
-    size_t len;
-    const char* postfix = "/swayimg/config";
-    const size_t postfix_len = strlen(postfix);
-    const char* config_dir = getenv("XDG_CONFIG_HOME");
-
-    if (config_dir) {
-        len = strlen(config_dir);
-        if (len < sizeof(path)) {
-            memcpy(path, config_dir, len + 1 /*last null*/);
-        } else {
-            len = 0;
-        }
-    } else {
-        config_dir = getenv("HOME");
-        len = config_dir ? strlen(config_dir) : 0;
-        if (len && len < sizeof(path)) {
-            memcpy(path, config_dir, len + 1 /*last null*/);
-            const char* dir = "/.config";
-            const size_t dlen = strlen(dir);
-            if (len + dlen < sizeof(path)) {
-                memcpy(path + len, dir, dlen + 1 /*last null*/);
-                len += dlen;
-            } else {
-                len = 0;
-            }
-        }
-    }
-
-    if (len && len + postfix_len < sizeof(path)) {
-        memcpy(path + len, postfix, postfix_len + 1 /*last null*/);
-        FILE *fd = fopen(path, "r");
-        if (fd != NULL) {
-            return fd;
-        }
-    }
-
-    if ((config_dir = getenv("XDG_CONFIG_DIRS"))) {
-        // we use only the first directory to keep it simple
-        const char* colon = strchr(config_dir, ':');
-        len = colon ? (size_t)(colon - config_dir) : strlen(config_dir);
-    } else {
-        config_dir = "/etc/xdg";
-        len = strlen(config_dir);
-    }
-    if (len && len + postfix_len < sizeof(path)) {
-        memcpy(path, config_dir, len);
-        memcpy(path + len, postfix, postfix_len + 1 /*last null*/);
-        return fopen(path, "r");
-    }
-    return NULL;
-}
-
 void load_config(void)
 {
+    FILE* fd = NULL;
     char* buff = NULL;
     size_t buff_sz = 0;
     ssize_t nread;
 
-    FILE* fd = open_file();
+    for (size_t i = 0;
+         !fd && i < sizeof(config_locations) / sizeof(config_locations[0]);
+         ++i) {
+        char* path = expand_path(config_locations[i].prefix,
+                                 config_locations[i].postfix);
+        if (path) {
+            fd = fopen(path, "r");
+            free(path);
+        }
+    }
     if (!fd) {
+        // no config file found
         return;
     }
 
