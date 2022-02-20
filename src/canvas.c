@@ -5,9 +5,9 @@
 
 #include "window.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Text render parameters
 #define FONT_FAMILY  "monospace"
@@ -24,6 +24,9 @@
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
 #define MAX_SCALE 100.0 // factor
+
+// Bytes per pixel in 32-bit ARGB mode
+#define BYTES_PER_PIXEL sizeof(uint32_t)
 
 #define ROTATE_RAD(r) ((r * 90) * 3.14159 / 180)
 
@@ -81,60 +84,66 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
 
 void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
 {
-    int bkg_x1, bkg_x2, bkg_y1, bkg_y2;
-
-    // window size
-    const int wnd_w = (int)get_window_width();
-    const int wnd_h = (int)get_window_height();
+    rect_t img, grid;
+    int grid_max_x, grid_max_y;
+    cairo_surface_t* wnd_surface = cairo_get_target(cairo);
+    uint8_t* wnd_buffer = cairo_image_surface_get_data(wnd_surface);
+    const int wnd_width = cairo_image_surface_get_width(wnd_surface);
+    const int wnd_height = cairo_image_surface_get_height(wnd_surface);
 
     // image coordinates and size
-    rect_t img = {
-        .x = canvas->x,
-        .y = canvas->y,
-        .width = canvas->scale * cairo_image_surface_get_width(image),
-        .height = canvas->scale * cairo_image_surface_get_height(image),
-    };
-
-    // handle rotation
+    img.x = canvas->x;
+    img.y = canvas->y;
+    img.width = canvas->scale * cairo_image_surface_get_width(image);
+    img.height = canvas->scale * cairo_image_surface_get_height(image);
+    // apply rotation
     if (canvas->rotate == rotate_90 || canvas->rotate == rotate_270) {
-        // translate coordinates
-        const float s = sin(ROTATE_RAD(rotate_90));
-        const float c = cos(ROTATE_RAD(rotate_90));
-        const float cnt_x = img.width / 2;
-        const float cnt_y = img.height / 2;
-        img.x += cnt_x * c - cnt_y * s + cnt_x;
-        img.y -= cnt_x * s + cnt_y * c - cnt_y;
-        // swap width and height
-        const int swap = img.width;
+        const int width = img.width;
+        const int cdiff = img.width / 2 - img.height / 2;
+        img.x += cdiff;
+        img.y -= cdiff;
         img.width = img.height;
-        img.height = swap;
+        img.height = width;
     }
 
-    // background area to fill
-    bkg_x1 = img.x > 0 ? img.x : 0;
-    bkg_x2 = bkg_x1 + img.width < wnd_w ? bkg_x1 + img.width : wnd_w;
-    bkg_y1 = img.y > 0 ? img.y : 0;
-    bkg_y2 = bkg_y1 + img.height < wnd_h ? bkg_y1 + img.height : wnd_h;
+    // background grid
+    grid.x = img.x > 0 ? img.x : 0;
+    grid.y = img.y > 0 ? img.y : 0;
+    grid.width =
+        grid.x + img.width < wnd_width ? img.width : wnd_width - grid.x;
+    grid.height =
+        grid.y + img.height < wnd_height ? img.height : wnd_height - grid.y;
 
-    // fill with the first color
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR1), RGB_GREEN(GRID_COLOR1),
-                         RGB_BLUE(GRID_COLOR1));
-    cairo_rectangle(cairo, bkg_x1, bkg_y1, bkg_x2 - bkg_x1, bkg_y2 - bkg_y1);
-    cairo_fill(cairo);
-
-    // draw lighter cells with the second color
-    cairo_set_source_rgb(cairo, RGB_RED(GRID_COLOR2), RGB_GREEN(GRID_COLOR2),
-                         RGB_BLUE(GRID_COLOR2));
-    for (int y = bkg_y1; y < bkg_y2; y += GRID_STEP) {
-        const int offset = y / GRID_STEP % 2 ? 0 : GRID_STEP;
-        const int height = y + GRID_STEP < bkg_y2 ? GRID_STEP : bkg_y2 - y;
-        for (int x = bkg_x1 + offset; x < bkg_x2; x += 2 * GRID_STEP) {
-            const int width = x + GRID_STEP < bkg_x2 ? GRID_STEP : bkg_x2 - x;
-            cairo_rectangle(cairo, x, y, width, height);
+    // draw chessboard
+    grid_max_x = grid.x + grid.width;
+    grid_max_y = grid.y + grid.height;
+    for (int y = grid.y; y < grid_max_y; ++y) {
+        uint8_t* line = wnd_buffer + y * wnd_width * BYTES_PER_PIXEL;
+        const bool shift = ((y - grid.y) / GRID_STEP) % 2;
+        if (y == grid.y || y == grid.y + GRID_STEP) {
+            // first iteration, create template
+            const int tails =
+                grid.width / GRID_STEP + (grid.width % GRID_STEP ? 1 : 0);
+            for (int tile = 0; tile < tails; ++tile) {
+                const uint32_t color =
+                    (tile % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+                for (int x = grid.x + tile * GRID_STEP; x < grid_max_x; ++x) {
+                    uint32_t* col = (uint32_t*)(line + x * BYTES_PER_PIXEL);
+                    *col = color;
+                }
+            }
+        } else {
+            // copy line data from template
+            const uint8_t* src = wnd_buffer +
+                ((shift ? grid.y + GRID_STEP : grid.y) * wnd_width *
+                 BYTES_PER_PIXEL) +
+                grid.x * BYTES_PER_PIXEL;
+            uint8_t* dst = line + grid.x * BYTES_PER_PIXEL;
+            memcpy(dst, src, grid.width * BYTES_PER_PIXEL);
         }
     }
-    cairo_fill(cairo);
+
+    cairo_surface_mark_dirty(wnd_surface);
 }
 
 void draw_text(cairo_t* cairo, int x, int y, const char* text)

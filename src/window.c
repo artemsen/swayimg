@@ -225,7 +225,7 @@ static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
 
 /**
  * Fill timespec structure.
- * @param[in] ts destination structure
+ * @param[out] ts destination structure
  * @param[in] ms time in milliseconds
  */
 static inline void set_timespec(struct timespec* ts, uint32_t ms)
