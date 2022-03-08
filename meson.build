@@ -32,13 +32,17 @@ rt    = cc.find_library('rt')
 avif  = dependency('libavif', required: get_option('avif'))
 gif   = cc.find_library('gif', required: get_option('gif'))
 jpeg  = dependency('libjpeg', required: get_option('jpeg'))
-jxl   = cc.find_library('libjxl', required: get_option('jxl'))
 png   = dependency('libpng', required: get_option('png'))
 rsvg  = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 webp  = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
 exif  = dependency('libexif', required: get_option('exif'))
 bash  = dependency('bash-completion', required: get_option('bash'))
+# Arch specific: https://bugs.archlinux.org/task/73931
+jxl = dependency('libjxl', required: false)
+if get_option('jxl').allowed() and not jxl.found()
+  jxl = cc.find_library('libjxl', required: true)
+endif
 
 # configuration file
 conf = configuration_data()
