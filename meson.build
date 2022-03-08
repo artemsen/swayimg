@@ -39,9 +39,10 @@ webp  = dependency('libwebp', required: get_option('webp'))
 exif  = dependency('libexif', required: get_option('exif'))
 bash  = dependency('bash-completion', required: get_option('bash'))
 # Arch specific: https://bugs.archlinux.org/task/73931
+jxl_feature = get_option('jxl')
 jxl = dependency('libjxl', required: false)
-if get_option('jxl').allowed() and not jxl.found()
-  jxl = cc.find_library('libjxl', required: true)
+if not jxl.found() and (jxl_feature.auto() or jxl_feature.enabled())
+  jxl = cc.find_library('libjxl', required: jxl_feature)
 endif
 
 # configuration file
