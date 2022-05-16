@@ -189,13 +189,12 @@ bool set_background(const char* value)
 
 bool set_geometry(const char* value)
 {
-    rect_t window;
-    int* nums[] = { &window.x, &window.y, &window.width, &window.height };
+    int nums[4]; // x,y,width,height
     const char* ptr = value;
     size_t idx;
 
     for (idx = 0; *ptr && idx < sizeof(nums) / sizeof(nums[0]); ++idx) {
-        *nums[idx] = atoi(ptr);
+        nums[idx] = atoi(ptr);
         // skip digits
         while (isdigit(*ptr)) {
             ++ptr;
@@ -206,11 +205,13 @@ bool set_geometry(const char* value)
         }
     }
 
-    if (window.width <= 0 || window.height <= 0 ||
-        idx != sizeof(nums) / sizeof(nums[0])) {
-        return false;
+    if (idx == sizeof(nums) / sizeof(nums[0]) && !*ptr &&
+        nums[2 /*width*/] > 0 && nums[3 /*height*/] > 0) {
+        config.window.x = (int32_t)nums[0];
+        config.window.y = (int32_t)nums[1];
+        config.window.width = (uint32_t)nums[2];
+        config.window.height = (uint32_t)nums[3];
+        return true;
     }
-
-    config.window = window;
-    return true;
+    return false;
 }

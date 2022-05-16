@@ -180,14 +180,22 @@ static bool read_int(json_object* node, const char* name, int* value)
  */
 static bool read_rect(json_object* node, const char* name, rect_t* rect)
 {
+    int x, y, width, height;
     struct json_object* rn;
     if (!json_object_object_get_ex(node, name, &rn)) {
         fprintf(stderr, "Failed to read rect: node %s not found\n", name);
         return false;
     }
-    return read_int(rn, "x", &rect->x) && read_int(rn, "y", &rect->y) &&
-        read_int(rn, "width", &rect->width) &&
-        read_int(rn, "height", &rect->height);
+    if (read_int(rn, "x", &x) && read_int(rn, "y", &y) &&
+        read_int(rn, "width", &width) && width > 0 &&
+        read_int(rn, "height", &height) && height > 0) {
+        rect->x = (int32_t)x;
+        rect->y = (int32_t)y;
+        rect->width = (uint32_t)width;
+        rect->height = (uint32_t)height;
+        return true;
+    }
+    return false;
 }
 
 /**
