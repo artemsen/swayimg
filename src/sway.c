@@ -341,3 +341,10 @@ bool sway_add_rules(int ipc, const char* app, int x, int y)
     return ipc_command(ipc, app, "floating enable") &&
         ipc_command(ipc, app, move);
 }
+
+bool sway_move_to_output(int ipc, const char* app, const char* output)
+{
+    char output_cmd[64];
+    snprintf(output_cmd, sizeof(output_cmd), "move output %s", output);
+    return ipc_command(ipc, app, output_cmd);
+}

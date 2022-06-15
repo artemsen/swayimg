@@ -19,6 +19,7 @@ static void print_help(void)
     // clang-format off
     puts("Usage: " APP_NAME " [OPTION...] FILE...");
     puts("  -f, --fullscreen         Full screen mode");
+    puts("  -o, --output=OUTPUT      Show the window on specific output");
     puts("  -s, --scale=TYPE         Set initial image scale: default, fit, or real");
     puts("  -b, --background=XXXXXX  Set background color as hex RGB");
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
@@ -48,6 +49,7 @@ int main(int argc, char* argv[])
     // clang-format off
     const struct option long_opts[] = {
         { "fullscreen", no_argument,       NULL, 'f' },
+        { "output",     required_argument, NULL, 'o' },
         { "scale",      required_argument, NULL, 's' },
         { "background", required_argument, NULL, 'b' },
         { "geometry",   required_argument, NULL, 'g' },
@@ -56,7 +58,7 @@ int main(int argc, char* argv[])
         { "help",       no_argument,       NULL, 'h' },
         { NULL,         0,                 NULL,  0  }
     };
-    const char* short_opts = "fs:b:g:ivh";
+    const char* short_opts = "fo:s:b:g:ivh";
     // clang-format on
 
     // default config
@@ -70,6 +72,9 @@ int main(int argc, char* argv[])
         switch (opt) {
             case 'f':
                 config.fullscreen = true;
+                break;
+            case 'o':
+                config.output_name = optarg;
                 break;
             case 's':
                 if (!set_scale(optarg)) {

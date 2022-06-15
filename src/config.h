@@ -12,6 +12,7 @@ typedef struct {
     uint32_t background; ///< Background mode/color
     bool fullscreen;     ///< Full screen mode
     bool show_info;      ///< Show image info
+    char* output_name;   ///< Output to show application window on
 } config_t;
 
 extern config_t config;

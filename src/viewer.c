@@ -286,6 +286,11 @@ bool run_viewer(const char** files, size_t total)
         if (!config.fullscreen && config.window.width) {
             sway_add_rules(ipc, app_id, config.window.x, config.window.y);
         }
+
+        if (config.output_name != NULL) {
+            sway_move_to_output(ipc, app_id, config.output_name);
+        }
+
         sway_disconnect(ipc);
     }
 

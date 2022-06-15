@@ -40,3 +40,13 @@ bool sway_current(int ipc, rect_t* wnd, bool* fullscreen);
  * @return true if operation completed successfully
  */
 bool sway_add_rules(int ipc, const char* app, int x, int y);
+
+/**
+ * Add a Sway rule to move the application's window to another output
+ *
+ * @param[in] ipc IPC context
+ * @param[in] app application Id
+ * @param[in] output name from `swaymsg -t get_outputs`
+ * @return true if operation completed successfully
+ */
+bool sway_move_to_output(int ipc, const char* app, const char* output);
