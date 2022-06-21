@@ -12,30 +12,57 @@ typedef struct {
     uint32_t background; ///< Background mode/color
     bool fullscreen;     ///< Full screen mode
     bool show_info;      ///< Show image info
+    const char* app_id;  ///< Window class/app_id name
+    bool sway_rules;     ///< Enable/disable Sway rules
 } config_t;
 
-extern config_t config;
+/**
+ * Initialize configuration: set defaults and load from file.
+ * @return created configuration instance
+ */
+config_t* init_config(void);
 
-/** Load configuration from file. */
-void load_config(void);
+/**
+ * Free configuration instance.
+ * @param[in] cfg configuration instance
+ */
+void free_config(config_t* cfg);
+
+/**
+ * Check if configuration is incompatible.
+ * @param[in] cfg configuration instance to check
+ * @return configuration status, true if configuration is ok
+ */
+bool check_config(const config_t* cfg);
 
 /**
  * Set initial scale from one of predefined string (default, fit or real).
- * @param[in] value argument to parse
+ * @param[out] cfg target configuration instance
+ * @param[in] scale text scale description
  * @return false if value format is invalid
  */
-bool set_scale(const char* value);
+bool set_scale_config(config_t* cfg, const char* scale);
 
 /**
  * Set background type/color from RGB hex string.
- * @param[in] value argument to parse
+ * @param[out] cfg target configuration instance
+ * @param[in] background text background description
  * @return false if value format is invalid
  */
-bool set_background(const char* value);
+bool set_background_config(config_t* cfg, const char* background);
 
 /**
  * Set window geometry (position and size) from string "x,y,width,height".
- * @param[in] value argument to parse
+ * @param[out] cfg target configuration instance
+ * @param[in] geometry text geometry description
  * @return false if value format is invalid
  */
-bool set_geometry(const char* value);
+bool set_geometry_config(config_t* cfg, const char* geometry);
+
+/**
+ * Set window class/app_id.
+ * @param[out] cfg target configuration instance
+ * @param[in] app_id window class/app_id to set
+ * @return false if value format is invalid
+ */
+bool set_appid_config(config_t* cfg, const char* app_id);

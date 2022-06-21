@@ -12,7 +12,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 /** Viewer context. */
 typedef struct {
@@ -21,8 +20,9 @@ typedef struct {
         size_t total;       ///< Total number of files in the list
         size_t current;     ///< Index of currently displayed image in the list
     } file_list;
-    image_t* image;  ///< Currently displayed image
-    canvas_t canvas; ///< Canvas context
+    image_t* image;   ///< Currently displayed image
+    canvas_t canvas;  ///< Canvas context
+    config_t* config; ///< Configuration
 } viewer_t;
 
 static viewer_t viewer;
@@ -82,7 +82,7 @@ static bool load_image(const char* file)
     }
 
     // set initial scale and position of the image
-    apply_scale(&viewer.canvas, viewer.image->surface, config.scale);
+    apply_scale(&viewer.canvas, viewer.image->surface, viewer.config->scale);
 
     // change window title (includes ": " and last null = 3 bytes)
     title = malloc(strlen(APP_NAME) + strlen(viewer.image->path) + 3);
@@ -155,20 +155,20 @@ static void on_redraw(cairo_surface_t* window)
     // image with background
     if (cairo_image_surface_get_format(viewer.image->surface) ==
         CAIRO_FORMAT_ARGB32) {
-        if (config.background == BACKGROUND_GRID) {
+        if (viewer.config->background == BACKGROUND_GRID) {
             draw_grid(&viewer.canvas, viewer.image->surface, cairo);
         } else {
             cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-            cairo_set_source_rgb(cairo, RGB_RED(config.background),
-                                 RGB_GREEN(config.background),
-                                 RGB_BLUE(config.background));
+            cairo_set_source_rgb(cairo, RGB_RED(viewer.config->background),
+                                 RGB_GREEN(viewer.config->background),
+                                 RGB_BLUE(viewer.config->background));
             cairo_paint(cairo);
         }
     }
     draw_image(&viewer.canvas, viewer.image->surface, cairo);
 
     // image meta information: file name, format, exif, etc
-    if (config.show_info) {
+    if (viewer.config->show_info) {
         char text[32];
         snprintf(text, sizeof(text), "%i%%",
                  (int)(viewer.canvas.scale * 100.0));
@@ -189,7 +189,7 @@ static void on_redraw(cairo_surface_t* window)
 static void on_resize(void)
 {
     viewer.canvas.scale = 0.0; // to force recalculate considering window size
-    apply_scale(&viewer.canvas, viewer.image->surface, config.scale);
+    apply_scale(&viewer.canvas, viewer.image->surface, viewer.config->scale);
 }
 
 /** Keyboard handler, see handlers::on_keyboard. */
@@ -229,9 +229,9 @@ static bool on_keyboard(xkb_keysym_t key)
                                scale_100);
         case XKB_KEY_BackSpace:
             return apply_scale(&viewer.canvas, viewer.image->surface,
-                               config.scale);
+                               viewer.config->scale);
         case XKB_KEY_i:
-            config.show_info = !config.show_info;
+            viewer.config->show_info = !viewer.config->show_info;
             return true;
         case XKB_KEY_F5:
         case XKB_KEY_bracketleft:
@@ -249,8 +249,8 @@ static bool on_keyboard(xkb_keysym_t key)
             return true;
         case XKB_KEY_F11:
         case XKB_KEY_f:
-            config.fullscreen = !config.fullscreen;
-            enable_fullscreen(config.fullscreen);
+            viewer.config->fullscreen = !viewer.config->fullscreen;
+            enable_fullscreen(viewer.config->fullscreen);
             return false;
         case XKB_KEY_Escape:
         case XKB_KEY_Return:
@@ -262,36 +262,33 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-bool run_viewer(const char** files, size_t total)
+bool run_viewer(config_t* cfg, const char** files, size_t total)
 {
-    const struct handlers handlers = { .on_redraw = on_redraw,
-                                       .on_resize = on_resize,
-                                       .on_keyboard = on_keyboard };
-    // create unique application id
-    char app_id[64];
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    snprintf(app_id, sizeof(app_id), APP_NAME "_%lx",
-             (ts.tv_sec << 32) | ts.tv_nsec);
+    static const struct handlers handlers = { .on_redraw = on_redraw,
+                                              .on_resize = on_resize,
+                                              .on_keyboard = on_keyboard };
+    viewer.config = cfg;
 
-    // setup window position via Sway IPC
-    const int ipc = sway_connect();
-    if (ipc != -1) {
+    if (cfg->sway_rules) {
+        // setup window position via Sway IPC
         bool sway_fullscreen = false;
-        if (!config.window.width) {
-            // get currently focused window state
-            sway_current(ipc, &config.window, &sway_fullscreen);
+        const int ipc = sway_connect();
+        if (ipc != -1) {
+            if (!cfg->window.width) {
+                // get currently focused window state
+                sway_current(ipc, &cfg->window, &sway_fullscreen);
+            }
+            cfg->fullscreen |= sway_fullscreen;
+            if (!cfg->fullscreen && cfg->window.width) {
+                sway_add_rules(ipc, cfg->app_id, cfg->window.x, cfg->window.y);
+            }
+            sway_disconnect(ipc);
         }
-        config.fullscreen |= sway_fullscreen;
-        if (!config.fullscreen && config.window.width) {
-            sway_add_rules(ipc, app_id, config.window.x, config.window.y);
-        }
-        sway_disconnect(ipc);
     }
 
     // GUI prepare
-    if (!create_window(&handlers, config.window.width, config.window.height,
-                       app_id)) {
+    if (!create_window(&handlers, cfg->window.width, cfg->window.height,
+                       cfg->app_id)) {
         return false;
     }
 
@@ -303,7 +300,7 @@ bool run_viewer(const char** files, size_t total)
         return false;
     }
 
-    if (config.fullscreen) {
+    if (cfg->fullscreen) {
         enable_fullscreen(true);
     }
 

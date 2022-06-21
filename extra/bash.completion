@@ -8,6 +8,8 @@ _swayimg()
                 -f --fullscreen \
                 -s --scale \
                 -i --info \
+                -c --class \
+                -n --no-rules \
                 -v --version \
                 -h --help"
     if [[ ${cur} == -* ]]; then
