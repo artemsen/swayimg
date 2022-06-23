@@ -5,9 +5,6 @@
 
 #include <cairo/cairo.h>
 
-// Max number of meta entries
-#define META_MAX_ENTRY 16
-
 // Orientation (top left corner projection)
 typedef enum {
     ori_undefined,
@@ -23,10 +20,10 @@ typedef enum {
 
 /** Image description. */
 typedef struct {
-    const char* path;           ///< Path to the file
-    char* meta[META_MAX_ENTRY]; ///< Image meta info
-    orientation_t orientation;  ///< Image orientation
-    cairo_surface_t* surface;   ///< Image surface
+    const char* path;          ///< Path to the file
+    const char* info;          ///< Image meta info
+    orientation_t orientation; ///< Image orientation
+    cairo_surface_t* surface;  ///< Image surface
 } image_t;
 
 /**
@@ -49,12 +46,12 @@ image_t* image_from_stdin(void);
 void image_free(image_t* img);
 
 /**
- * Add meta property.
+ * Add meta info property.
  * @param[in] img image instance
- * @param[in] name property name
+ * @param[in] key property name
  * @param[in] value property value
  */
-void add_image_meta(image_t* img, const char* name, const char* value);
+void add_image_info(image_t* img, const char* key, const char* value);
 
 /**
  * Get string with the names of the supported image formats.

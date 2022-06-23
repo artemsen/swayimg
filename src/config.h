@@ -7,13 +7,15 @@
 
 /** App configuration. */
 typedef struct {
-    scale_t scale;       ///< Initial scale
-    rect_t window;       ///< Window geometry
-    uint32_t background; ///< Background mode/color
-    bool fullscreen;     ///< Full screen mode
-    bool show_info;      ///< Show image info
-    const char* app_id;  ///< Window class/app_id name
-    bool sway_rules;     ///< Enable/disable Sway rules
+    scale_t scale;         ///< Initial scale
+    rect_t window;         ///< Window geometry
+    uint32_t background;   ///< Background mode/color
+    bool fullscreen;       ///< Full screen mode
+    bool show_info;        ///< Show image info
+    const char* font_face; ///< Font name and size (pango format)
+    uint32_t font_color;   ///< Font color
+    const char* app_id;    ///< Window class/app_id name
+    bool sway_rules;       ///< Enable/disable Sway rules
 } config_t;
 
 /**
@@ -66,3 +68,11 @@ bool set_geometry_config(config_t* cfg, const char* geometry);
  * @return false if value format is invalid
  */
 bool set_appid_config(config_t* cfg, const char* app_id);
+
+/**
+ * Set font name and size.
+ * @param[out] cfg target configuration instance
+ * @param[in] font font name and size in pango format
+ * @return false if value format is invalid
+ */
+bool set_font_config(config_t* cfg, const char* font);

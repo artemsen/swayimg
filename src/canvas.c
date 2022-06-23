@@ -9,13 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Text render parameters
-#define FONT_FAMILY  "monospace"
-#define FONT_SIZE    16
-#define LINE_SPACING 2
-#define TEXT_COLOR   0xb2b2b2
-#define TEXT_SHADOW  0x101010
-
 // Background grid parameters
 #define GRID_STEP   10
 #define GRID_COLOR1 0x333333
@@ -144,39 +137,6 @@ void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
     }
 
     cairo_surface_mark_dirty(wnd_surface);
-}
-
-void draw_text(cairo_t* cairo, int x, int y, const char* text)
-{
-    // set font
-    cairo_font_face_t* font = cairo_toy_font_face_create(
-        FONT_FAMILY, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_face(cairo, font);
-    cairo_set_font_size(cairo, FONT_SIZE);
-
-    // shadow
-    cairo_set_source_rgb(cairo, RGB_RED(TEXT_SHADOW), RGB_GREEN(TEXT_SHADOW),
-                         RGB_BLUE(TEXT_SHADOW));
-    cairo_move_to(cairo, x + 1, y + 1 + FONT_SIZE);
-    cairo_show_text(cairo, text);
-
-    // normal text
-    cairo_set_source_rgb(cairo, RGB_RED(TEXT_COLOR), RGB_GREEN(TEXT_COLOR),
-                         RGB_BLUE(TEXT_COLOR));
-    cairo_move_to(cairo, x, y + FONT_SIZE);
-    cairo_show_text(cairo, text);
-
-    cairo_set_font_face(cairo, NULL);
-    cairo_font_face_destroy(font);
-}
-
-void draw_lines(cairo_t* cairo, int x, int y, const char** lines)
-{
-    while (*lines) {
-        draw_text(cairo, x, y, *lines);
-        ++lines;
-        y += FONT_SIZE + LINE_SPACING;
-    }
 }
 
 bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction)

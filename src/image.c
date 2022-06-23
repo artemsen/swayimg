@@ -15,9 +15,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// Number of characters in the name field in meta info
-#define META_NAME_LEN 12
-
 /**
  * Image loader function.
  * @param[in] data raw image data
@@ -188,14 +185,14 @@ static image_t* image_create(const char* path, const uint8_t* data, size_t size)
     }
 
     // add general meta info
-    add_image_meta(img, "File", path);
-    add_image_meta(img, "Format", meta);
+    add_image_info(img, "File", path);
+    add_image_info(img, "Format", meta);
     human_size(size, meta, sizeof(meta));
-    add_image_meta(img, "File size", meta);
+    add_image_info(img, "File size", meta);
     snprintf(meta, sizeof(meta), "%ix%i",
              cairo_image_surface_get_width(img->surface),
              cairo_image_surface_get_height(img->surface));
-    add_image_meta(img, "Image size", meta);
+    add_image_info(img, "Image size", meta);
 
 #ifdef HAVE_LIBEXIF
     // handle EXIF data
@@ -294,69 +291,31 @@ done:
 void image_free(image_t* img)
 {
     if (img) {
-        for (size_t i = 0; i < sizeof(img->meta) / sizeof(img->meta[0]); ++i) {
-            free(img->meta[i]);
-        }
         if (img->surface) {
             cairo_surface_destroy(img->surface);
         }
+        free((void*)img->info);
         free(img);
     }
 }
 
-/**
- * Create meta information line.
- * @param[in] name property name
- * @param[in] value property value
- * @return pointer to allocated string, caller must free it
- */
-static char* create_meta(const char* name, const char* value)
+void add_image_info(image_t* img, const char* key, const char* value)
 {
-    char* meta;
-    size_t meta_len;
-    size_t consumed = 0;
-    const size_t name_len = strlen(name);
-    const size_t value_len = strlen(value);
+    char* buffer = (char*)img->info;
+    const char* delim = ":\t";
+    const size_t cur_len = img->info ? strlen(img->info) + 1 : 0;
+    const size_t add_len = strlen(key) + strlen(value) + strlen(delim) + 1;
 
-    // calculate entry length
-    if (name_len < META_NAME_LEN) {
-        meta_len = META_NAME_LEN;
-    } else {
-        meta_len = name_len;
-    }
-    meta_len += 3; // delimiter (": ") and termination null
-    meta_len += value_len;
-
-    // compose entry line "name: value"
-    meta = malloc(meta_len);
-    if (!meta) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    memcpy(meta, name, name_len);
-    consumed = name_len;
-    meta[consumed++] = ':';
-    meta[consumed++] = ' ';
-    while (consumed < META_NAME_LEN) {
-        meta[consumed++] = ' ';
-    }
-    memcpy(meta + consumed, value, value_len);
-    consumed += value_len;
-    meta[consumed++] = 0;
-
-    return meta;
-}
-
-void add_image_meta(image_t* img, const char* name, const char* value)
-{
-    size_t index;
-    const size_t max_index = sizeof(img->meta) / sizeof(img->meta[0]) - 1;
-
-    // search for free meta entry
-    for (index = 0; index < max_index; ++index) {
-        if (!img->meta[index]) {
-            img->meta[index] = create_meta(name, value);
-            break;
+    buffer = realloc(buffer, cur_len + add_len);
+    if (buffer) {
+        if (cur_len == 0) {
+            buffer[0] = 0;
+        } else {
+            strcat(buffer, "\n");
         }
+        strcat(buffer, key);
+        strcat(buffer, delim);
+        strcat(buffer, value);
+        img->info = buffer;
     }
 }

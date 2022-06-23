@@ -4,7 +4,7 @@ on: [push]
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Install dependencies
@@ -12,7 +12,8 @@ jobs:
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
           libwayland-dev libcairo-dev libjson-c-dev libxkbcommon-dev
-          libgif-dev libjpeg-dev librsvg2-dev libwebp-dev
+          libpango1.0-dev libpangocairo-1.0-0
+          libavif-dev libgif-dev libjpeg-dev librsvg2-dev libwebp-dev
 
     - name: Check out source code
       uses: actions/checkout@v2.2.0

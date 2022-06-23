@@ -38,7 +38,7 @@ static void add_meta(image_t* img, ExifData* exif, ExifTag tag,
     if (entry) {
         exif_entry_get_value(entry, value, sizeof(value));
         if (*value) {
-            add_image_meta(img, name, value);
+            add_image_info(img, name, value);
         }
     }
 }
@@ -133,7 +133,7 @@ static void read_location(image_t* img, ExifData* exif)
         if (read_coordinate(exif, EXIF_TAG_GPS_LONGITUDE,
                             EXIF_TAG_GPS_LONGITUDE_REF, location + pos,
                             sizeof(location) - pos)) {
-            add_image_meta(img, "Location", location);
+            add_image_info(img, "Location", location);
         }
     }
 }

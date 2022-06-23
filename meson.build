@@ -25,19 +25,21 @@ version = get_option('version')
 # mandatory dependencies
 wlcln = dependency('wayland-client')
 cairo = dependency('cairo')
-json  = dependency('json-c')
-xkb   = dependency('xkbcommon')
-rt    = cc.find_library('rt')
+json = dependency('json-c')
+xkb = dependency('xkbcommon')
+pango = dependency('pango')
+pangocairo = dependency('pangocairo')
+rt = cc.find_library('rt')
 # optional dependencies: file formats support
-avif  = dependency('libavif', required: get_option('avif'))
-gif   = cc.find_library('gif', required: get_option('gif'))
-jpeg  = dependency('libjpeg', required: get_option('jpeg'))
-png   = dependency('libpng', required: get_option('png'))
-rsvg  = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
-webp  = dependency('libwebp', required: get_option('webp'))
+avif = dependency('libavif', required: get_option('avif'))
+gif = cc.find_library('gif', required: get_option('gif'))
+jpeg = dependency('libjpeg', required: get_option('jpeg'))
+png = dependency('libpng', required: get_option('png'))
+rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
+webp = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
-exif  = dependency('libexif', required: get_option('exif'))
-bash  = dependency('bash-completion', required: get_option('bash'))
+exif = dependency('libexif', required: get_option('exif'))
+bash = dependency('bash-completion', required: get_option('bash'))
 # Arch specific: https://bugs.archlinux.org/task/73931
 jxl_feature = get_option('jxl')
 jxl = dependency('libjxl', required: false)
@@ -117,6 +119,7 @@ sources = [
   'src/image.c',
   'src/main.c',
   'src/sway.c',
+  'src/text.c',
   'src/viewer.c',
   'src/window.c',
   'src/formats/bmp.c',
@@ -160,6 +163,8 @@ executable(
     jpeg,
     json,
     jxl,
+    pango,
+    pangocairo,
     png,
     rsvg,
     rt,

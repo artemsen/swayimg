@@ -16,6 +16,11 @@
 /** Max length of window class/app_id name */
 #define APP_ID_MAX 32
 
+/** Default font name/size */
+#define FONT_FACE "monospace 10"
+/** Default text color. */
+#define TEXT_COLOR 0xb4b4b4
+
 /** Config file location. */
 typedef struct {
     const char* prefix;  ///< Environment variable name
@@ -87,6 +92,44 @@ static bool set_boolean(const char* text, bool* value)
 }
 
 /**
+ * Convert text value to RGV color.
+ * @param[in] text text to convert
+ * @param[out] value target variable
+ * @return false if value has invalid format
+ */
+static bool set_color(const char* text, uint32_t* value)
+{
+    const unsigned long rgb = strtoul(text, NULL, 16);
+    if (rgb > 0x00ffffff || errno == ERANGE || (rgb == 0 && errno == EINVAL)) {
+        return false;
+    }
+    *value = rgb;
+    return true;
+}
+
+/**
+ * Set (replace) string in config parameter.
+ * @param[in] src source string
+ * @param[out] dst destination buffer
+ * @return false if not enough memory
+ */
+static bool set_string(const char* src, char** dst)
+{
+    const size_t len = strlen(src) + 1 /*last null*/;
+    char* ptr = malloc(len);
+    if (!ptr) {
+        fprintf(stderr, "Not enough memory\n");
+        return false;
+    }
+    memcpy(ptr, src, len);
+
+    free(*dst);
+    *dst = ptr;
+
+    return true;
+}
+
+/**
  * Apply property to configuration.
  * @param[out] cfg target configuration instance
  * @param[in] key property key
@@ -104,6 +147,10 @@ static bool apply_conf(config_t* cfg, const char* key, const char* value)
         return set_background_config(cfg, value);
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &cfg->show_info);
+    } else if (strcmp(key, "font") == 0) {
+        return set_font_config(cfg, value);
+    } else if (strcmp(key, "color") == 0) {
+        return set_color(value, &cfg->font_color);
     } else if (strcmp(key, "app_id") == 0) {
         return set_appid_config(cfg, value);
     } else if (strcmp(key, "rules") == 0) {
@@ -130,6 +177,8 @@ static config_t* default_config(void)
     cfg->scale = scale_fit_or100;
     cfg->background = BACKGROUND_GRID;
     cfg->sway_rules = true;
+    set_font_config(cfg, FONT_FACE);
+    cfg->font_color = TEXT_COLOR;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -228,6 +277,7 @@ config_t* init_config(void)
 void free_config(config_t* cfg)
 {
     if (cfg) {
+        free((void*)cfg->font_face);
         free((void*)cfg->app_id);
         free(cfg);
     }
@@ -273,21 +323,13 @@ bool set_scale_config(config_t* cfg, const char* scale)
 
 bool set_background_config(config_t* cfg, const char* background)
 {
-    uint32_t bkg;
-
     if (strcmp(background, "grid") == 0) {
-        bkg = BACKGROUND_GRID;
-    } else {
-        bkg = strtoul(background, NULL, 16);
-        if (bkg > 0x00ffffff || errno == ERANGE ||
-            (bkg == 0 && errno == EINVAL)) {
-            fprintf(stderr, "Invalid background: %s\n", background);
-            fprintf(stderr, "Expected 'grid' or RGB hex value.\n");
-            return false;
-        }
+        cfg->background = BACKGROUND_GRID;
+    } else if (!set_color(background, &cfg->background)) {
+        fprintf(stderr, "Invalid background: %s\n", background);
+        fprintf(stderr, "Expected 'grid' or RGB hex value.\n");
+        return false;
     }
-
-    cfg->background = bkg;
     return true;
 }
 
@@ -325,28 +367,22 @@ bool set_geometry_config(config_t* cfg, const char* geometry)
 
 bool set_appid_config(config_t* cfg, const char* app_id)
 {
-    char* ptr;
-    size_t len;
-
-    len = app_id ? strlen(app_id) : 0;
+    const size_t len = app_id ? strlen(app_id) : 0;
     if (len == 0 || len > APP_ID_MAX) {
         fprintf(stderr, "Invalid class/app_id: %s\n", app_id);
         fprintf(stderr, "Expected non-empty string up to %d chars.\n",
                 APP_ID_MAX);
         return false;
     }
+    return set_string(app_id, (char**)&cfg->app_id);
+}
 
-    ++len; // add last null
-
-    ptr = malloc(len);
-    if (!ptr) {
-        fprintf(stderr, "Not enough memory\n");
+bool set_font_config(config_t* cfg, const char* font)
+{
+    const size_t len = font ? strlen(font) : 0;
+    if (len == 0) {
+        fprintf(stderr, "Invalid font description: %s\n", font);
         return false;
     }
-    memcpy(ptr, app_id, len);
-
-    free((void*)cfg->app_id);
-    cfg->app_id = ptr;
-
-    return true;
+    return set_string(font, (char**)&cfg->font_face);
 }

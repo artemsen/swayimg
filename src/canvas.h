@@ -89,24 +89,6 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
 void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
 
 /**
- * Draw text line.
- * @param[in] cairo paint context
- * @param[in] x left offset
- * @param[in] y top offset
- * @param[in] text text to draw
- */
-void draw_text(cairo_t* cairo, int x, int y, const char* text);
-
-/**
- * Draw multiline text.
- * @param[in] cairo paint context
- * @param[in] x left offset
- * @param[in] y top offset
- * @param[in] lines array of strings, last line must be NULL
- */
-void draw_lines(cairo_t* cairo, int x, int y, const char** lines);
-
-/**
  * Move view point.
  * @param[in] canvas canvas context
  * @param[in] image image surface

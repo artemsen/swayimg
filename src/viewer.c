@@ -8,6 +8,7 @@
 #include "config.h"
 #include "image.h"
 #include "sway.h"
+#include "text.h"
 #include "window.h"
 
 #include <stdlib.h>
@@ -20,9 +21,10 @@ typedef struct {
         size_t total;       ///< Total number of files in the list
         size_t current;     ///< Index of currently displayed image in the list
     } file_list;
-    image_t* image;   ///< Currently displayed image
-    canvas_t canvas;  ///< Canvas context
-    config_t* config; ///< Configuration
+    image_t* image;      ///< Currently displayed image
+    canvas_t canvas;     ///< Canvas context
+    text_render_t* text; ///< Text renderer
+    config_t* config;    ///< Configuration
 } viewer_t;
 
 static viewer_t viewer;
@@ -168,18 +170,20 @@ static void on_redraw(cairo_surface_t* window)
     draw_image(&viewer.canvas, viewer.image->surface, cairo);
 
     // image meta information: file name, format, exif, etc
-    if (viewer.config->show_info) {
+    if (viewer.config->show_info && viewer.text) {
         char text[32];
+        // print meta info
+        print_text(viewer.text, cairo, text_top_left, viewer.image->info);
+        // print current scale
         snprintf(text, sizeof(text), "%i%%",
                  (int)(viewer.canvas.scale * 100.0));
-        draw_text(cairo, 10, get_window_height() - 30, text);
+        print_text(viewer.text, cairo, text_bottom_left, text);
+        // print file number in list
         if (viewer.file_list.total > 1) {
-            const int len =
-                snprintf(text, sizeof(text), "%lu of %lu",
-                         viewer.file_list.current + 1, viewer.file_list.total);
-            draw_text(cairo, get_window_width() - 10 - len * 10, 10, text);
+            snprintf(text, sizeof(text), "%lu of %lu",
+                     viewer.file_list.current + 1, viewer.file_list.total);
+            print_text(viewer.text, cairo, text_top_right, text);
         }
-        draw_lines(cairo, 10, 10, (const char**)viewer.image->meta);
     }
 
     cairo_destroy(cairo);
@@ -267,7 +271,11 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
     static const struct handlers handlers = { .on_redraw = on_redraw,
                                               .on_resize = on_resize,
                                               .on_keyboard = on_keyboard };
+    bool rc = false;
+
+    // initialize viewer context
     viewer.config = cfg;
+    viewer.text = init_text(cfg);
 
     if (cfg->sway_rules) {
         // setup window position via Sway IPC
@@ -289,15 +297,14 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
     // GUI prepare
     if (!create_window(&handlers, cfg->window.width, cfg->window.height,
                        cfg->app_id)) {
-        return false;
+        goto done;
     }
 
     // load first file
     viewer.file_list.files = files;
     viewer.file_list.total = total;
     if (!next_file(true)) {
-        destroy_window();
-        return false;
+        goto done;
     }
 
     if (cfg->fullscreen) {
@@ -307,9 +314,12 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
     // GUI loop
     show_window();
 
+    rc = true;
+
+done:
     destroy_window();
-
     image_free(viewer.image);
+    free_text(viewer.text);
 
-    return true;
+    return rc;
 }
