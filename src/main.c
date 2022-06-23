@@ -20,7 +20,7 @@ static const struct option options[] = {
     { "geometry",   required_argument, NULL, 'g' },
     { "info",       no_argument,       NULL, 'i' },
     { "class",      required_argument, NULL, 'c' },
-    { "no-rules",   no_argument,       NULL, 'n' },
+    { "no-sway",    no_argument,       NULL, 'n' },
     { "version",    no_argument,       NULL, 'v' },
     { "help",       no_argument,       NULL, 'h' },
     { NULL,         0,                 NULL,  0  }
@@ -40,7 +40,7 @@ static void print_help(void)
     puts("  -g, --geometry=X,Y,W,H   Set window geometry");
     puts("  -i, --info               Show image properties");
     puts("  -c, --class              Set window class/app_id");
-    puts("  -n, --no-rules           Disable sway rules");
+    puts("  -n, --no-sway            Disable integration with Sway WM");
     puts("  -v, --version            Print version info and exit");
     puts("  -h, --help               Print this help and exit");
     // clang-format on
@@ -78,7 +78,7 @@ static int parse_cmdline(int argc, char* argv[], config_t* cfg)
         switch (opt) {
             case 'f':
                 cfg->fullscreen = true;
-                cfg->sway_rules = false;
+                cfg->sway_wm = false;
                 break;
             case 's':
                 if (!set_scale_config(cfg, optarg)) {
@@ -104,7 +104,7 @@ static int parse_cmdline(int argc, char* argv[], config_t* cfg)
                 }
                 break;
             case 'n':
-                cfg->sway_rules = false;
+                cfg->sway_wm = false;
                 break;
             case 'v':
                 puts(APP_NAME " version " APP_VERSION ".");

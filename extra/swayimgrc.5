@@ -35,7 +35,7 @@ Empty lines and comments are ignored.
 .IP "\fBfont\fR: font name and size used to render image info text in pango format;"
 .IP "\fBcolor\fR: color used to render text, RGB hex format (e.g. \fI1a2b3c\fR);"
 .IP "\fBapp_id\fR: set a constant window class/app_id, setting this may break the window layout;"
-.IP "\fBrules\fR: enable or disable adding Sway rules (window position management), possible values are \fIyes\fR or \fIno\fR."
+.IP "\fBsway\fR: enable or disable integration with Sway WM (window position management), possible values are \fIyes\fR or \fIno\fR."
 .\" example file
 .SH EXAMPLES
 .EX
@@ -45,6 +45,8 @@ fullscreen = no
 background = 1a2b3c
 info = yes
 font = monospace 10
+color = b4b3b2
+sway = yes
 .EE
 .\" related man pages
 .SH SEE ALSO

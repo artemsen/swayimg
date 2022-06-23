@@ -154,7 +154,7 @@ static bool apply_conf(config_t* cfg, const char* key, const char* value)
     } else if (strcmp(key, "app_id") == 0) {
         return set_appid_config(cfg, value);
     } else if (strcmp(key, "rules") == 0) {
-        return set_boolean(value, &cfg->sway_rules);
+        return set_boolean(value, &cfg->sway_wm);
     }
 
     return false;
@@ -176,7 +176,7 @@ static config_t* default_config(void)
 
     cfg->scale = scale_fit_or100;
     cfg->background = BACKGROUND_GRID;
-    cfg->sway_rules = true;
+    cfg->sway_wm = true;
     set_font_config(cfg, FONT_FACE);
     cfg->font_color = TEXT_COLOR;
 
@@ -287,13 +287,13 @@ bool check_config(const config_t* cfg)
 {
     const char* err = NULL;
 
-    if (cfg->window.width && !cfg->sway_rules) {
+    if (cfg->window.width && !cfg->sway_wm) {
         err = "window geometry is set, but sway rules are disabled";
     }
     if (cfg->fullscreen && cfg->window.width) {
         err = "can not set geometry in full screen mode";
     }
-    if (cfg->fullscreen && cfg->sway_rules) {
+    if (cfg->fullscreen && cfg->sway_wm) {
         err = "sway rules can not be used in full screen mode";
     }
 

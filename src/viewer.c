@@ -277,7 +277,7 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
     viewer.config = cfg;
     viewer.text = init_text(cfg);
 
-    if (cfg->sway_rules) {
+    if (cfg->sway_wm) {
         // setup window position via Sway IPC
         bool sway_fullscreen = false;
         const int ipc = sway_connect();

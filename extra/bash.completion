@@ -9,7 +9,7 @@ _swayimg()
                 -s --scale \
                 -i --info \
                 -c --class \
-                -n --no-rules \
+                -n --no-sway \
                 -v --version \
                 -h --help"
     if [[ ${cur} == -* ]]; then

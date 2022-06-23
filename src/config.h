@@ -15,7 +15,7 @@ typedef struct {
     const char* font_face; ///< Font name and size (pango format)
     uint32_t font_color;   ///< Font color
     const char* app_id;    ///< Window class/app_id name
-    bool sway_rules;       ///< Enable/disable Sway rules
+    bool sway_wm;          ///< Enable/disable integration with Sway WM
 } config_t;
 
 /**
