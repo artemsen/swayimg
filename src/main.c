@@ -33,7 +33,7 @@ static const struct option options[] = {
 static void print_help(void)
 {
     // clang-format off
-    puts("Usage: " APP_NAME " [OPTION...] FILE...");
+    puts("Usage: " APP_NAME " [OPTION...] [FILE...]");
     puts("  -f, --fullscreen         Full screen mode");
     puts("  -s, --scale=TYPE         Set initial image scale: default, fit, or real");
     puts("  -b, --background=XXXXXX  Set background color as hex RGB");
@@ -131,8 +131,9 @@ int main(int argc, char* argv[])
 {
     int rc;
     config_t* cfg = NULL;
-    const char** files = NULL;
-    size_t files_num = 0;
+    file_list_t* files = NULL;
+    bool recursive = true;
+    int num_files;
     int index;
 
     cfg = init_config();
@@ -151,22 +152,34 @@ int main(int argc, char* argv[])
         goto done;
     }
 
-    if (index == argc) {
-        fprintf(stderr,
-                "No files specified for viewing, "
-                "use '-' to read image data from stdin.\n");
-        rc = EXIT_FAILURE;
-        goto done;
-    }
-    if (strcmp(argv[index], "-") != 0) {
-        files = (const char**)&argv[index];
-        files_num = (size_t)(argc - index);
+    num_files = argc - index;
+    if (num_files == 0) {
+        // not input files specified, use current directory
+        const char* curr_dir = ".";
+        files = init_file_list(&curr_dir, 1, recursive);
+        if (!files) {
+            fprintf(stderr, "No image files found in the current directory\n");
+            rc = EXIT_FAILURE;
+            goto done;
+        }
+    } else if (num_files == 1 && strcmp(argv[index], "-") == 0) {
+        // reading from pipe
+        files = NULL;
+    } else {
+        files = init_file_list((const char**)&argv[index], (size_t)(num_files),
+                               recursive);
+        if (!files) {
+            fprintf(stderr, "Unable to compose file list from input args\n");
+            rc = EXIT_FAILURE;
+            goto done;
+        }
     }
 
-    rc = run_viewer(cfg, files, files_num) ? EXIT_SUCCESS : EXIT_FAILURE;
+    rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 done:
     free_config(cfg);
+    free_file_list(files);
 
     return rc;
 }

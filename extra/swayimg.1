@@ -4,10 +4,13 @@
 .SH NAME
 swayimg \- image viewer for Sway
 .SH SYNOPSIS
-swayimg [\fIOPTIONS\fR...] \fIFILE...\fR
+swayimg [\fIOPTIONS\fR...] \fI[FILE...]\fR
 .SH DESCRIPTION
 The \fBswayimg\fR utility can be used for preview images inside the currently
 focused window (container).
+.PP
+If no input files or directories are specified, the viewer will try to read all
+files in the current directory.
 .PP
 Use '-' as \fIFILE\fR to read image data from stdin.
 .PP

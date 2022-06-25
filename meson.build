@@ -116,6 +116,7 @@ endif
 sources = [
   'src/canvas.c',
   'src/config.c',
+  'src/filelist.c',
   'src/image.c',
   'src/main.c',
   'src/sway.c',

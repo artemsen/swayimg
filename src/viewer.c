@@ -16,15 +16,11 @@
 
 /** Viewer context. */
 typedef struct {
-    struct {
-        const char** files; ///< List of files to view
-        size_t total;       ///< Total number of files in the list
-        size_t current;     ///< Index of currently displayed image in the list
-    } file_list;
-    image_t* image;      ///< Currently displayed image
-    canvas_t canvas;     ///< Canvas context
-    text_render_t* text; ///< Text renderer
     config_t* config;    ///< Configuration
+    file_list_t* files;  ///< List of files to view
+    image_t* image;      ///< Currently displayed image
+    text_render_t* text; ///< Text renderer
+    canvas_t canvas;     ///< Canvas context
 } viewer_t;
 
 static viewer_t viewer;
@@ -106,41 +102,21 @@ static bool load_image(const char* file)
  */
 static bool next_file(bool forward)
 {
-    size_t index = viewer.file_list.current;
-    bool initial = (viewer.image == NULL);
-
-    if (viewer.file_list.total == 0) {
-        // stdin mode, read only once
-        return viewer.image || load_image(NULL);
-    }
-
-    while (true) {
-        if (initial) {
-            initial = false;
-        } else {
-            if (forward) {
-                if (index < viewer.file_list.total - 1) {
-                    ++index;
-                } else {
-                    index = 0;
-                }
-            } else {
-                if (index > 0) {
-                    --index;
-                } else {
-                    index = viewer.file_list.total - 1;
-                }
-            }
-            if (index == viewer.file_list.current) {
-                return false; // all files enumerated
-            }
-        }
-        if (load_image(viewer.file_list.files[index])) {
-            break;
+    if (viewer.image) {
+        // not an initial call, move to the next file
+        bool moved = forward ? file_list_next(viewer.files)
+                             : file_list_prev(viewer.files);
+        if (!moved) {
+            return false;
         }
     }
 
-    viewer.file_list.current = index;
+    while (!load_image(file_list_current(viewer.files, NULL, NULL))) {
+        if (!file_list_skip(viewer.files)) {
+            fprintf(stderr, "No more image files to view\n");
+            return false;
+        }
+    }
 
     return true;
 }
@@ -179,10 +155,13 @@ static void on_redraw(cairo_surface_t* window)
                  (int)(viewer.canvas.scale * 100.0));
         print_text(viewer.text, cairo, text_bottom_left, text);
         // print file number in list
-        if (viewer.file_list.total > 1) {
-            snprintf(text, sizeof(text), "%lu of %lu",
-                     viewer.file_list.current + 1, viewer.file_list.total);
-            print_text(viewer.text, cairo, text_top_right, text);
+        if (viewer.files) {
+            size_t index, total;
+            file_list_current(viewer.files, &index, &total);
+            if (total > 1) {
+                snprintf(text, sizeof(text), "%lu of %lu", index, total);
+                print_text(viewer.text, cairo, text_top_right, text);
+            }
         }
     }
 
@@ -266,7 +245,7 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-bool run_viewer(config_t* cfg, const char** files, size_t total)
+bool run_viewer(config_t* cfg, file_list_t* files)
 {
     static const struct handlers handlers = { .on_redraw = on_redraw,
                                               .on_resize = on_resize,
@@ -275,6 +254,7 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
 
     // initialize viewer context
     viewer.config = cfg;
+    viewer.files = files;
     viewer.text = init_text(cfg);
 
     if (cfg->sway_wm) {
@@ -301,9 +281,12 @@ bool run_viewer(config_t* cfg, const char** files, size_t total)
     }
 
     // load first file
-    viewer.file_list.files = files;
-    viewer.file_list.total = total;
-    if (!next_file(true)) {
+    if (!files) {
+        // stdin mode
+        if (!load_image(NULL)) {
+            goto done;
+        }
+    } else if (!next_file(true)) {
         goto done;
     }
 
