@@ -24,15 +24,15 @@ struct cmdarg {
 
 // clang-format off
 static const cmdarg_t arguments[] = {
-    { 'f', "fullscreen", NULL,      "Show image in full screen mode" },
-    { 's', "scale",      "TYPE",    "Set initial image scale: default, fit, or real" },
-    { 'b', "background", "XXXXXX",  "Set background color as hex RGB" },
-    { 'g', "geometry",   "X,Y,W,H", "Set window geometry" },
-    { 'i', "info",       NULL,      "Show image meta information (name, EXIF, etc)" },
-    { 'c', "class",      "NAME",    "Set window class/app_id" },
-    { 'n', "no-sway",    NULL,      "Disable integration with Sway WM" },
-    { 'v', "version",    NULL,      "Print version info and exit" },
-    { 'h', "help",       NULL,      "Print this help and exit" }
+    { 'f', "fullscreen", NULL,      "show image in full screen mode" },
+    { 's', "scale",      "TYPE",    "set initial image scale: default, fit, or real" },
+    { 'b', "background", "XXXXXX",  "set background color as hex RGB" },
+    { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
+    { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
+    { 'c', "class",      "NAME",    "set window class/app_id" },
+    { 'n', "no-sway",    NULL,      "disable integration with Sway WM" },
+    { 'v', "version",    NULL,      "print version info and exit" },
+    { 'h', "help",       NULL,      "print this help and exit" }
 };
 // clang-format on
 
@@ -42,7 +42,12 @@ static const cmdarg_t arguments[] = {
 static void print_help(void)
 {
     char buf_lopt[32];
-    puts("Usage: " APP_NAME " [OPTION...] [FILE...]");
+    puts("Usage: " APP_NAME " [OPTION]... [FILE]...");
+    puts("Show images from FILE(s).");
+    puts("If FILE is -, read standard input.");
+    puts("If no FILE specified - read all files from the current directory.\n");
+    puts("Mandatory arguments to long options are mandatory for short options "
+         "too.");
     for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
         const cmdarg_t* arg = &arguments[i];
         strcpy(buf_lopt, arg->long_opt);
@@ -123,6 +128,7 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
                 break;
             case 'v':
                 puts(APP_NAME " version " APP_VERSION ".");
+                puts("https://github.com/artemsen/swayimg");
                 printf("Supported formats: %s.\n", supported_formats());
                 return 0;
             case 'h':

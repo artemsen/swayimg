@@ -86,25 +86,25 @@ const char* supported_formats(void)
 {
     return "bmp"
 #ifdef HAVE_LIBJPEG
-           ",jpeg"
+           ", jpeg"
 #endif // HAVE_LIBJPEG
 #ifdef HAVE_LIBJXL
-           ",jxl"
+           ", jxl"
 #endif // HAVE_LIBJXL
 #ifdef HAVE_LIBPNG
-           ",png"
+           ", png"
 #endif // HAVE_LIBPNG
 #ifdef HAVE_LIBGIF
-           ",gif"
+           ", gif"
 #endif // HAVE_LIBGIF
 #ifdef HAVE_LIBRSVG
-           ",svg"
+           ", svg"
 #endif // HAVE_LIBRSVG
 #ifdef HAVE_LIBWEBP
-           ",webp"
+           ", webp"
 #endif // HAVE_LIBWEBP
 #ifdef HAVE_LIBAVIF
-           ",avif"
+           ", avif"
 #endif // HAVE_LIBAVIF
         ;
 }

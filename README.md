@@ -30,7 +30,7 @@ image from the specified file.
 
 ## Usage
 
-`swayimg [OPTIONS...] FILE...`
+`swayimg [OPTIONS]... [FILE]...`
 
 See `man swayimg` for details.
 
