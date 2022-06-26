@@ -11,65 +11,80 @@
 #include <stdlib.h>
 #include <string.h>
 
-// clang-format off
+struct cmdarg;
+typedef struct cmdarg cmdarg_t;
+
 /** Command line options. */
-static const struct option options[] = {
-    { "fullscreen", no_argument,       NULL, 'f' },
-    { "scale",      required_argument, NULL, 's' },
-    { "background", required_argument, NULL, 'b' },
-    { "geometry",   required_argument, NULL, 'g' },
-    { "info",       no_argument,       NULL, 'i' },
-    { "class",      required_argument, NULL, 'c' },
-    { "no-sway",    no_argument,       NULL, 'n' },
-    { "version",    no_argument,       NULL, 'v' },
-    { "help",       no_argument,       NULL, 'h' },
-    { NULL,         0,                 NULL,  0  }
+struct cmdarg {
+    const char short_opt; ///< Short option character
+    const char* long_opt; ///< Long option name
+    const char* format;   ///< Format description
+    const char* help;     ///< Help string
+};
+
+// clang-format off
+static const cmdarg_t arguments[] = {
+    { 'f', "fullscreen", NULL,      "Show image in full screen mode" },
+    { 's', "scale",      "TYPE",    "Set initial image scale: default, fit, or real" },
+    { 'b', "background", "XXXXXX",  "Set background color as hex RGB" },
+    { 'g', "geometry",   "X,Y,W,H", "Set window geometry" },
+    { 'i', "info",       NULL,      "Show image meta information (name, EXIF, etc)" },
+    { 'c', "class",      "NAME",    "Set window class/app_id" },
+    { 'n', "no-sway",    NULL,      "Disable integration with Sway WM" },
+    { 'v', "version",    NULL,      "Print version info and exit" },
+    { 'h', "help",       NULL,      "Print this help and exit" }
 };
 // clang-format on
 
 /**
- * Print help usage info.
+ * Print usage info.
  */
 static void print_help(void)
 {
-    // clang-format off
+    char buf_lopt[32];
     puts("Usage: " APP_NAME " [OPTION...] [FILE...]");
-    puts("  -f, --fullscreen         Full screen mode");
-    puts("  -s, --scale=TYPE         Set initial image scale: default, fit, or real");
-    puts("  -b, --background=XXXXXX  Set background color as hex RGB");
-    puts("  -g, --geometry=X,Y,W,H   Set window geometry");
-    puts("  -i, --info               Show image properties");
-    puts("  -c, --class              Set window class/app_id");
-    puts("  -n, --no-sway            Disable integration with Sway WM");
-    puts("  -v, --version            Print version info and exit");
-    puts("  -h, --help               Print this help and exit");
-    // clang-format on
+    for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
+        const cmdarg_t* arg = &arguments[i];
+        strcpy(buf_lopt, arg->long_opt);
+        if (arg->format) {
+            strcat(buf_lopt, "=");
+            strcat(buf_lopt, arg->format);
+        }
+        printf("  -%c, --%-18s %s\n", arg->short_opt, buf_lopt, arg->help);
+    }
 }
 
 /**
- * Parse command line options into configuration instance.
+ * Parse command line arguments into configuration instance.
  * @param[in] argc number of arguments to parse
  * @param[in] argv arguments array
  * @param[out] cfg target configuration instance
  * @return index of the first non option argument, or -1 if error, or 0 to exit
  */
-static int parse_cmdline(int argc, char* argv[], config_t* cfg)
+static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
 {
-    char short_opts[(sizeof(options) / sizeof(options[0])) * 2];
-    char* short_opts_ptr = &short_opts[0];
+    struct option options[1 + (sizeof(arguments) / sizeof(arguments[0]))];
+    char short_opts[(sizeof(arguments) / sizeof(arguments[0])) * 2];
+    char* short_opts_ptr = short_opts;
     int opt;
 
-    // compose short options string
-    for (size_t i = 0; i < sizeof(options) / sizeof(options[0]); ++i) {
-        const struct option* opt = &options[i];
-        if (opt->val) {
-            *short_opts_ptr++ = opt->val;
-            if (opt->has_arg != no_argument) {
-                *short_opts_ptr++ = ':';
-            }
+    for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
+        const cmdarg_t* arg = &arguments[i];
+        // compose array of option structs
+        options[i].name = arg->long_opt;
+        options[i].has_arg = arg->format ? required_argument : no_argument;
+        options[i].flag = NULL;
+        options[i].val = arg->short_opt;
+        // compose short options string
+        *short_opts_ptr++ = arg->short_opt;
+        if (arg->format) {
+            *short_opts_ptr++ = ':';
         }
     }
-    *short_opts_ptr = 0; // last null
+    // add terminations
+    *short_opts_ptr = 0;
+    memset(&options[(sizeof(arguments) / sizeof(arguments[0])) - 1], 0,
+           sizeof(struct option));
 
     opterr = 0; // prevent native error messages
 
@@ -119,8 +134,6 @@ static int parse_cmdline(int argc, char* argv[], config_t* cfg)
         }
     }
 
-    check_config(cfg);
-
     return optind;
 }
 
@@ -136,13 +149,15 @@ int main(int argc, char* argv[])
     int num_files;
     int index;
 
+    // initialize config with default values
     cfg = init_config();
     if (!cfg) {
         rc = EXIT_FAILURE;
         goto done;
     }
 
-    index = parse_cmdline(argc, argv, cfg);
+    // parse command arguments
+    index = parse_cmdargs(argc, argv, cfg);
     if (index == 0) {
         rc = EXIT_SUCCESS;
         goto done;
@@ -151,7 +166,9 @@ int main(int argc, char* argv[])
         rc = EXIT_FAILURE;
         goto done;
     }
+    check_config(cfg);
 
+    // compose file list
     num_files = argc - index;
     if (num_files == 0) {
         // not input files specified, use current directory
@@ -175,6 +192,7 @@ int main(int argc, char* argv[])
         }
     }
 
+    // run viewer, finally
     rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 done:
