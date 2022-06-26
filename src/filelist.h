@@ -11,7 +11,7 @@ struct file_list;
 typedef struct file_list file_list_t;
 
 /**
- * Initialize file list.
+ * Initialize the file list.
  * @param[in] files list of input source files
  * @param[in] num number of files in the source list
  * @param[in] recursive flag to handle directory recursively
@@ -20,50 +20,51 @@ typedef struct file_list file_list_t;
 file_list_t* init_file_list(const char** files, size_t num, bool recursive);
 
 /**
- * Free file list.
+ * Free the file list.
  * @param[in] list file list instance
  */
 void free_file_list(file_list_t* list);
 
 /**
- * Sort file list alphabetically.
+ * Sort the file list alphabetically.
  * @param[in] list file list instance
  */
 void sort_file_list(file_list_t* list);
 
 /**
- * Shuffle file list.
+ * Shuffle the file list.
  * @param[in] list file list instance
  */
 void shuffle_file_list(file_list_t* list);
 
 /**
- * Get description of current file in list.
+ * Get description of the current file in the file list.
  * @param[in] list file list instance
  * @param[out] index index of the current file (started from 1)
  * @param[out] total total number of files in the list
  * @return path to the current file or NULL if list is empty
  */
-const char* file_list_current(const file_list_t* list, size_t* index,
-                              size_t* total);
+const char* get_current(const file_list_t* list, size_t* index, size_t* total);
 
 /**
- * Step to the next file in list.
+ * Exclude current file from the list and move to the next one.
  * @param[in] list file list instance
  * @return false if no more files in the list
  */
-bool file_list_next(file_list_t* list);
+bool exclude_current(file_list_t* list);
 
 /**
- * Step to the previous file in list.
+ * Step to the next file.
  * @param[in] list file list instance
+ * @param[in] forward step direction
  * @return false if no more files in the list
  */
-bool file_list_prev(file_list_t* list);
+bool next_file(file_list_t* list, bool forward);
 
 /**
- * Remove current file from the list.
+ * Step to the next directory.
  * @param[in] list file list instance
+ * @param[in] forward step direction
  * @return false if no more files in the list
  */
-bool file_list_skip(file_list_t* list);
+bool next_directory(file_list_t* list, bool forward);

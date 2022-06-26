@@ -100,23 +100,23 @@ static bool load_image(const char* file)
  * @param[in] forward move direction (true=forward / false=backward).
  * @return false if file was not loaded
  */
-static bool next_file(bool forward)
+static bool load_next(bool file, bool forward)
 {
     if (!viewer.files) {
         return false;
     }
 
     if (viewer.image) {
-        // not an initial call, move to the next file
-        bool moved = forward ? file_list_next(viewer.files)
-                             : file_list_prev(viewer.files);
+        // not an initial call, move to the next file or dir
+        bool moved = file ? next_file(viewer.files, forward)
+                          : next_directory(viewer.files, forward);
         if (!moved) {
             return false;
         }
     }
 
-    while (!load_image(file_list_current(viewer.files, NULL, NULL))) {
-        if (!file_list_skip(viewer.files)) {
+    while (!load_image(get_current(viewer.files, NULL, NULL))) {
+        if (!exclude_current(viewer.files)) {
             fprintf(stderr, "No more image files to view\n");
             return false;
         }
@@ -161,7 +161,7 @@ static void on_redraw(cairo_surface_t* window)
         // print file number in list
         if (viewer.files) {
             size_t index, total;
-            file_list_current(viewer.files, &index, &total);
+            get_current(viewer.files, &index, &total);
             if (total > 1) {
                 snprintf(text, sizeof(text), "%lu of %lu", index, total);
                 print_text(viewer.text, cairo, text_top_right, text);
@@ -185,11 +185,15 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return next_file(false);
+            return load_next(true, false);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return next_file(true);
+            return load_next(true, true);
+        case XKB_KEY_P:
+            return load_next(false, false);
+        case XKB_KEY_N:
+            return load_next(false, true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return move_viewpoint(&viewer.canvas, viewer.image->surface,
@@ -290,7 +294,7 @@ bool run_viewer(config_t* cfg, file_list_t* files)
         if (!load_image(NULL)) {
             goto done;
         }
-    } else if (!next_file(true)) {
+    } else if (!load_next(true, true)) {
         goto done;
     }
 

@@ -247,8 +247,7 @@ void shuffle_file_list(file_list_t* list)
     free(array);
 }
 
-const char* file_list_current(const file_list_t* list, size_t* index,
-                              size_t* total)
+const char* get_current(const file_list_t* list, size_t* index, size_t* total)
 {
     if (total) {
         *total = list->size;
@@ -259,31 +258,7 @@ const char* file_list_current(const file_list_t* list, size_t* index,
     return list->current ? list->current->path : NULL;
 }
 
-bool file_list_next(file_list_t* list)
-{
-    const bool rc = list->size > 1;
-    if (rc) {
-        list->current = list->current->next;
-        if (++list->index >= list->size) {
-            list->index = 0;
-        }
-    }
-    return rc;
-}
-
-bool file_list_prev(file_list_t* list)
-{
-    const bool rc = list->size > 1;
-    if (rc) {
-        list->current = list->current->prev;
-        if (list->index-- == 0) {
-            list->index = list->size - 1;
-        }
-    }
-    return rc;
-}
-
-bool file_list_skip(file_list_t* list)
+bool exclude_current(file_list_t* list)
 {
     if (list->size == 0) {
         return false;
@@ -295,12 +270,87 @@ bool file_list_skip(file_list_t* list)
         list->index = 0;
         return false;
     } else {
+        // remove current entry
         struct entry_t* entry = list->current;
         entry->prev->next = entry->next;
         entry->next->prev = entry->prev;
         list->current = entry->next;
         free(entry);
         --list->size;
+        if (list->index >= list->size) {
+            list->index = 0;
+        }
         return true;
     }
+}
+
+bool next_file(file_list_t* list, bool forward)
+{
+    if (list->size <= 1) {
+        return false;
+    }
+
+    if (forward) {
+        list->current = list->current->next;
+        if (++list->index >= list->size) {
+            list->index = 0;
+        }
+    } else {
+        list->current = list->current->prev;
+        if (list->index-- == 0) {
+            list->index = list->size - 1;
+        }
+    }
+
+    return true;
+}
+
+bool next_directory(file_list_t* list, bool forward)
+{
+    struct entry_t* current = list->current;
+    size_t index = list->index;
+    size_t cur_dir, chk_dir;
+
+    if (list->size <= 1) {
+        return false;
+    }
+
+    // directory part of the current entry
+    cur_dir = strlen(list->current->path) - 1;
+    while (cur_dir && list->current->path[cur_dir] != '/') {
+        --cur_dir;
+    }
+
+    // searach for another directory in file list
+    while (true) {
+        if (forward) {
+            current = current->next;
+            if (++index >= list->size) {
+                index = 0;
+            }
+        } else {
+            current = current->prev;
+            if (index-- == 0) {
+                index = list->size - 1;
+            }
+        }
+        if (current == list->current) {
+            return false; // not found
+        }
+        // directory part of the next entry
+        chk_dir = strlen(current->path) - 1;
+        while (chk_dir && current->path[chk_dir] != '/') {
+            --chk_dir;
+        }
+        if (cur_dir != chk_dir ||
+            strncmp(current->path, list->current->path, cur_dir)) {
+            break;
+        }
+    }
+
+    // move cursor
+    list->current = current;
+    list->index = index;
+
+    return true;
 }

@@ -38,7 +38,6 @@ Examples:
 - View multiple files: `swayimg photo.jpg logo.png`
 - View all files (recursively) in the current directory in random order: `swayimg -rR`
 - View using pipes: `wget -O- https://www.kernel.org/theme/images/logos/tux.png 2> /dev/null | swayimg -`
-- View all images (reqursively) in random order: `swayimg $(find . -type f | shuf)`
 
 ### Key bindings
 
@@ -55,6 +54,8 @@ Examples:
 - `F11` or `f`: Toggle full screen mode;
 - `PgDown`, `Space`, or `n`: Open next file;
 - `PgUp` or `p`: Open previous file;
+- `N`: Open file from next directory;
+- `P`: Open file from previous directory;
 - `Esc`, `Enter`, `F10` or `q`: Exit the program.
 
 ## Configuration
