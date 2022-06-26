@@ -33,7 +33,13 @@ Empty lines and comments are ignored.
 .IP "\fBbackground\fR: background mode or color, possible values are \fIgrid\fR or RGB hex color (e.g. \fI1a2b3c\fR);"
 .IP "\fBinfo\fR: show image meta information: format, size, EXIF, and current scale, possible values are \fIyes\fR or \fIno\fR;"
 .IP "\fBfont\fR: font name and size used to render image info text in pango format;"
-.IP "\fBcolor\fR: color used to render text, RGB hex format (e.g. \fI1a2b3c\fR);"
+.IP "\fBfont-color\fR: color used to render text, RGB hex format (e.g. \fI1a2b3c\fR);"
+.IP "\fBorder\fR: order of the file list:"
+.nf
+\fInone\fR: unsorted (default);
+\fIalpha\fR: sort alphabetically;
+\fIrandom\fR: randomize list.
+.IP "\fBrecursive\fR: read directories recursively, possible values are \fIyes\fR or \fIno\fR;"
 .IP "\fBapp_id\fR: set a constant window class/app_id, setting this may break the window layout;"
 .IP "\fBsway\fR: enable or disable integration with Sway WM (window position management), possible values are \fIyes\fR or \fIno\fR."
 .\" example file

@@ -5,6 +5,9 @@
 
 #include "canvas.h"
 
+/** File list order. */
+typedef enum { order_none, order_alpha, order_random } order_t;
+
 /** App configuration. */
 typedef struct {
     scale_t scale;         ///< Initial scale
@@ -14,6 +17,8 @@ typedef struct {
     bool show_info;        ///< Show image info
     const char* font_face; ///< Font name and size (pango format)
     uint32_t font_color;   ///< Font color
+    order_t order;         ///< File list order
+    bool recursive;        ///< Read directories recursively
     const char* app_id;    ///< Window class/app_id name
     bool sway_wm;          ///< Enable/disable integration with Sway WM
 } config_t;
@@ -62,17 +67,25 @@ bool set_background_config(config_t* cfg, const char* background);
 bool set_geometry_config(config_t* cfg, const char* geometry);
 
 /**
- * Set window class/app_id.
- * @param[out] cfg target configuration instance
- * @param[in] app_id window class/app_id to set
- * @return false if value format is invalid
- */
-bool set_appid_config(config_t* cfg, const char* app_id);
-
-/**
  * Set font name and size.
  * @param[out] cfg target configuration instance
  * @param[in] font font name and size in pango format
  * @return false if value format is invalid
  */
 bool set_font_config(config_t* cfg, const char* font);
+
+/**
+ * Set order of the file list.
+ * @param[out] cfg target configuration instance
+ * @param[in] order text order description
+ * @return false if value format is invalid
+ */
+bool set_florder_config(config_t* cfg, const char* order);
+
+/**
+ * Set window class/app_id.
+ * @param[out] cfg target configuration instance
+ * @param[in] app_id window class/app_id to set
+ * @return false if value format is invalid
+ */
+bool set_appid_config(config_t* cfg, const char* app_id);

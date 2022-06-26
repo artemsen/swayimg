@@ -3,7 +3,10 @@
 _swayimg()
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
-    local opts="-g --geometry \
+    local opts="-S --sort \
+                -R --random \
+                -r --recursive \
+                -g --geometry \
                 -b --background \
                 -f --fullscreen \
                 -s --scale \

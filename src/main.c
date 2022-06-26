@@ -24,6 +24,9 @@ struct cmdarg {
 
 // clang-format off
 static const cmdarg_t arguments[] = {
+    { 'S', "sort",       NULL,      "sort input files alphabetically" },
+    { 'R', "random",     NULL,      "shuffle input file list in random mode" },
+    { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "TYPE",    "set initial image scale: default, fit, or real" },
     { 'b', "background", "XXXXXX",  "set background color as hex RGB" },
@@ -96,6 +99,15 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
+            case 'S':
+                cfg->order = order_alpha;
+                break;
+            case 'R':
+                cfg->order = order_random;
+                break;
+            case 'r':
+                cfg->recursive = true;
+                break;
             case 'f':
                 cfg->fullscreen = true;
                 cfg->sway_wm = false;
@@ -151,7 +163,6 @@ int main(int argc, char* argv[])
     int rc;
     config_t* cfg = NULL;
     file_list_t* files = NULL;
-    bool recursive = true;
     int num_files;
     int index;
 
@@ -179,7 +190,7 @@ int main(int argc, char* argv[])
     if (num_files == 0) {
         // not input files specified, use current directory
         const char* curr_dir = ".";
-        files = init_file_list(&curr_dir, 1, recursive);
+        files = init_file_list(&curr_dir, 1, cfg->recursive);
         if (!files) {
             fprintf(stderr, "No image files found in the current directory\n");
             rc = EXIT_FAILURE;
@@ -190,12 +201,17 @@ int main(int argc, char* argv[])
         files = NULL;
     } else {
         files = init_file_list((const char**)&argv[index], (size_t)(num_files),
-                               recursive);
+                               cfg->recursive);
         if (!files) {
             fprintf(stderr, "Unable to compose file list from input args\n");
             rc = EXIT_FAILURE;
             goto done;
         }
+    }
+    if (cfg->order == order_alpha) {
+        sort_file_list(files);
+    } if (cfg->order == order_random) {
+        shuffle_file_list(files);
     }
 
     // run viewer, finally

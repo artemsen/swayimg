@@ -4,7 +4,7 @@
 .SH NAME
 swayimg \- image viewer for Sway
 .SH SYNOPSIS
-swayimg [\fIOPTIONS\fR...] \fI[FILE...]\fR
+swayimg [\fIOPTIONS\fR]... \fI[FILE]...\fR
 .SH DESCRIPTION
 The \fBswayimg\fR utility can be used for preview images inside the currently
 focused window (container).
@@ -26,6 +26,12 @@ draws an image from the specified file.
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
+.IP "\fB\-S\fR, \fB\-\-sort\fR"
+Sort input files alphabetically.
+.IP "\fB\-R\fR, \fB\-\-random\fR"
+Shuffle input file list in random order.
+.IP "\fB\-r\fR, \fB\-\-recursive\fR"
+Read directories recursively.
 .IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
 Set the absolute position and size of the window, for example
 \fI10,20,100,200\fR creates a window at position 10x20 (top left corner) with

@@ -149,11 +149,15 @@ static bool apply_conf(config_t* cfg, const char* key, const char* value)
         return set_boolean(value, &cfg->show_info);
     } else if (strcmp(key, "font") == 0) {
         return set_font_config(cfg, value);
-    } else if (strcmp(key, "color") == 0) {
+    } else if (strcmp(key, "font-color") == 0) {
         return set_color(value, &cfg->font_color);
+    } else if (strcmp(key, "order") == 0) {
+        return set_florder_config(cfg, value);
+    } else if (strcmp(key, "recursive") == 0) {
+        return set_boolean(value, &cfg->recursive);
     } else if (strcmp(key, "app_id") == 0) {
         return set_appid_config(cfg, value);
-    } else if (strcmp(key, "rules") == 0) {
+    } else if (strcmp(key, "sway") == 0) {
         return set_boolean(value, &cfg->sway_wm);
     }
 
@@ -179,6 +183,8 @@ static config_t* default_config(void)
     cfg->sway_wm = true;
     set_font_config(cfg, FONT_FACE);
     cfg->font_color = TEXT_COLOR;
+    cfg->order = order_none;
+    cfg->recursive = false;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -365,6 +371,32 @@ bool set_geometry_config(config_t* cfg, const char* geometry)
     return false;
 }
 
+bool set_font_config(config_t* cfg, const char* font)
+{
+    const size_t len = font ? strlen(font) : 0;
+    if (len == 0) {
+        fprintf(stderr, "Invalid font description: %s\n", font);
+        return false;
+    }
+    return set_string(font, (char**)&cfg->font_face);
+}
+
+bool set_florder_config(config_t* cfg, const char* order)
+{
+    if (strcmp(order, "none") == 0) {
+        cfg->order = order_none;
+    } else if (strcmp(order, "alpha") == 0) {
+        cfg->order = order_alpha;
+    } else if (strcmp(order, "random") == 0) {
+        cfg->order = order_random;
+    } else {
+        fprintf(stderr, "Invalid file list order: %s\n", order);
+        fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
+        return false;
+    }
+    return true;
+}
+
 bool set_appid_config(config_t* cfg, const char* app_id)
 {
     const size_t len = app_id ? strlen(app_id) : 0;
@@ -375,14 +407,4 @@ bool set_appid_config(config_t* cfg, const char* app_id)
         return false;
     }
     return set_string(app_id, (char**)&cfg->app_id);
-}
-
-bool set_font_config(config_t* cfg, const char* font)
-{
-    const size_t len = font ? strlen(font) : 0;
-    if (len == 0) {
-        fprintf(stderr, "Invalid font description: %s\n", font);
-        return false;
-    }
-    return set_string(font, (char**)&cfg->font_face);
 }
