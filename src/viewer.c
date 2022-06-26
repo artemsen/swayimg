@@ -102,6 +102,10 @@ static bool load_image(const char* file)
  */
 static bool next_file(bool forward)
 {
+    if (!viewer.files) {
+        return false;
+    }
+
     if (viewer.image) {
         // not an initial call, move to the next file
         bool moved = forward ? file_list_next(viewer.files)
