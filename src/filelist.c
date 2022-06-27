@@ -224,7 +224,7 @@ void shuffle_file_list(file_list_t* list)
         list->current = list->current->next;
     }
 
-    // swap rendom entries
+    // swap random entries
     for (size_t i = 0; i < list->size; ++i) {
         index = rand() % list->size;
         if (index != i) {
@@ -321,7 +321,7 @@ bool next_directory(file_list_t* list, bool forward)
         --cur_dir;
     }
 
-    // searach for another directory in file list
+    // search for another directory in file list
     while (true) {
         if (forward) {
             current = current->next;

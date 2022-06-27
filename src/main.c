@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
     }
     if (cfg->order == order_alpha) {
         sort_file_list(files);
-    } if (cfg->order == order_random) {
+    } else if (cfg->order == order_random) {
         shuffle_file_list(files);
     }
 

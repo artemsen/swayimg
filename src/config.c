@@ -92,7 +92,7 @@ static bool set_boolean(const char* text, bool* value)
 }
 
 /**
- * Convert text value to RGV color.
+ * Convert text value to RGB color.
  * @param[in] text text to convert
  * @param[out] value target variable
  * @return false if value has invalid format
