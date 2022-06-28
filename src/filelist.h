@@ -49,9 +49,10 @@ const char* get_current(const file_list_t* list, size_t* index, size_t* total);
 /**
  * Exclude current file from the list and move to the next one.
  * @param[in] list file list instance
+ * @param[in] forward step direction for setting next file
  * @return false if no more files in the list
  */
-bool exclude_current(file_list_t* list);
+bool exclude_current(file_list_t* list, bool forward);
 
 /**
  * Step to the next file.

@@ -116,7 +116,7 @@ static bool load_next(bool file, bool forward)
     }
 
     while (!load_image(get_current(viewer.files, NULL, NULL))) {
-        if (!exclude_current(viewer.files)) {
+        if (!exclude_current(viewer.files, forward)) {
             fprintf(stderr, "No more image files to view\n");
             return false;
         }

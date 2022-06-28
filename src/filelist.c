@@ -164,7 +164,7 @@ void sort_file_list(file_list_t* list)
     size_t index = 0;
 
     if (list->size <= 1) {
-        return;
+        return; // nothing to sort
     }
 
     // create array from list
@@ -208,7 +208,7 @@ void shuffle_file_list(file_list_t* list)
     size_t index = 0;
 
     if (list->size <= 1) {
-        return;
+        return; // nothing to shuffle
     }
 
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -249,71 +249,54 @@ void shuffle_file_list(file_list_t* list)
 
 const char* get_current(const file_list_t* list, size_t* index, size_t* total)
 {
+    if (!*list->current->path) {
+        return NULL;
+    }
+
     if (total) {
         *total = list->size;
     }
     if (index) {
-        *index = list->current ? list->index + 1 : 0;
+        *index = list->index + 1;
     }
-    return list->current ? list->current->path : NULL;
+    return list->current->path;
 }
 
-bool exclude_current(file_list_t* list)
+bool exclude_current(file_list_t* list, bool forward)
 {
-    if (list->size == 0) {
-        return false;
-    } else if (list->size == 1) {
-        // last entry
-        free(list->current);
-        list->current = NULL;
-        list->size = 0;
-        list->index = 0;
-        return false;
-    } else {
-        // remove current entry
-        struct entry_t* entry = list->current;
-        entry->prev->next = entry->next;
-        entry->next->prev = entry->prev;
-        list->current = entry->next;
-        free(entry);
-        --list->size;
-        if (list->index >= list->size) {
-            list->index = 0;
-        }
-        return true;
-    }
+    list->current->path[0] = 0; // mark entry as invalid
+    return next_file(list, forward);
 }
 
 bool next_file(file_list_t* list, bool forward)
 {
-    if (list->size <= 1) {
-        return false;
-    }
+    struct entry_t* start = list->current;
 
-    if (forward) {
-        list->current = list->current->next;
-        if (++list->index >= list->size) {
-            list->index = 0;
+    do {
+        if (forward) {
+            list->current = list->current->next;
+            if (++list->index >= list->size) {
+                list->index = 0;
+            }
+        } else {
+            list->current = list->current->prev;
+            if (list->index-- == 0) {
+                list->index = list->size - 1;
+            }
         }
-    } else {
-        list->current = list->current->prev;
-        if (list->index-- == 0) {
-            list->index = list->size - 1;
+        if (*list->current->path) {
+            return true;
         }
-    }
+    } while (list->current != start);
 
-    return true;
+    // loop complete, no one valid entry found
+    return false;
 }
 
 bool next_directory(file_list_t* list, bool forward)
 {
-    struct entry_t* current = list->current;
-    size_t index = list->index;
+    struct entry_t* start = list->current;
     size_t cur_dir, chk_dir;
-
-    if (list->size <= 1) {
-        return false;
-    }
 
     // directory part of the current entry
     cur_dir = strlen(list->current->path) - 1;
@@ -322,35 +305,17 @@ bool next_directory(file_list_t* list, bool forward)
     }
 
     // search for another directory in file list
-    while (true) {
-        if (forward) {
-            current = current->next;
-            if (++index >= list->size) {
-                index = 0;
-            }
-        } else {
-            current = current->prev;
-            if (index-- == 0) {
-                index = list->size - 1;
-            }
-        }
-        if (current == list->current) {
-            return false; // not found
-        }
+    while (next_file(list, forward) && list->current != start) {
         // directory part of the next entry
-        chk_dir = strlen(current->path) - 1;
-        while (chk_dir && current->path[chk_dir] != '/') {
+        chk_dir = strlen(list->current->path) - 1;
+        while (chk_dir && list->current->path[chk_dir] != '/') {
             --chk_dir;
         }
         if (cur_dir != chk_dir ||
-            strncmp(current->path, list->current->path, cur_dir)) {
-            break;
+            strncmp(list->current->path, start->path, cur_dir)) {
+            return true;
         }
     }
 
-    // move cursor
-    list->current = current;
-    list->index = index;
-
-    return true;
+    return false;
 }
