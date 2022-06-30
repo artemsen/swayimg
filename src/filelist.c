@@ -11,19 +11,15 @@
 #include <time.h>
 #include <unistd.h>
 
-/** File list entry. */
-struct entry_t;
-struct entry_t {
-    struct entry_t* prev; ///< Pointer to the previous entry
-    struct entry_t* next; ///< Pointer to the next entry
-    char path[1];         ///< Full path to the file (any size array)
-} __attribute__((packed));
+/** Number of entries added on reallocation. */
+#define ALLOCATE_SIZE 32
 
 /** File list context. */
 struct file_list {
-    struct entry_t* current; ///< Pointer to the current entry
-    size_t size;             ///< Total number of files in the list
-    size_t index;            ///< Index of current entry
+    char** paths; ///< Array of files paths
+    size_t alloc; ///< Number of allocated entries (size of array)
+    size_t size;  ///< Number of files in the list
+    size_t index; ///< Index of the current file entry
 };
 
 /**
@@ -33,29 +29,27 @@ struct file_list {
  */
 static void add_file(file_list_t* list, const char* file)
 {
-    struct entry_t* entry;
-    size_t entry_sz;
+    char* path;
+    const size_t path_len = strlen(file) + 1 /* last null */;
 
-    // create new list entry
-    entry_sz = sizeof(entry->prev) + sizeof(entry->next);
-    entry_sz += strlen(file) + 1 /* last null */;
-    entry = calloc(1, entry_sz);
-    if (entry) {
-        strcat(entry->path, file);
-
-        // add entry to list
-        if (list->current) {
-            entry->next = list->current->next;
-            entry->prev = list->current;
-            list->current->next->prev = entry;
-            list->current->next = entry;
-            list->current = entry;
-        } else {
-            // first entry
-            list->current = entry;
-            list->current->next = entry;
-            list->current->prev = entry;
+    // during the initialization, the index points to the next free entry
+    if (list->index >= list->alloc) {
+        // relocate array
+        const size_t num_entries = list->alloc + ALLOCATE_SIZE;
+        char** ptr = realloc(list->paths, num_entries * sizeof(char*));
+        if (!ptr) {
+            return;
         }
+        list->alloc = num_entries;
+        list->paths = ptr;
+    }
+
+    // add new entry
+    path = malloc(path_len);
+    if (path) {
+        memcpy(path, file, path_len);
+        list->paths[list->index] = path;
+        ++list->index;
         ++list->size;
     }
 }
@@ -136,10 +130,10 @@ file_list_t* init_file_list(const char** files, size_t num, bool recursive)
 
     if (list->size != 0) {
         // rewind to the first entry
-        list->current = list->current->next;
+        list->index = 0;
     } else {
         // empty list
-        free(list);
+        free_file_list(list);
         list = NULL;
     }
 
@@ -149,145 +143,82 @@ file_list_t* init_file_list(const char** files, size_t num, bool recursive)
 void free_file_list(file_list_t* list)
 {
     if (list) {
-        while (list->size--) {
-            struct entry_t* next = list->current->next;
-            free(list->current);
-            list->current = next;
+        for (size_t i = 0; i < list->size; ++i) {
+            free(list->paths[i]);
         }
+        free(list->paths);
         free(list);
     }
 }
 
 void sort_file_list(file_list_t* list)
 {
-    struct entry_t** array;
-    size_t index = 0;
-
-    if (list->size <= 1) {
-        return; // nothing to sort
-    }
-
-    // create array from list
-    array = malloc(sizeof(struct entry_t*) * list->size);
-    if (!array) {
-        return;
-    }
-    for (size_t i = 0; i < list->size; ++i) {
-        array[index++] = list->current;
-        list->current = list->current->next;
-    }
-
     // sort alphabetically
     for (size_t i = 0; i < list->size; ++i) {
         for (size_t j = i + 1; j < list->size; ++j) {
-            if (strcoll(array[i]->path, array[j]->path) > 0) {
-                struct entry_t* tmp = array[i];
-                array[i] = array[j];
-                array[j] = tmp;
+            if (strcoll(list->paths[i], list->paths[j]) > 0) {
+                char* swap = list->paths[i];
+                list->paths[i] = list->paths[j];
+                list->paths[j] = swap;
             }
         }
     }
-
-    // relink entries
-    for (size_t i = 0; i < list->size; ++i) {
-        array[i]->prev = array[i ? i - 1 : list->size - 1];
-        array[i]->next = array[i < list->size - 1 ? i + 1 : 0];
-    }
-
-    // reset list state
-    list->current = array[0];
-    list->index = 0;
-
-    free(array);
 }
 
 void shuffle_file_list(file_list_t* list)
 {
-    struct entry_t** array;
     struct timespec ts;
-    size_t index = 0;
-
-    if (list->size <= 1) {
-        return; // nothing to shuffle
-    }
-
     clock_gettime(CLOCK_MONOTONIC, &ts);
     srand(ts.tv_nsec);
 
-    // create array from list
-    array = malloc(sizeof(struct entry_t*) * list->size);
-    if (!array) {
-        return;
-    }
-    for (size_t i = 0; i < list->size; ++i) {
-        array[index++] = list->current;
-        list->current = list->current->next;
-    }
-
     // swap random entries
     for (size_t i = 0; i < list->size; ++i) {
-        index = rand() % list->size;
-        if (index != i) {
-            struct entry_t* tmp = array[i];
-            array[i] = array[index];
-            array[index] = tmp;
+        const size_t j = rand() % list->size;
+        if (i != j) {
+            char* swap = list->paths[i];
+            list->paths[i] = list->paths[j];
+            list->paths[j] = swap;
         }
     }
-
-    // relink entries
-    for (size_t i = 0; i < list->size; ++i) {
-        array[i]->prev = array[i ? i - 1 : list->size - 1];
-        array[i]->next = array[i < list->size - 1 ? i + 1 : 0];
-    }
-
-    // reset list state
-    list->current = array[0];
-    list->index = 0;
-
-    free(array);
 }
 
 const char* get_current(const file_list_t* list, size_t* index, size_t* total)
 {
-    if (!*list->current->path) {
-        return NULL;
-    }
-
+    const char* current = list->size ? list->paths[list->index] : NULL;
     if (total) {
         *total = list->size;
     }
     if (index) {
         *index = list->index + 1;
     }
-    return list->current->path;
+    return current && *current ? current : NULL;
 }
 
 bool exclude_current(file_list_t* list, bool forward)
 {
-    list->current->path[0] = 0; // mark entry as invalid
+    list->paths[list->index][0] = 0; // mark entry as excluded
     return next_file(list, forward);
 }
 
 bool next_file(file_list_t* list, bool forward)
 {
-    struct entry_t* start = list->current;
+    size_t index = list->index;
 
     do {
         if (forward) {
-            list->current = list->current->next;
-            if (++list->index >= list->size) {
-                list->index = 0;
+            if (++index >= list->size) {
+                index = 0;
             }
         } else {
-            list->current = list->current->prev;
-            if (list->index-- == 0) {
-                list->index = list->size - 1;
+            if (index-- == 0) {
+                index = list->size - 1;
             }
         }
-        if (*list->current->path) {
+        if (*list->paths[index]) {
+            list->index = index;
             return true;
         }
-    } while (list->current != start);
+    } while (index != list->index);
 
     // loop complete, no one valid entry found
     return false;
@@ -295,24 +226,26 @@ bool next_file(file_list_t* list, bool forward)
 
 bool next_directory(file_list_t* list, bool forward)
 {
-    struct entry_t* start = list->current;
-    size_t cur_dir, chk_dir;
+    const size_t cur_index = list->index;
+    const char* cur_path = list->paths[list->index];
+    size_t cur_dir_len, next_dir_len;
 
-    // directory part of the current entry
-    cur_dir = strlen(list->current->path) - 1;
-    while (cur_dir && list->current->path[cur_dir] != '/') {
-        --cur_dir;
+    // directory part of the current file path
+    cur_dir_len = strlen(cur_path) - 1;
+    while (cur_dir_len && cur_path[cur_dir_len] != '/') {
+        --cur_dir_len;
     }
 
     // search for another directory in file list
-    while (next_file(list, forward) && list->current != start) {
-        // directory part of the next entry
-        chk_dir = strlen(list->current->path) - 1;
-        while (chk_dir && list->current->path[chk_dir] != '/') {
-            --chk_dir;
+    while (next_file(list, forward) && list->index != cur_index) {
+        // directory part of the next file path
+        const char* next_path = list->paths[list->index];
+        next_dir_len = strlen(next_path) - 1;
+        while (next_dir_len && next_path[next_dir_len] != '/') {
+            --next_dir_len;
         }
-        if (cur_dir != chk_dir ||
-            strncmp(list->current->path, start->path, cur_dir)) {
+        if (cur_dir_len != next_dir_len ||
+            strncmp(cur_path, next_path, cur_dir_len)) {
             return true;
         }
     }
