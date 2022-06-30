@@ -560,6 +560,9 @@ void destroy_window(void)
     if (ctx.xkb.keymap) {
         xkb_keymap_unref(ctx.xkb.keymap);
     }
+    if (ctx.xkb.context) {
+        xkb_context_unref(ctx.xkb.context);
+    }
     if (ctx.surface.cairo) {
         cairo_surface_destroy(ctx.surface.cairo);
     }
