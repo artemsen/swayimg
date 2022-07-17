@@ -21,6 +21,6 @@ _swayimg()
         COMPREPLY=($(compgen -f -- "${cur}"))
     fi
 } &&
-complete -F _swayimg swayimg
+complete -o filenames -F _swayimg swayimg
 
 # ex: filetype=sh
