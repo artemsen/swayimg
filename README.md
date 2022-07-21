@@ -25,8 +25,7 @@ image from the specified file.
 
 ## Known issues
 - Animation is not supported, only the first frame is displayed;
-- Image width or height cannot exceed 32767 pixels (Cairo limit);
-- BMP compressed images are not supported.
+- Image width or height cannot exceed 32767 pixels (Cairo limit).
 
 ## Usage
 
