@@ -4,6 +4,8 @@
 #include "filelist.h"
 
 #include <dirent.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -119,7 +121,10 @@ file_list_t* init_file_list(const char** files, size_t num, bool recursive)
 
     for (size_t i = 0; i < num; ++i) {
         struct stat file_stat;
-        if (stat(files[i], &file_stat) != -1) {
+        if (stat(files[i], &file_stat) == -1) {
+            fprintf(stderr, "Unable to open %s: [%i] %s\n", files[i], errno,
+                    strerror(errno));
+        } else {
             if (S_ISDIR(file_stat.st_mode)) {
                 add_dir(list, files[i], recursive);
             } else {

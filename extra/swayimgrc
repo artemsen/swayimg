@@ -26,7 +26,7 @@ font = monospace 10
 # Color for image info text
 font-color = b4b4b4
 
-# Order of file list (none, alpha, or random)
+# Default order of the image list (none, alpha, or random)
 order = none
 
 # Read directories recursively (yes/no)
