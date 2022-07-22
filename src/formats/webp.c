@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: MIT
+// WebP format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-//
-// WebP image format support
-//
+#include "loader.h"
 
-#include "common.h"
-
-#include <cairo/cairo.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <webp/decode.h>
 
@@ -17,54 +11,45 @@
 static const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
 
 // WebP loader implementation
-cairo_surface_t* load_webp(const uint8_t* data, size_t size, char* format,
-                           size_t format_sz)
+bool load_webp(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface = NULL;
-    uint8_t* sdata;
-    size_t stride;
     WebPBitstreamFeatures prop;
     VP8StatusCode status;
+    int stride;
 
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return NULL;
+        return false;
     }
 
     // get image properties
     status = WebPGetFeatures(data, size, &prop);
     if (status != VP8_STATUS_OK) {
-        fprintf(stderr, "Unable to get WebP image properties: status %i\n",
-                status);
-        return NULL;
+        image_error(img, "unable to get webp properties, error %d\n", status);
+        return false;
     }
 
-    // prepare surface and metadata
-    surface = create_surface(prop.width, prop.height, prop.has_alpha);
-    if (!surface) {
-        return NULL;
+    if (!image_allocate(img, prop.width, prop.height)) {
+        return false;
     }
-    snprintf(format, format_sz, "WebP %s %s%s",
-             prop.format == 1 ? "lossy" : "lossless",
-             prop.has_alpha ? "+alpha" : "",
-             prop.has_animation ? "+animation" : "");
 
     // decode image
-    sdata = cairo_image_surface_get_data(surface);
-    stride = cairo_image_surface_get_stride(surface);
-    if (!WebPDecodeBGRAInto(data, size, sdata, stride * prop.height, stride)) {
-        fprintf(stderr, "Error decoding WebP\n");
-        cairo_surface_destroy(surface);
-        return NULL;
+    stride = img->width * sizeof(img->data[0]);
+    if (!WebPDecodeBGRAInto(data, size, (uint8_t*)img->data,
+                            stride * img->height, stride)) {
+        image_error(img, "unable to decode webp image");
+        image_deallocate(img);
+        return false;
     }
 
-    // handle transparency
     if (prop.has_alpha) {
-        apply_alpha(surface);
+        image_apply_alpha(img);
+        img->alpha = true;
     }
+    add_image_info(
+        img, "Format", "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
+        prop.has_alpha ? "+alpha" : "", prop.has_animation ? "+animation" : "");
 
-    cairo_surface_mark_dirty(surface);
-
-    return surface;
+    return true;
 }

@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: MIT
+// AV1 (AVIF) format decoder.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
-//
-// AV1 image format support (AVIF)
-//
-
-#include "common.h"
+#include "loader.h"
 
 #include <avif/avif.h>
-#include <cairo/cairo.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 // HEIF signature
@@ -22,27 +16,23 @@ static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
 #define RGBA_NUM 4
 
 // AV1 loader implementation
-cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
-                           size_t format_sz)
+bool load_avif(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface = NULL;
     avifResult rc;
     avifRGBImage rgb;
     avifDecoder* decoder = NULL;
 
-    memset(&rgb, 0, sizeof(rgb));
-
     // check signature
     if (size < SIGNATURE_START + sizeof(signature) ||
         memcmp(data + SIGNATURE_START, signature, sizeof(signature))) {
-        return NULL;
+        return false;
     }
 
     // open file in decoder
     decoder = avifDecoderCreate();
     if (!decoder) {
-        fprintf(stderr, "Error creating AV1 decoder\n");
-        return NULL;
+        image_error(img, "unable to create av1 decoder");
+        return false;
     }
     rc = avifDecoderSetIOMemory(decoder, data, size);
     if (rc == AVIF_RESULT_OK) {
@@ -52,11 +42,12 @@ cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
         rc = avifDecoderNextImage(decoder); // first frame only
     }
     if (rc != AVIF_RESULT_OK) {
-        fprintf(stderr, "Error decoding AV1: %s\n", avifResultToString(rc));
+        image_error(img, "error decoding av1: %s\n", avifResultToString(rc));
         goto done;
     }
 
     // setup decoder
+    memset(&rgb, 0, sizeof(rgb));
     avifRGBImageSetDefaults(&rgb, decoder->image);
     rgb.format = AVIF_RGB_FORMAT_BGRA;
     avifRGBImageAllocatePixels(&rgb);
@@ -64,35 +55,33 @@ cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
     // decode the frame
     rc = avifImageYUVToRGB(decoder->image, &rgb);
     if (rc != AVIF_RESULT_OK) {
-        fprintf(stderr, "YUV to RGB failed: %s", avifResultToString(rc));
+        image_error(img, "unable convert av1 colors: %s\n",
+                    avifResultToString(rc));
         goto done;
     }
 
-    // prepare surface and metadata
-    surface = create_surface(rgb.width, rgb.height, true);
-    if (!surface) {
-        return NULL;
+    if (!image_allocate(img, rgb.width, rgb.height)) {
+        rc = AVIF_RESULT_UNKNOWN_ERROR;
+        goto done;
     }
-    snprintf(format, format_sz, "AV1 %dbit %s", rgb.depth,
-             avifPixelFormatToString(decoder->image->yuvFormat));
 
     // put image on to cairo surface
-    uint8_t* sdata = cairo_image_surface_get_data(surface);
     if (rgb.depth == 8) {
         // simple 8bit image
-        memcpy(sdata, rgb.pixels, rgb.width * rgb.height * RGBA_NUM);
+        memcpy(img->data, rgb.pixels,
+               img->width * img->height * sizeof(img->data[0]));
     } else {
         // convert to 8bit image
         const size_t max_clr = 1 << rgb.depth;
-        const size_t src_stride = rgb.width * RGBA_NUM * sizeof(uint16_t);
-        const size_t dst_stride = cairo_image_surface_get_stride(surface);
+        const size_t src_stride =
+            rgb.width * sizeof(uint32_t) * sizeof(uint16_t);
         for (size_t y = 0; y < rgb.height; ++y) {
             const uint16_t* src_y =
                 (const uint16_t*)(rgb.pixels + y * src_stride);
-            uint8_t* dst_y = sdata + y * dst_stride;
+            uint8_t* dst_y = (uint8_t*)&img->data[y * img->width];
             for (size_t x = 0; x < rgb.width; ++x) {
-                uint8_t* dst_x = dst_y + x * RGBA_NUM;
-                const uint16_t* src_x = src_y + x * RGBA_NUM;
+                uint8_t* dst_x = (uint8_t*)&dst_y[x];
+                const uint16_t* src_x = src_y + x * sizeof(uint32_t);
                 dst_x[0] = (uint8_t)((float)src_x[0] / max_clr * 255);
                 dst_x[1] = (uint8_t)((float)src_x[1] / max_clr * 255);
                 dst_x[2] = (uint8_t)((float)src_x[2] / max_clr * 255);
@@ -100,13 +89,13 @@ cairo_surface_t* load_avif(const uint8_t* data, size_t size, char* format,
             }
         }
     }
-    cairo_surface_mark_dirty(surface);
+
+    img->alpha = true;
+    add_image_info(img, "Format", "AV1 %dbit %s", rgb.depth,
+                   avifPixelFormatToString(decoder->image->yuvFormat));
 
 done:
-    if (decoder) {
-        avifRGBImageFreePixels(&rgb);
-        avifDecoderDestroy(decoder);
-    }
-
-    return surface;
+    avifRGBImageFreePixels(&rgb);
+    avifDecoderDestroy(decoder);
+    return rc == AVIF_RESULT_OK;
 }

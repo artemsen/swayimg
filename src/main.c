@@ -3,6 +3,7 @@
 
 #include "buildcfg.h"
 #include "config.h"
+#include "formats/loader.h"
 #include "image.h"
 #include "viewer.h"
 

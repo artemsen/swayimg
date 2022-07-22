@@ -4,6 +4,9 @@
 #pragma once
 
 #include <cairo/cairo.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 // Orientation (top left corner projection)
 typedef enum {
@@ -21,6 +24,10 @@ typedef enum {
 /** Image description. */
 typedef struct {
     const char* path;          ///< Path to the file
+    size_t width;              ///< Image width (px)
+    size_t height;             ///< Image height (px)
+    uint32_t* data;            ///< Pointer to pixel data
+    bool alpha;                ///< Has alpha channel?
     const char* info;          ///< Image meta info
     orientation_t orientation; ///< Image orientation
     cairo_surface_t* surface;  ///< Image surface
@@ -46,15 +53,16 @@ image_t* image_from_stdin(void);
 void image_free(image_t* img);
 
 /**
+ * Flip image vertically.
+ * @param[in] img image instance
+ */
+void image_flip(image_t* img);
+
+/**
  * Add meta info property.
  * @param[in] img image instance
  * @param[in] key property name
- * @param[in] value property value
+ * @param[in] fmt value format
  */
-void add_image_info(image_t* img, const char* key, const char* value);
-
-/**
- * Get string with the names of the supported image formats.
- * @return image instance or NULL on errors
- */
-const char* supported_formats(void);
+void add_image_info(image_t* img, const char* key, const char* fmt, ...)
+    __attribute__((format(printf, 3, 4)));

@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: MIT
+// JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-//
-// JPEG image format support
-//
+#include "loader.h"
 
-#include "common.h"
-
-#include <cairo/cairo.h>
 #include <errno.h>
 #include <setjmp.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// depends on stdio.h, uses FILE but desn't include the header
+// depends on stdio.h, uses FILE but doesn't include the header
 #include <jpeglib.h>
 
 // JPEG signature
@@ -24,6 +19,7 @@ static const uint8_t signature[] = { 0xff, 0xd8 };
 struct jpg_error_manager {
     struct jpeg_error_mgr mgr;
     jmp_buf setjmp;
+    image_t* img;
 };
 
 static void jpg_error_exit(j_common_ptr jpg)
@@ -32,33 +28,30 @@ static void jpg_error_exit(j_common_ptr jpg)
 
     char msg[JMSG_LENGTH_MAX] = { 0 };
     (*(jpg->err->format_message))(jpg, msg);
-    fprintf(stderr, "JPEG decode failed: %s\n", msg);
+    image_error(err->img, "failed to decode jpeg: %s", msg);
 
     longjmp(err->setjmp, 1);
 }
 
 // JPEG loader implementation
-cairo_surface_t* load_jpeg(const uint8_t* data, size_t size, char* format,
-                           size_t format_sz)
+bool load_jpeg(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface = NULL;
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return NULL;
+        return false;
     }
 
     jpg.err = jpeg_std_error(&err.mgr);
+    err.img = img;
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        if (surface) {
-            cairo_surface_destroy(surface);
-        }
+        image_deallocate(img);
         jpeg_destroy_decompress(&jpg);
-        return NULL;
+        return false;
     }
 
     jpeg_create_decompress(&jpg);
@@ -70,44 +63,39 @@ cairo_surface_t* load_jpeg(const uint8_t* data, size_t size, char* format,
 #endif // LIBJPEG_TURBO_VERSION
 
     // prepare surface and metadata
-    surface = create_surface(jpg.output_width, jpg.output_height, false);
-    if (!surface) {
+    if (!image_allocate(img, jpg.output_width, jpg.output_height)) {
         jpeg_destroy_decompress(&jpg);
-        return NULL;
+        return false;
     }
-    snprintf(format, format_sz, "JPEG %dbit", jpg.out_color_components * 8);
+    add_image_info(img, "Format", "JPEG %dbit", jpg.out_color_components * 8);
 
-    uint8_t* raw = cairo_image_surface_get_data(surface);
-    const size_t stride = cairo_image_surface_get_stride(surface);
     while (jpg.output_scanline < jpg.output_height) {
-        uint8_t* line = raw + jpg.output_scanline * stride;
+        uint8_t* line = (uint8_t*)&img->data[jpg.output_scanline * img->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
-        // convert grayscale to argb (cairo internal format)
+        // convert grayscale to argb
         if (jpg.out_color_components == 1) {
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t src = *(line + x);
-                pixel[x] = 0xff000000 | src << 16 | src << 8 | src;
+                pixel[x] = (0xff << 24) | src << 16 | src << 8 | src;
             }
         }
 
 #ifndef LIBJPEG_TURBO_VERSION
-        // convert rgb to argb (cairo internal format)
+        // convert rgb to argb
         if (jpg.out_color_components == 3) {
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t* src = line + x * 3;
-                pixel[x] = 0xff000000 | src[0] << 16 | src[1] << 8 | src[2];
+                pixel[x] = (0xff << 24) | src[0] << 16 | src[1] << 8 | src[2];
             }
         }
 #endif // LIBJPEG_TURBO_VERSION
     }
 
-    cairo_surface_mark_dirty(surface);
-
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
 
-    return surface;
+    return true;
 }

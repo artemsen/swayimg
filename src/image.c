@@ -3,111 +3,18 @@
 
 #include "image.h"
 
-#include "buildcfg.h"
 #include "exif.h"
+#include "formats/loader.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-/**
- * Image loader function.
- * @param[in] data raw image data
- * @param[in] size size of image data in bytes
- * @param[in] format buffer for format description
- * @param[in] format_sz size of format buffer
- * @return image surface or NULL if load failed
- */
-typedef cairo_surface_t* (*image_load)(const uint8_t* data, size_t size,
-                                       char* format, size_t format_sz);
-// Construct function name of loader
-#define LOADER_FUNCTION(name) load_##name
-// Declaration of loader function
-#define LOADER_DECLARE(name)                                                 \
-    cairo_surface_t* LOADER_FUNCTION(name)(const uint8_t* data, size_t size, \
-                                           char* format, size_t format_sz)
-
-// declaration of loaders
-#ifdef HAVE_LIBJPEG
-LOADER_DECLARE(jpeg);
-#endif // HAVE_LIBJPEG
-#ifdef HAVE_LIBPNG
-LOADER_DECLARE(png);
-#endif // HAVE_LIBPNG
-#ifdef HAVE_LIBWEBP
-LOADER_DECLARE(webp);
-#endif // HAVE_LIBWEBP
-#ifdef HAVE_LIBGIF
-LOADER_DECLARE(gif);
-#endif // HAVE_LIBGIF
-LOADER_DECLARE(bmp);
-#ifdef HAVE_LIBRSVG
-LOADER_DECLARE(svg);
-#endif // HAVE_LIBRSVG
-#ifdef HAVE_LIBAVIF
-LOADER_DECLARE(avif);
-#endif // HAVE_LIBAVIF
-#ifdef HAVE_LIBJXL
-LOADER_DECLARE(jxl);
-#endif // HAVE_LIBJXL
-
-// list of available loaders (functions from formats/*)
-static const image_load loaders[] = {
-#ifdef HAVE_LIBJPEG
-    &LOADER_FUNCTION(jpeg),
-#endif // HAVE_LIBJPEG
-#ifdef HAVE_LIBPNG
-    &LOADER_FUNCTION(png),
-#endif // HAVE_LIBPNG
-#ifdef HAVE_LIBWEBP
-    &LOADER_FUNCTION(webp),
-#endif // HAVE_LIBWEBP
-#ifdef HAVE_LIBGIF
-    &LOADER_FUNCTION(gif),
-#endif // HAVE_LIBGIF
-    &LOADER_FUNCTION(bmp),
-#ifdef HAVE_LIBRSVG
-    &LOADER_FUNCTION(svg),
-#endif // HAVE_LIBRSVG
-#ifdef HAVE_LIBAVIF
-    &LOADER_FUNCTION(avif),
-#endif // HAVE_LIBAVIF
-#ifdef HAVE_LIBJXL
-    &LOADER_FUNCTION(jxl),
-#endif // HAVE_LIBJXL
-};
-
-const char* supported_formats(void)
-{
-    return "bmp"
-#ifdef HAVE_LIBJPEG
-           ", jpeg"
-#endif // HAVE_LIBJPEG
-#ifdef HAVE_LIBJXL
-           ", jxl"
-#endif // HAVE_LIBJXL
-#ifdef HAVE_LIBPNG
-           ", png"
-#endif // HAVE_LIBPNG
-#ifdef HAVE_LIBGIF
-           ", gif"
-#endif // HAVE_LIBGIF
-#ifdef HAVE_LIBRSVG
-           ", svg"
-#endif // HAVE_LIBRSVG
-#ifdef HAVE_LIBWEBP
-           ", webp"
-#endif // HAVE_LIBWEBP
-#ifdef HAVE_LIBAVIF
-           ", avif"
-#endif // HAVE_LIBAVIF
-        ;
-}
 
 /**
  * Convert file size to human readable text.
@@ -152,47 +59,28 @@ static image_t* image_create(const char* path, const uint8_t* data, size_t size)
 {
     image_t* img;
     char meta[32];
-    cairo_surface_t* surface = NULL;
-
-    // decode image
-    for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        surface = loaders[i](data, size, meta, sizeof(meta));
-        if (surface) {
-            break;
-        }
-    }
-
-    if (!surface) {
-        // failed to load
-        return NULL;
-    }
 
     // create image instance
     img = calloc(1, sizeof(image_t));
     if (!img) {
-        cairo_surface_destroy(surface);
         fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
-    img->surface = surface;
     img->path = path;
-
-    path = strrchr(path, '/');
-    if (path) {
-        ++path; // skip slash
-    } else {
-        path = img->path; // use full path
-    }
 
     // add general meta info
     add_image_info(img, "File", path);
-    add_image_info(img, "Format", meta);
+
+    // decode image
+    if (!image_decode(img, data, size)) {
+        image_free(img);
+        return NULL;
+    }
+
+    // add general meta info
     human_size(size, meta, sizeof(meta));
     add_image_info(img, "File size", meta);
-    snprintf(meta, sizeof(meta), "%ix%i",
-             cairo_image_surface_get_width(img->surface),
-             cairo_image_surface_get_height(img->surface));
-    add_image_info(img, "Image size", meta);
+    add_image_info(img, "Image size", "%lux%lu", img->width, img->height);
 
 #ifdef HAVE_LIBEXIF
     // handle EXIF data
@@ -291,15 +179,30 @@ done:
 void image_free(image_t* img)
 {
     if (img) {
-        if (img->surface) {
-            cairo_surface_destroy(img->surface);
-        }
+        cairo_surface_destroy(img->surface);
+        free(img->data);
         free((void*)img->info);
         free(img);
     }
 }
 
-void add_image_info(image_t* img, const char* key, const char* value)
+void image_flip(image_t* img)
+{
+    const size_t stride = img->width * sizeof(img->data[0]);
+    void* buffer = malloc(stride);
+    if (buffer) {
+        for (size_t y = 0; y < img->height / 2; ++y) {
+            void* src = &img->data[y * img->width];
+            void* dst = &img->data[(img->height - y - 1) * img->width];
+            memcpy(buffer, dst, stride);
+            memcpy(dst, src, stride);
+            memcpy(src, buffer, stride);
+        }
+        free(buffer);
+    }
+}
+
+static void add_image_meta(image_t* img, const char* key, const char* value)
 {
     char* buffer = (char*)img->info;
     const char* delim = ":\t";
@@ -317,5 +220,30 @@ void add_image_info(image_t* img, const char* key, const char* value)
         strcat(buffer, delim);
         strcat(buffer, value);
         img->info = buffer;
+    }
+}
+
+void add_image_info(image_t* img, const char* key, const char* fmt, ...)
+{
+    int len;
+    va_list args;
+    char* text;
+
+    va_start(args, fmt);
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+
+    if (len > 0) {
+        ++len; // last null
+        text = malloc(len);
+        if (text) {
+            va_start(args, fmt);
+            len = vsnprintf(text, len, fmt, args);
+            va_end(args);
+            if (len > 0) {
+                add_image_meta(img, key, text);
+            }
+            free(text);
+        }
     }
 }

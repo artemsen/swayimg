@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: MIT
+// BMP format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-//
-// BMP image format support
-//
+#include "loader.h"
 
-#include "common.h"
-
-#include <cairo/cairo.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -120,16 +114,16 @@ static inline ssize_t mask_shift(uint32_t mask)
 
 /**
  * Decode bitmap with masked colors.
+ * @param[in] img decoded image instance
  * @param[in] bmp bitmap info
  * @param[in] mask channels mask
  * @param[in] buffer input bitmap buffer
  * @param[in] buffer_sz size of buffer
- * @param[in] decoded output data buffer
  * @return false if input buffer has errors
  */
-static bool decode_masked(const struct bmp_info* bmp,
+static bool decode_masked(const image_t* img, const struct bmp_info* bmp,
                           const struct bmp_mask* mask, const uint8_t* buffer,
-                          size_t buffer_sz, uint32_t* decoded)
+                          size_t buffer_sz)
 {
     const bool default_mask =
         !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0);
@@ -143,15 +137,15 @@ static bool decode_masked(const struct bmp_info* bmp,
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < abs(bmp->height) * stride) {
-        fprintf(stderr, "Bitmap buffer too small\n");
+    if (buffer_sz < img->height * stride) {
+        image_error(img, "not enough bmp data");
         return false;
     }
 
-    for (size_t y = 0; y < abs(bmp->height); ++y) {
-        uint32_t* dst = &decoded[y * bmp->width];
+    for (size_t y = 0; y < img->height; ++y) {
+        uint32_t* dst = &img->data[y * bmp->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < bmp->width; ++x) {
+        for (size_t x = 0; x < img->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             uint32_t m, r, g, b;
             if (bmp->bpp == 32) {
@@ -159,8 +153,7 @@ static bool decode_masked(const struct bmp_info* bmp,
             } else if (bmp->bpp == 16) {
                 m = *(uint16_t*)src;
             } else {
-                fprintf(stderr, "Mask not applicable for %d bit image\n",
-                        bmp->bpp);
+                image_error(img, "%d image connot be masked", bmp->bpp);
                 return false;
             }
             r = m & mask_r;
@@ -178,16 +171,16 @@ static bool decode_masked(const struct bmp_info* bmp,
 
 /**
  * Decode RLE compressed bitmap.
+ * @param[in] img decoded image instance
  * @param[in] bmp bitmap info
  * @param[in] palette color palette
  * @param[in] buffer input bitmap buffer
  * @param[in] buffer_sz size of buffer
- * @param[in] decoded output data buffer
  * @return false if input buffer has errors
  */
-static bool decode_rle(const struct bmp_info* bmp,
+static bool decode_rle(const image_t* img, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
-                       size_t buffer_sz, uint32_t* decoded)
+                       size_t buffer_sz)
 {
     size_t x = 0, y = 0;
     size_t buffer_pos = 0;
@@ -201,10 +194,16 @@ static bool decode_rle(const struct bmp_info* bmp,
                 x = 0;
                 ++y;
             } else if (rle2 == RLE_ESC_EOF) {
+                // remove alpha channel
+                uint32_t* ptr = img->data;
+                while (ptr < img->data + img->width * img->height) {
+                    *ptr |= 0xff << 24;
+                    ++ptr;
+                }
                 return true;
             } else if (rle2 == RLE_ESC_DELTA) {
                 if (buffer_pos + 2 >= buffer_sz) {
-                    fprintf(stderr, "Unexpected end of stream\n");
+                    image_error(img, "unexpected end of RLE stream");
                     return false;
                 }
                 x += buffer[buffer_pos++];
@@ -214,11 +213,11 @@ static bool decode_rle(const struct bmp_info* bmp,
                 if (buffer_pos +
                         (bmp->compression == BI_RLE4 ? rle2 / 2 : rle2) >
                     buffer_sz) {
-                    fprintf(stderr, "Unexpected end of stream\n");
+                    image_error(img, "unexpected end of RLE stream");
                     return false;
                 }
-                if (x + rle2 > bmp->width || y >= abs(bmp->height)) {
-                    fprintf(stderr, "Pixel position out of image\n");
+                if (x + rle2 > img->width || y >= img->height) {
+                    image_error(img, "pixel position out of bmp image");
                     return false;
                 }
                 uint8_t val = 0;
@@ -235,10 +234,10 @@ static bool decode_rle(const struct bmp_info* bmp,
                         }
                     }
                     if (index >= palette->size) {
-                        fprintf(stderr, "Color out of palette\n");
+                        image_error(img, "color out of bmp palette");
                         return false;
                     }
-                    decoded[y * bmp->width + x] = palette->table[index];
+                    img->data[y * bmp->width + x] = palette->table[index];
                     ++x;
                 }
                 if ((bmp->compression == BI_RLE8 && rle2 & 1) ||
@@ -252,65 +251,66 @@ static bool decode_rle(const struct bmp_info* bmp,
             if (bmp->compression == BI_RLE8) {
                 // 8 bpp
                 if (rle2 >= palette->size) {
-                    fprintf(stderr, "Color out of palette\n");
+                    image_error(img, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > bmp->width || y >= abs(bmp->height)) {
-                    fprintf(stderr, "Pixel position out of image\n");
+                if (x + rle1 > img->width || y >= img->height) {
+                    image_error(img, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    decoded[y * bmp->width + x] = palette->table[rle2];
+                    img->data[y * img->width + x] = palette->table[rle2];
                     ++x;
                 }
             } else {
                 // 4 bpp
                 const uint8_t index[] = { rle2 >> 4, rle2 & 0x0f };
                 if (index[0] >= palette->size || index[1] >= palette->size) {
-                    fprintf(stderr, "Color out of palette\n");
+                    image_error(img, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > bmp->width) {
-                    fprintf(stderr, "Pixel position out of image\n");
+                if (x + rle1 > img->width) {
+                    image_error(img, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    decoded[y * bmp->width + x] = palette->table[index[i & 1]];
+                    img->data[y * img->width + x] =
+                        palette->table[index[i & 1]];
                     ++x;
                 }
             }
         }
     }
 
-    fprintf(stderr, "RLE decode error\n");
+    image_error(img, "RLE decode failed");
     return false;
 }
 
 /**
  * Decode uncompressed bitmap.
- * @param[in] bmp bitmap info
+ * @param[in] img decoded image instance
  * @param[in] palette color palette
  * @param[in] buffer input bitmap buffer
  * @param[in] buffer_sz size of buffer
  * @param[in] decoded output data buffer
  * @return false if input buffer has errors
  */
-static bool decode_rgb(const struct bmp_info* bmp,
+static bool decode_rgb(const image_t* img, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
-                       size_t buffer_sz, uint32_t* decoded)
+                       size_t buffer_sz)
 {
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < abs(bmp->height) * stride) {
-        fprintf(stderr, "Bitmap buffer too small\n");
+    if (buffer_sz < img->height * stride) {
+        image_error(img, "not enough data for bitmp image");
         return false;
     }
 
-    for (size_t y = 0; y < abs(bmp->height); ++y) {
-        uint32_t* dst = &decoded[y * bmp->width];
+    for (size_t y = 0; y < img->height; ++y) {
+        uint32_t* dst = &img->data[y * img->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < bmp->width; ++x) {
+        for (size_t x = 0; x < img->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             if (bmp->bpp == 32) {
                 dst[x] = *(uint32_t*)src;
@@ -327,13 +327,13 @@ static bool decode_rgb(const struct bmp_info* bmp,
                     (0xff >> (BITS_PER_BYTE - bmp->bpp));
 
                 if (index >= palette->size) {
-                    fprintf(stderr, "Color out of palette\n");
+                    image_error(img, "color out of bmp palette");
                     return false;
                 }
-                dst[x] = palette->table[index];
+                dst[x] = (0xff << 24) | palette->table[index];
             } else {
-                fprintf(stderr, "Color for %d bit images not supported\n",
-                        bmp->bpp);
+                image_error(img, "color for bmp %dbit images not supported",
+                            bmp->bpp);
                 return false;
             }
         }
@@ -343,87 +343,69 @@ static bool decode_rgb(const struct bmp_info* bmp,
 }
 
 // BMP loader implementation
-cairo_surface_t* load_bmp(const uint8_t* data, size_t size, char* format,
-                          size_t format_sz)
+bool load_bmp(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface;
-    const struct bmp_file* header;
+    const struct bmp_file* hdr;
     const struct bmp_info* bmp;
     const void* color_data;
     size_t color_data_sz;
     struct bmp_palette palette;
     const struct bmp_mask* mask;
-    uint32_t* decoded;
     bool rc;
 
-    header = (const struct bmp_file*)data;
-    bmp = (const struct bmp_info*)(data + sizeof(*header));
+    hdr = (const struct bmp_file*)data;
+    bmp = (const struct bmp_info*)(data + sizeof(*hdr));
 
     // check format
-    if (size < sizeof(*header) || header->type != BMP_TYPE) {
-        return NULL;
+    if (size < sizeof(*hdr) || hdr->type != BMP_TYPE) {
+        return false;
     }
-    if (header->offset >= size ||
-        header->offset < sizeof(struct bmp_file) + sizeof(struct bmp_info)) {
-        fprintf(stderr, "Invalid BMP format: image offset out of data\n");
-        return NULL;
+    if (hdr->offset >= size ||
+        hdr->offset < sizeof(struct bmp_file) + sizeof(struct bmp_info)) {
+        image_error(img, "invalid bmp header");
+        return false;
     }
-    if (bmp->dib_size > header->offset) {
-        fprintf(stderr, "Invalid BMP format: DIB too big\n");
-        return NULL;
+    if (bmp->dib_size > hdr->offset) {
+        image_error(img, "invalid bmp header size");
+        return false;
     }
 
-    // prepare surface and metadata
-    surface = create_surface(bmp->width, abs(bmp->height), bmp->bpp == 32);
-    if (!surface) {
-        return NULL;
+    if (!image_allocate(img, bmp->width, abs(bmp->height))) {
+        return false;
     }
 
     color_data = (const uint8_t*)bmp + bmp->dib_size;
-    color_data_sz = header->offset - sizeof(struct bmp_file) - bmp->dib_size;
+    color_data_sz = hdr->offset - sizeof(struct bmp_file) - bmp->dib_size;
     palette.table = color_data;
     palette.size = color_data_sz / sizeof(uint32_t);
     mask = (color_data_sz <= sizeof(*mask) ? color_data : NULL);
-    decoded = (uint32_t*)cairo_image_surface_get_data(surface);
 
     // decode bitmap
     if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
-        rc = decode_masked(bmp, mask, data + header->offset,
-                           size - header->offset, decoded);
-        snprintf(format, format_sz, "BMP %dbit+mask", bmp->bpp);
+        rc = decode_masked(img, bmp, mask, data + hdr->offset,
+                           size - hdr->offset);
+        add_image_info(img, "Format", "BMP %dbit masked", bmp->bpp);
     } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
-        rc = decode_rle(bmp, &palette, data + header->offset,
-                        size - header->offset, decoded);
-        snprintf(format, format_sz, "BMP %dbit RLE", bmp->bpp);
+        rc = decode_rle(img, bmp, &palette, data + hdr->offset,
+                        size - hdr->offset);
+        add_image_info(img, "Format", "BMP %dbit RLE", bmp->bpp);
     } else if (bmp->compression == BI_RGB) {
-        rc = decode_rgb(bmp, &palette, data + header->offset,
-                        size - header->offset, decoded);
-        snprintf(format, format_sz, "BMP %dbit", bmp->bpp);
+        rc = decode_rgb(img, bmp, &palette, data + hdr->offset,
+                        size - hdr->offset);
+        add_image_info(img, "Format", "BMP %dbit uncompressed", bmp->bpp);
     } else {
-        fprintf(stderr, "Compression %d not supported\n", bmp->compression);
+        image_error(img, "compression %d not supported", bmp->compression);
         rc = false;
     }
 
     if (rc) {
         if (bmp->height > 0) {
-            // flip vertical
-            const size_t abs_height = abs(bmp->height);
-            const size_t stride = bmp->width * sizeof(uint32_t);
-            void* buffer = malloc(stride);
-            for (size_t y = 0; y < abs_height / 2; ++y) {
-                void* src = &decoded[y * bmp->width];
-                void* dst = &decoded[(abs_height - y - 1) * bmp->width];
-                memcpy(buffer, dst, stride);
-                memcpy(dst, src, stride);
-                memcpy(src, buffer, stride);
-            }
-            free(buffer);
+            image_flip(img);
         }
-        cairo_surface_mark_dirty(surface);
+        img->alpha = bmp->bpp == 32;
     } else {
-        cairo_surface_destroy(surface);
-        surface = NULL;
+        image_deallocate(img);
     }
 
-    return surface;
+    return rc;
 }

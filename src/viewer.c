@@ -135,8 +135,7 @@ static void on_redraw(cairo_surface_t* window)
     cairo_paint(cairo);
 
     // image with background
-    if (cairo_image_surface_get_format(viewer.image->surface) ==
-        CAIRO_FORMAT_ARGB32) {
+    if (viewer.image->alpha) {
         if (viewer.config->background == BACKGROUND_GRID) {
             draw_grid(&viewer.canvas, viewer.image->surface, cairo);
         } else {

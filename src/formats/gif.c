@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: MIT
+// GIF format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-//
-// GIF image format support
-//
+#include "loader.h"
 
-#include "common.h"
-
-#include <cairo/cairo.h>
 #include <gif_lib.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,11 +32,8 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 }
 
 // GIF loader implementation
-cairo_surface_t* load_gif(const uint8_t* data, size_t size, char* format,
-                          size_t format_sz)
+bool load_gif(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface = NULL;
-
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
@@ -57,36 +49,34 @@ cairo_surface_t* load_gif(const uint8_t* data, size_t size, char* format,
     int err;
     GifFileType* gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        fprintf(stderr, "Unable to open GIF decoder: [%i] %s\n", err,
-                GifErrorString(err));
-        return NULL;
+        image_error(img, "unable to open gif decoder: [%d] %s", err,
+                    GifErrorString(err));
+        return false;
     }
 
     // decode with high-level API
     if (DGifSlurp(gif) != GIF_OK) {
-        fprintf(stderr, "Unable to decode GIF: [%i] %s\n", err,
-                GifErrorString(err));
-        goto done;
+        image_error(img, "unable to decode gif image: [%d] %s", err,
+                    GifErrorString(err));
+        DGifCloseFile(gif, NULL);
+        return false;
     }
     if (!gif->SavedImages) {
-        fprintf(stderr, "No saved images in GIF\n");
-        goto done;
+        image_error(img, "gif doesn't contain images");
+        DGifCloseFile(gif, NULL);
+        return false;
     }
 
-    // prepare surface and metadata
-    surface = create_surface(gif->SWidth, gif->SHeight, true);
-    if (!surface) {
-        return NULL;
+    if (!image_allocate(img, gif->SWidth, gif->SHeight)) {
+        DGifCloseFile(gif, NULL);
+        return false;
     }
-    snprintf(format, format_sz, "GIF");
 
     // we don't support animation, show the first frame only
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
     const GifColorType* colors =
         gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
-    uint32_t* base =
-        (uint32_t*)(cairo_image_surface_get_data(surface) +
-                    frame->Top * cairo_image_surface_get_stride(surface));
+    uint32_t* base = &img->data[frame->Top * img->width];
     for (int y = 0; y < frame->Height; ++y) {
         uint32_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
@@ -95,15 +85,16 @@ cairo_surface_t* load_gif(const uint8_t* data, size_t size, char* format,
             if (color != gif->SBackGroundColor) {
                 const GifColorType* rgb = &colors[color];
                 *pixel =
-                    0xff000000 | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
+                    (0xff << 24) | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
             }
             ++pixel;
         }
     }
 
-    cairo_surface_mark_dirty(surface);
+    add_image_info(img, "Format", "GIF, frame 1 of %d", gif->ImageCount);
+    img->alpha = true;
 
-done:
     DGifCloseFile(gif, NULL);
-    return surface;
+
+    return true;
 }

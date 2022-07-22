@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: MIT
+// PNG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-//
-// PNG image format support
-//
+#include "loader.h"
 
-#include "common.h"
-
-#include <cairo/cairo.h>
 #include <png.h>
 #include <setjmp.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,33 +28,9 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
     }
 }
 
-/**
- * Create array with pointers to image lines.
- * @param[in] surface image surface
- * @return allocated buffer, the caller must free it
- */
-static png_bytep* get_lines(cairo_surface_t* surface)
-{
-    uint8_t* raw = cairo_image_surface_get_data(surface);
-    const size_t stride = cairo_image_surface_get_stride(surface);
-    const size_t height = cairo_image_surface_get_height(surface);
-
-    png_bytep* lines = malloc(height * sizeof(png_bytep));
-    if (!lines) {
-        return NULL;
-    }
-    for (size_t i = 0; i < height; ++i) {
-        lines[i] = raw + stride * i;
-    }
-
-    return lines;
-}
-
 // PNG loader implementation
-cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
-                          size_t format_sz)
+bool load_png(image_t* img, const uint8_t* data, size_t size)
 {
-    cairo_surface_t* surface = NULL;
     png_struct* png = NULL;
     png_info* info = NULL;
     png_bytep* lines = NULL;
@@ -74,30 +45,28 @@ cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
 
     // check signature
     if (png_sig_cmp(data, 0, size) != 0) {
-        return NULL;
+        return false;
     }
 
     // create decoder
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fprintf(stderr, "Unable to create PNG decoder\n");
-        return NULL;
+        image_error(img, "unable to initialize png decoder");
+        return false;
     }
     info = png_create_info_struct(png);
     if (!info) {
+        image_error(img, "unable to create png object");
         png_destroy_read_struct(&png, NULL, NULL);
-        fprintf(stderr, "Unable to create PNG info\n");
-        return NULL;
+        return false;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
         free(lines);
-        if (surface) {
-            cairo_surface_destroy(surface);
-        }
-        return NULL;
+        image_deallocate(img);
+        return false;
     }
 
     // get general image info
@@ -130,31 +99,32 @@ cairo_surface_t* load_png(const uint8_t* data, size_t size, char* format,
     png_set_packswap(png);
     png_set_bgr(png);
 
-    // prepare surface and metadata
-    surface = create_surface(width, height, true);
-    if (!surface) {
-        return NULL;
-    }
-    snprintf(format, format_sz, "PNG %dbit", bit_depth);
-
-    // allocate buffer for pointers to image lines
-    lines = get_lines(surface);
-    if (!lines) {
+    if (!image_allocate(img, width, height)) {
         png_destroy_read_struct(&png, &info, NULL);
-        cairo_surface_destroy(surface);
-        fprintf(stderr, "Not enough memory to decode PNG\n");
-        return NULL;
+        return false;
+    }
+
+    // prepare list of pointers to image lines
+    lines = malloc(height * sizeof(png_bytep));
+    if (!lines) {
+        image_error(img, "not enough memory");
+        png_destroy_read_struct(&png, &info, NULL);
+        image_deallocate(img);
+        return false;
+    }
+    for (size_t i = 0; i < height; ++i) {
+        lines[i] = (png_bytep)&img->data[img->width * i];
     }
 
     // read image
     png_read_image(png, lines);
-
-    // handle transparency
-    apply_alpha(surface);
+    image_apply_alpha(img);
+    add_image_info(img, "Format", "PNG %dbit", bit_depth * 4);
+    img->alpha = true;
 
     // free resources
     png_destroy_read_struct(&png, &info, NULL);
     free(lines);
 
-    return surface;
+    return true;
 }
