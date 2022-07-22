@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <cairo/cairo.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -30,7 +29,6 @@ typedef struct {
     bool alpha;                ///< Has alpha channel?
     const char* info;          ///< Image meta info
     orientation_t orientation; ///< Image orientation
-    cairo_surface_t* surface;  ///< Image surface
 } image_t;
 
 /**

@@ -120,7 +120,6 @@ sources = [
   'src/image.c',
   'src/main.c',
   'src/sway.c',
-  'src/text.c',
   'src/viewer.c',
   'src/window.c',
   'src/formats/bmp.c',

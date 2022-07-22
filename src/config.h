@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include "canvas.h"
+#include "types.h"
+#include <stdbool.h>
 
 /** File list order. */
 typedef enum { order_none, order_alpha, order_random } order_t;

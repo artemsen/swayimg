@@ -8,7 +8,6 @@
 #include "config.h"
 #include "image.h"
 #include "sway.h"
-#include "text.h"
 #include "window.h"
 
 #include <stdlib.h>
@@ -16,11 +15,10 @@
 
 /** Viewer context. */
 typedef struct {
-    config_t* config;    ///< Configuration
-    file_list_t* files;  ///< List of files to view
-    image_t* image;      ///< Currently displayed image
-    text_render_t* text; ///< Text renderer
-    canvas_t canvas;     ///< Canvas context
+    config_t* config;     ///< Configuration
+    file_list_t* files;   ///< List of files to view
+    image_t* image;       ///< Currently displayed image
+    struct canvas canvas; ///< Canvas context
 } viewer_t;
 
 static viewer_t viewer;
@@ -48,7 +46,7 @@ static bool load_image(const char* file)
     image_free(viewer.image);
     viewer.image = image;
 
-    reset_canvas(&viewer.canvas);
+    attach_image(&viewer.canvas, viewer.image);
 
     // fix orientation
     switch (viewer.image->orientation) {
@@ -80,7 +78,7 @@ static bool load_image(const char* file)
     }
 
     // set initial scale and position of the image
-    apply_scale(&viewer.canvas, viewer.image->surface, viewer.config->scale);
+    apply_scale(&viewer.canvas, viewer.config->scale);
 
     // change window title (includes ": " and last null = 3 bytes)
     title = malloc(strlen(APP_NAME) + strlen(viewer.image->path) + 3);
@@ -126,56 +124,41 @@ static bool load_next(bool file, bool forward)
 }
 
 /** Draw handler, see handlers::on_redraw */
-static void on_redraw(cairo_surface_t* window)
+static void on_redraw(struct window* wnd)
 {
-    cairo_t* cairo = cairo_create(window);
-
-    // clear canvas
-    cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(cairo);
-
-    // image with background
-    if (viewer.image->alpha) {
-        if (viewer.config->background == BACKGROUND_GRID) {
-            draw_grid(&viewer.canvas, viewer.image->surface, cairo);
-        } else {
-            cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-            cairo_set_source_rgb(cairo, RGB_RED(viewer.config->background),
-                                 RGB_GREEN(viewer.config->background),
-                                 RGB_BLUE(viewer.config->background));
-            cairo_paint(cairo);
-        }
+    const bool grid = viewer.config->background == BACKGROUND_GRID;
+    attach_window(&viewer.canvas, wnd, grid ? 0 : viewer.config->background);
+    if (grid && viewer.image->alpha) {
+        draw_grid(&viewer.canvas, wnd);
     }
-    draw_image(&viewer.canvas, viewer.image->surface, cairo);
+    draw_image(&viewer.canvas, viewer.image, wnd);
 
     // image meta information: file name, format, exif, etc
-    if (viewer.config->show_info && viewer.text) {
+    if (viewer.config->show_info) {
         char text[32];
         // print meta info
-        print_text(viewer.text, cairo, text_top_left, viewer.image->info);
+        print_text(&viewer.canvas, wnd, text_top_left, viewer.image->info);
         // print current scale
         snprintf(text, sizeof(text), "%i%%",
                  (int)(viewer.canvas.scale * 100.0));
-        print_text(viewer.text, cairo, text_bottom_left, text);
+        print_text(&viewer.canvas, wnd, text_bottom_left, text);
         // print file number in list
         if (viewer.files) {
             size_t index, total;
             get_current(viewer.files, &index, &total);
             if (total > 1) {
                 snprintf(text, sizeof(text), "%lu of %lu", index, total);
-                print_text(viewer.text, cairo, text_top_right, text);
+                print_text(&viewer.canvas, wnd, text_top_right, text);
             }
         }
     }
-
-    cairo_destroy(cairo);
 }
 
 /** Window resize handler, see handlers::on_resize */
 static void on_resize(void)
 {
     viewer.canvas.scale = 0.0; // to force recalculate considering window size
-    apply_scale(&viewer.canvas, viewer.image->surface, viewer.config->scale);
+    apply_scale(&viewer.canvas, viewer.config->scale);
 }
 
 /** Keyboard handler, see handlers::on_keyboard. */
@@ -195,31 +178,25 @@ static bool on_keyboard(xkb_keysym_t key)
             return load_next(false, true);
         case XKB_KEY_Left:
         case XKB_KEY_h:
-            return move_viewpoint(&viewer.canvas, viewer.image->surface,
-                                  step_left);
+            return move_viewpoint(&viewer.canvas, step_left);
         case XKB_KEY_Right:
         case XKB_KEY_l:
-            return move_viewpoint(&viewer.canvas, viewer.image->surface,
-                                  step_right);
+            return move_viewpoint(&viewer.canvas, step_right);
         case XKB_KEY_Up:
         case XKB_KEY_k:
-            return move_viewpoint(&viewer.canvas, viewer.image->surface,
-                                  step_up);
+            return move_viewpoint(&viewer.canvas, step_up);
         case XKB_KEY_Down:
         case XKB_KEY_j:
-            return move_viewpoint(&viewer.canvas, viewer.image->surface,
-                                  step_down);
+            return move_viewpoint(&viewer.canvas, step_down);
         case XKB_KEY_equal:
         case XKB_KEY_plus:
-            return apply_scale(&viewer.canvas, viewer.image->surface, zoom_in);
+            return apply_scale(&viewer.canvas, zoom_in);
         case XKB_KEY_minus:
-            return apply_scale(&viewer.canvas, viewer.image->surface, zoom_out);
+            return apply_scale(&viewer.canvas, zoom_out);
         case XKB_KEY_0:
-            return apply_scale(&viewer.canvas, viewer.image->surface,
-                               scale_100);
+            return apply_scale(&viewer.canvas, scale_100);
         case XKB_KEY_BackSpace:
-            return apply_scale(&viewer.canvas, viewer.image->surface,
-                               viewer.config->scale);
+            return apply_scale(&viewer.canvas, viewer.config->scale);
         case XKB_KEY_i:
             viewer.config->show_info = !viewer.config->show_info;
             return true;
@@ -262,7 +239,6 @@ bool run_viewer(config_t* cfg, file_list_t* files)
     // initialize viewer context
     viewer.config = cfg;
     viewer.files = files;
-    viewer.text = init_text(cfg);
 
     if (cfg->sway_wm) {
         // setup window position via Sway IPC
@@ -287,6 +263,8 @@ bool run_viewer(config_t* cfg, file_list_t* files)
         goto done;
     }
 
+    init_canvas(&viewer.canvas, get_window_width(), get_window_height(), cfg);
+
     // load first file
     if (!files) {
         // stdin mode
@@ -309,7 +287,7 @@ bool run_viewer(config_t* cfg, file_list_t* files)
 done:
     destroy_window();
     image_free(viewer.image);
-    free_text(viewer.text);
+    free_canvas(&viewer.canvas);
 
     return rc;
 }

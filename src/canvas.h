@@ -1,121 +1,111 @@
 // SPDX-License-Identifier: MIT
+// Canvas used to render images and text to window buffer.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
 
-#include <cairo/cairo.h>
-#include <stdbool.h>
-#include <stdint.h>
-
-// Grid background mode id
-#define BACKGROUND_GRID UINT32_MAX
-
-// Convert color components from RGB to float
-#define RGB_RED(c)   ((double)((c >> 16) & 0xff) / 255.0)
-#define RGB_GREEN(c) ((double)((c >> 8) & 0xff) / 255.0)
-#define RGB_BLUE(c)  ((double)(c & 0xff) / 255.0)
-
-/** Rotate angles. */
-typedef enum {
-    rotate_0,   ///< No rotate
-    rotate_90,  ///< 90 degrees, clockwise
-    rotate_180, ///< 180 degrees
-    rotate_270  ///< 270 degrees, clockwise
-} rotate_t;
-
-/** Flags of the flip transformation. */
-typedef enum {
-    flip_none,
-    flip_vertical,
-    flip_horizontal,
-} flip_t;
-
-/** Scaling operations. */
-typedef enum {
-    scale_fit_or100,  ///< Fit to window, but not more than 100%
-    scale_fit_window, ///< Fit to window size
-    scale_100,        ///< Real image size (100%)
-    zoom_in,          ///< Enlarge by one step
-    zoom_out          ///< Reduce by one step
-} scale_t;
-
-/** Direction of movement. */
-typedef enum {
-    center_vertical,   ///< Center vertically
-    center_horizontal, ///< Center horizontally
-    step_left,         ///< One step to the left
-    step_right,        ///< One step to the right
-    step_up,           ///< One step up
-    step_down          ///< One step down
-} move_t;
+#include "config.h"
+#include "image.h"
+#include "window.h"
 
 /** Canvas context. */
-typedef struct {
-    double scale;    ///< Scale, 1.0 = 100%
-    rotate_t rotate; ///< Rotation angle
-    flip_t flip;     ///< Flip mode flags
-    int x;           ///< X-coordinate of the top left corner
-    int y;           ///< Y-coordinate of the top left corner
-} canvas_t;
-
-/** Rectangle description. */
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int height;
-} rect_t;
+struct canvas {
+    double scale;        ///< Scale, 1.0 = 100%
+    size_t img_w;        ///< Image width
+    size_t img_h;        ///< Image height
+    ssize_t img_x;       ///< Horizontal offset of the image on canvas
+    ssize_t img_y;       ///< Vertical offset of the image on canvas
+    size_t wnd_w;        ///< Window width
+    size_t wnd_h;        ///< Window height
+    rotate_t rotate;     ///< Rotation angle
+    flip_t flip;         ///< Flip mode flags
+    void* font_handle;   ///< Font handle to draw text
+    uint32_t font_color; ///< Color used for text
+};
 
 /**
- * Reset canvas parameters to default values.
- * @param[in] canvas canvas context
+ * Initialize canvas.
+ * @param[in] ctx canvas context
+ * @param[in] width window width
+ * @param[in] height window height
+ * @param[in] cfg configuration instance
  */
-void reset_canvas(canvas_t* canvas);
+void init_canvas(struct canvas* ctx, size_t width, size_t height,
+                 config_t* cfg);
+
+/**
+ * Free canvas resources.
+ * @param[in] ctx canvas context
+ */
+void free_canvas(struct canvas* ctx);
+
+/**
+ * Attach image to canvas and reset canvas parameters to default values.
+ * @param[in] ctx canvas context
+ * @param[in] img displayed image
+ */
+void attach_image(struct canvas* ctx, const image_t* img);
+
+/**
+ * Attach window to canvas and clear the it.
+ * @param[in] ctx canvas context
+ * @param[in] wnd target window description
+ * @param[in] color background color
+ */
+void attach_window(struct canvas* ctx, struct window* wnd, uint32_t color);
 
 /**
  * Draw image.
- * @param[in] canvas canvas context
- * @param[in] image surface to draw
- * @param[in] cairo paint context
+ * @param[in] ctx canvas context
+ * @param[in] img image to draw
+ * @param[in] wnd target window description
  */
-void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
+void draw_image(const struct canvas* ctx, const image_t* img,
+                struct window* wnd);
 
 /**
  * Draw background grid for transparent images.
- * @param[in] canvas canvas context
- * @param[in] image surface to draw
- * @param[in] cairo paint context
+ * @param[in] ctx canvas context
+ * @param[in] wnd target window description
  */
-void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo);
+void draw_grid(const struct canvas* ctx, struct window* wnd);
+
+/**
+ * Print text.
+ * @param[in] ctx canvas context
+ * @param[in] wnd target window description
+ * @param[in] pos text block position
+ * @param[in] text text to output
+ */
+void print_text(const struct canvas* ctx, struct window* wnd,
+                text_position_t pos, const char* text);
 
 /**
  * Move view point.
- * @param[in] canvas canvas context
- * @param[in] image image surface
- * @param[in] direction move direction
+ * @param[in] ctx canvas context
+ * @param[in] direction viewport movement direction
  * @return true if coordinates were changed
  */
-bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction);
+bool move_viewpoint(struct canvas* ctx, move_t direction);
 
 /**
  * Apply scaling operation.
- * @param[in] canvas canvas context
- * @param[in] image image surface
+ * @param[in] ctx canvas context
  * @param[in] op scale operation type
  * @return true if scale was changed
  */
-bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op);
+bool apply_scale(struct canvas* ctx, scale_t op);
 
 /**
  * Rotate image on 90 degrees.
- * @param[in] canvas canvas context
+ * @param[in] ctx canvas context
  * @param[in] clockwise rotate direction
  */
-void apply_rotate(canvas_t* canvas, bool clockwise);
+void apply_rotate(struct canvas* ctx, bool clockwise);
 
 /**
  * Flip image.
- * @param[in] canvas canvas context
+ * @param[in] ctx canvas context
  * @param[in] flip axis type
  */
-void apply_flip(canvas_t* canvas, flip_t flip);
+void apply_flip(struct canvas* ctx, flip_t flip);

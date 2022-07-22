@@ -3,6 +3,7 @@
 
 #include "image.h"
 
+#include "buildcfg.h"
 #include "exif.h"
 #include "formats/loader.h"
 
@@ -179,7 +180,6 @@ done:
 void image_free(image_t* img)
 {
     if (img) {
-        cairo_surface_destroy(img->surface);
         free(img->data);
         free((void*)img->info);
         free(img);

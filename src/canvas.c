@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
+// Canvas used to render images and text to window buffer.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "canvas.h"
 
 #include "window.h"
 
+#include <cairo/cairo.h>
+#include <pango/pango.h>
+#include <pango/pangocairo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,51 +22,91 @@
 #define MIN_SCALE 10    // pixels
 #define MAX_SCALE 100.0 // factor
 
-// Bytes per pixel in 32-bit ARGB mode
-#define BYTES_PER_PIXEL sizeof(uint32_t)
+/** Text padding: space between text layout and window edge. */
+#define TEXT_PADDING 10
 
 #define ROTATE_RAD(r) ((r * 90) * 3.14159 / 180)
 
-void reset_canvas(canvas_t* canvas)
+void init_canvas(struct canvas* ctx, size_t width, size_t height, config_t* cfg)
 {
-    canvas->scale = 0.0;
-    canvas->rotate = rotate_0;
-    canvas->flip = flip_none;
-    canvas->x = 0;
-    canvas->y = 0;
+    ctx->wnd_w = width;
+    ctx->wnd_h = height;
+
+    // initialize font
+    ctx->font_handle = pango_font_description_from_string(cfg->font_face);
+    ctx->font_color = cfg->font_color;
 }
 
-void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
+void free_canvas(struct canvas* ctx)
 {
-    const int width = cairo_image_surface_get_width(image);
-    const int height = cairo_image_surface_get_height(image);
-    const int center_x = width / 2;
-    const int center_y = height / 2;
+    if (ctx->font_handle) {
+        pango_font_description_free(ctx->font_handle);
+    }
+}
 
+void attach_image(struct canvas* ctx, const image_t* img)
+{
+    ctx->img_x = 0;
+    ctx->img_y = 0;
+    ctx->img_w = img->width;
+    ctx->img_h = img->height;
+
+    ctx->scale = 0.0;
+    ctx->rotate = rotate_0;
+    ctx->flip = flip_none;
+}
+
+void attach_window(struct canvas* ctx, struct window* wnd, uint32_t color)
+{
+    ctx->wnd_w = wnd->width;
+    ctx->wnd_h = wnd->height;
+    for (size_t y = 0; y < wnd->height; ++y) {
+        uint32_t* line = &wnd->data[y * wnd->width];
+        for (size_t x = 0; x < wnd->width; ++x) {
+            line[x] = color;
+        }
+    }
+}
+
+void draw_image(const struct canvas* ctx, const image_t* img,
+                struct window* wnd)
+{
+    const ssize_t center_x = ctx->img_w / 2;
+    const ssize_t center_y = ctx->img_h / 2;
+    cairo_surface_t *window, *image;
+    cairo_t* cairo;
     cairo_matrix_t matrix;
-    cairo_get_matrix(cairo, &matrix);
 
-    cairo_matrix_translate(&matrix, canvas->x, canvas->y);
+    window = cairo_image_surface_create_for_data(
+        (uint8_t*)wnd->data, CAIRO_FORMAT_ARGB32, wnd->width, wnd->height,
+        wnd->width * sizeof(wnd->data[0]));
+    image = cairo_image_surface_create_for_data(
+        (uint8_t*)img->data, CAIRO_FORMAT_ARGB32, img->width, img->height,
+        img->width * sizeof(img->data[0]));
+
+    cairo = cairo_create(window);
+    cairo_get_matrix(cairo, &matrix);
+    cairo_matrix_translate(&matrix, ctx->img_x, ctx->img_y);
 
     // apply scale
-    cairo_matrix_scale(&matrix, canvas->scale, canvas->scale);
+    cairo_matrix_scale(&matrix, ctx->scale, ctx->scale);
 
     // apply flip
-    if (canvas->flip) {
+    if (ctx->flip) {
         cairo_matrix_translate(&matrix, center_x, center_y);
-        if (canvas->flip & flip_vertical) {
+        if (ctx->flip & flip_vertical) {
             matrix.yy = -matrix.yy;
         }
-        if (canvas->flip & flip_horizontal) {
+        if (ctx->flip & flip_horizontal) {
             matrix.xx = -matrix.xx;
         }
         cairo_matrix_translate(&matrix, -center_x, -center_y);
     }
 
     // apply rotate
-    if (canvas->rotate) {
+    if (ctx->rotate) {
         cairo_matrix_translate(&matrix, center_x, center_y);
-        cairo_matrix_rotate(&matrix, ROTATE_RAD(canvas->rotate));
+        cairo_matrix_rotate(&matrix, ROTATE_RAD(ctx->rotate));
         cairo_matrix_translate(&matrix, -center_x, -center_y);
     }
 
@@ -72,91 +116,140 @@ void draw_image(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
     cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
     cairo_paint(cairo);
 
-    cairo_identity_matrix(cairo);
+    cairo_destroy(cairo);
+    cairo_surface_destroy(image);
+    cairo_surface_destroy(window);
 }
 
-void draw_grid(const canvas_t* canvas, cairo_surface_t* image, cairo_t* cairo)
+static inline ssize_t min(ssize_t a, ssize_t b)
 {
-    rect_t img, grid;
-    int grid_max_x, grid_max_y;
-    cairo_surface_t* wnd_surface = cairo_get_target(cairo);
-    uint8_t* wnd_buffer = cairo_image_surface_get_data(wnd_surface);
-    const int wnd_width = cairo_image_surface_get_width(wnd_surface);
-    const int wnd_height = cairo_image_surface_get_height(wnd_surface);
+    return a < b ? a : b;
+}
+static inline ssize_t max(ssize_t a, ssize_t b)
+{
+    return a > b ? a : b;
+}
+//#define max(x, y) (((x) > (y)) ? (x) : (y))
+//#define min(x, y) (((x) < (y)) ? (x) : (y))
 
-    // image coordinates and size
-    img.x = canvas->x;
-    img.y = canvas->y;
-    img.width = canvas->scale * cairo_image_surface_get_width(image);
-    img.height = canvas->scale * cairo_image_surface_get_height(image);
-    // apply rotation
-    if (canvas->rotate == rotate_90 || canvas->rotate == rotate_270) {
-        const int width = img.width;
-        const int cdiff = img.width / 2 - img.height / 2;
-        img.x += cdiff;
-        img.y -= cdiff;
-        img.width = img.height;
-        img.height = width;
+void draw_grid(const struct canvas* ctx, struct window* wnd)
+{
+    const ssize_t img_x = ctx->img_x + ctx->scale * ctx->img_w;
+    const ssize_t img_y = ctx->img_y + ctx->scale * ctx->img_h;
+    const ssize_t gtl_x = max(0, ctx->img_x);
+    const ssize_t gtl_y = max(0, ctx->img_y);
+    const ssize_t gbr_x = min((ssize_t)wnd->width, img_x);
+    const ssize_t gbr_y = min((ssize_t)wnd->height, img_y);
+
+    size_t width, stride;
+
+    if (gtl_x > gbr_x || gtl_y > gbr_y) {
+        return; // possible bug: image out of window
     }
 
-    // background grid
-    grid.x = img.x > 0 ? img.x : 0;
-    grid.y = img.y > 0 ? img.y : 0;
-    grid.width =
-        grid.x + img.width < wnd_width ? img.width : wnd_width - grid.x;
-    grid.height =
-        grid.y + img.height < wnd_height ? img.height : wnd_height - grid.y;
-
-    // draw chessboard
-    grid_max_x = grid.x + grid.width;
-    grid_max_y = grid.y + grid.height;
-    for (int y = grid.y; y < grid_max_y; ++y) {
-        uint8_t* line = wnd_buffer + y * wnd_width * BYTES_PER_PIXEL;
-        const bool shift = ((y - grid.y) / GRID_STEP) % 2;
-        if (y == grid.y || y == grid.y + GRID_STEP) {
-            // first iteration, create template
-            const int tails =
-                grid.width / GRID_STEP + (grid.width % GRID_STEP ? 1 : 0);
-            for (int tile = 0; tile < tails; ++tile) {
-                const uint32_t color =
-                    (tile % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
-                for (int x = grid.x + tile * GRID_STEP; x < grid_max_x; ++x) {
-                    uint32_t* col = (uint32_t*)(line + x * BYTES_PER_PIXEL);
-                    *col = color;
-                }
-            }
+    width = gbr_x - gtl_x;
+    stride = width * sizeof(wnd->data[0]);
+    for (ssize_t y = gtl_y; y < gbr_y; ++y) {
+        uint32_t* line = &wnd->data[y * wnd->width + gtl_x];
+        const size_t grid_line = y - gtl_y;
+        if (grid_line > GRID_STEP * 2) {
+            const uint32_t* pattern = line - (wnd->width * (GRID_STEP * 2));
+            memcpy(line, pattern, stride);
         } else {
-            // copy line data from template
-            const uint8_t* src = wnd_buffer +
-                ((shift ? grid.y + GRID_STEP : grid.y) * wnd_width *
-                 BYTES_PER_PIXEL) +
-                grid.x * BYTES_PER_PIXEL;
-            uint8_t* dst = line + grid.x * BYTES_PER_PIXEL;
-            memcpy(dst, src, grid.width * BYTES_PER_PIXEL);
+            // fill template
+            const bool shift = (grid_line / GRID_STEP) % 2;
+            for (size_t x = 0; x < width; ++x) {
+                const size_t tail = x / GRID_STEP;
+                line[x] = (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+            }
         }
     }
-
-    cairo_surface_mark_dirty(wnd_surface);
 }
 
-bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction)
+void print_text(const struct canvas* ctx, struct window* wnd,
+                text_position_t pos, const char* text)
 {
-    const int img_w = canvas->scale * cairo_image_surface_get_width(image);
-    const int img_h = canvas->scale * cairo_image_surface_get_height(image);
-    const int wnd_w = (int)get_window_width();
-    const int wnd_h = (int)get_window_height();
-    const int step_x = wnd_w / 10;
-    const int step_y = wnd_h / 10;
+    PangoLayout* layout;
+    PangoTabArray* tab;
+    cairo_surface_t* window;
+    cairo_t* cairo;
+    int x = 0, y = 0;
+    int txt_w = 0, txt_h = 0;
 
-    int x = canvas->x;
-    int y = canvas->y;
+    if (!ctx->font_handle) {
+        return;
+    }
+
+    window = cairo_image_surface_create_for_data(
+        (uint8_t*)wnd->data, CAIRO_FORMAT_ARGB32, wnd->width, wnd->height,
+        wnd->width * sizeof(wnd->data[0]));
+    cairo = cairo_create(window);
+
+    layout = pango_cairo_create_layout(cairo);
+    if (!layout) {
+        return;
+    }
+
+    // setup layout
+    pango_layout_set_font_description(layout, ctx->font_handle);
+    pango_layout_set_text(layout, text, -1);
+
+    // magic, need to handle tabs in a right way
+    tab = pango_tab_array_new_with_positions(1, true, PANGO_TAB_LEFT, 100);
+    pango_layout_set_tabs(layout, tab);
+    pango_tab_array_free(tab);
+
+    // calculate layout position
+    pango_layout_get_size(layout, &txt_w, &txt_h);
+    txt_w /= PANGO_SCALE;
+    txt_h /= PANGO_SCALE;
+    switch (pos) {
+        case text_top_left:
+            x = TEXT_PADDING;
+            y = TEXT_PADDING;
+            break;
+        case text_top_right:
+            x = wnd->width - txt_w - TEXT_PADDING;
+            y = TEXT_PADDING;
+            break;
+        case text_bottom_left:
+            x = TEXT_PADDING;
+            y = wnd->height - txt_h - TEXT_PADDING;
+            break;
+        case text_bottom_right:
+            x = wnd->width - txt_w - TEXT_PADDING;
+            y = wnd->height - txt_h - TEXT_PADDING;
+            break;
+    }
+
+    // put layout on cairo surface
+    cairo_set_source_rgb(cairo,
+                         ((double)((ctx->font_color >> 16) & 0xff) / 255),
+                         ((double)((ctx->font_color >> 8) & 0xff) / 255),
+                         ((double)(ctx->font_color & 0xff) / 255));
+    cairo_move_to(cairo, x, y);
+    pango_cairo_show_layout(cairo, layout);
+
+    g_object_unref(layout);
+    cairo_destroy(cairo);
+    cairo_surface_destroy(window);
+}
+
+bool move_viewpoint(struct canvas* ctx, move_t direction)
+{
+    const size_t img_w = ctx->scale * ctx->img_w;
+    const size_t img_h = ctx->scale * ctx->img_h;
+    const size_t step_x = ctx->wnd_w / 10;
+    const size_t step_y = ctx->wnd_h / 10;
+    ssize_t x = ctx->img_x;
+    ssize_t y = ctx->img_y;
 
     switch (direction) {
         case center_vertical:
-            y = wnd_h / 2 - img_h / 2;
+            y = ctx->wnd_h / 2 - img_h / 2;
             break;
         case center_horizontal:
-            x = wnd_w / 2 - img_w / 2;
+            x = ctx->wnd_w / 2 - img_w / 2;
             break;
         case step_left:
             if (x <= 0) {
@@ -167,10 +260,10 @@ bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction)
             }
             break;
         case step_right:
-            if (x + img_w >= wnd_w) {
+            if (x + img_w >= ctx->wnd_w) {
                 x -= step_x;
-                if (x + img_w < wnd_w) {
-                    x = wnd_w - img_w;
+                if (x + img_w < ctx->wnd_w) {
+                    x = ctx->wnd_w - img_w;
                 }
             }
             break;
@@ -183,18 +276,18 @@ bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction)
             }
             break;
         case step_down:
-            if (y + img_h >= wnd_h) {
+            if (y + img_h >= ctx->wnd_h) {
                 y -= step_y;
-                if (y + img_h < wnd_h) {
-                    y = wnd_h - img_h;
+                if (y + img_h < ctx->wnd_h) {
+                    y = ctx->wnd_h - img_h;
                 }
             }
             break;
     }
 
-    if (canvas->x != x || canvas->y != y) {
-        canvas->x = x;
-        canvas->y = y;
+    if (ctx->img_x != x || ctx->img_y != y) {
+        ctx->img_x = x;
+        ctx->img_y = y;
         return true;
     }
 
@@ -204,71 +297,61 @@ bool move_viewpoint(canvas_t* canvas, cairo_surface_t* image, move_t direction)
 /**
  * Move view point by scale delta considering window center.
  * @param[in] canvas parameters of the image
- * @param[in] image image surface
  * @param[in] delta scale delta
  */
-static void move_scaled(canvas_t* canvas, cairo_surface_t* image, double delta)
+static void move_scaled(struct canvas* ctx, double delta)
 {
-    const int img_w = cairo_image_surface_get_width(image);
-    const int img_h = cairo_image_surface_get_height(image);
-    const int wnd_w = (int)get_window_width();
-    const int wnd_h = (int)get_window_height();
-    const int old_w = (canvas->scale - delta) * img_w;
-    const int old_h = (canvas->scale - delta) * img_h;
-    const int new_w = canvas->scale * img_w;
-    const int new_h = canvas->scale * img_h;
+    const size_t old_w = (ctx->scale - delta) * ctx->img_w;
+    const size_t old_h = (ctx->scale - delta) * ctx->img_h;
+    const size_t new_w = ctx->scale * ctx->img_w;
+    const size_t new_h = ctx->scale * ctx->img_h;
 
-    if (new_w < wnd_w) {
+    if (new_w < ctx->wnd_w) {
         // fits into window width
-        move_viewpoint(canvas, image, center_horizontal);
+        move_viewpoint(ctx, center_horizontal);
     } else {
         // move to save the center of previous coordinates
         const int delta_w = old_w - new_w;
-        const int cntr_x = wnd_w / 2 - canvas->x;
+        const int cntr_x = ctx->wnd_w / 2 - ctx->img_x;
         const int delta_x = ((double)cntr_x / old_w) * delta_w;
         if (delta_x) {
-            canvas->x += delta_x;
-            if (canvas->x > 0) {
-                canvas->x = 0;
+            ctx->img_x += delta_x;
+            if (ctx->img_x > 0) {
+                ctx->img_x = 0;
             }
         }
     }
 
-    if (new_h < wnd_h) {
+    if (new_h < ctx->wnd_h) {
         //  fits into window height
-        move_viewpoint(canvas, image, center_vertical);
+        move_viewpoint(ctx, center_vertical);
     } else {
         // move to save the center of previous coordinates
         const int delta_h = old_h - new_h;
-        const int cntr_y = wnd_h / 2 - canvas->y;
+        const int cntr_y = ctx->wnd_h / 2 - ctx->img_y;
         const int delta_y = ((double)cntr_y / old_h) * delta_h;
         if (delta_y) {
-            canvas->y += delta_y;
-            if (canvas->y > 0) {
-                canvas->y = 0;
+            ctx->img_y += delta_y;
+            if (ctx->img_y > 0) {
+                ctx->img_y = 0;
             }
         }
     }
 }
 
-bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op)
+bool apply_scale(struct canvas* ctx, scale_t op)
 {
-    const int img_w = cairo_image_surface_get_width(image);
-    const int img_h = cairo_image_surface_get_height(image);
-    const int wnd_w = get_window_width();
-    const int wnd_h = get_window_height();
-    const bool swap =
-        (canvas->rotate == rotate_90 || canvas->rotate == rotate_270);
-    const double max_w = swap ? img_h : img_w;
-    const double max_h = swap ? img_w : img_h;
-    const double step = canvas->scale / 10.0;
+    const bool swap = (ctx->rotate == rotate_90 || ctx->rotate == rotate_270);
+    const double max_w = swap ? ctx->img_h : ctx->img_w;
+    const double max_h = swap ? ctx->img_w : ctx->img_h;
+    const double step = ctx->scale / 10.0;
 
-    double scale = canvas->scale;
+    double scale = ctx->scale;
 
     switch (op) {
         case scale_fit_or100: {
-            const double scale_w = 1.0 / (max_w / wnd_w);
-            const double scale_h = 1.0 / (max_h / wnd_h);
+            const double scale_w = 1.0 / (max_w / ctx->wnd_w);
+            const double scale_h = 1.0 / (max_h / ctx->wnd_h);
             scale = scale_w < scale_h ? scale_w : scale_h;
             if (scale > 1.0) {
                 scale = 1.0;
@@ -276,8 +359,8 @@ bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op)
             break;
         }
         case scale_fit_window: {
-            const double scale_w = 1.0 / (max_w / wnd_w);
-            const double scale_h = 1.0 / (max_h / wnd_h);
+            const double scale_w = 1.0 / (max_w / ctx->wnd_w);
+            const double scale_h = 1.0 / (max_h / ctx->wnd_h);
             scale = scale_h < scale_w ? scale_h : scale_w;
             break;
         }
@@ -285,8 +368,8 @@ bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op)
             scale = 1.0; // 100 %
             break;
         case zoom_in:
-            if (canvas->scale < MAX_SCALE) {
-                scale = canvas->scale + step;
+            if (ctx->scale < MAX_SCALE) {
+                scale = ctx->scale + step;
                 if (scale > MAX_SCALE) {
                     scale = MAX_SCALE;
                 }
@@ -294,22 +377,23 @@ bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op)
             break;
         case zoom_out:
             scale -= step;
-            if (scale * img_w < MIN_SCALE && scale * img_h < MIN_SCALE) {
-                scale = canvas->scale; // don't change
+            if (scale * ctx->img_w < MIN_SCALE &&
+                scale * ctx->img_h < MIN_SCALE) {
+                scale = ctx->scale; // don't change
             }
             break;
     }
 
-    if (canvas->scale != scale) {
+    if (ctx->scale != scale) {
         // move viewpoint
-        const double delta = scale - canvas->scale;
-        canvas->scale = scale;
+        const double delta = scale - ctx->scale;
+        ctx->scale = scale;
         if (op == scale_fit_window || op == scale_fit_or100 ||
             op == scale_100) {
-            move_viewpoint(canvas, image, center_vertical);
-            move_viewpoint(canvas, image, center_horizontal);
+            move_viewpoint(ctx, center_vertical);
+            move_viewpoint(ctx, center_horizontal);
         } else {
-            move_scaled(canvas, image, delta);
+            move_scaled(ctx, delta);
         }
         return true;
     }
@@ -317,24 +401,24 @@ bool apply_scale(canvas_t* canvas, cairo_surface_t* image, scale_t op)
     return false;
 }
 
-void apply_rotate(canvas_t* canvas, bool clockwise)
+void apply_rotate(struct canvas* ctx, bool clockwise)
 {
     if (clockwise) {
-        if (canvas->rotate == rotate_270) {
-            canvas->rotate = rotate_0;
+        if (ctx->rotate == rotate_270) {
+            ctx->rotate = rotate_0;
         } else {
-            ++canvas->rotate;
+            ++ctx->rotate;
         }
     } else {
-        if (canvas->rotate == rotate_0) {
-            canvas->rotate = rotate_270;
+        if (ctx->rotate == rotate_0) {
+            ctx->rotate = rotate_270;
         } else {
-            --canvas->rotate;
+            --ctx->rotate;
         }
     }
 }
 
-void apply_flip(canvas_t* canvas, flip_t flip)
+void apply_flip(struct canvas* ctx, flip_t flip)
 {
-    canvas->flip ^= flip;
+    ctx->flip ^= flip;
 }

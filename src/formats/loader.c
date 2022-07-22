@@ -10,10 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Max size of the image, based on Cairo surface limit,
-// see MAX_IMAGE_SIZE in {CAIRO}/src/cairo-image-surface.c
-#define MAX_CAIRO_IMAGE_SIZE 32767
-
 /**
  * Image loader function.
  * @param[in] img image instance
@@ -108,40 +104,12 @@ const char* supported_formats(void)
 
 bool image_decode(image_t* img, const uint8_t* data, size_t size)
 {
-    bool rc = false;
-
-    for (size_t i = 0; !rc && i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        rc = loaders[i](img, data, size);
-    }
-
-    if (rc) {
-        if (img->width > MAX_CAIRO_IMAGE_SIZE ||
-            img->height > MAX_CAIRO_IMAGE_SIZE) {
-            fprintf(stderr,
-                    "Unable to create surface: image too big (%d pixels "
-                    "max)\n",
-                    MAX_CAIRO_IMAGE_SIZE);
-        } else {
-            cairo_status_t status;
-            img->surface = cairo_image_surface_create_for_data(
-                (unsigned char*)img->data, CAIRO_FORMAT_ARGB32, img->width,
-                img->height, img->width * sizeof(img->data[0]));
-            status = cairo_surface_status(img->surface);
-            if (status != CAIRO_STATUS_SUCCESS) {
-                rc = false;
-                image_deallocate(img);
-                const char* desc = cairo_status_to_string(status);
-                fprintf(stderr, "Unable to create Cairo surface: %s\n",
-                        desc ? desc : "Unknown error");
-                if (img->surface) {
-                    cairo_surface_destroy(img->surface);
-                    img->surface = NULL;
-                }
-            }
+    for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
+        if (loaders[i](img, data, size)) {
+            return true;
         }
     }
-
-    return rc;
+    return false;
 }
 
 bool image_allocate(image_t* img, size_t width, size_t height)

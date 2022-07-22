@@ -59,8 +59,8 @@ struct context {
     } repeat;
 
     struct surface {
-        cairo_surface_t* cairo;
         struct wl_buffer* buffer;
+        void* data;
     } surface;
 
     // window size and its scale factor
@@ -86,7 +86,10 @@ static struct context ctx = { .wnd = { .scale = 1 }, .repeat = { .fd = -1 } };
 /** Redraw window */
 static void redraw(void)
 {
-    ctx.handlers.on_redraw(ctx.surface.cairo);
+    struct window wnd = { .width = ctx.wnd.width,
+                          .height = ctx.wnd.height,
+                          .data = ctx.surface.data };
+    ctx.handlers.on_redraw(&wnd);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
@@ -140,25 +143,20 @@ static int create_shmem(size_t sz, void** data)
  */
 static bool create_buffer(void)
 {
-    const size_t stride = ctx.wnd.width * 4 /* argb */;
+    const size_t stride = ctx.wnd.width * sizeof(uint32_t);
     const size_t buf_sz = stride * ctx.wnd.height;
     struct wl_shm_pool* pool;
-    void* buf_data;
     int fd;
     bool status;
 
     // free previous allocated buffer
-    if (ctx.surface.cairo) {
-        cairo_surface_destroy(ctx.surface.cairo);
-        ctx.surface.cairo = NULL;
-    }
     if (ctx.surface.buffer) {
         wl_buffer_destroy(ctx.surface.buffer);
         ctx.surface.buffer = NULL;
     }
 
     // create new buffer
-    fd = create_shmem(buf_sz, &buf_data);
+    fd = create_shmem(buf_sz, &ctx.surface.data);
     status = (fd != -1);
     if (status) {
         pool = wl_shm_create_pool(ctx.wl.shm, fd, buf_sz);
@@ -167,9 +165,6 @@ static bool create_buffer(void)
             wl_shm_pool_create_buffer(pool, 0, ctx.wnd.width, ctx.wnd.height,
                                       stride, WL_SHM_FORMAT_XRGB8888);
         wl_shm_pool_destroy(pool);
-        ctx.surface.cairo = cairo_image_surface_create_for_data(
-            buf_data, CAIRO_FORMAT_ARGB32, ctx.wnd.width, ctx.wnd.height,
-            stride);
     }
 
     return status;
@@ -562,9 +557,6 @@ void destroy_window(void)
     }
     if (ctx.xkb.context) {
         xkb_context_unref(ctx.xkb.context);
-    }
-    if (ctx.surface.cairo) {
-        cairo_surface_destroy(ctx.surface.cairo);
     }
     if (ctx.surface.buffer) {
         wl_buffer_destroy(ctx.surface.buffer);

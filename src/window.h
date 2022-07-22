@@ -3,19 +3,25 @@
 
 #pragma once
 
-#include <cairo/cairo.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <xkbcommon/xkbcommon.h>
 
+/** Window buffer. */
+struct window {
+    const size_t width;  ///< Window width in pixels
+    const size_t height; ///< Window height in pixels
+    uint32_t* data;      ///< Pointer to pixel data (ARGB)
+};
+
 /** UI event handlers. */
 struct handlers {
     /**
      * Redraw handler.
-     * @param[in] window surface to draw on
+     * @param[in] wnd target window description
      */
-    void (*on_redraw)(cairo_surface_t* window);
+    void (*on_redraw)(struct window* wnd);
 
     /**
      * Window resize handler.
