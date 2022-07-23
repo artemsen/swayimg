@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Image instance: pixel data and meta info.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
 #include "image.h"
@@ -18,82 +19,71 @@
 #include <unistd.h>
 
 /**
- * Convert file size to human readable text.
- * @param[in] bytes file size in bytes
- * @param[out] text output text
- * @param[in] len size of output buffer
+ * Add image size as text to meta info.
+ * @param ctx image context
+ * @param bytes file size in bytes
  */
-static void human_size(uint64_t bytes, char* text, size_t len)
+static void add_size_info(struct image* ctx, size_t bytes)
 {
-    const size_t kib = 1024;
-    const size_t mib = kib * 1024;
-    const size_t gib = mib * 1024;
-    const size_t tib = gib * 1024;
+    const size_t kibibyte = 1024;
+    const size_t mebibyte = kibibyte * 1024;
+    float size = bytes;
+    char unit;
 
-    size_t multiplier;
-    char prefix;
-    if (bytes > tib) {
-        multiplier = tib;
-        prefix = 'T';
-    } else if (bytes >= gib) {
-        multiplier = gib;
-        prefix = 'G';
-    } else if (bytes >= mib) {
-        multiplier = mib;
-        prefix = 'M';
+    if (bytes >= mebibyte) {
+        size /= mebibyte;
+        unit = 'M';
     } else {
-        multiplier = kib;
-        prefix = 'K';
+        size /= kibibyte;
+        unit = 'K';
     }
-
-    snprintf(text, len, "%.02f %ciB", (double)bytes / multiplier, prefix);
+    image_add_meta(ctx, "File size", "%.02f %ciB", size, unit);
 }
 
 /**
  * Create image instance from memory buffer.
- * @param[in] path path to the image
- * @param[in] data raw image data
- * @param[in] size size of image data in bytes
+ * @param path path to the image
+ * @param data raw image data
+ * @param size size of image data in bytes
  * @return image instance or NULL on errors
  */
-static image_t* image_create(const char* path, const uint8_t* data, size_t size)
+static struct image* image_create(const char* path, const uint8_t* data,
+                                  size_t size)
 {
-    image_t* img;
-    char meta[32];
+    struct image* ctx;
+    enum loader_status status;
 
-    // create image instance
-    img = calloc(1, sizeof(image_t));
-    if (!img) {
+    ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) {
         fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
-    img->path = path;
+    ctx->path = path;
 
-    // add general meta info
-    add_image_info(img, "File", path);
+    image_add_meta(ctx, "File", path);
 
-    // decode image
-    if (!image_decode(img, data, size)) {
-        image_free(img);
+    status = image_decode(ctx, data, size);
+    if (status != ldr_success) {
+        if (status == ldr_unsupported) {
+            image_error(ctx, "unsupported format");
+        }
+        image_free(ctx);
         return NULL;
     }
 
-    // add general meta info
-    human_size(size, meta, sizeof(meta));
-    add_image_info(img, "File size", meta);
-    add_image_info(img, "Image size", "%lux%lu", img->width, img->height);
+    add_size_info(ctx, size);
+    image_add_meta(ctx, "Image size", "%lux%lu", ctx->width, ctx->height);
 
 #ifdef HAVE_LIBEXIF
-    // handle EXIF data
-    read_exif(img, data, size);
-#endif // HAVE_LIBEXIF
+    process_exif(ctx, data, size);
+#endif
 
-    return img;
+    return ctx;
 }
 
-image_t* image_from_file(const char* file)
+struct image* image_from_file(const char* file)
 {
-    image_t* img = NULL;
+    struct image* ctx = NULL;
     void* data = MAP_FAILED;
     struct stat st;
     int fd;
@@ -118,10 +108,7 @@ image_t* image_from_file(const char* file)
         goto done;
     }
 
-    img = image_create(file, data, st.st_size);
-    if (!img) {
-        fprintf(stderr, "Unsupported file format: %s\n", file);
-    }
+    ctx = image_create(file, data, st.st_size);
 
 done:
     if (data != MAP_FAILED) {
@@ -130,17 +117,17 @@ done:
     if (fd != -1) {
         close(fd);
     }
-    return img;
+    return ctx;
 }
 
-image_t* image_from_stdin(void)
+struct image* image_from_stdin(void)
 {
-    image_t* img = NULL;
+    struct image* ctx = NULL;
     uint8_t* data = NULL;
     size_t size = 0;
     size_t capacity = 0;
 
-    while (1) {
+    while (true) {
         if (size == capacity) {
             const size_t new_capacity = capacity + 256 * 1024;
             uint8_t* new_buf = realloc(data, new_capacity);
@@ -164,36 +151,31 @@ image_t* image_from_stdin(void)
     }
 
     if (data) {
-        img = image_create("{STDIN}", data, size);
-        if (!img) {
-            fprintf(stderr, "Unsupported file format\n");
-        }
+        ctx = image_create("{STDIN}", data, size);
     }
 
 done:
-    if (data) {
-        free(data);
-    }
-    return img;
+    free(data);
+    return ctx;
 }
 
-void image_free(image_t* img)
+void image_free(struct image* ctx)
 {
-    if (img) {
-        free(img->data);
-        free((void*)img->info);
-        free(img);
+    if (ctx) {
+        free(ctx->data);
+        free((void*)ctx->info);
+        free(ctx);
     }
 }
 
-void image_flip(image_t* img)
+void image_flip_vertical(struct image* ctx)
 {
-    const size_t stride = img->width * sizeof(img->data[0]);
+    const size_t stride = ctx->width * sizeof(argb_t);
     void* buffer = malloc(stride);
     if (buffer) {
-        for (size_t y = 0; y < img->height / 2; ++y) {
-            void* src = &img->data[y * img->width];
-            void* dst = &img->data[(img->height - y - 1) * img->width];
+        for (size_t y = 0; y < ctx->height / 2; ++y) {
+            void* src = &ctx->data[y * ctx->width];
+            void* dst = &ctx->data[(ctx->height - y - 1) * ctx->width];
             memcpy(buffer, dst, stride);
             memcpy(dst, src, stride);
             memcpy(src, buffer, stride);
@@ -202,11 +184,62 @@ void image_flip(image_t* img)
     }
 }
 
-static void add_image_meta(image_t* img, const char* key, const char* value)
+void image_flip_horizontal(struct image* ctx)
 {
-    char* buffer = (char*)img->info;
+    for (size_t y = 0; y < ctx->height; ++y) {
+        uint32_t* line = &ctx->data[y * ctx->width];
+        for (size_t x = 0; x < ctx->width / 2; ++x) {
+            uint32_t* left = &line[x];
+            uint32_t* right = &line[ctx->width - x];
+            const uint32_t swap = *left;
+            *left = *right;
+            *right = swap;
+        }
+    }
+}
+
+void image_rotate(struct image* ctx, size_t angle)
+{
+    const size_t pixels = ctx->width * ctx->height;
+
+    if (angle == 180) {
+        for (size_t i = 0; i < pixels / 2; ++i) {
+            uint32_t* color1 = &ctx->data[i];
+            uint32_t* color2 = &ctx->data[pixels - i - 1];
+            const uint32_t swap = *color1;
+            *color1 = *color2;
+            *color2 = swap;
+        }
+    } else if (angle == 90 || angle == 270) {
+        const size_t buf_len = pixels * sizeof(argb_t);
+        uint32_t* new_buffer = malloc(buf_len);
+        if (new_buffer) {
+            const size_t new_width = ctx->height;
+            const size_t new_height = ctx->width;
+            for (size_t y = 0; y < ctx->height; ++y) {
+                for (size_t x = 0; x < ctx->width; ++x) {
+                    size_t new_pos;
+                    if (angle == 90) {
+                        new_pos = x * new_width + (new_width - y - 1);
+                    } else {
+                        new_pos = (new_height - x - 1) * new_width + y;
+                    }
+                    new_buffer[new_pos] = ctx->data[y * ctx->width + x];
+                }
+            }
+            free(ctx->data);
+            ctx->width = new_width;
+            ctx->height = new_height;
+            ctx->data = new_buffer;
+        }
+    }
+}
+
+static void add_meta(struct image* ctx, const char* key, const char* value)
+{
+    char* buffer = (char*)ctx->info;
     const char* delim = ":\t";
-    const size_t cur_len = img->info ? strlen(img->info) + 1 : 0;
+    const size_t cur_len = ctx->info ? strlen(ctx->info) + 1 : 0;
     const size_t add_len = strlen(key) + strlen(value) + strlen(delim) + 1;
 
     buffer = realloc(buffer, cur_len + add_len);
@@ -219,11 +252,11 @@ static void add_image_meta(image_t* img, const char* key, const char* value)
         strcat(buffer, key);
         strcat(buffer, delim);
         strcat(buffer, value);
-        img->info = buffer;
+        ctx->info = buffer;
     }
 }
 
-void add_image_info(image_t* img, const char* key, const char* fmt, ...)
+void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
 {
     int len;
     va_list args;
@@ -241,7 +274,7 @@ void add_image_info(image_t* img, const char* key, const char* fmt, ...)
             len = vsnprintf(text, len, fmt, args);
             va_end(args);
             if (len > 0) {
-                add_image_meta(img, key, text);
+                add_meta(ctx, key, text);
             }
             free(text);
         }

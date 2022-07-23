@@ -17,7 +17,8 @@
 static const uint8_t signature[] = { '<' };
 
 // SVG loader implementation
-bool load_svg(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
+                              size_t size)
 {
     RsvgHandle* svg;
     GError* err = NULL;
@@ -34,14 +35,14 @@ bool load_svg(image_t* img, const uint8_t* data, size_t size)
     }
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return false;
+        return ldr_unsupported;
     }
 
     svg = rsvg_handle_new_from_data(data, size, &err);
     if (!svg) {
-        image_error(img, "invalid svg format: %s",
+        image_error(ctx, "invalid svg format: %s",
                     err && err->message ? err->message : "unknown error");
-        return false;
+        return ldr_fmterror;
     }
 
     // define image size in pixels
@@ -60,42 +61,42 @@ bool load_svg(image_t* img, const uint8_t* data, size_t size)
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
         const char* desc = cairo_status_to_string(status);
-        image_error(img, "unable to create svg surface: %s",
+        image_error(ctx, "unable to create svg surface: %s",
                     desc ? desc : "unknown error");
         if (surface) {
             cairo_surface_destroy(surface);
             surface = NULL;
         }
         g_object_unref(svg);
-        return false;
+        return ldr_fmterror;
     }
 
     // render svg to surface
     cr = cairo_create(surface);
     if (!rsvg_handle_render_document(svg, cr, &viewport, &err)) {
-        image_error(img, "unable to decode svg: %s",
+        image_error(ctx, "unable to decode svg: %s",
                     err && err->message ? err->message : "unknown error");
         cairo_destroy(cr);
         cairo_surface_destroy(surface);
         g_object_unref(svg);
-        return false;
+        return ldr_fmterror;
     }
 
-    if (!image_allocate(img, viewport.width, viewport.height)) {
+    if (!image_allocate(ctx, viewport.width, viewport.height)) {
         cairo_destroy(cr);
         cairo_surface_destroy(surface);
         g_object_unref(svg);
-        return false;
+        return ldr_fmterror;
     }
 
-    add_image_info(img, "Format", "SVG");
-    img->alpha = true;
-    memcpy(img->data, cairo_image_surface_get_data(surface),
-           img->width * img->height * sizeof(img->data[0]));
+    image_add_meta(ctx, "Format", "SVG");
+    ctx->alpha = true;
+    memcpy(ctx->data, cairo_image_surface_get_data(surface),
+           ctx->width * ctx->height * sizeof(argb_t));
 
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
     g_object_unref(svg);
 
-    return surface;
+    return ldr_success;
 }

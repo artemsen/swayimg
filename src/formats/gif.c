@@ -32,12 +32,13 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 }
 
 // GIF loader implementation
-bool load_gif(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
+                              size_t size)
 {
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return NULL;
+        return ldr_unsupported;
     }
 
     struct buffer buf = {
@@ -49,34 +50,34 @@ bool load_gif(image_t* img, const uint8_t* data, size_t size)
     int err;
     GifFileType* gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        image_error(img, "unable to open gif decoder: [%d] %s", err,
+        image_error(ctx, "unable to open gif decoder: [%d] %s", err,
                     GifErrorString(err));
-        return false;
+        return ldr_fmterror;
     }
 
     // decode with high-level API
     if (DGifSlurp(gif) != GIF_OK) {
-        image_error(img, "unable to decode gif image: [%d] %s", err,
+        image_error(ctx, "unable to decode gif image: [%d] %s", err,
                     GifErrorString(err));
         DGifCloseFile(gif, NULL);
-        return false;
+        return ldr_fmterror;
     }
     if (!gif->SavedImages) {
-        image_error(img, "gif doesn't contain images");
+        image_error(ctx, "gif doesn't contain images");
         DGifCloseFile(gif, NULL);
-        return false;
+        return ldr_fmterror;
     }
 
-    if (!image_allocate(img, gif->SWidth, gif->SHeight)) {
+    if (!image_allocate(ctx, gif->SWidth, gif->SHeight)) {
         DGifCloseFile(gif, NULL);
-        return false;
+        return ldr_fmterror;
     }
 
     // we don't support animation, show the first frame only
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
     const GifColorType* colors =
         gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
-    uint32_t* base = &img->data[frame->Top * img->width];
+    uint32_t* base = &ctx->data[frame->Top * ctx->width];
     for (int y = 0; y < frame->Height; ++y) {
         uint32_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
@@ -91,10 +92,10 @@ bool load_gif(image_t* img, const uint8_t* data, size_t size)
         }
     }
 
-    add_image_info(img, "Format", "GIF, frame 1 of %d", gif->ImageCount);
-    img->alpha = true;
+    image_add_meta(ctx, "Format", "GIF, frame 1 of %d", gif->ImageCount);
+    ctx->alpha = true;
 
     DGifCloseFile(gif, NULL);
 
-    return true;
+    return ldr_success;
 }

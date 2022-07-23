@@ -29,7 +29,8 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
 }
 
 // PNG loader implementation
-bool load_png(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_png(struct image* ctx, const uint8_t* data,
+                              size_t size)
 {
     png_struct* png = NULL;
     png_info* info = NULL;
@@ -45,28 +46,29 @@ bool load_png(image_t* img, const uint8_t* data, size_t size)
 
     // check signature
     if (png_sig_cmp(data, 0, size) != 0) {
-        return false;
+        return ldr_unsupported;
     }
 
     // create decoder
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        image_error(img, "unable to initialize png decoder");
-        return false;
+        image_error(ctx, "unable to initialize png decoder");
+        return ldr_fmterror;
     }
     info = png_create_info_struct(png);
     if (!info) {
-        image_error(img, "unable to create png object");
+        image_error(ctx, "unable to create png object");
         png_destroy_read_struct(&png, NULL, NULL);
-        return false;
+        return ldr_fmterror;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
         free(lines);
-        image_deallocate(img);
-        return false;
+        image_deallocate(ctx);
+        image_error(ctx, "failed to decode png");
+        return ldr_fmterror;
     }
 
     // get general image info
@@ -99,32 +101,31 @@ bool load_png(image_t* img, const uint8_t* data, size_t size)
     png_set_packswap(png);
     png_set_bgr(png);
 
-    if (!image_allocate(img, width, height)) {
+    if (!image_allocate(ctx, width, height)) {
         png_destroy_read_struct(&png, &info, NULL);
-        return false;
+        return ldr_fmterror;
     }
 
     // prepare list of pointers to image lines
     lines = malloc(height * sizeof(png_bytep));
     if (!lines) {
-        image_error(img, "not enough memory");
+        image_error(ctx, "not enough memory");
         png_destroy_read_struct(&png, &info, NULL);
-        image_deallocate(img);
-        return false;
+        image_deallocate(ctx);
+        return ldr_fmterror;
     }
     for (size_t i = 0; i < height; ++i) {
-        lines[i] = (png_bytep)&img->data[img->width * i];
+        lines[i] = (png_bytep)&ctx->data[ctx->width * i];
     }
 
     // read image
     png_read_image(png, lines);
-    image_apply_alpha(img);
-    add_image_info(img, "Format", "PNG %dbit", bit_depth * 4);
-    img->alpha = true;
+    image_add_meta(ctx, "Format", "PNG %dbit", bit_depth * 4);
+    ctx->alpha = true;
 
     // free resources
     png_destroy_read_struct(&png, &info, NULL);
     free(lines);
 
-    return true;
+    return ldr_success;
 }

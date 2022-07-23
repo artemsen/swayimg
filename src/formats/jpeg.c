@@ -19,7 +19,7 @@ static const uint8_t signature[] = { 0xff, 0xd8 };
 struct jpg_error_manager {
     struct jpeg_error_mgr mgr;
     jmp_buf setjmp;
-    image_t* img;
+    struct image* img;
 };
 
 static void jpg_error_exit(j_common_ptr jpg)
@@ -34,7 +34,8 @@ static void jpg_error_exit(j_common_ptr jpg)
 }
 
 // JPEG loader implementation
-bool load_jpeg(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
+                               size_t size)
 {
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
@@ -42,16 +43,16 @@ bool load_jpeg(image_t* img, const uint8_t* data, size_t size)
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return false;
+        return ldr_unsupported;
     }
 
     jpg.err = jpeg_std_error(&err.mgr);
-    err.img = img;
+    err.img = ctx;
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        image_deallocate(img);
+        image_deallocate(ctx);
         jpeg_destroy_decompress(&jpg);
-        return false;
+        return ldr_fmterror;
     }
 
     jpeg_create_decompress(&jpg);
@@ -63,14 +64,14 @@ bool load_jpeg(image_t* img, const uint8_t* data, size_t size)
 #endif // LIBJPEG_TURBO_VERSION
 
     // prepare surface and metadata
-    if (!image_allocate(img, jpg.output_width, jpg.output_height)) {
+    if (!image_allocate(ctx, jpg.output_width, jpg.output_height)) {
         jpeg_destroy_decompress(&jpg);
-        return false;
+        return ldr_fmterror;
     }
-    add_image_info(img, "Format", "JPEG %dbit", jpg.out_color_components * 8);
+    image_add_meta(ctx, "Format", "JPEG %dbit", jpg.out_color_components * 8);
 
     while (jpg.output_scanline < jpg.output_height) {
-        uint8_t* line = (uint8_t*)&img->data[jpg.output_scanline * img->width];
+        uint8_t* line = (uint8_t*)&ctx->data[jpg.output_scanline * ctx->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
         // convert grayscale to argb
@@ -97,5 +98,5 @@ bool load_jpeg(image_t* img, const uint8_t* data, size_t size)
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
 
-    return true;
+    return ldr_success;
 }

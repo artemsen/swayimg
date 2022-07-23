@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Wayland window.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "window.h"
@@ -10,6 +11,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
@@ -76,7 +78,7 @@ struct context {
         int32_t scale;
     } outputs[MAX_OUTPUTS];
 
-    struct handlers handlers;
+    struct wnd_handlers handlers;
 
     enum state state;
 };
@@ -86,10 +88,7 @@ static struct context ctx = { .wnd = { .scale = 1 }, .repeat = { .fd = -1 } };
 /** Redraw window */
 static void redraw(void)
 {
-    struct window wnd = { .width = ctx.wnd.width,
-                          .height = ctx.wnd.height,
-                          .data = ctx.surface.data };
-    ctx.handlers.on_redraw(&wnd);
+    ctx.handlers.on_redraw(ctx.wnd.width, ctx.wnd.height, ctx.surface.data);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
@@ -98,8 +97,8 @@ static void redraw(void)
 
 /**
  * Create shared memory file.
- * @param[in] sz size of data in bytes
- * @param[out] data pointer to mapped data
+ * @param sz size of data in bytes
+ * @param data pointer to mapped data
  * @return shared file descriptor, -1 on errors
  */
 static int create_shmem(size_t sz, void** data)
@@ -143,7 +142,7 @@ static int create_shmem(size_t sz, void** data)
  */
 static bool create_buffer(void)
 {
-    const size_t stride = ctx.wnd.width * sizeof(uint32_t);
+    const size_t stride = ctx.wnd.width * sizeof(argb_t);
     const size_t buf_sz = stride * ctx.wnd.height;
     struct wl_shm_pool* pool;
     int fd;
@@ -220,8 +219,8 @@ static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
 
 /**
  * Fill timespec structure.
- * @param[out] ts destination structure
- * @param[in] ms time in milliseconds
+ * @param ts destination structure
+ * @param ms time in milliseconds
  */
 static inline void set_timespec(struct timespec* ts, uint32_t ms)
 {
@@ -325,10 +324,11 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     const int32_t cur_width = (int32_t)(ctx.wnd.width / ctx.wnd.scale);
     const int32_t cur_height = (int32_t)(ctx.wnd.height / ctx.wnd.scale);
     if (width && height && (width != cur_width || height != cur_height)) {
+        puts("REDRAW1");
         ctx.wnd.width = width * ctx.wnd.scale;
         ctx.wnd.height = height * ctx.wnd.scale;
         if (create_buffer()) {
-            ctx.handlers.on_resize();
+            ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
         } else {
             ctx.state = state_error;
         }
@@ -394,11 +394,12 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         }
     }
     if (scale != ctx.wnd.scale) {
+        puts("REDRAW2");
         ctx.wnd.width = (ctx.wnd.width / ctx.wnd.scale) * scale;
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
         if (create_buffer()) {
-            ctx.handlers.on_resize();
+            ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
             redraw();
         } else {
             ctx.state = state_error;
@@ -450,8 +451,8 @@ static const struct wl_registry_listener registry_listener = {
     .global = on_registry_global, .global_remove = on_registry_remove
 };
 
-bool create_window(const struct handlers* handlers, size_t width, size_t height,
-                   const char* app_id)
+bool create_window(const struct wnd_handlers* handlers, size_t width,
+                   size_t height, const char* app_id)
 {
     ctx.wnd.width = width ? width : 800;
     ctx.wnd.height = height ? height : 600;
@@ -590,19 +591,26 @@ void close_window(void)
     ctx.state = state_exit;
 }
 
-size_t get_window_width(void)
+void set_window_title(const char* file)
 {
-    return ctx.wnd.width;
-}
+    const char* fmt = APP_NAME ": %s";
+    char* title;
+    int len;
 
-size_t get_window_height(void)
-{
-    return ctx.wnd.height;
-}
+    if (!ctx.xdg.toplevel) {
+        return;
+    }
 
-void set_window_title(const char* title)
-{
-    xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+    len = snprintf(NULL, 0, fmt, file);
+    if (len > 0) {
+        ++len; // last null
+        title = malloc(len);
+        if (title) {
+            sprintf(title, fmt, file);
+            xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+            free(title);
+        }
+    }
 }
 
 void enable_fullscreen(bool enable)

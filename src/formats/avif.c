@@ -16,7 +16,8 @@ static const uint8_t signature[] = { 'f', 't', 'y', 'p' };
 #define RGBA_NUM 4
 
 // AV1 loader implementation
-bool load_avif(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
+                               size_t size)
 {
     avifResult rc;
     avifRGBImage rgb;
@@ -25,14 +26,14 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
     // check signature
     if (size < SIGNATURE_START + sizeof(signature) ||
         memcmp(data + SIGNATURE_START, signature, sizeof(signature))) {
-        return false;
+        return ldr_unsupported;
     }
 
     // open file in decoder
     decoder = avifDecoderCreate();
     if (!decoder) {
-        image_error(img, "unable to create av1 decoder");
-        return false;
+        image_error(ctx, "unable to create av1 decoder");
+        return ldr_fmterror;
     }
     rc = avifDecoderSetIOMemory(decoder, data, size);
     if (rc == AVIF_RESULT_OK) {
@@ -42,7 +43,7 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
         rc = avifDecoderNextImage(decoder); // first frame only
     }
     if (rc != AVIF_RESULT_OK) {
-        image_error(img, "error decoding av1: %s\n", avifResultToString(rc));
+        image_error(ctx, "error decoding av1: %s\n", avifResultToString(rc));
         goto done;
     }
 
@@ -55,12 +56,12 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
     // decode the frame
     rc = avifImageYUVToRGB(decoder->image, &rgb);
     if (rc != AVIF_RESULT_OK) {
-        image_error(img, "unable convert av1 colors: %s\n",
+        image_error(ctx, "unable convert av1 colors: %s\n",
                     avifResultToString(rc));
         goto done;
     }
 
-    if (!image_allocate(img, rgb.width, rgb.height)) {
+    if (!image_allocate(ctx, rgb.width, rgb.height)) {
         rc = AVIF_RESULT_UNKNOWN_ERROR;
         goto done;
     }
@@ -68,8 +69,8 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
     // put image on to cairo surface
     if (rgb.depth == 8) {
         // simple 8bit image
-        memcpy(img->data, rgb.pixels,
-               img->width * img->height * sizeof(img->data[0]));
+        memcpy(ctx->data, rgb.pixels,
+               ctx->width * ctx->height * sizeof(argb_t));
     } else {
         // convert to 8bit image
         const size_t max_clr = 1 << rgb.depth;
@@ -78,7 +79,7 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
         for (size_t y = 0; y < rgb.height; ++y) {
             const uint16_t* src_y =
                 (const uint16_t*)(rgb.pixels + y * src_stride);
-            uint8_t* dst_y = (uint8_t*)&img->data[y * img->width];
+            uint8_t* dst_y = (uint8_t*)&ctx->data[y * ctx->width];
             for (size_t x = 0; x < rgb.width; ++x) {
                 uint8_t* dst_x = (uint8_t*)&dst_y[x];
                 const uint16_t* src_x = src_y + x * sizeof(uint32_t);
@@ -90,12 +91,12 @@ bool load_avif(image_t* img, const uint8_t* data, size_t size)
         }
     }
 
-    img->alpha = true;
-    add_image_info(img, "Format", "AV1 %dbit %s", rgb.depth,
+    ctx->alpha = true;
+    image_add_meta(ctx, "Format", "AV1 %dbit %s", rgb.depth,
                    avifPixelFormatToString(decoder->image->yuvFormat));
 
 done:
     avifRGBImageFreePixels(&rgb);
     avifDecoderDestroy(decoder);
-    return rc == AVIF_RESULT_OK;
+    return (rc == AVIF_RESULT_OK ? ldr_success : ldr_fmterror);
 }

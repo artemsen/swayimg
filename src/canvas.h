@@ -5,107 +5,128 @@
 #pragma once
 
 #include "config.h"
-#include "image.h"
-#include "window.h"
+#include "types.h"
 
 /** Canvas context. */
-struct canvas {
-    double scale;        ///< Scale, 1.0 = 100%
-    size_t img_w;        ///< Image width
-    size_t img_h;        ///< Image height
-    ssize_t img_x;       ///< Horizontal offset of the image on canvas
-    ssize_t img_y;       ///< Vertical offset of the image on canvas
-    size_t wnd_w;        ///< Window width
-    size_t wnd_h;        ///< Window height
-    rotate_t rotate;     ///< Rotation angle
-    flip_t flip;         ///< Flip mode flags
-    void* font_handle;   ///< Font handle to draw text
-    uint32_t font_color; ///< Color used for text
+struct canvas;
+
+/** Corner position. */
+enum canvas_corner {
+    cc_top_left,
+    cc_top_right,
+    cc_bottom_left,
+    cc_bottom_right
+};
+
+/** Viewport movement. */
+enum canvas_move {
+    cm_center,     ///< Center of the image
+    cm_cnt_hor,    ///< Center horizontally
+    cm_cnt_vert,   ///< Center vertically
+    cm_step_left,  ///< One step to the left
+    cm_step_right, ///< One step to the right
+    cm_step_up,    ///< One step up
+    cm_step_down   ///< One step down
+};
+
+/** Scaling operations. */
+enum canvas_scale {
+    cs_fit_or100,  ///< Fit to window, but not more than 100%
+    cs_fit_window, ///< Fit to window size
+    cs_real_size,  ///< Real image size (100%)
+    cs_zoom_in,    ///< Enlarge by one step
+    cs_zoom_out    ///< Reduce by one step
 };
 
 /**
  * Initialize canvas.
- * @param[in] ctx canvas context
- * @param[in] width window width
- * @param[in] height window height
- * @param[in] cfg configuration instance
+ * @param ctx canvas context
+ * @param cfg configuration instance
  */
-void init_canvas(struct canvas* ctx, size_t width, size_t height,
-                 config_t* cfg);
+struct canvas* canvas_init(struct config* cfg);
 
 /**
  * Free canvas resources.
- * @param[in] ctx canvas context
+ * @param ctx canvas context
  */
-void free_canvas(struct canvas* ctx);
+void canvas_free(struct canvas* ctx);
 
 /**
- * Attach image to canvas and reset canvas parameters to default values.
- * @param[in] ctx canvas context
- * @param[in] img displayed image
+ * Resize canvas window.
+ * @param ctx canvas context
+ * @param width,height new window size
+ * @return true if it was the first resize
  */
-void attach_image(struct canvas* ctx, const image_t* img);
+bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height);
 
 /**
- * Attach window to canvas and clear the it.
- * @param[in] ctx canvas context
- * @param[in] wnd target window description
- * @param[in] color background color
+ * Reset image position, size and scale.
+ * @param ctx canvas context
+ * @param width,height new image size
+ * @param sc scale to use
  */
-void attach_window(struct canvas* ctx, struct window* wnd, uint32_t color);
+void canvas_reset_image(struct canvas* ctx, size_t width, size_t height,
+                        enum canvas_scale sc);
 
 /**
- * Draw image.
- * @param[in] ctx canvas context
- * @param[in] img image to draw
- * @param[in] wnd target window description
+ * Recalculate position after rotating image on 90 degree.
+ * @param ctx canvas context
  */
-void draw_image(const struct canvas* ctx, const image_t* img,
-                struct window* wnd);
+void canvas_swap_image_size(struct canvas* ctx);
+
+/**
+ * Clear canvas window.
+ * @param ctx canvas context
+ * @param wnd window buffer
+ * @param color background color
+ */
+void canvas_clear(struct canvas* ctx, argb_t* wnd, argb_t color);
 
 /**
  * Draw background grid for transparent images.
- * @param[in] ctx canvas context
- * @param[in] wnd target window description
+ * @param ctx canvas context
+ * @param wnd window buffer
  */
-void draw_grid(const struct canvas* ctx, struct window* wnd);
+void canvas_draw_grid(const struct canvas* ctx, argb_t* wnd);
 
 /**
- * Print text.
- * @param[in] ctx canvas context
- * @param[in] wnd target window description
- * @param[in] pos text block position
- * @param[in] text text to output
+ * Draw image on canvas.
+ * @param ctx canvas context
+ * @param alpha flag to use alpha blending
+ * @param img buffer with image data
+ * @param wnd window buffer
  */
-void print_text(const struct canvas* ctx, struct window* wnd,
-                text_position_t pos, const char* text);
+void canvas_draw_image(const struct canvas* ctx, bool aplha, const argb_t* img,
+                       argb_t* wnd);
 
 /**
- * Move view point.
- * @param[in] ctx canvas context
- * @param[in] direction viewport movement direction
+ * Print text on canvas.
+ * @param ctx canvas context
+ * @param wnd window buffer
+ * @param corner text block position
+ * @param text printed text
+ */
+void canvas_print(const struct canvas* ctx, argb_t* wnd,
+                  enum canvas_corner corner, const char* text);
+
+/**
+ * Move viewport.
+ * @param ctx canvas context
+ * @param mv viewport movement direction
  * @return true if coordinates were changed
  */
-bool move_viewpoint(struct canvas* ctx, move_t direction);
+bool canvas_move(struct canvas* ctx, enum canvas_move mv);
 
 /**
- * Apply scaling operation.
- * @param[in] ctx canvas context
- * @param[in] op scale operation type
- * @return true if scale was changed
+ * Scale image on the canvas.
+ * @param ctx canvas context
+ * @param sc scale operation
  */
-bool apply_scale(struct canvas* ctx, scale_t op);
+void canvas_set_scale(struct canvas* ctx, enum canvas_scale sc);
 
 /**
- * Rotate image on 90 degrees.
- * @param[in] ctx canvas context
- * @param[in] clockwise rotate direction
+ * Get current scale.
+ * @param ctx canvas context
+ * @return current scale, 1.0 = 100%
  */
-void apply_rotate(struct canvas* ctx, bool clockwise);
-
-/**
- * Flip image.
- * @param[in] ctx canvas context
- * @param[in] flip axis type
- */
-void apply_flip(struct canvas* ctx, flip_t flip);
+float canvas_get_scale(struct canvas* ctx);

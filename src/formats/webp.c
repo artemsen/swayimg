@@ -11,7 +11,8 @@
 static const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
 
 // WebP loader implementation
-bool load_webp(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
+                               size_t size)
 {
     WebPBitstreamFeatures prop;
     VP8StatusCode status;
@@ -20,36 +21,35 @@ bool load_webp(image_t* img, const uint8_t* data, size_t size)
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return false;
+        return ldr_unsupported;
     }
 
     // get image properties
     status = WebPGetFeatures(data, size, &prop);
     if (status != VP8_STATUS_OK) {
-        image_error(img, "unable to get webp properties, error %d\n", status);
-        return false;
+        image_error(ctx, "unable to get webp properties, error %d\n", status);
+        return ldr_fmterror;
     }
 
-    if (!image_allocate(img, prop.width, prop.height)) {
-        return false;
+    if (!image_allocate(ctx, prop.width, prop.height)) {
+        return ldr_fmterror;
     }
 
     // decode image
-    stride = img->width * sizeof(img->data[0]);
-    if (!WebPDecodeBGRAInto(data, size, (uint8_t*)img->data,
-                            stride * img->height, stride)) {
-        image_error(img, "unable to decode webp image");
-        image_deallocate(img);
-        return false;
+    stride = ctx->width * sizeof(argb_t);
+    if (!WebPDecodeBGRAInto(data, size, (uint8_t*)ctx->data,
+                            stride * ctx->height, stride)) {
+        image_error(ctx, "unable to decode webp image");
+        image_deallocate(ctx);
+        return ldr_fmterror;
     }
 
     if (prop.has_alpha) {
-        image_apply_alpha(img);
-        img->alpha = true;
+        ctx->alpha = true;
     }
-    add_image_info(
-        img, "Format", "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
+    image_add_meta(
+        ctx, "Format", "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
         prop.has_alpha ? "+alpha" : "", prop.has_animation ? "+animation" : "");
 
-    return true;
+    return ldr_success;
 }

@@ -8,7 +8,8 @@
 #include <string.h>
 
 // JPEG XL loader implementation
-bool load_jxl(image_t* img, const uint8_t* data, size_t size)
+enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
+                              size_t size)
 {
     size_t buffer_sz;
     JxlDecoder* jxl;
@@ -24,7 +25,7 @@ bool load_jxl(image_t* img, const uint8_t* data, size_t size)
     switch (JxlSignatureCheck(data, size)) {
         case JXL_SIG_NOT_ENOUGH_BYTES:
         case JXL_SIG_INVALID:
-            return false;
+            return ldr_unsupported;
         default:
             break;
     }
@@ -32,12 +33,12 @@ bool load_jxl(image_t* img, const uint8_t* data, size_t size)
     // initialize decoder
     jxl = JxlDecoderCreate(NULL);
     if (!jxl) {
-        image_error(img, "unable to create jpeg xl decoder");
-        return false;
+        image_error(ctx, "unable to create jpeg xl decoder");
+        return ldr_fmterror;
     }
     status = JxlDecoderSetInput(jxl, data, size);
     if (status != JXL_DEC_SUCCESS) {
-        image_error(img, "unable to set jpeg xl buffer: error %d", status);
+        image_error(ctx, "unable to set jpeg xl buffer: error %d", status);
         goto fail;
     }
 
@@ -45,7 +46,7 @@ bool load_jxl(image_t* img, const uint8_t* data, size_t size)
     status =
         JxlDecoderSubscribeEvents(jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
     if (status != JXL_DEC_SUCCESS) {
-        image_error(img, "jpeg xl event subscription failed");
+        image_error(ctx, "jpeg xl event subscription failed");
         goto fail;
     }
     do {
@@ -55,12 +56,12 @@ bool load_jxl(image_t* img, const uint8_t* data, size_t size)
             case JXL_DEC_SUCCESS:
                 break; // decoding complete
             case JXL_DEC_ERROR:
-                image_error(img, "failed to decode jpeg xl");
+                image_error(ctx, "failed to decode jpeg xl");
                 goto fail;
             case JXL_DEC_BASIC_INFO:
                 rc = JxlDecoderGetBasicInfo(jxl, &info);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_error(img, "unable to get jpeg xl info: error %d",
+                    image_error(ctx, "unable to get jpeg xl info: error %d",
                                 rc);
                     goto fail;
                 }
@@ -71,51 +72,50 @@ bool load_jxl(image_t* img, const uint8_t* data, size_t size)
                 // get image buffer size
                 rc = JxlDecoderImageOutBufferSize(jxl, &jxl_format, &buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_error(img, "unable to get jpeg xl buffer: error %d",
+                    image_error(ctx, "unable to get jpeg xl buffer: error %d",
                                 rc);
                     goto fail;
                 }
-                if (!image_allocate(img, info.xsize, info.ysize)) {
+                if (!image_allocate(ctx, info.xsize, info.ysize)) {
                     goto fail;
                 }
                 // check buffer format
-                if (buffer_sz !=
-                    img->width * img->height * sizeof(img->data[0])) {
-                    image_error(img, "unsupported jpeg xl buffer format");
+                if (buffer_sz != ctx->width * ctx->height * sizeof(argb_t)) {
+                    image_error(ctx, "unsupported jpeg xl buffer format");
                     goto fail;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, img->data,
+                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, ctx->data,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_error(img, "unable to set jpeg xl buffer: error %d",
+                    image_error(ctx, "unable to set jpeg xl buffer: error %d",
                                 rc);
                     goto fail;
                 }
                 break;
             default:
-                image_error(img, "unexpected jpeg xl status %d", status);
+                image_error(ctx, "unexpected jpeg xl status %d", status);
         }
     } while (status != JXL_DEC_SUCCESS);
 
     // convert RGBA -> ARGB
-    for (size_t i = 0; i < img->width * img->height; ++i) {
-        uint32_t val = img->data[i];
-        img->data[i] =
+    for (size_t i = 0; i < ctx->width * ctx->height; ++i) {
+        uint32_t val = ctx->data[i];
+        ctx->data[i] =
             (val & 0xff00ff00) | (val & 0xff) << 16 | ((val >> 16) & 0xff);
     }
 
     // format description: total number of bits per pixel
-    add_image_info(img, "Format", "JPEG XL %ubit",
+    image_add_meta(ctx, "Format", "JPEG XL %ubit",
                    info.bits_per_sample * info.num_color_channels +
                        info.alpha_bits);
-    img->alpha = true;
+    ctx->alpha = true;
 
     JxlDecoderDestroy(jxl);
-    return true;
+    return ldr_success;
 
 fail:
     JxlDecoderDestroy(jxl);
-    image_deallocate(img);
-    return false;
+    image_deallocate(ctx);
+    return ldr_fmterror;
 }

@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
+// Program entry point.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "buildcfg.h"
 #include "config.h"
 #include "formats/loader.h"
 #include "image.h"
+#include "sway.h"
 #include "viewer.h"
 
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-struct cmdarg;
-typedef struct cmdarg cmdarg_t;
 
 /** Command line options. */
 struct cmdarg {
@@ -24,7 +23,7 @@ struct cmdarg {
 };
 
 // clang-format off
-static const cmdarg_t arguments[] = {
+static const struct cmdarg arguments[] = {
     { 'S', "sort",       NULL,      "sort input files alphabetically" },
     { 'R', "random",     NULL,      "shuffle input file list in random mode" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
@@ -53,7 +52,7 @@ static void print_help(void)
     puts("Mandatory arguments to long options are mandatory for short options "
          "too.");
     for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
-        const cmdarg_t* arg = &arguments[i];
+        const struct cmdarg* arg = &arguments[i];
         strcpy(buf_lopt, arg->long_opt);
         if (arg->format) {
             strcat(buf_lopt, "=");
@@ -65,12 +64,12 @@ static void print_help(void)
 
 /**
  * Parse command line arguments into configuration instance.
- * @param[in] argc number of arguments to parse
- * @param[in] argv arguments array
- * @param[out] cfg target configuration instance
+ * @param argc number of arguments to parse
+ * @param argv arguments array
+ * @param cfg target configuration instance
  * @return index of the first non option argument, or -1 if error, or 0 to exit
  */
-static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
+static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
 {
     struct option options[1 + (sizeof(arguments) / sizeof(arguments[0]))];
     char short_opts[(sizeof(arguments) / sizeof(arguments[0])) * 2];
@@ -78,7 +77,7 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
     int opt;
 
     for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
-        const cmdarg_t* arg = &arguments[i];
+        const struct cmdarg* arg = &arguments[i];
         // compose array of option structs
         options[i].name = arg->long_opt;
         options[i].has_arg = arg->format ? required_argument : no_argument;
@@ -101,10 +100,10 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
             case 'S':
-                cfg->order = order_alpha;
+                cfg->order = cfgord_alpha;
                 break;
             case 'R':
-                cfg->order = order_random;
+                cfg->order = cfgord_random;
                 break;
             case 'r':
                 cfg->recursive = true;
@@ -114,17 +113,17 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
                 cfg->sway_wm = false;
                 break;
             case 's':
-                if (!set_scale_config(cfg, optarg)) {
+                if (!config_set_scale(cfg, optarg)) {
                     return -1;
                 }
                 break;
             case 'b':
-                if (!set_background_config(cfg, optarg)) {
+                if (!config_set_background(cfg, optarg)) {
                     return -1;
                 }
                 break;
             case 'g':
-                if (!set_geometry_config(cfg, optarg)) {
+                if (!config_set_geometry(cfg, optarg)) {
                     return -1;
                 }
                 break;
@@ -132,7 +131,7 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
                 cfg->show_info = true;
                 break;
             case 'c':
-                if (!set_appid_config(cfg, optarg)) {
+                if (!config_set_appid(cfg, optarg)) {
                     return -1;
                 }
                 break;
@@ -162,13 +161,13 @@ static int parse_cmdargs(int argc, char* argv[], config_t* cfg)
 int main(int argc, char* argv[])
 {
     int rc;
-    config_t* cfg = NULL;
-    file_list_t* files = NULL;
+    struct config* cfg = NULL;
+    struct file_list* files = NULL;
     int num_files;
     int index;
 
     // initialize config with default values
-    cfg = init_config();
+    cfg = config_init();
     if (!cfg) {
         rc = EXIT_FAILURE;
         goto done;
@@ -184,14 +183,14 @@ int main(int argc, char* argv[])
         rc = EXIT_FAILURE;
         goto done;
     }
-    check_config(cfg);
+    config_check(cfg);
 
     // compose file list
     num_files = argc - index;
     if (num_files == 0) {
         // not input files specified, use current directory
         const char* curr_dir = ".";
-        files = init_file_list(&curr_dir, 1, cfg->recursive);
+        files = flist_init(&curr_dir, 1, cfg->recursive);
         if (!files) {
             fprintf(stderr, "No image files found in the current directory\n");
             rc = EXIT_FAILURE;
@@ -201,26 +200,43 @@ int main(int argc, char* argv[])
         // reading from pipe
         files = NULL;
     } else {
-        files = init_file_list((const char**)&argv[index], (size_t)(num_files),
-                               cfg->recursive);
+        files = flist_init((const char**)&argv[index], (size_t)(num_files),
+                           cfg->recursive);
         if (!files) {
             fprintf(stderr, "Unable to compose file list from input args\n");
             rc = EXIT_FAILURE;
             goto done;
         }
     }
-    if (cfg->order == order_alpha) {
-        sort_file_list(files);
-    } else if (cfg->order == order_random) {
-        shuffle_file_list(files);
+    if (cfg->order == cfgord_alpha) {
+        flist_sort(files);
+    } else if (cfg->order == cfgord_random) {
+        flist_shuffle(files);
+    }
+
+    // setup window position via Sway IPC
+    if (cfg->sway_wm) {
+        bool sway_fullscreen = false;
+        const int ipc = sway_connect();
+        if (ipc != -1) {
+            if (!cfg->window.width) {
+                // get currently focused window state
+                sway_current(ipc, &cfg->window, &sway_fullscreen);
+            }
+            cfg->fullscreen |= sway_fullscreen;
+            if (!cfg->fullscreen && cfg->window.width) {
+                sway_add_rules(ipc, cfg->app_id, cfg->window.x, cfg->window.y);
+            }
+            sway_disconnect(ipc);
+        }
     }
 
     // run viewer, finally
     rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 done:
-    free_config(cfg);
-    free_file_list(files);
+    config_free(cfg);
+    flist_free(files);
 
     return rc;
 }

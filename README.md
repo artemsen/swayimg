@@ -24,8 +24,7 @@ image from the specified file.
 - BMP (built-in).
 
 ## Known issues
-- Animation is not supported, only the first frame is displayed;
-- Image width or height cannot exceed 32767 pixels (Cairo limit).
+- Animation and multiframe images are not supported, only the first frame will be displayed.
 
 ## Usage
 

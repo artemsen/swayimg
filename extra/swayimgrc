@@ -21,7 +21,7 @@ background = grid
 info = no
 
 # Font used to show image info
-font = monospace 10
+font = monospace 14
 
 # Color for image info text
 font-color = b4b4b4

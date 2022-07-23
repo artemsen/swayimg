@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// List of files to load images.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "filelist.h"
@@ -26,43 +27,43 @@ struct file_list {
 
 /**
  * Add file to the list.
- * @param[in] list file list instance
- * @param[in] file path to the file
+ * @param ctx file list context
+ * @param file path to the file
  */
-static void add_file(file_list_t* list, const char* file)
+static void add_file(struct file_list* ctx, const char* file)
 {
     char* path;
     const size_t path_len = strlen(file) + 1 /* last null */;
 
     // during the initialization, the index points to the next free entry
-    if (list->index >= list->alloc) {
+    if (ctx->index >= ctx->alloc) {
         // relocate array
-        const size_t num_entries = list->alloc + ALLOCATE_SIZE;
-        char** ptr = realloc(list->paths, num_entries * sizeof(char*));
+        const size_t num_entries = ctx->alloc + ALLOCATE_SIZE;
+        char** ptr = realloc(ctx->paths, num_entries * sizeof(char*));
         if (!ptr) {
             return;
         }
-        list->alloc = num_entries;
-        list->paths = ptr;
+        ctx->alloc = num_entries;
+        ctx->paths = ptr;
     }
 
     // add new entry
     path = malloc(path_len);
     if (path) {
         memcpy(path, file, path_len);
-        list->paths[list->index] = path;
-        ++list->index;
-        ++list->size;
+        ctx->paths[ctx->index] = path;
+        ++ctx->index;
+        ++ctx->size;
     }
 }
 
 /**
  * Add files from the directory to the list.
- * @param[in] list file list instance
- * @param[in] dir full path to the directory
- * @param[in] recursive flag to handle directory recursively
+ * @param ctx file list context
+ * @param dir full path to the directory
+ * @param recursive flag to handle directory recursively
  */
-static void add_dir(file_list_t* list, const char* dir, bool recursive)
+static void add_dir(struct file_list* ctx, const char* dir, bool recursive)
 {
     DIR* dir_handle;
     struct dirent* dir_entry;
@@ -97,10 +98,10 @@ static void add_dir(file_list_t* list, const char* dir, bool recursive)
             if (stat(path, &file_stat) == 0) {
                 if (S_ISDIR(file_stat.st_mode)) {
                     if (recursive) {
-                        add_dir(list, path, recursive);
+                        add_dir(ctx, path, recursive);
                     }
                 } else if (file_stat.st_size) {
-                    add_file(list, path);
+                    add_file(ctx, path);
                 }
             }
             free(path);
@@ -110,12 +111,12 @@ static void add_dir(file_list_t* list, const char* dir, bool recursive)
     closedir(dir_handle);
 }
 
-file_list_t* init_file_list(const char** files, size_t num, bool recursive)
+struct file_list* flist_init(const char** files, size_t num, bool recursive)
 {
-    file_list_t* list;
+    struct file_list* ctx;
 
-    list = calloc(1, sizeof(*list));
-    if (!list) {
+    ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) {
         return NULL;
     }
 
@@ -126,113 +127,114 @@ file_list_t* init_file_list(const char** files, size_t num, bool recursive)
                     strerror(errno));
         } else {
             if (S_ISDIR(file_stat.st_mode)) {
-                add_dir(list, files[i], recursive);
+                add_dir(ctx, files[i], recursive);
             } else {
-                add_file(list, files[i]);
+                add_file(ctx, files[i]);
             }
         }
     }
 
-    if (list->size != 0) {
+    if (ctx->size != 0) {
         // rewind to the first entry
-        list->index = 0;
+        ctx->index = 0;
     } else {
         // empty list
-        free_file_list(list);
-        list = NULL;
+        flist_free(ctx);
+        ctx = NULL;
     }
 
-    return list;
+    return ctx;
 }
 
-void free_file_list(file_list_t* list)
+void flist_free(struct file_list* ctx)
 {
-    if (list) {
-        for (size_t i = 0; i < list->size; ++i) {
-            free(list->paths[i]);
+    if (ctx) {
+        for (size_t i = 0; i < ctx->size; ++i) {
+            free(ctx->paths[i]);
         }
-        free(list->paths);
-        free(list);
+        free(ctx->paths);
+        free(ctx);
     }
 }
 
-void sort_file_list(file_list_t* list)
+void flist_sort(struct file_list* ctx)
 {
     // sort alphabetically
-    for (size_t i = 0; i < list->size; ++i) {
-        for (size_t j = i + 1; j < list->size; ++j) {
-            if (strcoll(list->paths[i], list->paths[j]) > 0) {
-                char* swap = list->paths[i];
-                list->paths[i] = list->paths[j];
-                list->paths[j] = swap;
+    for (size_t i = 0; i < ctx->size; ++i) {
+        for (size_t j = i + 1; j < ctx->size; ++j) {
+            if (strcoll(ctx->paths[i], ctx->paths[j]) > 0) {
+                char* swap = ctx->paths[i];
+                ctx->paths[i] = ctx->paths[j];
+                ctx->paths[j] = swap;
             }
         }
     }
 }
 
-void shuffle_file_list(file_list_t* list)
+void flist_shuffle(struct file_list* ctx)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     srand(ts.tv_nsec);
 
     // swap random entries
-    for (size_t i = 0; i < list->size; ++i) {
-        const size_t j = rand() % list->size;
+    for (size_t i = 0; i < ctx->size; ++i) {
+        const size_t j = rand() % ctx->size;
         if (i != j) {
-            char* swap = list->paths[i];
-            list->paths[i] = list->paths[j];
-            list->paths[j] = swap;
+            char* swap = ctx->paths[i];
+            ctx->paths[i] = ctx->paths[j];
+            ctx->paths[j] = swap;
         }
     }
 }
 
-const char* get_current(const file_list_t* list, size_t* index, size_t* total)
+const char* flist_current(const struct file_list* ctx, size_t* index,
+                          size_t* total)
 {
-    const char* current = list->size ? list->paths[list->index] : NULL;
+    const char* current = ctx->size ? ctx->paths[ctx->index] : NULL;
     if (total) {
-        *total = list->size;
+        *total = ctx->size;
     }
     if (index) {
-        *index = list->index + 1;
+        *index = ctx->index + 1;
     }
     return current && *current ? current : NULL;
 }
 
-bool exclude_current(file_list_t* list, bool forward)
+bool flist_exclude(struct file_list* ctx, bool forward)
 {
-    list->paths[list->index][0] = 0; // mark entry as excluded
-    return next_file(list, forward);
+    ctx->paths[ctx->index][0] = 0; // mark entry as excluded
+    return flist_next_file(ctx, forward);
 }
 
-bool next_file(file_list_t* list, bool forward)
+bool flist_next_file(struct file_list* ctx, bool forward)
 {
-    size_t index = list->index;
+    size_t index = ctx->index;
 
     do {
         if (forward) {
-            if (++index >= list->size) {
+            if (++index >= ctx->size) {
                 index = 0;
             }
         } else {
             if (index-- == 0) {
-                index = list->size - 1;
+                index = ctx->size - 1;
             }
         }
-        if (*list->paths[index]) {
-            list->index = index;
+        if (*ctx->paths[index]) {
+            ctx->index = index;
             return true;
         }
-    } while (index != list->index);
+    } while (index != ctx->index);
 
     // loop complete, no one valid entry found
     return false;
 }
 
-bool next_directory(file_list_t* list, bool forward)
+bool flist_next_directory(struct file_list* ctx, bool forward)
 {
-    const size_t cur_index = list->index;
-    const char* cur_path = list->paths[list->index];
+    const size_t cur_index = ctx->index;
+    const char* cur_path = ctx->paths[ctx->index];
     size_t cur_dir_len, next_dir_len;
 
     // directory part of the current file path
@@ -242,9 +244,9 @@ bool next_directory(file_list_t* list, bool forward)
     }
 
     // search for another directory in file list
-    while (next_file(list, forward) && list->index != cur_index) {
+    while (flist_next_file(ctx, forward) && ctx->index != cur_index) {
         // directory part of the next file path
-        const char* next_path = list->paths[list->index];
+        const char* next_path = ctx->paths[ctx->index];
         next_dir_len = strlen(next_path) - 1;
         while (next_dir_len && next_path[next_dir_len] != '/') {
             --next_dir_len;

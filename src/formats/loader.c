@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Image loader: interface and common framework for decoding images.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "loader.h"
@@ -10,20 +11,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * Image loader function.
- * @param[in] img image instance
- * @param[in] data raw image data
- * @param[in] size size of image data in bytes
- * @return true if image was loaded
- */
-typedef bool (*image_load)(image_t* img, const uint8_t* data, size_t size);
-
 // Construct function name of loader
-#define LOADER_FUNCTION(name) load_##name
+#define LOADER_FUNCTION(name) decode_##name
 // Declaration of loader function
-#define LOADER_DECLARE(name) \
-    bool LOADER_FUNCTION(name)(image_t * img, const uint8_t* data, size_t size)
+#define LOADER_DECLARE(name)                                     \
+    enum loader_status LOADER_FUNCTION(name)(struct image * ctx, \
+                                             const uint8_t* data, size_t size)
 
 // declaration of loaders
 LOADER_DECLARE(bmp);
@@ -49,8 +42,8 @@ LOADER_DECLARE(svg);
 LOADER_DECLARE(webp);
 #endif
 
-// list of available loaders (functions from formats/*)
-static const image_load loaders[] = {
+// list of available decoders
+static const image_decoder decoders[] = {
 #ifdef HAVE_LIBJPEG
     &LOADER_FUNCTION(jpeg),
 #endif
@@ -102,46 +95,56 @@ const char* supported_formats(void)
         ;
 }
 
-bool image_decode(image_t* img, const uint8_t* data, size_t size)
+enum loader_status image_decode(struct image* ctx, const uint8_t* data,
+                                size_t size)
 {
-    for (size_t i = 0; i < sizeof(loaders) / sizeof(loaders[0]); ++i) {
-        if (loaders[i](img, data, size)) {
-            return true;
+    enum loader_status status = ldr_unsupported;
+
+    for (size_t i = 0; i < sizeof(decoders) / sizeof(decoders[0]); ++i) {
+        switch (decoders[i](ctx, data, size)) {
+            case ldr_success:
+                return ldr_success;
+            case ldr_unsupported:
+                break;
+            case ldr_fmterror:
+                status = ldr_fmterror;
+                break;
         }
     }
-    return false;
+
+    return status;
 }
 
-bool image_allocate(image_t* img, size_t width, size_t height)
+bool image_allocate(struct image* ctx, size_t width, size_t height)
 {
-    img->width = width;
-    img->height = height;
-    img->data = malloc(img->width * img->height * sizeof(img->data[0]));
-    if (!img->data) {
-        image_error(img, "not enough memory");
+    ctx->width = width;
+    ctx->height = height;
+    ctx->data = malloc(ctx->width * ctx->height * sizeof(argb_t));
+    if (!ctx->data) {
+        image_error(ctx, "not enough memory");
         return false;
     }
     return true;
 }
 
-void image_deallocate(image_t* img)
+void image_deallocate(struct image* ctx)
 {
-    img->width = 0;
-    img->height = 0;
-    free(img->data);
-    img->data = NULL;
+    ctx->width = 0;
+    ctx->height = 0;
+    free(ctx->data);
+    ctx->data = NULL;
 }
 
-void image_error(const image_t* img, const char* fmt, ...)
+void image_error(const struct image* ctx, const char* fmt, ...)
 {
     va_list args;
     const char* name;
 
-    name = strrchr(img->path, '/');
+    name = strrchr(ctx->path, '/');
     if (name) {
         ++name; // skip slash
     } else {
-        name = img->path; // use full path
+        name = ctx->path; // use full path
     }
     fprintf(stderr, "%s: ", name);
 
@@ -150,33 +153,4 @@ void image_error(const image_t* img, const char* fmt, ...)
     va_end(args);
 
     fprintf(stderr, "\n");
-}
-
-/**
- * Apply alpha to color.
- * @param[in] alpha alpha channel value
- * @param[in] color color value
- * @return color with applied alpha
- */
-static inline uint8_t multiply_alpha(uint8_t alpha, uint8_t color)
-{
-    const uint16_t tmp = (alpha * color) + 0x80;
-    return ((tmp + (tmp >> 8)) >> 8);
-}
-
-void image_apply_alpha(image_t* img)
-{
-    for (size_t y = 0; y < img->height; ++y) {
-        uint32_t* line = &img->data[y * img->width];
-        for (size_t x = 0; x < img->width; ++x) {
-            uint32_t* pixel = line + x;
-            const uint8_t alpha = *pixel >> 24;
-            if (alpha != 0xff) {
-                *pixel = alpha << 24 |
-                    multiply_alpha(alpha, (*pixel >> 16) & 0xff) << 16 |
-                    multiply_alpha(alpha, (*pixel >> 8) & 0xff) << 8 |
-                    multiply_alpha(alpha, *pixel & 0xff);
-            }
-        }
-    }
 }

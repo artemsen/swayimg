@@ -1,92 +1,103 @@
 // SPDX-License-Identifier: MIT
+// Program configuration.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
 
 #include "types.h"
-#include <stdbool.h>
 
-/** File list order. */
-typedef enum { order_none, order_alpha, order_random } order_t;
+/** Order of file list. */
+enum config_order {
+    cfgord_none,  ///< Unsorted
+    cfgord_alpha, ///< Alphanumeric sort
+    cfgord_random ///< Random order
+};
+
+/** Initial scaling of images. */
+enum config_scale {
+    cfgsc_optimal, ///< Fit to window, but not more than 100%
+    cfgsc_fit,     ///< Fit to window size
+    cfgsc_real     ///< Real image size (100%)
+};
 
 /** App configuration. */
-typedef struct {
-    scale_t scale;         ///< Initial scale
-    rect_t window;         ///< Window geometry
-    uint32_t background;   ///< Background mode/color
-    bool fullscreen;       ///< Full screen mode
-    bool show_info;        ///< Show image info
-    const char* font_face; ///< Font name and size (pango format)
-    uint32_t font_color;   ///< Font color
-    order_t order;         ///< File list order
-    bool recursive;        ///< Read directories recursively
-    const char* app_id;    ///< Window class/app_id name
-    bool sway_wm;          ///< Enable/disable integration with Sway WM
-} config_t;
+struct config {
+    const char* app_id;      ///< Window class/app_id name
+    bool sway_wm;            ///< Enable/disable integration with Sway WM
+    struct rect window;      ///< Window geometry
+    bool fullscreen;         ///< Full screen mode
+    argb_t background;       ///< Background mode/color
+    enum config_scale scale; ///< Initial scale
+    bool show_info;          ///< Show image info
+    const char* font_face;   ///< Font name and size (pango format)
+    argb_t font_color;       ///< Font color
+    enum config_order order; ///< File list order
+    bool recursive;          ///< Read directories recursively
+};
 
 /**
  * Initialize configuration: set defaults and load from file.
- * @return created configuration instance
+ * @return created configuration context
  */
-config_t* init_config(void);
+struct config* config_init(void);
 
 /**
  * Free configuration instance.
- * @param[in] cfg configuration instance
+ * @param ctx configuration context
  */
-void free_config(config_t* cfg);
+void config_free(struct config* ctx);
 
 /**
  * Check if configuration is incompatible.
- * @param[in] cfg configuration instance to check
+ * @param ctx configuration context
  * @return configuration status, true if configuration is ok
  */
-bool check_config(const config_t* cfg);
+bool config_check(const struct config* ctx);
 
 /**
  * Set initial scale from one of predefined string (default, fit or real).
- * @param[out] cfg target configuration instance
- * @param[in] scale text scale description
+ * @param ctx configuration context
+ * @param scale text scale description
  * @return false if value format is invalid
  */
-bool set_scale_config(config_t* cfg, const char* scale);
+bool config_set_scale(struct config* ctx, const char* scale);
 
 /**
  * Set background type/color from RGB hex string.
- * @param[out] cfg target configuration instance
- * @param[in] background text background description
+ * @param ctx configuration context
+ * @param background text background description
  * @return false if value format is invalid
  */
-bool set_background_config(config_t* cfg, const char* background);
+bool config_set_background(struct config* ctx, const char* background);
 
 /**
  * Set window geometry (position and size) from string "x,y,width,height".
- * @param[out] cfg target configuration instance
- * @param[in] geometry text geometry description
+ * @param ctx configuration context
+ * @param geometry text geometry description
  * @return false if value format is invalid
  */
-bool set_geometry_config(config_t* cfg, const char* geometry);
+bool config_set_geometry(struct config* ctx, const char* geometry);
 
 /**
  * Set font name and size.
- * @param[out] cfg target configuration instance
- * @param[in] font font name and size in pango format
+ * @param ctx configuration context
+ * @param font font name and size in pango format
  * @return false if value format is invalid
  */
-bool set_font_config(config_t* cfg, const char* font);
+bool config_set_font(struct config* ctx, const char* font);
 
 /**
  * Set order of the file list.
- * @param[out] cfg target configuration instance
- * @param[in] order text order description
+ * @param ctx configuration context
+ * @param order text order description
  * @return false if value format is invalid
  */
-bool set_florder_config(config_t* cfg, const char* order);
+bool config_set_order(struct config* ctx, const char* order);
 
 /**
  * Set window class/app_id.
- * @param[out] cfg target configuration instance
- * @param[in] app_id window class/app_id to set
+ * @param ctx configuration context
+ * @param app_id window class/app_id to set
  * @return false if value format is invalid
  */
-bool set_appid_config(config_t* cfg, const char* app_id);
+bool config_set_appid(struct config* ctx, const char* app_id);

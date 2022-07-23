@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Program configuration.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "config.h"
@@ -17,17 +18,17 @@
 #define APP_ID_MAX 32
 
 /** Default font name/size */
-#define FONT_FACE "monospace 10"
+#define FONT_FACE "monospace 14"
 /** Default text color. */
 #define TEXT_COLOR 0xb4b4b4
 
 /** Config file location. */
-typedef struct {
+struct location {
     const char* prefix;  ///< Environment variable name
     const char* postfix; ///< Constant postfix
-} config_location_t;
+};
 
-static const config_location_t config_locations[] = {
+static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config" },
     { "HOME", "/.config/swayimg/config" },
     { "XDG_CONFIG_DIRS", "/swayimg/config" },
@@ -36,8 +37,8 @@ static const config_location_t config_locations[] = {
 
 /**
  * Expand path from environment variable.
- * @param[in] prefix_env path prefix (var name)
- * @param[in] postfix constant postfix
+ * @param prefix_env path prefix (var name)
+ * @param postfix constant postfix
  * @return allocated buffer with path, caller should free it after use
  */
 static char* expand_path(const char* prefix_env, const char* postfix)
@@ -72,8 +73,8 @@ static char* expand_path(const char* prefix_env, const char* postfix)
 
 /**
  * Convert text value to boolean.
- * @param[in] text text to convert
- * @param[out] value target variable
+ * @param text text to convert
+ * @param value target variable
  * @return false if value has invalid format
  */
 static bool set_boolean(const char* text, bool* value)
@@ -93,8 +94,8 @@ static bool set_boolean(const char* text, bool* value)
 
 /**
  * Convert text value to RGB color.
- * @param[in] text text to convert
- * @param[out] value target variable
+ * @param text text to convert
+ * @param value target variable
  * @return false if value has invalid format
  */
 static bool set_color(const char* text, uint32_t* value)
@@ -109,8 +110,8 @@ static bool set_color(const char* text, uint32_t* value)
 
 /**
  * Set (replace) string in config parameter.
- * @param[in] src source string
- * @param[out] dst destination buffer
+ * @param src source string
+ * @param dst destination buffer
  * @return false if not enough memory
  */
 static bool set_string(const char* src, char** dst)
@@ -131,34 +132,34 @@ static bool set_string(const char* src, char** dst)
 
 /**
  * Apply property to configuration.
- * @param[out] cfg target configuration instance
- * @param[in] key property key
- * @param[in] value property value
+ * @param ctx configuration context
+ * @param key property key
+ * @param value property value
  * @return operation complete status, false if key was not handled
  */
-static bool apply_conf(config_t* cfg, const char* key, const char* value)
+static bool apply_conf(struct config* ctx, const char* key, const char* value)
 {
 
     if (strcmp(key, "scale") == 0) {
-        return set_scale_config(cfg, value);
+        return config_set_scale(ctx, value);
     } else if (strcmp(key, "fullscreen") == 0) {
-        return set_boolean(value, &cfg->fullscreen);
+        return set_boolean(value, &ctx->fullscreen);
     } else if (strcmp(key, "background") == 0) {
-        return set_background_config(cfg, value);
+        return config_set_background(ctx, value);
     } else if (strcmp(key, "info") == 0) {
-        return set_boolean(value, &cfg->show_info);
+        return set_boolean(value, &ctx->show_info);
     } else if (strcmp(key, "font") == 0) {
-        return set_font_config(cfg, value);
+        return config_set_font(ctx, value);
     } else if (strcmp(key, "font-color") == 0) {
-        return set_color(value, &cfg->font_color);
+        return set_color(value, &ctx->font_color);
     } else if (strcmp(key, "order") == 0) {
-        return set_florder_config(cfg, value);
+        return config_set_order(ctx, value);
     } else if (strcmp(key, "recursive") == 0) {
-        return set_boolean(value, &cfg->recursive);
+        return set_boolean(value, &ctx->recursive);
     } else if (strcmp(key, "app_id") == 0) {
-        return set_appid_config(cfg, value);
+        return config_set_appid(ctx, value);
     } else if (strcmp(key, "sway") == 0) {
-        return set_boolean(value, &cfg->sway_wm);
+        return set_boolean(value, &ctx->sway_wm);
     }
 
     return false;
@@ -168,56 +169,56 @@ static bool apply_conf(config_t* cfg, const char* key, const char* value)
  * Allocate and initialize default configuration instance.
  * @return created configuration instance
  */
-static config_t* default_config(void)
+static struct config* default_config(void)
 {
-    config_t* cfg;
+    struct config* ctx;
     struct timespec ts;
 
-    cfg = calloc(1, sizeof(*cfg));
-    if (!cfg) {
+    ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) {
         return NULL;
     }
 
-    cfg->scale = scale_fit_or100;
-    cfg->background = BACKGROUND_GRID;
-    cfg->sway_wm = true;
-    set_font_config(cfg, FONT_FACE);
-    cfg->font_color = TEXT_COLOR;
-    cfg->order = order_none;
-    cfg->recursive = false;
+    ctx->scale = cfgsc_optimal;
+    ctx->background = BACKGROUND_GRID;
+    ctx->sway_wm = true;
+    config_set_font(ctx, FONT_FACE);
+    ctx->font_color = TEXT_COLOR;
+    ctx->order = cfgord_none;
+    ctx->recursive = false;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
         char app_id[64];
         snprintf(app_id, sizeof(app_id), APP_ID_BASE "_%lx",
                  (ts.tv_sec << 32) | ts.tv_nsec);
-        set_appid_config(cfg, app_id);
+        config_set_appid(ctx, app_id);
     } else {
-        set_appid_config(cfg, APP_ID_BASE);
+        config_set_appid(ctx, APP_ID_BASE);
     }
-    if (!cfg->app_id) {
-        free(cfg);
+    if (!ctx->app_id) {
+        free(ctx);
         return NULL;
     }
 
-    return cfg;
+    return ctx;
 }
 
-config_t* init_config(void)
+struct config* config_init(void)
 {
-    config_t* cfg = NULL;
+    struct config* ctx;
     FILE* fd = NULL;
     char* path = NULL;
 
-    cfg = default_config();
-    if (!cfg) {
+    ctx = default_config();
+    if (!ctx) {
         return NULL;
     }
 
     // find first available config file
     for (size_t i = 0;
          i < sizeof(config_locations) / sizeof(config_locations[0]); ++i) {
-        const config_location_t* cl = &config_locations[i];
+        const struct location* cl = &config_locations[i];
         path = expand_path(cl->prefix, cl->postfix);
         if (path) {
             fd = fopen(path, "r");
@@ -266,7 +267,7 @@ config_t* init_config(void)
                 *delim = 0;
             }
             // add configuration parameter from key/value pair
-            if (!apply_conf(cfg, line, value)) {
+            if (!apply_conf(ctx, line, value)) {
                 fprintf(stderr, "Invalid config file %s\n", path);
                 fprintf(stderr, "Line %lu: [%s = %s]\n", line_num, line, value);
             }
@@ -277,29 +278,29 @@ config_t* init_config(void)
 
     free(path);
 
-    return cfg;
+    return ctx;
 }
 
-void free_config(config_t* cfg)
+void config_free(struct config* ctx)
 {
-    if (cfg) {
-        free((void*)cfg->font_face);
-        free((void*)cfg->app_id);
-        free(cfg);
+    if (ctx) {
+        free((void*)ctx->font_face);
+        free((void*)ctx->app_id);
+        free(ctx);
     }
 }
 
-bool check_config(const config_t* cfg)
+bool config_check(const struct config* ctx)
 {
     const char* err = NULL;
 
-    if (cfg->window.width && !cfg->sway_wm) {
+    if (ctx->window.width && !ctx->sway_wm) {
         err = "window geometry is set, but sway rules are disabled";
     }
-    if (cfg->fullscreen && cfg->window.width) {
+    if (ctx->fullscreen && ctx->window.width) {
         err = "can not set geometry in full screen mode";
     }
-    if (cfg->fullscreen && cfg->sway_wm) {
+    if (ctx->fullscreen && ctx->sway_wm) {
         err = "sway rules can not be used in full screen mode";
     }
 
@@ -311,14 +312,14 @@ bool check_config(const config_t* cfg)
     return true;
 }
 
-bool set_scale_config(config_t* cfg, const char* scale)
+bool config_set_scale(struct config* ctx, const char* scale)
 {
     if (strcmp(scale, "default") == 0) {
-        cfg->scale = scale_fit_or100;
+        ctx->scale = cfgsc_optimal;
     } else if (strcmp(scale, "fit") == 0) {
-        cfg->scale = scale_fit_window;
+        ctx->scale = cfgsc_fit;
     } else if (strcmp(scale, "real") == 0) {
-        cfg->scale = scale_100;
+        ctx->scale = cfgsc_real;
     } else {
         fprintf(stderr, "Invalid scale: %s\n", scale);
         fprintf(stderr, "Expected 'default', 'fit', or 'real'.\n");
@@ -327,11 +328,11 @@ bool set_scale_config(config_t* cfg, const char* scale)
     return true;
 }
 
-bool set_background_config(config_t* cfg, const char* background)
+bool config_set_background(struct config* ctx, const char* background)
 {
     if (strcmp(background, "grid") == 0) {
-        cfg->background = BACKGROUND_GRID;
-    } else if (!set_color(background, &cfg->background)) {
+        ctx->background = BACKGROUND_GRID;
+    } else if (!set_color(background, &ctx->background)) {
         fprintf(stderr, "Invalid background: %s\n", background);
         fprintf(stderr, "Expected 'grid' or RGB hex value.\n");
         return false;
@@ -339,7 +340,7 @@ bool set_background_config(config_t* cfg, const char* background)
     return true;
 }
 
-bool set_geometry_config(config_t* cfg, const char* geometry)
+bool config_set_geometry(struct config* ctx, const char* geometry)
 {
     int nums[4]; // x,y,width,height
     const char* ptr = geometry;
@@ -359,10 +360,10 @@ bool set_geometry_config(config_t* cfg, const char* geometry)
 
     if (idx == sizeof(nums) / sizeof(nums[0]) && !*ptr &&
         nums[2 /*width*/] > 0 && nums[3 /*height*/] > 0) {
-        cfg->window.x = (int32_t)nums[0];
-        cfg->window.y = (int32_t)nums[1];
-        cfg->window.width = (uint32_t)nums[2];
-        cfg->window.height = (uint32_t)nums[3];
+        ctx->window.x = (int32_t)nums[0];
+        ctx->window.y = (int32_t)nums[1];
+        ctx->window.width = (uint32_t)nums[2];
+        ctx->window.height = (uint32_t)nums[3];
         return true;
     }
 
@@ -371,24 +372,24 @@ bool set_geometry_config(config_t* cfg, const char* geometry)
     return false;
 }
 
-bool set_font_config(config_t* cfg, const char* font)
+bool config_set_font(struct config* ctx, const char* font)
 {
     const size_t len = font ? strlen(font) : 0;
     if (len == 0) {
         fprintf(stderr, "Invalid font description: %s\n", font);
         return false;
     }
-    return set_string(font, (char**)&cfg->font_face);
+    return set_string(font, (char**)&ctx->font_face);
 }
 
-bool set_florder_config(config_t* cfg, const char* order)
+bool config_set_order(struct config* ctx, const char* order)
 {
     if (strcmp(order, "none") == 0) {
-        cfg->order = order_none;
+        ctx->order = cfgord_none;
     } else if (strcmp(order, "alpha") == 0) {
-        cfg->order = order_alpha;
+        ctx->order = cfgord_alpha;
     } else if (strcmp(order, "random") == 0) {
-        cfg->order = order_random;
+        ctx->order = cfgord_random;
     } else {
         fprintf(stderr, "Invalid file list order: %s\n", order);
         fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
@@ -397,7 +398,7 @@ bool set_florder_config(config_t* cfg, const char* order)
     return true;
 }
 
-bool set_appid_config(config_t* cfg, const char* app_id)
+bool config_set_appid(struct config* ctx, const char* app_id)
 {
     const size_t len = app_id ? strlen(app_id) : 0;
     if (len == 0 || len > APP_ID_MAX) {
@@ -406,5 +407,5 @@ bool set_appid_config(config_t* cfg, const char* app_id)
                 APP_ID_MAX);
         return false;
     }
-    return set_string(app_id, (char**)&cfg->app_id);
+    return set_string(app_id, (char**)&ctx->app_id);
 }

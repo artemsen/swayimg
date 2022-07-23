@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Integration with Sway WM.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "sway.h"
@@ -27,9 +28,9 @@ struct __attribute__((__packed__)) ipc_header {
 
 /**
  * Read exactly specified number of bytes from socket.
- * @param[in] fd socket descriptor
- * @param[out] buf buffer for destination data
- * @param[in] len number of bytes to read
+ * @param fd socket descriptor
+ * @param buf buffer for destination data
+ * @param len number of bytes to read
  * @return true if operation completed successfully
  */
 static bool sock_read(int fd, void* buf, size_t len)
@@ -53,9 +54,9 @@ static bool sock_read(int fd, void* buf, size_t len)
 
 /**
  * Write data to the socket.
- * @param[in] fd socket descriptor
- * @param[in] buf buffer of data of send
- * @param[in] len number of bytes to write
+ * @param fd socket descriptor
+ * @param buf buffer of data of send
+ * @param len number of bytes to write
  * @return true if operation completed successfully
  */
 static bool sock_write(int fd, const void* buf, size_t len)
@@ -75,9 +76,9 @@ static bool sock_write(int fd, const void* buf, size_t len)
 
 /**
  * IPC message exchange.
- * @param[in] ipc IPC context (socket file descriptor)
- * @param[in] type message type
- * @param[in] payload payload data
+ * @param ipc IPC context (socket file descriptor)
+ * @param type message type
+ * @param payload payload data
  * @return IPC response as json object, NULL on errors
  */
 static struct json_object* ipc_message(int ipc, enum ipc_msg_type type,
@@ -121,9 +122,9 @@ static struct json_object* ipc_message(int ipc, enum ipc_msg_type type,
 
 /**
  * Send command for specified application.
- * @param[in] ipc IPC context (socket file descriptor)
- * @param[in] app application Id
- * @param[in] command command to send
+ * @param ipc IPC context (socket file descriptor)
+ * @param app application Id
+ * @param command command to send
  * @return true if operation completed successfully
  */
 static bool ipc_command(int ipc, const char* app, const char* command)
@@ -151,9 +152,9 @@ static bool ipc_command(int ipc, const char* app, const char* command)
 
 /**
  * Read numeric value from JSON node.
- * @param[in] node JSON parent node
- * @param[in] name name of the rect node
- * @param[out] value value from JSON field
+ * @param node JSON parent node
+ * @param name name of the rect node
+ * @param value value from JSON field
  * @return true if operation completed successfully
  */
 static bool read_int(json_object* node, const char* name, int* value)
@@ -173,12 +174,12 @@ static bool read_int(json_object* node, const char* name, int* value)
 
 /**
  * Read rectange geometry from JSON node.
- * @param[in] node JSON parent node
- * @param[in] name name of the rect node
- * @param[out] rect rectangle geometry
+ * @param node JSON parent node
+ * @param name name of the rect node
+ * @param rect rectangle geometry
  * @return true if operation completed successfully
  */
-static bool read_rect(json_object* node, const char* name, rect_t* rect)
+static bool read_rect(json_object* node, const char* name, struct rect* rect)
 {
     int x, y, width, height;
     struct json_object* rn;
@@ -189,10 +190,10 @@ static bool read_rect(json_object* node, const char* name, rect_t* rect)
     if (read_int(rn, "x", &x) && read_int(rn, "y", &y) &&
         read_int(rn, "width", &width) && width > 0 &&
         read_int(rn, "height", &height) && height > 0) {
-        rect->x = (int32_t)x;
-        rect->y = (int32_t)y;
-        rect->width = (uint32_t)width;
-        rect->height = (uint32_t)height;
+        rect->x = (ssize_t)x;
+        rect->y = (ssize_t)y;
+        rect->width = (size_t)width;
+        rect->height = (size_t)height;
         return true;
     }
     return false;
@@ -200,7 +201,7 @@ static bool read_rect(json_object* node, const char* name, rect_t* rect)
 
 /**
  * Get currently focused workspace.
- * @param[in] node parent JSON node
+ * @param node parent JSON node
  * @return pointer to focused workspace node or NULL if not found
  */
 static struct json_object* current_workspace(json_object* node)
@@ -219,7 +220,7 @@ static struct json_object* current_workspace(json_object* node)
 
 /**
  * Get currently focused window node.
- * @param[in] node parent JSON node
+ * @param node parent JSON node
  * @return pointer to focused window node or NULL if not found
  */
 static struct json_object* current_window(json_object* node)
@@ -289,7 +290,7 @@ void sway_disconnect(int ipc)
     close(ipc);
 }
 
-bool sway_current(int ipc, rect_t* wnd, bool* fullscreen)
+bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)
 {
     bool rc = false;
 
@@ -318,8 +319,8 @@ bool sway_current(int ipc, rect_t* wnd, bool* fullscreen)
     }
     json_object* cur_wks = current_workspace(workspaces);
     if (cur_wks) {
-        rect_t workspace;
-        rect_t global;
+        struct rect workspace;
+        struct rect global;
         rc = read_rect(cur_wks, "rect", &workspace) &&
             read_rect(cur_wnd, "rect", &global);
         if (rc) {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// List of files to load images.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -8,64 +9,64 @@
 
 /** File list context. */
 struct file_list;
-typedef struct file_list file_list_t;
 
 /**
  * Initialize the file list.
- * @param[in] files list of input source files
- * @param[in] num number of files in the source list
- * @param[in] recursive flag to handle directory recursively
+ * @param files list of input source files
+ * @param num number of files in the source list
+ * @param recursive flag to handle directory recursively
  * @return created file list context
  */
-file_list_t* init_file_list(const char** files, size_t num, bool recursive);
+struct file_list* flist_init(const char** files, size_t num, bool recursive);
 
 /**
  * Free the file list.
- * @param[in] list file list instance
+ * @param ctx file list context
  */
-void free_file_list(file_list_t* list);
+void flist_free(struct file_list* ctx);
 
 /**
  * Sort the file list alphabetically.
- * @param[in] list file list instance
+ * @param ctx file list context
  */
-void sort_file_list(file_list_t* list);
+void flist_sort(struct file_list* ctx);
 
 /**
  * Shuffle the file list.
- * @param[in] list file list instance
+ * @param ctx file list context
  */
-void shuffle_file_list(file_list_t* list);
+void flist_shuffle(struct file_list* ctx);
 
 /**
  * Get description of the current file in the file list.
- * @param[in] list file list instance
- * @param[out] index index of the current file (started from 1)
- * @param[out] total total number of files in the list
+ * @param ctx file list context
+ * @param index index of the current file (started from 1)
+ * @param total total number of files in the list
  * @return path to the current file or NULL if list is empty
  */
-const char* get_current(const file_list_t* list, size_t* index, size_t* total);
+const char* flist_current(const struct file_list* ctx, size_t* index,
+                          size_t* total);
 
 /**
  * Exclude current file from the list and move to the next one.
- * @param[in] list file list instance
- * @param[in] forward step direction for setting next file
+ * @param ctx file list context
+ * @param forward step direction for setting next file
  * @return false if no more files in the list
  */
-bool exclude_current(file_list_t* list, bool forward);
+bool flist_exclude(struct file_list* ctx, bool forward);
 
 /**
  * Step to the next file.
- * @param[in] list file list instance
- * @param[in] forward step direction
+ * @param ctx file list context
+ * @param forward step direction
  * @return false if no more files in the list
  */
-bool next_file(file_list_t* list, bool forward);
+bool flist_next_file(struct file_list* ctx, bool forward);
 
 /**
  * Step to the next directory.
- * @param[in] list file list instance
- * @param[in] forward step direction
+ * @param ctx file list context
+ * @param forward step direction
  * @return false if no more files in the list
  */
-bool next_directory(file_list_t* list, bool forward);
+bool flist_next_directory(struct file_list* ctx, bool forward);
