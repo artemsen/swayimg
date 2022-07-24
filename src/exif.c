@@ -62,7 +62,7 @@ static void add_meta(struct image* img, ExifData* exif, ExifTag tag,
     if (entry) {
         exif_entry_get_value(entry, value, sizeof(value));
         if (*value) {
-            image_add_meta(img, name, value);
+            image_add_meta(img, name, "%s", value);
         }
     }
 }
@@ -157,7 +157,7 @@ static void read_location(struct image* img, ExifData* exif)
         if (read_coordinate(exif, EXIF_TAG_GPS_LONGITUDE,
                             EXIF_TAG_GPS_LONGITUDE_REF, location + pos,
                             sizeof(location) - pos)) {
-            image_add_meta(img, "Location", location);
+            image_add_meta(img, "Location", "%s", location);
         }
     }
 }

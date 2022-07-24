@@ -60,7 +60,7 @@ static struct image* image_create(const char* path, const uint8_t* data,
     }
     ctx->path = path;
 
-    image_add_meta(ctx, "File", path);
+    image_add_meta(ctx, "File", "%s", path);
 
     status = image_decode(ctx, data, size);
     if (status != ldr_success) {
