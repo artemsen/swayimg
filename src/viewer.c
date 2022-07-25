@@ -224,7 +224,7 @@ bool run_viewer(struct config* cfg, struct file_list* files)
         goto done;
     }
 
-    // GUI prepare
+    // Start GUI
     if (!create_window(&handlers, cfg->window.width, cfg->window.height,
                        cfg->app_id)) {
         goto done;
@@ -232,14 +232,12 @@ bool run_viewer(struct config* cfg, struct file_list* files)
     if (cfg->fullscreen) {
         enable_fullscreen(true);
     }
-
-    // GUI loop
     show_window();
+    destroy_window();
 
     rc = true;
 
 done:
-    destroy_window();
     image_free(viewer.image);
     canvas_free(viewer.canvas);
 
