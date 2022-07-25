@@ -117,7 +117,7 @@ enum loader_status image_decode(struct image* ctx, const uint8_t* data,
 
 argb_t* image_allocate(struct image* ctx, size_t width, size_t height)
 {
-    argb_t* data = malloc(width * height * sizeof(argb_t));
+    argb_t* data = calloc(1, width * height * sizeof(argb_t));
 
     if (data) {
         ctx->width = width;
