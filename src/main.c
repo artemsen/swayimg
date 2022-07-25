@@ -156,6 +156,63 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
 }
 
 /**
+ * Compose file list from command line arguments.
+ * @param cfg configuration instance
+ * @param args array with command line arguments
+ * @param num_files number of files in array
+ * @return file list, NULL if error
+ */
+static struct file_list* create_file_list(struct config* cfg,
+                                          const char* args[], size_t num_files)
+{
+    struct file_list* flist = NULL;
+
+    if (num_files == 0) {
+        // not input files specified, use current directory
+        const char* curr_dir = ".";
+        flist = flist_init(&curr_dir, 1, cfg->recursive);
+        if (!flist) {
+            fprintf(stderr, "No image files found in the current directory\n");
+            return NULL;
+        }
+    } else {
+        flist = flist_init(args, num_files, cfg->recursive);
+        if (!flist) {
+            fprintf(stderr, "Unable to compose file list from input args\n");
+            return NULL;
+        }
+    }
+    if (cfg->order == cfgord_alpha) {
+        flist_sort(flist);
+    } else if (cfg->order == cfgord_random) {
+        flist_shuffle(flist);
+    }
+
+    return flist;
+}
+
+/**
+ * Setup window position via Sway IPC.
+ * @param cfg configuration instance
+ */
+static void sway_setup(struct config* cfg)
+{
+    bool sway_fullscreen = false;
+    const int ipc = sway_connect();
+    if (ipc != -1) {
+        if (!cfg->window.width) {
+            // get currently focused window state
+            sway_current(ipc, &cfg->window, &sway_fullscreen);
+        }
+        cfg->fullscreen |= sway_fullscreen;
+        if (!cfg->fullscreen && cfg->window.width) {
+            sway_add_rules(ipc, cfg->app_id, cfg->window.x, cfg->window.y);
+        }
+        sway_disconnect(ipc);
+    }
+}
+
+/**
  * Application entry point.
  */
 int main(int argc, char* argv[])
@@ -187,48 +244,19 @@ int main(int argc, char* argv[])
 
     // compose file list
     num_files = argc - index;
-    if (num_files == 0) {
-        // not input files specified, use current directory
-        const char* curr_dir = ".";
-        files = flist_init(&curr_dir, 1, cfg->recursive);
-        if (!files) {
-            fprintf(stderr, "No image files found in the current directory\n");
-            rc = EXIT_FAILURE;
-            goto done;
-        }
-    } else if (num_files == 1 && strcmp(argv[index], "-") == 0) {
-        // reading from pipe
-        files = NULL;
+    if (num_files == 1 && strcmp(argv[index], "-") == 0) {
+        // reading from pipe, skip file list composing
     } else {
-        files = flist_init((const char**)&argv[index], (size_t)(num_files),
-                           cfg->recursive);
+        files = create_file_list(cfg, (const char**)&argv[index], num_files);
         if (!files) {
-            fprintf(stderr, "Unable to compose file list from input args\n");
             rc = EXIT_FAILURE;
             goto done;
         }
-    }
-    if (cfg->order == cfgord_alpha) {
-        flist_sort(files);
-    } else if (cfg->order == cfgord_random) {
-        flist_shuffle(files);
     }
 
-    // setup window position via Sway IPC
+    // setup integration with Sway WM
     if (cfg->sway_wm) {
-        bool sway_fullscreen = false;
-        const int ipc = sway_connect();
-        if (ipc != -1) {
-            if (!cfg->window.width) {
-                // get currently focused window state
-                sway_current(ipc, &cfg->window, &sway_fullscreen);
-            }
-            cfg->fullscreen |= sway_fullscreen;
-            if (!cfg->fullscreen && cfg->window.width) {
-                sway_add_rules(ipc, cfg->app_id, cfg->window.x, cfg->window.y);
-            }
-            sway_disconnect(ipc);
-        }
+        sway_setup(cfg);
     }
 
     // run viewer, finally
