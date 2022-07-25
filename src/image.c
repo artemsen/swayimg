@@ -160,7 +160,7 @@ done:
 void image_free(struct image* ctx)
 {
     if (ctx) {
-        free(ctx->data);
+        free((void*)ctx->data);
         free((void*)ctx->info);
         free(ctx);
     }
@@ -178,12 +178,15 @@ const char* image_file_name(const struct image* ctx)
 
 void image_flip_vertical(struct image* ctx)
 {
+    argb_t* data = (argb_t*)ctx->data;
     const size_t stride = ctx->width * sizeof(argb_t);
-    void* buffer = malloc(stride);
+    void* buffer;
+
+    buffer = malloc(stride);
     if (buffer) {
         for (size_t y = 0; y < ctx->height / 2; ++y) {
-            void* src = &ctx->data[y * ctx->width];
-            void* dst = &ctx->data[(ctx->height - y - 1) * ctx->width];
+            void* src = &data[y * ctx->width];
+            void* dst = &data[(ctx->height - y - 1) * ctx->width];
             memcpy(buffer, dst, stride);
             memcpy(dst, src, stride);
             memcpy(src, buffer, stride);
@@ -194,12 +197,14 @@ void image_flip_vertical(struct image* ctx)
 
 void image_flip_horizontal(struct image* ctx)
 {
+    argb_t* data = (argb_t*)ctx->data;
+
     for (size_t y = 0; y < ctx->height; ++y) {
-        uint32_t* line = &ctx->data[y * ctx->width];
+        argb_t* line = &data[y * ctx->width];
         for (size_t x = 0; x < ctx->width / 2; ++x) {
-            uint32_t* left = &line[x];
-            uint32_t* right = &line[ctx->width - x];
-            const uint32_t swap = *left;
+            argb_t* left = &line[x];
+            argb_t* right = &line[ctx->width - x];
+            const argb_t swap = *left;
             *left = *right;
             *right = swap;
         }
@@ -208,19 +213,20 @@ void image_flip_horizontal(struct image* ctx)
 
 void image_rotate(struct image* ctx, size_t angle)
 {
+    argb_t* data = (argb_t*)ctx->data;
     const size_t pixels = ctx->width * ctx->height;
 
     if (angle == 180) {
         for (size_t i = 0; i < pixels / 2; ++i) {
-            uint32_t* color1 = &ctx->data[i];
-            uint32_t* color2 = &ctx->data[pixels - i - 1];
+            argb_t* color1 = &data[i];
+            argb_t* color2 = &data[pixels - i - 1];
             const uint32_t swap = *color1;
             *color1 = *color2;
             *color2 = swap;
         }
     } else if (angle == 90 || angle == 270) {
         const size_t buf_len = pixels * sizeof(argb_t);
-        uint32_t* new_buffer = malloc(buf_len);
+        argb_t* new_buffer = malloc(buf_len);
         if (new_buffer) {
             const size_t new_width = ctx->height;
             const size_t new_height = ctx->width;
@@ -235,7 +241,7 @@ void image_rotate(struct image* ctx, size_t angle)
                     new_buffer[new_pos] = ctx->data[y * ctx->width + x];
                 }
             }
-            free(ctx->data);
+            free((void*)ctx->data);
             ctx->width = new_width;
             ctx->height = new_height;
             ctx->data = new_buffer;

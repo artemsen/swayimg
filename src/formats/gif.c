@@ -77,16 +77,16 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
     const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
     const GifColorType* colors =
         gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
-    uint32_t* base = &ctx->data[frame->Top * ctx->width];
+    argb_t* base = (argb_t*)&ctx->data[frame->Top * ctx->width];
     for (int y = 0; y < frame->Height; ++y) {
-        uint32_t* pixel = base + y * gif->SWidth + frame->Left;
+        argb_t* pixel = base + y * gif->SWidth + frame->Left;
         const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
         for (int x = 0; x < frame->Width; ++x) {
             const uint8_t color = raster[x];
             if (color != gif->SBackGroundColor) {
                 const GifColorType* rgb = &colors[color];
                 *pixel =
-                    (0xff << 24) | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
+                    ARGB_ALPHA_MASK | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
             }
             ++pixel;
         }

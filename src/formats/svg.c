@@ -91,7 +91,7 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
 
     image_add_meta(ctx, "Format", "SVG");
     ctx->alpha = true;
-    memcpy(ctx->data, cairo_image_surface_get_data(surface),
+    memcpy((void*)ctx->data, cairo_image_surface_get_data(surface),
            ctx->width * ctx->height * sizeof(argb_t));
 
     cairo_destroy(cr);

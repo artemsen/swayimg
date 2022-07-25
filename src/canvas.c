@@ -159,7 +159,7 @@ void canvas_clear(const struct canvas* ctx, argb_t* wnd)
         memset(wnd, 0, ctx->window.width * ctx->window.height * sizeof(argb_t));
     } else {
         for (size_t y = 0; y < ctx->window.height; ++y) {
-            uint32_t* line = &wnd[y * ctx->window.width];
+            argb_t* line = &wnd[y * ctx->window.width];
             for (size_t x = 0; x < ctx->window.width; ++x) {
                 line[x] = ARGB_ALPHA_MASK | ctx->config->frame;
             }
@@ -178,11 +178,11 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
 
     for (size_t y = 0; y < vp.height; ++y) {
         // start offset of window buffer
-        uint32_t* wnd_line = &wnd[(vp.y + y) * ctx->window.width + vp.x];
+        argb_t* wnd_line = &wnd[(vp.y + y) * ctx->window.width + vp.x];
         // start offset of image buffer
         const size_t img_y = (float)(y + vp.y - ctx->image.y) / ctx->scale;
         const size_t img_x = (float)(vp.x - ctx->image.x) / ctx->scale;
-        const uint32_t* img_line = &img[img_y * ctx->image.width + img_x];
+        const argb_t* img_line = &img[img_y * ctx->image.width + img_x];
 
         // fill window buffer
         for (size_t x = 0; x < vp.width; ++x) {

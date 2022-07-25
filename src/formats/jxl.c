@@ -11,10 +11,11 @@
 enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                               size_t size)
 {
-    size_t buffer_sz;
     JxlDecoder* jxl;
     JxlBasicInfo info;
     JxlDecoderStatus status;
+    size_t buffer_sz;
+    argb_t* buffer = NULL;
 
     const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
                                         .data_type = JXL_TYPE_UINT8,
@@ -76,7 +77,8 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                                 rc);
                     goto fail;
                 }
-                if (!image_allocate(ctx, info.xsize, info.ysize)) {
+                buffer = image_allocate(ctx, info.xsize, info.ysize);
+                if (!buffer) {
                     goto fail;
                 }
                 // check buffer format
@@ -85,7 +87,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                     goto fail;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, ctx->data,
+                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, buffer,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     image_error(ctx, "unable to set jpeg xl buffer: error %d",
@@ -100,8 +102,8 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
 
     // convert RGBA -> ARGB
     for (size_t i = 0; i < ctx->width * ctx->height; ++i) {
-        uint32_t val = ctx->data[i];
-        ctx->data[i] =
+        const argb_t val = buffer[i];
+        buffer[i] =
             (val & 0xff00ff00) | (val & 0xff) << 16 | ((val >> 16) & 0xff);
     }
 

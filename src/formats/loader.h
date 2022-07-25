@@ -38,9 +38,9 @@ enum loader_status image_decode(struct image* ctx, const uint8_t* data,
  * @param ctx image context
  * @param width image width in px
  * @param height image height in px
- * @return false if error
+ * @return pointer to the data buffer, NULL if error
  */
-bool image_allocate(struct image* ctx, size_t width, size_t height);
+argb_t* image_allocate(struct image* ctx, size_t width, size_t height);
 
 /**
  * Free buffer of image data.

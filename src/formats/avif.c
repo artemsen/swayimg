@@ -69,7 +69,7 @@ enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
     // put image on to cairo surface
     if (rgb.depth == 8) {
         // simple 8bit image
-        memcpy(ctx->data, rgb.pixels,
+        memcpy((void*)ctx->data, rgb.pixels,
                ctx->width * ctx->height * sizeof(argb_t));
     } else {
         // convert to 8bit image

@@ -8,12 +8,12 @@
 
 /** Image context. */
 struct image {
-    size_t width;     ///< Image width (px)
-    size_t height;    ///< Image height (px)
-    argb_t* data;     ///< Pointer to pixel data
-    bool alpha;       ///< Has alpha channel?
-    const char* path; ///< Path to the file
-    const char* info; ///< Image meta info
+    size_t width;       ///< Image width (px)
+    size_t height;      ///< Image height (px)
+    const argb_t* data; ///< Pointer to pixel data
+    bool alpha;         ///< Has alpha channel?
+    const char* path;   ///< Path to the file
+    const char* info;   ///< Image meta info
 };
 
 /**

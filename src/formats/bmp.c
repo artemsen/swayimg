@@ -121,10 +121,11 @@ static inline ssize_t mask_shift(uint32_t mask)
  * @param buffer_sz size of buffer
  * @return false if input buffer has errors
  */
-static bool decode_masked(const struct image* ctx, const struct bmp_info* bmp,
+static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
                           const struct bmp_mask* mask, const uint8_t* buffer,
                           size_t buffer_sz)
 {
+    argb_t* data = (argb_t*)ctx->data;
     const bool default_mask =
         !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0);
     const uint32_t mask_r = default_mask ? MASK555_RED : mask->red;
@@ -143,7 +144,7 @@ static bool decode_masked(const struct image* ctx, const struct bmp_info* bmp,
     }
 
     for (size_t y = 0; y < ctx->height; ++y) {
-        uint32_t* dst = &ctx->data[y * bmp->width];
+        argb_t* dst = &data[y * bmp->width];
         const uint8_t* src_y = buffer + y * stride;
         for (size_t x = 0; x < ctx->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
@@ -162,7 +163,7 @@ static bool decode_masked(const struct image* ctx, const struct bmp_info* bmp,
             r = 0xff & (shift_r > 0 ? r >> shift_r : r << -shift_r);
             g = 0xff & (shift_g > 0 ? g >> shift_g : g << -shift_g);
             b = 0xff & (shift_b > 0 ? b >> shift_b : b << -shift_b);
-            dst[x] = 0xff << 24 | r << 16 | g << 8 | b;
+            dst[x] = ARGB_ALPHA_MASK | r << 16 | g << 8 | b;
         }
     }
 
@@ -178,10 +179,11 @@ static bool decode_masked(const struct image* ctx, const struct bmp_info* bmp,
  * @param buffer_sz size of buffer
  * @return false if input buffer has errors
  */
-static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
+static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
+    argb_t* data = (argb_t*)ctx->data;
     size_t x = 0, y = 0;
     size_t buffer_pos = 0;
 
@@ -195,9 +197,9 @@ static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
                 ++y;
             } else if (rle2 == RLE_ESC_EOF) {
                 // remove alpha channel
-                uint32_t* ptr = ctx->data;
+                argb_t* ptr = data;
                 while (ptr < ctx->data + ctx->width * ctx->height) {
-                    *ptr |= 0xff << 24;
+                    *ptr |= ARGB_ALPHA_MASK;
                     ++ptr;
                 }
                 return true;
@@ -237,7 +239,7 @@ static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
                         image_error(ctx, "color out of bmp palette");
                         return false;
                     }
-                    ctx->data[y * bmp->width + x] = palette->table[index];
+                    data[y * bmp->width + x] = palette->table[index];
                     ++x;
                 }
                 if ((bmp->compression == BI_RLE8 && rle2 & 1) ||
@@ -259,7 +261,7 @@ static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    ctx->data[y * ctx->width + x] = palette->table[rle2];
+                    data[y * ctx->width + x] = palette->table[rle2];
                     ++x;
                 }
             } else {
@@ -274,8 +276,7 @@ static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    ctx->data[y * ctx->width + x] =
-                        palette->table[index[i & 1]];
+                    data[y * ctx->width + x] = palette->table[index[i & 1]];
                     ++x;
                 }
             }
@@ -295,10 +296,11 @@ static bool decode_rle(const struct image* ctx, const struct bmp_info* bmp,
  * @param decoded output data buffer
  * @return false if input buffer has errors
  */
-static bool decode_rgb(const struct image* ctx, const struct bmp_info* bmp,
+static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
+    argb_t* data = (argb_t*)ctx->data;
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
@@ -308,14 +310,14 @@ static bool decode_rgb(const struct image* ctx, const struct bmp_info* bmp,
     }
 
     for (size_t y = 0; y < ctx->height; ++y) {
-        uint32_t* dst = &ctx->data[y * ctx->width];
+        argb_t* dst = &data[y * ctx->width];
         const uint8_t* src_y = buffer + y * stride;
         for (size_t x = 0; x < ctx->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             if (bmp->bpp == 32) {
                 dst[x] = *(uint32_t*)src;
             } else if (bmp->bpp == 24) {
-                dst[x] = 0xff << 24 | *(uint32_t*)src;
+                dst[x] = ARGB_ALPHA_MASK | *(uint32_t*)src;
             } else if (bmp->bpp == 8 || bmp->bpp == 4 || bmp->bpp == 1) {
                 // indexed colors
                 const size_t bits_offset = x * bmp->bpp;
@@ -330,7 +332,7 @@ static bool decode_rgb(const struct image* ctx, const struct bmp_info* bmp,
                     image_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                dst[x] = (0xff << 24) | palette->table[index];
+                dst[x] = ARGB_ALPHA_MASK | palette->table[index];
             } else {
                 image_error(ctx, "color for bmp %dbit images not supported",
                             bmp->bpp);

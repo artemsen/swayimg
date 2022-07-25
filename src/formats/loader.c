@@ -115,23 +115,26 @@ enum loader_status image_decode(struct image* ctx, const uint8_t* data,
     return status;
 }
 
-bool image_allocate(struct image* ctx, size_t width, size_t height)
+argb_t* image_allocate(struct image* ctx, size_t width, size_t height)
 {
-    ctx->width = width;
-    ctx->height = height;
-    ctx->data = malloc(ctx->width * ctx->height * sizeof(argb_t));
-    if (!ctx->data) {
+    argb_t* data = malloc(width * height * sizeof(argb_t));
+
+    if (data) {
+        ctx->width = width;
+        ctx->height = height;
+        ctx->data = data;
+    } else {
         image_error(ctx, "not enough memory");
-        return false;
     }
-    return true;
+
+    return data;
 }
 
 void image_deallocate(struct image* ctx)
 {
     ctx->width = 0;
     ctx->height = 0;
-    free(ctx->data);
+    free((void*)ctx->data);
     ctx->data = NULL;
 }
 
