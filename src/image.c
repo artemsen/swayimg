@@ -60,7 +60,7 @@ static struct image* image_create(const char* path, const uint8_t* data,
     }
     ctx->path = path;
 
-    image_add_meta(ctx, "File", "%s", path);
+    image_add_meta(ctx, "File", "%s", image_file_name(ctx));
 
     status = image_decode(ctx, data, size);
     if (status != ldr_success) {
@@ -91,20 +91,18 @@ struct image* image_from_file(const char* file)
     // open file
     fd = open(file, O_RDONLY);
     if (fd == -1) {
-        fprintf(stderr, "Unable to open file %s: %s\n", file, strerror(errno));
+        fprintf(stderr, "%s: %s\n", file, strerror(errno));
         goto done;
     }
     // get file size
     if (fstat(fd, &st) == -1) {
-        fprintf(stderr, "Unable to get file stat for %s: %s\n", file,
-                strerror(errno));
+        fprintf(stderr, "%s: %s\n", file, strerror(errno));
         goto done;
     }
     // map file to memory
     data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
-        fprintf(stderr, "Unable to map shared file: [%i] %s\n", errno,
-                strerror(errno));
+        fprintf(stderr, "%s: %s\n", file, strerror(errno));
         goto done;
     }
 
@@ -165,6 +163,16 @@ void image_free(struct image* ctx)
         free(ctx->data);
         free((void*)ctx->info);
         free(ctx);
+    }
+}
+
+const char* image_file_name(const struct image* ctx)
+{
+    const char* name = strrchr(ctx->path, '/');
+    if (name) {
+        return ++name; // skip slash
+    } else {
+        return ctx->path;
     }
 }
 

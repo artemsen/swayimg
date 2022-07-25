@@ -36,6 +36,13 @@ struct image* image_from_stdin(void);
 void image_free(struct image* ctx);
 
 /**
+ * Get image file name.
+ * @param ctx image context to free
+ * @return file name without path
+ */
+const char* image_file_name(const struct image* ctx);
+
+/**
  * Flip image vertically.
  * @param ctx image context
  */

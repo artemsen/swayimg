@@ -138,15 +138,8 @@ void image_deallocate(struct image* ctx)
 void image_error(const struct image* ctx, const char* fmt, ...)
 {
     va_list args;
-    const char* name;
 
-    name = strrchr(ctx->path, '/');
-    if (name) {
-        ++name; // skip slash
-    } else {
-        name = ctx->path; // use full path
-    }
-    fprintf(stderr, "%s: ", name);
+    fprintf(stderr, "%s: ", image_file_name(ctx));
 
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
