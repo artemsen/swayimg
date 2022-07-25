@@ -26,10 +26,12 @@ draws an image from the specified file.
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
-.IP "\fB\-S\fR, \fB\-\-sort\fR"
-Sort input files alphabetically.
-.IP "\fB\-R\fR, \fB\-\-random\fR"
-Shuffle input file list in random order.
+.IP "\fB\-o\fR, \fB\-\-sort\fR\fB=\fR\fIMODE\fR:"
+Order of the image list:
+.nf
+\fInone\fR: unsorted;
+\fIalpha\fR: sort alphabetically (default);
+\fIrandom\fR: randomize list.
 .IP "\fB\-r\fR, \fB\-\-recursive\fR"
 Read directories recursively.
 .IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"

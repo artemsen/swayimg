@@ -24,8 +24,7 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'S', "sort",       NULL,      "sort input files alphabetically" },
-    { 'R', "random",     NULL,      "shuffle input file list in random mode" },
+    { 'o', "sort",       NULL,      "sort input files: none/[alpha]/random" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
@@ -100,11 +99,10 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
-            case 'S':
-                cfg->order = cfgord_alpha;
-                break;
-            case 'R':
-                cfg->order = cfgord_random;
+            case 'o':
+                if (!config_set_order(cfg, optarg)) {
+                    return -1;
+                }
                 break;
             case 'r':
                 cfg->recursive = true;

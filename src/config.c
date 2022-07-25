@@ -24,7 +24,7 @@
 #define DEFAULT_SWAYWM     true
 #define DEFAULT_FONT_FACE  "monospace 14"
 #define DEFAULT_FONT_COLOR 0xff00ff
-#define DEFAULT_ORDER      cfgord_none
+#define DEFAULT_ORDER      cfgord_alpha
 #define DEFAULT_RECURSIVE  false
 
 /** Config file location. */
