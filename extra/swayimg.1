@@ -39,9 +39,15 @@ a size of 100x200. The comma can be replaced with any non-numeric character.
 If this parameter is not specified, the geometry of the currently focused Sway
 window will be used.
 .IP "\fB\-b\fR, \fB\-\-background\fR\fB=\fR\fIXXXXXX\fR"
-Set background color from RGB hex string, for example \fI1a2b3c\fR. If this
-parameter is not specified or contains special value \fIgrid\fR, the default
-grid background will be used.
+Set background for transparent images:
+.nf
+\fInone\fR: transparent;
+\fIgrid\fR: show grid as background (default);
+.IP "\fB\-w\fR, \fB\-\-frame\fR\fB=\fR\fIXXXXXX\fR"
+Set window background (frame between image and output window edge):
+.nf
+\fInone\fR: transparent (default);
+\fI#XXXXXX\fR: hexadecimal RGB color.
 .IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
 Start in full screen mode.
 .IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"

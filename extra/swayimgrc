@@ -8,14 +8,17 @@
 # 4. /etc/xdg/swayimg/config
 # See `man swayimgrc` for details.
 
-# Initial scale (default, fit, or real)
-scale = default
+# Initial scale (optimal, fit, or real)
+scale = optimal
 
 # Start in full screen mode (yes/no)
 fullscreen = no
 
-# Background mode/color (grid or RGB, e.g. 112233)
+# Background for transparent images (none, grid, or RGB, e.g. #112233)
 background = grid
+
+# Window background mode/color (none or RGB, e.g. #112233)
+frame = none
 
 # Show image info: format, size, EXIF, and current scale (yes/no)
 info = no
@@ -24,7 +27,7 @@ info = no
 font = monospace 14
 
 # Color for image info text
-font-color = b4b4b4
+font-color = #ff00ff
 
 # Default order of the image list (none, alpha, or random)
 order = none

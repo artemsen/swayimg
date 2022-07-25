@@ -28,8 +28,9 @@ static const struct cmdarg arguments[] = {
     { 'R', "random",     NULL,      "shuffle input file list in random mode" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
-    { 's', "scale",      "TYPE",    "set initial image scale: default, fit, or real" },
-    { 'b', "background", "XXXXXX",  "set background color as hex RGB" },
+    { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
+    { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
+    { 'w', "frame",      "XXXXXX",  "set window background color: [none]/RGB" },
     { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
     { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
     { 'c', "class",      "NAME",    "set window class/app_id" },
@@ -119,6 +120,11 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'b':
                 if (!config_set_background(cfg, optarg)) {
+                    return -1;
+                }
+                break;
+            case 'w':
+                if (!config_set_frame(cfg, optarg)) {
                     return -1;
                 }
                 break;

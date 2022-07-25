@@ -9,11 +9,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-// Grid background mode id
-#define BACKGROUND_GRID UINT32_MAX
-
 /** ARGB color. */
 typedef uint32_t argb_t;
+
+#define ARGB_ALPHA_SHIFT 24
+#define ARGB_ALPHA_MASK  (0xff << ARGB_ALPHA_SHIFT)
 
 /** Size description. */
 struct size {

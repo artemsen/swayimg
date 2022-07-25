@@ -13,8 +13,8 @@
 
 // Background grid parameters
 #define GRID_STEP   10
-#define GRID_COLOR1 0x333333
-#define GRID_COLOR2 0x4c4c4c
+#define GRID_COLOR1 0xff333333
+#define GRID_COLOR2 0xff4c4c4c
 
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
@@ -28,11 +28,11 @@
 
 /** Canvas context. */
 struct canvas {
-    float scale;        ///< Scale, 1.0 = 100%
-    struct rect image;  ///< Image position and size
-    struct size window; ///< Output window size
-    void* font_handle;  ///< Font handle to draw text
-    argb_t font_color;  ///< Color used for text
+    struct config* config; ///< Configuration
+    float scale;           ///< Scale, 1.0 = 100%
+    struct rect image;     ///< Image position and size
+    struct size window;    ///< Output window size
+    void* font_handle;     ///< Font handle to draw text
 };
 
 /**
@@ -101,8 +101,8 @@ struct canvas* canvas_init(struct config* cfg)
         return NULL;
     }
 
+    ctx->config = cfg;
     ctx->font_handle = pango_font_description_from_string(cfg->font_face);
-    ctx->font_color = cfg->font_color;
 
     return ctx;
 }
@@ -153,40 +153,15 @@ void canvas_swap_image_size(struct canvas* ctx)
     fix_viewport(ctx);
 }
 
-void canvas_clear(struct canvas* ctx, argb_t* wnd, argb_t color)
+void canvas_clear(const struct canvas* ctx, argb_t* wnd)
 {
-    for (size_t y = 0; y < ctx->window.height; ++y) {
-        uint32_t* line = &wnd[y * ctx->window.width];
-        for (size_t x = 0; x < ctx->window.width; ++x) {
-            line[x] = color;
-        }
-    }
-}
-
-void canvas_draw_grid(const struct canvas* ctx, argb_t* wnd)
-{
-    struct rect grid;
-    size_t stride;
-
-    if (!get_intersection(ctx, &grid)) {
-        return; // possible bug: image out of window
-    }
-
-    stride = grid.width * sizeof(argb_t);
-
-    for (ssize_t y = grid.y; y < grid.y + (ssize_t)grid.height; ++y) {
-        uint32_t* line = &wnd[y * ctx->window.width + grid.x];
-        const size_t grid_line = y - grid.y;
-        if (grid_line > GRID_STEP * 2) {
-            const uint32_t* pattern =
-                line - (ctx->window.width * (GRID_STEP * 2));
-            memcpy(line, pattern, stride);
-        } else {
-            // fill template
-            const bool shift = (grid_line / GRID_STEP) % 2;
-            for (size_t x = 0; x < grid.width; ++x) {
-                const size_t tail = x / GRID_STEP;
-                line[x] = (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+    if (ctx->config->frame == COLOR_TRANSPARENT) {
+        memset(wnd, 0, ctx->window.width * ctx->window.height * sizeof(argb_t));
+    } else {
+        for (size_t y = 0; y < ctx->window.height; ++y) {
+            uint32_t* line = &wnd[y * ctx->window.width];
+            for (size_t x = 0; x < ctx->window.width; ++x) {
+                line[x] = ARGB_ALPHA_MASK | ctx->config->frame;
             }
         }
     }
@@ -206,30 +181,41 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
         uint32_t* wnd_line = &wnd[(vp.y + y) * ctx->window.width + vp.x];
         // start offset of image buffer
         const size_t img_y = (float)(y + vp.y - ctx->image.y) / ctx->scale;
-        size_t img_x = (float)(vp.x - ctx->image.x) / ctx->scale;
+        const size_t img_x = (float)(vp.x - ctx->image.x) / ctx->scale;
         const uint32_t* img_line = &img[img_y * ctx->image.width + img_x];
 
-        // copy pixels from image to window
+        // fill window buffer
         for (size_t x = 0; x < vp.width; ++x) {
-            const uint32_t fg = img_line[(size_t)((float)x / ctx->scale)];
-            if (alpha) {
-                // alpha blend
-                const uint32_t bg = wnd_line[x];
-                const uint32_t alpha = fg >> 24;
-                const uint32_t inv_alpha = 256 - alpha;
-                wnd_line[x] = 0x00 << 24 |
-                    ((alpha * ((fg >> 16) & 0xff) +
-                      inv_alpha * ((bg >> 16) & 0xff)) >>
-                     8) << 16 |
-                    ((alpha * ((fg >> 8) & 0xff) +
-                      inv_alpha * ((bg >> 8) & 0xff)) >>
-                     8) << 8 |
-                    ((alpha * ((fg >> 0) & 0xff) +
-                      inv_alpha * ((bg >> 0) & 0xff)) >>
-                     8);
+            const argb_t fg = img_line[(size_t)((float)x / ctx->scale)];
 
-            } else {
+            if (!alpha) {
                 wnd_line[x] = fg;
+            } else {
+                // alpha blend
+                const uint8_t alpha = fg >> ARGB_ALPHA_SHIFT;
+                const uint16_t alpha_inv = 256 - alpha;
+                argb_t alpha_set, bg;
+
+                if (ctx->config->background == COLOR_TRANSPARENT) {
+                    bg = 0;
+                    alpha_set = fg & ARGB_ALPHA_MASK;
+                } else if (ctx->config->background == BACKGROUND_GRID) {
+                    const bool shift = (y / GRID_STEP) % 2;
+                    const size_t tail = x / GRID_STEP;
+                    const argb_t grid =
+                        (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+                    bg = grid;
+                    alpha_set = ARGB_ALPHA_MASK;
+                } else {
+                    bg = ctx->config->background;
+                    alpha_set = ARGB_ALPHA_MASK;
+                }
+                // clang-format off
+                wnd_line[x] = alpha_set |
+                    ((alpha * ((fg >> 16) & 0xff) + alpha_inv * ((bg >> 16) & 0xff)) >> 8) << 16 |
+                    ((alpha * ((fg >>  8) & 0xff) + alpha_inv * ((bg >>  8) & 0xff)) >> 8) << 8 |
+                    ((alpha * ((fg >>  0) & 0xff) + alpha_inv * ((bg >>  0) & 0xff)) >> 8);
+                // clang-format on
             }
         }
     }
@@ -291,10 +277,10 @@ void canvas_print(const struct canvas* ctx, argb_t* wnd,
     }
 
     // put layout on cairo surface
-    cairo_set_source_rgb(cairo,
-                         ((double)((ctx->font_color >> 16) & 0xff) / 255),
-                         ((double)((ctx->font_color >> 8) & 0xff) / 255),
-                         ((double)(ctx->font_color & 0xff) / 255));
+    cairo_set_source_rgb(
+        cairo, ((double)((ctx->config->font_color >> 16) & 0xff) / 255),
+        ((double)((ctx->config->font_color >> 8) & 0xff) / 255),
+        ((double)(ctx->config->font_color & 0xff) / 255));
     cairo_move_to(cairo, x, y);
     pango_cairo_show_layout(cairo, layout);
 

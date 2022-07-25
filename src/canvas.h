@@ -78,16 +78,8 @@ void canvas_swap_image_size(struct canvas* ctx);
  * Clear canvas window.
  * @param ctx canvas context
  * @param wnd window buffer
- * @param color background color
  */
-void canvas_clear(struct canvas* ctx, argb_t* wnd, argb_t color);
-
-/**
- * Draw background grid for transparent images.
- * @param ctx canvas context
- * @param wnd window buffer
- */
-void canvas_draw_grid(const struct canvas* ctx, argb_t* wnd);
+void canvas_clear(const struct canvas* ctx, argb_t* wnd);
 
 /**
  * Draw image on canvas.

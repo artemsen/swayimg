@@ -17,10 +17,15 @@
 /** Max length of window class/app_id name */
 #define APP_ID_MAX 32
 
-/** Default font name/size */
-#define FONT_FACE "monospace 14"
-/** Default text color. */
-#define TEXT_COLOR 0xb4b4b4
+// Default settings
+#define DEFAULT_SCALE      cfgsc_optimal
+#define DEFAULT_BACKGROUND BACKGROUND_GRID
+#define DEFAULT_FRAME      COLOR_TRANSPARENT
+#define DEFAULT_SWAYWM     true
+#define DEFAULT_FONT_FACE  "monospace 14"
+#define DEFAULT_FONT_COLOR 0xff00ff
+#define DEFAULT_ORDER      cfgord_none
+#define DEFAULT_RECURSIVE  false
 
 /** Config file location. */
 struct location {
@@ -100,11 +105,20 @@ static bool set_boolean(const char* text, bool* value)
  */
 static bool set_color(const char* text, uint32_t* value)
 {
-    const unsigned long rgb = strtoul(text, NULL, 16);
-    if (rgb > 0x00ffffff || errno == ERANGE || (rgb == 0 && errno == EINVAL)) {
+    char* endptr;
+    unsigned long rgb;
+
+    if (*text == '#') {
+        ++text;
+    }
+
+    rgb = strtoul(text, &endptr, 16);
+    if (*endptr || rgb > 0x00ffffff || errno == ERANGE ||
+        (rgb == 0 && errno == EINVAL)) {
         return false;
     }
     *value = rgb;
+
     return true;
 }
 
@@ -146,6 +160,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_boolean(value, &ctx->fullscreen);
     } else if (strcmp(key, "background") == 0) {
         return config_set_background(ctx, value);
+    } else if (strcmp(key, "frame") == 0) {
+        return config_set_frame(ctx, value);
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &ctx->show_info);
     } else if (strcmp(key, "font") == 0) {
@@ -179,13 +195,14 @@ static struct config* default_config(void)
         return NULL;
     }
 
-    ctx->scale = cfgsc_optimal;
+    ctx->scale = DEFAULT_SCALE;
     ctx->background = BACKGROUND_GRID;
-    ctx->sway_wm = true;
-    config_set_font(ctx, FONT_FACE);
-    ctx->font_color = TEXT_COLOR;
-    ctx->order = cfgord_none;
-    ctx->recursive = false;
+    ctx->frame = DEFAULT_FRAME;
+    ctx->sway_wm = DEFAULT_SWAYWM;
+    config_set_font(ctx, DEFAULT_FONT_FACE);
+    ctx->font_color = DEFAULT_FONT_COLOR;
+    ctx->order = DEFAULT_ORDER;
+    ctx->recursive = DEFAULT_RECURSIVE;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -314,7 +331,7 @@ bool config_check(const struct config* ctx)
 
 bool config_set_scale(struct config* ctx, const char* scale)
 {
-    if (strcmp(scale, "default") == 0) {
+    if (strcmp(scale, "optimal") == 0) {
         ctx->scale = cfgsc_optimal;
     } else if (strcmp(scale, "fit") == 0) {
         ctx->scale = cfgsc_fit;
@@ -322,7 +339,7 @@ bool config_set_scale(struct config* ctx, const char* scale)
         ctx->scale = cfgsc_real;
     } else {
         fprintf(stderr, "Invalid scale: %s\n", scale);
-        fprintf(stderr, "Expected 'default', 'fit', or 'real'.\n");
+        fprintf(stderr, "Expected 'optimal', 'fit', or 'real'.\n");
         return false;
     }
     return true;
@@ -332,9 +349,23 @@ bool config_set_background(struct config* ctx, const char* background)
 {
     if (strcmp(background, "grid") == 0) {
         ctx->background = BACKGROUND_GRID;
+    } else if (strcmp(background, "none") == 0) {
+        ctx->background = COLOR_TRANSPARENT;
     } else if (!set_color(background, &ctx->background)) {
         fprintf(stderr, "Invalid background: %s\n", background);
-        fprintf(stderr, "Expected 'grid' or RGB hex value.\n");
+        fprintf(stderr, "Expected 'none', 'grid', or RGB hex value.\n");
+        return false;
+    }
+    return true;
+}
+
+bool config_set_frame(struct config* ctx, const char* frame)
+{
+    if (strcmp(frame, "none") == 0) {
+        ctx->frame = COLOR_TRANSPARENT;
+    } else if (!set_color(frame, &ctx->frame)) {
+        fprintf(stderr, "Invalid frame color: %s\n", frame);
+        fprintf(stderr, "Expected 'none' or RGB hex value.\n");
         return false;
     }
     return true;

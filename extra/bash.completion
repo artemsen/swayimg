@@ -8,6 +8,7 @@ _swayimg()
                 -r --recursive \
                 -g --geometry \
                 -b --background \
+                -w --frame \
                 -f --fullscreen \
                 -s --scale \
                 -i --info \

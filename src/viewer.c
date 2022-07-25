@@ -23,7 +23,7 @@ struct viewer {
 static struct viewer viewer;
 
 /** Reset image view state, recalculate position and scale. */
-static void reset_image(void)
+static void reset_viewport(void)
 {
     enum canvas_scale scale;
 
@@ -76,7 +76,7 @@ static bool load_next(bool file, bool forward)
     image_free(viewer.image);
     viewer.image = image;
 
-    reset_image();
+    reset_viewport();
 
     return true;
 }
@@ -84,16 +84,10 @@ static bool load_next(bool file, bool forward)
 /** Draw handler, see wnd_handlers::on_redraw */
 static void on_redraw(size_t width, size_t height, argb_t* wnd)
 {
-    const bool grid = viewer.config->background == BACKGROUND_GRID;
-
     if (canvas_resize_window(viewer.canvas, width, height)) {
-        reset_image();
+        reset_viewport();
     }
-    canvas_clear(viewer.canvas, wnd, grid ? 0 : viewer.config->background);
-
-    if (grid && viewer.image->alpha) {
-        canvas_draw_grid(viewer.canvas, wnd);
-    }
+    canvas_clear(viewer.canvas, wnd);
     canvas_draw_image(viewer.canvas, viewer.image->alpha, viewer.image->data,
                       wnd);
 
@@ -122,7 +116,7 @@ static void on_redraw(size_t width, size_t height, argb_t* wnd)
 static void on_resize(size_t width, size_t height)
 {
     if (canvas_resize_window(viewer.canvas, width, height)) {
-        reset_image();
+        reset_viewport();
     }
 }
 

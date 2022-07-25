@@ -6,6 +6,10 @@
 
 #include "types.h"
 
+// Background and frame modes
+#define COLOR_TRANSPARENT 0xff000000
+#define BACKGROUND_GRID   0xfe000000
+
 /** Order of file list. */
 enum config_order {
     cfgord_none,  ///< Unsorted
@@ -27,6 +31,7 @@ struct config {
     struct rect window;      ///< Window geometry
     bool fullscreen;         ///< Full screen mode
     argb_t background;       ///< Background mode/color
+    argb_t frame;            ///< Frame mode/color
     enum config_scale scale; ///< Initial scale
     bool show_info;          ///< Show image info
     const char* font_face;   ///< Font name and size (pango format)
@@ -69,6 +74,14 @@ bool config_set_scale(struct config* ctx, const char* scale);
  * @return false if value format is invalid
  */
 bool config_set_background(struct config* ctx, const char* background);
+
+/**
+ * Set frame type/color from RGB hex string.
+ * @param ctx configuration context
+ * @param frame text background description
+ * @return false if value format is invalid
+ */
+bool config_set_frame(struct config* ctx, const char* frame);
 
 /**
  * Set window geometry (position and size) from string "x,y,width,height".

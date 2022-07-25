@@ -162,7 +162,7 @@ static bool create_buffer(void)
         close(fd);
         ctx.surface.buffer =
             wl_shm_pool_create_buffer(pool, 0, ctx.wnd.width, ctx.wnd.height,
-                                      stride, WL_SHM_FORMAT_XRGB8888);
+                                      stride, WL_SHM_FORMAT_ARGB8888);
         wl_shm_pool_destroy(pool);
     }
 
@@ -324,7 +324,6 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     const int32_t cur_width = (int32_t)(ctx.wnd.width / ctx.wnd.scale);
     const int32_t cur_height = (int32_t)(ctx.wnd.height / ctx.wnd.scale);
     if (width && height && (width != cur_width || height != cur_height)) {
-        puts("REDRAW1");
         ctx.wnd.width = width * ctx.wnd.scale;
         ctx.wnd.height = height * ctx.wnd.scale;
         if (create_buffer()) {
@@ -394,7 +393,6 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         }
     }
     if (scale != ctx.wnd.scale) {
-        puts("REDRAW2");
         ctx.wnd.width = (ctx.wnd.width / ctx.wnd.scale) * scale;
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
