@@ -12,16 +12,13 @@
 struct wnd_handlers {
     /**
      * Redraw handler.
-     * @param width window width in pixel
-     * @param height window height in pixel
      * @param data pointer to pixel data
      */
-    void (*on_redraw)(size_t width, size_t height, argb_t* wnd);
+    void (*on_redraw)(argb_t* data);
 
     /**
      * Window resize handler.
-     * @param width window width in pixel
-     * @param height window height in pixel
+     * @param width,height window size in pixels
      */
     void (*on_resize)(size_t width, size_t height);
 

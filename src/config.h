@@ -34,7 +34,8 @@ struct config {
     argb_t frame;            ///< Frame mode/color
     enum config_scale scale; ///< Initial scale
     bool show_info;          ///< Show image info
-    const char* font_face;   ///< Font name and size (pango format)
+    const char* font_face;   ///< Font name
+    size_t font_size;        ///< Font size
     argb_t font_color;       ///< Font color
     enum config_order order; ///< File list order
     bool recursive;          ///< Read directories recursively
@@ -92,12 +93,20 @@ bool config_set_frame(struct config* ctx, const char* frame);
 bool config_set_geometry(struct config* ctx, const char* geometry);
 
 /**
- * Set font name and size.
+ * Set font name.
  * @param ctx configuration context
- * @param font font name and size in pango format
+ * @param font font name
  * @return false if value format is invalid
  */
-bool config_set_font(struct config* ctx, const char* font);
+bool config_set_font_name(struct config* ctx, const char* font);
+
+/**
+ * Set font size.
+ * @param ctx configuration context
+ * @param size font size
+ * @return false if value format is invalid
+ */
+bool config_set_font_size(struct config* ctx, const char* size);
 
 /**
  * Set order of the file list.

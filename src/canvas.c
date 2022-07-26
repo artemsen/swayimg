@@ -4,9 +4,8 @@
 
 #include "canvas.h"
 
-#include <cairo/cairo.h>
-#include <pango/pango.h>
-#include <pango/pangocairo.h>
+#include "font.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +31,7 @@ struct canvas {
     float scale;           ///< Scale, 1.0 = 100%
     struct rect image;     ///< Image position and size
     struct size window;    ///< Output window size
-    void* font_handle;     ///< Font handle to draw text
+    struct font* font;     ///< Font context
 };
 
 /**
@@ -97,12 +96,10 @@ struct canvas* canvas_init(struct config* cfg)
     struct canvas* ctx;
 
     ctx = calloc(1, sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
+    if (ctx) {
+        ctx->config = cfg;
+        ctx->font = font_init(cfg);
     }
-
-    ctx->config = cfg;
-    ctx->font_handle = pango_font_description_from_string(cfg->font_face);
 
     return ctx;
 }
@@ -110,9 +107,7 @@ struct canvas* canvas_init(struct config* cfg)
 void canvas_free(struct canvas* ctx)
 {
     if (ctx) {
-        if (ctx->font_handle) {
-            pango_font_description_free(ctx->font_handle);
-        }
+        font_free(ctx->font);
         free(ctx);
     }
 }
@@ -161,7 +156,7 @@ void canvas_clear(const struct canvas* ctx, argb_t* wnd)
         for (size_t y = 0; y < ctx->window.height; ++y) {
             argb_t* line = &wnd[y * ctx->window.width];
             for (size_t x = 0; x < ctx->window.width; ++x) {
-                line[x] = ARGB_ALPHA_MASK | ctx->config->frame;
+                line[x] = ARGB_FROM_A(0xff) | ctx->config->frame;
             }
         }
     }
@@ -191,102 +186,85 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
             if (!alpha) {
                 wnd_line[x] = fg;
             } else {
-                // alpha blend
-                const uint8_t alpha = fg >> ARGB_ALPHA_SHIFT;
-                const uint16_t alpha_inv = 256 - alpha;
-                argb_t alpha_set, bg;
+                // alpha blending
+                const uint8_t alpha = ARGB_A_FROM(fg);
+                uint8_t alpha_set;
+                argb_t bg;
 
                 if (ctx->config->background == COLOR_TRANSPARENT) {
                     bg = 0;
-                    alpha_set = fg & ARGB_ALPHA_MASK;
+                    alpha_set = alpha;
                 } else if (ctx->config->background == BACKGROUND_GRID) {
                     const bool shift = (y / GRID_STEP) % 2;
                     const size_t tail = x / GRID_STEP;
                     const argb_t grid =
                         (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
                     bg = grid;
-                    alpha_set = ARGB_ALPHA_MASK;
+                    alpha_set = 0xff;
                 } else {
                     bg = ctx->config->background;
-                    alpha_set = ARGB_ALPHA_MASK;
+                    alpha_set = 0xff;
                 }
-                // clang-format off
-                wnd_line[x] = alpha_set |
-                    ((alpha * ((fg >> 16) & 0xff) + alpha_inv * ((bg >> 16) & 0xff)) >> 8) << 16 |
-                    ((alpha * ((fg >>  8) & 0xff) + alpha_inv * ((bg >>  8) & 0xff)) >> 8) << 8 |
-                    ((alpha * ((fg >>  0) & 0xff) + alpha_inv * ((bg >>  0) & 0xff)) >> 8);
-                // clang-format on
+
+                wnd_line[x] = ARGB_ALPHA_BLEND(alpha, alpha_set, bg, fg);
             }
         }
     }
 }
 
-void canvas_print(const struct canvas* ctx, argb_t* wnd,
-                  enum canvas_corner corner, const char* text)
+void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
+                       enum canvas_corner corner, const char* text)
 {
-    PangoLayout* layout;
-    PangoTabArray* tab;
-    cairo_surface_t* window;
-    cairo_t* cairo;
-    int x = 0, y = 0;
-    int txt_w = 0, txt_h = 0;
+    struct point pos = { 0, 0 };
 
-    if (!ctx->font_handle) {
-        return;
-    }
-
-    window = cairo_image_surface_create_for_data(
-        (uint8_t*)wnd, CAIRO_FORMAT_ARGB32, ctx->window.width,
-        ctx->window.height, ctx->window.width * sizeof(argb_t));
-    cairo = cairo_create(window);
-    layout = pango_cairo_create_layout(cairo);
-    if (!layout) {
-        return;
-    }
-
-    // setup layout
-    pango_layout_set_font_description(layout, ctx->font_handle);
-    pango_layout_set_text(layout, text, -1);
-
-    // magic, need to handle tabs in a right way
-    tab = pango_tab_array_new_with_positions(1, true, PANGO_TAB_LEFT, 150);
-    pango_layout_set_tabs(layout, tab);
-    pango_tab_array_free(tab);
-
-    // calculate layout position
-    pango_layout_get_size(layout, &txt_w, &txt_h);
-    txt_w /= PANGO_SCALE;
-    txt_h /= PANGO_SCALE;
     switch (corner) {
-        case cc_top_left:
-            x = TEXT_PADDING;
-            y = TEXT_PADDING;
-            break;
         case cc_top_right:
-            x = ctx->window.width - txt_w - TEXT_PADDING;
-            y = TEXT_PADDING;
+            pos.x = ctx->window.width - font_text_width(ctx->font, text, 0) -
+                TEXT_PADDING;
+            pos.y = TEXT_PADDING;
             break;
         case cc_bottom_left:
-            x = TEXT_PADDING;
-            y = ctx->window.height - txt_h - TEXT_PADDING;
-            break;
-        case cc_bottom_right:
-            x = ctx->window.width - txt_w - TEXT_PADDING;
-            y = ctx->window.height - txt_h - TEXT_PADDING;
+            pos.x = TEXT_PADDING;
+            pos.y = ctx->window.height - font_height(ctx->font) - TEXT_PADDING;
             break;
     }
 
-    // put layout on cairo surface
-    cairo_set_source_rgb(
-        cairo, ((double)((ctx->config->font_color >> 16) & 0xff) / 255),
-        ((double)((ctx->config->font_color >> 8) & 0xff) / 255),
-        ((double)(ctx->config->font_color & 0xff) / 255));
-    cairo_move_to(cairo, x, y);
-    pango_cairo_show_layout(cairo, layout);
+    font_print(ctx->font, wnd, &ctx->window, &pos, text, 0);
+}
 
-    g_object_unref(layout);
-    cairo_destroy(cairo);
-    cairo_surface_destroy(window);
+void canvas_print_meta(const struct canvas* ctx, argb_t* wnd,
+                       const struct meta* info)
+{
+    const struct meta* it;
+    size_t val_offset = 0;
+    struct point pos = { .x = TEXT_PADDING, .y = TEXT_PADDING };
+
+    // draw keys block
+    it = info;
+    while (it) {
+        size_t width;
+        struct point pos_delim;
+        width = font_print(ctx->font, wnd, &ctx->window, &pos, it->key, 0);
+        pos_delim.x = TEXT_PADDING + width;
+        pos_delim.y = pos.y;
+        width +=
+            font_print(ctx->font, wnd, &ctx->window, &pos_delim, ":", 0) * 3;
+        if (width > val_offset) {
+            val_offset = width;
+        }
+        pos.y += font_height(ctx->font);
+        it = it->next;
+    }
+
+    // draw values block
+    pos.x = TEXT_PADDING + val_offset + TEXT_PADDING;
+    pos.y = TEXT_PADDING;
+    it = info;
+    while (it) {
+        font_print(ctx->font, wnd, &ctx->window, &pos, it->value, 0);
+        pos.y += font_height(ctx->font);
+        it = it->next;
+    }
 }
 
 bool canvas_move(struct canvas* ctx, enum canvas_move mv)

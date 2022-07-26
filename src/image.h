@@ -6,6 +6,8 @@
 
 #include "types.h"
 
+struct meta;
+
 /** Image context. */
 struct image {
     size_t width;       ///< Image width (px)
@@ -13,7 +15,14 @@ struct image {
     const argb_t* data; ///< Pointer to pixel data
     bool alpha;         ///< Has alpha channel?
     const char* path;   ///< Path to the file
-    const char* info;   ///< Image meta info
+    struct meta* info;  ///< Image meta info
+};
+
+/** Image meta info. */
+struct meta {
+    struct meta* next; ///< Pointer to the next entry
+    const char* key;   ///< Meta key name
+    const char* value; ///< Meta value
 };
 
 /**

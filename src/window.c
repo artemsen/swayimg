@@ -88,7 +88,7 @@ static struct context ctx = { .wnd = { .scale = 1 }, .repeat = { .fd = -1 } };
 /** Redraw window */
 static void redraw(void)
 {
-    ctx.handlers.on_redraw(ctx.wnd.width, ctx.wnd.height, ctx.surface.data);
+    ctx.handlers.on_redraw(ctx.surface.data);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
@@ -164,6 +164,7 @@ static bool create_buffer(void)
             wl_shm_pool_create_buffer(pool, 0, ctx.wnd.width, ctx.wnd.height,
                                       stride, WL_SHM_FORMAT_ARGB8888);
         wl_shm_pool_destroy(pool);
+        ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
     }
 
     return status;
@@ -326,9 +327,7 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     if (width && height && (width != cur_width || height != cur_height)) {
         ctx.wnd.width = width * ctx.wnd.scale;
         ctx.wnd.height = height * ctx.wnd.scale;
-        if (create_buffer()) {
-            ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
-        } else {
+        if (!create_buffer()) {
             ctx.state = state_error;
         }
     }
@@ -397,7 +396,6 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
         if (create_buffer()) {
-            ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
             redraw();
         } else {
             ctx.state = state_error;

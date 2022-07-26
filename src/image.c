@@ -160,6 +160,14 @@ done:
 void image_free(struct image* ctx)
 {
     if (ctx) {
+        while (ctx->info) {
+            struct meta* next = ctx->info->next;
+            free((void*)ctx->info->key);
+            free((void*)ctx->info->value);
+            free((void*)ctx->info);
+            ctx->info = next;
+        }
+
         free((void*)ctx->data);
         free((void*)ctx->info);
         free(ctx);
@@ -249,48 +257,54 @@ void image_rotate(struct image* ctx, size_t angle)
     }
 }
 
-static void add_meta(struct image* ctx, const char* key, const char* value)
-{
-    char* buffer = (char*)ctx->info;
-    const char* delim = ":\t";
-    const size_t cur_len = ctx->info ? strlen(ctx->info) + 1 : 0;
-    const size_t add_len = strlen(key) + strlen(value) + strlen(delim) + 1;
-
-    buffer = realloc(buffer, cur_len + add_len);
-    if (buffer) {
-        if (cur_len == 0) {
-            buffer[0] = 0;
-        } else {
-            strcat(buffer, "\n");
-        }
-        strcat(buffer, key);
-        strcat(buffer, delim);
-        strcat(buffer, value);
-        ctx->info = buffer;
-    }
-}
-
 void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
 {
-    int len;
     va_list args;
-    char* text;
+    struct meta* entry;
+    const size_t key_len = strlen(key) + 1 /*last null*/;
+    int val_len;
 
+    entry = malloc(sizeof(struct meta));
+    if (!entry) {
+        return;
+    }
+    entry->next = NULL;
+
+    // contruct value string
     va_start(args, fmt);
-    len = vsnprintf(NULL, 0, fmt, args);
+    val_len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (val_len <= 0) {
+        free(entry);
+        return;
+    }
+    ++val_len; // last null
+    entry->value = malloc(val_len);
+    if (!entry->value) {
+        free(entry);
+        return;
+    }
+    va_start(args, fmt);
+    vsprintf((char*)entry->value, fmt, args);
     va_end(args);
 
-    if (len > 0) {
-        ++len; // last null
-        text = malloc(len);
-        if (text) {
-            va_start(args, fmt);
-            len = vsnprintf(text, len, fmt, args);
-            va_end(args);
-            if (len > 0) {
-                add_meta(ctx, key, text);
-            }
-            free(text);
+    // strdup for key
+    entry->key = malloc(key_len);
+    if (!entry->key) {
+        free((void*)entry->value);
+        free(entry);
+        return;
+    }
+    memcpy((void*)entry->key, key, key_len);
+
+    if (!ctx->info) {
+        ctx->info = entry;
+    } else {
+        // get last entry
+        struct meta* last = ctx->info;
+        while (last->next) {
+            last = last->next;
         }
+        last->next = entry;
     }
 }

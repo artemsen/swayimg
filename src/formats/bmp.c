@@ -163,7 +163,8 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             r = 0xff & (shift_r > 0 ? r >> shift_r : r << -shift_r);
             g = 0xff & (shift_g > 0 ? g >> shift_g : g << -shift_g);
             b = 0xff & (shift_b > 0 ? b >> shift_b : b << -shift_b);
-            dst[x] = ARGB_ALPHA_MASK | r << 16 | g << 8 | b;
+            dst[x] = ARGB_FROM_A(0xff) | ARGB_FROM_R(r) | ARGB_FROM_G(g) |
+                ARGB_FROM_B(b);
         }
     }
 
@@ -199,7 +200,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                 // remove alpha channel
                 argb_t* ptr = data;
                 while (ptr < ctx->data + ctx->width * ctx->height) {
-                    *ptr |= ARGB_ALPHA_MASK;
+                    *ptr |= ARGB_FROM_A(0xff);
                     ++ptr;
                 }
                 return true;
@@ -317,7 +318,7 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
             if (bmp->bpp == 32) {
                 dst[x] = *(uint32_t*)src;
             } else if (bmp->bpp == 24) {
-                dst[x] = ARGB_ALPHA_MASK | *(uint32_t*)src;
+                dst[x] = ARGB_FROM_A(0xff) | *(uint32_t*)src;
             } else if (bmp->bpp == 8 || bmp->bpp == 4 || bmp->bpp == 1) {
                 // indexed colors
                 const size_t bits_offset = x * bmp->bpp;
@@ -332,7 +333,7 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
                     image_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                dst[x] = ARGB_ALPHA_MASK | palette->table[index];
+                dst[x] = ARGB_FROM_A(0xff) | palette->table[index];
             } else {
                 image_error(ctx, "color for bmp %dbit images not supported",
                             bmp->bpp);

@@ -82,31 +82,28 @@ static bool load_next(bool file, bool forward)
 }
 
 /** Draw handler, see wnd_handlers::on_redraw */
-static void on_redraw(size_t width, size_t height, argb_t* wnd)
+static void on_redraw(argb_t* wnd)
 {
-    if (canvas_resize_window(viewer.canvas, width, height)) {
-        reset_viewport();
-    }
     canvas_clear(viewer.canvas, wnd);
     canvas_draw_image(viewer.canvas, viewer.image->alpha, viewer.image->data,
                       wnd);
 
     // image meta information: file name, format, exif, etc
     if (viewer.config->show_info) {
-        const int scale = canvas_get_scale(viewer.canvas) * 100;
         char text[32];
+        const int scale = canvas_get_scale(viewer.canvas) * 100;
         // print meta info
-        canvas_print(viewer.canvas, wnd, cc_top_left, viewer.image->info);
+        canvas_print_meta(viewer.canvas, wnd, viewer.image->info);
         // print current scale
         snprintf(text, sizeof(text), "%d%%", scale);
-        canvas_print(viewer.canvas, wnd, cc_bottom_left, text);
+        canvas_print_line(viewer.canvas, wnd, cc_bottom_left, text);
         // print file number in list
         if (viewer.files) {
             size_t index, total;
             flist_current(viewer.files, &index, &total);
             if (total > 1) {
                 snprintf(text, sizeof(text), "%lu of %lu", index, total);
-                canvas_print(viewer.canvas, wnd, cc_top_right, text);
+                canvas_print_line(viewer.canvas, wnd, cc_top_right, text);
             }
         }
     }

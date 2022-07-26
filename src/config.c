@@ -22,7 +22,8 @@
 #define DEFAULT_BACKGROUND BACKGROUND_GRID
 #define DEFAULT_FRAME      COLOR_TRANSPARENT
 #define DEFAULT_SWAYWM     true
-#define DEFAULT_FONT_FACE  "monospace 14"
+#define DEFAULT_FONT_FACE  "monospace"
+#define DEFAULT_FONT_SIZE  14
 #define DEFAULT_FONT_COLOR 0xff00ff
 #define DEFAULT_ORDER      cfgord_alpha
 #define DEFAULT_RECURSIVE  false
@@ -165,7 +166,9 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &ctx->show_info);
     } else if (strcmp(key, "font") == 0) {
-        return config_set_font(ctx, value);
+        return config_set_font_name(ctx, value);
+    } else if (strcmp(key, "font-size") == 0) {
+        return config_set_font_size(ctx, value);
     } else if (strcmp(key, "font-color") == 0) {
         return set_color(value, &ctx->font_color);
     } else if (strcmp(key, "order") == 0) {
@@ -199,8 +202,9 @@ static struct config* default_config(void)
     ctx->background = BACKGROUND_GRID;
     ctx->frame = DEFAULT_FRAME;
     ctx->sway_wm = DEFAULT_SWAYWM;
-    config_set_font(ctx, DEFAULT_FONT_FACE);
+    config_set_font_name(ctx, DEFAULT_FONT_FACE);
     ctx->font_color = DEFAULT_FONT_COLOR;
+    ctx->font_size = DEFAULT_FONT_SIZE;
     ctx->order = DEFAULT_ORDER;
     ctx->recursive = DEFAULT_RECURSIVE;
 
@@ -403,14 +407,26 @@ bool config_set_geometry(struct config* ctx, const char* geometry)
     return false;
 }
 
-bool config_set_font(struct config* ctx, const char* font)
+bool config_set_font_name(struct config* ctx, const char* font)
 {
     const size_t len = font ? strlen(font) : 0;
     if (len == 0) {
-        fprintf(stderr, "Invalid font description: %s\n", font);
+        fprintf(stderr, "Invalid font name\n");
         return false;
     }
     return set_string(font, (char**)&ctx->font_face);
+}
+
+bool config_set_font_size(struct config* ctx, const char* size)
+{
+    char* endptr;
+    const unsigned long sz = strtoul(size, &endptr, 10);
+    if (*endptr || sz == 0) {
+        fprintf(stderr, "Invalid font size\n");
+        return false;
+    }
+    ctx->font_size = sz;
+    return true;
 }
 
 bool config_set_order(struct config* ctx, const char* order)

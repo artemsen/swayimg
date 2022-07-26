@@ -5,18 +5,10 @@
 #pragma once
 
 #include "config.h"
-#include "types.h"
+#include "image.h"
 
 /** Canvas context. */
 struct canvas;
-
-/** Corner position. */
-enum canvas_corner {
-    cc_top_left,
-    cc_top_right,
-    cc_bottom_left,
-    cc_bottom_right
-};
 
 /** Viewport movement. */
 enum canvas_move {
@@ -37,6 +29,9 @@ enum canvas_scale {
     cs_zoom_in,    ///< Enlarge by one step
     cs_zoom_out    ///< Reduce by one step
 };
+
+/** Corner position. */
+enum canvas_corner { cc_top_right, cc_bottom_left };
 
 /**
  * Initialize canvas.
@@ -92,14 +87,23 @@ void canvas_draw_image(const struct canvas* ctx, bool aplha, const argb_t* img,
                        argb_t* wnd);
 
 /**
- * Print text on canvas.
+ * Print text line on canvas.
  * @param ctx canvas context
  * @param wnd window buffer
  * @param corner text block position
  * @param text printed text
  */
-void canvas_print(const struct canvas* ctx, argb_t* wnd,
-                  enum canvas_corner corner, const char* text);
+void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
+                       enum canvas_corner corner, const char* text);
+
+/**
+ * Print meta info table on canvas.
+ * @param ctx canvas context
+ * @param wnd window buffer
+ * @param info meta info to print
+ */
+void canvas_print_meta(const struct canvas* ctx, argb_t* wnd,
+                       const struct meta* info);
 
 /**
  * Move viewport.

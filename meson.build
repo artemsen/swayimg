@@ -24,11 +24,10 @@ version = get_option('version')
 
 # mandatory dependencies
 wlcln = dependency('wayland-client')
-cairo = dependency('cairo')
 json = dependency('json-c')
 xkb = dependency('xkbcommon')
-pango = dependency('pango')
-pangocairo = dependency('pangocairo')
+fontconfig = dependency('fontconfig')
+freetype = dependency('freetype2')
 rt = cc.find_library('rt')
 # optional dependencies: file formats support
 avif = dependency('libavif', required: get_option('avif'))
@@ -36,6 +35,7 @@ gif = cc.find_library('gif', required: get_option('gif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
+cairo = dependency('cairo', required: get_option('svg'))
 webp = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
@@ -117,6 +117,7 @@ sources = [
   'src/canvas.c',
   'src/config.c',
   'src/filelist.c',
+  'src/font.c',
   'src/image.c',
   'src/main.c',
   'src/sway.c',
@@ -163,8 +164,8 @@ executable(
     jpeg,
     json,
     jxl,
-    pango,
-    pangocairo,
+    fontconfig,
+    freetype,
     png,
     rsvg,
     rt,

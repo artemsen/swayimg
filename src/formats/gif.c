@@ -85,8 +85,8 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
             const uint8_t color = raster[x];
             if (color != gif->SBackGroundColor) {
                 const GifColorType* rgb = &colors[color];
-                *pixel =
-                    ARGB_ALPHA_MASK | rgb->Red << 16 | rgb->Green << 8 | rgb->Blue;
+                *pixel = ARGB_FROM_A(0xff) | ARGB_FROM_R(rgb->Red) |
+                    ARGB_FROM_G(rgb->Green) | ARGB_FROM_B(rgb->Blue);
             }
             ++pixel;
         }
