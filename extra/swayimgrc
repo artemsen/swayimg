@@ -16,7 +16,7 @@ fullscreen = no
 # Background for transparent images (none, grid, or RGB, e.g. #112233)
 background = grid
 # Window background mode/color (none or RGB, e.g. #112233)
-frame = none
+window = none
 
 # Show image info: format, size, EXIF, and current scale (yes/no)
 info = no

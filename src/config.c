@@ -20,7 +20,7 @@
 // Default settings
 #define DEFAULT_SCALE      cfgsc_optimal
 #define DEFAULT_BACKGROUND BACKGROUND_GRID
-#define DEFAULT_FRAME      COLOR_TRANSPARENT
+#define DEFAULT_WINDOW     COLOR_TRANSPARENT
 #define DEFAULT_SWAYWM     true
 #define DEFAULT_FONT_FACE  "monospace"
 #define DEFAULT_FONT_SIZE  14
@@ -161,8 +161,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_boolean(value, &ctx->fullscreen);
     } else if (strcmp(key, "background") == 0) {
         return config_set_background(ctx, value);
-    } else if (strcmp(key, "frame") == 0) {
-        return config_set_frame(ctx, value);
+    } else if (strcmp(key, "window") == 0) {
+        return config_set_window(ctx, value);
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &ctx->show_info);
     } else if (strcmp(key, "font") == 0) {
@@ -200,7 +200,7 @@ static struct config* default_config(void)
 
     ctx->scale = DEFAULT_SCALE;
     ctx->background = BACKGROUND_GRID;
-    ctx->frame = DEFAULT_FRAME;
+    ctx->window = DEFAULT_WINDOW;
     ctx->sway_wm = DEFAULT_SWAYWM;
     config_set_font_name(ctx, DEFAULT_FONT_FACE);
     ctx->font_color = DEFAULT_FONT_COLOR;
@@ -315,10 +315,10 @@ bool config_check(const struct config* ctx)
 {
     const char* err = NULL;
 
-    if (ctx->window.width && !ctx->sway_wm) {
+    if (ctx->geometry.width && !ctx->sway_wm) {
         err = "window geometry is set, but sway rules are disabled";
     }
-    if (ctx->fullscreen && ctx->window.width) {
+    if (ctx->fullscreen && ctx->geometry.width) {
         err = "can not set geometry in full screen mode";
     }
     if (ctx->fullscreen && ctx->sway_wm) {
@@ -333,52 +333,52 @@ bool config_check(const struct config* ctx)
     return true;
 }
 
-bool config_set_scale(struct config* ctx, const char* scale)
+bool config_set_scale(struct config* ctx, const char* val)
 {
-    if (strcmp(scale, "optimal") == 0) {
+    if (strcmp(val, "optimal") == 0) {
         ctx->scale = cfgsc_optimal;
-    } else if (strcmp(scale, "fit") == 0) {
+    } else if (strcmp(val, "fit") == 0) {
         ctx->scale = cfgsc_fit;
-    } else if (strcmp(scale, "real") == 0) {
+    } else if (strcmp(val, "real") == 0) {
         ctx->scale = cfgsc_real;
     } else {
-        fprintf(stderr, "Invalid scale: %s\n", scale);
+        fprintf(stderr, "Invalid scale: %s\n", val);
         fprintf(stderr, "Expected 'optimal', 'fit', or 'real'.\n");
         return false;
     }
     return true;
 }
 
-bool config_set_background(struct config* ctx, const char* background)
+bool config_set_background(struct config* ctx, const char* val)
 {
-    if (strcmp(background, "grid") == 0) {
+    if (strcmp(val, "grid") == 0) {
         ctx->background = BACKGROUND_GRID;
-    } else if (strcmp(background, "none") == 0) {
+    } else if (strcmp(val, "none") == 0) {
         ctx->background = COLOR_TRANSPARENT;
-    } else if (!set_color(background, &ctx->background)) {
-        fprintf(stderr, "Invalid background: %s\n", background);
+    } else if (!set_color(val, &ctx->background)) {
+        fprintf(stderr, "Invalid image background: %s\n", val);
         fprintf(stderr, "Expected 'none', 'grid', or RGB hex value.\n");
         return false;
     }
     return true;
 }
 
-bool config_set_frame(struct config* ctx, const char* frame)
+bool config_set_window(struct config* ctx, const char* val)
 {
-    if (strcmp(frame, "none") == 0) {
-        ctx->frame = COLOR_TRANSPARENT;
-    } else if (!set_color(frame, &ctx->frame)) {
-        fprintf(stderr, "Invalid frame color: %s\n", frame);
+    if (strcmp(val, "none") == 0) {
+        ctx->window = COLOR_TRANSPARENT;
+    } else if (!set_color(val, &ctx->window)) {
+        fprintf(stderr, "Invalid window background: %s\n", val);
         fprintf(stderr, "Expected 'none' or RGB hex value.\n");
         return false;
     }
     return true;
 }
 
-bool config_set_geometry(struct config* ctx, const char* geometry)
+bool config_set_geometry(struct config* ctx, const char* val)
 {
     int nums[4]; // x,y,width,height
-    const char* ptr = geometry;
+    const char* ptr = val;
     size_t idx;
 
     for (idx = 0; *ptr && idx < sizeof(nums) / sizeof(nums[0]); ++idx) {
@@ -395,32 +395,32 @@ bool config_set_geometry(struct config* ctx, const char* geometry)
 
     if (idx == sizeof(nums) / sizeof(nums[0]) && !*ptr &&
         nums[2 /*width*/] > 0 && nums[3 /*height*/] > 0) {
-        ctx->window.x = (int32_t)nums[0];
-        ctx->window.y = (int32_t)nums[1];
-        ctx->window.width = (uint32_t)nums[2];
-        ctx->window.height = (uint32_t)nums[3];
+        ctx->geometry.x = (ssize_t)nums[0];
+        ctx->geometry.y = (ssize_t)nums[1];
+        ctx->geometry.width = (size_t)nums[2];
+        ctx->geometry.height = (size_t)nums[3];
         return true;
     }
 
-    fprintf(stderr, "Invalid window geometry: %s\n", geometry);
+    fprintf(stderr, "Invalid window geometry: %s\n", val);
     fprintf(stderr, "Expected X,Y,W,H format.\n");
     return false;
 }
 
-bool config_set_font_name(struct config* ctx, const char* font)
+bool config_set_font_name(struct config* ctx, const char* val)
 {
-    const size_t len = font ? strlen(font) : 0;
+    const size_t len = strlen(val);
     if (len == 0) {
         fprintf(stderr, "Invalid font name\n");
         return false;
     }
-    return set_string(font, (char**)&ctx->font_face);
+    return set_string(val, (char**)&ctx->font_face);
 }
 
-bool config_set_font_size(struct config* ctx, const char* size)
+bool config_set_font_size(struct config* ctx, const char* val)
 {
     char* endptr;
-    const unsigned long sz = strtoul(size, &endptr, 10);
+    const unsigned long sz = strtoul(val, &endptr, 10);
     if (*endptr || sz == 0) {
         fprintf(stderr, "Invalid font size\n");
         return false;
@@ -429,30 +429,30 @@ bool config_set_font_size(struct config* ctx, const char* size)
     return true;
 }
 
-bool config_set_order(struct config* ctx, const char* order)
+bool config_set_order(struct config* ctx, const char* val)
 {
-    if (strcmp(order, "none") == 0) {
+    if (strcmp(val, "none") == 0) {
         ctx->order = cfgord_none;
-    } else if (strcmp(order, "alpha") == 0) {
+    } else if (strcmp(val, "alpha") == 0) {
         ctx->order = cfgord_alpha;
-    } else if (strcmp(order, "random") == 0) {
+    } else if (strcmp(val, "random") == 0) {
         ctx->order = cfgord_random;
     } else {
-        fprintf(stderr, "Invalid file list order: %s\n", order);
+        fprintf(stderr, "Invalid file list order: %s\n", val);
         fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
         return false;
     }
     return true;
 }
 
-bool config_set_appid(struct config* ctx, const char* app_id)
+bool config_set_appid(struct config* ctx, const char* val)
 {
-    const size_t len = app_id ? strlen(app_id) : 0;
+    const size_t len = strlen(val);
     if (len == 0 || len > APP_ID_MAX) {
-        fprintf(stderr, "Invalid class/app_id: %s\n", app_id);
+        fprintf(stderr, "Invalid class/app_id: %s\n", val);
         fprintf(stderr, "Expected non-empty string up to %d chars.\n",
                 APP_ID_MAX);
         return false;
     }
-    return set_string(app_id, (char**)&ctx->app_id);
+    return set_string(val, (char**)&ctx->app_id);
 }

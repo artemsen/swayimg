@@ -214,7 +214,7 @@ bool run_viewer(struct config* cfg, struct file_list* files)
     }
 
     // Start GUI
-    if (!create_window(&handlers, cfg->window.width, cfg->window.height,
+    if (!create_window(&handlers, cfg->geometry.width, cfg->geometry.height,
                        cfg->app_id)) {
         goto done;
     }

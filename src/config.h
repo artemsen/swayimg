@@ -6,7 +6,7 @@
 
 #include "types.h"
 
-// Background and frame modes
+// Background modes
 #define COLOR_TRANSPARENT 0xff000000
 #define BACKGROUND_GRID   0xfe000000
 
@@ -28,10 +28,10 @@ enum config_scale {
 struct config {
     const char* app_id;      ///< Window class/app_id name
     bool sway_wm;            ///< Enable/disable integration with Sway WM
-    struct rect window;      ///< Window geometry
+    struct rect geometry;    ///< Window geometry
     bool fullscreen;         ///< Full screen mode
-    argb_t background;       ///< Background mode/color
-    argb_t frame;            ///< Frame mode/color
+    argb_t background;       ///< Image background mode/color
+    argb_t window;           ///< Window background mode/color
     enum config_scale scale; ///< Initial scale
     bool show_info;          ///< Show image info
     const char* font_face;   ///< Font name
@@ -63,63 +63,63 @@ bool config_check(const struct config* ctx);
 /**
  * Set initial scale from one of predefined string (default, fit or real).
  * @param ctx configuration context
- * @param scale text scale description
+ * @param val text scale description
  * @return false if value format is invalid
  */
-bool config_set_scale(struct config* ctx, const char* scale);
+bool config_set_scale(struct config* ctx, const char* val);
 
 /**
- * Set background type/color from RGB hex string.
+ * Set background type/color for transparent images.
  * @param ctx configuration context
- * @param background text background description
+ * @param val text background description
  * @return false if value format is invalid
  */
-bool config_set_background(struct config* ctx, const char* background);
+bool config_set_background(struct config* ctx, const char* val);
 
 /**
- * Set frame type/color from RGB hex string.
+ * Set window backround type/color.
  * @param ctx configuration context
- * @param frame text background description
+ * @param val text background description
  * @return false if value format is invalid
  */
-bool config_set_frame(struct config* ctx, const char* frame);
+bool config_set_window(struct config* ctx, const char* val);
 
 /**
  * Set window geometry (position and size) from string "x,y,width,height".
  * @param ctx configuration context
- * @param geometry text geometry description
+ * @param val text geometry description
  * @return false if value format is invalid
  */
-bool config_set_geometry(struct config* ctx, const char* geometry);
+bool config_set_geometry(struct config* ctx, const char* val);
 
 /**
  * Set font name.
  * @param ctx configuration context
- * @param font font name
+ * @param val font name
  * @return false if value format is invalid
  */
-bool config_set_font_name(struct config* ctx, const char* font);
+bool config_set_font_name(struct config* ctx, const char* val);
 
 /**
  * Set font size.
  * @param ctx configuration context
- * @param size font size
+ * @param val font size
  * @return false if value format is invalid
  */
-bool config_set_font_size(struct config* ctx, const char* size);
+bool config_set_font_size(struct config* ctx, const char* val);
 
 /**
  * Set order of the file list.
  * @param ctx configuration context
- * @param order text order description
+ * @param val text order description
  * @return false if value format is invalid
  */
-bool config_set_order(struct config* ctx, const char* order);
+bool config_set_order(struct config* ctx, const char* val);
 
 /**
  * Set window class/app_id.
  * @param ctx configuration context
- * @param app_id window class/app_id to set
+ * @param val window class/app_id to set
  * @return false if value format is invalid
  */
-bool config_set_appid(struct config* ctx, const char* app_id);
+bool config_set_appid(struct config* ctx, const char* val);

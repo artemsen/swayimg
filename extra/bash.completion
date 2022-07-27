@@ -8,7 +8,7 @@ _swayimg()
                 -f --fullscreen \
                 -s --scale \
                 -b --background \
-                -w --frame \
+                -w --window \
                 -g --geometry \
                 -i --info \
                 -c --class \

@@ -150,13 +150,13 @@ void canvas_swap_image_size(struct canvas* ctx)
 
 void canvas_clear(const struct canvas* ctx, argb_t* wnd)
 {
-    if (ctx->config->frame == COLOR_TRANSPARENT) {
+    if (ctx->config->window == COLOR_TRANSPARENT) {
         memset(wnd, 0, ctx->window.width * ctx->window.height * sizeof(argb_t));
     } else {
         for (size_t y = 0; y < ctx->window.height; ++y) {
             argb_t* line = &wnd[y * ctx->window.width];
             for (size_t x = 0; x < ctx->window.width; ++x) {
-                line[x] = ARGB_FROM_A(0xff) | ctx->config->frame;
+                line[x] = ARGB_FROM_A(0xff) | ctx->config->window;
             }
         }
     }

@@ -29,7 +29,7 @@ static const struct cmdarg arguments[] = {
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
     { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
-    { 'w', "frame",      "XXXXXX",  "set window background color: [none]/RGB" },
+    { 'w', "window",     "XXXXXX",  "set window background color: [none]/RGB" },
     { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
     { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
     { 'c', "class",      "NAME",    "set window class/app_id" },
@@ -122,7 +122,7 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 }
                 break;
             case 'w':
-                if (!config_set_frame(cfg, optarg)) {
+                if (!config_set_window(cfg, optarg)) {
                     return -1;
                 }
                 break;
@@ -204,13 +204,13 @@ static void sway_setup(struct config* cfg)
     bool sway_fullscreen = false;
     const int ipc = sway_connect();
     if (ipc != -1) {
-        if (!cfg->window.width) {
+        if (!cfg->geometry.width) {
             // get currently focused window state
-            sway_current(ipc, &cfg->window, &sway_fullscreen);
+            sway_current(ipc, &cfg->geometry, &sway_fullscreen);
         }
         cfg->fullscreen |= sway_fullscreen;
-        if (!cfg->fullscreen && cfg->window.width) {
-            sway_add_rules(ipc, cfg->app_id, cfg->window.x, cfg->window.y);
+        if (!cfg->fullscreen && cfg->geometry.width) {
+            sway_add_rules(ipc, cfg->app_id, cfg->geometry.x, cfg->geometry.y);
         }
         sway_disconnect(ipc);
     }
