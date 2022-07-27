@@ -61,6 +61,7 @@ static struct image* image_create(const char* path, const uint8_t* data,
     ctx->path = path;
 
     image_add_meta(ctx, "File", "%s", image_file_name(ctx));
+    add_size_info(ctx, size);
 
     status = image_decode(ctx, data, size);
     if (status != ldr_success) {
@@ -71,7 +72,6 @@ static struct image* image_create(const char* path, const uint8_t* data,
         return NULL;
     }
 
-    add_size_info(ctx, size);
     image_add_meta(ctx, "Image size", "%lux%lu", ctx->width, ctx->height);
 
 #ifdef HAVE_LIBEXIF
