@@ -30,6 +30,11 @@ typedef uint32_t argb_t;
 #define ARGB_FROM_G(g) (((g)&0xff) << ARGB_G_SHIFT)
 #define ARGB_FROM_B(b) (((b)&0xff) << ARGB_B_SHIFT)
 
+// convert RGBA to ARGB
+#define ARGB_FROM_ABGR(c)                             \
+    ((c & 0xff00ff00) | ARGB_FROM_R(ARGB_B_FROM(c)) | \
+     ARGB_FROM_B(ARGB_R_FROM(c)))
+
 // alpha blending (a=alpha, s=target alpha, b=background, f=foreground)
 #define ARGB_ALPHA_BLEND(a, s, b, f)                                          \
     ARGB_FROM_A(s) |                                                          \

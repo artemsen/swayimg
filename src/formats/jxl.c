@@ -100,15 +100,13 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
         }
     } while (status != JXL_DEC_SUCCESS);
 
-    // convert RGBA -> ARGB
+    // convert ABGR -> ARGB
     for (size_t i = 0; i < ctx->width * ctx->height; ++i) {
-        const argb_t val = buffer[i];
-        buffer[i] =
-            (val & 0xff00ff00) | (val & 0xff) << 16 | ((val >> 16) & 0xff);
+        buffer[i] = ARGB_FROM_ABGR(buffer[i]);
     }
 
     // format description: total number of bits per pixel
-    image_add_meta(ctx, "Format", "JPEG XL %ubit",
+    image_add_meta(ctx, "Format", "JPEG XL %ubpp",
                    info.bits_per_sample * info.num_color_channels +
                        info.alpha_bits);
     ctx->alpha = true;
