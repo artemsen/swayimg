@@ -11,9 +11,9 @@ jobs:
       run: >
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
-          libwayland-dev libcairo-dev libjson-c-dev libxkbcommon-dev
+          libwayland-dev libjson-c-dev libxkbcommon-dev
           libfreetype-dev libfontconfig-dev
-          libavif-dev libgif-dev libjpeg-dev librsvg2-dev libwebp-dev
+          libavif-dev libgif-dev libjpeg-dev librsvg2-dev libtiff-dev libwebp-dev
 
     - name: Check out source code
       uses: actions/checkout@v2.2.0

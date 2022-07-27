@@ -23,6 +23,10 @@ option('svg',
        type: 'feature',
        value: 'auto',
        description: 'Enable SVG format support')
+option('tiff',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable TIFF format support')
 option('webp',
        type: 'feature',
        value: 'auto',

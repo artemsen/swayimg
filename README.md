@@ -21,6 +21,7 @@ image from the specified file.
 - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
 - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
 - AV1 (via [libavif](https://github.com/AOMediaCodec/libavif));
+- TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
 - BMP (built-in).
 
 ## Known issues

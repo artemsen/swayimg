@@ -38,6 +38,9 @@ LOADER_DECLARE(png);
 #ifdef HAVE_LIBRSVG
 LOADER_DECLARE(svg);
 #endif
+#ifdef HAVE_LIBTIFF
+LOADER_DECLARE(tiff);
+#endif
 #ifdef HAVE_LIBWEBP
 LOADER_DECLARE(webp);
 #endif
@@ -66,6 +69,9 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBJXL
     &LOADER_FUNCTION(jxl),
 #endif
+#ifdef HAVE_LIBTIFF
+    &LOADER_FUNCTION(tiff),
+#endif
 };
 
 const char* supported_formats(void)
@@ -91,6 +97,9 @@ const char* supported_formats(void)
 #endif
 #ifdef HAVE_LIBJXL
            ", jxl"
+#endif
+#ifdef HAVE_LIBTIFF
+           ", tiff"
 #endif
         ;
 }

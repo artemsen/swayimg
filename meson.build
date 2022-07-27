@@ -35,6 +35,7 @@ gif = cc.find_library('gif', required: get_option('gif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
+tiff = cc.find_library('libtiff', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
@@ -54,6 +55,7 @@ conf.set('HAVE_LIBJPEG', jpeg.found())
 conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
+conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBWEBP', webp.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set_quoted('APP_NAME', meson.project_name())
@@ -148,6 +150,9 @@ endif
 if rsvg.found()
   sources += 'src/formats/svg.c'
 endif
+if tiff.found()
+  sources += 'src/formats/tiff.c'
+endif
 if webp.found()
   sources += 'src/formats/webp.c'
 endif
@@ -156,20 +161,23 @@ executable(
   'swayimg',
   sources,
   dependencies: [
-    avif,
-    exif,
-    gif,
-    jpeg,
+    # runtime
+    rt,
+    wlcln,
     json,
-    jxl,
+    xkb,
     fontconfig,
     freetype,
+    exif,
+    # image support
+    avif,
+    gif,
+    jpeg,
+    jxl,
     png,
     rsvg,
-    rt,
+    tiff,
     webp,
-    wlcln,
-    xkb,
   ],
   install: true
 )
