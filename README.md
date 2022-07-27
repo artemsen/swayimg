@@ -54,6 +54,8 @@ Examples:
 - `PgUp` or `p`: Open previous file;
 - `N`: Open file from next directory;
 - `P`: Open file from previous directory;
+- `Home`: Open the first file;
+- `End`: Open the last file;
 - `Esc`, `Enter`, `F10` or `q`: Exit the program.
 
 ## Configuration

@@ -111,6 +111,86 @@ static void add_dir(struct file_list* ctx, const char* dir, bool recursive)
     closedir(dir_handle);
 }
 
+/**
+ * Step to the next file.
+ * @param ctx file list context
+ * @param forward step direction
+ * @return false if no more files in the list
+ */
+static bool next_file(struct file_list* ctx, bool forward)
+{
+    size_t index = ctx->index;
+
+    do {
+        if (forward) {
+            if (++index >= ctx->size) {
+                index = 0;
+            }
+        } else {
+            if (index-- == 0) {
+                index = ctx->size - 1;
+            }
+        }
+        if (*ctx->paths[index]) {
+            ctx->index = index;
+            return true;
+        }
+    } while (index != ctx->index);
+
+    // loop complete, no one valid entry found
+    return false;
+}
+
+/**
+ * Step to the next directory.
+ * @param ctx file list context
+ * @param forward step direction
+ * @return false if no more files in the list
+ */
+static bool next_directory(struct file_list* ctx, bool forward)
+{
+    const size_t cur_index = ctx->index;
+    const char* cur_path = ctx->paths[ctx->index];
+    size_t cur_dir_len, next_dir_len;
+
+    // directory part of the current file path
+    cur_dir_len = strlen(cur_path) - 1;
+    while (cur_dir_len && cur_path[cur_dir_len] != '/') {
+        --cur_dir_len;
+    }
+
+    // search for another directory in file list
+    while (next_file(ctx, forward) && ctx->index != cur_index) {
+        // directory part of the next file path
+        const char* next_path = ctx->paths[ctx->index];
+        next_dir_len = strlen(next_path) - 1;
+        while (next_dir_len && next_path[next_dir_len] != '/') {
+            --next_dir_len;
+        }
+        if (cur_dir_len != next_dir_len ||
+            strncmp(cur_path, next_path, cur_dir_len)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Go to the first/last file.
+ * @param ctx file list context
+ * @param first direction, true=first, false=last
+ * @return false if no more files in the list
+ */
+static bool goto_file(struct file_list* ctx, bool first)
+{
+    ctx->index = first ? 0 : ctx->size - 1;
+    if (*ctx->paths[ctx->index]) {
+        return true;
+    }
+    return next_file(ctx, first);
+}
+
 struct file_list* flist_init(const char** files, size_t num, bool recursive)
 {
     struct file_list* ctx;
@@ -204,58 +284,24 @@ const char* flist_current(const struct file_list* ctx, size_t* index,
 bool flist_exclude(struct file_list* ctx, bool forward)
 {
     ctx->paths[ctx->index][0] = 0; // mark entry as excluded
-    return flist_next_file(ctx, forward);
+    return next_file(ctx, forward);
 }
 
-bool flist_next_file(struct file_list* ctx, bool forward)
+bool flist_select(struct file_list* ctx, enum file_list_move mv)
 {
-    size_t index = ctx->index;
-
-    do {
-        if (forward) {
-            if (++index >= ctx->size) {
-                index = 0;
-            }
-        } else {
-            if (index-- == 0) {
-                index = ctx->size - 1;
-            }
-        }
-        if (*ctx->paths[index]) {
-            ctx->index = index;
-            return true;
-        }
-    } while (index != ctx->index);
-
-    // loop complete, no one valid entry found
-    return false;
-}
-
-bool flist_next_directory(struct file_list* ctx, bool forward)
-{
-    const size_t cur_index = ctx->index;
-    const char* cur_path = ctx->paths[ctx->index];
-    size_t cur_dir_len, next_dir_len;
-
-    // directory part of the current file path
-    cur_dir_len = strlen(cur_path) - 1;
-    while (cur_dir_len && cur_path[cur_dir_len] != '/') {
-        --cur_dir_len;
+    switch (mv) {
+        case fl_first_file:
+            return goto_file(ctx, true);
+        case fl_last_file:
+            return goto_file(ctx, false);
+        case fl_next_file:
+            return next_file(ctx, true);
+        case fl_prev_file:
+            return next_file(ctx, false);
+        case fl_next_dir:
+            return next_directory(ctx, true);
+        case fl_prev_dir:
+            return next_directory(ctx, false);
     }
-
-    // search for another directory in file list
-    while (flist_next_file(ctx, forward) && ctx->index != cur_index) {
-        // directory part of the next file path
-        const char* next_path = ctx->paths[ctx->index];
-        next_dir_len = strlen(next_path) - 1;
-        while (next_dir_len && next_path[next_dir_len] != '/') {
-            --next_dir_len;
-        }
-        if (cur_dir_len != next_dir_len ||
-            strncmp(cur_path, next_path, cur_dir_len)) {
-            return true;
-        }
-    }
-
     return false;
 }

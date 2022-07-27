@@ -45,28 +45,22 @@ static void reset_viewport(void)
 
 /**
  * Load next image file.
- * @param file true for next file, false for next directory
- * @param forward true to move forward, false to backward
+ * @param mv iterator move direction
  * @return false if file was not loaded
  */
-static bool load_next(bool file, bool forward)
+static bool load_next(enum file_list_move mv)
 {
     struct image* image = NULL;
+    const bool forward =
+        (mv == fl_first_file || mv == fl_next_file || mv == fl_next_dir);
 
-    if (!viewer.files) {
+    if (!viewer.files || !flist_select(viewer.files, mv)) {
         return false;
     }
 
-    if (viewer.image) { // don't move on first call
-        bool moved = file ? flist_next_file(viewer.files, forward)
-                          : flist_next_directory(viewer.files, forward);
-        if (!moved) {
-            return false;
-        }
-    }
-
     while (!image) {
-        image = image_from_file(flist_current(viewer.files, NULL, NULL));
+        const char* file = flist_current(viewer.files, NULL, NULL);
+        image = image_from_file(file);
         if (!image && !flist_exclude(viewer.files, forward)) {
             fprintf(stderr, "No more image files to view\n");
             return false;
@@ -123,15 +117,19 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_next(true, false);
+            return load_next(fl_prev_file);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_next(true, true);
+            return load_next(fl_next_file);
         case XKB_KEY_P:
-            return load_next(false, false);
+            return load_next(fl_prev_dir);
         case XKB_KEY_N:
-            return load_next(false, true);
+            return load_next(fl_next_dir);
+        case XKB_KEY_Home:
+            return load_next(fl_first_file);
+        case XKB_KEY_End:
+            return load_next(fl_last_file);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return canvas_move(viewer.canvas, cm_step_left);
@@ -155,7 +153,7 @@ static bool on_keyboard(xkb_keysym_t key)
             canvas_set_scale(viewer.canvas, cs_real_size);
             return true;
         case XKB_KEY_BackSpace:
-            canvas_set_scale(viewer.canvas, cs_fit_or100);
+            reset_viewport();
             return true;
         case XKB_KEY_i:
             viewer.config->show_info = !viewer.config->show_info;
@@ -211,7 +209,7 @@ bool run_viewer(struct config* cfg, struct file_list* files)
         if (!viewer.image) {
             goto done;
         }
-    } else if (!load_next(true, true)) {
+    } else if (!load_next(fl_first_file)) {
         goto done;
     }
 
