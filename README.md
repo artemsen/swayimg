@@ -34,7 +34,7 @@ See `man swayimg` for details.
 
 Examples:
 - View multiple files: `swayimg photo.jpg logo.png`
-- View all files (recursively) in the current directory in random order: `swayimg -rR`
+- View all files (recursively) in the current directory in random order: `swayimg -r -o random`
 - View using pipes: `wget -O- https://www.kernel.org/theme/images/logos/tux.png 2> /dev/null | swayimg -`
 
 ### Key bindings

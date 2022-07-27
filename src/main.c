@@ -24,7 +24,7 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'o', "sort",       NULL,      "sort input files: none/[alpha]/random" },
+    { 'o', "sort",       "ORDER",   "sort input files: none/[alpha]/random" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
