@@ -4,7 +4,6 @@
 
 #include "loader.h"
 
-#include <cairo/cairo.h>
 #include <ctype.h>
 #include <librsvg/rsvg.h>
 #include <string.h>

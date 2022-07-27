@@ -35,7 +35,6 @@ gif = cc.find_library('gif', required: get_option('gif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
-cairo = dependency('cairo', required: get_option('svg'))
 webp = dependency('libwebp', required: get_option('webp'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
@@ -158,7 +157,6 @@ executable(
   sources,
   dependencies: [
     avif,
-    cairo,
     exif,
     gif,
     jpeg,
