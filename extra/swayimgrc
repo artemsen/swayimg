@@ -13,22 +13,28 @@ scale = optimal
 
 # Start in full screen mode (yes/no)
 fullscreen = no
+
 # Background for transparent images (none, grid, or RGB, e.g. #112233)
 background = grid
+
 # Window background mode/color (none or RGB, e.g. #112233)
 window = none
 
 # Show image info: format, size, EXIF, and current scale (yes/no)
 info = no
+
 # Font used to show image info
 font = monospace
+
 # Font size (in pt)
 font-size = 14
+
 # Color for image info text
 font-color = #ff00ff
 
 # Default order of the image list (none, alpha, or random)
 order = alpha
+
 # Read directories recursively (yes/no)
 recursive = no
 
