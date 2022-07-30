@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -12,6 +14,7 @@ struct file_list;
 
 /** Types of movement through file list. */
 enum file_list_move {
+    fl_initial,
     fl_first_file,
     fl_last_file,
     fl_next_file,
@@ -24,28 +27,17 @@ enum file_list_move {
  * Initialize the file list.
  * @param files list of input source files
  * @param num number of files in the source list
- * @param recursive flag to handle directory recursively
+ * @param cfg configuration instance
  * @return created file list context
  */
-struct file_list* flist_init(const char** files, size_t num, bool recursive);
+struct file_list* flist_init(const char** files, size_t num,
+                             const struct config* cfg);
 
 /**
  * Free the file list.
  * @param ctx file list context
  */
 void flist_free(struct file_list* ctx);
-
-/**
- * Sort the file list alphabetically.
- * @param ctx file list context
- */
-void flist_sort(struct file_list* ctx);
-
-/**
- * Shuffle the file list.
- * @param ctx file list context
- */
-void flist_shuffle(struct file_list* ctx);
 
 /**
  * Get description of the current file in the file list.
@@ -63,7 +55,7 @@ const char* flist_current(const struct file_list* ctx, size_t* index,
  * @param mv iterator move direction
  * @return false if no more files in the list
  */
-bool flist_select(struct file_list* ctx, enum file_list_move mv);
+bool flist_jump(struct file_list* ctx, enum file_list_move mv);
 
 /**
  * Exclude current file from the list and move to the next one.

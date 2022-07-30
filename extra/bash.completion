@@ -5,6 +5,7 @@ _swayimg()
     local cur=${COMP_WORDS[COMP_CWORD]}
     local opts="-o --sort \
                 -r --recursive \
+                -a --all \
                 -f --fullscreen \
                 -s --scale \
                 -b --background \

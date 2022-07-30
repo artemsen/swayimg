@@ -26,6 +26,7 @@ struct cmdarg {
 static const struct cmdarg arguments[] = {
     { 'o', "sort",       "ORDER",   "sort input files: none/[alpha]/random" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
+    { 'a', "all",        NULL,      "open all files from the same directory" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
     { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
@@ -66,7 +67,7 @@ static void print_help(void)
  * Parse command line arguments into configuration instance.
  * @param argc number of arguments to parse
  * @param argv arguments array
- * @param cfg target configuration instance
+ * @param cfg configuration instance
  * @return index of the first non option argument, or -1 if error, or 0 to exit
  */
 static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
@@ -106,6 +107,9 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'r':
                 cfg->recursive = true;
+                break;
+            case 'a':
+                cfg->all_files = true;
                 break;
             case 'f':
                 cfg->fullscreen = true;
@@ -157,42 +161,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     }
 
     return optind;
-}
-
-/**
- * Compose file list from command line arguments.
- * @param cfg configuration instance
- * @param args array with command line arguments
- * @param num_files number of files in array
- * @return file list, NULL if error
- */
-static struct file_list* create_file_list(struct config* cfg,
-                                          const char* args[], size_t num_files)
-{
-    struct file_list* flist = NULL;
-
-    if (num_files == 0) {
-        // not input files specified, use current directory
-        const char* curr_dir = ".";
-        flist = flist_init(&curr_dir, 1, cfg->recursive);
-        if (!flist) {
-            fprintf(stderr, "No image files found in the current directory\n");
-            return NULL;
-        }
-    } else {
-        flist = flist_init(args, num_files, cfg->recursive);
-        if (!flist) {
-            fprintf(stderr, "Unable to compose file list from input args\n");
-            return NULL;
-        }
-    }
-    if (cfg->order == cfgord_alpha) {
-        flist_sort(flist);
-    } else if (cfg->order == cfgord_random) {
-        flist_shuffle(flist);
-    }
-
-    return flist;
 }
 
 /**
@@ -251,8 +219,9 @@ int main(int argc, char* argv[])
     if (num_files == 1 && strcmp(argv[index], "-") == 0) {
         // reading from pipe, skip file list composing
     } else {
-        files = create_file_list(cfg, (const char**)&argv[index], num_files);
+        files = flist_init((const char**)&argv[index], num_files, cfg);
         if (!files) {
+            fprintf(stderr, "Unable to compose file list from input args\n");
             rc = EXIT_FAILURE;
             goto done;
         }
@@ -267,8 +236,8 @@ int main(int argc, char* argv[])
     rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 done:
-    config_free(cfg);
     flist_free(files);
+    config_free(cfg);
 
     return rc;
 }

@@ -39,6 +39,7 @@ struct config {
     argb_t font_color;       ///< Font color
     enum config_order order; ///< File list order
     bool recursive;          ///< Read directories recursively
+    bool all_files;          ///< Open all files from the same directory
 };
 
 /**

@@ -54,7 +54,7 @@ static bool load_next(enum file_list_move mv)
     const bool forward =
         (mv == fl_first_file || mv == fl_next_file || mv == fl_next_dir);
 
-    if (!viewer.files || !flist_select(viewer.files, mv)) {
+    if (!viewer.files || !flist_jump(viewer.files, mv)) {
         return false;
     }
 
@@ -209,7 +209,7 @@ bool run_viewer(struct config* cfg, struct file_list* files)
         if (!viewer.image) {
             goto done;
         }
-    } else if (!load_next(fl_first_file)) {
+    } else if (!load_next(fl_initial)) {
         goto done;
     }
 

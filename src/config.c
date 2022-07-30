@@ -27,6 +27,7 @@
 #define DEFAULT_FONT_COLOR 0xff00ff
 #define DEFAULT_ORDER      cfgord_alpha
 #define DEFAULT_RECURSIVE  false
+#define DEFAULT_ALL_FILES  false
 
 /** Config file location. */
 struct location {
@@ -175,6 +176,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return config_set_order(ctx, value);
     } else if (strcmp(key, "recursive") == 0) {
         return set_boolean(value, &ctx->recursive);
+    } else if (strcmp(key, "all") == 0) {
+        return set_boolean(value, &ctx->all_files);
     } else if (strcmp(key, "app_id") == 0) {
         return config_set_appid(ctx, value);
     } else if (strcmp(key, "sway") == 0) {
@@ -207,6 +210,7 @@ static struct config* default_config(void)
     ctx->font_size = DEFAULT_FONT_SIZE;
     ctx->order = DEFAULT_ORDER;
     ctx->recursive = DEFAULT_RECURSIVE;
+    ctx->all_files = DEFAULT_ALL_FILES;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
