@@ -20,7 +20,18 @@ add_project_arguments(
 )
 
 cc = meson.get_compiler('c')
+
+# version info
 version = get_option('version')
+if version == '0.0.0'
+  git = find_program('git', native: true, required: false)
+  if git.found()
+    git_ver = run_command([git, 'describe', '--tags', '--long', '--always', '--dirty'], check: false)
+    if git_ver.returncode() == 0
+      version = git_ver.stdout().strip().substring(1)
+    endif
+  endif
+endif
 
 # mandatory dependencies
 wlcln = dependency('wayland-client')
