@@ -71,12 +71,6 @@ static void fix_viewport(struct canvas* ctx)
                               .width = ctx->scale * ctx->image.width,
                               .height = ctx->scale * ctx->image.height };
 
-    if (img.width <= ctx->window.width) {
-        ctx->image.x = ctx->window.width / 2 - img.width / 2;
-    }
-    if (img.height <= ctx->window.height) {
-        ctx->image.y = ctx->window.height / 2 - img.height / 2;
-    }
     if (img.x > 0 && img.x + img.width > ctx->window.width) {
         ctx->image.x = 0;
     }
@@ -88,6 +82,12 @@ static void fix_viewport(struct canvas* ctx)
     }
     if (img.y < 0 && img.y + img.height < ctx->window.height) {
         ctx->image.y = ctx->window.height - img.height;
+    }
+    if (img.width <= ctx->window.width) {
+        ctx->image.x = ctx->window.width / 2 - img.width / 2;
+    }
+    if (img.height <= ctx->window.height) {
+        ctx->image.y = ctx->window.height / 2 - img.height / 2;
     }
 }
 
