@@ -57,6 +57,8 @@ jxl = dependency('libjxl', required: false)
 if not jxl.found() and (jxl_feature.auto() or jxl_feature.enabled())
   jxl = cc.find_library('libjxl', required: jxl_feature)
 endif
+# Non-Linux
+epoll = dependency('epoll-shim', required: false)
 
 # configuration file
 conf = configuration_data()
@@ -175,6 +177,7 @@ executable(
     # runtime
     rt,
     wlcln,
+    epoll,
     json,
     xkb,
     fontconfig,
