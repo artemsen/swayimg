@@ -28,6 +28,7 @@
 #define DEFAULT_ORDER      cfgord_alpha
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
+#define DEFAULT_MARK_MODE  false
 
 /** Config file location. */
 struct location {
@@ -211,6 +212,7 @@ static struct config* default_config(void)
     ctx->order = DEFAULT_ORDER;
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
+    ctx->mark_mode = DEFAULT_MARK_MODE;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {

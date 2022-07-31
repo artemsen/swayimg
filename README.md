@@ -1,16 +1,12 @@
 # Swayimg: image viewer for Sway/Wayland
 
-Now you can view images directly in the current terminal window!
+Swayimg is a lightweight image viewer for Wayland display servers.
+
+In a [Sway](https://swaywm.org) compatible mode, the viewer creates an "overlay"
+above the currently active window, which gives the illusion that you are opening
+the image directly in a terminal window.
+
 ![Screenshot](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/screenshot.png)
-
-## How it works
-
-The program uses [Sway](https://swaywm.org) IPC to determine the geometry of the
-currently focused container. This data is used to calculate the position and
-size of the new "overlay" window that will be used to draw the image.
-In the next step, _swayimg_ adds two Sway rules for the self window: "floating
-enable" and "move position". Then it creates a new Wayland window and draws the
-image from the specified file.
 
 ## Supported image formats
 
@@ -34,30 +30,49 @@ image from the specified file.
 See `man swayimg` for details.
 
 Examples:
-- View multiple files: `swayimg photo.jpg logo.png`
-- View all files (recursively) in the current directory in random order: `swayimg -r -o random`
-- View using pipes: `wget -O- https://www.kernel.org/theme/images/logos/tux.png 2>/dev/null | swayimg -`
+- View multiple files:
+  ```
+  swayimg photo.jpg logo.png
+  ```
+- View all files (recursively) in the current directory in random order:
+  ```
+  swayimg --recursive --order=random
+  ```
+- View using pipes:
+  ```
+  wget -O- https://www.kernel.org/theme/images/logos/tux.png 2>/dev/null | swayimg -
+  ```
+- View, mark, and remove all marked files in the current directory:
+  ```
+  swayimg --mark | xargs -d '\n' rm
+  ```
 
 ### Key bindings
 
-- `Arrows` and vim-like moving keys (`hjkl`): Move view point;
-- `+` or `=`: Zoom in;
-- `-`: Zoom out;
-- `0`: Set scale to 100%;
-- `Backspace`: Reset scale to default;
-- `F5` or `[`: Rotate 90 degrees anticlockwise;
-- `F6` or `]`: Rotate 90 degrees clockwise;
-- `F7`: Flip vertical;
-- `F8`: Flip horizontal;
-- `i`: Show/hide image properties;
-- `F11` or `f`: Toggle full screen mode;
-- `PgDown`, `Space`, or `n`: Open next file;
-- `PgUp` or `p`: Open previous file;
-- `N`: Open file from next directory;
-- `P`: Open file from previous directory;
-- `Home`: Open the first file;
-- `End`: Open the last file;
-- `Esc`, `Enter`, `F10` or `q`: Exit the program.
+| Key | Action |
+| --- | ------ |
+| `Arrows` and vim-like moving keys (`hjkl`) | Move view point |
+| `+` or `=`                   | Zoom in |
+| `-`                          | Zoom out |
+| `0`                          | Set scale to 100% |
+| `Backspace`                  | Reset position and scale to defaults |
+| `F5` or `[`                  | Rotate 90 degrees anticlockwise |
+| `F6` or `]`                  | Rotate 90 degrees clockwise |
+| `F7`                         | Flip vertical |
+| `F8`                         | Flip horizontal |
+| `i`                          | Show/hide image properties |
+| `F11` or `f`                 | Toggle full screen mode |
+| `PgDown`, `Space`, or `n`    | Open next file |
+| `PgUp` or `p`                | Open previous file |
+| `N`                          | Open file from next directory |
+| `P`                          | Open file from previous directory |
+| `Home` or `g`                | Open the first file |
+| `End` or `G`                 | Open the last file |
+| `Insert` or `m`              | Invert mark sate for current file |
+| `*` or `M`                   | Invert mark sate for all files |
+| `a`                          | Mark all files |
+| `A`                          | Unmark all files |
+| `Esc`, `Enter`, `F10` or `q` | Exit the program |
 
 ## Configuration
 
@@ -74,15 +89,11 @@ See `man swayimgrc` for details.
 
 ## Install
 
-<a href="https://repology.org/project/swayimg/versions">
-  <img src="https://repology.org/badge/vertical-allrepos/swayimg.svg" alt="Packaging status" align="right">
-</a>
+[![Packaging status](https://repology.org/badge/tiny-repos/swayimg.svg)](https://repology.org/project/swayimg/versions)
+
+List of supported distributives can be found on the [Repology page](https://repology.org/project/swayimg/versions).
 
 Arch users can install the program from AUR: [swayimg](https://aur.archlinux.org/packages/swayimg) or [swayimg-git](https://aur.archlinux.org/packages/swayimg-git) package.
-
-Alpine users can install the program from [swayimg](https://pkgs.alpinelinux.org/packages?name=swayimg) or [swayimg-full](https://pkgs.alpinelinux.org/packages?name=swayimg-full) package.
-
-Other users can [build](#build) from sources.
 
 ## Build
 

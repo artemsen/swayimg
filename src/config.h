@@ -12,7 +12,7 @@
 
 /** Order of file list. */
 enum config_order {
-    cfgord_none,  ///< Unsorted
+    cfgord_none,  ///< Unsorted (system depended)
     cfgord_alpha, ///< Alphanumeric sort
     cfgord_random ///< Random order
 };
@@ -40,6 +40,7 @@ struct config {
     enum config_order order; ///< File list order
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
+    bool mark_mode;          ///< Enable/disable marking mode
 };
 
 /**
@@ -61,66 +62,12 @@ void config_free(struct config* ctx);
  */
 bool config_check(const struct config* ctx);
 
-/**
- * Set initial scale from one of predefined string (default, fit or real).
- * @param ctx configuration context
- * @param val text scale description
- * @return false if value format is invalid
- */
+// Configuration setters
 bool config_set_scale(struct config* ctx, const char* val);
-
-/**
- * Set background type/color for transparent images.
- * @param ctx configuration context
- * @param val text background description
- * @return false if value format is invalid
- */
 bool config_set_background(struct config* ctx, const char* val);
-
-/**
- * Set window backround type/color.
- * @param ctx configuration context
- * @param val text background description
- * @return false if value format is invalid
- */
 bool config_set_window(struct config* ctx, const char* val);
-
-/**
- * Set window geometry (position and size) from string "x,y,width,height".
- * @param ctx configuration context
- * @param val text geometry description
- * @return false if value format is invalid
- */
 bool config_set_geometry(struct config* ctx, const char* val);
-
-/**
- * Set font name.
- * @param ctx configuration context
- * @param val font name
- * @return false if value format is invalid
- */
 bool config_set_font_name(struct config* ctx, const char* val);
-
-/**
- * Set font size.
- * @param ctx configuration context
- * @param val font size
- * @return false if value format is invalid
- */
 bool config_set_font_size(struct config* ctx, const char* val);
-
-/**
- * Set order of the file list.
- * @param ctx configuration context
- * @param val text order description
- * @return false if value format is invalid
- */
 bool config_set_order(struct config* ctx, const char* val);
-
-/**
- * Set window class/app_id.
- * @param ctx configuration context
- * @param val window class/app_id to set
- * @return false if value format is invalid
- */
 bool config_set_appid(struct config* ctx, const char* val);

@@ -44,23 +44,23 @@ static void reset_viewport(void)
 }
 
 /**
- * Load next image file.
- * @param mv iterator move direction
+ * Load image file.
+ * @param pos position to set in file list
  * @return false if file was not loaded
  */
-static bool load_next(enum file_list_move mv)
+static bool load_file(enum flist_position pos)
 {
     struct image* image = NULL;
     const bool forward =
-        (mv == fl_first_file || mv == fl_next_file || mv == fl_next_dir);
+        (pos == fl_first_file || pos == fl_next_file || pos == fl_next_dir);
 
-    if (!viewer.files || !flist_jump(viewer.files, mv)) {
+    if (!viewer.files || !flist_jump(viewer.files, pos)) {
         return false;
     }
 
     while (!image) {
-        const char* file = flist_current(viewer.files, NULL, NULL);
-        image = image_from_file(file);
+        const struct flist_entry* cur = flist_current(viewer.files);
+        image = image_from_file(cur->path);
         if (!image && !flist_exclude(viewer.files, forward)) {
             fprintf(stderr, "No more image files to view\n");
             return false;
@@ -92,13 +92,18 @@ static void on_redraw(argb_t* wnd)
         snprintf(text, sizeof(text), "%d%%", scale);
         canvas_print_line(viewer.canvas, wnd, cc_bottom_left, text);
         // print file number in list
-        if (viewer.files) {
-            size_t index, total;
-            flist_current(viewer.files, &index, &total);
-            if (total > 1) {
-                snprintf(text, sizeof(text), "%lu of %lu", index, total);
-                canvas_print_line(viewer.canvas, wnd, cc_top_right, text);
-            }
+        if (viewer.files && flist_size(viewer.files) > 1) {
+            const size_t index = flist_current(viewer.files)->index;
+            snprintf(text, sizeof(text), "%lu of %lu", index + 1,
+                     flist_size(viewer.files));
+            canvas_print_line(viewer.canvas, wnd, cc_top_right, text);
+        }
+    }
+
+    if (viewer.files && viewer.config->mark_mode) {
+        const struct flist_entry* cur = flist_current(viewer.files);
+        if (cur->mark) {
+            canvas_print_line(viewer.canvas, wnd, cc_bottom_right, "MARKED");
         }
     }
 }
@@ -117,19 +122,21 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_next(fl_prev_file);
+            return load_file(fl_prev_file);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_next(fl_next_file);
+            return load_file(fl_next_file);
         case XKB_KEY_P:
-            return load_next(fl_prev_dir);
+            return load_file(fl_prev_dir);
         case XKB_KEY_N:
-            return load_next(fl_next_dir);
+            return load_file(fl_next_dir);
         case XKB_KEY_Home:
-            return load_next(fl_first_file);
+        case XKB_KEY_g:
+            return load_file(fl_first_file);
         case XKB_KEY_End:
-            return load_next(fl_last_file);
+        case XKB_KEY_G:
+            return load_file(fl_last_file);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return canvas_move(viewer.canvas, cm_step_left);
@@ -158,6 +165,32 @@ static bool on_keyboard(xkb_keysym_t key)
         case XKB_KEY_i:
             viewer.config->show_info = !viewer.config->show_info;
             return true;
+        case XKB_KEY_Insert:
+        case XKB_KEY_m:
+            if (viewer.files) {
+                flist_mark_invcur(viewer.files);
+                return true;
+            }
+            return false;
+        case XKB_KEY_asterisk:
+        case XKB_KEY_M:
+            if (viewer.files) {
+                flist_mark_invall(viewer.files);
+                return true;
+            }
+            return false;
+        case XKB_KEY_a:
+            if (viewer.files) {
+                flist_mark_setall(viewer.files, true);
+                return true;
+            }
+            return false;
+        case XKB_KEY_A:
+            if (viewer.files) {
+                flist_mark_setall(viewer.files, false);
+                return true;
+            }
+            return false;
         case XKB_KEY_F5:
         case XKB_KEY_bracketleft:
             image_rotate(viewer.image, 270);
@@ -209,7 +242,7 @@ bool run_viewer(struct config* cfg, struct file_list* files)
         if (!viewer.image) {
             goto done;
         }
-    } else if (!load_next(fl_initial)) {
+    } else if (!load_file(fl_initial)) {
         goto done;
     }
 

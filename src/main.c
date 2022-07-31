@@ -24,11 +24,12 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'o', "sort",       "ORDER",   "sort input files: none/[alpha]/random" },
+    { 'o', "order",      "ORDER",   "set sort order for image list: none/[alpha]/random" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'a', "all",        NULL,      "open all files from the same directory" },
+    { 'm', "mark",       NULL,      "enable marking mode" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
-    { 's', "scale",      "TYPE",    "set initial image scale: [optimal]/fit/real" },
+    { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/real" },
     { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
     { 'w', "window",     "XXXXXX",  "set window background color: [none]/RGB" },
     { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
@@ -95,8 +96,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     memset(&options[(sizeof(arguments) / sizeof(arguments[0])) - 1], 0,
            sizeof(struct option));
 
-    opterr = 0; // prevent native error messages
-
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
@@ -111,9 +110,11 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
             case 'a':
                 cfg->all_files = true;
                 break;
+            case 'm':
+                cfg->mark_mode = true;
+                break;
             case 'f':
                 cfg->fullscreen = true;
-                cfg->sway_wm = false;
                 break;
             case 's':
                 if (!config_set_scale(cfg, optarg)) {
@@ -155,7 +156,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 print_help();
                 return 0;
             default:
-                fprintf(stderr, "Invalid argument: %s\n", argv[optind - 1]);
                 return -1;
         }
     }
@@ -195,7 +195,6 @@ int main(int argc, char* argv[])
     int num_files;
     int index;
 
-    // initialize config with default values
     cfg = config_init();
     if (!cfg) {
         rc = EXIT_FAILURE;
@@ -227,13 +226,15 @@ int main(int argc, char* argv[])
         }
     }
 
-    // setup integration with Sway WM
-    if (cfg->sway_wm) {
+    if (cfg->sway_wm && !cfg->fullscreen) {
         sway_setup(cfg);
     }
 
-    // run viewer, finally
     rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    if (cfg->mark_mode && files && rc == EXIT_SUCCESS) {
+        flist_mark_print(files);
+    }
 
 done:
     flist_free(files);

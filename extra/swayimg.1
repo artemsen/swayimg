@@ -2,7 +2,7 @@
 .\" Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 .TH SWAYIMG 1 2021-12-28 swayimg "Swayimg manual"
 .SH NAME
-swayimg \- image viewer for Sway
+swayimg \- image viewer for Sway/Wayland
 .SH SYNOPSIS
 swayimg [\fIOPTIONS\fR]... \fI[FILE]...\fR
 .SH DESCRIPTION
@@ -26,8 +26,8 @@ draws an image from the specified file.
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
-.IP "\fB\-o\fR, \fB\-\-sort\fR\fB=\fR\fIMODE\fR:"
-Order of the image list:
+.IP "\fB\-o\fR, \fB\-\-order\fR\fB=\fR\fIORDER\fR:"
+Set the order of the image file list:
 .nf
 \fInone\fR: unsorted;
 \fIalpha\fR: sort alphabetically (default);
@@ -35,8 +35,12 @@ Order of the image list:
 .IP "\fB\-r\fR, \fB\-\-recursive\fR"
 Read directories recursively.
 .IP "\fB\-a\fR, \fB\-\-all\fR"
-Allways open all files in the same directory. Even if you pass a path to the
-file, the \fBswayimg\fR will add all nearby files to the image list.
+Allways open all files in the same directory. Even if you specify \fIFILE\fR as
+a path to a some file (not a directory), \fBswayimg\fR will add all nearby files
+to the image list.
+.IP "\fB\-m\fR, \fB\-\-mark\fR"
+Enable marking mode. Any file in the image list can be marked (see keybindings),
+and when the program exits, the list of marked files will be printed to stdout.
 .IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
 Set the absolute position and size of the window, for example
 \fI10,20,100,200\fR creates a window at position 10x20 (top left corner) with
@@ -61,7 +65,7 @@ Set the default scale of the image. \fISCALE\fR is one of the named values.
 \'fit\': reduce or enlarge the image to fit the window.
 \'real\': real image size (100%).
 .IP "\fB\-i\fR, \fB\-\-info\fR"
-Show image properties on startup (path, size, current scale etc).
+Show image meta info (file name, size, EXIF, current scale, etc).
 .IP "\fB\-c\fR, \fB\-\-class\fR"
 Set a constant window class/app_id, setting this may break the window layout.
 .IP "\fB\-n\fR, \fB\-\-no\-sway\fR"
@@ -98,10 +102,18 @@ Open previous file.
 Open file from next directory.
 .IP "\fBP\fR"
 Open file from previous directory.
-.IP "\fBHome\fR"
+.IP "\fBHome\fR, \fBg\fR"
 Open the first file.
-.IP "\fBEnd\fR"
+.IP "\fBEnd\fR, \fBG\fR"
 Open the last file.
+.IP "\fBInsert\fR, \fBm\fR"
+Invert mark sate for current file.
+.IP "\fB*\fR, \fBM\fR"
+Invert mark sate for all files.
+.IP "\fBa\fR"
+Mark all files.
+.IP "\fBA\fR"
+Unmark all files.
 .IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP"
 Exit the program.
 .SH ENVIRONMENT

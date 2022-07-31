@@ -31,7 +31,7 @@ enum canvas_scale {
 };
 
 /** Corner position. */
-enum canvas_corner { cc_top_right, cc_bottom_left };
+enum canvas_corner { cc_top_right, cc_bottom_left, cc_bottom_right };
 
 /**
  * Initialize canvas.

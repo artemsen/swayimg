@@ -227,6 +227,11 @@ void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
             pos.x = TEXT_PADDING;
             pos.y = ctx->window.height - font_height(ctx->font) - TEXT_PADDING;
             break;
+        case cc_bottom_right:
+            pos.x = ctx->window.width - font_text_width(ctx->font, text, 0) -
+                TEXT_PADDING;
+            pos.y = ctx->window.height - font_height(ctx->font) - TEXT_PADDING;
+            break;
     }
 
     font_print(ctx->font, wnd, &ctx->window, &pos, text, 0);

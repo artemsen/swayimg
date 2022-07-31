@@ -12,8 +12,15 @@
 /** File list context. */
 struct file_list;
 
-/** Types of movement through file list. */
-enum file_list_move {
+/** Single file entry. */
+struct flist_entry {
+    size_t index; ///< Entry index
+    bool mark;    ///< Mark state
+    char path[1]; ///< Path to the file, any size array
+};
+
+/** Types of movement direction through the file list. */
+enum flist_position {
     fl_initial,
     fl_first_file,
     fl_last_file,
@@ -40,22 +47,25 @@ struct file_list* flist_init(const char** files, size_t num,
 void flist_free(struct file_list* ctx);
 
 /**
- * Get description of the current file in the file list.
- * @param ctx file list context
- * @param index index of the current file (started from 1)
- * @param total total number of files in the list
- * @return path to the current file or NULL if list is empty
+ * Get file list size.
+ * @return tital number of entries, includes excluded
  */
-const char* flist_current(const struct file_list* ctx, size_t* index,
-                          size_t* total);
+size_t flist_size(const struct file_list* ctx);
 
 /**
- * Move iterator to the specified direction.
+ * Get description of the current file in the file list.
  * @param ctx file list context
- * @param mv iterator move direction
+ * @return pointer to the current entry or NULL if list is empty
+ */
+const struct flist_entry* flist_current(const struct file_list* ctx);
+
+/**
+ * Move iterator to the specified position.
+ * @param ctx file list context
+ * @param pos position to set
  * @return false if no more files in the list
  */
-bool flist_jump(struct file_list* ctx, enum file_list_move mv);
+bool flist_jump(struct file_list* ctx, enum flist_position pos);
 
 /**
  * Exclude current file from the list and move to the next one.
@@ -64,3 +74,28 @@ bool flist_jump(struct file_list* ctx, enum file_list_move mv);
  * @return false if no more files in the list
  */
 bool flist_exclude(struct file_list* ctx, bool forward);
+
+/**
+ * Invert mark state for the current entry.
+ * @param ctx file list context
+ */
+void flist_mark_invcur(struct file_list* ctx);
+
+/**
+ * Invert mark state for all entries.
+ * @param ctx file list context
+ */
+void flist_mark_invall(struct file_list* ctx);
+
+/**
+ * Mark/unmark all entries.
+ * @param ctx file list context
+ * @param mark state to set
+ */
+void flist_mark_setall(struct file_list* ctx, bool mark);
+
+/**
+ * Print the path of each marked entry.
+ * @param ctx file list context
+ */
+void flist_mark_print(const struct file_list* ctx);

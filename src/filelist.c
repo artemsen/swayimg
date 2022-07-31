@@ -20,9 +20,9 @@
 
 /** File list context. */
 struct file_list {
-    char** paths;  ///< Array of files paths
+    struct flist_entry** entries; ///< Array of entries
     size_t alloc;  ///< Number of allocated entries (size of array)
-    size_t size;   ///< Number of files in the list
+    size_t size;   ///< Number of files in array
     size_t index;  ///< Index of the current file entry
     bool critical; ///< Current entry is critical, it cannot be excluded
 };
@@ -34,8 +34,8 @@ struct file_list {
  */
 static void add_file(struct file_list* ctx, const char* file)
 {
-    char* path;
-    size_t path_len;
+    struct flist_entry* entry;
+    size_t entry_sz;
     size_t file_len = strlen(file);
 
     // remove "./" from the start
@@ -46,28 +46,31 @@ static void add_file(struct file_list* ctx, const char* file)
 
     // search for duplicates
     for (size_t i = 0; i < ctx->size; ++i) {
-        if (strcmp(ctx->paths[i], file) == 0) {
+        if (strcmp(ctx->entries[i]->path, file) == 0) {
             return;
         }
     }
 
     // relocate array, if needed
     if (ctx->index >= ctx->alloc) {
-        const size_t num_entries = ctx->alloc + ALLOCATE_SIZE;
-        char** ptr = realloc(ctx->paths, num_entries * sizeof(char*));
+        const size_t num = ctx->alloc + ALLOCATE_SIZE;
+        struct flist_entry** ptr =
+            realloc(ctx->entries, num * sizeof(struct flist_entry*));
         if (!ptr) {
             return;
         }
-        ctx->alloc = num_entries;
-        ctx->paths = ptr;
+        ctx->alloc = num;
+        ctx->entries = ptr;
     }
 
     // add new entry
-    path_len = file_len + 1;
-    path = malloc(path_len);
-    if (path) {
-        memcpy(path, file, path_len);
-        ctx->paths[ctx->index] = path;
+    entry_sz = sizeof(struct flist_entry) + file_len;
+    entry = malloc(entry_sz);
+    if (entry) {
+        memcpy(entry->path, file, file_len + 1);
+        entry->index = ctx->index;
+        entry->mark = false;
+        ctx->entries[ctx->index] = entry;
         ++ctx->index;
         ++ctx->size;
     }
@@ -147,7 +150,7 @@ static bool next_file(struct file_list* ctx, bool forward)
                 index = ctx->size - 1;
             }
         }
-        if (ctx->paths[index]) {
+        if (ctx->entries[index]) {
             ctx->index = index;
             return true;
         }
@@ -166,7 +169,7 @@ static bool next_file(struct file_list* ctx, bool forward)
 static bool next_directory(struct file_list* ctx, bool forward)
 {
     const size_t cur_index = ctx->index;
-    const char* cur_path = ctx->paths[ctx->index];
+    const char* cur_path = ctx->entries[ctx->index]->path;
     size_t cur_dir_len, next_dir_len;
 
     // directory part of the current file path
@@ -178,7 +181,7 @@ static bool next_directory(struct file_list* ctx, bool forward)
     // search for another directory in file list
     while (next_file(ctx, forward) && ctx->index != cur_index) {
         // directory part of the next file path
-        const char* next_path = ctx->paths[ctx->index];
+        const char* next_path = ctx->entries[ctx->index]->path;
         next_dir_len = strlen(next_path) - 1;
         while (next_dir_len && next_path[next_dir_len] != '/') {
             --next_dir_len;
@@ -201,7 +204,7 @@ static bool next_directory(struct file_list* ctx, bool forward)
 static bool goto_file(struct file_list* ctx, bool first)
 {
     ctx->index = first ? 0 : ctx->size - 1;
-    if (ctx->paths[ctx->index]) {
+    if (ctx->entries[ctx->index]) {
         return true;
     }
     return next_file(ctx, first);
@@ -215,12 +218,13 @@ static void sort_list(struct file_list* ctx)
 {
     for (size_t i = 0; i < ctx->size; ++i) {
         for (size_t j = i + 1; j < ctx->size; ++j) {
-            if (strcoll(ctx->paths[i], ctx->paths[j]) > 0) {
-                char* swap = ctx->paths[i];
-                ctx->paths[i] = ctx->paths[j];
-                ctx->paths[j] = swap;
+            if (strcoll(ctx->entries[i]->path, ctx->entries[j]->path) > 0) {
+                struct flist_entry* swap = ctx->entries[i];
+                ctx->entries[i] = ctx->entries[j];
+                ctx->entries[j] = swap;
             }
         }
+        ctx->entries[i]->index = i;
     }
 }
 
@@ -238,9 +242,9 @@ static void shuffle_list(struct file_list* ctx)
     for (size_t i = 0; i < ctx->size; ++i) {
         const size_t j = rand() % ctx->size;
         if (i != j) {
-            char* swap = ctx->paths[i];
-            ctx->paths[i] = ctx->paths[j];
-            ctx->paths[j] = swap;
+            struct flist_entry* swap = ctx->entries[i];
+            ctx->entries[i] = ctx->entries[j];
+            ctx->entries[j] = swap;
         }
     }
 }
@@ -317,7 +321,7 @@ struct file_list* flist_init(const char** files, size_t num,
             force_start += 2;
         }
         for (size_t i = 0; i < ctx->size; ++i) {
-            if (strcmp(ctx->paths[i], force_start) == 0) {
+            if (strcmp(ctx->entries[i]->path, force_start) == 0) {
                 ctx->index = i;
                 break;
             }
@@ -331,23 +335,21 @@ void flist_free(struct file_list* ctx)
 {
     if (ctx) {
         for (size_t i = 0; i < ctx->size; ++i) {
-            free(ctx->paths[i]);
+            free(ctx->entries[i]);
         }
-        free(ctx->paths);
+        free(ctx->entries);
         free(ctx);
     }
 }
 
-const char* flist_current(const struct file_list* ctx, size_t* index,
-                          size_t* total)
+size_t flist_size(const struct file_list* ctx)
 {
-    if (total) {
-        *total = ctx->size;
-    }
-    if (index) {
-        *index = ctx->index + 1;
-    }
-    return ctx->size ? ctx->paths[ctx->index] : NULL;
+    return ctx->size;
+}
+
+const struct flist_entry* flist_current(const struct file_list* ctx)
+{
+    return ctx->size ? ctx->entries[ctx->index] : NULL;
 }
 
 bool flist_exclude(struct file_list* ctx, bool forward)
@@ -355,17 +357,17 @@ bool flist_exclude(struct file_list* ctx, bool forward)
     if (ctx->critical) {
         return false;
     }
-    free(ctx->paths[ctx->index]);
-    ctx->paths[ctx->index] = NULL;
+    free(ctx->entries[ctx->index]);
+    ctx->entries[ctx->index] = NULL;
     return next_file(ctx, forward);
 }
 
-bool flist_jump(struct file_list* ctx, enum file_list_move mv)
+bool flist_jump(struct file_list* ctx, enum flist_position pos)
 {
-    if (mv != fl_initial) {
+    if (pos != fl_initial) {
         ctx->critical = false; // allow exclude
     }
-    switch (mv) {
+    switch (pos) {
         case fl_initial:
             return true;
         case fl_first_file:
@@ -382,4 +384,39 @@ bool flist_jump(struct file_list* ctx, enum file_list_move mv)
             return next_directory(ctx, false);
     }
     return false;
+}
+
+void flist_mark_invcur(struct file_list* ctx)
+{
+    ctx->entries[ctx->index]->mark = !ctx->entries[ctx->index]->mark;
+}
+
+void flist_mark_invall(struct file_list* ctx)
+{
+    for (size_t i = 0; i < ctx->size; ++i) {
+        struct flist_entry* entry = ctx->entries[i];
+        if (entry) {
+            entry->mark = !entry->mark;
+        }
+    }
+}
+
+void flist_mark_setall(struct file_list* ctx, bool mark)
+{
+    for (size_t i = 0; i < ctx->size; ++i) {
+        struct flist_entry* entry = ctx->entries[i];
+        if (entry) {
+            entry->mark = mark;
+        }
+    }
+}
+
+void flist_mark_print(const struct file_list* ctx)
+{
+    for (size_t i = 0; i < ctx->size; ++i) {
+        struct flist_entry* entry = ctx->entries[i];
+        if (entry && entry->mark) {
+            puts(entry->path);
+        }
+    }
 }

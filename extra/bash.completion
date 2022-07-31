@@ -3,9 +3,10 @@
 _swayimg()
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
-    local opts="-o --sort \
+    local opts="-o --order \
                 -r --recursive \
                 -a --all \
+                -m --mark \
                 -f --fullscreen \
                 -s --scale \
                 -b --background \
