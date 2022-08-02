@@ -15,10 +15,10 @@ swayimgrc \- Swayimg configuration file
 The Swayimg configuration file is a text-based INI file used to override the
 default settings.
 .PP
-The basic element contained in the INI file is the key or property.
-Every key has a name and a value, delimited by an equals sign (=).
-The name appears to the left of the equals sign. The value can contain any
-character. Kay and values are case sensitive.
+The basic element contained in the INI file is the key or property.  Every key
+has a name and a value, delimited by an equals sign (=).  The name appears
+to the left of the equals sign, and the value to the right. The value can
+contain any character. Names and values are case sensitive.
 .PP
 The number sign (#) at the beginning of the line indicates a comment.
 Empty lines and comments are ignored.
@@ -46,12 +46,12 @@ Empty lines and comments are ignored.
 .IP "\fBorder\fR: order of the image list:"
 .nf
 \fInone\fR: unsorted;
-\fIalpha\fR: sort alphabetically (default);
+\fIalpha\fR: sorted alphabetically (default);
 \fIrandom\fR: randomize list.
 .IP "\fBrecursive\fR: read directories recursively, \fIyes\fR or [\fIno\fR];"
-.IP "\fBall\fR: allways open all files in the same directory, \fIyes\fR or [\fIno\fR];"
-.IP "\fBapp_id\fR: set a constant window class/app_id, setting this may break the window layout;"
-.IP "\fBsway\fR: enable or disable integration with Sway WM (window position management), [\fIyes\fR] or \fIno\fR."
+.IP "\fBall\fR: always open all files in the same directory, \fIyes\fR or [\fIno\fR];"
+.IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
+.IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
 .\" example file
 .SH EXAMPLES
 .EX
