@@ -111,9 +111,8 @@ static void on_redraw(argb_t* wnd)
 /** Window resize handler, see wnd_handlers::on_resize */
 static void on_resize(size_t width, size_t height)
 {
-    if (canvas_resize_window(viewer.canvas, width, height)) {
-        reset_viewport();
-    }
+    canvas_resize_window(viewer.canvas, width, height);
+    reset_viewport();
 }
 
 /** Keyboard handler, see wnd_handlers::on_keyboard. */
