@@ -2,11 +2,11 @@
 .\" Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 .TH SWAYIMG 1 2021-12-28 swayimg "Swayimg manual"
 .SH NAME
-swayimg \- image viewer for Sway/Wayland
+swayimg \- image viewer for sway/Wayland
 .SH SYNOPSIS
 swayimg [\fIOPTIONS\fR]... \fI[FILE]...\fR
 .SH DESCRIPTION
-The \fBswayimg\fR utility can be used for preview images inside the currently
+The \fBswayimg\fR utility can be used to preview images inside the currently
 focused window (container).
 .PP
 If no input files or directories are specified, the viewer will try to read all
@@ -14,12 +14,11 @@ files in the current directory.
 .PP
 Use '-' as \fIFILE\fR to read image data from stdin.
 .PP
-The program uses Sway IPC to determine the geometry of the currently focused
-workspace and window.
-This data is used calculate the position and size of a new window.
-Then the program adds two rules to the Sway: "floating enable" and
-"move position" for \fBswayimg\fR application, creates a new Wayland window and
-draws an image from the specified file.
+The program can use sway's IPC to determine the geometry of the currently
+focused workspace and window. This data is used to calculate the position
+and size of a new window. Then the program adds two rules to the sway
+application \fBswayimg\fR: "floating enable" and "move position". This
+creates a new Wayland window and draws an image from the specified file.
 .\" options
 .SH OPTIONS
 .IP "\fB\-h\fR, \fB\-\-help\fR"
@@ -30,23 +29,23 @@ Display version information and list of supported image formats.
 Set the order of the image file list:
 .nf
 \fInone\fR: unsorted;
-\fIalpha\fR: sort alphabetically (default);
+\fIalpha\fR: sorted alphabetically (default);
 \fIrandom\fR: randomize list.
 .IP "\fB\-r\fR, \fB\-\-recursive\fR"
 Read directories recursively.
 .IP "\fB\-a\fR, \fB\-\-all\fR"
-Allways open all files in the same directory. Even if you specify \fIFILE\fR as
-a path to a some file (not a directory), \fBswayimg\fR will add all nearby files
-to the image list.
+Always open all files in the same directory. Even if you specify \fIFILE\fR
+as a path to some file (not a directory), \fBswayimg\fR will add all files
+in that directory to the image list.
 .IP "\fB\-m\fR, \fB\-\-mark\fR"
 Enable marking mode. Any file in the image list can be marked (see keybindings),
 and when the program exits, the list of marked files will be printed to stdout.
-.IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
-Set the absolute position and size of the window, for example
-\fI10,20,100,200\fR creates a window at position 10x20 (top left corner) with
-a size of 100x200. The comma can be replaced with any non-numeric character.
-If this parameter is not specified, the geometry of the currently focused Sway
-window will be used.
+.IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR" Set the
+absolute position and size of the window. For example, \fI10,20,100,200\fR
+creates a window at position 10x20 (top left corner) with a size of
+100x200. The comma can be replaced with any non-numeric character. If this
+parameter is not specified, the geometry of the currently focused window
+will be used.
 .IP "\fB\-b\fR, \fB\-\-background\fR\fB=\fR\fIXXXXXX\fR"
 Set background for transparent images:
 .nf
@@ -67,9 +66,9 @@ Set the default scale of the image. \fISCALE\fR is one of the named values.
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image meta info (file name, size, EXIF, current scale, etc).
 .IP "\fB\-c\fR, \fB\-\-class\fR"
-Set a constant window class/app_id, setting this may break the window layout.
+Set a constant window class/app_id. Setting this may break the window layout.
 .IP "\fB\-n\fR, \fB\-\-no\-sway\fR"
-Disable integration with Sway WM (window position management).
+Disable integration with sway WM (window position management).
 .\" keys
 .SH KEYBINDINGS
 .IP "\fBArrows\fR and vim-like moving keys (\fBh\fR,\fBj\fR,\fBk\fR,\fBl\fR)"
