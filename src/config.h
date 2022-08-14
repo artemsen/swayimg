@@ -55,13 +55,6 @@ struct config* config_init(void);
  */
 void config_free(struct config* ctx);
 
-/**
- * Check if configuration is incompatible.
- * @param ctx configuration context
- * @return configuration status, true if configuration is ok
- */
-bool config_check(const struct config* ctx);
-
 // Configuration setters
 bool config_set_scale(struct config* ctx, const char* val);
 bool config_set_background(struct config* ctx, const char* val);

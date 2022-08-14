@@ -317,28 +317,6 @@ void config_free(struct config* ctx)
     }
 }
 
-bool config_check(const struct config* ctx)
-{
-    const char* err = NULL;
-
-    if (ctx->geometry.width && !ctx->sway_wm) {
-        err = "window geometry is set, but sway rules are disabled";
-    }
-    if (ctx->fullscreen && ctx->geometry.width) {
-        err = "can not set geometry in full screen mode";
-    }
-    if (ctx->fullscreen && ctx->sway_wm) {
-        err = "sway rules can not be used in full screen mode";
-    }
-
-    if (err) {
-        fprintf(stderr, "Incompatible arguments: %s\n", err);
-        return false;
-    }
-
-    return true;
-}
-
 bool config_set_scale(struct config* ctx, const char* val)
 {
     if (strcmp(val, "optimal") == 0) {

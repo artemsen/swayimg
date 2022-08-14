@@ -211,7 +211,18 @@ int main(int argc, char* argv[])
         rc = EXIT_FAILURE;
         goto done;
     }
-    config_check(cfg);
+
+    // check configuration
+    if (cfg->geometry.width) {
+        if (!cfg->sway_wm) {
+            fprintf(stderr,
+                    "Warning: unable to set window geometry without sway\n");
+        }
+        if (cfg->fullscreen) {
+            fprintf(stderr,
+                    "Warning: window geometry used in fullscreen mode\n");
+        }
+    }
 
     // compose file list
     num_files = argc - index;
