@@ -16,8 +16,7 @@
 /** Viewer context. */
 struct viewer {
     struct config* config;   ///< Configuration
-    struct file_list* files; ///< List of files to view
-    struct image* image;     ///< Currently displayed image
+    struct image_list* list; ///< List of images to view
     struct canvas* canvas;   ///< Canvas context
 };
 static struct viewer viewer;
@@ -25,6 +24,7 @@ static struct viewer viewer;
 /** Reset image view state, recalculate position and scale. */
 static void reset_viewport(void)
 {
+    const struct image_entry entry = image_list_current(viewer.list);
     enum canvas_scale scale;
 
     switch (viewer.config->scale) {
@@ -37,49 +37,33 @@ static void reset_viewport(void)
         default:
             scale = cs_fit_or100;
     }
-    canvas_reset_image(viewer.canvas, viewer.image->width, viewer.image->height,
+    canvas_reset_image(viewer.canvas, entry.image->width, entry.image->height,
                        scale);
 
-    set_window_title(viewer.image->path);
+    set_window_title(entry.image->path);
 }
 
 /**
  * Load image file.
- * @param pos position to set in file list
+ * @param jump position to set
  * @return false if file was not loaded
  */
-static bool load_file(enum flist_position pos)
+static bool load_file(enum list_jump jump)
 {
-    struct image* image = NULL;
-    const bool forward =
-        (pos == fl_first_file || pos == fl_next_file || pos == fl_next_dir);
-
-    if (!viewer.files || !flist_jump(viewer.files, pos)) {
-        return false;
+    const bool rc = image_list_jump(viewer.list, jump);
+    if (rc) {
+        reset_viewport();
     }
-
-    while (!image) {
-        const struct flist_entry* cur = flist_current(viewer.files);
-        image = image_from_file(cur->path);
-        if (!image && !flist_exclude(viewer.files, forward)) {
-            fprintf(stderr, "No more image files to view\n");
-            return false;
-        }
-    }
-
-    image_free(viewer.image);
-    viewer.image = image;
-
-    reset_viewport();
-
-    return true;
+    return rc;
 }
 
 /** Draw handler, see wnd_handlers::on_redraw */
 static void on_redraw(argb_t* wnd)
 {
+    const struct image_entry entry = image_list_current(viewer.list);
+
     canvas_clear(viewer.canvas, wnd);
-    canvas_draw_image(viewer.canvas, viewer.image->alpha, viewer.image->data,
+    canvas_draw_image(viewer.canvas, entry.image->alpha, entry.image->data,
                       wnd);
 
     // image meta information: file name, format, exif, etc
@@ -87,22 +71,20 @@ static void on_redraw(argb_t* wnd)
         char text[32];
         const int scale = canvas_get_scale(viewer.canvas) * 100;
         // print meta info
-        canvas_print_meta(viewer.canvas, wnd, viewer.image->info);
+        canvas_print_meta(viewer.canvas, wnd, entry.image->info);
         // print current scale
         snprintf(text, sizeof(text), "%d%%", scale);
         canvas_print_line(viewer.canvas, wnd, cc_bottom_left, text);
         // print file number in list
-        if (viewer.files && flist_size(viewer.files) > 1) {
-            const size_t index = flist_current(viewer.files)->index;
-            snprintf(text, sizeof(text), "%lu of %lu", index + 1,
-                     flist_size(viewer.files));
+        if (image_list_size(viewer.list) > 1) {
+            snprintf(text, sizeof(text), "%lu of %lu", entry.index + 1,
+                     image_list_size(viewer.list));
             canvas_print_line(viewer.canvas, wnd, cc_top_right, text);
         }
     }
 
-    if (viewer.files && viewer.config->mark_mode) {
-        const struct flist_entry* cur = flist_current(viewer.files);
-        if (cur->mark) {
+    if (viewer.config->mark_mode) {
+        if (entry.marked) {
             canvas_print_line(viewer.canvas, wnd, cc_bottom_right, "MARKED");
         }
     }
@@ -121,21 +103,21 @@ static bool on_keyboard(xkb_keysym_t key)
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_file(fl_prev_file);
+            return load_file(jump_prev_file);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_file(fl_next_file);
+            return load_file(jump_next_file);
         case XKB_KEY_P:
-            return load_file(fl_prev_dir);
+            return load_file(jump_prev_dir);
         case XKB_KEY_N:
-            return load_file(fl_next_dir);
+            return load_file(jump_next_dir);
         case XKB_KEY_Home:
         case XKB_KEY_g:
-            return load_file(fl_first_file);
+            return load_file(jump_first_file);
         case XKB_KEY_End:
         case XKB_KEY_G:
-            return load_file(fl_last_file);
+            return load_file(jump_last_file);
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return canvas_move(viewer.canvas, cm_step_left);
@@ -166,45 +148,33 @@ static bool on_keyboard(xkb_keysym_t key)
             return true;
         case XKB_KEY_Insert:
         case XKB_KEY_m:
-            if (viewer.files) {
-                flist_mark_invcur(viewer.files);
-                return true;
-            }
-            return false;
+            image_list_mark_invcur(viewer.list);
+            return true;
         case XKB_KEY_asterisk:
         case XKB_KEY_M:
-            if (viewer.files) {
-                flist_mark_invall(viewer.files);
-                return true;
-            }
-            return false;
+            image_list_mark_invall(viewer.list);
+            return true;
         case XKB_KEY_a:
-            if (viewer.files) {
-                flist_mark_setall(viewer.files, true);
-                return true;
-            }
-            return false;
+            image_list_mark_setall(viewer.list, true);
+            return true;
         case XKB_KEY_A:
-            if (viewer.files) {
-                flist_mark_setall(viewer.files, false);
-                return true;
-            }
-            return false;
+            image_list_mark_setall(viewer.list, false);
+            return true;
         case XKB_KEY_F5:
         case XKB_KEY_bracketleft:
-            image_rotate(viewer.image, 270);
+            image_rotate(image_list_current(viewer.list).image, 270);
             canvas_swap_image_size(viewer.canvas);
             return true;
         case XKB_KEY_F6:
         case XKB_KEY_bracketright:
-            image_rotate(viewer.image, 90);
+            image_rotate(image_list_current(viewer.list).image, 90);
             canvas_swap_image_size(viewer.canvas);
             return true;
         case XKB_KEY_F7:
-            image_flip_vertical(viewer.image);
+            image_flip_vertical(image_list_current(viewer.list).image);
             return true;
         case XKB_KEY_F8:
-            image_flip_horizontal(viewer.image);
+            image_flip_horizontal(image_list_current(viewer.list).image);
             return true;
         case XKB_KEY_F11:
         case XKB_KEY_f:
@@ -221,7 +191,7 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
-bool run_viewer(struct config* cfg, struct file_list* files)
+bool run_viewer(struct config* cfg, struct image_list* list)
 {
     bool rc = false;
     static const struct wnd_handlers handlers = { .on_redraw = on_redraw,
@@ -229,19 +199,9 @@ bool run_viewer(struct config* cfg, struct file_list* files)
                                                   .on_keyboard = on_keyboard };
     // initialize viewer context
     viewer.config = cfg;
-    viewer.files = files;
+    viewer.list = list;
     viewer.canvas = canvas_init(cfg);
     if (!viewer.canvas) {
-        goto done;
-    }
-
-    // load first file
-    if (!files) {
-        viewer.image = image_from_stdin();
-        if (!viewer.image) {
-            goto done;
-        }
-    } else if (!load_file(fl_initial)) {
         goto done;
     }
 
@@ -259,7 +219,6 @@ bool run_viewer(struct config* cfg, struct file_list* files)
     rc = true;
 
 done:
-    image_free(viewer.image);
     canvas_free(viewer.canvas);
 
     return rc;

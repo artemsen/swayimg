@@ -191,8 +191,7 @@ int main(int argc, char* argv[])
 {
     int rc;
     struct config* cfg = NULL;
-    struct file_list* files = NULL;
-    int num_files;
+    struct image_list* list = NULL;
     int index;
 
     cfg = config_init();
@@ -225,30 +224,24 @@ int main(int argc, char* argv[])
     }
 
     // compose file list
-    num_files = argc - index;
-    if (num_files == 1 && strcmp(argv[index], "-") == 0) {
-        // reading from pipe, skip file list composing
-    } else {
-        files = flist_init((const char**)&argv[index], num_files, cfg);
-        if (!files) {
-            fprintf(stderr, "Unable to compose file list from input args\n");
-            rc = EXIT_FAILURE;
-            goto done;
-        }
+    list = image_list_init((const char**)&argv[index], argc - index, cfg);
+    if (!list) {
+        rc = EXIT_FAILURE;
+        goto done;
     }
 
     if (cfg->sway_wm && !cfg->fullscreen) {
         sway_setup(cfg);
     }
 
-    rc = run_viewer(cfg, files) ? EXIT_SUCCESS : EXIT_FAILURE;
+    rc = run_viewer(cfg, list) ? EXIT_SUCCESS : EXIT_FAILURE;
 
-    if (cfg->mark_mode && files && rc == EXIT_SUCCESS) {
-        flist_mark_print(files);
+    if (cfg->mark_mode && rc == EXIT_SUCCESS) {
+        image_list_mark_print(list);
     }
 
 done:
-    flist_free(files);
+    image_list_free(list);
     config_free(cfg);
 
     return rc;

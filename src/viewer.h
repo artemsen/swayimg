@@ -5,14 +5,14 @@
 #pragma once
 
 #include "config.h"
-#include "filelist.h"
+#include "imagelist.h"
 
 #include <stddef.h>
 
 /**
  * Start viewer.
  * @param cfg current configuration instance
- * @param files list of files to view
+ * @param list list of images to view
  * @return true if operation completed successfully
  */
-bool run_viewer(struct config* cfg, struct file_list* files);
+bool run_viewer(struct config* cfg, struct image_list* list);

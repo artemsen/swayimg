@@ -39,6 +39,7 @@ json = dependency('json-c')
 xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
+threads = dependency('threads')
 rt = cc.find_library('rt')
 # optional dependencies: file formats support
 gif = cc.find_library('gif', required: get_option('gif'))
@@ -57,7 +58,7 @@ jxl = dependency('libjxl', required: false)
 if not jxl.found() and (jxl_feature.auto() or jxl_feature.enabled())
   jxl = cc.find_library('libjxl', required: jxl_feature)
 endif
-# Non-Linux
+# non-Linux (BSD specific)
 epoll = dependency('epoll-shim', required: false)
 
 # configuration file
@@ -130,9 +131,9 @@ endif
 sources = [
   'src/canvas.c',
   'src/config.c',
-  'src/filelist.c',
   'src/font.c',
   'src/image.c',
+  'src/imagelist.c',
   'src/main.c',
   'src/sway.c',
   'src/viewer.c',
@@ -176,6 +177,7 @@ executable(
   dependencies: [
     # runtime
     rt,
+    threads,
     wlcln,
     epoll,
     json,
