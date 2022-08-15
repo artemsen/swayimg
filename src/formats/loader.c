@@ -20,11 +20,11 @@
 
 // declaration of loaders
 LOADER_DECLARE(bmp);
-#ifdef HAVE_LIBAVIF
-LOADER_DECLARE(avif);
-#endif
 #ifdef HAVE_LIBGIF
 LOADER_DECLARE(gif);
+#endif
+#ifdef HAVE_LIBHEIF
+LOADER_DECLARE(heif);
 #endif
 #ifdef HAVE_LIBJPEG
 LOADER_DECLARE(jpeg);
@@ -60,11 +60,11 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBWEBP
     &LOADER_FUNCTION(webp),
 #endif
+#ifdef HAVE_LIBHEIF
+    &LOADER_FUNCTION(heif),
+#endif
 #ifdef HAVE_LIBRSVG
     &LOADER_FUNCTION(svg),
-#endif
-#ifdef HAVE_LIBAVIF
-    &LOADER_FUNCTION(avif),
 #endif
 #ifdef HAVE_LIBJXL
     &LOADER_FUNCTION(jxl),
@@ -92,8 +92,8 @@ const char* supported_formats(void)
 #ifdef HAVE_LIBRSVG
            ", svg"
 #endif
-#ifdef HAVE_LIBAVIF
-           ", avif"
+#ifdef HAVE_LIBHEIF
+           ", heif, avif"
 #endif
 #ifdef HAVE_LIBJXL
            ", jxl"

@@ -41,8 +41,8 @@ fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 rt = cc.find_library('rt')
 # optional dependencies: file formats support
-avif = dependency('libavif', required: get_option('avif'))
 gif = cc.find_library('gif', required: get_option('gif'))
+heif = dependency('libheif', required: get_option('heif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
@@ -62,8 +62,8 @@ epoll = dependency('epoll-shim', required: false)
 
 # configuration file
 conf = configuration_data()
-conf.set('HAVE_LIBAVIF', avif.found())
 conf.set('HAVE_LIBGIF', gif.found())
+conf.set('HAVE_LIBHEIF', heif.found())
 conf.set('HAVE_LIBJPEG', jpeg.found())
 conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBPNG', png.found())
@@ -145,11 +145,11 @@ sources = [
 if exif.found()
   sources += 'src/exif.c'
 endif
-if avif.found()
-  sources += 'src/formats/avif.c'
-endif
 if gif.found()
   sources += 'src/formats/gif.c'
+endif
+if heif.found()
+  sources += 'src/formats/heif.c'
 endif
 if jpeg.found()
   sources += 'src/formats/jpeg.c'
@@ -184,8 +184,8 @@ executable(
     freetype,
     exif,
     # image support
-    avif,
     gif,
+    heif,
     jpeg,
     jxl,
     png,

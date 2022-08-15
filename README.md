@@ -16,7 +16,7 @@ the image directly in a terminal window.
 - GIF (via [giflib](http://giflib.sourceforge.net));
 - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
 - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
-- AV1 (via [libavif](https://github.com/AOMediaCodec/libavif));
+- HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
 - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
 - BMP (built-in).
 
