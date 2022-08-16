@@ -34,6 +34,7 @@ struct image_list {
     size_t alloc;           ///< Number of allocated entries (size of array)
     size_t size;            ///< Number of files in array
     size_t index;           ///< Index of the current file entry
+    struct image* prev;     ///< Prevous image handle (cached)
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread
@@ -272,19 +273,26 @@ static void* preloader_thread(void* data)
     struct image_list* ctx = data;
     size_t index = ctx->index;
 
-    image_free(ctx->next);
-    ctx->next = NULL;
+    while (true) {
+        struct image* img;
 
-    while (!ctx->next) {
         index = peek_next_file(ctx, index, true);
         if (index == ctx->index) {
-            return NULL;
+            break; // next image not fund
+        }
+        if ((ctx->next && ctx->next->path == ctx->entries[index]->path) ||
+            (ctx->prev && ctx->prev->path == ctx->entries[index]->path)) {
+            break; // already loaded
         }
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-        ctx->next = image_from_file(ctx->entries[index]->path);
-        if (!ctx->next) {
+        img = image_from_file(ctx->entries[index]->path);
+        if (img) {
+            image_free(ctx->next);
+            ctx->next = img;
+            break;
+        } else {
             // not an image, remove entry from list
             free(ctx->entries[index]);
             ctx->entries[index] = NULL;
@@ -420,6 +428,7 @@ void image_list_free(struct image_list* ctx)
             free(ctx->entries[i]);
         }
         free(ctx->entries);
+        image_free(ctx->prev);
         image_free(ctx->current);
         image_free(ctx->next);
         free(ctx);
@@ -475,6 +484,9 @@ bool image_list_jump(struct image_list* ctx, enum list_jump jump)
         if (ctx->next && ctx->next->path == ctx->entries[index]->path) {
             image = ctx->next;
             ctx->next = NULL;
+        } else if (ctx->prev && ctx->prev->path == ctx->entries[index]->path) {
+            image = ctx->prev;
+            ctx->prev = NULL;
         } else {
             image = image_from_file(ctx->entries[index]->path);
             if (!image) {
@@ -485,9 +497,10 @@ bool image_list_jump(struct image_list* ctx, enum list_jump jump)
         }
     }
 
-    ctx->index = index;
-    image_free(ctx->current);
+    image_free(ctx->prev);
+    ctx->prev = ctx->current;
     ctx->current = image;
+    ctx->index = index;
 
     preloader_ctl(ctx, true);
 
