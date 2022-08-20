@@ -64,6 +64,7 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     GError* err = NULL;
     cairo_surface_t* surface = NULL;
     cairo_t* cr = NULL;
+    struct image_frame* frame;
     cairo_status_t status;
 
     if (!is_svg(data, size)) {
@@ -72,8 +73,8 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
 
     svg = rsvg_handle_new_from_data(data, size, &err);
     if (!svg) {
-        image_error(ctx, "invalid svg format: %s",
-                    err && err->message ? err->message : "unknown error");
+        image_print_error(ctx, "invalid svg format: %s",
+                          err && err->message ? err->message : "unknown error");
         return ldr_fmterror;
     }
 
@@ -96,29 +97,31 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     }
 
     // allocate and bind buffer
-    if (!image_allocate(ctx, vb_render.width, vb_render.height)) {
+    frame = image_create_frame(ctx, vb_render.width, vb_render.height);
+    if (!frame) {
         goto fail;
     }
+    memset(frame->data, 0, frame->width * frame->height * sizeof(argb_t));
     surface = cairo_image_surface_create_for_data(
-        (uint8_t*)ctx->data, CAIRO_FORMAT_ARGB32, ctx->width, ctx->height,
-        ctx->width * sizeof(ctx->data[0]));
+        (uint8_t*)frame->data, CAIRO_FORMAT_ARGB32, frame->width, frame->height,
+        frame->width * sizeof(argb_t));
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
         const char* desc = cairo_status_to_string(status);
-        image_error(ctx, "unable to create cairo surface: %s",
-                    desc ? desc : "unknown error");
+        image_print_error(ctx, "unable to create cairo surface: %s",
+                          desc ? desc : "unknown error");
         goto fail;
     }
 
     // render svg to surface
     cr = cairo_create(surface);
     if (!rsvg_handle_render_document(svg, cr, &vb_render, &err)) {
-        image_error(ctx, "unable to decode svg: %s",
-                    err && err->message ? err->message : "unknown error");
+        image_print_error(ctx, "unable to decode svg: %s",
+                          err && err->message ? err->message : "unknown error");
         goto fail;
     }
 
-    image_add_meta(ctx, "Format", "SVG");
+    image_set_format(ctx, "SVG");
     image_add_meta(ctx, "Real size", "%0.2fx%0.2f", vb_real.width,
                    vb_real.height);
     ctx->alpha = true;
@@ -136,7 +139,7 @@ fail:
     if (surface) {
         cairo_surface_destroy(surface);
     }
-    image_deallocate(ctx);
+    image_free_frames(ctx);
     g_object_unref(svg);
     return ldr_fmterror;
 }

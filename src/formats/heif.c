@@ -46,6 +46,7 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     struct heif_image* img = NULL;
     struct heif_error err;
     const uint32_t* decoded;
+    struct image_frame* frame;
 
     if (heif_check_filetype(data, size) != heif_filetype_yes_supported) {
         return ldr_unsupported;
@@ -53,43 +54,43 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
 
     heif = heif_context_alloc();
     if (!heif) {
-        image_error(ctx, "unable to create heif context");
+        image_print_error(ctx, "unable to create heif context");
         return ldr_fmterror;
     }
     err = heif_context_read_from_memory(heif, data, size, NULL);
     if (err.code != heif_error_Ok) {
-        goto fail;
+        goto decode_fail;
     }
     err = heif_context_get_primary_image_handle(heif, &pih);
     if (err.code != heif_error_Ok) {
-        goto fail;
+        goto decode_fail;
     }
     err = heif_decode_image(pih, &img, heif_colorspace_RGB,
                             heif_chroma_interleaved_RGBA, NULL);
     if (err.code != heif_error_Ok) {
-        goto fail;
+        goto decode_fail;
     }
     decoded = (const uint32_t*)heif_image_get_plane_readonly(
         img, heif_channel_interleaved, NULL);
     if (!decoded) {
         err.message = "no decoded data";
-        goto fail;
+        goto decode_fail;
     }
 
-    if (!image_allocate(ctx, heif_image_get_primary_width(img),
-                        heif_image_get_primary_height(img))) {
-        err.message = "not enough memory";
-        goto fail;
+    frame = image_create_frame(ctx, heif_image_get_primary_width(img),
+                               heif_image_get_primary_height(img));
+    if (!frame) {
+        goto alloc_fail;
     }
 
     // convert ABGR -> ARGB
-    for (size_t i = 0; i < ctx->width * ctx->height; ++i) {
-        ((argb_t*)ctx->data)[i] = ARGB_FROM_ABGR(decoded[i]);
+    for (size_t i = 0; i < frame->width * frame->height; ++i) {
+        frame->data[i] = ARGB_FROM_ABGR(decoded[i]);
     }
 
     ctx->alpha = heif_image_handle_has_alpha_channel(pih);
-    image_add_meta(ctx, "Format", "HEIF/AVIF %dbpp",
-                   heif_image_handle_get_luma_bits_per_pixel(pih));
+    image_set_format(ctx, "HEIF/AVIF %dbpp",
+                     heif_image_handle_get_luma_bits_per_pixel(pih));
 #ifdef HAVE_LIBEXIF
     read_exif(ctx, pih);
 #endif
@@ -99,8 +100,9 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     heif_context_free(heif);
     return ldr_success;
 
-fail:
-    image_error(ctx, "heif decode failed: %s", err.message);
+decode_fail:
+    image_print_error(ctx, "heif decode failed: %s", err.message);
+alloc_fail:
     if (img) {
         heif_image_release(img);
     }

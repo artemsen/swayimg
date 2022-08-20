@@ -13,6 +13,9 @@ enum loader_status {
     ldr_fmterror     ///< Decoder found, but data has invalid format
 };
 
+/** Contains string with the names of the supported image formats. */
+extern const char* supported_formats;
+
 /**
  * Image loader function prototype, implemented by decoders.
  * @param ctx image context
@@ -24,40 +27,11 @@ typedef enum loader_status (*image_decoder)(struct image* ctx,
                                             const uint8_t* data, size_t size);
 
 /**
- * Decode image from memory buffer.
+ * Load image from memory buffer.
  * @param ctx image context
  * @param data raw image data
  * @param size size of image data in bytes
  * @return loader status
  */
-enum loader_status image_decode(struct image* ctx, const uint8_t* data,
-                                size_t size);
-
-/**
- * Allocate buffer for image data.
- * @param ctx image context
- * @param width image width in px
- * @param height image height in px
- * @return pointer to the data buffer, NULL if error
- */
-argb_t* image_allocate(struct image* ctx, size_t width, size_t height);
-
-/**
- * Free buffer of image data.
- * @param ctx image context
- */
-void image_deallocate(struct image* ctx);
-
-/**
- * Print description of decoding problem.
- * @param ctx image context
- * @param fmt text format
- */
-void image_error(const struct image* ctx, const char* fmt, ...)
-    __attribute__((format(printf, 2, 3)));
-
-/**
- * Get string with the names of the supported image formats.
- * @return list of supported format
- */
-const char* supported_formats(void);
+enum loader_status load_image(struct image* ctx, const uint8_t* data,
+                              size_t size);

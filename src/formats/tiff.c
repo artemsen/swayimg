@@ -83,7 +83,7 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
 {
     TIFF* tiff;
     TIFFRGBAImage timg;
-    argb_t* buffer = NULL;
+    struct image_frame* frame;
     char err[LIBTIFF_ERRMSG_SZ];
     struct mem_reader reader;
 
@@ -104,43 +104,44 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
     tiff = TIFFClientOpen("", "r", &reader, tiff_read, tiff_write, tiff_seek,
                           tiff_close, tiff_size, tiff_map, tiff_unmap);
     if (!tiff) {
-        image_error(ctx, "unable to open tiff decoder\n");
+        image_print_error(ctx, "unable to open tiff decoder\n");
         return ldr_fmterror;
     }
 
     *err = 0;
     if (!TIFFRGBAImageBegin(&timg, tiff, 0, err)) {
-        image_error(ctx, "unable to initialize tiff decoder: %s\n", err);
+        image_print_error(ctx, "unable to initialize tiff decoder: %s\n", err);
         goto fail;
     }
 
-    buffer = image_allocate(ctx, timg.width, timg.height);
-    if (!buffer) {
+    frame = image_create_frame(ctx, timg.width, timg.height);
+    if (!frame) {
         goto fail;
     }
-    if (!TIFFRGBAImageGet(&timg, buffer, timg.width, timg.height)) {
-        image_error(ctx, "unable to decode tiff\n");
+    if (!TIFFRGBAImageGet(&timg, frame->data, timg.width, timg.height)) {
+        image_print_error(ctx, "unable to decode tiff\n");
         goto fail;
     }
 
     // convert ABGR -> ARGB
-    for (size_t i = 0; i < ctx->width * ctx->height; ++i) {
-        buffer[i] = ARGB_FROM_ABGR(buffer[i]);
+    for (size_t i = 0; i < frame->width * frame->height; ++i) {
+        frame->data[i] = ARGB_FROM_ABGR(frame->data[i]);
     }
 
     if (timg.orientation == ORIENTATION_TOPLEFT) {
         image_flip_vertical(ctx);
     }
+
+    image_set_format(ctx, "TIFF %dbpp",
+                     timg.bitspersample * timg.samplesperpixel);
     ctx->alpha = true;
-    image_add_meta(ctx, "Format", "TIFF %dbpp",
-                   timg.bitspersample * timg.samplesperpixel);
 
     TIFFRGBAImageEnd(&timg);
     TIFFClose(tiff);
     return ldr_success;
 
 fail:
-    image_deallocate(ctx);
+    image_free_frames(ctx);
     TIFFRGBAImageEnd(&timg);
     TIFFClose(tiff);
     return ldr_fmterror;

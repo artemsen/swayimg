@@ -5,7 +5,6 @@
 #pragma once
 
 #include "config.h"
-#include "image.h"
 
 /** Canvas context. */
 struct canvas;
@@ -32,6 +31,12 @@ enum canvas_scale {
 
 /** Corner position. */
 enum canvas_corner { cc_top_right, cc_bottom_left, cc_bottom_right };
+
+/** Meta data info table. */
+struct info_table {
+    const char* key;
+    const char* value;
+};
 
 /**
  * Initialize canvas.
@@ -97,13 +102,14 @@ void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
                        enum canvas_corner corner, const char* text);
 
 /**
- * Print meta info table on canvas.
+ * Print meta info table on the left top corner.
  * @param ctx canvas context
  * @param wnd window buffer
- * @param info meta info to print
+ * @param num total number of lines
+ * @param info meta data table to print
  */
-void canvas_print_meta(const struct canvas* ctx, argb_t* wnd,
-                       const struct meta* info);
+void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
+                       const struct info_table* info);
 
 /**
  * Move viewport.

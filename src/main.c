@@ -150,7 +150,7 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
             case 'v':
                 puts(APP_NAME " version " APP_VERSION ".");
                 puts("https://github.com/artemsen/swayimg");
-                printf("Supported formats: %s.\n", supported_formats());
+                printf("Supported formats: %s.\n", supported_formats);
                 return 0;
             case 'h':
                 print_help();

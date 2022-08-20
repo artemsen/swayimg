@@ -28,7 +28,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 
     char msg[JMSG_LENGTH_MAX] = { 0 };
     (*(jpg->err->format_message))(jpg, msg);
-    image_error(err->img, "failed to decode jpeg: %s", msg);
+    image_print_error(err->img, "failed to decode jpeg: %s", msg);
 
     longjmp(err->setjmp, 1);
 }
@@ -37,6 +37,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
                                size_t size)
 {
+    struct image_frame* frame;
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
@@ -50,7 +51,7 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     err.img = ctx;
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        image_deallocate(ctx);
+        image_free_frames(ctx);
         jpeg_destroy_decompress(&jpg);
         return ldr_fmterror;
     }
@@ -63,15 +64,15 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    // prepare surface and metadata
-    if (!image_allocate(ctx, jpg.output_width, jpg.output_height)) {
+    frame = image_create_frame(ctx, jpg.output_width, jpg.output_height);
+    if (!frame) {
         jpeg_destroy_decompress(&jpg);
         return ldr_fmterror;
     }
-    image_add_meta(ctx, "Format", "JPEG %dbit", jpg.out_color_components * 8);
 
     while (jpg.output_scanline < jpg.output_height) {
-        uint8_t* line = (uint8_t*)&ctx->data[jpg.output_scanline * ctx->width];
+        uint8_t* line =
+            (uint8_t*)&frame->data[jpg.output_scanline * frame->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
         // convert grayscale to argb
@@ -94,6 +95,8 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
         }
 #endif // LIBJPEG_TURBO_VERSION
     }
+
+    image_set_format(ctx, "JPEG %dbit", jpg.out_color_components * 8);
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);

@@ -6,23 +6,34 @@
 
 #include "types.h"
 
-struct meta;
+struct image_frame;
+struct image_info;
 
 /** Image context. */
 struct image {
-    size_t width;       ///< Image width (px)
-    size_t height;      ///< Image height (px)
-    const argb_t* data; ///< Pointer to pixel data
-    bool alpha;         ///< Has alpha channel?
-    const char* path;   ///< Path to the file
-    struct meta* info;  ///< Image meta info
+    const char* file_path;      ///< Full path to the image file
+    const char* file_name;      ///< File name of the image file
+    size_t file_size;           ///< Size of image file
+    char* format;               ///< Format description
+    struct image_frame* frames; ///< Image frames
+    size_t num_frames;          ///< Total number of frames
+    bool alpha;                 ///< Image has alpha channel
+    struct image_info* info;    ///< Image meta info
+    size_t num_info;            ///< Total number of meta info entries
+};
+
+/** Image frame. */
+struct image_frame {
+    size_t width;    ///< Image width (px)
+    size_t height;   ///< Image height (px)
+    argb_t* data;    ///< Pointer to pixel data
+    size_t duration; ///< Frame duration (animation)
 };
 
 /** Image meta info. */
-struct meta {
-    struct meta* next; ///< Pointer to the next entry
-    const char* key;   ///< Meta key name
-    const char* value; ///< Meta value
+struct image_info {
+    const char* key; ///< Meta key name
+    char* value;     ///< Meta value
 };
 
 /**
@@ -71,10 +82,58 @@ void image_flip_horizontal(struct image* ctx);
 void image_rotate(struct image* ctx, size_t angle);
 
 /**
+ * Set image format description.
+ * @param ctx image context
+ * @param fmt format description
+ */
+void image_set_format(struct image* ctx, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
+
+/**
  * Add meta info property.
  * @param ctx image context
- * @param key property name
+ * @param key property name (must be static)
  * @param fmt value format
  */
 void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
+
+/**
+ * Create frame, allocate buffer and add frame to the image.
+ * @param width frame width in px
+ * @param height frame height in px
+ * @return pointer to the frame or NULL on errors
+ */
+struct image_frame* image_create_frame(struct image* ctx, size_t width,
+                                       size_t height);
+
+/**
+ * Create list of empty frames.
+ * @param ctx image context
+ * @param num total number of frames
+ * @return pointer to the frame list, NULL on errors
+ */
+struct image_frame* image_create_frames(struct image* ctx, size_t num);
+
+/**
+ * Free image frames.
+ * @param ctx image context
+ */
+void image_free_frames(struct image* ctx);
+
+/**
+ * Allocate buffer for frame.
+ * @param frame pointer to the frame descrition
+ * @param width frame width in px
+ * @param height frame height in px
+ * @return false if allocation failed
+ */
+bool image_frame_allocate(struct image_frame* frame, size_t width,
+                          size_t height);
+/**
+ * Print decoding problem description.
+ * @param ctx image context
+ * @param fmt text format
+ */
+void image_print_error(const struct image* ctx, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));

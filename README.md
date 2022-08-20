@@ -21,7 +21,7 @@ the image directly in a terminal window.
 - BMP (built-in).
 
 ## Known issues
-- Animation and multiframe images are not supported, only the first frame will be displayed.
+- Animation is not supported.
 
 ## Usage
 
@@ -68,6 +68,8 @@ Examples:
 | `P`                          | Open file from previous directory |
 | `Home` or `g`                | Open the first file |
 | `End` or `G`                 | Open the last file |
+| `F2` or `O`                  | Show previous frame |
+| `F3` or `o`                  | Show next frame |
 | `Insert` or `m`              | Invert mark sate for current file |
 | `*` or `M`                   | Invert mark sate for all files |
 | `a`                          | Mark all files |

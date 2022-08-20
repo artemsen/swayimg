@@ -37,6 +37,7 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     png_bytep* lines = NULL;
     size_t width, height;
     png_byte color_type, bit_depth;
+    struct image_frame* frame;
 
     struct mem_reader reader = {
         .data = data,
@@ -52,12 +53,12 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     // create decoder
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        image_error(ctx, "unable to initialize png decoder");
+        image_print_error(ctx, "unable to initialize png decoder");
         return ldr_fmterror;
     }
     info = png_create_info_struct(png);
     if (!info) {
-        image_error(ctx, "unable to create png object");
+        image_print_error(ctx, "unable to create png object");
         png_destroy_read_struct(&png, NULL, NULL);
         return ldr_fmterror;
     }
@@ -66,8 +67,8 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
         free(lines);
-        image_deallocate(ctx);
-        image_error(ctx, "failed to decode png");
+        image_free_frames(ctx);
+        image_print_error(ctx, "failed to decode png");
         return ldr_fmterror;
     }
 
@@ -101,7 +102,8 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     png_set_packswap(png);
     png_set_bgr(png);
 
-    if (!image_allocate(ctx, width, height)) {
+    frame = image_create_frame(ctx, width, height);
+    if (!frame) {
         png_destroy_read_struct(&png, &info, NULL);
         return ldr_fmterror;
     }
@@ -109,18 +111,19 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     // prepare list of pointers to image lines
     lines = malloc(height * sizeof(png_bytep));
     if (!lines) {
-        image_error(ctx, "not enough memory");
+        image_print_error(ctx, "not enough memory");
         png_destroy_read_struct(&png, &info, NULL);
-        image_deallocate(ctx);
+        image_free_frames(ctx);
         return ldr_fmterror;
     }
     for (size_t i = 0; i < height; ++i) {
-        lines[i] = (png_bytep)&ctx->data[ctx->width * i];
+        lines[i] = (png_bytep)&frame->data[frame->width * i];
     }
 
     // read image
     png_read_image(png, lines);
-    image_add_meta(ctx, "Format", "PNG %dbit", bit_depth * 4);
+
+    image_set_format(ctx, "PNG %dbit", bit_depth * 4);
     ctx->alpha = true;
 
     // free resources

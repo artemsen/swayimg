@@ -237,38 +237,40 @@ void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
     font_print(ctx->font, wnd, &ctx->window, &pos, text, 0);
 }
 
-void canvas_print_meta(const struct canvas* ctx, argb_t* wnd,
-                       const struct meta* info)
+void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
+                       const struct info_table* info)
 {
-    const struct meta* it;
     size_t val_offset = 0;
     struct point pos = { .x = TEXT_PADDING, .y = TEXT_PADDING };
 
     // draw keys block
-    it = info;
-    while (it) {
-        size_t width;
-        struct point pos_delim;
-        width = font_print(ctx->font, wnd, &ctx->window, &pos, it->key, 0);
-        pos_delim.x = TEXT_PADDING + width;
-        pos_delim.y = pos.y;
-        width +=
-            font_print(ctx->font, wnd, &ctx->window, &pos_delim, ":", 0) * 3;
-        if (width > val_offset) {
-            val_offset = width;
+    for (size_t i = 0; i < num; ++i) {
+        const char* key = info[i].key;
+        if (key && *key) {
+            size_t width;
+            struct point pos_delim;
+            width = font_print(ctx->font, wnd, &ctx->window, &pos, key, 0);
+            pos_delim.x = TEXT_PADDING + width;
+            pos_delim.y = pos.y;
+            width +=
+                font_print(ctx->font, wnd, &ctx->window, &pos_delim, ":", 0) *
+                3;
+            if (width > val_offset) {
+                val_offset = width;
+            }
         }
         pos.y += font_height(ctx->font);
-        it = it->next;
     }
 
     // draw values block
     pos.x = TEXT_PADDING + val_offset + TEXT_PADDING;
     pos.y = TEXT_PADDING;
-    it = info;
-    while (it) {
-        font_print(ctx->font, wnd, &ctx->window, &pos, it->value, 0);
+    for (size_t i = 0; i < num; ++i) {
+        const char* value = info[i].value;
+        if (value && *value) {
+            font_print(ctx->font, wnd, &ctx->window, &pos, value, 0);
+        }
         pos.y += font_height(ctx->font);
-        it = it->next;
     }
 }
 

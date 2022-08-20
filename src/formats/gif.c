@@ -31,60 +31,53 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
     return -1;
 }
 
-// GIF loader implementation
-enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
-                              size_t size)
+/**
+ * Decode single GIF frame.
+ * @param gif gif context
+ * @param index number of the frame to load
+ * @param prev previous frame
+ * @param curr frame to store the image
+ * @return true if completed successfully
+ */
+static bool decode_frame(GifFileType* gif, size_t index,
+                         const struct image_frame* prev,
+                         struct image_frame* curr)
 {
-    // check signature
-    if (size < sizeof(signature) ||
-        memcmp(data, signature, sizeof(signature))) {
-        return ldr_unsupported;
+    const SavedImage* gif_image;
+    const GifImageDesc* gif_desc;
+    const ColorMapObject* gif_colors;
+    GraphicsControlBlock gif_cb;
+    int color_transparent = NO_TRANSPARENT_COLOR;
+
+    if (!image_frame_allocate(curr, gif->SWidth, gif->SHeight)) {
+        return false;
+    }
+    memset(curr->data, 0, curr->width * curr->height * sizeof(argb_t));
+
+    if (DGifSavedExtensionToGCB(gif, index, &gif_cb) == GIF_OK) {
+        color_transparent = gif_cb.TransparentColor;
+        if (gif_cb.DisposalMode == DISPOSE_DO_NOT && prev) {
+            memcpy(curr->data, prev->data,
+                   curr->width * curr->height * sizeof(argb_t));
+        }
+        if (gif_cb.DelayTime != 0) {
+            curr->duration = gif_cb.DelayTime * 10; // hundreds of second to ms
+        }
     }
 
-    struct buffer buf = {
-        .data = data,
-        .size = size,
-        .position = 0,
-    };
+    gif_image = &gif->SavedImages[index];
+    gif_desc = &gif_image->ImageDesc;
+    gif_colors = gif->SColorMap ? gif->SColorMap : gif_desc->ColorMap;
 
-    int err;
-    GifFileType* gif = DGifOpen(&buf, gif_reader, &err);
-    if (!gif) {
-        image_error(ctx, "unable to open gif decoder: [%d] %s", err,
-                    GifErrorString(err));
-        return ldr_fmterror;
-    }
+    for (int y = 0; y < gif_desc->Height; ++y) {
+        const uint8_t* gif_raster = &gif_image->RasterBits[y * gif_desc->Width];
+        argb_t* pixel = curr->data + gif_desc->Top * curr->width +
+            y * curr->width + gif_desc->Left;
 
-    // decode with high-level API
-    if (DGifSlurp(gif) != GIF_OK) {
-        image_error(ctx, "unable to decode gif image: [%d] %s", err,
-                    GifErrorString(err));
-        DGifCloseFile(gif, NULL);
-        return ldr_fmterror;
-    }
-    if (!gif->SavedImages) {
-        image_error(ctx, "gif doesn't contain images");
-        DGifCloseFile(gif, NULL);
-        return ldr_fmterror;
-    }
-
-    if (!image_allocate(ctx, gif->SWidth, gif->SHeight)) {
-        DGifCloseFile(gif, NULL);
-        return ldr_fmterror;
-    }
-
-    // we don't support animation, show the first frame only
-    const GifImageDesc* frame = &gif->SavedImages->ImageDesc;
-    const GifColorType* colors =
-        gif->SColorMap ? gif->SColorMap->Colors : frame->ColorMap->Colors;
-    argb_t* base = (argb_t*)&ctx->data[frame->Top * ctx->width];
-    for (int y = 0; y < frame->Height; ++y) {
-        argb_t* pixel = base + y * gif->SWidth + frame->Left;
-        const uint8_t* raster = &gif->SavedImages->RasterBits[y * gif->SWidth];
-        for (int x = 0; x < frame->Width; ++x) {
-            const uint8_t color = raster[x];
-            if (color != gif->SBackGroundColor) {
-                const GifColorType* rgb = &colors[color];
+        for (int x = 0; x < gif_desc->Width; ++x) {
+            const uint8_t color = gif_raster[x];
+            if (color != color_transparent && color < gif_colors->ColorCount) {
+                const GifColorType* rgb = &gif_colors->Colors[color];
                 *pixel = ARGB_FROM_A(0xff) | ARGB_FROM_R(rgb->Red) |
                     ARGB_FROM_G(rgb->Green) | ARGB_FROM_B(rgb->Blue);
             }
@@ -92,10 +85,66 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
         }
     }
 
-    image_add_meta(ctx, "Format", "GIF, frame 1 of %d", gif->ImageCount);
+    if (curr->duration == 0) {
+        curr->duration = 100; // ms
+    }
+
+    return true;
+}
+
+//  GIF loader implementation
+enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
+                              size_t size)
+{
+    GifFileType* gif = NULL;
+    struct buffer buf = {
+        .data = data,
+        .size = size,
+        .position = 0,
+    };
+    int err;
+
+    // check signature
+    if (size < sizeof(signature) ||
+        memcmp(data, signature, sizeof(signature))) {
+        return ldr_unsupported;
+    }
+
+    // decode
+    gif = DGifOpen(&buf, gif_reader, &err);
+    if (!gif) {
+        image_print_error(ctx, "unable to open gif decoder: [%d] %s", err,
+                          GifErrorString(err));
+        return ldr_fmterror;
+    }
+    if (DGifSlurp(gif) != GIF_OK) {
+        image_print_error(ctx, "unable to decode gif image: [%d] %s", err,
+                          GifErrorString(err));
+        goto fail;
+    }
+
+    // allocate frame sequence
+    if (!image_create_frames(ctx, gif->ImageCount)) {
+        goto fail;
+    }
+
+    // decode every frame
+    for (size_t i = 0; i < ctx->num_frames; ++i) {
+        const struct image_frame* prev = i ? &ctx->frames[i - 1] : NULL;
+        if (!decode_frame(gif, i, prev, &ctx->frames[i])) {
+            goto fail;
+        }
+    }
+
+    image_set_format(ctx, "GIF %d", gif->ImageCount);
     ctx->alpha = true;
 
     DGifCloseFile(gif, NULL);
 
     return ldr_success;
+
+fail:
+    DGifCloseFile(gif, NULL);
+    image_free_frames(ctx);
+    return ldr_fmterror;
 }

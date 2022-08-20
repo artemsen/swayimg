@@ -125,7 +125,7 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
                           const struct bmp_mask* mask, const uint8_t* buffer,
                           size_t buffer_sz)
 {
-    argb_t* data = (argb_t*)ctx->data;
+    struct image_frame* frame = &ctx->frames[0];
     const bool default_mask =
         !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0);
     const uint32_t mask_r = default_mask ? MASK555_RED : mask->red;
@@ -138,15 +138,15 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < ctx->height * stride) {
-        image_error(ctx, "not enough bmp data");
+    if (buffer_sz < frame->height * stride) {
+        image_print_error(ctx, "not enough bmp data");
         return false;
     }
 
-    for (size_t y = 0; y < ctx->height; ++y) {
-        argb_t* dst = &data[y * bmp->width];
+    for (size_t y = 0; y < frame->height; ++y) {
+        argb_t* dst = &frame->data[y * frame->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < ctx->width; ++x) {
+        for (size_t x = 0; x < frame->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             uint32_t m, r, g, b;
             if (bmp->bpp == 32) {
@@ -154,7 +154,7 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             } else if (bmp->bpp == 16) {
                 m = *(uint16_t*)src;
             } else {
-                image_error(ctx, "%d image connot be masked", bmp->bpp);
+                image_print_error(ctx, "%d image connot be masked", bmp->bpp);
                 return false;
             }
             r = m & mask_r;
@@ -184,7 +184,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    argb_t* data = (argb_t*)ctx->data;
+    struct image_frame* frame = &ctx->frames[0];
     size_t x = 0, y = 0;
     size_t buffer_pos = 0;
 
@@ -198,15 +198,15 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                 ++y;
             } else if (rle2 == RLE_ESC_EOF) {
                 // remove alpha channel
-                argb_t* ptr = data;
-                while (ptr < ctx->data + ctx->width * ctx->height) {
+                argb_t* ptr = frame->data;
+                while (ptr < frame->data + frame->width * frame->height) {
                     *ptr |= ARGB_FROM_A(0xff);
                     ++ptr;
                 }
                 return true;
             } else if (rle2 == RLE_ESC_DELTA) {
                 if (buffer_pos + 2 >= buffer_sz) {
-                    image_error(ctx, "unexpected end of RLE stream");
+                    image_print_error(ctx, "unexpected end of RLE stream");
                     return false;
                 }
                 x += buffer[buffer_pos++];
@@ -216,11 +216,11 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                 if (buffer_pos +
                         (bmp->compression == BI_RLE4 ? rle2 / 2 : rle2) >
                     buffer_sz) {
-                    image_error(ctx, "unexpected end of RLE stream");
+                    image_print_error(ctx, "unexpected end of RLE stream");
                     return false;
                 }
-                if (x + rle2 > ctx->width || y >= ctx->height) {
-                    image_error(ctx, "pixel position out of bmp image");
+                if (x + rle2 > frame->width || y >= frame->height) {
+                    image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
                 uint8_t val = 0;
@@ -237,10 +237,10 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                         }
                     }
                     if (index >= palette->size) {
-                        image_error(ctx, "color out of bmp palette");
+                        image_print_error(ctx, "color out of bmp palette");
                         return false;
                     }
-                    data[y * bmp->width + x] = palette->table[index];
+                    frame->data[y * bmp->width + x] = palette->table[index];
                     ++x;
                 }
                 if ((bmp->compression == BI_RLE8 && rle2 & 1) ||
@@ -254,37 +254,38 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
             if (bmp->compression == BI_RLE8) {
                 // 8 bpp
                 if (rle2 >= palette->size) {
-                    image_error(ctx, "color out of bmp palette");
+                    image_print_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > ctx->width || y >= ctx->height) {
-                    image_error(ctx, "pixel position out of bmp image");
+                if (x + rle1 > frame->width || y >= frame->height) {
+                    image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    data[y * ctx->width + x] = palette->table[rle2];
+                    frame->data[y * frame->width + x] = palette->table[rle2];
                     ++x;
                 }
             } else {
                 // 4 bpp
                 const uint8_t index[] = { rle2 >> 4, rle2 & 0x0f };
                 if (index[0] >= palette->size || index[1] >= palette->size) {
-                    image_error(ctx, "color out of bmp palette");
+                    image_print_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > ctx->width) {
-                    image_error(ctx, "pixel position out of bmp image");
+                if (x + rle1 > frame->width) {
+                    image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    data[y * ctx->width + x] = palette->table[index[i & 1]];
+                    frame->data[y * frame->width + x] =
+                        palette->table[index[i & 1]];
                     ++x;
                 }
             }
         }
     }
 
-    image_error(ctx, "RLE decode failed");
+    image_print_error(ctx, "RLE decode failed");
     return false;
 }
 
@@ -301,19 +302,19 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    argb_t* data = (argb_t*)ctx->data;
+    struct image_frame* frame = &ctx->frames[0];
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < ctx->height * stride) {
-        image_error(ctx, "not enough data for bitmp image");
+    if (buffer_sz < frame->height * stride) {
+        image_print_error(ctx, "not enough data for bitmp image");
         return false;
     }
 
-    for (size_t y = 0; y < ctx->height; ++y) {
-        argb_t* dst = &data[y * ctx->width];
+    for (size_t y = 0; y < frame->height; ++y) {
+        argb_t* dst = &frame->data[y * frame->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < ctx->width; ++x) {
+        for (size_t x = 0; x < frame->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             if (bmp->bpp == 32) {
                 dst[x] = *(uint32_t*)src;
@@ -330,13 +331,13 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
                     (0xff >> (BITS_PER_BYTE - bmp->bpp));
 
                 if (index >= palette->size) {
-                    image_error(ctx, "color out of bmp palette");
+                    image_print_error(ctx, "color out of bmp palette");
                     return false;
                 }
                 dst[x] = ARGB_FROM_A(0xff) | palette->table[index];
             } else {
-                image_error(ctx, "color for bmp %dbit images not supported",
-                            bmp->bpp);
+                image_print_error(
+                    ctx, "color for bmp %dbit images not supported", bmp->bpp);
                 return false;
             }
         }
@@ -366,15 +367,15 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
     }
     if (hdr->offset >= size ||
         hdr->offset < sizeof(struct bmp_file) + sizeof(struct bmp_info)) {
-        image_error(ctx, "invalid bmp header");
+        image_print_error(ctx, "invalid bmp header");
         return ldr_fmterror;
     }
     if (bmp->dib_size > hdr->offset) {
-        image_error(ctx, "invalid bmp header size");
+        image_print_error(ctx, "invalid bmp header size");
         return ldr_fmterror;
     }
 
-    if (!image_allocate(ctx, bmp->width, abs(bmp->height))) {
+    if (!image_create_frame(ctx, bmp->width, abs(bmp->height))) {
         return ldr_fmterror;
     }
 
@@ -388,17 +389,18 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
     if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
         rc = decode_masked(ctx, bmp, mask, data + hdr->offset,
                            size - hdr->offset);
-        image_add_meta(ctx, "Format", "BMP %dbit masked", bmp->bpp);
+        image_set_format(ctx, "BMP %dbit masked", bmp->bpp);
     } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
         rc = decode_rle(ctx, bmp, &palette, data + hdr->offset,
                         size - hdr->offset);
-        image_add_meta(ctx, "Format", "BMP %dbit RLE", bmp->bpp);
+        image_set_format(ctx, "BMP %dbit RLE", bmp->bpp);
     } else if (bmp->compression == BI_RGB) {
         rc = decode_rgb(ctx, bmp, &palette, data + hdr->offset,
                         size - hdr->offset);
-        image_add_meta(ctx, "Format", "BMP %dbit uncompressed", bmp->bpp);
+        image_set_format(ctx, "BMP %dbit uncompressed", bmp->bpp);
     } else {
-        image_error(ctx, "compression %d not supported", bmp->compression);
+        image_print_error(ctx, "compression %d not supported",
+                          bmp->compression);
         rc = false;
     }
 
@@ -408,7 +410,7 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
         }
         ctx->alpha = bmp->bpp == 32;
     } else {
-        image_deallocate(ctx);
+        image_free_frames(ctx);
     }
 
     return (rc ? ldr_success : ldr_fmterror);

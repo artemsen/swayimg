@@ -280,8 +280,8 @@ static void* preloader_thread(void* data)
         if (index == ctx->index) {
             break; // next image not fund
         }
-        if ((ctx->next && ctx->next->path == ctx->entries[index]->path) ||
-            (ctx->prev && ctx->prev->path == ctx->entries[index]->path)) {
+        if ((ctx->next && ctx->next->file_path == ctx->entries[index]->path) ||
+            (ctx->prev && ctx->prev->file_path == ctx->entries[index]->path)) {
             break; // already loaded
         }
 
@@ -481,10 +481,11 @@ bool image_list_jump(struct image_list* ctx, enum list_jump jump)
         if (index == ctx->index) {
             return false;
         }
-        if (ctx->next && ctx->next->path == ctx->entries[index]->path) {
+        if (ctx->next && ctx->next->file_path == ctx->entries[index]->path) {
             image = ctx->next;
             ctx->next = NULL;
-        } else if (ctx->prev && ctx->prev->path == ctx->entries[index]->path) {
+        } else if (ctx->prev &&
+                   ctx->prev->file_path == ctx->entries[index]->path) {
             image = ctx->prev;
             ctx->prev = NULL;
         } else {

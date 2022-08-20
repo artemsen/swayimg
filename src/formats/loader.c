@@ -6,17 +6,39 @@
 
 #include "buildcfg.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 // Construct function name of loader
 #define LOADER_FUNCTION(name) decode_##name
 // Declaration of loader function
 #define LOADER_DECLARE(name)                                     \
     enum loader_status LOADER_FUNCTION(name)(struct image * ctx, \
                                              const uint8_t* data, size_t size)
+
+const char* supported_formats = "bmp"
+#ifdef HAVE_LIBJPEG
+                                ", jpeg"
+#endif
+#ifdef HAVE_LIBPNG
+                                ", png"
+#endif
+#ifdef HAVE_LIBGIF
+                                ", gif"
+#endif
+#ifdef HAVE_LIBWEBP
+                                ", webp"
+#endif
+#ifdef HAVE_LIBRSVG
+                                ", svg"
+#endif
+#ifdef HAVE_LIBHEIF
+                                ", heif, avif"
+#endif
+#ifdef HAVE_LIBJXL
+                                ", jxl"
+#endif
+#ifdef HAVE_LIBTIFF
+                                ", tiff"
+#endif
+    ;
 
 // declaration of loaders
 LOADER_DECLARE(bmp);
@@ -74,38 +96,8 @@ static const image_decoder decoders[] = {
 #endif
 };
 
-const char* supported_formats(void)
-{
-    return "bmp"
-#ifdef HAVE_LIBJPEG
-           ", jpeg"
-#endif
-#ifdef HAVE_LIBPNG
-           ", png"
-#endif
-#ifdef HAVE_LIBGIF
-           ", gif"
-#endif
-#ifdef HAVE_LIBWEBP
-           ", webp"
-#endif
-#ifdef HAVE_LIBRSVG
-           ", svg"
-#endif
-#ifdef HAVE_LIBHEIF
-           ", heif, avif"
-#endif
-#ifdef HAVE_LIBJXL
-           ", jxl"
-#endif
-#ifdef HAVE_LIBTIFF
-           ", tiff"
-#endif
-        ;
-}
-
-enum loader_status image_decode(struct image* ctx, const uint8_t* data,
-                                size_t size)
+enum loader_status load_image(struct image* ctx, const uint8_t* data,
+                              size_t size)
 {
     enum loader_status status = ldr_unsupported;
 
@@ -122,40 +114,4 @@ enum loader_status image_decode(struct image* ctx, const uint8_t* data,
     }
 
     return status;
-}
-
-argb_t* image_allocate(struct image* ctx, size_t width, size_t height)
-{
-    argb_t* data = calloc(1, width * height * sizeof(argb_t));
-
-    if (data) {
-        ctx->width = width;
-        ctx->height = height;
-        ctx->data = data;
-    } else {
-        image_error(ctx, "not enough memory");
-    }
-
-    return data;
-}
-
-void image_deallocate(struct image* ctx)
-{
-    ctx->width = 0;
-    ctx->height = 0;
-    free((void*)ctx->data);
-    ctx->data = NULL;
-}
-
-void image_error(const struct image* ctx, const char* fmt, ...)
-{
-    va_list args;
-
-    fprintf(stderr, "%s: ", image_file_name(ctx));
-
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-
-    fprintf(stderr, "\n");
 }
