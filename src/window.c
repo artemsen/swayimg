@@ -79,16 +79,19 @@ struct context {
     } outputs[MAX_OUTPUTS];
 
     struct wnd_handlers handlers;
+    int timer_cb; ///< Timer file descriptor
 
     enum state state;
 };
 
-static struct context ctx = { .wnd = { .scale = 1 }, .repeat = { .fd = -1 } };
+static struct context ctx = { .wnd = { .scale = 1 },
+                              .repeat = { .fd = -1 },
+                              .timer_cb = -1 };
 
 /** Redraw window */
 static void redraw(void)
 {
-    ctx.handlers.on_redraw(ctx.surface.data);
+    ctx.handlers.on_redraw(ctx.handlers.data, ctx.surface.data);
     wl_surface_attach(ctx.wl.surface, ctx.surface.buffer, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
@@ -164,7 +167,8 @@ static bool create_buffer(void)
             wl_shm_pool_create_buffer(pool, 0, ctx.wnd.width, ctx.wnd.height,
                                       stride, WL_SHM_FORMAT_ARGB8888);
         wl_shm_pool_destroy(pool);
-        ctx.handlers.on_resize(ctx.wnd.width, ctx.wnd.height);
+        ctx.handlers.on_resize(ctx.handlers.data, ctx.wnd.width,
+                               ctx.wnd.height);
     }
 
     return status;
@@ -244,7 +248,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
         if (keysym != XKB_KEY_NoSymbol) {
             // handle key in viewer
-            if (ctx.handlers.on_keyboard(keysym)) {
+            if (ctx.handlers.on_keyboard(ctx.handlers.data, keysym)) {
                 redraw();
             }
             // handle key repeat
@@ -491,6 +495,7 @@ bool create_window(const struct wnd_handlers* handlers, size_t width,
     wl_surface_commit(ctx.wl.surface);
 
     ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    ctx.timer_cb = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
 
     return true;
 }
@@ -501,6 +506,7 @@ void show_window(void)
     struct pollfd fds[] = {
         /* 0 */ { .fd = wl_display_get_fd(ctx.wl.display), .events = POLLIN },
         /* 1 */ { .fd = ctx.repeat.fd, .events = POLLIN },
+        /* 2 */ { .fd = ctx.timer_cb, .events = POLLIN },
     };
 
     while (ctx.state == state_ok) {
@@ -531,12 +537,21 @@ void show_window(void)
                 sizeof(repeats)) {
                 bool handled = false;
                 while (repeats--) {
-                    handled |= ctx.handlers.on_keyboard(ctx.repeat.key);
+                    handled |= ctx.handlers.on_keyboard(ctx.handlers.data,
+                                                        ctx.repeat.key);
                 }
                 if (handled) {
                     redraw();
                 }
             }
+        }
+
+        // callback timer
+        if (fds[2].revents & POLLIN) {
+            const struct itimerspec ts = { 0 };
+            timerfd_settime(ctx.timer_cb, 0, &ts, NULL);
+            ctx.handlers.on_timer(ctx.handlers.data);
+            redraw();
         }
     }
 }
@@ -616,4 +631,12 @@ void enable_fullscreen(bool enable)
     } else {
         xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
     }
+}
+
+void add_callback(size_t ms)
+{
+    const struct itimerspec ts = {
+        .it_value = { .tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000, },
+    };
+    timerfd_settime(ctx.timer_cb, 0, &ts, NULL);
 }

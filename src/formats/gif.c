@@ -136,7 +136,7 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
         }
     }
 
-    image_set_format(ctx, "GIF %d", gif->ImageCount);
+    image_set_format(ctx, "GIF%s", gif->ImageCount > 1 ? " animation" : "");
     ctx->alpha = true;
 
     DGifCloseFile(gif, NULL);

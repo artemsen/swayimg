@@ -20,9 +20,6 @@ the image directly in a terminal window.
 - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
 - BMP (built-in).
 
-## Known issues
-- Animation is not supported.
-
 ## Usage
 
 `swayimg [OPTIONS]... [FILE]...`
@@ -70,6 +67,7 @@ Examples:
 | `End` or `G`                 | Open the last file |
 | `F2` or `O`                  | Show previous frame |
 | `F3` or `o`                  | Show next frame |
+| `F4` or `s`                  | Start/stop animation |
 | `Insert` or `m`              | Invert mark sate for current file |
 | `*` or `M`                   | Invert mark sate for all files |
 | `a`                          | Mark all files |

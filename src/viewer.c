@@ -22,9 +22,9 @@
 
 /** Image description. */
 struct image_desc {
-    char frame_size[MAX_DESC_LEN];  ///< Buffer for frame size info text
-    char frame_index[MAX_DESC_LEN]; ///< Buffer for frame index info text
-    char file_size[MAX_DESC_LEN];   ///< Buffer for file size info text
+    char frame_size[MAX_DESC_LEN]; ///< Buffer for frame size info text
+    char frame_index[64];          ///< Buffer for frame index info text
+    char file_size[MAX_DESC_LEN];  ///< Buffer for file size info text
     struct info_table table[MAX_DESC_LINES]; ///< Info table
     size_t size; ///< Total number of lines in the table
 };
@@ -35,9 +35,9 @@ struct viewer {
     struct image_list* list; ///< List of images to view
     struct canvas* canvas;   ///< Canvas context
     size_t frame;            ///< Index of current frame
+    bool animation;          ///< Animation is in progress
     struct image_desc desc;  ///< Text image description
 };
-static struct viewer viewer;
 
 /**
  * Reset image view state, recalculate position and scale.
@@ -111,11 +111,35 @@ static bool switch_frame(struct viewer* ctx, bool forward)
     return true;
 }
 
+/**
+ * Start or stop animation.
+ * @param ctx viewer context
+ * @param start state to set
+ */
+static void animation_control(struct viewer* ctx, bool start)
+{
+    if (!start) {
+        ctx->animation = false;
+    } else {
+        const struct image_entry entry = image_list_current(ctx->list);
+        const size_t duration = entry.image->frames[ctx->frame].duration;
+        if (entry.image->num_frames > 1 && duration) {
+            ctx->animation = true;
+            add_callback(duration);
+        }
+    }
+}
+
+/**
+ * File load handler.
+ * @param ctx viewer context
+ */
 static void on_file_loaded(struct viewer* ctx)
 {
     struct info_table* table = ctx->desc.table;
     const struct image_entry entry = image_list_current(ctx->list);
 
+    ctx->animation = false;
     ctx->frame = 0;
     ctx->desc.size = 0;
 
@@ -158,6 +182,7 @@ static void on_file_loaded(struct viewer* ctx)
     on_frame_switched(ctx);
     reset_viewport(ctx);
     set_window_title(entry.image->file_name);
+    animation_control(ctx, true);
 }
 
 /**
@@ -176,14 +201,14 @@ static bool load_file(struct viewer* ctx, enum list_jump jump)
 }
 
 /** Draw handler, see wnd_handlers::on_redraw */
-static void on_redraw(argb_t* wnd)
+static void on_redraw(void* data, argb_t* window)
 {
-    struct viewer* ctx = &viewer;
+    struct viewer* ctx = data;
     const struct image_entry entry = image_list_current(ctx->list);
 
-    canvas_clear(ctx->canvas, wnd);
+    canvas_clear(ctx->canvas, window);
     canvas_draw_image(ctx->canvas, entry.image->alpha,
-                      entry.image->frames[ctx->frame].data, wnd);
+                      entry.image->frames[ctx->frame].data, window);
 
     // image meta information: file name, format, exif, etc
     if (ctx->config->show_info) {
@@ -191,38 +216,38 @@ static void on_redraw(argb_t* wnd)
         const int scale = canvas_get_scale(ctx->canvas) * 100;
 
         // print meta info
-        canvas_print_info(ctx->canvas, wnd, ctx->desc.size, ctx->desc.table);
+        canvas_print_info(ctx->canvas, window, ctx->desc.size, ctx->desc.table);
 
         // print current scale
         snprintf(text, sizeof(text), "%d%%", scale);
-        canvas_print_line(ctx->canvas, wnd, cc_bottom_left, text);
+        canvas_print_line(ctx->canvas, window, cc_bottom_left, text);
         // print file number in list
         if (image_list_size(ctx->list) > 1) {
             snprintf(text, sizeof(text), "%lu of %lu", entry.index + 1,
                      image_list_size(ctx->list));
-            canvas_print_line(ctx->canvas, wnd, cc_top_right, text);
+            canvas_print_line(ctx->canvas, window, cc_top_right, text);
         }
     }
 
     if (ctx->config->mark_mode) {
         if (entry.marked) {
-            canvas_print_line(ctx->canvas, wnd, cc_bottom_right, "MARKED");
+            canvas_print_line(ctx->canvas, window, cc_bottom_right, "MARKED");
         }
     }
 }
 
 /** Window resize handler, see wnd_handlers::on_resize */
-static void on_resize(size_t width, size_t height)
+static void on_resize(void* data, size_t width, size_t height)
 {
-    struct viewer* ctx = &viewer;
+    struct viewer* ctx = data;
     canvas_resize_window(ctx->canvas, width, height);
     reset_viewport(ctx);
 }
 
 /** Keyboard handler, see wnd_handlers::on_keyboard. */
-static bool on_keyboard(xkb_keysym_t key)
+static bool on_keyboard(void* data, xkb_keysym_t key)
 {
-    struct viewer* ctx = &viewer;
+    struct viewer* ctx = data;
 
     switch (key) {
         case XKB_KEY_SunPageUp:
@@ -244,10 +269,16 @@ static bool on_keyboard(xkb_keysym_t key)
             return load_file(ctx, jump_last_file);
         case XKB_KEY_O:
         case XKB_KEY_F2:
+            ctx->animation = false;
             return switch_frame(ctx, false);
         case XKB_KEY_o:
         case XKB_KEY_F3:
+            ctx->animation = false;
             return switch_frame(ctx, true);
+        case XKB_KEY_s:
+        case XKB_KEY_F4:
+            animation_control(ctx, !ctx->animation);
+            return true;
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return canvas_move(ctx->canvas, cm_step_left);
@@ -321,17 +352,35 @@ static bool on_keyboard(xkb_keysym_t key)
     return false;
 }
 
+/** Keyboard handler, see wnd_handlers::on_timer. */
+static void on_timer(void* data)
+{
+    struct viewer* ctx = data;
+    if (ctx->animation) {
+        const struct image_entry entry = image_list_current(ctx->list);
+        const struct image_frame* frame = &entry.image->frames[ctx->frame];
+        add_callback(frame->duration);
+        switch_frame(ctx, true);
+    }
+}
+
 bool run_viewer(struct config* cfg, struct image_list* list)
 {
     bool rc = false;
-    static const struct wnd_handlers handlers = { .on_redraw = on_redraw,
-                                                  .on_resize = on_resize,
-                                                  .on_keyboard = on_keyboard };
-    // initialize viewer context
-    viewer.config = cfg;
-    viewer.list = list;
-    viewer.canvas = canvas_init(cfg);
-    if (!viewer.canvas) {
+    struct viewer ctx = {
+        .config = cfg,
+        .list = list,
+        .canvas = canvas_init(cfg),
+    };
+    struct wnd_handlers handlers = {
+        .on_redraw = on_redraw,
+        .on_resize = on_resize,
+        .on_keyboard = on_keyboard,
+        .on_timer = on_timer,
+        .data = &ctx,
+    };
+
+    if (!ctx.canvas) {
         goto done;
     }
 
@@ -343,14 +392,13 @@ bool run_viewer(struct config* cfg, struct image_list* list)
     if (cfg->fullscreen) {
         enable_fullscreen(true);
     }
-    on_file_loaded(&viewer);
+    on_file_loaded(&ctx);
     show_window();
     destroy_window();
 
     rc = true;
 
 done:
-    canvas_free(viewer.canvas);
-
+    canvas_free(ctx.canvas);
     return rc;
 }

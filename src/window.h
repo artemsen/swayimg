@@ -12,22 +12,36 @@
 struct wnd_handlers {
     /**
      * Redraw handler.
-     * @param data pointer to pixel data
+     * @param data callback data pointer
+     * @param window pointer to pixel data of the window
      */
-    void (*on_redraw)(argb_t* data);
+    void (*on_redraw)(void* data, argb_t* window);
 
     /**
      * Window resize handler.
+     * @param data callback data pointer
      * @param width,height window size in pixels
      */
-    void (*on_resize)(size_t width, size_t height);
+    void (*on_resize)(void* data, size_t width, size_t height);
 
     /**
      * Key press handler.
+     * @param data callback data pointer
      * @param key code of key pressed
-     * @return true if state was changed and window must be redrawn
+     * @return true if state has changed and window should be redrawn
      */
-    bool (*on_keyboard)(xkb_keysym_t key);
+    bool (*on_keyboard)(void* data, xkb_keysym_t key);
+
+    /**
+     * Timer event handler.
+     * @param data callback data pointer
+     */
+    void (*on_timer)(void* data);
+
+    /**
+     * Pointer used for callback data.
+     */
+    void* data;
 };
 
 /**
@@ -67,3 +81,9 @@ void set_window_title(const char* file);
  * @param enable mode
  */
 void enable_fullscreen(bool enable);
+
+/**
+ * Add time callback.
+ * @param ms timeout in milliseconds
+ */
+void add_callback(size_t ms);

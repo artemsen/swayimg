@@ -15,7 +15,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     JxlBasicInfo info;
     JxlDecoderStatus status;
     size_t buffer_sz;
-    struct image_frame* frame;
+    struct image_frame* frame = NULL;
 
     const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
                                         .data_type = JXL_TYPE_UINT8,
@@ -101,6 +101,11 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 image_print_error(ctx, "unexpected jpeg xl status %d", status);
         }
     } while (status != JXL_DEC_SUCCESS);
+
+    if (!frame) {
+        image_print_error(ctx, "jxl frame is empty");
+        goto fail;
+    }
 
     // convert ABGR -> ARGB
     for (size_t i = 0; i < frame->width * frame->height; ++i) {

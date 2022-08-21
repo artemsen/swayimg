@@ -27,7 +27,7 @@ struct image_frame {
     size_t width;    ///< Image width (px)
     size_t height;   ///< Image height (px)
     argb_t* data;    ///< Pointer to pixel data
-    size_t duration; ///< Frame duration (animation)
+    size_t duration; ///< Frame duration in milliseconds (animation)
 };
 
 /** Image meta info. */
@@ -123,7 +123,7 @@ void image_free_frames(struct image* ctx);
 
 /**
  * Allocate buffer for frame.
- * @param frame pointer to the frame descrition
+ * @param frame pointer to the frame description
  * @param width frame width in px
  * @param height frame height in px
  * @return false if allocation failed

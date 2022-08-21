@@ -7,11 +7,9 @@
 #include "config.h"
 #include "imagelist.h"
 
-#include <stddef.h>
-
 /**
  * Start viewer.
- * @param cfg current configuration instance
+ * @param cfg configuration instance
  * @param list list of images to view
  * @return true if operation completed successfully
  */
