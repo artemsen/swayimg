@@ -6,9 +6,6 @@
 
 #include "buildcfg.h"
 #include "canvas.h"
-#include "config.h"
-#include "image.h"
-#include "window.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +37,90 @@ struct viewer {
 };
 
 /**
+ * Set current frame.
+ * @param ctx viewer context
+ * @param frame target frame index
+ */
+static void set_frame(struct viewer* ctx, size_t index)
+{
+    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_frame* frame = &entry.image->frames[index];
+
+    ctx->frame = index;
+
+    // update image description text
+    snprintf(ctx->desc.frame_size, sizeof(ctx->desc.frame_size), "%lux%lu",
+             frame->width, frame->height);
+    if (entry.image->num_frames > 1) {
+        snprintf(ctx->desc.frame_index, sizeof(ctx->desc.frame_index),
+                 "%lu of %lu", ctx->frame + 1, entry.image->num_frames);
+    }
+}
+
+/**
+ * Switch to the next or previous frame.
+ * @param ctx viewer context
+ * @param forward switch direction
+ * @return false if there is only one frame in the image
+ */
+static bool next_frame(struct viewer* ctx, bool forward)
+{
+    size_t index = ctx->frame;
+    const struct image_entry entry = image_list_current(ctx->list);
+
+    if (forward) {
+        if (++index >= entry.image->num_frames) {
+            index = 0;
+        }
+    } else {
+        if (index-- == 0) {
+            index = entry.image->num_frames - 1;
+        }
+    }
+    if (index == ctx->frame) {
+        return false;
+    }
+
+    set_frame(ctx, index);
+    return true;
+}
+
+/**
+ * Start animation if image supports it.
+ * @param ctx viewer context
+ * @param ui UI context
+ */
+static void start_animation(struct viewer* ctx, struct ui* ui)
+{
+    const struct image_entry entry = image_list_current(ctx->list);
+    const size_t duration = entry.image->frames[ctx->frame].duration;
+    if (entry.image->num_frames > 1 && duration) {
+        ctx->animation = true;
+        ui_set_timer(ui, duration);
+    }
+}
+
+/**
+ * Update window title.
+ * @param ctx viewer context
+ * @param ui UI context
+ */
+static void update_window_title(struct viewer* ctx, struct ui* ui)
+{
+    const char* prefix = APP_NAME ": ";
+    const struct image_entry entry = image_list_current(ctx->list);
+    const size_t len = strlen(prefix) + strlen(entry.image->file_name) + 1;
+    char* title = malloc(len);
+
+    if (title) {
+        strcpy(title, prefix);
+        strcat(title, entry.image->file_name);
+        ui_set_title(ui, title);
+        free(title);
+    }
+}
+
+/**
  * Reset image view state, recalculate position and scale.
  * @param ctx viewer context
  */
@@ -63,145 +144,99 @@ static void reset_viewport(struct viewer* ctx)
 }
 
 /**
- * Handle frame switch.
+ * Reset state after loading new file.
  * @param ctx viewer context
+ * @param ui UI context
  */
-static void on_frame_switched(struct viewer* ctx)
+static void reset_state(struct viewer* ctx, struct ui* ui)
 {
     const struct image_entry entry = image_list_current(ctx->list);
-    const struct image_frame* frame = &entry.image->frames[ctx->frame];
+    const struct image* image = entry.image;
+    struct image_desc* desc = &ctx->desc;
+    struct info_table* table = desc->table;
 
-    snprintf(ctx->desc.frame_size, sizeof(ctx->desc.frame_size), "%lux%lu",
-             frame->width, frame->height);
-
-    if (entry.image->num_frames > 1) {
-        snprintf(ctx->desc.frame_index, sizeof(ctx->desc.frame_index),
-                 "%lu of %lu", ctx->frame + 1, entry.image->num_frames);
-    }
-}
-
-/**
- * Switch to the next or previous frame.
- * @param ctx viewer context
- * @param forward switch direction
- * @return false if there is only one frame in the image
- */
-static bool switch_frame(struct viewer* ctx, bool forward)
-{
-    size_t index = ctx->frame;
-    const struct image_entry entry = image_list_current(ctx->list);
-
-    if (forward) {
-        if (++index >= entry.image->num_frames) {
-            index = 0;
-        }
-    } else {
-        if (index-- == 0) {
-            index = entry.image->num_frames - 1;
-        }
-    }
-
-    if (index == ctx->frame) {
-        return false;
-    }
-
-    ctx->frame = index;
-    on_frame_switched(ctx);
-
-    return true;
-}
-
-/**
- * Start or stop animation.
- * @param ctx viewer context
- * @param start state to set
- */
-static void animation_control(struct viewer* ctx, bool start)
-{
-    if (!start) {
-        ctx->animation = false;
-    } else {
-        const struct image_entry entry = image_list_current(ctx->list);
-        const size_t duration = entry.image->frames[ctx->frame].duration;
-        if (entry.image->num_frames > 1 && duration) {
-            ctx->animation = true;
-            add_callback(duration);
-        }
-    }
-}
-
-/**
- * File load handler.
- * @param ctx viewer context
- */
-static void on_file_loaded(struct viewer* ctx)
-{
-    struct info_table* table = ctx->desc.table;
-    const struct image_entry entry = image_list_current(ctx->list);
-
-    ctx->animation = false;
-    ctx->frame = 0;
-    ctx->desc.size = 0;
-
-    // fill image description
-    table[ctx->desc.size].key = "File";
-    table[ctx->desc.size++].value = entry.image->file_name;
-
-    table[ctx->desc.size].key = "File size";
-    table[ctx->desc.size++].value = ctx->desc.file_size;
-    if (entry.image->file_size >= MEBIBYTE) {
-        snprintf(ctx->desc.file_size, sizeof(ctx->desc.file_size), "%.02f MiB",
-                 (float)entry.image->file_size / MEBIBYTE);
-    } else {
-        snprintf(ctx->desc.file_size, sizeof(ctx->desc.file_size), "%.02f KiB",
-                 (float)entry.image->file_size / KIBIBYTE);
-    }
-
-    table[ctx->desc.size].key = "Format";
-    table[ctx->desc.size++].value = entry.image->format;
-
-    // EXIF
-    for (size_t i = 0; i < entry.image->num_info; ++i) {
-        if (ctx->desc.size >= MAX_DESC_LINES) {
+    // update image description
+    desc->size = 0;
+    table[desc->size].key = "File";
+    table[desc->size++].value = image->file_name;
+    table[desc->size].key = "File size";
+    table[desc->size++].value = desc->file_size;
+    snprintf(desc->file_size, sizeof(desc->file_size), "%.02f %ciB",
+             (float)image->file_size /
+                 (image->file_size >= MEBIBYTE ? MEBIBYTE : KIBIBYTE),
+             (image->file_size >= MEBIBYTE ? 'M' : 'K'));
+    table[desc->size].key = "Format";
+    table[desc->size++].value = image->format;
+    // exif and other meat data
+    for (size_t i = 0; i < image->num_info; ++i) {
+        if (desc->size >= MAX_DESC_LINES) {
             break;
         }
-        table[ctx->desc.size].key = entry.image->info[i].key;
-        table[ctx->desc.size++].value = entry.image->info[i].value;
+        table[desc->size].key = image->info[i].key;
+        table[desc->size++].value = image->info[i].value;
+    }
+    // dynamic fields
+    if (desc->size < MAX_DESC_LINES) {
+        table[desc->size].key = "Image size";
+        table[desc->size++].value = desc->frame_size;
+    }
+    if (desc->size < MAX_DESC_LINES && image->num_frames > 1) {
+        table[desc->size].key = "Frame";
+        table[desc->size++].value = desc->frame_index;
     }
 
-    if (ctx->desc.size < MAX_DESC_LINES) {
-        table[ctx->desc.size].key = "Image size";
-        table[ctx->desc.size++].value = ctx->desc.frame_size;
-    }
-
-    if (ctx->desc.size < MAX_DESC_LINES && entry.image->num_frames > 1) {
-        table[ctx->desc.size].key = "Frame";
-        table[ctx->desc.size++].value = ctx->desc.frame_index;
-    }
-
-    on_frame_switched(ctx);
+    ctx->animation = false;
+    set_frame(ctx, 0);
     reset_viewport(ctx);
-    set_window_title(entry.image->file_name);
-    animation_control(ctx, true);
+    update_window_title(ctx, ui);
+    start_animation(ctx, ui);
 }
 
 /**
- * Load image file.
+ * Load next file.
  * @param ctx viewer context
- * @param jump position to set
+ * @param ui UI context
+ * @param jump position of the next file in list
  * @return false if file was not loaded
  */
-static bool load_file(struct viewer* ctx, enum list_jump jump)
+static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
 {
     if (!image_list_jump(ctx->list, jump)) {
         return false;
     }
-    on_file_loaded(ctx);
+    reset_state(ctx, ui);
     return true;
 }
 
-/** Draw handler, see wnd_handlers::on_redraw */
-static void on_redraw(void* data, argb_t* window)
+struct viewer* viewer_create(struct config* cfg, struct image_list* list)
+{
+    struct viewer* ctx;
+
+    ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
+    }
+
+    ctx->config = cfg;
+    ctx->list = list;
+    ctx->canvas = canvas_init(cfg);
+
+    if (!ctx->canvas) {
+        viewer_free(ctx);
+        return NULL;
+    }
+
+    return ctx;
+}
+
+void viewer_free(struct viewer* ctx)
+{
+    canvas_free(ctx->canvas);
+    free(ctx);
+}
+
+void viewer_on_redraw(void* data, argb_t* window)
 {
     struct viewer* ctx = data;
     const struct image_entry entry = image_list_current(ctx->list);
@@ -236,48 +271,53 @@ static void on_redraw(void* data, argb_t* window)
     }
 }
 
-/** Window resize handler, see wnd_handlers::on_resize */
-static void on_resize(void* data, size_t width, size_t height)
+void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
+                      size_t scale)
 {
     struct viewer* ctx = data;
-    canvas_resize_window(ctx->canvas, width, height);
+
+    canvas_resize_window(ctx->canvas, width, height, scale);
     reset_viewport(ctx);
+    reset_state(ctx, ui);
 }
 
-/** Keyboard handler, see wnd_handlers::on_keyboard. */
-static bool on_keyboard(void* data, xkb_keysym_t key)
+bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
 {
     struct viewer* ctx = data;
 
     switch (key) {
         case XKB_KEY_SunPageUp:
         case XKB_KEY_p:
-            return load_file(ctx, jump_prev_file);
+            return next_file(ctx, ui, jump_prev_file);
         case XKB_KEY_SunPageDown:
         case XKB_KEY_n:
         case XKB_KEY_space:
-            return load_file(ctx, jump_next_file);
+            return next_file(ctx, ui, jump_next_file);
         case XKB_KEY_P:
-            return load_file(ctx, jump_prev_dir);
+            return next_file(ctx, ui, jump_prev_dir);
         case XKB_KEY_N:
-            return load_file(ctx, jump_next_dir);
+            return next_file(ctx, ui, jump_next_dir);
         case XKB_KEY_Home:
         case XKB_KEY_g:
-            return load_file(ctx, jump_first_file);
+            return next_file(ctx, ui, jump_first_file);
         case XKB_KEY_End:
         case XKB_KEY_G:
-            return load_file(ctx, jump_last_file);
+            return next_file(ctx, ui, jump_last_file);
         case XKB_KEY_O:
         case XKB_KEY_F2:
             ctx->animation = false;
-            return switch_frame(ctx, false);
+            return next_frame(ctx, false);
         case XKB_KEY_o:
         case XKB_KEY_F3:
             ctx->animation = false;
-            return switch_frame(ctx, true);
+            return next_frame(ctx, true);
         case XKB_KEY_s:
         case XKB_KEY_F4:
-            animation_control(ctx, !ctx->animation);
+            if (ctx->animation) {
+                ctx->animation = false;
+            } else {
+                start_animation(ctx, ui);
+            }
             return true;
         case XKB_KEY_Left:
         case XKB_KEY_h:
@@ -340,65 +380,25 @@ static bool on_keyboard(void* data, xkb_keysym_t key)
         case XKB_KEY_F11:
         case XKB_KEY_f:
             ctx->config->fullscreen = !ctx->config->fullscreen;
-            enable_fullscreen(ctx->config->fullscreen);
+            ui_set_fullscreen(ui, ctx->config->fullscreen);
             return false;
         case XKB_KEY_Escape:
         case XKB_KEY_Return:
         case XKB_KEY_F10:
         case XKB_KEY_q:
-            close_window();
+            ui_stop(ui);
             return false;
     }
     return false;
 }
 
-/** Keyboard handler, see wnd_handlers::on_timer. */
-static void on_timer(void* data)
+void viewer_on_timer(void* data, struct ui* ui)
 {
     struct viewer* ctx = data;
     if (ctx->animation) {
         const struct image_entry entry = image_list_current(ctx->list);
         const struct image_frame* frame = &entry.image->frames[ctx->frame];
-        add_callback(frame->duration);
-        switch_frame(ctx, true);
+        ui_set_timer(ui, frame->duration);
+        next_frame(ctx, true);
     }
-}
-
-bool run_viewer(struct config* cfg, struct image_list* list)
-{
-    bool rc = false;
-    struct viewer ctx = {
-        .config = cfg,
-        .list = list,
-        .canvas = canvas_init(cfg),
-    };
-    struct wnd_handlers handlers = {
-        .on_redraw = on_redraw,
-        .on_resize = on_resize,
-        .on_keyboard = on_keyboard,
-        .on_timer = on_timer,
-        .data = &ctx,
-    };
-
-    if (!ctx.canvas) {
-        goto done;
-    }
-
-    // Start GUI
-    if (!create_window(&handlers, cfg->geometry.width, cfg->geometry.height,
-                       cfg->app_id)) {
-        goto done;
-    }
-    if (cfg->fullscreen) {
-        enable_fullscreen(true);
-    }
-    on_file_loaded(&ctx);
-    show_window();
-    destroy_window();
-
-    rc = true;
-
-done:
-    canvas_free(ctx.canvas);
-    return rc;
 }

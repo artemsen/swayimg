@@ -329,6 +329,7 @@ struct image_list* image_list_init(const char** files, size_t num,
 
     ctx = calloc(1, sizeof(*ctx));
     if (!ctx) {
+        fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
 

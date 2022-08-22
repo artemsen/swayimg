@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "canvas.h"
+#include "types.h"
 
 #include <stdbool.h>
 

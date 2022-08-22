@@ -55,9 +55,11 @@ void canvas_free(struct canvas* ctx);
  * Resize canvas window.
  * @param ctx canvas context
  * @param width,height new window size
+ * @param scale window scale factor
  * @return true if it was the first resize
  */
-bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height);
+bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height,
+                          size_t scale);
 
 /**
  * Reset image position, size and scale.

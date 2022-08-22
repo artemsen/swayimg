@@ -31,6 +31,7 @@ struct canvas {
     float scale;           ///< Scale, 1.0 = 100%
     struct rect image;     ///< Image position and size
     struct size window;    ///< Output window size
+    size_t wnd_scale;      ///< Window scale factor (HiDPI)
     struct font* font;     ///< Font context
 };
 
@@ -112,12 +113,14 @@ void canvas_free(struct canvas* ctx)
     }
 }
 
-bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height)
+bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height,
+                          size_t scale)
 {
     const bool first = (ctx->window.width == 0);
 
     ctx->window.width = width;
     ctx->window.height = height;
+    ctx->wnd_scale = scale;
     fix_viewport(ctx);
 
     return first;

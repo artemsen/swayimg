@@ -13,7 +13,6 @@ project(
 
 add_project_arguments(
   [
-    '-Wno-unused-parameter',
     '-D_POSIX_C_SOURCE=200809'
   ],
   language: 'c',
@@ -136,8 +135,8 @@ sources = [
   'src/imagelist.c',
   'src/main.c',
   'src/sway.c',
+  'src/ui.c',
   'src/viewer.c',
-  'src/window.c',
   'src/formats/bmp.c',
   'src/formats/loader.c',
   xdg_shell_h,

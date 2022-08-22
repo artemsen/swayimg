@@ -5,7 +5,6 @@
 #include "buildcfg.h"
 #include "config.h"
 #include "formats/loader.h"
-#include "image.h"
 #include "sway.h"
 #include "viewer.h"
 
@@ -189,25 +188,25 @@ static void sway_setup(struct config* cfg)
  */
 int main(int argc, char* argv[])
 {
-    int rc;
+    bool rc = false;
     struct config* cfg = NULL;
     struct image_list* list = NULL;
+    struct viewer* viewer = NULL;
+    struct ui* ui = NULL;
+    struct ui_handlers handlers;
     int index;
 
     cfg = config_init();
     if (!cfg) {
-        rc = EXIT_FAILURE;
         goto done;
     }
 
     // parse command arguments
     index = parse_cmdargs(argc, argv, cfg);
     if (index == 0) {
-        rc = EXIT_SUCCESS;
         goto done;
     }
     if (index < 0) {
-        rc = EXIT_FAILURE;
         goto done;
     }
 
@@ -226,7 +225,6 @@ int main(int argc, char* argv[])
     // compose file list
     list = image_list_init((const char**)&argv[index], argc - index, cfg);
     if (!list) {
-        rc = EXIT_FAILURE;
         goto done;
     }
 
@@ -234,15 +232,35 @@ int main(int argc, char* argv[])
         sway_setup(cfg);
     }
 
-    rc = run_viewer(cfg, list) ? EXIT_SUCCESS : EXIT_FAILURE;
+    // create ui
+    handlers.on_redraw = viewer_on_redraw;
+    handlers.on_resize = viewer_on_resize;
+    handlers.on_keyboard = viewer_on_keyboard;
+    handlers.on_timer = viewer_on_timer;
+    ui = ui_create(cfg, &handlers);
+    if (!ui) {
+        goto done;
+    }
 
-    if (cfg->mark_mode && rc == EXIT_SUCCESS) {
+    // create viewer
+    viewer = viewer_create(cfg, list);
+    if (!viewer) {
+        goto done;
+    }
+    handlers.data = viewer;
+
+    // run main loop
+    rc = ui_run(ui);
+
+    if (rc && cfg->mark_mode) {
         image_list_mark_print(list);
     }
 
 done:
+    viewer_free(viewer);
+    ui_free(ui);
     image_list_free(list);
     config_free(cfg);
 
-    return rc;
+    return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }
