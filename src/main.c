@@ -204,6 +204,7 @@ int main(int argc, char* argv[])
     // parse command arguments
     index = parse_cmdargs(argc, argv, cfg);
     if (index == 0) {
+        rc = true;
         goto done;
     }
     if (index < 0) {
