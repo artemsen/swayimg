@@ -232,8 +232,10 @@ struct viewer* viewer_create(struct config* cfg, struct image_list* list)
 
 void viewer_free(struct viewer* ctx)
 {
-    canvas_free(ctx->canvas);
-    free(ctx);
+    if (ctx) {
+        canvas_free(ctx->canvas);
+        free(ctx);
+    }
 }
 
 void viewer_on_redraw(void* data, argb_t* window)

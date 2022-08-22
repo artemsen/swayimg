@@ -546,6 +546,9 @@ struct ui* ui_create(const struct config* cfg,
 
 void ui_free(struct ui* ctx)
 {
+    if (!ctx) {
+        return;
+    }
     if (ctx->repeat.fd != -1) {
         close(ctx->repeat.fd);
     }
