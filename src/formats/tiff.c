@@ -37,13 +37,16 @@ static tmsize_t tiff_read(thandle_t data, void* buffer, tmsize_t size)
 }
 
 // TIFF memory reader: TIFFReadWriteProc
-static tmsize_t tiff_write(thandle_t data, void* buffer, tmsize_t size)
+static tmsize_t tiff_write(__attribute__((unused)) thandle_t data,
+                           __attribute__((unused)) void* buffer,
+                           __attribute__((unused)) tmsize_t size)
 {
     return 0;
 }
 
 // TIFF memory reader: TIFFSeekProc
-static toff_t tiff_seek(thandle_t data, toff_t off, int xxx)
+static toff_t tiff_seek(thandle_t data, toff_t off,
+                        __attribute__((unused)) int xxx)
 {
     struct mem_reader* mr = data;
     if (off < mr->size) {
@@ -53,7 +56,7 @@ static toff_t tiff_seek(thandle_t data, toff_t off, int xxx)
 }
 
 // TIFF memory reader: TIFFCloseProc
-static int tiff_close(thandle_t data)
+static int tiff_close(__attribute__((unused)) thandle_t data)
 {
     return 0;
 }
@@ -75,7 +78,11 @@ static int tiff_map(thandle_t data, void** base, toff_t* size)
 }
 
 // TIFF memory reader: TIFFUnmapFileProc
-static void tiff_unmap(thandle_t data, void* base, toff_t size) { }
+static void tiff_unmap(__attribute__((unused)) thandle_t data,
+                       __attribute__((unused)) void* base,
+                       __attribute__((unused)) toff_t size)
+{
+}
 
 // TIFF loader implementation
 enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
