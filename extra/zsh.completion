@@ -1,0 +1,21 @@
+#compdef swayimg
+
+# zsh completion for the "swayimg" image viewer.
+# Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
+
+_arguments \
+  '(-o --order)'{-o,--order=}'[set sort order for image list]:order:(none alpha random)' \
+  '(-r --recursive)'{-r,--recursive}'[read directories recursively]' \
+  '(-a --all)'{-a,--all}'[open all files from the same directory]' \
+  '(-m --mark)'{-m,--mark}'[enable marking mode]' \
+  '(-f --fullscreen)'{-f,--fullscreen}'[show image in full screen mode]' \
+  '(-s --scale=SCALE)'{-s,--scale=}'[set initial image scale]:scale:(optimal fit real)' \
+  '(-b --background)'{-b,--background=}'[set image background color]:bkg:(none grid)' \
+  '(-w --window)'{-w,--window=}'[set window background color]:wnd:(none)' \
+  '(-g --geometry)'{-g,--geometry=}'[set window geometry]:geo' \
+  '(-i --info)'{-i,--info}'[show image meta information (name, EXIF, etc)]' \
+  '(-c --class)'{-c,--class=}'[set window class/app_id]:class' \
+  '(-n --no-sway)'{-n,--no-sway}'[disable integration with Sway WM]' \
+  '(-v --version)'{-v,--version}'[print version info and exit]' \
+  '(-h --help)'{-h,--help}'[print help and exit]' \
+  '*:file:_files'

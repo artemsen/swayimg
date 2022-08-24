@@ -114,6 +114,20 @@ if get_option('desktop')
     install_dir: join_paths(get_option('datadir'), 'icons/hicolor/64x64/apps'))
 endif
 
+# zsh completion
+zsh = get_option('zsh')
+if zsh.auto()
+  shell = find_program('zsh', required: false)
+  zsh = zsh.disable_auto_if(not shell.found())
+endif
+if zsh.enabled()
+  datadir = get_option('datadir')
+  zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
+  install_data('extra/zsh.completion',
+               install_dir: zsh_install_dir,
+               rename: '_swayimg')
+endif
+
 # bash completion installation
 if bash.found()
   datadir = get_option('datadir')

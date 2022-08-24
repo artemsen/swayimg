@@ -42,7 +42,11 @@ option('exif',
 option('bash',
        type: 'feature',
        value: 'auto',
-       description: 'Install bash completions')
+       description: 'Install bash completion')
+option('zsh',
+       type: 'feature',
+       value: 'auto',
+       description: 'Install zsh completion')
 option('man',
        type: 'boolean',
        value: true,
