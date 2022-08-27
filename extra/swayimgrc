@@ -30,7 +30,7 @@ font = monospace
 font-size = 14
 
 # Color for image info text
-font-color = #ff00ff
+font-color = #cccccc
 
 # Default order of the image list (none, alpha, or random)
 order = alpha
