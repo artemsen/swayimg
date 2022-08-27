@@ -33,6 +33,7 @@ struct viewer {
     struct canvas* canvas;   ///< Canvas context
     size_t frame;            ///< Index of current frame
     bool animation;          ///< Animation is in progress
+    bool slideshow;          ///< Slideshow is in progress
     struct image_desc desc;  ///< Text image description
 };
 
@@ -86,17 +87,36 @@ static bool next_frame(struct viewer* ctx, bool forward)
 }
 
 /**
+ * Start slide show.
+ * @param ctx viewer context
+ * @param ui UI context
+ * @param enable state to set
+ */
+static void slideshow_ctl(struct viewer* ctx, struct ui* ui, bool enable)
+{
+    ctx->slideshow = enable;
+    if (enable) {
+        ui_set_timer(ui, ui_timer_slideshow, ctx->config->slideshow_sec * 1000);
+    }
+}
+
+/**
  * Start animation if image supports it.
  * @param ctx viewer context
  * @param ui UI context
+ * @param enable state to set
  */
-static void start_animation(struct viewer* ctx, struct ui* ui)
+static void animation_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 {
-    const struct image_entry entry = image_list_current(ctx->list);
-    const size_t duration = entry.image->frames[ctx->frame].duration;
-    if (entry.image->num_frames > 1 && duration) {
-        ctx->animation = true;
-        ui_set_timer(ui, duration);
+    if (enable) {
+        const struct image_entry entry = image_list_current(ctx->list);
+        const size_t duration = entry.image->frames[ctx->frame].duration;
+        ctx->animation = (entry.image->num_frames > 1 && duration);
+        if (ctx->animation) {
+            ui_set_timer(ui, ui_timer_animation, duration);
+        }
+    } else {
+        ctx->animation = false;
     }
 }
 
@@ -189,7 +209,7 @@ static void reset_state(struct viewer* ctx, struct ui* ui)
     set_frame(ctx, 0);
     reset_viewport(ctx);
     update_window_title(ctx, ui);
-    start_animation(ctx, ui);
+    animation_ctl(ctx, ui, true);
 }
 
 /**
@@ -208,7 +228,8 @@ static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
     return true;
 }
 
-struct viewer* viewer_create(struct config* cfg, struct image_list* list)
+struct viewer* viewer_create(struct config* cfg, struct image_list* list,
+                             struct ui* ui)
 {
     struct viewer* ctx;
 
@@ -225,6 +246,10 @@ struct viewer* viewer_create(struct config* cfg, struct image_list* list)
     if (!ctx->canvas) {
         viewer_free(ctx);
         return NULL;
+    }
+
+    if (cfg->slideshow) {
+        slideshow_ctl(ctx, ui, true); // start slide show
     }
 
     return ctx;
@@ -307,20 +332,18 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             return next_file(ctx, ui, jump_last_file);
         case XKB_KEY_O:
         case XKB_KEY_F2:
-            ctx->animation = false;
+            slideshow_ctl(ctx, ui, false);
+            animation_ctl(ctx, ui, false);
             return next_frame(ctx, false);
         case XKB_KEY_o:
         case XKB_KEY_F3:
-            ctx->animation = false;
+            slideshow_ctl(ctx, ui, false);
+            animation_ctl(ctx, ui, false);
             return next_frame(ctx, true);
         case XKB_KEY_s:
         case XKB_KEY_F4:
-            if (ctx->animation) {
-                ctx->animation = false;
-            } else {
-                start_animation(ctx, ui);
-            }
-            return true;
+            animation_ctl(ctx, ui, !ctx->animation);
+            return false;
         case XKB_KEY_Left:
         case XKB_KEY_h:
             return canvas_move(ctx->canvas, cm_step_left);
@@ -379,6 +402,10 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case XKB_KEY_F8:
             image_flip_horizontal(image_list_current(ctx->list).image);
             return true;
+        case XKB_KEY_F9:
+            slideshow_ctl(
+                ctx, ui, !ctx->slideshow && next_file(ctx, ui, jump_next_file));
+            return true;
         case XKB_KEY_F11:
         case XKB_KEY_f:
             ctx->config->fullscreen = !ctx->config->fullscreen;
@@ -394,13 +421,17 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
     return false;
 }
 
-void viewer_on_timer(void* data, struct ui* ui)
+void viewer_on_timer(void* data, enum ui_timer timer, struct ui* ui)
 {
     struct viewer* ctx = data;
-    if (ctx->animation) {
-        const struct image_entry entry = image_list_current(ctx->list);
-        const struct image_frame* frame = &entry.image->frames[ctx->frame];
-        ui_set_timer(ui, frame->duration);
+
+    if (timer == ui_timer_slideshow && ctx->slideshow &&
+        next_file(ctx, ui, jump_next_file)) {
+        slideshow_ctl(ctx, ui, true);
+    }
+
+    if (timer == ui_timer_animation && ctx->animation) {
         next_frame(ctx, true);
+        animation_ctl(ctx, ui, true);
     }
 }

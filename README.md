@@ -68,6 +68,7 @@ Examples:
 | `F2` or `O`                  | Show previous frame |
 | `F3` or `o`                  | Show next frame |
 | `F4` or `s`                  | Start/stop animation |
+| `F9`                         | Start/stop slideshow mode |
 | `Insert` or `m`              | Invert mark sate for current file |
 | `*` or `M`                   | Invert mark sate for all files |
 | `a`                          | Mark all files |

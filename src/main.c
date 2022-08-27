@@ -27,6 +27,7 @@ static const struct cmdarg arguments[] = {
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'a', "all",        NULL,      "open all files from the same directory" },
     { 'm', "mark",       NULL,      "enable marking mode" },
+    { 'l', "slideshow",  NULL,      "activate slideshow mode on startup" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/real" },
     { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
@@ -111,6 +112,9 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'm':
                 cfg->mark_mode = true;
+                break;
+            case 'l':
+                cfg->slideshow = true;
                 break;
             case 'f':
                 cfg->fullscreen = true;
@@ -244,7 +248,7 @@ int main(int argc, char* argv[])
     }
 
     // create viewer
-    viewer = viewer_create(cfg, list);
+    viewer = viewer_create(cfg, list, ui);
     if (!viewer) {
         goto done;
     }

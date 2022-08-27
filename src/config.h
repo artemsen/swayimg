@@ -37,6 +37,8 @@ struct config {
     const char* font_face;   ///< Font name
     size_t font_size;        ///< Font size
     argb_t font_color;       ///< Font color
+    bool slideshow;          ///< Slide show mode
+    size_t slideshow_sec;    ///< Slide show mode timing
     enum config_order order; ///< File list order
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
@@ -63,4 +65,5 @@ bool config_set_geometry(struct config* ctx, const char* val);
 bool config_set_font_name(struct config* ctx, const char* val);
 bool config_set_font_size(struct config* ctx, const char* val);
 bool config_set_order(struct config* ctx, const char* val);
+bool config_set_slideshow_sec(struct config* ctx, const char* val);
 bool config_set_appid(struct config* ctx, const char* val);
