@@ -78,9 +78,14 @@ struct ui {
         int32_t scale;
     } wnd;
 
-    const struct ui_handlers* handlers;
-    int timer_cb;
+    // timers
+    int timer_animation;
+    int timer_slideshow;
 
+    // event handlers
+    const struct ui_handlers* handlers;
+
+    // global state
     enum state state;
 };
 
@@ -492,7 +497,8 @@ struct ui* ui_create(const struct config* cfg,
     }
     ctx->wnd.scale = 1;
     ctx->repeat.fd = -1;
-    ctx->timer_cb = -1;
+    ctx->timer_animation = -1;
+    ctx->timer_slideshow = -1;
     ctx->wnd.width = cfg->geometry.width ? cfg->geometry.width : 800;
     ctx->wnd.height = cfg->geometry.height ? cfg->geometry.height : 600;
     ctx->handlers = handlers;
@@ -539,7 +545,10 @@ struct ui* ui_create(const struct config* cfg,
 
     ctx->repeat.fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    ctx->timer_cb = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    ctx->timer_animation =
+        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    ctx->timer_slideshow =
+        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
 
     return ctx;
 }
@@ -552,8 +561,11 @@ void ui_free(struct ui* ctx)
     if (ctx->repeat.fd != -1) {
         close(ctx->repeat.fd);
     }
-    if (ctx->timer_cb != -1) {
-        close(ctx->timer_cb);
+    if (ctx->timer_animation != -1) {
+        close(ctx->timer_animation);
+    }
+    if (ctx->timer_slideshow != -1) {
+        close(ctx->timer_slideshow);
     }
     if (ctx->xkb.state) {
         xkb_state_unref(ctx->xkb.state);
@@ -599,7 +611,8 @@ bool ui_run(struct ui* ctx)
     struct pollfd fds[] = {
         { .fd = wl_display_get_fd(ctx->wl.display), .events = POLLIN },
         { .fd = ctx->repeat.fd, .events = POLLIN },
-        { .fd = ctx->timer_cb, .events = POLLIN },
+        { .fd = ctx->timer_animation, .events = POLLIN },
+        { .fd = ctx->timer_slideshow, .events = POLLIN },
     };
 
     while (ctx->state == state_ok) {
@@ -639,11 +652,20 @@ bool ui_run(struct ui* ctx)
             }
         }
 
-        // callback timer
+        // animation timer
         if (fds[2].revents & POLLIN) {
             const struct itimerspec ts = { 0 };
-            timerfd_settime(ctx->timer_cb, 0, &ts, NULL);
-            ctx->handlers->on_timer(ctx->handlers->data, ctx);
+            timerfd_settime(ctx->timer_animation, 0, &ts, NULL);
+            ctx->handlers->on_timer(ctx->handlers->data, ui_timer_animation,
+                                    ctx);
+            redraw(ctx);
+        }
+        // slideshow timer
+        if (fds[3].revents & POLLIN) {
+            const struct itimerspec ts = { 0 };
+            timerfd_settime(ctx->timer_slideshow, 0, &ts, NULL);
+            ctx->handlers->on_timer(ctx->handlers->data, ui_timer_slideshow,
+                                    ctx);
             redraw(ctx);
         }
     }
@@ -670,9 +692,22 @@ void ui_set_fullscreen(struct ui* ctx, bool enable)
     }
 }
 
-void ui_set_timer(struct ui* ctx, size_t ms)
+void ui_set_timer(struct ui* ctx, enum ui_timer timer, size_t ms)
 {
+    int fd;
     struct itimerspec ts = { 0 };
+
+    switch (timer) {
+        case ui_timer_animation:
+            fd = ctx->timer_animation;
+            break;
+        case ui_timer_slideshow:
+            fd = ctx->timer_slideshow;
+            break;
+        default:
+            return;
+    }
+
     set_timespec(&ts.it_value, ms);
-    timerfd_settime(ctx->timer_cb, 0, &ts, NULL);
+    timerfd_settime(fd, 0, &ts, NULL);
 }

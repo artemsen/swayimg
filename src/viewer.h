@@ -15,9 +15,11 @@ struct viewer;
  * Create User Interface context.
  * @param cfg configuration instance
  * @param list list of images to view
+ * @param ui UI context
  * @return viewer context or NULL on errors
  */
-struct viewer* viewer_create(struct config* cfg, struct image_list* list);
+struct viewer* viewer_create(struct config* cfg, struct image_list* list,
+                             struct ui* ui);
 
 /**
  * Free viewer context.
@@ -30,4 +32,4 @@ void viewer_on_redraw(void* data, argb_t* window);
 void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
                       size_t scale);
 bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key);
-void viewer_on_timer(void* data, struct ui* ui);
+void viewer_on_timer(void* data, enum ui_timer timer, struct ui* ui);

@@ -11,6 +11,9 @@
 /** UI context */
 struct ui;
 
+/** Available timers. */
+enum ui_timer { ui_timer_animation, ui_timer_slideshow };
+
 /** UI event handlers. */
 struct ui_handlers {
     /**
@@ -41,10 +44,11 @@ struct ui_handlers {
 
     /**
      * Timer event handler.
-     * @param ctx UI context
      * @param data callback data pointer
+     * @param ctx UI context
+     * @param timer timer type
      */
-    void (*on_timer)(void* data, struct ui* ctx);
+    void (*on_timer)(void* data, enum ui_timer timer, struct ui* ctx);
 
     /**
      * Pointer used for callback data.
@@ -96,6 +100,7 @@ void ui_set_fullscreen(struct ui* ctx, bool enable);
 /**
  * Set timer callback.
  * @param ctx UI context
+ * @param timer type of the timer to set
  * @param ms timeout in milliseconds
  */
-void ui_set_timer(struct ui* ctx, size_t ms);
+void ui_set_timer(struct ui* ctx, enum ui_timer timer, size_t ms);

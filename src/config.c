@@ -25,6 +25,8 @@
 #define DEFAULT_FONT_FACE  "monospace"
 #define DEFAULT_FONT_SIZE  14
 #define DEFAULT_FONT_COLOR 0xff00ff
+#define DEFAULT_SS_STATE   false
+#define DEFAULT_SS_SECONDS 3
 #define DEFAULT_ORDER      cfgord_alpha
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
@@ -179,6 +181,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_boolean(value, &ctx->recursive);
     } else if (strcmp(key, "all") == 0) {
         return set_boolean(value, &ctx->all_files);
+    } else if (strcmp(key, "slideshow") == 0) {
+        return config_set_slideshow_sec(ctx, value);
     } else if (strcmp(key, "app_id") == 0) {
         return config_set_appid(ctx, value);
     } else if (strcmp(key, "sway") == 0) {
@@ -209,6 +213,8 @@ static struct config* default_config(void)
     config_set_font_name(ctx, DEFAULT_FONT_FACE);
     ctx->font_color = DEFAULT_FONT_COLOR;
     ctx->font_size = DEFAULT_FONT_SIZE;
+    ctx->slideshow = DEFAULT_SS_STATE;
+    ctx->slideshow_sec = DEFAULT_SS_SECONDS;
     ctx->order = DEFAULT_ORDER;
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
@@ -426,6 +432,18 @@ bool config_set_order(struct config* ctx, const char* val)
         fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
         return false;
     }
+    return true;
+}
+
+bool config_set_slideshow_sec(struct config* ctx, const char* val)
+{
+    char* endptr;
+    const unsigned long sec = strtoul(val, &endptr, 10);
+    if (*endptr || sec == 0) {
+        fprintf(stderr, "Invalid slideshow duration\n");
+        return false;
+    }
+    ctx->slideshow_sec = sec;
     return true;
 }
 

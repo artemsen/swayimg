@@ -6,6 +6,7 @@ _swayimg()
     local opts="-o --order \
                 -r --recursive \
                 -a --all \
+                -l --slideshow \
                 -m --mark \
                 -f --fullscreen \
                 -s --scale \
