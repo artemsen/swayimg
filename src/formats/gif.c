@@ -52,14 +52,15 @@ static bool decode_frame(GifFileType* gif, size_t index,
     if (!image_frame_allocate(curr, gif->SWidth, gif->SHeight)) {
         return false;
     }
-    memset(curr->data, 0, curr->width * curr->height * sizeof(argb_t));
+    if (prev) {
+        memcpy(curr->data, prev->data,
+               curr->width * curr->height * sizeof(argb_t));
+    } else {
+        memset(curr->data, 0, curr->width * curr->height * sizeof(argb_t));
+    }
 
     if (DGifSavedExtensionToGCB(gif, index, &gif_cb) == GIF_OK) {
         color_transparent = gif_cb.TransparentColor;
-        if (gif_cb.DisposalMode == DISPOSE_DO_NOT && prev) {
-            memcpy(curr->data, prev->data,
-                   curr->width * curr->height * sizeof(argb_t));
-        }
         if (gif_cb.DelayTime != 0) {
             curr->duration = gif_cb.DelayTime * 10; // hundreds of second to ms
         }
@@ -67,8 +68,7 @@ static bool decode_frame(GifFileType* gif, size_t index,
 
     gif_image = &gif->SavedImages[index];
     gif_desc = &gif_image->ImageDesc;
-    gif_colors = gif->SColorMap ? gif->SColorMap : gif_desc->ColorMap;
-
+    gif_colors = gif_desc->ColorMap ? gif_desc->ColorMap : gif->SColorMap;
     for (int y = 0; y < gif_desc->Height; ++y) {
         const uint8_t* gif_raster = &gif_image->RasterBits[y * gif_desc->Width];
         argb_t* pixel = curr->data + gif_desc->Top * curr->width +
