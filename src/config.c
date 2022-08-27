@@ -24,7 +24,7 @@
 #define DEFAULT_SWAYWM     true
 #define DEFAULT_FONT_FACE  "monospace"
 #define DEFAULT_FONT_SIZE  14
-#define DEFAULT_FONT_COLOR 0xff00ff
+#define DEFAULT_FONT_COLOR 0xcccccc
 #define DEFAULT_SS_STATE   false
 #define DEFAULT_SS_SECONDS 3
 #define DEFAULT_ORDER      cfgord_alpha
