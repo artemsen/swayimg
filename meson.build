@@ -120,7 +120,7 @@ if zsh.auto()
   shell = find_program('zsh', required: false)
   zsh = zsh.disable_auto_if(not shell.found())
 endif
-if zsh.enabled()
+if zsh.allowed()
   datadir = get_option('datadir')
   zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
   install_data('extra/zsh.completion',
