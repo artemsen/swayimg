@@ -23,6 +23,13 @@ struct font* font_init(struct config* cfg);
 void font_free(struct font* ctx);
 
 /**
+ * Scale font in HiDPI mode.
+ * @param ctx font context
+ * @param scale scale factor
+ */
+void font_scale(struct font* ctx, size_t scale);
+
+/**
  * Get single line height for current font.
  * @param ctx font context
  * @return line height in pixels

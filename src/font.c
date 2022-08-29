@@ -185,7 +185,7 @@ struct font* font_init(struct config* cfg)
     if (search_font_file(cfg->font_face, font_file, sizeof(font_file)) &&
         FT_Init_FreeType(&ctx->font_lib) == 0 &&
         FT_New_Face(ctx->font_lib, font_file, 0, &ctx->font_face) == 0) {
-        FT_Set_Char_Size(ctx->font_face, cfg->font_size * 64, 0, 96, 0);
+        font_scale(ctx, 1);
     }
 
     return ctx;
@@ -202,6 +202,14 @@ void font_free(struct font* ctx)
         }
         free(ctx->wide);
         free(ctx);
+    }
+}
+
+void font_scale(struct font* ctx, size_t scale)
+{
+    if (ctx->font_face) {
+        const FT_F26Dot6 size = ctx->config->font_size * scale * 64;
+        FT_Set_Char_Size(ctx->font_face, size, 0, 96, 0);
     }
 }
 

@@ -120,7 +120,10 @@ bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height,
 
     ctx->window.width = width;
     ctx->window.height = height;
+
     ctx->wnd_scale = scale;
+    font_scale(ctx->font, scale);
+
     fix_viewport(ctx);
 
     return first;
@@ -198,8 +201,8 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                     bg = 0;
                     alpha_set = alpha;
                 } else if (ctx->config->background == BACKGROUND_GRID) {
-                    const bool shift = (y / GRID_STEP) % 2;
-                    const size_t tail = x / GRID_STEP;
+                    const bool shift = (y / (GRID_STEP * ctx->wnd_scale)) % 2;
+                    const size_t tail = x / (GRID_STEP * ctx->wnd_scale);
                     const argb_t grid =
                         (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
                     bg = grid;
