@@ -8,7 +8,7 @@ _arguments \
   '(-r --recursive)'{-r,--recursive}'[read directories recursively]' \
   '(-a --all)'{-a,--all}'[open all files from the same directory]' \
   '(-m --mark)'{-m,--mark}'[enable marking mode]' \
-  '(-l --slideshow)'{-l --slideshow}'[activate slideshow mode on startup]' \
+  '(-l --slideshow)'{-l,--slideshow}'[activate slideshow mode on startup]' \
   '(-f --fullscreen)'{-f,--fullscreen}'[show image in full screen mode]' \
   '(-s --scale=SCALE)'{-s,--scale=}'[set initial image scale]:scale:(optimal fit real)' \
   '(-b --background)'{-b,--background=}'[set image background color]:bkg:(none grid)' \
