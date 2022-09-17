@@ -93,7 +93,7 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     }
     // add terminations
     *short_opts_ptr = 0;
-    memset(&options[(sizeof(arguments) / sizeof(arguments[0])) - 1], 0,
+    memset(&options[(sizeof(arguments) / sizeof(arguments[0]))], 0,
            sizeof(struct option));
 
     // parse arguments
