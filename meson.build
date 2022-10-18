@@ -9,6 +9,7 @@ project(
   ],
   license: 'MIT',
   version: '0.0.0',
+  meson_version: '>=0.59.0',
 )
 
 add_project_arguments(
