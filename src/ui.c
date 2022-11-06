@@ -38,6 +38,7 @@ struct ui {
         struct wl_compositor* compositor;
         struct wl_seat* seat;
         struct wl_keyboard* keyboard;
+        struct wl_pointer* pointer;
         struct wl_surface* surface;
     } wl;
 
@@ -280,6 +281,40 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
     }
 }
 
+static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
+                             uint32_t serial, struct wl_surface* surface,
+                             wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+}
+
+static void on_pointer_leave(void* data, struct wl_pointer* wl_pointer,
+                             uint32_t serial, struct wl_surface* surface)
+{
+}
+
+static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
+                              uint32_t time, wl_fixed_t surface_x,
+                              wl_fixed_t surface_y)
+{
+}
+
+static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
+                              uint32_t serial, uint32_t time, uint32_t button,
+                              uint32_t state)
+{
+}
+
+static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
+                            uint32_t time, uint32_t axis, wl_fixed_t value)
+{
+    struct ui* ctx = data;
+    xkb_keysym_t key = value > 0 ? XKB_KEY_SunPageDown : XKB_KEY_SunPageUp;
+
+    if (ctx->handlers->on_keyboard(ctx->handlers->data, ctx, key)) {
+        redraw(ctx);
+    }
+}
+
 static const struct wl_keyboard_listener keyboard_listener = {
     .keymap = on_keyboard_keymap,
     .enter = on_keyboard_enter,
@@ -287,6 +322,14 @@ static const struct wl_keyboard_listener keyboard_listener = {
     .key = on_keyboard_key,
     .modifiers = on_keyboard_modifiers,
     .repeat_info = on_keyboard_repeat_info,
+};
+
+static const struct wl_pointer_listener pointer_listener = {
+    .enter = on_pointer_enter,
+    .leave = on_pointer_leave,
+    .motion = on_pointer_motion,
+    .button = on_pointer_button,
+    .axis = on_pointer_axis,
 };
 
 /*******************************************************************************
@@ -304,6 +347,14 @@ static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
     } else if (ctx->wl.keyboard) {
         wl_keyboard_destroy(ctx->wl.keyboard);
         ctx->wl.keyboard = NULL;
+    }
+
+    if (cap & WL_SEAT_CAPABILITY_POINTER) {
+        ctx->wl.pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(ctx->wl.pointer, &pointer_listener, ctx);
+    } else if (ctx->wl.pointer) {
+        wl_pointer_destroy(ctx->wl.pointer);
+        ctx->wl.pointer = NULL;
     }
 }
 
@@ -584,6 +635,9 @@ void ui_free(struct ui* ctx)
     }
     if (ctx->wl.keyboard) {
         wl_keyboard_destroy(ctx->wl.keyboard);
+    }
+    if (ctx->wl.pointer) {
+        wl_pointer_destroy(ctx->wl.pointer);
     }
     if (ctx->wl.shm) {
         wl_shm_destroy(ctx->wl.shm);
