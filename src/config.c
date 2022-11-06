@@ -367,18 +367,18 @@ bool config_set_window(struct config* ctx, const char* val)
 
 bool config_set_geometry(struct config* ctx, const char* val)
 {
-    int nums[4]; // x,y,width,height
+    long nums[4]; // x,y,width,height
     const char* ptr = val;
     size_t idx;
 
     for (idx = 0; *ptr && idx < sizeof(nums) / sizeof(nums[0]); ++idx) {
-        nums[idx] = atoi(ptr);
-        // skip digits
-        while (isdigit(*ptr)) {
-            ++ptr;
+        char* endptr;
+        nums[idx] = strtol(ptr, &endptr, 0);
+        if (ptr == endptr) {
+            break;
         }
-        // skip delimiter
-        while (*ptr && !isdigit(*ptr)) {
+        ptr = endptr;
+        while (*ptr && *ptr == ',') {
             ++ptr;
         }
     }
