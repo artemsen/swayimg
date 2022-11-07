@@ -172,19 +172,29 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
  */
 static void sway_setup(struct config* cfg)
 {
-    bool sway_fullscreen = false;
+    const bool absolute = cfg->geometry.width;
     const int ipc = sway_connect();
-    if (ipc != -1) {
-        if (!cfg->geometry.width) {
-            // get currently focused window state
-            sway_current(ipc, &cfg->geometry, &sway_fullscreen);
-        }
-        cfg->fullscreen |= sway_fullscreen;
-        if (!cfg->fullscreen && cfg->geometry.width) {
-            sway_add_rules(ipc, cfg->app_id, cfg->geometry.x, cfg->geometry.y);
-        }
-        sway_disconnect(ipc);
+
+    if (ipc == -1) {
+        return;
     }
+
+    if (!absolute) {
+        bool fullscreen = false;
+        // get coordinates and size of the currently focused window
+        if (!sway_current(ipc, &cfg->geometry, &fullscreen)) {
+            sway_disconnect(ipc);
+            return;
+        }
+        cfg->fullscreen |= fullscreen;
+    }
+
+    if (!cfg->fullscreen) {
+        sway_add_rules(ipc, cfg->app_id, cfg->geometry.x, cfg->geometry.y,
+                       absolute);
+    }
+
+    sway_disconnect(ipc);
 }
 
 /**
