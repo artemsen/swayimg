@@ -21,7 +21,7 @@ _swayimg()
     if [[ ${cur} == -* ]]; then
         COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
      else
-        COMPREPLY=($(compgen -f -- "${cur}"))
+        _filedir
     fi
 } &&
 complete -o filenames -F _swayimg swayimg
