@@ -45,8 +45,9 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     struct heif_image_handle* pih = NULL;
     struct heif_image* img = NULL;
     struct heif_error err;
-    const uint32_t* decoded;
+    const uint8_t* decoded;
     struct image_frame* frame;
+    int stride = 0;
 
     if (heif_check_filetype(data, size) != heif_filetype_yes_supported) {
         return ldr_unsupported;
@@ -70,8 +71,8 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     if (err.code != heif_error_Ok) {
         goto decode_fail;
     }
-    decoded = (const uint32_t*)heif_image_get_plane_readonly(
-        img, heif_channel_interleaved, NULL);
+    decoded =
+        heif_image_get_plane_readonly(img, heif_channel_interleaved, &stride);
     if (!decoded) {
         err.message = "no decoded data";
         goto decode_fail;
@@ -83,9 +84,13 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
         goto alloc_fail;
     }
 
-    // convert ABGR -> ARGB
-    for (size_t i = 0; i < frame->width * frame->height; ++i) {
-        frame->data[i] = ARGB_FROM_ABGR(decoded[i]);
+    // convert to plain image frame
+    for (size_t y = 0; y < frame->height; ++y) {
+        const argb_t* src = (const argb_t*)(decoded + y * stride);
+        argb_t* dst = &frame->data[y * frame->width];
+        for (size_t x = 0; x < frame->width; ++x) {
+            dst[x] = ARGB_FROM_ABGR(src[x]);
+        }
     }
 
     ctx->alpha = heif_image_handle_has_alpha_channel(pih);
