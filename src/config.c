@@ -28,6 +28,7 @@
 #define DEFAULT_SS_STATE   false
 #define DEFAULT_SS_SECONDS 3
 #define DEFAULT_ORDER      cfgord_alpha
+#define DEFAULT_LOOP       true
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
 #define DEFAULT_MARK_MODE  false
@@ -177,6 +178,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_color(value, &ctx->font_color);
     } else if (strcmp(key, "order") == 0) {
         return config_set_order(ctx, value);
+    } else if (strcmp(key, "loop") == 0) {
+        return set_boolean(value, &ctx->loop);
     } else if (strcmp(key, "recursive") == 0) {
         return set_boolean(value, &ctx->recursive);
     } else if (strcmp(key, "all") == 0) {
@@ -216,6 +219,7 @@ static struct config* default_config(void)
     ctx->slideshow = DEFAULT_SS_STATE;
     ctx->slideshow_sec = DEFAULT_SS_SECONDS;
     ctx->order = DEFAULT_ORDER;
+    ctx->loop = DEFAULT_LOOP;
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
     ctx->mark_mode = DEFAULT_MARK_MODE;

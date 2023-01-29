@@ -40,6 +40,7 @@ struct config {
     bool slideshow;          ///< Slide show mode
     size_t slideshow_sec;    ///< Slide show mode timing
     enum config_order order; ///< File list order
+    bool loop;               ///< File list loop mode
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
     bool mark_mode;          ///< Enable/disable marking mode

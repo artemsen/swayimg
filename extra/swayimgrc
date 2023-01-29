@@ -35,6 +35,9 @@ font-color = #cccccc
 # Default order of the image list (none, alpha, or random)
 order = alpha
 
+# Looping file list mode (yes/no)
+loop = yes
+
 # Read directories recursively (yes/no)
 recursive = no
 

@@ -38,6 +38,7 @@ struct image_list {
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread
+    const struct config* config; ///< Configuration
 };
 
 /**
@@ -147,26 +148,40 @@ static void add_dir(struct image_list* ctx, const char* dir, bool recursive)
  * @param ctx image list context
  * @param start index of the start position
  * @param forward step direction
- * @return index of the next entry
+ * @return index of the next entry or SIZE_MAX if not found
  */
 static size_t peek_next_file(const struct image_list* ctx, size_t start,
                              bool forward)
 {
     size_t index = start;
 
-    do {
+    while (true) {
         if (forward) {
             if (++index >= ctx->size) {
+                if (!ctx->config->loop) {
+                    break;
+                }
                 index = 0;
             }
         } else {
             if (index-- == 0) {
+                if (!ctx->config->loop) {
+                    break;
+                }
                 index = ctx->size - 1;
             }
         }
-    } while (index != start && !ctx->entries[index]);
 
-    return index;
+        if (index == start) {
+            break;
+        }
+
+        if (ctx->entries[index]) {
+            return index;
+        }
+    }
+
+    return SIZE_MAX;
 }
 
 /**
@@ -175,7 +190,7 @@ static size_t peek_next_file(const struct image_list* ctx, size_t start,
  * @param file path to extarct source directory
  * @param start index of the start position
  * @param forward step direction
- * @return index of the next entry
+ * @return index of the next entry or SIZE_MAX if not found
  */
 static size_t peek_next_dir(const struct image_list* ctx, const char* file,
                             size_t start, bool forward)
@@ -196,7 +211,7 @@ static size_t peek_next_dir(const struct image_list* ctx, const char* file,
         size_t next_len;
 
         index = peek_next_file(ctx, index, forward);
-        if (index == start) {
+        if (index == SIZE_MAX) {
             break; // not found
         }
 
@@ -210,14 +225,14 @@ static size_t peek_next_dir(const struct image_list* ctx, const char* file,
         }
     };
 
-    return start;
+    return SIZE_MAX;
 }
 
 /**
  * Peek first/last entry.
  * @param ctx image list context
  * @param first direction, true=first, false=last
- * @return index of the next entry
+ * @return index of the next entry or SIZE_MAX if not found
  */
 static size_t peek_edge(const struct image_list* ctx, bool first)
 {
@@ -277,8 +292,8 @@ static void* preloader_thread(void* data)
         struct image* img;
 
         index = peek_next_file(ctx, index, true);
-        if (index == ctx->index) {
-            break; // next image not fund
+        if (index == SIZE_MAX) {
+            break; // next image not found
         }
         if ((ctx->next && ctx->next->file_path == ctx->entries[index]->path) ||
             (ctx->prev && ctx->prev->file_path == ctx->entries[index]->path)) {
@@ -332,6 +347,7 @@ struct image_list* image_list_init(const char** files, size_t num,
         fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
+    ctx->config = cfg;
 
     if (num == 0) {
         // no input files specified, use all from the current directory
@@ -479,7 +495,7 @@ bool image_list_jump(struct image_list* ctx, enum list_jump jump)
                                       index, false);
                 break;
         }
-        if (index == ctx->index) {
+        if (index == SIZE_MAX) {
             return false;
         }
         if (ctx->next && ctx->next->file_path == ctx->entries[index]->path) {
