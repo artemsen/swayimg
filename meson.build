@@ -78,10 +78,10 @@ configure_file(output: 'buildcfg.h', configuration: conf)
 
 # Wayland protocols
 wlproto = dependency('wayland-protocols')
-wlproto_dir = wlproto.get_pkgconfig_variable('pkgdatadir')
+wlproto_dir = wlproto.get_variable(pkgconfig : 'pkgdatadir')
 wlscan = dependency('wayland-scanner', required: false, native: true)
 if wlscan.found()
-  wl_scanner = find_program(wlscan.get_pkgconfig_variable('wayland_scanner'), native: true)
+  wl_scanner = find_program(wlscan.get_variable(pkgconfig : 'wayland_scanner'), native: true)
 else
   wl_scanner = find_program('wayland-scanner', native: true)
 endif
@@ -132,10 +132,8 @@ endif
 # bash completion installation
 if bash.found()
   datadir = get_option('datadir')
-  bash_install_dir = bash.get_pkgconfig_variable(
-    'completionsdir',
-    define_variable: ['datadir', datadir]
-  )
+  bash_install_dir = bash.get_variable(pkgconfig : 'completionsdir',
+                                       pkgconfig_define: ['datadir', datadir])
   install_data('extra/bash.completion',
                install_dir: bash_install_dir,
                rename: 'swayimg')
