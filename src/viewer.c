@@ -311,110 +311,100 @@ void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
 bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
 {
     struct viewer* ctx = data;
+    enum config_action action = cfgact_none;
 
-    switch (key) {
-        case XKB_KEY_SunPageUp:
-        case XKB_KEY_p:
-            return next_file(ctx, ui, jump_prev_file);
-        case XKB_KEY_SunPageDown:
-        case XKB_KEY_n:
-        case XKB_KEY_space:
-            return next_file(ctx, ui, jump_next_file);
-        case XKB_KEY_P:
-            return next_file(ctx, ui, jump_prev_dir);
-        case XKB_KEY_N:
-            return next_file(ctx, ui, jump_next_dir);
-        case XKB_KEY_Home:
-        case XKB_KEY_g:
+    // get action binded to the key
+    for (size_t i = 0; i < MAX_KEYBINDINGS; ++i) {
+        struct config_keybind* bind = &ctx->config->keybind[i];
+        if (bind->key == key) {
+            action = bind->action;
+            break;
+        }
+        if (bind->key == XKB_KEY_NoSymbol) {
+            return false; // end of binding table
+        }
+    }
+
+    // handle action
+    switch (action) {
+        case cfgact_none:
+            return false;
+        case cfgact_first_file:
             return next_file(ctx, ui, jump_first_file);
-        case XKB_KEY_End:
-        case XKB_KEY_G:
+        case cfgact_last_file:
             return next_file(ctx, ui, jump_last_file);
-        case XKB_KEY_O:
-        case XKB_KEY_F2:
+        case cfgact_prev_dir:
+            return next_file(ctx, ui, jump_prev_dir);
+        case cfgact_next_dir:
+            return next_file(ctx, ui, jump_next_dir);
+        case cfgact_prev_file:
+            return next_file(ctx, ui, jump_prev_file);
+        case cfgact_next_file:
+            return next_file(ctx, ui, jump_next_file);
+        case cfgact_prev_frame:
+        case cfgact_next_frame:
             slideshow_ctl(ctx, ui, false);
             animation_ctl(ctx, ui, false);
-            return next_frame(ctx, false);
-        case XKB_KEY_o:
-        case XKB_KEY_F3:
-            slideshow_ctl(ctx, ui, false);
-            animation_ctl(ctx, ui, false);
-            return next_frame(ctx, true);
-        case XKB_KEY_s:
-        case XKB_KEY_F4:
+            return next_frame(ctx, action == cfgact_next_frame);
+        case cfgact_animation:
             animation_ctl(ctx, ui, !ctx->animation);
             return false;
-        case XKB_KEY_Left:
-        case XKB_KEY_h:
-            return canvas_move(ctx->canvas, cm_step_left);
-        case XKB_KEY_Right:
-        case XKB_KEY_l:
-            return canvas_move(ctx->canvas, cm_step_right);
-        case XKB_KEY_Up:
-        case XKB_KEY_k:
-            return canvas_move(ctx->canvas, cm_step_up);
-        case XKB_KEY_Down:
-        case XKB_KEY_j:
-            return canvas_move(ctx->canvas, cm_step_down);
-        case XKB_KEY_equal:
-        case XKB_KEY_plus:
-            canvas_set_scale(ctx->canvas, cs_zoom_in);
-            return true;
-        case XKB_KEY_minus:
-            canvas_set_scale(ctx->canvas, cs_zoom_out);
-            return true;
-        case XKB_KEY_0:
-            canvas_set_scale(ctx->canvas, cs_real_size);
-            return true;
-        case XKB_KEY_BackSpace:
-            reset_viewport(ctx);
-            return true;
-        case XKB_KEY_i:
-            ctx->config->show_info = !ctx->config->show_info;
-            return true;
-        case XKB_KEY_Insert:
-        case XKB_KEY_m:
-            image_list_mark_invcur(ctx->list);
-            return true;
-        case XKB_KEY_asterisk:
-        case XKB_KEY_M:
-            image_list_mark_invall(ctx->list);
-            return true;
-        case XKB_KEY_a:
-            image_list_mark_setall(ctx->list, true);
-            return true;
-        case XKB_KEY_A:
-            image_list_mark_setall(ctx->list, false);
-            return true;
-        case XKB_KEY_F5:
-        case XKB_KEY_bracketleft:
-            image_rotate(image_list_current(ctx->list).image, 270);
-            canvas_swap_image_size(ctx->canvas);
-            return true;
-        case XKB_KEY_F6:
-        case XKB_KEY_bracketright:
-            image_rotate(image_list_current(ctx->list).image, 90);
-            canvas_swap_image_size(ctx->canvas);
-            return true;
-        case XKB_KEY_F7:
-            image_flip_vertical(image_list_current(ctx->list).image);
-            return true;
-        case XKB_KEY_F8:
-            image_flip_horizontal(image_list_current(ctx->list).image);
-            return true;
-        case XKB_KEY_F9:
+        case cfgact_slideshow:
             slideshow_ctl(
                 ctx, ui, !ctx->slideshow && next_file(ctx, ui, jump_next_file));
             return true;
-        case XKB_KEY_F11:
-        case XKB_KEY_f:
+        case cfgact_fullscreen:
             ctx->config->fullscreen = !ctx->config->fullscreen;
             ui_set_fullscreen(ui, ctx->config->fullscreen);
             return false;
-        case XKB_KEY_Escape:
-        case XKB_KEY_Return:
-        case XKB_KEY_F10:
-        case XKB_KEY_q:
+        case cfgact_step_left:
+            return canvas_move(ctx->canvas, cm_step_left);
+        case cfgact_step_right:
+            return canvas_move(ctx->canvas, cm_step_right);
+        case cfgact_step_up:
+            return canvas_move(ctx->canvas, cm_step_up);
+        case cfgact_step_down:
+            return canvas_move(ctx->canvas, cm_step_down);
+        case cfgact_zoom_in:
+            canvas_set_scale(ctx->canvas, cs_zoom_in);
+            return true;
+        case cfgact_zoom_out:
+            canvas_set_scale(ctx->canvas, cs_zoom_out);
+            return true;
+        case cfgact_zoom_real:
+            canvas_set_scale(ctx->canvas, cs_real_size);
+            return true;
+        case cfgact_zoom_reset:
+            reset_viewport(ctx);
+            return true;
+        case cfgact_rotate_left:
+            image_rotate(image_list_current(ctx->list).image, 270);
+            canvas_swap_image_size(ctx->canvas);
+            return true;
+        case cfgact_rotate_right:
+            image_rotate(image_list_current(ctx->list).image, 90);
+            canvas_swap_image_size(ctx->canvas);
+            return true;
+        case cfgact_flip_vertical:
+            image_flip_vertical(image_list_current(ctx->list).image);
+            return true;
+        case cfgact_flip_horizontal:
+            image_flip_horizontal(image_list_current(ctx->list).image);
+            return true;
+        case cfgact_info:
+            ctx->config->show_info = !ctx->config->show_info;
+            return true;
+        case cfgact_mark:
+            image_list_mark_invcur(ctx->list);
+            return true;
+        case cfgact_mark_all:
+        case cfgact_mark_reset:
+            image_list_mark_setall(ctx->list, action == cfgact_mark_all);
+            return true;
+        case cfgact_mark_inverse:
+            image_list_mark_invall(ctx->list);
+            return true;
+        case cfgact_quit:
             ui_stop(ui);
             return false;
     }

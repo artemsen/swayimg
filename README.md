@@ -46,6 +46,8 @@ Examples:
 
 ### Key bindings
 
+Default key bindings can be overridden using a configuration file.
+
 | Key | Action |
 | --- | ------ |
 | `Arrows` and vim-like moving keys (`hjkl`) | Move view point |

@@ -53,4 +53,56 @@ slideshow = 3
 # Enable/disable integration with Sway WM (window position managing)
 sway = yes
 
+# Section with key bindings (key -> action)
+[keys]
+Home = first_file
+g = first_file
+End = last_file
+G = last_file
+P = prev_dir
+N = next_dir
+Prior = prev_file
+p = prev_file
+Next = next_file
+n = next_file
+F2 = prev_frame
+O = prev_frame
+F3 = next_frame
+o = next_frame
+F4 = animation
+s = animation
+F9 = slideshow
+F11 = fullscreen
+f = fullscreen
+Left = step_left
+h = step_left
+Right = step_right
+l = step_right
+Up = step_up
+k = step_up
+Down = step_down
+j = step_down
+equal = zoom_in
+plus = zoom_in
+minus = zoom_out
+0 = zoom_real
+BackSpace = zoom_reset
+F5 = rotate_left
+bracketleft = rotate_left
+F6 = rotate_right
+bracketright = rotate_right
+F7 = flip_vertical
+F8 = flip_horizontal
+i = info
+Insert = mark
+m = mark
+a = mark_all
+A = mark_reset
+asterisk = mark_inverse
+M = mark_inverse
+Escape = quit
+Return = quit
+F10 = quit
+q = quit
+
 # vim: filetype=dosini

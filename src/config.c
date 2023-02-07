@@ -17,6 +17,10 @@
 /** Max length of window class/app_id name */
 #define APP_ID_MAX 32
 
+// Section names
+#define SECTION_GENERAL "general"
+#define SECTION_KEYBIND "keys"
+
 // Default settings
 #define DEFAULT_SCALE      cfgsc_optimal
 #define DEFAULT_BACKGROUND BACKGROUND_GRID
@@ -32,6 +36,60 @@
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
 #define DEFAULT_MARK_MODE  false
+
+// Default key bindings
+static struct config_keybind default_bindings[] = {
+    { XKB_KEY_Home, cfgact_first_file },
+    { XKB_KEY_g, cfgact_first_file },
+    { XKB_KEY_End, cfgact_last_file },
+    { XKB_KEY_G, cfgact_last_file },
+    { XKB_KEY_P, cfgact_prev_dir },
+    { XKB_KEY_N, cfgact_next_dir },
+    { XKB_KEY_SunPageUp, cfgact_prev_file },
+    { XKB_KEY_p, cfgact_prev_file },
+    { XKB_KEY_SunPageDown, cfgact_next_file },
+    { XKB_KEY_n, cfgact_next_file },
+    { XKB_KEY_space, cfgact_next_file },
+    { XKB_KEY_F2, cfgact_prev_frame },
+    { XKB_KEY_O, cfgact_prev_frame },
+    { XKB_KEY_F3, cfgact_next_frame },
+    { XKB_KEY_o, cfgact_next_frame },
+    { XKB_KEY_F4, cfgact_animation },
+    { XKB_KEY_s, cfgact_animation },
+    { XKB_KEY_F9, cfgact_slideshow },
+    { XKB_KEY_F11, cfgact_fullscreen },
+    { XKB_KEY_f, cfgact_fullscreen },
+    { XKB_KEY_Left, cfgact_step_left },
+    { XKB_KEY_h, cfgact_step_left },
+    { XKB_KEY_Right, cfgact_step_right },
+    { XKB_KEY_l, cfgact_step_right },
+    { XKB_KEY_Up, cfgact_step_up },
+    { XKB_KEY_k, cfgact_step_up },
+    { XKB_KEY_Down, cfgact_step_down },
+    { XKB_KEY_j, cfgact_step_down },
+    { XKB_KEY_equal, cfgact_zoom_in },
+    { XKB_KEY_plus, cfgact_zoom_in },
+    { XKB_KEY_minus, cfgact_zoom_out },
+    { XKB_KEY_0, cfgact_zoom_real },
+    { XKB_KEY_BackSpace, cfgact_zoom_reset },
+    { XKB_KEY_F5, cfgact_rotate_left },
+    { XKB_KEY_bracketleft, cfgact_rotate_left },
+    { XKB_KEY_F6, cfgact_rotate_right },
+    { XKB_KEY_bracketright, cfgact_rotate_right },
+    { XKB_KEY_F7, cfgact_flip_vertical },
+    { XKB_KEY_F8, cfgact_flip_horizontal },
+    { XKB_KEY_i, cfgact_info },
+    { XKB_KEY_Insert, cfgact_mark },
+    { XKB_KEY_m, cfgact_mark },
+    { XKB_KEY_a, cfgact_mark_all },
+    { XKB_KEY_A, cfgact_mark_reset },
+    { XKB_KEY_asterisk, cfgact_mark_inverse },
+    { XKB_KEY_M, cfgact_mark_inverse },
+    { XKB_KEY_Escape, cfgact_quit },
+    { XKB_KEY_Return, cfgact_quit },
+    { XKB_KEY_F10, cfgact_quit },
+    { XKB_KEY_q, cfgact_quit },
+};
 
 /** Config file location. */
 struct location {
@@ -151,7 +209,7 @@ static bool set_string(const char* src, char** dst)
 }
 
 /**
- * Apply property to configuration.
+ * Apply global property to configuration.
  * @param ctx configuration context
  * @param key property key
  * @param value property value
@@ -159,7 +217,6 @@ static bool set_string(const char* src, char** dst)
  */
 static bool apply_conf(struct config* ctx, const char* key, const char* value)
 {
-
     if (strcmp(key, "scale") == 0) {
         return config_set_scale(ctx, value);
     } else if (strcmp(key, "fullscreen") == 0) {
@@ -191,8 +248,117 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
     } else if (strcmp(key, "sway") == 0) {
         return set_boolean(value, &ctx->sway_wm);
     }
-
+    fprintf(stderr, "Invalid config key name: %s\n", key);
     return false;
+}
+
+/**
+ * Apply key binding to configuration.
+ * @param ctx configuration context
+ * @param key property key
+ * @param value property value
+ * @return operation complete status, false if key was not handled
+ */
+static bool apply_key(struct config* ctx, const char* key, const char* value)
+{
+    xkb_keysym_t keysym;
+    enum config_action action;
+    size_t index;
+
+    // convert key name to code
+    keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
+    if (keysym == XKB_KEY_NoSymbol) {
+        fprintf(stderr, "Invalid key binding: %s\n", key);
+        return false;
+    }
+
+    // convert action name to code
+    if (strcmp(value, "none") == 0) {
+        action = cfgact_none;
+    } else if (strcmp(value, "first_file") == 0) {
+        action = cfgact_first_file;
+    } else if (strcmp(value, "last_file") == 0) {
+        action = cfgact_last_file;
+    } else if (strcmp(value, "prev_dir") == 0) {
+        action = cfgact_prev_dir;
+    } else if (strcmp(value, "next_dir") == 0) {
+        action = cfgact_next_dir;
+    } else if (strcmp(value, "prev_file") == 0) {
+        action = cfgact_prev_file;
+    } else if (strcmp(value, "next_file") == 0) {
+        action = cfgact_next_file;
+    } else if (strcmp(value, "prev_frame") == 0) {
+        action = cfgact_prev_frame;
+    } else if (strcmp(value, "next_frame") == 0) {
+        action = cfgact_next_frame;
+    } else if (strcmp(value, "animation") == 0) {
+        action = cfgact_animation;
+    } else if (strcmp(value, "slideshow") == 0) {
+        action = cfgact_slideshow;
+    } else if (strcmp(value, "fullscreen") == 0) {
+        action = cfgact_fullscreen;
+    } else if (strcmp(value, "step_left") == 0) {
+        action = cfgact_step_left;
+    } else if (strcmp(value, "step_right") == 0) {
+        action = cfgact_step_right;
+    } else if (strcmp(value, "step_up") == 0) {
+        action = cfgact_step_up;
+    } else if (strcmp(value, "step_down") == 0) {
+        action = cfgact_step_down;
+    } else if (strcmp(value, "zoom_in") == 0) {
+        action = cfgact_zoom_in;
+    } else if (strcmp(value, "zoom_out") == 0) {
+        action = cfgact_zoom_out;
+    } else if (strcmp(value, "zoom_real") == 0) {
+        action = cfgact_zoom_real;
+    } else if (strcmp(value, "zoom_reset") == 0) {
+        action = cfgact_zoom_reset;
+    } else if (strcmp(value, "rotate_left") == 0) {
+        action = cfgact_rotate_left;
+    } else if (strcmp(value, "rotate_right") == 0) {
+        action = cfgact_rotate_right;
+    } else if (strcmp(value, "flip_vertical") == 0) {
+        action = cfgact_flip_vertical;
+    } else if (strcmp(value, "flip_horizontal") == 0) {
+        action = cfgact_flip_horizontal;
+    } else if (strcmp(value, "info") == 0) {
+        action = cfgact_info;
+    } else if (strcmp(value, "mark") == 0) {
+        action = cfgact_mark;
+    } else if (strcmp(value, "mark_all") == 0) {
+        action = cfgact_mark_all;
+    } else if (strcmp(value, "mark_reset") == 0) {
+        action = cfgact_mark_reset;
+    } else if (strcmp(value, "mark_inverse") == 0) {
+        action = cfgact_mark_inverse;
+    } else if (strcmp(value, "quit") == 0) {
+        action = cfgact_quit;
+    } else {
+        fprintf(stderr, "Invalid binding action: %s\n", value);
+        return false;
+    }
+
+    // replace previous binding
+    for (index = 0; index < MAX_KEYBINDINGS; ++index) {
+        struct config_keybind* bind = &ctx->keybind[index];
+        if (bind->key == XKB_KEY_NoSymbol) {
+            break;
+        }
+        if (bind->key == keysym) {
+            bind->action = action;
+            return true;
+        }
+    }
+
+    // add new binding
+    if (index == MAX_KEYBINDINGS) {
+        fprintf(stderr, "Too many key bindins\n");
+        return false;
+    }
+    ctx->keybind[index].key = keysym;
+    ctx->keybind[index].action = action;
+
+    return true;
 }
 
 /**
@@ -223,6 +389,7 @@ static struct config* default_config(void)
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
     ctx->mark_mode = DEFAULT_MARK_MODE;
+    memcpy(ctx->keybind, default_bindings, sizeof(default_bindings));
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -241,11 +408,106 @@ static struct config* default_config(void)
     return ctx;
 }
 
+/**
+ * Load configuration from a file.
+ * @param ctx configuration context
+ * @param path full path to the file
+ * @return operation complete status, false on error
+ */
+static bool load_config(struct config* ctx, const char* path)
+{
+    FILE* fd = NULL;
+    char* buff = NULL;
+    size_t buff_sz = 0;
+    size_t line_num = 0;
+    ssize_t nread;
+    char* section = NULL;
+
+    fd = fopen(path, "r");
+    if (!fd) {
+        return false;
+    }
+
+    while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
+        char* delim;
+        const char* value;
+        char* line = buff;
+        bool status = false;
+
+        ++line_num;
+
+        // trim spaces
+        while (nread-- && isspace(line[nread])) {
+            line[nread] = 0;
+        }
+        while (*line && isspace(*line)) {
+            ++line;
+        }
+
+        // skip empty lines and comments
+        if (!*line || *line == '#') {
+            continue;
+        }
+
+        // check for section beginning
+        if (*line == '[') {
+            ssize_t len;
+            ++line;
+            delim = strchr(line, ']');
+            if (!delim || line + 1 == delim) {
+                fprintf(stderr, "Invalid section define in %s:%lu\n", path,
+                        line_num);
+                continue;
+            }
+            *delim = 0;
+            len = delim - line + 1;
+            section = realloc(section, len);
+            memcpy(section, line, len);
+            continue;
+        }
+
+        delim = strchr(line, '=');
+        if (!delim) {
+            fprintf(stderr, "Invalid key=value format in %s:%lu\n", path,
+                    line_num);
+            continue;
+        }
+
+        // trim spaces from start of value
+        value = delim + 1;
+        while (*value && isspace(*value)) {
+            ++value;
+        }
+        // trim spaces from key
+        *delim = 0;
+        while (line != delim && isspace(*--delim)) {
+            *delim = 0;
+        }
+
+        // add configuration parameter from key/value pair
+        if (!section || strcmp(section, SECTION_GENERAL) == 0) {
+            status = apply_conf(ctx, line, value);
+        } else if (strcmp(section, SECTION_KEYBIND) == 0) {
+            status = apply_key(ctx, line, value);
+        } else {
+            fprintf(stderr, "Invalid section name: '%s'\n", section);
+        }
+        if (!status) {
+            fprintf(stderr, "Invalid configuration in %s:%lu\n", path,
+                    line_num);
+        }
+    }
+
+    free(buff);
+    free(section);
+    fclose(fd);
+
+    return true;
+}
+
 struct config* config_init(void)
 {
     struct config* ctx;
-    FILE* fd = NULL;
-    char* path = NULL;
 
     ctx = default_config();
     if (!ctx) {
@@ -256,64 +518,13 @@ struct config* config_init(void)
     for (size_t i = 0;
          i < sizeof(config_locations) / sizeof(config_locations[0]); ++i) {
         const struct location* cl = &config_locations[i];
-        path = expand_path(cl->prefix, cl->postfix);
-        if (path) {
-            fd = fopen(path, "r");
-            if (fd) {
-                break;
-            }
+        char* path = expand_path(cl->prefix, cl->postfix);
+        if (path && load_config(ctx, path)) {
+            free(path);
+            break;
         }
         free(path);
-        path = NULL;
     }
-
-    if (fd) {
-        // read config file
-        char* buff = NULL;
-        size_t buff_sz = 0;
-        size_t line_num = 0;
-        ssize_t nread;
-
-        while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
-            char* delim;
-            const char* value;
-            char* line = buff;
-            ++line_num;
-            // trim spaces
-            while (nread-- && isspace(line[nread])) {
-                line[nread] = 0;
-            }
-            while (*line && isspace(*line)) {
-                ++line;
-            }
-            if (!*line || *line == '#') {
-                continue; // skip empty lines and comments
-            }
-            delim = strchr(line, '=');
-            if (!delim) {
-                continue; // invalid format: delimiter not found
-            }
-            // trim spaces from start of value
-            value = delim + 1;
-            while (*value && isspace(*value)) {
-                ++value;
-            }
-            // trim spaces from key
-            *delim = 0;
-            while (line != delim && isspace(*--delim)) {
-                *delim = 0;
-            }
-            // add configuration parameter from key/value pair
-            if (!apply_conf(ctx, line, value)) {
-                fprintf(stderr, "Invalid config file %s\n", path);
-                fprintf(stderr, "Line %lu: [%s = %s]\n", line_num, line, value);
-            }
-        }
-        free(buff);
-        fclose(fd);
-    }
-
-    free(path);
 
     return ctx;
 }

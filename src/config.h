@@ -6,9 +6,14 @@
 
 #include "types.h"
 
+#include <xkbcommon/xkbcommon.h>
+
 // Background modes
 #define COLOR_TRANSPARENT 0xff000000
 #define BACKGROUND_GRID   0xfe000000
+
+// Max number of key bindings
+#define MAX_KEYBINDINGS 128
 
 /** Order of file list. */
 enum config_order {
@@ -22,6 +27,46 @@ enum config_scale {
     cfgsc_optimal, ///< Fit to window, but not more than 100%
     cfgsc_fit,     ///< Fit to window size
     cfgsc_real     ///< Real image size (100%)
+};
+
+/** Action associated with a key. */
+enum config_action {
+    cfgact_none,
+    cfgact_first_file,
+    cfgact_last_file,
+    cfgact_prev_dir,
+    cfgact_next_dir,
+    cfgact_prev_file,
+    cfgact_next_file,
+    cfgact_prev_frame,
+    cfgact_next_frame,
+    cfgact_animation,
+    cfgact_slideshow,
+    cfgact_fullscreen,
+    cfgact_step_left,
+    cfgact_step_right,
+    cfgact_step_up,
+    cfgact_step_down,
+    cfgact_zoom_in,
+    cfgact_zoom_out,
+    cfgact_zoom_real,
+    cfgact_zoom_reset,
+    cfgact_rotate_left,
+    cfgact_rotate_right,
+    cfgact_flip_vertical,
+    cfgact_flip_horizontal,
+    cfgact_info,
+    cfgact_mark,
+    cfgact_mark_all,
+    cfgact_mark_reset,
+    cfgact_mark_inverse,
+    cfgact_quit,
+};
+
+/** Key bindings. */
+struct config_keybind {
+    xkb_keysym_t key;
+    enum config_action action;
 };
 
 /** App configuration. */
@@ -44,6 +89,7 @@ struct config {
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
     bool mark_mode;          ///< Enable/disable marking mode
+    struct config_keybind keybind[MAX_KEYBINDINGS]; ///< Key bindings table
 };
 
 /**

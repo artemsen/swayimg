@@ -22,7 +22,7 @@ contain any character. Names and values are case sensitive.
 .PP
 The number sign (#) at the beginning of the line indicates a comment.
 Empty lines and comments are ignored.
-.SS Properties
+.SS Global properties
 .PP
 .IP "\fBscale\fR: initial image scale:"
 .nf
@@ -54,6 +54,18 @@ Empty lines and comments are ignored.
 .IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
 .IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
 .IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
+.SS Key bindins
+.PP
+The key bindings are described in the "keys" section.
+Each line associates a key with some action.
+The key name can be obtained with the \fIxkbcli\fR tool:
+`xkbcli interactive-wayland`.
+.PP
+Valid action are:
+none, first_file, last_file, prev_dir, next_dir, prev_file, next_file, prev_frame,
+next_frame, animation, slideshow, fullscreen, step_left, step_right, step_up,
+step_down, zoom_in, zoom_out, zoom_real, zoom_reset, rotate_left, rotate_right,
+flip_vertical, flip_horizontal, info, mark, mark_all, mark_reset, mark_inverse, quit.
 .\" example file
 .SH EXAMPLES
 .EX
@@ -66,6 +78,8 @@ info = yes
 font = monospace 14
 font-color = #b4b3b2
 sway = no
+[keys]
+q = quit
 .EE
 .\" related man pages
 .SH SEE ALSO
