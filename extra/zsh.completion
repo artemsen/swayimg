@@ -15,6 +15,7 @@ _arguments \
   '(-w --window)'{-w,--window=}'[set window background color]:wnd:(none)' \
   '(-g --geometry)'{-g,--geometry=}'[set window geometry]:geo' \
   '(-i --info)'{-i,--info}'[show image meta information (name, EXIF, etc)]' \
+  '(-e --exec)'{-e,--exec=}'[set execution command]' \
   '(-c --class)'{-c,--class=}'[set window class/app_id]:class' \
   '(-n --no-sway)'{-n,--no-sway}'[disable integration with Sway WM]' \
   '(-v --version)'{-v,--version}'[print version info and exit]' \

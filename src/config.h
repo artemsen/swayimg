@@ -56,6 +56,7 @@ enum config_action {
     cfgact_flip_vertical,
     cfgact_flip_horizontal,
     cfgact_info,
+    cfgact_exec,
     cfgact_mark,
     cfgact_mark_all,
     cfgact_mark_reset,
@@ -88,6 +89,7 @@ struct config {
     bool loop;               ///< File list loop mode
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
+    const char* exec_cmd;    ///< Command to execute
     bool mark_mode;          ///< Enable/disable marking mode
     struct config_keybind keybind[MAX_KEYBINDINGS]; ///< Key bindings table
 };
@@ -114,3 +116,4 @@ bool config_set_font_size(struct config* ctx, const char* val);
 bool config_set_order(struct config* ctx, const char* val);
 bool config_set_slideshow_sec(struct config* ctx, const char* val);
 bool config_set_appid(struct config* ctx, const char* val);
+bool config_set_exec_cmd(struct config* ctx, const char* val);

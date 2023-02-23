@@ -34,6 +34,7 @@ static const struct cmdarg arguments[] = {
     { 'w', "window",     "XXXXXX",  "set window background color: [none]/RGB" },
     { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
     { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
+    { 'e', "exec",       "CMD",     "set execution command" },
     { 'c', "class",      "NAME",    "set window class/app_id" },
     { 'n', "no-sway",    NULL,      "disable integration with Sway WM" },
     { 'v', "version",    NULL,      "print version info and exit" },
@@ -141,6 +142,11 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'i':
                 cfg->show_info = true;
+                break;
+            case 'e':
+                if (!config_set_exec_cmd(cfg, optarg)) {
+                    return -1;
+                }
                 break;
             case 'c':
                 if (!config_set_appid(cfg, optarg)) {

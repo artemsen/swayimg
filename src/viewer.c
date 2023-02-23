@@ -228,6 +228,57 @@ static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
     return true;
 }
 
+/**
+ * Execute system command with the current image file.
+ * @param ctx viewer context
+ */
+static void execute_command(struct viewer* ctx)
+{
+    const char* template = ctx->config->exec_cmd;
+    const char* path = image_list_current(ctx->list).image->file_path;
+    size_t pos = 0;
+    size_t len = 0;
+    char* cmd = NULL;
+
+    // construct command text
+    while (*template) {
+        const char* append = template;
+        size_t append_sz = 1;
+        if (*template == '%') {
+            if (*(template + 1) == '%') {
+                // escaped %
+                ++template;
+            } else {
+                // replace % with path
+                append = path;
+                append_sz = strlen(path);
+            }
+        }
+        ++template;
+        if (pos + append_sz >= len) {
+            char* ptr;
+            len = pos + append_sz + 32;
+            ptr = realloc(cmd, len);
+            if (!ptr) {
+                fprintf(stderr, "Not enough memory\n");
+                free(cmd);
+                cmd = NULL;
+                break;
+            }
+            cmd = ptr;
+        }
+        memcpy(cmd + pos, append, append_sz);
+        pos += append_sz;
+    }
+
+    // execute command
+    if (cmd) {
+        cmd[pos] = 0;
+        system(cmd);
+        free(cmd);
+    }
+}
+
 struct viewer* viewer_create(struct config* cfg, struct image_list* list,
                              struct ui* ui)
 {
@@ -394,6 +445,9 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case cfgact_info:
             ctx->config->show_info = !ctx->config->show_info;
             return true;
+        case cfgact_exec:
+            execute_command(ctx);
+            return false;
         case cfgact_mark:
             image_list_mark_invcur(ctx->list);
             return true;

@@ -35,6 +35,7 @@
 #define DEFAULT_LOOP       true
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
+#define DEFAULT_EXEC_CMD   "echo '%'"
 #define DEFAULT_MARK_MODE  false
 
 // Default key bindings
@@ -79,6 +80,7 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_F7, cfgact_flip_vertical },
     { XKB_KEY_F8, cfgact_flip_horizontal },
     { XKB_KEY_i, cfgact_info },
+    { XKB_KEY_e, cfgact_exec },
     { XKB_KEY_Insert, cfgact_mark },
     { XKB_KEY_m, cfgact_mark },
     { XKB_KEY_a, cfgact_mark_all },
@@ -243,6 +245,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_boolean(value, &ctx->all_files);
     } else if (strcmp(key, "slideshow") == 0) {
         return config_set_slideshow_sec(ctx, value);
+    } else if (strcmp(key, "exec") == 0) {
+        return config_set_exec_cmd(ctx, value);
     } else if (strcmp(key, "app_id") == 0) {
         return config_set_appid(ctx, value);
     } else if (strcmp(key, "sway") == 0) {
@@ -323,6 +327,8 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
         action = cfgact_flip_horizontal;
     } else if (strcmp(value, "info") == 0) {
         action = cfgact_info;
+    } else if (strcmp(value, "exec") == 0) {
+        action = cfgact_exec;
     } else if (strcmp(value, "mark") == 0) {
         action = cfgact_mark;
     } else if (strcmp(value, "mark_all") == 0) {
@@ -388,6 +394,7 @@ static struct config* default_config(void)
     ctx->loop = DEFAULT_LOOP;
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
+    config_set_exec_cmd(ctx, DEFAULT_EXEC_CMD);
     ctx->mark_mode = DEFAULT_MARK_MODE;
     memcpy(ctx->keybind, default_bindings, sizeof(default_bindings));
 
@@ -533,6 +540,7 @@ void config_free(struct config* ctx)
 {
     if (ctx) {
         free((void*)ctx->font_face);
+        free((void*)ctx->exec_cmd);
         free((void*)ctx->app_id);
         free(ctx);
     }
@@ -672,4 +680,13 @@ bool config_set_appid(struct config* ctx, const char* val)
         return false;
     }
     return set_string(val, (char**)&ctx->app_id);
+}
+
+bool config_set_exec_cmd(struct config* ctx, const char* val)
+{
+    const size_t len = strlen(val);
+    if (len) {
+        return set_string(val, (char**)&ctx->exec_cmd);
+    }
+    return true;
 }

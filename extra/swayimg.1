@@ -67,6 +67,9 @@ Set the default scale of the image. \fISCALE\fR is one of the named values.
 \fIreal\fR: real image size (100%).
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image meta info (file name, size, EXIF, current scale, etc).
+.IP "\fB\-e\fR, \fB\-\-exec\fR"
+Set a command to be executed when the corresponding key is pressed, use % for
+image path, default is "echo '%'".
 .IP "\fB\-c\fR, \fB\-\-class\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
 .IP "\fB\-n\fR, \fB\-\-no\-sway\fR"
@@ -116,6 +119,8 @@ Show next frame.
 Start/stop animation.
 .IP "\fBF9\fR"
 Start/stop slideshow mode.
+.IP "\fBe\fR"
+Execute system command for the current file.
 .IP "\fBInsert\fR, \fBm\fR"
 Invert mark sate for current file.
 .IP "\fB*\fR, \fBM\fR"
