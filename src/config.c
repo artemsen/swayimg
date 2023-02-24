@@ -36,7 +36,6 @@
 #define DEFAULT_RECURSIVE  false
 #define DEFAULT_ALL_FILES  false
 #define DEFAULT_EXEC_CMD   "echo '%'"
-#define DEFAULT_MARK_MODE  false
 
 // Default key bindings
 static struct config_keybind default_bindings[] = {
@@ -81,12 +80,6 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_F8, cfgact_flip_horizontal },
     { XKB_KEY_i, cfgact_info },
     { XKB_KEY_e, cfgact_exec },
-    { XKB_KEY_Insert, cfgact_mark },
-    { XKB_KEY_m, cfgact_mark },
-    { XKB_KEY_a, cfgact_mark_all },
-    { XKB_KEY_A, cfgact_mark_reset },
-    { XKB_KEY_asterisk, cfgact_mark_inverse },
-    { XKB_KEY_M, cfgact_mark_inverse },
     { XKB_KEY_Escape, cfgact_quit },
     { XKB_KEY_Return, cfgact_quit },
     { XKB_KEY_F10, cfgact_quit },
@@ -329,14 +322,6 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
         action = cfgact_info;
     } else if (strcmp(value, "exec") == 0) {
         action = cfgact_exec;
-    } else if (strcmp(value, "mark") == 0) {
-        action = cfgact_mark;
-    } else if (strcmp(value, "mark_all") == 0) {
-        action = cfgact_mark_all;
-    } else if (strcmp(value, "mark_reset") == 0) {
-        action = cfgact_mark_reset;
-    } else if (strcmp(value, "mark_inverse") == 0) {
-        action = cfgact_mark_inverse;
     } else if (strcmp(value, "quit") == 0) {
         action = cfgact_quit;
     } else {
@@ -395,7 +380,6 @@ static struct config* default_config(void)
     ctx->recursive = DEFAULT_RECURSIVE;
     ctx->all_files = DEFAULT_ALL_FILES;
     config_set_exec_cmd(ctx, DEFAULT_EXEC_CMD);
-    ctx->mark_mode = DEFAULT_MARK_MODE;
     memcpy(ctx->keybind, default_bindings, sizeof(default_bindings));
 
     // create unique application id

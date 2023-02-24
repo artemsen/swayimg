@@ -26,7 +26,6 @@ static const struct cmdarg arguments[] = {
     { 'o', "order",      "ORDER",   "set sort order for image list: none/[alpha]/random" },
     { 'r', "recursive",  NULL,      "read directories recursively" },
     { 'a', "all",        NULL,      "open all files from the same directory" },
-    { 'm', "mark",       NULL,      "enable marking mode" },
     { 'l', "slideshow",  NULL,      "activate slideshow mode on startup" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/real" },
@@ -110,9 +109,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'a':
                 cfg->all_files = true;
-                break;
-            case 'm':
-                cfg->mark_mode = true;
                 break;
             case 'l':
                 cfg->slideshow = true;
@@ -272,10 +268,6 @@ int main(int argc, char* argv[])
 
     // run main loop
     rc = ui_run(ui);
-
-    if (rc && cfg->mark_mode) {
-        image_list_mark_print(list);
-    }
 
 done:
     viewer_free(viewer);

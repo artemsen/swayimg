@@ -290,12 +290,6 @@ void viewer_on_redraw(void* data, argb_t* window)
             canvas_print_line(ctx->canvas, window, cc_top_right, text);
         }
     }
-
-    if (ctx->config->mark_mode) {
-        if (entry.marked) {
-            canvas_print_line(ctx->canvas, window, cc_bottom_right, "MARKED");
-        }
-    }
 }
 
 void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
@@ -397,16 +391,6 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case cfgact_exec:
             image_list_cur_exec(ctx->list);
             return false;
-        case cfgact_mark:
-            image_list_mark_invcur(ctx->list);
-            return true;
-        case cfgact_mark_all:
-        case cfgact_mark_reset:
-            image_list_mark_setall(ctx->list, action == cfgact_mark_all);
-            return true;
-        case cfgact_mark_inverse:
-            image_list_mark_invall(ctx->list);
-            return true;
         case cfgact_quit:
             ui_stop(ui);
             return false;

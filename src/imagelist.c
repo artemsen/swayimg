@@ -24,7 +24,6 @@
 /** Single list entry. */
 struct entry {
     size_t index; ///< Entry index in the list
-    bool marked;  ///< Mark state
     char path[1]; ///< Path to the file, any size array
 };
 
@@ -82,7 +81,6 @@ static void add_file(struct image_list* ctx, const char* file)
     if (entry) {
         memcpy(entry->path, file, path_len + 1);
         entry->index = ctx->index;
-        entry->marked = false;
         ctx->entries[ctx->index] = entry;
         ++ctx->index;
         ++ctx->size;
@@ -460,7 +458,6 @@ size_t image_list_size(const struct image_list* ctx)
 struct image_entry image_list_current(const struct image_list* ctx)
 {
     struct image_entry entry = { .index = ctx->index,
-                                 .marked = ctx->entries[ctx->index]->marked,
                                  .image = ctx->current };
     return entry;
 }
@@ -573,39 +570,4 @@ bool image_list_jump(struct image_list* ctx, enum list_jump jump)
     preloader_ctl(ctx, true);
 
     return true;
-}
-
-void image_list_mark_invcur(struct image_list* ctx)
-{
-    ctx->entries[ctx->index]->marked = !ctx->entries[ctx->index]->marked;
-}
-
-void image_list_mark_invall(struct image_list* ctx)
-{
-    for (size_t i = 0; i < ctx->size; ++i) {
-        struct entry* entry = ctx->entries[i];
-        if (entry) {
-            entry->marked = !entry->marked;
-        }
-    }
-}
-
-void image_list_mark_setall(struct image_list* ctx, bool mark)
-{
-    for (size_t i = 0; i < ctx->size; ++i) {
-        struct entry* entry = ctx->entries[i];
-        if (entry) {
-            entry->marked = mark;
-        }
-    }
-}
-
-void image_list_mark_print(const struct image_list* ctx)
-{
-    for (size_t i = 0; i < ctx->size; ++i) {
-        struct entry* entry = ctx->entries[i];
-        if (entry && entry->marked) {
-            puts(entry->path);
-        }
-    }
 }

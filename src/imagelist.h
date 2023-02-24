@@ -16,7 +16,6 @@ struct image_list;
 /** Image entry. */
 struct image_entry {
     size_t index;        ///< Entry index in the list
-    bool marked;         ///< Mark state
     struct image* image; ///< Image handle
 };
 
@@ -73,28 +72,3 @@ int image_list_cur_exec(const struct image_list* ctx);
  * @return false if iterator can not be moved
  */
 bool image_list_jump(struct image_list* ctx, enum list_jump jump);
-
-/**
- * Invert mark state for the current entry.
- * @param ctx image list context
- */
-void image_list_mark_invcur(struct image_list* ctx);
-
-/**
- * Invert mark state for all entries.
- * @param ctx image list context
- */
-void image_list_mark_invall(struct image_list* ctx);
-
-/**
- * Mark/unmark all entries.
- * @param ctx image list context
- * @param mark state to set
- */
-void image_list_mark_setall(struct image_list* ctx, bool mark);
-
-/**
- * Print the path of each marked entry.
- * @param ctx image list context
- */
-void image_list_mark_print(const struct image_list* ctx);

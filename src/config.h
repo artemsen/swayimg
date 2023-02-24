@@ -57,10 +57,6 @@ enum config_action {
     cfgact_flip_horizontal,
     cfgact_info,
     cfgact_exec,
-    cfgact_mark,
-    cfgact_mark_all,
-    cfgact_mark_reset,
-    cfgact_mark_inverse,
     cfgact_quit,
 };
 
@@ -90,7 +86,6 @@ struct config {
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
     const char* exec_cmd;    ///< Command to execute
-    bool mark_mode;          ///< Enable/disable marking mode
     struct config_keybind keybind[MAX_KEYBINDINGS]; ///< Key bindings table
 };
 

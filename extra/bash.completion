@@ -7,7 +7,6 @@ _swayimg()
                 -r --recursive \
                 -a --all \
                 -l --slideshow \
-                -m --mark \
                 -f --fullscreen \
                 -s --scale \
                 -b --background \
