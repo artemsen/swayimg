@@ -39,10 +39,6 @@ Examples:
   ```
   wget -O- https://www.kernel.org/theme/images/logos/tux.png 2>/dev/null | swayimg -
   ```
-- View, mark, and remove all marked files in the current directory:
-  ```
-  swayimg --mark | xargs -d '\n' rm
-  ```
 
 ### Key bindings
 
