@@ -78,6 +78,7 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_bracketright, cfgact_rotate_right },
     { XKB_KEY_F7, cfgact_flip_vertical },
     { XKB_KEY_F8, cfgact_flip_horizontal },
+    { XKB_KEY_r, cfgact_reload },
     { XKB_KEY_i, cfgact_info },
     { XKB_KEY_e, cfgact_exec },
     { XKB_KEY_Escape, cfgact_quit },
@@ -318,6 +319,8 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
         action = cfgact_flip_vertical;
     } else if (strcmp(value, "flip_horizontal") == 0) {
         action = cfgact_flip_horizontal;
+    } else if (strcmp(value, "reload") == 0) {
+        action = cfgact_reload;
     } else if (strcmp(value, "info") == 0) {
         action = cfgact_info;
     } else if (strcmp(value, "exec") == 0) {

@@ -55,6 +55,7 @@ enum config_action {
     cfgact_rotate_right,
     cfgact_flip_vertical,
     cfgact_flip_horizontal,
+    cfgact_reload,
     cfgact_info,
     cfgact_exec,
     cfgact_quit,

@@ -66,6 +66,13 @@ struct image_entry image_list_current(const struct image_list* ctx);
 int image_list_cur_exec(const struct image_list* ctx);
 
 /**
+ * Reload the current image.
+ * @param ctx image list context
+ * @return false if reload failed
+ */
+bool image_list_cur_reload(struct image_list* ctx);
+
+/**
  * Move through image list.
  * @param ctx image list context
  * @param jump position to set

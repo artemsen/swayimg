@@ -457,8 +457,7 @@ size_t image_list_size(const struct image_list* ctx)
 
 struct image_entry image_list_current(const struct image_list* ctx)
 {
-    struct image_entry entry = { .index = ctx->index,
-                                 .image = ctx->current };
+    struct image_entry entry = { .index = ctx->index, .image = ctx->current };
     return entry;
 }
 
@@ -510,6 +509,16 @@ int image_list_cur_exec(const struct image_list* ctx)
     }
 
     return rc;
+}
+
+bool image_list_cur_reload(struct image_list* ctx)
+{
+    struct image* image = image_from_file(ctx->current->file_path);
+    if (image) {
+        image_free(ctx->current);
+        ctx->current = image;
+    }
+    return !!image;
 }
 
 bool image_list_jump(struct image_list* ctx, enum list_jump jump)

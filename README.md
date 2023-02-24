@@ -71,11 +71,8 @@ Default key bindings can be overridden using a configuration file.
 | `F3` or `o`                  | Show next frame |
 | `F4` or `s`                  | Start/stop animation |
 | `F9`                         | Start/stop slideshow mode |
+| `r`                          | Reload current image |
 | `e`                          | Execute system command for the current file |
-| `Insert` or `m`              | Invert mark sate for current file |
-| `*` or `M`                   | Invert mark sate for all files |
-| `a`                          | Mark all files |
-| `A`                          | Unmark all files |
 | `Esc`, `Enter`, `F10` or `q` | Exit the program |
 
 ## Configuration

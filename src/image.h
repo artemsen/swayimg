@@ -56,8 +56,8 @@ struct image* image_from_stdin(void);
 void image_free(struct image* ctx);
 
 /**
- * Get image file name.
- * @param ctx image context to free
+ * Get image file name without path.
+ * @param ctx image context
  * @return file name without path
  */
 const char* image_file_name(const struct image* ctx);

@@ -96,6 +96,7 @@ F6 = rotate_right
 bracketright = rotate_right
 F7 = flip_vertical
 F8 = flip_horizontal
+r = reload
 i = info
 e = exec
 Escape = quit
