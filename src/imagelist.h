@@ -60,6 +60,13 @@ size_t image_list_size(const struct image_list* ctx);
 struct image_entry image_list_current(const struct image_list* ctx);
 
 /**
+ * Execute system command for the current entry.
+ * @param ctx image list context
+ * @return error code from the system call
+ */
+int image_list_cur_exec(const struct image_list* ctx);
+
+/**
  * Move through image list.
  * @param ctx image list context
  * @param jump position to set

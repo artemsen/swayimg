@@ -320,7 +320,7 @@ static void* preloader_thread(void* data)
 }
 
 /**
- * Stop or start background thread to preload next image.
+ * Stop or restart background thread to preload adjacent images.
  * @param ctx image list context
  * @param restart action: true=restart, false=stop preloader
  */
@@ -463,6 +463,56 @@ struct image_entry image_list_current(const struct image_list* ctx)
                                  .marked = ctx->entries[ctx->index]->marked,
                                  .image = ctx->current };
     return entry;
+}
+
+int image_list_cur_exec(const struct image_list* ctx)
+{
+    const char* template = ctx->config->exec_cmd;
+    const char* path = ctx->current->file_path;
+    size_t pos = 0;
+    size_t len = 0;
+    char* cmd = NULL;
+    int rc = -1;
+
+    // construct command text
+    while (*template) {
+        const char* append = template;
+        size_t append_sz = 1;
+        if (*template == '%') {
+            if (*(template + 1) == '%') {
+                // escaped %
+                ++template;
+            } else {
+                // replace % with path
+                append = path;
+                append_sz = strlen(path);
+            }
+        }
+        ++template;
+        if (pos + append_sz >= len) {
+            char* ptr;
+            len = pos + append_sz + 32;
+            ptr = realloc(cmd, len);
+            if (!ptr) {
+                fprintf(stderr, "Not enough memory\n");
+                free(cmd);
+                cmd = NULL;
+                break;
+            }
+            cmd = ptr;
+        }
+        memcpy(cmd + pos, append, append_sz);
+        pos += append_sz;
+    }
+
+    // execute command
+    if (cmd) {
+        cmd[pos] = 0;
+        rc = system(cmd);
+        free(cmd);
+    }
+
+    return rc;
 }
 
 bool image_list_jump(struct image_list* ctx, enum list_jump jump)
