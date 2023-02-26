@@ -40,6 +40,7 @@ struct ui {
         struct wl_keyboard* keyboard;
         struct wl_pointer* pointer;
         struct wl_surface* surface;
+        struct wl_output* output;
     } wl;
 
     // outputs and their scale factors
@@ -513,9 +514,13 @@ static void on_registry_global(void* data, struct wl_registry* registry,
         ctx->wl.compositor =
             wl_registry_bind(registry, name, &wl_compositor_interface, 3);
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
-        struct wl_output* output =
+        if (ctx->wl.output) {
+            wl_output_destroy(ctx->wl.output);
+        }
+        ctx->wl.output =
             wl_registry_bind(registry, name, &wl_output_interface, 3);
-        wl_output_add_listener(output, &wl_output_listener, data);
+
+        wl_output_add_listener(ctx->wl.output, &wl_output_listener, data);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         ctx->xdg.base =
             wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
@@ -642,11 +647,20 @@ void ui_free(struct ui* ctx)
     if (ctx->wl.shm) {
         wl_shm_destroy(ctx->wl.shm);
     }
+    if (ctx->xdg.toplevel) {
+        xdg_toplevel_destroy(ctx->xdg.toplevel);
+    }
     if (ctx->xdg.base) {
         xdg_surface_destroy(ctx->xdg.surface);
     }
     if (ctx->xdg.base) {
         xdg_wm_base_destroy(ctx->xdg.base);
+    }
+    if (ctx->wl.output) {
+        wl_output_destroy(ctx->wl.output);
+    }
+    if (ctx->wl.surface) {
+        wl_surface_destroy(ctx->wl.surface);
     }
     if (ctx->wl.compositor) {
         wl_compositor_destroy(ctx->wl.compositor);
