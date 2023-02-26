@@ -264,6 +264,8 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return config_set_slideshow_sec(ctx, value);
     } else if (strcmp(key, "exec") == 0) {
         return config_set_exec_cmd(ctx, value);
+    } else if (strcmp(key, "antialiasing") == 0) {
+        return set_boolean(value, &ctx->antialiasing);
     } else if (strcmp(key, "app_id") == 0) {
         return config_set_appid(ctx, value);
     } else if (strcmp(key, "sway") == 0) {
