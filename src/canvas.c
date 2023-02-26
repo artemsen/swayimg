@@ -162,7 +162,7 @@ void canvas_clear(const struct canvas* ctx, argb_t* wnd)
         for (size_t y = 0; y < ctx->window.height; ++y) {
             argb_t* line = &wnd[y * ctx->window.width];
             for (size_t x = 0; x < ctx->window.width; ++x) {
-                line[x] = ARGB_FROM_A(0xff) | ctx->config->window;
+                line[x] = ARGB_SET_A(0xff) | ctx->config->window;
             }
         }
     }
@@ -193,7 +193,7 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                 wnd_line[x] = fg;
             } else {
                 // alpha blending
-                const uint8_t alpha = ARGB_A_FROM(fg);
+                const uint8_t alpha = ARGB_GET_A(fg);
                 uint8_t alpha_set;
                 argb_t bg;
 

@@ -78,8 +78,8 @@ static bool decode_frame(GifFileType* gif, size_t index,
             const uint8_t color = gif_raster[x];
             if (color != color_transparent && color < gif_colors->ColorCount) {
                 const GifColorType* rgb = &gif_colors->Colors[color];
-                *pixel = ARGB_FROM_A(0xff) | ARGB_FROM_R(rgb->Red) |
-                    ARGB_FROM_G(rgb->Green) | ARGB_FROM_B(rgb->Blue);
+                *pixel = ARGB_SET_A(0xff) | ARGB_SET_R(rgb->Red) |
+                    ARGB_SET_G(rgb->Green) | ARGB_SET_B(rgb->Blue);
             }
             ++pixel;
         }

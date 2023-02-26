@@ -109,7 +109,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
 
     // convert ABGR -> ARGB
     for (size_t i = 0; i < frame->width * frame->height; ++i) {
-        frame->data[i] = ARGB_FROM_ABGR(frame->data[i]);
+        frame->data[i] = ARGB_SET_ABGR(frame->data[i]);
     }
 
     image_set_format(ctx, "JPEG XL %ubpp",

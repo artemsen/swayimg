@@ -89,7 +89,7 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
         const argb_t* src = (const argb_t*)(decoded + y * stride);
         argb_t* dst = &frame->data[y * frame->width];
         for (size_t x = 0; x < frame->width; ++x) {
-            dst[x] = ARGB_FROM_ABGR(src[x]);
+            dst[x] = ARGB_SET_ABGR(src[x]);
         }
     }
 

@@ -19,28 +19,28 @@ typedef uint32_t argb_t;
 #define ARGB_B_SHIFT 0
 
 // get channel value from argb_t
-#define ARGB_A_FROM(c) (((c) >> ARGB_A_SHIFT) & 0xff)
-#define ARGB_R_FROM(c) (((c) >> ARGB_R_SHIFT) & 0xff)
-#define ARGB_G_FROM(c) (((c) >> ARGB_G_SHIFT) & 0xff)
-#define ARGB_B_FROM(c) (((c) >> ARGB_B_SHIFT) & 0xff)
+#define ARGB_GET_A(c) (((c) >> ARGB_A_SHIFT) & 0xff)
+#define ARGB_GET_R(c) (((c) >> ARGB_R_SHIFT) & 0xff)
+#define ARGB_GET_G(c) (((c) >> ARGB_G_SHIFT) & 0xff)
+#define ARGB_GET_B(c) (((c) >> ARGB_B_SHIFT) & 0xff)
 
 // create argb_t from channel value
-#define ARGB_FROM_A(a) (((a)&0xff) << ARGB_A_SHIFT)
-#define ARGB_FROM_R(r) (((r)&0xff) << ARGB_R_SHIFT)
-#define ARGB_FROM_G(g) (((g)&0xff) << ARGB_G_SHIFT)
-#define ARGB_FROM_B(b) (((b)&0xff) << ARGB_B_SHIFT)
+#define ARGB_SET_A(a) (((a)&0xff) << ARGB_A_SHIFT)
+#define ARGB_SET_R(r) (((r)&0xff) << ARGB_R_SHIFT)
+#define ARGB_SET_G(g) (((g)&0xff) << ARGB_G_SHIFT)
+#define ARGB_SET_B(b) (((b)&0xff) << ARGB_B_SHIFT)
 
 // convert RGBA to ARGB
-#define ARGB_FROM_ABGR(c)                             \
-    ((c & 0xff00ff00) | ARGB_FROM_R(ARGB_B_FROM(c)) | \
-     ARGB_FROM_B(ARGB_R_FROM(c)))
+#define ARGB_SET_ABGR(c)                             \
+    ((c & 0xff00ff00) | ARGB_SET_R(ARGB_GET_B(c)) | \
+     ARGB_SET_B(ARGB_GET_R(c)))
 
 // alpha blending (a=alpha, s=target alpha, b=background, f=foreground)
 #define ARGB_ALPHA_BLEND(a, s, b, f)                                          \
-    ARGB_FROM_A(s) |                                                          \
-        ARGB_FROM_R((a * ARGB_R_FROM(f) + (256 - a) * ARGB_R_FROM(b)) >> 8) | \
-        ARGB_FROM_G((a * ARGB_G_FROM(f) + (256 - a) * ARGB_G_FROM(b)) >> 8) | \
-        ARGB_FROM_B((a * ARGB_B_FROM(f) + (256 - a) * ARGB_B_FROM(b)) >> 8)
+    ARGB_SET_A(s) |                                                          \
+        ARGB_SET_R((a * ARGB_GET_R(f) + (256 - a) * ARGB_GET_R(b)) >> 8) | \
+        ARGB_SET_G((a * ARGB_GET_G(f) + (256 - a) * ARGB_GET_G(b)) >> 8) | \
+        ARGB_SET_B((a * ARGB_GET_B(f) + (256 - a) * ARGB_GET_B(b)) >> 8)
 
 /** 2D coordinates. */
 struct point {
