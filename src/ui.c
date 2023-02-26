@@ -515,11 +515,10 @@ static void on_registry_global(void* data, struct wl_registry* registry,
             wl_registry_bind(registry, name, &wl_compositor_interface, 3);
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         if (ctx->wl.output) {
-            wl_output_destroy(ctx->wl.output);
+            wl_output_release(ctx->wl.output);
         }
         ctx->wl.output =
             wl_registry_bind(registry, name, &wl_output_interface, 3);
-
         wl_output_add_listener(ctx->wl.output, &wl_output_listener, data);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         ctx->xdg.base =
