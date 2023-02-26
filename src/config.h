@@ -56,6 +56,7 @@ enum config_action {
     cfgact_flip_vertical,
     cfgact_flip_horizontal,
     cfgact_reload,
+    cfgact_antialiasing,
     cfgact_info,
     cfgact_exec,
     cfgact_quit,
@@ -73,6 +74,7 @@ struct config {
     bool sway_wm;            ///< Enable/disable integration with Sway WM
     struct rect geometry;    ///< Window geometry
     bool fullscreen;         ///< Full screen mode
+    bool antialiasing;       ///< Anti-aliasing
     argb_t background;       ///< Image background mode/color
     argb_t window;           ///< Window background mode/color
     enum config_scale scale; ///< Initial scale

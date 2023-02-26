@@ -92,6 +92,64 @@ static void fix_viewport(struct canvas* ctx)
     }
 }
 
+/**
+ * Get average color of adjustment pixels.
+ * @param pixmap source array of pixels
+ * @param stride number of pixels per line in the array
+ * @param vp vieweport to restrict depth
+ * @param x,y central pixel coordinates
+ * @return average color
+ */
+static inline argb_t get_average(const argb_t* pixmap, size_t stride,
+                                 const struct rect* vp, ssize_t x, ssize_t y)
+{
+    argb_t a, r, g, b;
+    argb_t pixel;
+    size_t count;
+
+    pixel = pixmap[y * stride + x];
+    a = ARGB_GET_A(pixel);
+    r = ARGB_GET_R(pixel);
+    g = ARGB_GET_G(pixel);
+    b = ARGB_GET_B(pixel);
+    count = 1;
+
+    if (x > vp->x) {
+        pixel = pixmap[y * stride + x - 1];
+        r += ARGB_GET_R(pixel);
+        g += ARGB_GET_G(pixel);
+        b += ARGB_GET_B(pixel);
+        ++count;
+    }
+    if (x + 1 < vp->x + (ssize_t)vp->width) {
+        pixel = pixmap[y * stride + x + 1];
+        r += ARGB_GET_R(pixel);
+        g += ARGB_GET_G(pixel);
+        b += ARGB_GET_B(pixel);
+        ++count;
+    }
+    if (y > vp->y) {
+        pixel = pixmap[(y - 1) * stride + x];
+        r += ARGB_GET_R(pixel);
+        g += ARGB_GET_G(pixel);
+        b += ARGB_GET_B(pixel);
+        ++count;
+    }
+    if (y + 1 < vp->y + (ssize_t)vp->height) {
+        pixel = pixmap[(y + 1) * stride + x];
+        r += ARGB_GET_R(pixel);
+        g += ARGB_GET_G(pixel);
+        b += ARGB_GET_B(pixel);
+        ++count;
+    }
+
+    r = (float)r / count;
+    g = (float)g / count;
+    b = (float)b / count;
+
+    return (ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b));
+}
+
 struct canvas* canvas_init(struct config* cfg)
 {
     struct canvas* ctx;
@@ -172,22 +230,25 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                        argb_t* wnd)
 {
     struct rect vp;
+    const struct rect ivp = { 0, 0, ctx->image.width, ctx->image.height };
 
     if (!get_intersection(ctx, &vp)) {
         return; // possible bug: image out of window
     }
 
     for (size_t y = 0; y < vp.height; ++y) {
-        // start offset of window buffer
         argb_t* wnd_line = &wnd[(vp.y + y) * ctx->window.width + vp.x];
-        // start offset of image buffer
         const size_t img_y = (float)(y + vp.y - ctx->image.y) / ctx->scale;
-        const size_t img_x = (float)(vp.x - ctx->image.x) / ctx->scale;
-        const argb_t* img_line = &img[img_y * ctx->image.width + img_x];
-
-        // fill window buffer
         for (size_t x = 0; x < vp.width; ++x) {
-            const argb_t fg = img_line[(size_t)((float)x / ctx->scale)];
+            const size_t img_x = (float)(x + vp.x - ctx->image.x) / ctx->scale;
+            argb_t fg;
+
+            if (ctx->config->antialiasing && ctx->scale >= 1) {
+                // anti-aliasing for scale >= 100%
+                fg = get_average(img, ctx->image.width, &ivp, img_x, img_y);
+            } else {
+                fg = img[img_y * ctx->image.width + img_x];
+            }
 
             if (!alpha) {
                 wnd_line[x] = fg;
@@ -213,6 +274,16 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                 }
 
                 wnd_line[x] = ARGB_ALPHA_BLEND(alpha, alpha_set, bg, fg);
+            }
+        }
+    }
+
+    // anti-aliasing for scale < 100%
+    if (ctx->config->antialiasing && ctx->scale < 1) {
+        for (ssize_t y = vp.y; y < vp.y + (ssize_t)vp.height; ++y) {
+            for (ssize_t x = vp.x; x < vp.x + (ssize_t)vp.width; ++x) {
+                wnd[y * ctx->window.width + x] =
+                    get_average(wnd, ctx->window.width, &vp, x, y);
             }
         }
     }

@@ -21,22 +21,6 @@
 #define SECTION_GENERAL "general"
 #define SECTION_KEYBIND "keys"
 
-// Default settings
-#define DEFAULT_SCALE      cfgsc_optimal
-#define DEFAULT_BACKGROUND BACKGROUND_GRID
-#define DEFAULT_WINDOW     COLOR_TRANSPARENT
-#define DEFAULT_SWAYWM     true
-#define DEFAULT_FONT_FACE  "monospace"
-#define DEFAULT_FONT_SIZE  14
-#define DEFAULT_FONT_COLOR 0xcccccc
-#define DEFAULT_SS_STATE   false
-#define DEFAULT_SS_SECONDS 3
-#define DEFAULT_ORDER      cfgord_alpha
-#define DEFAULT_LOOP       true
-#define DEFAULT_RECURSIVE  false
-#define DEFAULT_ALL_FILES  false
-#define DEFAULT_EXEC_CMD   "echo '%'"
-
 // Default key bindings
 static struct config_keybind default_bindings[] = {
     { XKB_KEY_Home, cfgact_first_file },
@@ -78,6 +62,7 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_bracketright, cfgact_rotate_right },
     { XKB_KEY_F7, cfgact_flip_vertical },
     { XKB_KEY_F8, cfgact_flip_horizontal },
+    { XKB_KEY_a, cfgact_antialiasing },
     { XKB_KEY_r, cfgact_reload },
     { XKB_KEY_i, cfgact_info },
     { XKB_KEY_e, cfgact_exec },
@@ -85,6 +70,44 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_Return, cfgact_quit },
     { XKB_KEY_F10, cfgact_quit },
     { XKB_KEY_q, cfgact_quit },
+};
+
+/* Link between action id and its name in config file */
+struct action_name {
+    const char* name;
+    enum config_action action;
+};
+
+static const struct action_name action_names[] = {
+    { "none", cfgact_none },
+    { "first_file", cfgact_first_file },
+    { "last_file", cfgact_last_file },
+    { "prev_dir", cfgact_prev_dir },
+    { "next_dir", cfgact_next_dir },
+    { "prev_file", cfgact_prev_file },
+    { "next_file", cfgact_next_file },
+    { "prev_frame", cfgact_prev_frame },
+    { "next_frame", cfgact_next_frame },
+    { "animation", cfgact_animation },
+    { "slideshow", cfgact_slideshow },
+    { "fullscreen", cfgact_fullscreen },
+    { "step_left", cfgact_step_left },
+    { "step_right", cfgact_step_right },
+    { "step_up", cfgact_step_up },
+    { "step_down", cfgact_step_down },
+    { "zoom_in", cfgact_zoom_in },
+    { "zoom_out", cfgact_zoom_out },
+    { "zoom_real", cfgact_zoom_real },
+    { "zoom_reset", cfgact_zoom_reset },
+    { "rotate_left", cfgact_rotate_left },
+    { "rotate_right", cfgact_rotate_right },
+    { "flip_vertical", cfgact_flip_vertical },
+    { "flip_horizontal", cfgact_flip_horizontal },
+    { "antialiasing", cfgact_antialiasing },
+    { "reload", cfgact_reload },
+    { "info", cfgact_info },
+    { "exec", cfgact_exec },
+    { "quit", cfgact_quit },
 };
 
 /** Config file location. */
@@ -271,63 +294,14 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
     }
 
     // convert action name to code
-    if (strcmp(value, "none") == 0) {
-        action = cfgact_none;
-    } else if (strcmp(value, "first_file") == 0) {
-        action = cfgact_first_file;
-    } else if (strcmp(value, "last_file") == 0) {
-        action = cfgact_last_file;
-    } else if (strcmp(value, "prev_dir") == 0) {
-        action = cfgact_prev_dir;
-    } else if (strcmp(value, "next_dir") == 0) {
-        action = cfgact_next_dir;
-    } else if (strcmp(value, "prev_file") == 0) {
-        action = cfgact_prev_file;
-    } else if (strcmp(value, "next_file") == 0) {
-        action = cfgact_next_file;
-    } else if (strcmp(value, "prev_frame") == 0) {
-        action = cfgact_prev_frame;
-    } else if (strcmp(value, "next_frame") == 0) {
-        action = cfgact_next_frame;
-    } else if (strcmp(value, "animation") == 0) {
-        action = cfgact_animation;
-    } else if (strcmp(value, "slideshow") == 0) {
-        action = cfgact_slideshow;
-    } else if (strcmp(value, "fullscreen") == 0) {
-        action = cfgact_fullscreen;
-    } else if (strcmp(value, "step_left") == 0) {
-        action = cfgact_step_left;
-    } else if (strcmp(value, "step_right") == 0) {
-        action = cfgact_step_right;
-    } else if (strcmp(value, "step_up") == 0) {
-        action = cfgact_step_up;
-    } else if (strcmp(value, "step_down") == 0) {
-        action = cfgact_step_down;
-    } else if (strcmp(value, "zoom_in") == 0) {
-        action = cfgact_zoom_in;
-    } else if (strcmp(value, "zoom_out") == 0) {
-        action = cfgact_zoom_out;
-    } else if (strcmp(value, "zoom_real") == 0) {
-        action = cfgact_zoom_real;
-    } else if (strcmp(value, "zoom_reset") == 0) {
-        action = cfgact_zoom_reset;
-    } else if (strcmp(value, "rotate_left") == 0) {
-        action = cfgact_rotate_left;
-    } else if (strcmp(value, "rotate_right") == 0) {
-        action = cfgact_rotate_right;
-    } else if (strcmp(value, "flip_vertical") == 0) {
-        action = cfgact_flip_vertical;
-    } else if (strcmp(value, "flip_horizontal") == 0) {
-        action = cfgact_flip_horizontal;
-    } else if (strcmp(value, "reload") == 0) {
-        action = cfgact_reload;
-    } else if (strcmp(value, "info") == 0) {
-        action = cfgact_info;
-    } else if (strcmp(value, "exec") == 0) {
-        action = cfgact_exec;
-    } else if (strcmp(value, "quit") == 0) {
-        action = cfgact_quit;
-    } else {
+    for (index = 0; index < sizeof(action_names) / sizeof(action_names[0]);
+         ++index) {
+        if (strcmp(value, action_names[index].name) == 0) {
+            action = action_names[index].action;
+            break;
+        }
+    }
+    if (index == sizeof(action_names) / sizeof(action_names[0])) {
         fprintf(stderr, "Invalid binding action: %s\n", value);
         return false;
     }
@@ -369,20 +343,22 @@ static struct config* default_config(void)
         return NULL;
     }
 
-    ctx->scale = DEFAULT_SCALE;
+    // default settings
+    ctx->scale = cfgsc_optimal;
     ctx->background = BACKGROUND_GRID;
-    ctx->window = DEFAULT_WINDOW;
-    ctx->sway_wm = DEFAULT_SWAYWM;
-    config_set_font_name(ctx, DEFAULT_FONT_FACE);
-    ctx->font_color = DEFAULT_FONT_COLOR;
-    ctx->font_size = DEFAULT_FONT_SIZE;
-    ctx->slideshow = DEFAULT_SS_STATE;
-    ctx->slideshow_sec = DEFAULT_SS_SECONDS;
-    ctx->order = DEFAULT_ORDER;
-    ctx->loop = DEFAULT_LOOP;
-    ctx->recursive = DEFAULT_RECURSIVE;
-    ctx->all_files = DEFAULT_ALL_FILES;
-    config_set_exec_cmd(ctx, DEFAULT_EXEC_CMD);
+    ctx->window = COLOR_TRANSPARENT;
+    ctx->sway_wm = true;
+    config_set_font_name(ctx, "monospace");
+    ctx->font_color = 0xcccccc;
+    ctx->font_size = 14;
+    ctx->slideshow = false;
+    ctx->slideshow_sec = 3;
+    ctx->order = cfgord_alpha;
+    ctx->loop = true;
+    ctx->recursive = false;
+    ctx->all_files = false;
+    ctx->antialiasing = false;
+    config_set_exec_cmd(ctx, "echo '%'");
     memcpy(ctx->keybind, default_bindings, sizeof(default_bindings));
 
     // create unique application id

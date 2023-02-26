@@ -385,6 +385,9 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case cfgact_flip_horizontal:
             image_flip_horizontal(image_list_current(ctx->list).image);
             return true;
+        case cfgact_antialiasing:
+            ctx->config->antialiasing = !ctx->config->antialiasing;
+            return true;
         case cfgact_reload:
             if (image_list_cur_reload(ctx->list)) {
                 reset_state(ctx, ui);

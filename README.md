@@ -67,6 +67,7 @@ Default key bindings can be overridden using a configuration file.
 | `F3` or `o`                  | Show next frame |
 | `F4` or `s`                  | Start/stop animation |
 | `F9`                         | Start/stop slideshow mode |
+| `a`                          | Enable/disable anti-aliasing |
 | `r`                          | Reload current image |
 | `e`                          | Execute system command for the current file |
 | `Esc`, `Enter`, `F10` or `q` | Exit the program |
