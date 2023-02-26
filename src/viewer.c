@@ -35,6 +35,7 @@ struct viewer {
     bool animation;          ///< Animation is in progress
     bool slideshow;          ///< Slideshow is in progress
     struct image_desc desc;  ///< Text image description
+    char* message;           ///< One-time rendered notification message
 };
 
 /**
@@ -228,6 +229,37 @@ static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
     return true;
 }
 
+/**
+ * Set one-time rendered notification message.
+ * @param ctx viewer context
+ * @param fmt message format description
+ */
+__attribute__((format(printf, 2, 3))) static void
+set_message(struct viewer* ctx, const char* fmt, ...)
+{
+    va_list args;
+    int len;
+
+    if (ctx->message) {
+        free(ctx->message);
+        ctx->message = NULL;
+    }
+
+    va_start(args, fmt);
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
+    }
+    ++len; // last null
+    ctx->message = malloc(len);
+    if (ctx->message) {
+        va_start(args, fmt);
+        vsprintf(ctx->message, fmt, args);
+        va_end(args);
+    }
+}
+
 struct viewer* viewer_create(struct config* cfg, struct image_list* list,
                              struct ui* ui)
 {
@@ -259,6 +291,7 @@ void viewer_free(struct viewer* ctx)
 {
     if (ctx) {
         canvas_free(ctx->canvas);
+        free(ctx->message);
         free(ctx);
     }
 }
@@ -289,6 +322,13 @@ void viewer_on_redraw(void* data, argb_t* window)
                      image_list_size(ctx->list));
             canvas_print_line(ctx->canvas, window, cc_top_right, text);
         }
+    }
+
+    // one-time rendered notification message
+    if (ctx->message) {
+        canvas_print_line(ctx->canvas, window, cc_bottom_right, ctx->message);
+        free(ctx->message);
+        ctx->message = NULL;
     }
 }
 
@@ -387,19 +427,30 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             return true;
         case cfgact_antialiasing:
             ctx->config->antialiasing = !ctx->config->antialiasing;
+            set_message(ctx, "Anti-aliasing %s",
+                        ctx->config->antialiasing ? "on" : "off");
             return true;
         case cfgact_reload:
             if (image_list_cur_reload(ctx->list)) {
                 reset_state(ctx, ui);
+                set_message(ctx, "Image reloaded");
                 return true;
+            } else {
+                set_message(ctx, "Reload failed");
+                return false;
             }
-            return false;
         case cfgact_info:
             ctx->config->show_info = !ctx->config->show_info;
             return true;
-        case cfgact_exec:
-            image_list_cur_exec(ctx->list);
-            return false;
+        case cfgact_exec: {
+            const int rc = image_list_cur_exec(ctx->list);
+            if (rc) {
+                set_message(ctx, "Execute failed: code %d", rc);
+            } else {
+                set_message(ctx, "Execute success");
+            }
+            return true;
+        }
         case cfgact_quit:
             ui_stop(ui);
             return false;
