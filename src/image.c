@@ -50,7 +50,7 @@ static void flip_frame_h(struct image_frame* frame)
         argb_t* line = &frame->data[y * frame->width];
         for (size_t x = 0; x < frame->width / 2; ++x) {
             argb_t* left = &line[x];
-            argb_t* right = &line[frame->width - x];
+            argb_t* right = &line[frame->width - x - 1];
             const argb_t swap = *left;
             *left = *right;
             *right = swap;
