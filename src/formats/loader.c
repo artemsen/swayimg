@@ -13,7 +13,7 @@
     enum loader_status LOADER_FUNCTION(name)(struct image * ctx, \
                                              const uint8_t* data, size_t size)
 
-const char* supported_formats = "bmp"
+const char* supported_formats = "bmp, pnm"
 #ifdef HAVE_LIBJPEG
                                 ", jpeg"
 #endif
@@ -42,6 +42,7 @@ const char* supported_formats = "bmp"
 
 // declaration of loaders
 LOADER_DECLARE(bmp);
+LOADER_DECLARE(pnm);
 #ifdef HAVE_LIBGIF
 LOADER_DECLARE(gif);
 #endif
@@ -79,6 +80,7 @@ static const image_decoder decoders[] = {
     &LOADER_FUNCTION(gif),
 #endif
     &LOADER_FUNCTION(bmp),
+    &LOADER_FUNCTION(pnm),
 #ifdef HAVE_LIBWEBP
     &LOADER_FUNCTION(webp),
 #endif
