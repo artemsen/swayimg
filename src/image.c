@@ -145,12 +145,85 @@ static struct image* image_create(const char* path, const uint8_t* data,
     return ctx;
 }
 
+static struct image* image_from_command(const char *cmd)
+{
+    struct image* ctx = NULL;
+    FILE *p = popen(cmd, "r");
+    uint8_t* data = NULL;
+    size_t size = 0;
+    size_t capacity = 0;
+    char c;
+
+    if (p == NULL) {
+        return NULL;
+    }
+
+    while (!feof(p)) {
+        c = fgetc(p);
+        if (size == capacity) {
+            const size_t new_capacity = capacity + 256 * 1024;
+            uint8_t* new_buf = realloc(data, new_capacity);
+            if (!new_buf) {
+                fprintf(stderr, "Not enough memory\n");
+                goto done;
+            }
+            data = new_buf;
+            capacity = new_capacity;
+        }
+        data[size++] = c;
+    }
+
+    if (data) {
+        ctx = image_create("{STDIN}", data, size);
+    }
+
+done:
+    pclose(p);
+    free(data);
+    return ctx;
+}
+
+static struct image* image_from_url(const char* url)
+{
+    struct image* ctx = NULL;
+    char *cmd = NULL;
+
+    if (system("curl --version >/dev/null 2>/dev/null") == 0) {
+        cmd = malloc(sizeof(char) * (strlen(url) + 10));
+        if (cmd == NULL) {
+            return NULL;
+        }
+        strcpy(cmd, "curl -sL ");
+        strcat(cmd, url);
+    } else if (system("wget --version >/dev/null 2>/dev/null") == 0) {
+        cmd = malloc(sizeof(char) * (strlen(url) + 11));
+        if (cmd == NULL) {
+            return NULL;
+        }
+        strcpy(cmd, "wget -qO- ");
+        strcat(cmd, url);
+    }
+
+    if (cmd != NULL) {
+        ctx = image_from_command(cmd);
+        free(cmd);
+        return ctx;
+    }
+
+    fputs("Neither curl nor wget are installed!\n", stderr);
+    return NULL;
+}
+
 struct image* image_from_file(const char* file)
 {
     struct image* ctx = NULL;
     void* data = MAP_FAILED;
     struct stat st;
     int fd;
+
+    if ((strncmp(file, "http://", 7) == 0) || (strncmp(file, "https://", 8) == 0)) {
+        return image_from_url(file);
+    }
 
     // open file
     fd = open(file, O_RDONLY);

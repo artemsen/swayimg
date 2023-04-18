@@ -357,7 +357,11 @@ struct image_list* image_list_init(const char** files, size_t num,
     } else {
         for (size_t i = 0; i < num; ++i) {
             struct stat file_stat;
-            if (stat(files[i], &file_stat) == -1) {
+            if (strncmp(files[i], "http://", 7) == 0) {
+                add_file(ctx, files[i]);
+            } else if (strncmp(files[i], "https://", 8) == 0) {
+                add_file(ctx, files[i]);
+            } else if (stat(files[i], &file_stat) == -1) {
                 fprintf(stderr, "%s: [%i] %s\n", files[i], errno,
                         strerror(errno));
             } else {
