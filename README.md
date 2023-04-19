@@ -18,7 +18,8 @@ the image directly in a terminal window.
 - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
 - HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
 - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
-- BMP (built-in).
+- BMP (built-in);
+- PNM (built-in).
 
 ## Usage
 
@@ -37,7 +38,7 @@ Examples:
   ```
 - View using pipes:
   ```
-  wget -O- https://www.kernel.org/theme/images/logos/tux.png 2>/dev/null | swayimg -
+  wget -qO- https://www.kernel.org/theme/images/logos/tux.png | swayimg -
   ```
 
 ### Key bindings
