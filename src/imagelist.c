@@ -209,7 +209,7 @@ static size_t peek_next_dir(const struct image_list* ctx, const char* file,
         size_t next_len;
 
         index = peek_next_file(ctx, index, forward);
-        if (index == SIZE_MAX) {
+        if (index == SIZE_MAX || index == start) {
             break; // not found
         }
 
