@@ -49,6 +49,8 @@ enum config_action {
     cfgact_step_down,
     cfgact_zoom_in,
     cfgact_zoom_out,
+    cfgact_zoom_optimal,
+    cfgact_zoom_fit,
     cfgact_zoom_real,
     cfgact_zoom_reset,
     cfgact_rotate_left,

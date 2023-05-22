@@ -405,6 +405,12 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case cfgact_zoom_out:
             canvas_set_scale(ctx->canvas, cs_zoom_out);
             return true;
+        case cfgact_zoom_optimal:
+            canvas_set_scale(ctx->canvas, cs_fit_or100);
+            return true;
+        case cfgact_zoom_fit:
+            canvas_set_scale(ctx->canvas, cs_fit_window);
+            return true;
         case cfgact_zoom_real:
             canvas_set_scale(ctx->canvas, cs_real_size);
             return true;
