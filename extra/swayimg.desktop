@@ -1,8 +1,12 @@
 [Desktop Entry]
 Type=Application
 Name=Swayimg
+GenericName=Image viewer
 Comment=Image viewer for Sway/Wayland
 Icon=swayimg
 Exec=swayimg %F
+Terminal=false
 Categories=Graphics;Viewer
 StartupNotify=false
+MimeType=image/avif;image/bmp;image/gif;image/heif;image/jpeg;image/jpg;image/pbm;image/pjpeg;image/png;image/svg+xml;image/tiff;image/webp;image/x-bmp;image/x-png;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap
+NoDisplay=true
