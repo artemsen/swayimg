@@ -31,13 +31,12 @@ typedef uint32_t argb_t;
 #define ARGB_SET_B(b) (((b)&0xff) << ARGB_B_SHIFT)
 
 // convert RGBA to ARGB
-#define ARGB_SET_ABGR(c)                             \
-    ((c & 0xff00ff00) | ARGB_SET_R(ARGB_GET_B(c)) | \
-     ARGB_SET_B(ARGB_GET_R(c)))
+#define ARGB_SET_ABGR(c) \
+    ((c & 0xff00ff00) | ARGB_SET_R(ARGB_GET_B(c)) | ARGB_SET_B(ARGB_GET_R(c)))
 
 // alpha blending (a=alpha, s=target alpha, b=background, f=foreground)
-#define ARGB_ALPHA_BLEND(a, s, b, f)                                          \
-    ARGB_SET_A(s) |                                                          \
+#define ARGB_ALPHA_BLEND(a, s, b, f)                                       \
+    ARGB_SET_A(s) |                                                        \
         ARGB_SET_R((a * ARGB_GET_R(f) + (256 - a) * ARGB_GET_R(b)) >> 8) | \
         ARGB_SET_G((a * ARGB_GET_G(f) + (256 - a) * ARGB_GET_G(b)) >> 8) | \
         ARGB_SET_B((a * ARGB_GET_B(f) + (256 - a) * ARGB_GET_B(b)) >> 8)
