@@ -18,6 +18,7 @@ the image directly in a terminal window.
 - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
 - HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
 - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
+- EXR (via [OpenEXR](https://openexr.com));
 - BMP (built-in);
 - PNM (built-in).
 

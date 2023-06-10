@@ -1,4 +1,8 @@
 # format support
+option('exr',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable EXR format support')
 option('gif',
        type: 'feature',
        value: 'auto',

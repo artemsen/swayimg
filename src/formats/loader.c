@@ -35,6 +35,9 @@ const char* supported_formats = "bmp, pnm"
 #ifdef HAVE_LIBJXL
                                 ", jxl"
 #endif
+#ifdef HAVE_LIBEXR
+                                ", exr"
+#endif
 #ifdef HAVE_LIBTIFF
                                 ", tiff"
 #endif
@@ -43,6 +46,9 @@ const char* supported_formats = "bmp, pnm"
 // declaration of loaders
 LOADER_DECLARE(bmp);
 LOADER_DECLARE(pnm);
+#ifdef HAVE_LIBEXR
+LOADER_DECLARE(exr);
+#endif
 #ifdef HAVE_LIBGIF
 LOADER_DECLARE(gif);
 #endif
@@ -92,6 +98,9 @@ static const image_decoder decoders[] = {
 #endif
 #ifdef HAVE_LIBJXL
     &LOADER_FUNCTION(jxl),
+#endif
+#ifdef HAVE_LIBEXR
+    &LOADER_FUNCTION(exr),
 #endif
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),

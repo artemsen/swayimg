@@ -42,6 +42,7 @@ freetype = dependency('freetype2')
 threads = dependency('threads')
 rt = cc.find_library('rt')
 # optional dependencies: file formats support
+exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
 gif = cc.find_library('gif', required: get_option('gif'))
 heif = dependency('libheif', required: get_option('heif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
@@ -63,6 +64,7 @@ epoll = dependency('epoll-shim', required: false)
 
 # configuration file
 conf = configuration_data()
+conf.set('HAVE_LIBEXR', exr.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBHEIF', heif.found())
 conf.set('HAVE_LIBJPEG', jpeg.found())
@@ -159,6 +161,9 @@ sources = [
 if exif.found()
   sources += 'src/exif.c'
 endif
+if exr.found()
+  sources += 'src/formats/exr.c'
+endif
 if gif.found()
   sources += 'src/formats/gif.c'
 endif
@@ -199,6 +204,7 @@ executable(
     freetype,
     exif,
     # image support
+    exr,
     gif,
     heif,
     jpeg,
