@@ -4,7 +4,7 @@ on: [push, pull_request]
 jobs:
   build:
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Install dependencies
@@ -16,12 +16,12 @@ jobs:
           libgif-dev libheif-dev libjpeg-dev librsvg2-dev libtiff-dev libwebp-dev
 
     - name: Check out source code
-      uses: actions/checkout@v2.2.0
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
 
     - name: Get version
-      run: echo "::set-output name=VERSION::$(git describe --tags --long --always | sed 's/^v//;s/-/./')"
+      run: echo "VERSION=$(git describe --tags --long --always | sed 's/^v//;s/-/./')" >> $GITHUB_OUTPUT
       id: version
 
     - name: Configure
