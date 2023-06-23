@@ -154,7 +154,7 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             } else if (bmp->bpp == 16) {
                 m = *(uint16_t*)src;
             } else {
-                image_print_error(ctx, "%d image connot be masked", bmp->bpp);
+                image_print_error(ctx, "%d image cannot be masked", bmp->bpp);
                 return false;
             }
             r = m & mask_r;
