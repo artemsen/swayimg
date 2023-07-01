@@ -26,6 +26,14 @@
 #define MASK555_RED   0x001f
 #define MASK555_GREEN 0x03e0
 #define MASK555_BLUE  0x7c00
+#define MASK555_ALPHA 0x0000
+
+// Sizes of DIB Headers
+#define BITMAPINFOHEADER_SIZE 0x28
+#define BITMAPINFOV2HEADER_SIZE 0x34
+#define BITMAPINFOV3HEADER_SIZE 0x38
+#define BITMAPINFOV4HEADER_SIZE 0x6C
+#define BITMAPINFOV5HEADER_SIZE 0x7C
 
 #define BITS_PER_BYTE 8
 
@@ -57,6 +65,7 @@ struct __attribute__((__packed__)) bmp_mask {
     uint32_t red;
     uint32_t green;
     uint32_t blue;
+    uint32_t alpha;
 };
 
 // Color palette
@@ -127,13 +136,16 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
 {
     struct image_frame* frame = &ctx->frames[0];
     const bool default_mask =
-        !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0);
+        !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0 && mask->alpha == 0);
+
     const uint32_t mask_r = default_mask ? MASK555_RED : mask->red;
     const uint32_t mask_g = default_mask ? MASK555_GREEN : mask->green;
     const uint32_t mask_b = default_mask ? MASK555_BLUE : mask->blue;
+    const uint32_t mask_a = default_mask ? MASK555_ALPHA : mask->alpha;
     const ssize_t shift_r = mask_shift(mask_r);
     const ssize_t shift_g = mask_shift(mask_g);
     const ssize_t shift_b = mask_shift(mask_b);
+    const ssize_t shift_a = mask_shift(mask_a);
 
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
@@ -148,11 +160,15 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
         const uint8_t* src_y = buffer + y * stride;
         for (size_t x = 0; x < frame->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
-            uint32_t m, r, g, b;
+            uint32_t m, r, g, b, a;
             if (bmp->bpp == 32) {
                 m = *(uint32_t*)src;
+
+                a = m & mask_a;
+                a = 0xff & (shift_a > 0 ? a >> shift_a : a << -shift_a);
             } else if (bmp->bpp == 16) {
                 m = *(uint16_t*)src;
+                a = 0xff;
             } else {
                 image_print_error(ctx, "%d image cannot be masked", bmp->bpp);
                 return false;
@@ -163,7 +179,7 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             r = 0xff & (shift_r > 0 ? r >> shift_r : r << -shift_r);
             g = 0xff & (shift_g > 0 ? g >> shift_g : g << -shift_g);
             b = 0xff & (shift_b > 0 ? b >> shift_b : b << -shift_b);
-            dst[x] = ARGB_SET_A(0xff) | ARGB_SET_R(r) | ARGB_SET_G(g) |
+            dst[x] = ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) |
                 ARGB_SET_B(b);
         }
     }
@@ -307,7 +323,7 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
 
     // check size of source buffer
     if (buffer_sz < frame->height * stride) {
-        image_print_error(ctx, "not enough data for bitmp image");
+        image_print_error(ctx, "not enough data for bitmap image");
         return false;
     }
 
@@ -355,7 +371,8 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
     const void* color_data;
     size_t color_data_sz;
     struct bmp_palette palette;
-    const struct bmp_mask* mask;
+    const uint32_t* mask_location;
+    struct bmp_mask mask;
     bool rc;
 
     hdr = (const struct bmp_file*)data;
@@ -383,11 +400,27 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
     color_data_sz = hdr->offset - sizeof(struct bmp_file) - bmp->dib_size;
     palette.table = color_data;
     palette.size = color_data_sz / sizeof(uint32_t);
-    mask = (color_data_sz <= sizeof(*mask) ? color_data : NULL);
+
+    // create mask
+    if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
+        mask_location = (const uint32_t*)(bmp + 1);
+
+	  mask.red = mask_location[0];
+	  mask.green = mask_location[1];
+	  mask.blue = mask_location[2];
+
+        if (bmp->dib_size > BITMAPINFOV2HEADER_SIZE) {
+            mask.alpha = mask_location[3];
+        } else {
+            mask.alpha = 0;
+        }
+    } else {
+        mask.red = mask.green = mask.blue = mask.alpha = 0;
+    }
 
     // decode bitmap
     if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
-        rc = decode_masked(ctx, bmp, mask, data + hdr->offset,
+        rc = decode_masked(ctx, bmp, &mask, data + hdr->offset,
                            size - hdr->offset);
         image_set_format(ctx, "BMP %dbit masked", bmp->bpp);
     } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
