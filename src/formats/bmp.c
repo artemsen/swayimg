@@ -338,7 +338,7 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
         for (size_t x = 0; x < frame->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             if (bmp->bpp == 32) {
-                dst[x] = *(uint32_t*)src;
+                dst[x] = ARGB_SET_A(0xff) | *(uint32_t*)src;
             } else if (bmp->bpp == 24) {
                 dst[x] = ARGB_SET_A(0xff) | *(uint32_t*)src;
             } else if (bmp->bpp == 8 || bmp->bpp == 4 || bmp->bpp == 1) {
@@ -411,21 +411,17 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
         mask_location = (const uint32_t*)(bmp + 1);
     } else {
         mask_location =
-            (color_data_sz <= 3 * sizeof(uint32_t) ? color_data : NULL);
+            (color_data_sz >= 3 * sizeof(uint32_t) ? color_data : NULL);
     }
 
     if (!mask_location) {
-        mask.red = mask.green = mask.blue = 0;
+        mask.red = mask.green = mask.blue = mask.alpha = 0;
     } else {
         mask.red = mask_location[0];
         mask.green = mask_location[1];
         mask.blue = mask_location[2];
-    }
-
-    if (mask_location && bmp->dib_size > BITMAPINFOV2HEADER_SIZE) {
-        mask.alpha = mask_location[3];
-    } else {
-        mask.alpha = 0;
+        mask.alpha =
+            bmp->dib_size > BITMAPINFOV2HEADER_SIZE ? mask_location[3] : 0;
     }
 
     // decode bitmap
