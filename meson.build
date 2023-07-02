@@ -49,7 +49,8 @@ jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
-webp = dependency('libwebpdemux', required: get_option('webp'))
+webp = dependency('libwebp', required: get_option('webp'))
+webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
@@ -72,7 +73,7 @@ conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBTIFF', tiff.found())
-conf.set('HAVE_LIBWEBP', webp.found())
+conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
@@ -185,7 +186,7 @@ endif
 if tiff.found()
   sources += 'src/formats/tiff.c'
 endif
-if webp.found()
+if webp.found() and webp_demux.found()
   sources += 'src/formats/webp.c'
 endif
 
@@ -212,7 +213,7 @@ executable(
     png,
     rsvg,
     tiff,
-    webp,
+    webp, webp_demux,
   ],
   install: true
 )
