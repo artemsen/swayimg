@@ -29,7 +29,7 @@
 #define MASK555_ALPHA 0x0000
 
 // Sizes of DIB Headers
-#define BITMAPINFOHEADER_SIZE 0x28
+#define BITMAPINFOHEADER_SIZE   0x28
 #define BITMAPINFOV2HEADER_SIZE 0x34
 #define BITMAPINFOV3HEADER_SIZE 0x38
 #define BITMAPINFOV4HEADER_SIZE 0x6C
@@ -135,8 +135,9 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
                           size_t buffer_sz)
 {
     struct image_frame* frame = &ctx->frames[0];
-    const bool default_mask =
-        !mask || (mask->red == 0 && mask->green == 0 && mask->blue == 0 && mask->alpha == 0);
+    const bool default_mask = !mask ||
+        (mask->red == 0 && mask->green == 0 && mask->blue == 0 &&
+         mask->alpha == 0);
 
     const uint32_t mask_r = default_mask ? MASK555_RED : mask->red;
     const uint32_t mask_g = default_mask ? MASK555_GREEN : mask->green;
@@ -163,12 +164,8 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             uint32_t m, r, g, b, a;
             if (bmp->bpp == 32) {
                 m = *(uint32_t*)src;
-
-                a = m & mask_a;
-                a = 0xff & (shift_a > 0 ? a >> shift_a : a << -shift_a);
             } else if (bmp->bpp == 16) {
                 m = *(uint16_t*)src;
-                a = 0xff;
             } else {
                 image_print_error(ctx, "%d image cannot be masked", bmp->bpp);
                 return false;
@@ -179,8 +176,16 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
             r = 0xff & (shift_r > 0 ? r >> shift_r : r << -shift_r);
             g = 0xff & (shift_g > 0 ? g >> shift_g : g << -shift_g);
             b = 0xff & (shift_b > 0 ? b >> shift_b : b << -shift_b);
-            dst[x] = ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) |
-                ARGB_SET_B(b);
+
+            if (mask_a) {
+                a = m & mask_a;
+                a = 0xff & (shift_a > 0 ? a >> shift_a : a << -shift_a);
+            } else {
+                a = 0xff;
+            }
+
+            dst[x] =
+                ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b);
         }
     }
 
@@ -404,18 +409,23 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
     // create mask
     if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
         mask_location = (const uint32_t*)(bmp + 1);
-
-	  mask.red = mask_location[0];
-	  mask.green = mask_location[1];
-	  mask.blue = mask_location[2];
-
-        if (bmp->dib_size > BITMAPINFOV2HEADER_SIZE) {
-            mask.alpha = mask_location[3];
-        } else {
-            mask.alpha = 0;
-        }
     } else {
-        mask.red = mask.green = mask.blue = mask.alpha = 0;
+        mask_location =
+            (color_data_sz <= 3 * sizeof(uint32_t) ? color_data : NULL);
+    }
+
+    if (!mask_location) {
+        mask.red = mask.green = mask.blue = 0;
+    } else {
+        mask.red = mask_location[0];
+        mask.green = mask_location[1];
+        mask.blue = mask_location[2];
+    }
+
+    if (mask_location && bmp->dib_size > BITMAPINFOV2HEADER_SIZE) {
+        mask.alpha = mask_location[3];
+    } else {
+        mask.alpha = 0;
     }
 
     // decode bitmap
