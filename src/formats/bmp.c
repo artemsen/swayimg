@@ -23,9 +23,9 @@
 #define RLE_ESC_DELTA 2
 
 // Default mask for 16-bit images
-#define MASK555_RED   0x001f
+#define MASK555_RED   0x7c00
 #define MASK555_GREEN 0x03e0
-#define MASK555_BLUE  0x7c00
+#define MASK555_BLUE  0x001f
 #define MASK555_ALPHA 0x0000
 
 // Sizes of DIB Headers
