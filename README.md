@@ -95,7 +95,7 @@ See `man swayimgrc` for details.
 
 List of supported distributives can be found on the [Repology page](https://repology.org/project/swayimg/versions).
 
-Arch users can install the program from community repository: [swayimg](https://archlinux.org/packages/community/x86_64/swayimg) or from AUR [swayimg-git](https://aur.archlinux.org/packages/swayimg-git) package.
+Arch users can install the program from community repository: [swayimg](https://archlinux.org/packages/extra/x86_64/swayimg) or from AUR [swayimg-git](https://aur.archlinux.org/packages/swayimg-git) package.
 
 ## Build
 
