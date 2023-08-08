@@ -54,8 +54,9 @@ static struct config_keybind default_bindings[] = {
     { XKB_KEY_equal, cfgact_zoom_in },
     { XKB_KEY_plus, cfgact_zoom_in },
     { XKB_KEY_minus, cfgact_zoom_out },
-    { XKB_KEY_z, cfgact_zoom_optimal },
-    { XKB_KEY_Z, cfgact_zoom_fit },
+    { XKB_KEY_x, cfgact_zoom_optimal },
+    { XKB_KEY_z, cfgact_zoom_fit },
+    { XKB_KEY_Z, cfgact_zoom_fill },
     { XKB_KEY_0, cfgact_zoom_real },
     { XKB_KEY_BackSpace, cfgact_zoom_reset },
     { XKB_KEY_F5, cfgact_rotate_left },
@@ -101,6 +102,7 @@ static const struct action_name action_names[] = {
     { "zoom_out", cfgact_zoom_out },
     { "zoom_optimal", cfgact_zoom_optimal },
     { "zoom_fit", cfgact_zoom_fit },
+    { "zoom_fill", cfgact_zoom_fill },
     { "zoom_real", cfgact_zoom_real },
     { "zoom_reset", cfgact_zoom_reset },
     { "rotate_left", cfgact_rotate_left },
@@ -521,11 +523,13 @@ bool config_set_scale(struct config* ctx, const char* val)
         ctx->scale = cfgsc_optimal;
     } else if (strcmp(val, "fit") == 0) {
         ctx->scale = cfgsc_fit;
+    } else if (strcmp(val, "fill") == 0) {
+        ctx->scale = cfgsc_fill;
     } else if (strcmp(val, "real") == 0) {
         ctx->scale = cfgsc_real;
     } else {
         fprintf(stderr, "Invalid scale: %s\n", val);
-        fprintf(stderr, "Expected 'optimal', 'fit', or 'real'.\n");
+        fprintf(stderr, "Expected 'optimal', 'fit', 'fill', or 'real'.\n");
         return false;
     }
     return true;

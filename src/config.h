@@ -26,6 +26,7 @@ enum config_order {
 enum config_scale {
     cfgsc_optimal, ///< Fit to window, but not more than 100%
     cfgsc_fit,     ///< Fit to window size
+    cfgsc_fill,    ///< Fill the window
     cfgsc_real     ///< Real image size (100%)
 };
 
@@ -51,6 +52,7 @@ enum config_action {
     cfgact_zoom_out,
     cfgact_zoom_optimal,
     cfgact_zoom_fit,
+    cfgact_zoom_fill,
     cfgact_zoom_real,
     cfgact_zoom_reset,
     cfgact_rotate_left,

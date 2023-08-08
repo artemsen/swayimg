@@ -28,7 +28,7 @@ static const struct cmdarg arguments[] = {
     { 'a', "all",        NULL,      "open all files from the same directory" },
     { 'l', "slideshow",  NULL,      "activate slideshow mode on startup" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
-    { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/real" },
+    { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/fill/real" },
     { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
     { 'w', "window",     "XXXXXX",  "set window background color: [none]/RGB" },
     { 'g', "geometry",   "X,Y,W,H", "set window geometry" },

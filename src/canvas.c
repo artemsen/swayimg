@@ -395,12 +395,16 @@ void canvas_set_scale(struct canvas* ctx, enum canvas_scale sc)
     const float prev = ctx->scale;
 
     // set new scale factor
-    if (sc == cs_fit_or100 || sc == cs_fit_window) {
+    if (sc == cs_fit_or100 || sc == cs_fit_window || sc == cs_fill_window) {
         const float sw = 1.0 / ((float)ctx->image.width / ctx->window.width);
         const float sh = 1.0 / ((float)ctx->image.height / ctx->window.height);
-        ctx->scale = min(sw, sh);
-        if (sc == cs_fit_or100 && ctx->scale > 1.0) {
-            ctx->scale = 1.0;
+        if (sc == cs_fill_window) {
+            ctx->scale = max(sw, sh);
+        } else {
+            ctx->scale = min(sw, sh);
+            if (sc == cs_fit_or100 && ctx->scale > 1.0) {
+                ctx->scale = 1.0;
+            }
         }
     } else if (sc == cs_real_size) {
         ctx->scale = 1.0; // 100 %

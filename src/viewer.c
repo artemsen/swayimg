@@ -155,6 +155,9 @@ static void reset_viewport(struct viewer* ctx)
         case cfgsc_fit:
             scale = cs_fit_window;
             break;
+        case cfgsc_fill:
+            scale = cs_fill_window;
+            break;
         case cfgsc_real:
             scale = cs_real_size;
             break;
@@ -410,6 +413,9 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             return true;
         case cfgact_zoom_fit:
             canvas_set_scale(ctx->canvas, cs_fit_window);
+            return true;
+        case cfgact_zoom_fill:
+            canvas_set_scale(ctx->canvas, cs_fill_window);
             return true;
         case cfgact_zoom_real:
             canvas_set_scale(ctx->canvas, cs_real_size);

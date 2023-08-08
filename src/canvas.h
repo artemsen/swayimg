@@ -22,11 +22,12 @@ enum canvas_move {
 
 /** Scaling operations. */
 enum canvas_scale {
-    cs_fit_or100,  ///< Fit to window, but not more than 100%
-    cs_fit_window, ///< Fit to window size
-    cs_real_size,  ///< Real image size (100%)
-    cs_zoom_in,    ///< Enlarge by one step
-    cs_zoom_out    ///< Reduce by one step
+    cs_fit_or100,   ///< Fit to window, but not more than 100%
+    cs_fit_window,  ///< Fit to window size
+    cs_fill_window, ///< Fill the window
+    cs_real_size,   ///< Real image size (100%)
+    cs_zoom_in,     ///< Enlarge by one step
+    cs_zoom_out     ///< Reduce by one step
 };
 
 /** Corner position. */

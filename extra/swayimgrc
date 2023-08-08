@@ -8,7 +8,7 @@
 # 4. /etc/xdg/swayimg/config
 # See `man swayimgrc` for details.
 
-# Initial scale (optimal, fit, or real)
+# Initial scale (optimal, fit, fill, or real)
 scale = optimal
 
 # Start in full screen mode (yes/no)
@@ -91,8 +91,9 @@ j = step_down
 equal = zoom_in
 plus = zoom_in
 minus = zoom_out
-z = zoom_optimal
-Z = zoom_fit
+x = zoom_optimal
+z = zoom_fit
+Z = zoom_fill
 0 = zoom_real
 BackSpace = zoom_reset
 F5 = rotate_left
