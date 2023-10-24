@@ -36,32 +36,6 @@ struct canvas {
 };
 
 /**
- * Get intersection between window and image.
- * @param ctx canvas context
- * @param rect intersection coordinates and size
- * @return false if window and image don't intersect
- */
-static bool get_intersection(const struct canvas* ctx, struct rect* rect)
-{
-    const ssize_t scaled_x = ctx->image.x + ctx->scale * ctx->image.width;
-    const ssize_t scaled_y = ctx->image.y + ctx->scale * ctx->image.height;
-    const ssize_t pos_left = max(0, ctx->image.x);
-    const ssize_t pos_top = max(0, ctx->image.y);
-    const ssize_t pos_right = min((ssize_t)ctx->window.width, scaled_x);
-    const ssize_t pos_bottom = min((ssize_t)ctx->window.height, scaled_y);
-
-    if (pos_left < pos_right && pos_top < pos_bottom) {
-        rect->x = pos_left;
-        rect->y = pos_top;
-        rect->width = pos_right - pos_left;
-        rect->height = pos_bottom - pos_top;
-        return true;
-    }
-
-    return false;
-}
-
-/**
  * Fix viewport position to minimize gap between image and window edge.
  * @param ctx canvas context
  */
@@ -90,64 +64,6 @@ static void fix_viewport(struct canvas* ctx)
     if (img.height <= ctx->window.height) {
         ctx->image.y = ctx->window.height / 2 - img.height / 2;
     }
-}
-
-/**
- * Get average color of adjustment pixels.
- * @param pixmap source array of pixels
- * @param stride number of pixels per line in the array
- * @param vp vieweport to restrict depth
- * @param x,y central pixel coordinates
- * @return average color
- */
-static inline argb_t get_average(const argb_t* pixmap, size_t stride,
-                                 const struct rect* vp, ssize_t x, ssize_t y)
-{
-    argb_t a, r, g, b;
-    argb_t pixel;
-    size_t count;
-
-    pixel = pixmap[y * stride + x];
-    a = ARGB_GET_A(pixel);
-    r = ARGB_GET_R(pixel);
-    g = ARGB_GET_G(pixel);
-    b = ARGB_GET_B(pixel);
-    count = 1;
-
-    if (x > vp->x) {
-        pixel = pixmap[y * stride + x - 1];
-        r += ARGB_GET_R(pixel);
-        g += ARGB_GET_G(pixel);
-        b += ARGB_GET_B(pixel);
-        ++count;
-    }
-    if (x + 1 < vp->x + (ssize_t)vp->width) {
-        pixel = pixmap[y * stride + x + 1];
-        r += ARGB_GET_R(pixel);
-        g += ARGB_GET_G(pixel);
-        b += ARGB_GET_B(pixel);
-        ++count;
-    }
-    if (y > vp->y) {
-        pixel = pixmap[(y - 1) * stride + x];
-        r += ARGB_GET_R(pixel);
-        g += ARGB_GET_G(pixel);
-        b += ARGB_GET_B(pixel);
-        ++count;
-    }
-    if (y + 1 < vp->y + (ssize_t)vp->height) {
-        pixel = pixmap[(y + 1) * stride + x];
-        r += ARGB_GET_R(pixel);
-        g += ARGB_GET_G(pixel);
-        b += ARGB_GET_B(pixel);
-        ++count;
-    }
-
-    r = (float)r / count;
-    g = (float)g / count;
-    b = (float)b / count;
-
-    return (ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b));
 }
 
 struct canvas* canvas_init(struct config* cfg)
@@ -226,33 +142,165 @@ void canvas_clear(const struct canvas* ctx, argb_t* wnd)
     }
 }
 
+/**
+ * Draw image on canvas (bicubic filter).
+ * @param ctx canvas context
+ * @param vp destination viewport
+ * @param img buffer with image data
+ * @param wnd window buffer
+ */
+static void canvas_draw_bicubic(const struct canvas* ctx, const struct rect* vp,
+                                const argb_t* img, argb_t* wnd)
+{
+    size_t state_zero_x = 1;
+    size_t state_zero_y = 1;
+    float state[4][4][4]; // color channel, y, x
+
+    for (size_t y = 0; y < vp->height; ++y) {
+        argb_t* wnd_line = &wnd[(vp->y + y) * ctx->window.width + vp->x];
+        const float scaled_y =
+            (float)(y + vp->y - ctx->image.y) / ctx->scale - 0.5;
+        const size_t img_y = (size_t)scaled_y;
+        const float diff_y = scaled_y - img_y;
+        const float diff_y2 = diff_y * diff_y;
+        const float diff_y3 = diff_y * diff_y2;
+
+        for (size_t x = 0; x < vp->width; ++x) {
+            const float scaled_x =
+                (float)(x + vp->x - ctx->image.x) / ctx->scale - 0.5;
+            const size_t img_x = (size_t)scaled_x;
+            const float diff_x = scaled_x - img_x;
+            const float diff_x2 = diff_x * diff_x;
+            const float diff_x3 = diff_x * diff_x2;
+            argb_t fg = 0;
+
+            // update cached state
+            if (state_zero_x != img_x || state_zero_y != img_y) {
+                float pixels[4][4][4]; // color channel, y, x
+                state_zero_x = img_x;
+                state_zero_y = img_y;
+                for (size_t pc = 0; pc < 4; ++pc) {
+                    // get colors for the current area
+                    for (size_t py = 0; py < 4; ++py) {
+                        size_t iy = img_y + py;
+                        if (iy > 0) {
+                            --iy;
+                            if (iy >= ctx->image.height) {
+                                iy = ctx->image.height - 1;
+                            }
+                        }
+                        for (size_t px = 0; px < 4; ++px) {
+                            size_t ix = img_x + px;
+                            if (ix > 0) {
+                                --ix;
+                                if (ix >= ctx->image.width) {
+                                    ix = ctx->image.width - 1;
+                                }
+                            }
+                            const argb_t pixel =
+                                img[iy * ctx->image.width + ix];
+                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
+                        }
+                    }
+                    // recalc state cache for the current area
+                    // clang-format off
+                    state[pc][0][0] = pixels[pc][1][1];
+                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
+                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
+                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
+                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
+                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
+                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
+                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
+                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
+                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
+                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
+                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
+                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
+                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
+                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
+                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
+                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
+                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
+                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
+                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
+                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
+                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
+                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
+                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
+                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
+                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    // clang-format on
+                }
+            }
+
+            // set pixel
+            for (size_t pc = 0; pc < 4; ++pc) {
+                // clang-format off
+                const float inter =
+                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
+                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
+                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
+                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
+                // clang-format on
+                const uint8_t color = max(min(inter, 255), 0);
+                fg |= (color << (pc * 8));
+            }
+
+            wnd_line[x] = fg;
+        }
+    }
+}
+
 void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                        argb_t* wnd)
 {
-    struct rect vp;
-    const struct rect ivp = { 0, 0, ctx->image.width, ctx->image.height };
+    const ssize_t scaled_x = ctx->image.x + ctx->scale * ctx->image.width;
+    const ssize_t scaled_y = ctx->image.y + ctx->scale * ctx->image.height;
+    const ssize_t pos_left = max(0, ctx->image.x);
+    const ssize_t pos_top = max(0, ctx->image.y);
+    const ssize_t pos_right = min((ssize_t)ctx->window.width, scaled_x);
+    const ssize_t pos_bottom = min((ssize_t)ctx->window.height, scaled_y);
+    // intersection between window and image
+    const struct rect viewport = { .x = pos_left,
+                                   .y = pos_top,
+                                   .width = pos_right - pos_left,
+                                   .height = pos_bottom - pos_top };
 
-    if (!get_intersection(ctx, &vp)) {
-        return; // possible bug: image out of window
+    if (ctx->config->antialiasing) {
+        canvas_draw_bicubic(ctx, &viewport, img, wnd);
+    } else {
+        for (size_t y = 0; y < viewport.height; ++y) {
+            argb_t* wnd_line =
+                &wnd[(viewport.y + y) * ctx->window.width + viewport.x];
+            const size_t img_y =
+                (float)(y + viewport.y - ctx->image.y) / ctx->scale;
+            for (size_t x = 0; x < viewport.width; ++x) {
+                const size_t img_x =
+                    (float)(x + viewport.x - ctx->image.x) / ctx->scale;
+                argb_t fg = img[img_y * ctx->image.width + img_x];
+                wnd_line[x] = fg;
+            }
+        }
     }
 
-    for (size_t y = 0; y < vp.height; ++y) {
-        argb_t* wnd_line = &wnd[(vp.y + y) * ctx->window.width + vp.x];
-        const size_t img_y = (float)(y + vp.y - ctx->image.y) / ctx->scale;
-        for (size_t x = 0; x < vp.width; ++x) {
-            const size_t img_x = (float)(x + vp.x - ctx->image.x) / ctx->scale;
-            argb_t fg;
+    if (alpha) {
+        for (size_t y = 0; y < viewport.height; ++y) {
+            argb_t* wnd_line =
+                &wnd[(viewport.y + y) * ctx->window.width + viewport.x];
+            for (size_t x = 0; x < viewport.width; ++x) {
+                argb_t fg;
+                fg = wnd_line[x];
 
-            if (ctx->config->antialiasing && ctx->scale >= 1) {
-                // anti-aliasing for scale >= 100%
-                fg = get_average(img, ctx->image.width, &ivp, img_x, img_y);
-            } else {
-                fg = img[img_y * ctx->image.width + img_x];
-            }
-
-            if (!alpha) {
-                wnd_line[x] = fg;
-            } else {
                 // alpha blending
                 const uint8_t alpha = ARGB_GET_A(fg);
                 uint8_t alpha_set;
@@ -274,16 +322,6 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                 }
 
                 wnd_line[x] = ARGB_ALPHA_BLEND(alpha, alpha_set, bg, fg);
-            }
-        }
-    }
-
-    // anti-aliasing for scale < 100%
-    if (ctx->config->antialiasing && ctx->scale < 1) {
-        for (ssize_t y = vp.y; y < vp.y + (ssize_t)vp.height; ++y) {
-            for (ssize_t x = vp.x; x < vp.x + (ssize_t)vp.width; ++x) {
-                wnd[y * ctx->window.width + x] =
-                    get_average(wnd, ctx->window.width, &vp, x, y);
             }
         }
     }
