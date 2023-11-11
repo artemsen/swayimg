@@ -228,6 +228,7 @@ static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
     if (!image_list_jump(ctx->list, jump)) {
         return false;
     }
+    slideshow_ctl(ctx, ui, ctx->slideshow);
     reset_state(ctx, ui);
     return true;
 }
