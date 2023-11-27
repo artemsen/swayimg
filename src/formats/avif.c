@@ -31,10 +31,7 @@ static int decode_frame(struct image* ctx, avifDecoder *decoder)
 
     rgb.depth = 8;
     rgb.format = AVIF_RGB_FORMAT_BGRA;
-    rc = avifRGBImageAllocatePixels(&rgb);
-    if (rc != AVIF_RESULT_OK) {
-        goto decode_fail;
-    }
+    avifRGBImageAllocatePixels(&rgb);
 
     rc = avifImageYUVToRGB(decoder->image, &rgb);
     if (rc != AVIF_RESULT_OK) {
@@ -80,10 +77,7 @@ static int decode_frames(struct image* ctx, avifDecoder *decoder)
         rgb.depth = 8;
         rgb.format = AVIF_RGB_FORMAT_BGRA;
 
-        rc = avifRGBImageAllocatePixels(&rgb);
-        if (rc != AVIF_RESULT_OK) {
-            goto decode_fail;
-        }
+        avifRGBImageAllocatePixels(&rgb);
 
         rc = avifImageYUVToRGB(decoder->image, &rgb);
         if (rc != AVIF_RESULT_OK) {
