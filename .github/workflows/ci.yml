@@ -13,8 +13,8 @@ jobs:
           build-essential meson pkg-config wayland-protocols
           libwayland-dev libjson-c-dev libxkbcommon-dev
           libfreetype-dev libfontconfig-dev
-          libopenexr-dev libgif-dev libheif-dev libjpeg-dev
-          librsvg2-dev libtiff-dev libwebp-dev
+          libopenexr-dev libgif-dev libheif-dev libavif-dev
+          libjpeg-dev librsvg2-dev libtiff-dev libwebp-dev
 
     - name: Check out source code
       uses: actions/checkout@v3

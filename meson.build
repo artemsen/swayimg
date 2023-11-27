@@ -45,6 +45,7 @@ rt = cc.find_library('rt')
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
 gif = cc.find_library('gif', required: get_option('gif'))
 heif = dependency('libheif', required: get_option('heif'))
+avif = dependency('libavif', required: get_option('avif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
@@ -68,6 +69,7 @@ conf = configuration_data()
 conf.set('HAVE_LIBEXR', exr.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBHEIF', heif.found())
+conf.set('HAVE_LIBAVIF', avif.found())
 conf.set('HAVE_LIBJPEG', jpeg.found())
 conf.set('HAVE_LIBJXL', jxl.found())
 conf.set('HAVE_LIBPNG', png.found())
@@ -171,6 +173,9 @@ endif
 if heif.found()
   sources += 'src/formats/heif.c'
 endif
+if avif.found()
+  sources += 'src/formats/avif.c'
+endif
 if jpeg.found()
   sources += 'src/formats/jpeg.c'
 endif
@@ -208,6 +213,7 @@ executable(
     exr,
     gif,
     heif,
+    avif,
     jpeg,
     jxl,
     png,

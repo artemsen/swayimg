@@ -32,6 +32,12 @@ const char* supported_formats = "bmp, pnm"
 #ifdef HAVE_LIBHEIF
                                 ", heif, avif"
 #endif
+#ifdef HAVE_LIBAVIF
+#ifndef HAVE_LIBHEIF
+                                ", avif"
+#endif
+                                ", avifs"
+#endif
 #ifdef HAVE_LIBJXL
                                 ", jxl"
 #endif
@@ -54,6 +60,9 @@ LOADER_DECLARE(gif);
 #endif
 #ifdef HAVE_LIBHEIF
 LOADER_DECLARE(heif);
+#endif
+#ifdef HAVE_LIBAVIF
+LOADER_DECLARE(avif);
 #endif
 #ifdef HAVE_LIBJPEG
 LOADER_DECLARE(jpeg);
@@ -92,6 +101,9 @@ static const image_decoder decoders[] = {
 #endif
 #ifdef HAVE_LIBHEIF
     &LOADER_FUNCTION(heif),
+#endif
+#ifdef HAVE_LIBAVIF
+    &LOADER_FUNCTION(avif),
 #endif
 #ifdef HAVE_LIBRSVG
     &LOADER_FUNCTION(svg),
