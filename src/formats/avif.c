@@ -97,9 +97,10 @@ static int decode_frames(struct image* ctx, avifDecoder *decoder)
 
         memcpy((void*)ctx->frames[i].data, rgb.pixels,
                rgb.width * rgb.height * sizeof(argb_t));
+
+        avifRGBImageFreePixels(&rgb);
     }
 
-    avifRGBImageFreePixels(&rgb);
     return 0;
 
 fail_pixels:
