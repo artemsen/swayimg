@@ -11,6 +11,10 @@ option('heif',
        type: 'feature',
        value: 'auto',
        description: 'Enable HEIF and AVIF format support')
+option('avif',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable AVIF and AVIFS format support')
 option('jpeg',
        type: 'feature',
        value: 'auto',
