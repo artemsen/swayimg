@@ -18,7 +18,13 @@ fullscreen = no
 background = grid
 
 # Window background mode/color (none or RGB, e.g. #112233)
-window = none
+wndbkg = none
+
+# Window position (parent or absolute coordiantes, e.g. 100,200)
+wndpos = parent
+
+# Window size (parent, image, or absolute size, e.g. 800,600)
+wndsize = parent
 
 # Show image info: format, size, EXIF, and current scale (yes/no)
 info = no

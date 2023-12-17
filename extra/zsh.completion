@@ -11,8 +11,9 @@ _arguments \
   '(-f --fullscreen)'{-f,--fullscreen}'[show image in full screen mode]' \
   '(-s --scale=SCALE)'{-s,--scale=}'[set initial image scale]:scale:(optimal fit fill real)' \
   '(-b --background)'{-b,--background=}'[set image background color]:bkg:(none grid)' \
-  '(-w --window)'{-w,--window=}'[set window background color]:wnd:(none)' \
-  '(-g --geometry)'{-g,--geometry=}'[set window geometry]:geo' \
+  '(-w --wndbkg)'{-w,--wndbkg=}'[set window background color]:wndbkg:(none)' \
+  '(-p --wndpos)'{-p,--wndpos=}'[set window position]:wndpos:(parent)' \
+  '(-g --wndsize)'{-g,--wndsize=}'[set window size]:wndsize:(parent image)' \
   '(-i --info)'{-i,--info}'[show image meta information (name, EXIF, etc)]' \
   '(-e --exec)'{-e,--exec=}'[set execution command]' \
   '(-c --class)'{-c,--class=}'[set window class/app_id]:class' \

@@ -29,9 +29,10 @@ static const struct cmdarg arguments[] = {
     { 'l', "slideshow",  NULL,      "activate slideshow mode on startup" },
     { 'f', "fullscreen", NULL,      "show image in full screen mode" },
     { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/fill/real" },
-    { 'b', "background", "XXXXXX",  "set image background color: none/[grid]/RGB" },
-    { 'w', "window",     "XXXXXX",  "set window background color: [none]/RGB" },
-    { 'g', "geometry",   "X,Y,W,H", "set window geometry" },
+    { 'b', "background", "COLOR",   "set image background color: none/[grid]/RGB" },
+    { 'w', "wndbkg",     "COLOR",   "set window background color: [none]/RGB" },
+    { 'p', "wndpos",     "POS",     "set window position [parent]/X,Y" },
+    { 'g', "wndsize",    "SIZE",    "set window size: [parent]/image/W,H" },
     { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
     { 'e', "exec",       "CMD",     "set execution command" },
     { 'c', "class",      "NAME",    "set window class/app_id" },
@@ -47,12 +48,14 @@ static const struct cmdarg arguments[] = {
 static void print_help(void)
 {
     char buf_lopt[32];
+
     puts("Usage: " APP_NAME " [OPTION]... [FILE]...");
     puts("Show images from FILE(s).");
     puts("If FILE is -, read standard input.");
     puts("If no FILE specified - read all files from the current directory.\n");
     puts("Mandatory arguments to long options are mandatory for short options "
          "too.");
+
     for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
         const struct cmdarg* arg = &arguments[i];
         strcpy(buf_lopt, arg->long_opt);
@@ -127,12 +130,17 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 }
                 break;
             case 'w':
-                if (!config_set_window(cfg, optarg)) {
+                if (!config_set_wndbkg(cfg, optarg)) {
+                    return -1;
+                }
+                break;
+            case 'p':
+                if (!config_set_wndpos(cfg, optarg)) {
                     return -1;
                 }
                 break;
             case 'g':
-                if (!config_set_geometry(cfg, optarg)) {
+                if (!config_set_wndsize(cfg, optarg)) {
                     return -1;
                 }
                 break;
@@ -174,21 +182,29 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
  */
 static void sway_setup(struct config* cfg)
 {
-    const bool absolute = cfg->geometry.width;
-    const int ipc = sway_connect();
+    int ipc;
+    struct rect wnd_parent;
+    bool wnd_fullscreen = false;
+    const bool absolute =
+        cfg->geometry.x != SAME_AS_PARENT && cfg->geometry.y != SAME_AS_PARENT;
 
-    if (ipc == -1) {
+    ipc = sway_connect();
+    if (ipc == INVALID_SWAY_IPC) {
         return;
     }
 
-    if (!absolute) {
-        bool fullscreen = false;
-        // get coordinates and size of the currently focused window
-        if (!sway_current(ipc, &cfg->geometry, &fullscreen)) {
-            sway_disconnect(ipc);
-            return;
+    if (sway_current(ipc, &wnd_parent, &wnd_fullscreen)) {
+        cfg->fullscreen |= wnd_fullscreen;
+        if (cfg->geometry.x == SAME_AS_PARENT &&
+            cfg->geometry.y == SAME_AS_PARENT) {
+            cfg->geometry.x = wnd_parent.x;
+            cfg->geometry.y = wnd_parent.y;
         }
-        cfg->fullscreen |= fullscreen;
+        if (cfg->geometry.width == SAME_AS_PARENT &&
+            cfg->geometry.height == SAME_AS_PARENT) {
+            cfg->geometry.width = wnd_parent.width;
+            cfg->geometry.height = wnd_parent.height;
+        }
     }
 
     if (!cfg->fullscreen) {
@@ -227,22 +243,18 @@ int main(int argc, char* argv[])
         goto done;
     }
 
-    // check configuration
-    if (cfg->geometry.width) {
-        if (!cfg->sway_wm) {
-            fprintf(stderr,
-                    "Warning: unable to set window geometry without sway\n");
-        }
-        if (cfg->fullscreen) {
-            fprintf(stderr,
-                    "Warning: window geometry used in fullscreen mode\n");
-        }
-    }
-
     // compose file list
     list = image_list_init((const char**)&argv[index], argc - index, cfg);
     if (!list) {
         goto done;
+    }
+
+    // set window size form the first image
+    if (cfg->geometry.width == SAME_AS_IMAGE ||
+        cfg->geometry.height == SAME_AS_IMAGE) {
+        struct image_entry first = image_list_current(list);
+        cfg->geometry.width = first.image->frames[0].width;
+        cfg->geometry.height = first.image->frames[0].height;
     }
 
     if (cfg->sway_wm && !cfg->fullscreen) {

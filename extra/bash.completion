@@ -10,8 +10,9 @@ _swayimg()
                 -f --fullscreen \
                 -s --scale \
                 -b --background \
-                -w --window \
-                -g --geometry \
+                -w --wndbkg \
+                -p --wndpos \
+                -g --wndsize \
                 -i --info \
                 -e --exec \
                 -c --class \

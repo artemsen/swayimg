@@ -33,51 +33,32 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 
 /**
  * Decode single GIF frame.
+ * @param ctx image context
  * @param gif gif context
  * @param index number of the frame to load
- * @param prev previous frame
- * @param curr frame to store the image
  * @return true if completed successfully
  */
-static bool decode_frame(GifFileType* gif, size_t index,
-                         const struct image_frame* prev,
-                         struct image_frame* curr)
+static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 {
-    const SavedImage* gif_image;
-    const GifImageDesc* gif_desc;
-    const ColorMapObject* gif_colors;
-    GraphicsControlBlock gif_cb;
-    int color_transparent = NO_TRANSPARENT_COLOR;
+    const SavedImage* img = &gif->SavedImages[index];
+    const GifImageDesc* desc = &img->ImageDesc;
+    const ColorMapObject* color_map =
+        desc->ColorMap ? desc->ColorMap : gif->SColorMap;
+    GraphicsControlBlock ctl = { .TransparentColor = NO_TRANSPARENT_COLOR };
+    struct image_frame* frame = &ctx->frames[index];
 
-    if (!image_frame_allocate(curr, gif->SWidth, gif->SHeight)) {
-        return false;
-    }
-    if (prev) {
-        memcpy(curr->data, prev->data,
-               curr->width * curr->height * sizeof(argb_t));
-    } else {
-        memset(curr->data, 0, curr->width * curr->height * sizeof(argb_t));
-    }
+    DGifSavedExtensionToGCB(gif, index, &ctl);
 
-    if (DGifSavedExtensionToGCB(gif, index, &gif_cb) == GIF_OK) {
-        color_transparent = gif_cb.TransparentColor;
-        if (gif_cb.DelayTime != 0) {
-            curr->duration = gif_cb.DelayTime * 10; // hundreds of second to ms
-        }
-    }
+    for (int y = 0; y < desc->Height; ++y) {
+        const uint8_t* raster = &img->RasterBits[y * desc->Width];
+        argb_t* pixel = frame->data + desc->Top * frame->width +
+            y * frame->width + desc->Left;
 
-    gif_image = &gif->SavedImages[index];
-    gif_desc = &gif_image->ImageDesc;
-    gif_colors = gif_desc->ColorMap ? gif_desc->ColorMap : gif->SColorMap;
-    for (int y = 0; y < gif_desc->Height; ++y) {
-        const uint8_t* gif_raster = &gif_image->RasterBits[y * gif_desc->Width];
-        argb_t* pixel = curr->data + gif_desc->Top * curr->width +
-            y * curr->width + gif_desc->Left;
-
-        for (int x = 0; x < gif_desc->Width; ++x) {
-            const uint8_t color = gif_raster[x];
-            if (color != color_transparent && color < gif_colors->ColorCount) {
-                const GifColorType* rgb = &gif_colors->Colors[color];
+        for (int x = 0; x < desc->Width; ++x) {
+            const uint8_t color = raster[x];
+            if (color != ctl.TransparentColor &&
+                color < color_map->ColorCount) {
+                const GifColorType* rgb = &color_map->Colors[color];
                 *pixel = ARGB_SET_A(0xff) | ARGB_SET_R(rgb->Red) |
                     ARGB_SET_G(rgb->Green) | ARGB_SET_B(rgb->Blue);
             }
@@ -85,8 +66,16 @@ static bool decode_frame(GifFileType* gif, size_t index,
         }
     }
 
-    if (curr->duration == 0) {
-        curr->duration = 100; // ms
+    if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
+        struct image_frame* next = &ctx->frames[index + 1];
+        memcpy(next->data, frame->data,
+               frame->width * frame->height * sizeof(argb_t));
+    }
+
+    if (ctl.DelayTime != 0) {
+        frame->duration = ctl.DelayTime * 10; // hundreds of second to ms
+    } else {
+        frame->duration = 100;
     }
 
     return true;
@@ -118,8 +107,7 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
         return ldr_fmterror;
     }
     if (DGifSlurp(gif) != GIF_OK) {
-        image_print_error(ctx, "unable to decode gif image: [%d] %s", err,
-                          GifErrorString(err));
+        image_print_error(ctx, "unable to decode gif image");
         goto fail;
     }
 
@@ -127,11 +115,17 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
     if (!image_create_frames(ctx, gif->ImageCount)) {
         goto fail;
     }
+    for (size_t i = 0; i < ctx->num_frames; ++i) {
+        struct image_frame* frame = &ctx->frames[i];
+        if (!image_frame_allocate(frame, gif->SWidth, gif->SHeight)) {
+            goto fail;
+        }
+        memset(frame->data, 0, frame->width * frame->height * sizeof(argb_t));
+    }
 
     // decode every frame
     for (size_t i = 0; i < ctx->num_frames; ++i) {
-        const struct image_frame* prev = i ? &ctx->frames[i - 1] : NULL;
-        if (!decode_frame(gif, i, prev, &ctx->frames[i])) {
+        if (!decode_frame(ctx, gif, i)) {
             goto fail;
         }
     }

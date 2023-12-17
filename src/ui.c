@@ -49,6 +49,16 @@ struct ui {
         int32_t scale;
     } outputs[MAX_OUTPUTS];
 
+    // window buffers
+    struct wnd {
+        struct wl_buffer* buffer0;
+        struct wl_buffer* buffer1;
+        struct wl_buffer* current;
+        size_t width;
+        size_t height;
+        int32_t scale;
+    } wnd;
+
     // cross-desktop
     struct xdg {
         struct xdg_wm_base* base;
@@ -70,15 +80,6 @@ struct ui {
         uint32_t rate;
         uint32_t delay;
     } repeat;
-
-    // window buffer
-    struct wnd {
-        struct wl_buffer* buffer;
-        void* data;
-        size_t width;
-        size_t height;
-        int32_t scale;
-    } wnd;
 
     // timers
     int timer_animation;
@@ -103,44 +104,94 @@ static inline void set_timespec(struct timespec* ts, uint32_t ms)
 }
 
 /**
- * Create shared memory file.
- * @param sz size of data in bytes
- * @param data pointer to mapped data
- * @return shared file descriptor, -1 on errors
+ * Create window buffer.
+ * @param ctx window context
+ * @return wayland buffer on NULL on errors
  */
-static int create_shmem(size_t sz, void** data)
+static struct wl_buffer* create_buffer(struct ui* ctx)
 {
+    const size_t stride = ctx->wnd.width * sizeof(argb_t);
+    const size_t buf_sz = stride * ctx->wnd.height;
+    struct wl_buffer* buffer = NULL;
+    struct wl_shm_pool* pool = NULL;
+    int fd = -1;
     char path[64];
     struct timespec ts;
+    void* data;
+
+    // generate unique file name
     clock_gettime(CLOCK_MONOTONIC, &ts);
     snprintf(path, sizeof(path), "/" APP_NAME "_%lx",
              (ts.tv_sec << 32) | ts.tv_nsec);
 
-    int fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
+    // open shared mem
+    fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1) {
         fprintf(stderr, "Unable to create shared file: [%i] %s\n", errno,
                 strerror(errno));
-        return -1;
+        return NULL;
     }
-
     shm_unlink(path);
 
-    if (ftruncate(fd, sz) == -1) {
+    // set shared memory size
+    if (ftruncate(fd, buf_sz) == -1) {
         fprintf(stderr, "Unable to truncate shared file: [%i] %s\n", errno,
                 strerror(errno));
         close(fd);
-        return -1;
+        return NULL;
     }
 
-    *data = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    // get data pointer of the shared mem
+    data = mmap(NULL, buf_sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
         fprintf(stderr, "Unable to map shared file: [%i] %s\n", errno,
                 strerror(errno));
         close(fd);
-        return -1;
+        return NULL;
     }
 
-    return fd;
+    // create wayland buffer
+    pool = wl_shm_create_pool(ctx->wl.shm, fd, buf_sz);
+    buffer = wl_shm_pool_create_buffer(pool, 0, ctx->wnd.width, ctx->wnd.height,
+                                       stride, WL_SHM_FORMAT_ARGB8888);
+    wl_buffer_set_user_data(buffer, data);
+
+    wl_shm_pool_destroy(pool);
+    close(fd);
+
+    return buffer;
+}
+
+/**
+ * Recreate window buffers.
+ * @param ctx window context
+ * @return true if operation completed successfully
+ */
+static bool recreate_buffers(struct ui* ctx)
+{
+    ctx->wnd.current = NULL;
+
+    // first buffer
+    if (ctx->wnd.buffer0) {
+        wl_buffer_destroy(ctx->wnd.buffer0);
+    }
+    ctx->wnd.buffer0 = create_buffer(ctx);
+    if (!ctx->wnd.buffer0) {
+        return false;
+    }
+    // second buffer
+    if (ctx->wnd.buffer1) {
+        wl_buffer_destroy(ctx->wnd.buffer1);
+    }
+    ctx->wnd.buffer1 = create_buffer(ctx);
+    if (!ctx->wnd.buffer1) {
+        return false;
+    }
+
+    ctx->wnd.current = ctx->wnd.buffer0;
+    ctx->handlers->on_resize(ctx->handlers->data, ctx, ctx->wnd.width,
+                             ctx->wnd.height, ctx->wnd.scale);
+    return true;
 }
 
 /**
@@ -149,48 +200,24 @@ static int create_shmem(size_t sz, void** data)
  */
 static void redraw(struct ui* ctx)
 {
-    ctx->handlers->on_redraw(ctx->handlers->data, ctx->wnd.data);
+    argb_t* wnd_data;
 
-    wl_surface_attach(ctx->wl.surface, ctx->wnd.buffer, 0, 0);
+    // switch buffers
+    if (ctx->wnd.current == ctx->wnd.buffer0) {
+        ctx->wnd.current = ctx->wnd.buffer1;
+    } else {
+        ctx->wnd.current = ctx->wnd.buffer0;
+    }
+
+    // draw to window buffer
+    wnd_data = wl_buffer_get_user_data(ctx->wnd.current);
+    ctx->handlers->on_redraw(ctx->handlers->data, wnd_data);
+
+    // show window buffer
+    wl_surface_attach(ctx->wl.surface, ctx->wnd.current, 0, 0);
     wl_surface_damage(ctx->wl.surface, 0, 0, ctx->wnd.width, ctx->wnd.height);
     wl_surface_set_buffer_scale(ctx->wl.surface, ctx->wnd.scale);
     wl_surface_commit(ctx->wl.surface);
-}
-
-/**
- * (Re)create buffer.
- * @param ctx window context
- * @return true if operation completed successfully
- */
-static bool create_buffer(struct ui* ctx)
-{
-    const size_t stride = ctx->wnd.width * sizeof(argb_t);
-    const size_t buf_sz = stride * ctx->wnd.height;
-    struct wl_shm_pool* pool;
-    int fd;
-    bool status;
-
-    // free previous allocated buffer
-    if (ctx->wnd.buffer) {
-        wl_buffer_destroy(ctx->wnd.buffer);
-        ctx->wnd.buffer = NULL;
-    }
-
-    // create new buffer
-    fd = create_shmem(buf_sz, &ctx->wnd.data);
-    status = (fd != -1);
-    if (status) {
-        pool = wl_shm_create_pool(ctx->wl.shm, fd, buf_sz);
-        close(fd);
-        ctx->wnd.buffer =
-            wl_shm_pool_create_buffer(pool, 0, ctx->wnd.width, ctx->wnd.height,
-                                      stride, WL_SHM_FORMAT_ARGB8888);
-        wl_shm_pool_destroy(pool);
-        ctx->handlers->on_resize(ctx->handlers->data, ctx, ctx->wnd.width,
-                                 ctx->wnd.height, ctx->wnd.scale);
-    }
-
-    return status;
 }
 
 // suppress unused parameter warnings
@@ -373,7 +400,7 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
 
     xdg_surface_ack_configure(surface, serial);
 
-    if (!ctx->wnd.buffer && !create_buffer(ctx)) {
+    if (!ctx->wnd.current && !recreate_buffers(ctx)) {
         ctx->state = state_error;
         return;
     }
@@ -405,7 +432,7 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     if (width && height && (width != cur_width || height != cur_height)) {
         ctx->wnd.width = width * ctx->wnd.scale;
         ctx->wnd.height = height * ctx->wnd.scale;
-        if (!create_buffer(ctx)) {
+        if (!recreate_buffers(ctx)) {
             ctx->state = state_error;
         }
     }
@@ -481,7 +508,7 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         ctx->wnd.width = (ctx->wnd.width / ctx->wnd.scale) * scale;
         ctx->wnd.height = (ctx->wnd.height / ctx->wnd.scale) * scale;
         ctx->wnd.scale = scale;
-        if (create_buffer(ctx)) {
+        if (recreate_buffers(ctx)) {
             redraw(ctx);
         } else {
             ctx->state = state_error;
@@ -630,8 +657,11 @@ void ui_free(struct ui* ctx)
     if (ctx->xkb.context) {
         xkb_context_unref(ctx->xkb.context);
     }
-    if (ctx->wnd.buffer) {
-        wl_buffer_destroy(ctx->wnd.buffer);
+    if (ctx->wnd.buffer0) {
+        wl_buffer_destroy(ctx->wnd.buffer0);
+    }
+    if (ctx->wnd.buffer1) {
+        wl_buffer_destroy(ctx->wnd.buffer1);
     }
     if (ctx->wl.seat) {
         wl_seat_destroy(ctx->wl.seat);

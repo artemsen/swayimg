@@ -212,6 +212,36 @@ static bool set_color(const char* text, uint32_t* value)
 }
 
 /**
+ * Parse pair of numbers.
+ * @param text text to parse
+ * @param n1,n2 output values
+ * @return false if values have invalid format
+ */
+static bool parse_numpair(const char* text, long* n1, long* n2)
+{
+    char* endptr;
+
+    errno = 0;
+
+    // first number
+    *n1 = strtol(text, &endptr, 0);
+    if (errno) {
+        return false;
+    }
+    // skip delimeter
+    while (*endptr && *endptr == ',') {
+        ++endptr;
+    }
+    // second number
+    *n2 = strtol(endptr, &endptr, 0);
+    if (errno) {
+        return false;
+    }
+
+    return *endptr == 0;
+}
+
+/**
  * Set (replace) string in config parameter.
  * @param src source string
  * @param dst destination buffer
@@ -248,8 +278,12 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
         return set_boolean(value, &ctx->fullscreen);
     } else if (strcmp(key, "background") == 0) {
         return config_set_background(ctx, value);
-    } else if (strcmp(key, "window") == 0) {
-        return config_set_window(ctx, value);
+    } else if (strcmp(key, "wndbkg") == 0) {
+        return config_set_wndbkg(ctx, value);
+    } else if (strcmp(key, "wndpos") == 0) {
+        return config_set_wndpos(ctx, value);
+    } else if (strcmp(key, "wndsize") == 0) {
+        return config_set_wndsize(ctx, value);
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &ctx->show_info);
     } else if (strcmp(key, "font") == 0) {
@@ -356,6 +390,10 @@ static struct config* default_config(void)
     ctx->background = BACKGROUND_GRID;
     ctx->window = COLOR_TRANSPARENT;
     ctx->sway_wm = true;
+    ctx->geometry.x = SAME_AS_PARENT;
+    ctx->geometry.y = SAME_AS_PARENT;
+    ctx->geometry.width = SAME_AS_PARENT;
+    ctx->geometry.height = SAME_AS_PARENT;
     config_set_font_name(ctx, "monospace");
     ctx->font_color = 0xcccccc;
     ctx->font_size = 14;
@@ -549,7 +587,7 @@ bool config_set_background(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_window(struct config* ctx, const char* val)
+bool config_set_wndbkg(struct config* ctx, const char* val)
 {
     if (strcmp(val, "none") == 0) {
         ctx->window = COLOR_TRANSPARENT;
@@ -561,35 +599,46 @@ bool config_set_window(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_geometry(struct config* ctx, const char* val)
+bool config_set_wndpos(struct config* ctx, const char* val)
 {
-    long nums[4]; // x,y,width,height
-    const char* ptr = val;
-    size_t idx;
-
-    for (idx = 0; *ptr && idx < sizeof(nums) / sizeof(nums[0]); ++idx) {
-        char* endptr;
-        nums[idx] = strtol(ptr, &endptr, 0);
-        if (ptr == endptr) {
-            break;
-        }
-        ptr = endptr;
-        while (*ptr && *ptr == ',') {
-            ++ptr;
-        }
-    }
-
-    if (idx == sizeof(nums) / sizeof(nums[0]) && !*ptr &&
-        nums[2 /*width*/] > 0 && nums[3 /*height*/] > 0) {
-        ctx->geometry.x = (ssize_t)nums[0];
-        ctx->geometry.y = (ssize_t)nums[1];
-        ctx->geometry.width = (size_t)nums[2];
-        ctx->geometry.height = (size_t)nums[3];
+    if (strcmp(val, "parent") == 0) {
+        ctx->geometry.x = SAME_AS_PARENT;
+        ctx->geometry.y = SAME_AS_PARENT;
         return true;
+    } else {
+        long x, y;
+        if (parse_numpair(val, &x, &y)) {
+            ctx->geometry.x = (ssize_t)x;
+            ctx->geometry.y = (ssize_t)y;
+            return true;
+        }
+    }
+    fprintf(stderr, "Invalid window position: %s\n", val);
+    fprintf(stderr, "Expected 'parent' or X,Y.\n");
+    return false;
+}
+
+bool config_set_wndsize(struct config* ctx, const char* val)
+{
+    if (strcmp(val, "parent") == 0) {
+        ctx->geometry.width = SAME_AS_PARENT;
+        ctx->geometry.height = SAME_AS_PARENT;
+        return true;
+    } else if (strcmp(val, "image") == 0) {
+        ctx->geometry.width = SAME_AS_IMAGE;
+        ctx->geometry.height = SAME_AS_IMAGE;
+        return true;
+    } else {
+        long width, height;
+        if (parse_numpair(val, &width, &height) && width > 0 && height > 0) {
+            ctx->geometry.width = (size_t)width;
+            ctx->geometry.height = (size_t)height;
+            return true;
+        }
     }
 
-    fprintf(stderr, "Invalid window geometry: %s\n", val);
-    fprintf(stderr, "Expected X,Y,W,H format.\n");
+    fprintf(stderr, "Invalid window size: %s\n", val);
+    fprintf(stderr, "Expected 'parent', 'image', or WIDTH,HEIGHT.\n");
     return false;
 }
 
