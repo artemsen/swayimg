@@ -254,12 +254,12 @@ int sway_connect(void)
     const char* path = getenv("SWAYSOCK");
     if (!path) {
         fprintf(stderr, "SWAYSOCK variable is not defined\n");
-        return -1;
+        return INVALID_SWAY_IPC;
     }
     size_t len = strlen(path);
     if (!len || len > sizeof(sa.sun_path)) {
         fprintf(stderr, "Invalid SWAYSOCK variable\n");
-        return -1;
+        return INVALID_SWAY_IPC;
     }
 
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -267,7 +267,7 @@ int sway_connect(void)
         const int ec = errno;
         fprintf(stderr, "Failed to create IPC socket: [%i] %s\n", ec,
                 strerror(ec));
-        return -1;
+        return INVALID_SWAY_IPC;
     }
 
     sa.sun_family = AF_UNIX;
@@ -279,7 +279,7 @@ int sway_connect(void)
         fprintf(stderr, "Failed to connect IPC socket: [%i] %s\n", ec,
                 strerror(ec));
         close(fd);
-        return -1;
+        return INVALID_SWAY_IPC;
     }
 
     return fd;

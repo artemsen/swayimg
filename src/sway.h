@@ -8,9 +8,11 @@
 
 #include <stdbool.h>
 
+#define INVALID_SWAY_IPC -1
+
 /**
  * Connect to Sway.
- * @return IPC context, -1 if error
+ * @return IPC context, INVALID_SWAY_IPC if error
  */
 int sway_connect(void);
 
