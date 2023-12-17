@@ -12,6 +12,11 @@
 #define COLOR_TRANSPARENT 0xff000000
 #define BACKGROUND_GRID   0xfe000000
 
+// Copy position or size from parent window
+#define SAME_AS_PARENT 0xffffffff
+// Copy size from image
+#define SAME_AS_IMAGE  0
+
 // Max number of key bindings
 #define MAX_KEYBINDINGS 128
 
@@ -111,8 +116,9 @@ void config_free(struct config* ctx);
 // Configuration setters
 bool config_set_scale(struct config* ctx, const char* val);
 bool config_set_background(struct config* ctx, const char* val);
-bool config_set_window(struct config* ctx, const char* val);
-bool config_set_geometry(struct config* ctx, const char* val);
+bool config_set_wndbkg(struct config* ctx, const char* val);
+bool config_set_wndpos(struct config* ctx, const char* val);
+bool config_set_wndsize(struct config* ctx, const char* val);
 bool config_set_font_name(struct config* ctx, const char* val);
 bool config_set_font_size(struct config* ctx, const char* val);
 bool config_set_order(struct config* ctx, const char* val);

@@ -39,22 +39,28 @@ as a path to some file (not a directory), \fBswayimg\fR will add all files
 in that directory to the image list.
 .IP "\fB\-l\fR, \fB\-\-slideshow\fR"
 Activate slideshow mode on startup.
-.IP "\fB\-g\fR, \fB\-\-geometry\fR\fB=\fR\fIX,Y,WIDTH,HEIGHT\fR"
-Set the absolute position and size of the window. For example, \fI10,20,100,200\fR
-creates a window at position 10x20 (top left corner) with a size of
-100x200. The comma can be replaced with any non-numeric character. If this
-parameter is not specified, the geometry of the currently focused window
-will be used.
 .IP "\fB\-b\fR, \fB\-\-background\fR\fB=\fR\fIXXXXXX\fR"
 Set background for transparent images:
 .nf
 \fInone\fR: transparent;
 \fIgrid\fR: show grid as background (default);
-.IP "\fB\-w\fR, \fB\-\-window\fR\fB=\fR\fIXXXXXX\fR"
+\fIXXXXXX\fR: hexadecimal RGB color.
+.IP "\fB\-w\fR, \fB\-\-wndbkg\fR\fB=\fR\fICOLOR\fR"
 Set window background:
 .nf
 \fInone\fR: transparent (default);
-\fI#XXXXXX\fR: hexadecimal RGB color.
+\fIXXXXXX\fR: hexadecimal RGB color.
+.IP "\fB\-p\fR, \fB\-\-wndpos\fR\fB=\fR\fIPOS\fR"
+Set the absolute position of the window:
+.nf
+\fIparent\fR: set position from parent (currently active) window (default);
+\fIX,Y\fR: absolute coordinates of the top left corner.
+.IP "\fB\-g\fR, \fB\-\-wndsize\fR\fB=\fR\fISIZE\fR"
+Set window size:
+.nf
+\fIparent\fR: set size from parent (currently active) window (default);
+\fIimage\fR: set size from the first image;
+\fIWIDTH,HEIGHT\fR: absolute size of the window.
 .IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
 Start in full screen mode.
 .IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"
