@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "config.h"
+#include "types.h"
 
 /** Canvas context. */
 struct canvas;
@@ -41,10 +41,9 @@ struct info_table {
 
 /**
  * Initialize canvas.
- * @param ctx canvas context
  * @param cfg configuration instance
  */
-struct canvas* canvas_init(struct config* cfg);
+struct canvas* canvas_init(void);
 
 /**
  * Free canvas resources.

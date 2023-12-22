@@ -4,6 +4,8 @@
 
 #include "font.h"
 
+#include "config.h"
+
 #include <wchar.h>
 
 // font realted
@@ -17,11 +19,10 @@
 
 /** Font context. */
 struct font {
-    struct config* config; ///< Configuration
-    FT_Library font_lib;   ///< Font lib instance
-    FT_Face font_face;     ///< Font face
-    wchar_t* wide;         ///< Buffer for wide char text
-    size_t wide_sz;        ///< Size of wide buffer in bytes
+    FT_Library font_lib; ///< Font lib instance
+    FT_Face font_face;   ///< Font face
+    wchar_t* wide;       ///< Buffer for wide char text
+    size_t wide_sz;      ///< Size of wide buffer in bytes
 };
 
 /**
@@ -126,7 +127,7 @@ static inline size_t glyph_width(const struct font* ctx)
 {
     const FT_GlyphSlot glyph = ctx->font_face->glyph;
     const FT_Bitmap* bitmap = &glyph->bitmap;
-    return bitmap->width + ctx->config->font_size / GLYPH_GW_REL;
+    return bitmap->width + config.font_size / GLYPH_GW_REL;
 }
 
 /**
@@ -161,7 +162,7 @@ static bool draw_glyph(const struct font* ctx, argb_t* wnd_buf,
             if (wnd_x < wnd_size->width && alpha) {
                 argb_t* wnd_pixel = &wnd_line[wnd_x];
                 const argb_t bg = *wnd_pixel;
-                const argb_t fg = ctx->config->font_color;
+                const argb_t fg = config.font_color;
                 *wnd_pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
             }
         }
@@ -170,7 +171,7 @@ static bool draw_glyph(const struct font* ctx, argb_t* wnd_buf,
     return true;
 }
 
-struct font* font_init(struct config* cfg)
+struct font* font_init(void)
 {
     struct font* ctx;
     char font_file[256];
@@ -180,9 +181,7 @@ struct font* font_init(struct config* cfg)
         return NULL;
     }
 
-    ctx->config = cfg;
-
-    if (search_font_file(cfg->font_face, font_file, sizeof(font_file)) &&
+    if (search_font_file(config.font_face, font_file, sizeof(font_file)) &&
         FT_Init_FreeType(&ctx->font_lib) == 0 &&
         FT_New_Face(ctx->font_lib, font_file, 0, &ctx->font_face) == 0) {
         font_scale(ctx, 1);
@@ -208,7 +207,7 @@ void font_free(struct font* ctx)
 void font_scale(struct font* ctx, size_t scale)
 {
     if (ctx->font_face) {
-        const FT_F26Dot6 size = ctx->config->font_size * scale * 64;
+        const FT_F26Dot6 size = config.font_size * scale * 64;
         FT_Set_Char_Size(ctx->font_face, size, 0, 96, 0);
     }
 }
@@ -216,7 +215,7 @@ void font_scale(struct font* ctx, size_t scale)
 size_t font_height(const struct font* ctx)
 {
     return ctx->font_face
-        ? ctx->font_face->size->metrics.y_ppem + ctx->config->font_size / 4
+        ? ctx->font_face->size->metrics.y_ppem + config.font_size / 4
         : 0;
 }
 

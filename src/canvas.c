@@ -4,6 +4,7 @@
 
 #include "canvas.h"
 
+#include "config.h"
 #include "font.h"
 
 #include <stdio.h>
@@ -27,12 +28,11 @@
 
 /** Canvas context. */
 struct canvas {
-    struct config* config; ///< Configuration
-    float scale;           ///< Scale, 1.0 = 100%
-    struct rect image;     ///< Image position and size
-    struct size window;    ///< Output window size
-    size_t wnd_scale;      ///< Window scale factor (HiDPI)
-    struct font* font;     ///< Font context
+    float scale;        ///< Scale, 1.0 = 100%
+    struct rect image;  ///< Image position and size
+    struct size window; ///< Output window size
+    size_t wnd_scale;   ///< Window scale factor (HiDPI)
+    struct font* font;  ///< Font context
 };
 
 /**
@@ -66,14 +66,13 @@ static void fix_viewport(struct canvas* ctx)
     }
 }
 
-struct canvas* canvas_init(struct config* cfg)
+struct canvas* canvas_init(void)
 {
     struct canvas* ctx;
 
     ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
-        ctx->config = cfg;
-        ctx->font = font_init(cfg);
+        ctx->font = font_init();
     }
 
     return ctx;
@@ -130,13 +129,13 @@ void canvas_swap_image_size(struct canvas* ctx)
 
 void canvas_clear(const struct canvas* ctx, argb_t* wnd)
 {
-    if (ctx->config->window == COLOR_TRANSPARENT) {
+    if (config.window == COLOR_TRANSPARENT) {
         memset(wnd, 0, ctx->window.width * ctx->window.height * sizeof(argb_t));
     } else {
         for (size_t y = 0; y < ctx->window.height; ++y) {
             argb_t* line = &wnd[y * ctx->window.width];
             for (size_t x = 0; x < ctx->window.width; ++x) {
-                line[x] = ARGB_SET_A(0xff) | ctx->config->window;
+                line[x] = ARGB_SET_A(0xff) | config.window;
             }
         }
     }
@@ -276,7 +275,7 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                                    .width = pos_right - pos_left,
                                    .height = pos_bottom - pos_top };
 
-    if (ctx->config->antialiasing) {
+    if (config.antialiasing) {
         canvas_draw_bicubic(ctx, &viewport, img, wnd);
     } else {
         for (size_t y = 0; y < viewport.height; ++y) {
@@ -306,10 +305,10 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                 uint8_t alpha_set;
                 argb_t bg;
 
-                if (ctx->config->background == COLOR_TRANSPARENT) {
+                if (config.background == COLOR_TRANSPARENT) {
                     bg = 0;
                     alpha_set = alpha;
-                } else if (ctx->config->background == BACKGROUND_GRID) {
+                } else if (config.background == BACKGROUND_GRID) {
                     const bool shift = (y / (GRID_STEP * ctx->wnd_scale)) % 2;
                     const size_t tail = x / (GRID_STEP * ctx->wnd_scale);
                     const argb_t grid =
@@ -317,7 +316,7 @@ void canvas_draw_image(const struct canvas* ctx, bool alpha, const argb_t* img,
                     bg = grid;
                     alpha_set = 0xff;
                 } else {
-                    bg = ctx->config->background;
+                    bg = config.background;
                     alpha_set = 0xff;
                 }
 

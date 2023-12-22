@@ -6,6 +6,7 @@
 
 #include "buildcfg.h"
 #include "canvas.h"
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +29,6 @@ struct image_desc {
 
 /** Viewer context. */
 struct viewer {
-    struct config* config;  ///< Configuration
     struct canvas* canvas;  ///< Canvas context
     size_t frame;           ///< Index of current frame
     bool animation;         ///< Animation is in progress
@@ -96,7 +96,7 @@ static void slideshow_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 {
     ctx->slideshow = enable;
     if (enable) {
-        ui_set_timer(ui, ui_timer_slideshow, ctx->config->slideshow_sec * 1000);
+        ui_set_timer(ui, ui_timer_slideshow, config.slideshow_sec * 1000);
     }
 }
 
@@ -149,7 +149,7 @@ static void reset_viewport(struct viewer* ctx)
     const struct image_frame* frame = &entry.image->frames[ctx->frame];
     enum canvas_scale scale;
 
-    switch (ctx->config->scale) {
+    switch (config.scale) {
         case cfgsc_fit:
             scale = cs_fit_window;
             break;
@@ -262,7 +262,7 @@ set_message(struct viewer* ctx, const char* fmt, ...)
     }
 }
 
-struct viewer* viewer_create(struct config* cfg, struct ui* ui)
+struct viewer* viewer_create(struct ui* ui)
 {
     struct viewer* ctx;
 
@@ -272,15 +272,14 @@ struct viewer* viewer_create(struct config* cfg, struct ui* ui)
         return NULL;
     }
 
-    ctx->config = cfg;
-    ctx->canvas = canvas_init(cfg);
+    ctx->canvas = canvas_init();
 
     if (!ctx->canvas) {
         viewer_free(ctx);
         return NULL;
     }
 
-    if (cfg->slideshow) {
+    if (config.slideshow) {
         slideshow_ctl(ctx, ui, true); // start slide show
     }
 
@@ -306,7 +305,7 @@ void viewer_on_redraw(void* data, argb_t* window)
                       entry.image->frames[ctx->frame].data, window);
 
     // image meta information: file name, format, exif, etc
-    if (ctx->config->show_info) {
+    if (config.show_info) {
         char text[32];
         const int scale = canvas_get_scale(ctx->canvas) * 100;
 
@@ -349,7 +348,7 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
 
     // get action binded to the key
     for (size_t i = 0; i < MAX_KEYBINDINGS; ++i) {
-        struct config_keybind* bind = &ctx->config->keybind[i];
+        struct config_keybind* bind = &config.keybind[i];
         if (bind->key == key) {
             action = bind->action;
             break;
@@ -388,8 +387,8 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
                 ctx, ui, !ctx->slideshow && next_file(ctx, ui, jump_next_file));
             return true;
         case cfgact_fullscreen:
-            ctx->config->fullscreen = !ctx->config->fullscreen;
-            ui_set_fullscreen(ui, ctx->config->fullscreen);
+            config.fullscreen = !config.fullscreen;
+            ui_set_fullscreen(ui, config.fullscreen);
             return false;
         case cfgact_step_left:
             return canvas_move(ctx->canvas, cm_step_left);
@@ -435,9 +434,9 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             image_flip_horizontal(image_list_current().image);
             return true;
         case cfgact_antialiasing:
-            ctx->config->antialiasing = !ctx->config->antialiasing;
+            config.antialiasing = !config.antialiasing;
             set_message(ctx, "Anti-aliasing %s",
-                        ctx->config->antialiasing ? "on" : "off");
+                        config.antialiasing ? "on" : "off");
             return true;
         case cfgact_reload:
             if (image_list_reset()) {
@@ -450,7 +449,7 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
                 return false;
             }
         case cfgact_info:
-            ctx->config->show_info = !ctx->config->show_info;
+            config.show_info = !config.show_info;
             return true;
         case cfgact_exec: {
             const int rc = image_list_exec();

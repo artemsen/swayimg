@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "config.h"
+#include "types.h"
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -58,12 +58,11 @@ struct ui_handlers {
 
 /**
  * Create User Interface context.
- * @param cfg configuration instance
  * @param handlers event handlers
  * @return ui context or NULL on errors
  */
-struct ui* ui_create(const struct config* cfg,
-                     const struct ui_handlers* handlers);
+struct ui* ui_create(const struct ui_handlers* handlers);
+
 /**
  * Free UI context.
  * @param ctx UI context

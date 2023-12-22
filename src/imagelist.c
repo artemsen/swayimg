@@ -4,6 +4,8 @@
 
 #include "imagelist.h"
 
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
@@ -37,7 +39,6 @@ struct image_list {
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread
-    const struct config* config; ///< Configuration
 };
 static struct image_list ctx;
 
@@ -153,14 +154,14 @@ static size_t peek_next_file(size_t start, bool forward)
     while (true) {
         if (forward) {
             if (++index >= ctx.size) {
-                if (!ctx.config->loop) {
+                if (!config.loop) {
                     break;
                 }
                 index = 0;
             }
         } else {
             if (index-- == 0) {
-                if (!ctx.config->loop) {
+                if (!config.loop) {
                     break;
                 }
                 index = ctx.size - 1;
@@ -324,15 +325,13 @@ static void preloader_ctl(bool restart)
     }
 }
 
-bool image_list_init(const char** files, size_t num, const struct config* cfg)
+bool image_list_init(const char** files, size_t num)
 {
     const char* force_start = NULL;
 
-    ctx.config = cfg;
-
     if (num == 0) {
         // no input files specified, use all from the current directory
-        add_dir(".", cfg->recursive);
+        add_dir(".", config.recursive);
     } else if (num == 1 && strcmp(files[0], "-") == 0) {
         // pipe mode
         add_file(STDIN_FILE_NAME);
@@ -345,22 +344,22 @@ bool image_list_init(const char** files, size_t num, const struct config* cfg)
                         strerror(errno));
             } else {
                 if (S_ISDIR(file_stat.st_mode)) {
-                    add_dir(files[i], cfg->recursive);
+                    add_dir(files[i], config.recursive);
                 } else {
-                    if (!cfg->all_files) {
+                    if (!config.all_files) {
                         add_file(files[i]);
                     } else {
                         // add all files from the same directory
                         const char* delim = strrchr(files[i], '/');
                         const size_t len = delim ? delim - files[i] : 0;
                         if (len == 0) {
-                            add_dir(".", cfg->recursive);
+                            add_dir(".", config.recursive);
                         } else {
                             char* dir = malloc(len + 1);
                             if (dir) {
                                 memcpy(dir, files[i], len);
                                 dir[len] = 0;
-                                add_dir(dir, cfg->recursive);
+                                add_dir(dir, config.recursive);
                                 free(dir);
                             }
                         }
@@ -380,9 +379,9 @@ bool image_list_init(const char** files, size_t num, const struct config* cfg)
     }
 
     // sort or shuffle
-    if (cfg->order == cfgord_alpha) {
+    if (config.order == cfgord_alpha) {
         sort_list();
-    } else if (cfg->order == cfgord_random) {
+    } else if (config.order == cfgord_random) {
         shuffle_list();
     }
 
@@ -444,7 +443,7 @@ struct image_entry image_list_current(void)
 
 int image_list_exec(void)
 {
-    const char* template = ctx.config->exec_cmd;
+    const char* template = config.exec_cmd;
     const char* path = ctx.current->file_path;
     size_t pos = 0;
     size_t len = 0;

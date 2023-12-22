@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "config.h"
 #include "imagelist.h"
 #include "ui.h"
 
@@ -13,11 +12,10 @@ struct viewer;
 
 /**
  * Create User Interface context.
- * @param cfg configuration instance
  * @param ui UI context
  * @return viewer context or NULL on errors
  */
-struct viewer* viewer_create(struct config* cfg, struct ui* ui);
+struct viewer* viewer_create(struct ui* ui);
 
 /**
  * Free viewer context.

@@ -4,17 +4,16 @@
 
 #pragma once
 
-#include "config.h"
+#include "types.h"
 
 /** Font context. */
 struct font;
 
 /**
  * Initialize font.
- * @param ctx font context
  * @param cfg configuration instance
  */
-struct font* font_init(struct config* cfg);
+struct font* font_init(void);
 
 /**
  * Free font resources.

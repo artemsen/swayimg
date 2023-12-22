@@ -4,11 +4,7 @@
 
 #pragma once
 
-#include "config.h"
 #include "image.h"
-
-#include <stdbool.h>
-#include <stddef.h>
 
 /** Image entry. */
 struct image_entry {
@@ -30,10 +26,9 @@ enum list_jump {
  * Initialize the image list.
  * @param files list of input files
  * @param num number of files in the file list
- * @param cfg configuration instance
  * @return false if no one images loaded
  */
-bool image_list_init(const char** files, size_t num, const struct config* cfg);
+bool image_list_init(const char** files, size_t num);
 
 /**
  * Free the image list.

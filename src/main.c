@@ -71,10 +71,9 @@ static void print_help(void)
  * Parse command line arguments into configuration instance.
  * @param argc number of arguments to parse
  * @param argv arguments array
- * @param cfg configuration instance
  * @return index of the first non option argument, or -1 if error, or 0 to exit
  */
-static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
+static int parse_cmdargs(int argc, char* argv[])
 {
     struct option options[1 + (sizeof(arguments) / sizeof(arguments[0]))];
     char short_opts[(sizeof(arguments) / sizeof(arguments[0])) * 2];
@@ -103,62 +102,62 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
             case 'o':
-                if (!config_set_order(cfg, optarg)) {
+                if (!config_set_order(optarg)) {
                     return -1;
                 }
                 break;
             case 'r':
-                cfg->recursive = true;
+                config.recursive = true;
                 break;
             case 'a':
-                cfg->all_files = true;
+                config.all_files = true;
                 break;
             case 'l':
-                cfg->slideshow = true;
+                config.slideshow = true;
                 break;
             case 'f':
-                cfg->fullscreen = true;
+                config.fullscreen = true;
                 break;
             case 's':
-                if (!config_set_scale(cfg, optarg)) {
+                if (!config_set_scale(optarg)) {
                     return -1;
                 }
                 break;
             case 'b':
-                if (!config_set_background(cfg, optarg)) {
+                if (!config_set_background(optarg)) {
                     return -1;
                 }
                 break;
             case 'w':
-                if (!config_set_wndbkg(cfg, optarg)) {
+                if (!config_set_wndbkg(optarg)) {
                     return -1;
                 }
                 break;
             case 'p':
-                if (!config_set_wndpos(cfg, optarg)) {
+                if (!config_set_wndpos(optarg)) {
                     return -1;
                 }
                 break;
             case 'g':
-                if (!config_set_wndsize(cfg, optarg)) {
+                if (!config_set_wndsize(optarg)) {
                     return -1;
                 }
                 break;
             case 'i':
-                cfg->show_info = true;
+                config.show_info = true;
                 break;
             case 'e':
-                if (!config_set_exec_cmd(cfg, optarg)) {
+                if (!config_set_exec_cmd(optarg)) {
                     return -1;
                 }
                 break;
             case 'c':
-                if (!config_set_appid(cfg, optarg)) {
+                if (!config_set_appid(optarg)) {
                     return -1;
                 }
                 break;
             case 'n':
-                cfg->sway_wm = false;
+                config.sway_wm = false;
                 break;
             case 'v':
                 puts(APP_NAME " version " APP_VERSION ".");
@@ -178,15 +177,14 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
 
 /**
  * Setup window position via Sway IPC.
- * @param cfg configuration instance
  */
-static void sway_setup(struct config* cfg)
+static void sway_setup(void)
 {
     int ipc;
     struct rect wnd_parent;
     bool wnd_fullscreen = false;
-    const bool absolute =
-        cfg->geometry.x != SAME_AS_PARENT && cfg->geometry.y != SAME_AS_PARENT;
+    const bool absolute = config.geometry.x != SAME_AS_PARENT &&
+        config.geometry.y != SAME_AS_PARENT;
 
     ipc = sway_connect();
     if (ipc == INVALID_SWAY_IPC) {
@@ -194,21 +192,21 @@ static void sway_setup(struct config* cfg)
     }
 
     if (sway_current(ipc, &wnd_parent, &wnd_fullscreen)) {
-        cfg->fullscreen |= wnd_fullscreen;
-        if (cfg->geometry.x == SAME_AS_PARENT &&
-            cfg->geometry.y == SAME_AS_PARENT) {
-            cfg->geometry.x = wnd_parent.x;
-            cfg->geometry.y = wnd_parent.y;
+        config.fullscreen |= wnd_fullscreen;
+        if (config.geometry.x == SAME_AS_PARENT &&
+            config.geometry.y == SAME_AS_PARENT) {
+            config.geometry.x = wnd_parent.x;
+            config.geometry.y = wnd_parent.y;
         }
-        if (cfg->geometry.width == SAME_AS_PARENT &&
-            cfg->geometry.height == SAME_AS_PARENT) {
-            cfg->geometry.width = wnd_parent.width;
-            cfg->geometry.height = wnd_parent.height;
+        if (config.geometry.width == SAME_AS_PARENT &&
+            config.geometry.height == SAME_AS_PARENT) {
+            config.geometry.width = wnd_parent.width;
+            config.geometry.height = wnd_parent.height;
         }
     }
 
-    if (!cfg->fullscreen) {
-        sway_add_rules(ipc, cfg->app_id, cfg->geometry.x, cfg->geometry.y,
+    if (!config.fullscreen) {
+        sway_add_rules(ipc, config.app_id, config.geometry.x, config.geometry.y,
                        absolute);
     }
 
@@ -221,19 +219,15 @@ static void sway_setup(struct config* cfg)
 int main(int argc, char* argv[])
 {
     bool rc = false;
-    struct config* cfg = NULL;
     struct viewer* viewer = NULL;
     struct ui* ui = NULL;
     struct ui_handlers handlers;
     int index;
 
-    cfg = config_init();
-    if (!cfg) {
-        goto done;
-    }
+    config_init();
 
     // parse command arguments
-    index = parse_cmdargs(argc, argv, cfg);
+    index = parse_cmdargs(argc, argv);
     if (index == 0) {
         rc = true;
         goto done;
@@ -243,28 +237,29 @@ int main(int argc, char* argv[])
     }
 
     // compose file list
-    if (!image_list_init((const char**)&argv[index], argc - index, cfg)) {
+    if (!image_list_init((const char**)&argv[index], argc - index)) {
+        fprintf(stderr, "No images to view, exit\n");
         goto done;
     }
 
     // set window size form the first image
-    if (cfg->geometry.width == SAME_AS_IMAGE ||
-        cfg->geometry.height == SAME_AS_IMAGE) {
+    if (config.geometry.width == SAME_AS_IMAGE ||
+        config.geometry.height == SAME_AS_IMAGE) {
         struct image_entry first = image_list_current();
-        cfg->geometry.width = first.image->frames[0].width;
-        cfg->geometry.height = first.image->frames[0].height;
+        config.geometry.width = first.image->frames[0].width;
+        config.geometry.height = first.image->frames[0].height;
     }
 
-    if (cfg->sway_wm && !cfg->fullscreen) {
-        sway_setup(cfg);
+    if (config.sway_wm && !config.fullscreen) {
+        sway_setup();
     }
 
     // no sway or fullscreen
-    if (cfg->geometry.width == SAME_AS_PARENT &&
-        cfg->geometry.height == SAME_AS_PARENT) {
+    if (config.geometry.width == SAME_AS_PARENT &&
+        config.geometry.height == SAME_AS_PARENT) {
         struct image_entry first = image_list_current();
-        cfg->geometry.width = first.image->frames[0].width;
-        cfg->geometry.height = first.image->frames[0].height;
+        config.geometry.width = first.image->frames[0].width;
+        config.geometry.height = first.image->frames[0].height;
     }
 
     // create ui
@@ -272,13 +267,13 @@ int main(int argc, char* argv[])
     handlers.on_resize = viewer_on_resize;
     handlers.on_keyboard = viewer_on_keyboard;
     handlers.on_timer = viewer_on_timer;
-    ui = ui_create(cfg, &handlers);
+    ui = ui_create(&handlers);
     if (!ui) {
         goto done;
     }
 
     // create viewer
-    viewer = viewer_create(cfg, ui);
+    viewer = viewer_create(ui);
     if (!viewer) {
         goto done;
     }
@@ -291,7 +286,7 @@ done:
     viewer_free(viewer);
     ui_free(ui);
     image_list_free();
-    config_free(cfg);
+    config_free();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }

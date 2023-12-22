@@ -5,6 +5,7 @@
 #include "ui.h"
 
 #include "buildcfg.h"
+#include "config.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>
@@ -566,8 +567,7 @@ static const struct wl_registry_listener registry_listener = {
 
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
-struct ui* ui_create(const struct config* cfg,
-                     const struct ui_handlers* handlers)
+struct ui* ui_create(const struct ui_handlers* handlers)
 {
     struct ui* ctx;
 
@@ -580,8 +580,8 @@ struct ui* ui_create(const struct config* cfg,
     ctx->repeat.fd = -1;
     ctx->timer_animation = -1;
     ctx->timer_slideshow = -1;
-    ctx->wnd.width = cfg->geometry.width ? cfg->geometry.width : 800;
-    ctx->wnd.height = cfg->geometry.height ? cfg->geometry.height : 600;
+    ctx->wnd.width = config.geometry.width ? config.geometry.width : 800;
+    ctx->wnd.height = config.geometry.height ? config.geometry.height : 600;
     ctx->handlers = handlers;
 
     ctx->wl.display = wl_display_connect(NULL);
@@ -617,8 +617,8 @@ struct ui* ui_create(const struct config* cfg,
     xdg_surface_add_listener(ctx->xdg.surface, &xdg_surface_listener, ctx);
     ctx->xdg.toplevel = xdg_surface_get_toplevel(ctx->xdg.surface);
     xdg_toplevel_add_listener(ctx->xdg.toplevel, &xdg_toplevel_listener, ctx);
-    xdg_toplevel_set_app_id(ctx->xdg.toplevel, cfg->app_id);
-    if (cfg->fullscreen) {
+    xdg_toplevel_set_app_id(ctx->xdg.toplevel, config.app_id);
+    if (config.fullscreen) {
         xdg_toplevel_set_fullscreen(ctx->xdg.toplevel, NULL);
     }
 
