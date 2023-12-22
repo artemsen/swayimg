@@ -5,6 +5,7 @@
 #include "buildcfg.h"
 #include "config.h"
 #include "formats/loader.h"
+#include "font.h"
 #include "sway.h"
 #include "viewer.h"
 
@@ -242,6 +243,8 @@ int main(int argc, char* argv[])
         goto done;
     }
 
+    font_init();
+
     // set window size form the first image
     if (config.geometry.width == SAME_AS_IMAGE ||
         config.geometry.height == SAME_AS_IMAGE) {
@@ -286,6 +289,7 @@ done:
     viewer_free(viewer);
     ui_free(ui);
     image_list_free();
+    font_free();
     config_free();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;

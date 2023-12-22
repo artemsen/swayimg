@@ -29,7 +29,6 @@ struct image_desc {
 
 /** Viewer context. */
 struct viewer {
-    struct canvas* canvas;  ///< Canvas context
     size_t frame;           ///< Index of current frame
     bool animation;         ///< Animation is in progress
     bool slideshow;         ///< Slideshow is in progress
@@ -162,7 +161,7 @@ static void reset_viewport(struct viewer* ctx)
         default:
             scale = cs_fit_or100;
     }
-    canvas_reset_image(ctx->canvas, frame->width, frame->height, scale);
+    canvas_reset_image(frame->width, frame->height, scale);
 }
 
 /**
@@ -272,13 +271,6 @@ struct viewer* viewer_create(struct ui* ui)
         return NULL;
     }
 
-    ctx->canvas = canvas_init();
-
-    if (!ctx->canvas) {
-        viewer_free(ctx);
-        return NULL;
-    }
-
     if (config.slideshow) {
         slideshow_ctl(ctx, ui, true); // start slide show
     }
@@ -289,7 +281,6 @@ struct viewer* viewer_create(struct ui* ui)
 void viewer_free(struct viewer* ctx)
 {
     if (ctx) {
-        canvas_free(ctx->canvas);
         free(ctx->message);
         free(ctx);
     }
@@ -300,32 +291,32 @@ void viewer_on_redraw(void* data, argb_t* window)
     struct viewer* ctx = data;
     const struct image_entry entry = image_list_current();
 
-    canvas_clear(ctx->canvas, window);
-    canvas_draw_image(ctx->canvas, entry.image->alpha,
-                      entry.image->frames[ctx->frame].data, window);
+    canvas_clear(window);
+    canvas_draw_image(entry.image->alpha, entry.image->frames[ctx->frame].data,
+                      window);
 
     // image meta information: file name, format, exif, etc
     if (config.show_info) {
         char text[32];
-        const int scale = canvas_get_scale(ctx->canvas) * 100;
+        const int scale = canvas_get_scale() * 100;
 
         // print meta info
-        canvas_print_info(ctx->canvas, window, ctx->desc.size, ctx->desc.table);
+        canvas_print_info(window, ctx->desc.size, ctx->desc.table);
 
         // print current scale
         snprintf(text, sizeof(text), "%d%%", scale);
-        canvas_print_line(ctx->canvas, window, cc_bottom_left, text);
+        canvas_print_line(window, cc_bottom_left, text);
         // print file number in list
         if (image_list_size() > 1) {
             snprintf(text, sizeof(text), "%lu of %lu", entry.index + 1,
                      image_list_size());
-            canvas_print_line(ctx->canvas, window, cc_top_right, text);
+            canvas_print_line(window, cc_top_right, text);
         }
     }
 
     // one-time rendered notification message
     if (ctx->message) {
-        canvas_print_line(ctx->canvas, window, cc_bottom_right, ctx->message);
+        canvas_print_line(window, cc_bottom_right, ctx->message);
         free(ctx->message);
         ctx->message = NULL;
     }
@@ -336,7 +327,7 @@ void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
 {
     struct viewer* ctx = data;
 
-    canvas_resize_window(ctx->canvas, width, height, scale);
+    canvas_reset_window(width, height, scale);
     reset_viewport(ctx);
     reset_state(ctx, ui);
 }
@@ -391,41 +382,41 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             ui_set_fullscreen(ui, config.fullscreen);
             return false;
         case cfgact_step_left:
-            return canvas_move(ctx->canvas, cm_step_left);
+            return canvas_move(cm_step_left);
         case cfgact_step_right:
-            return canvas_move(ctx->canvas, cm_step_right);
+            return canvas_move(cm_step_right);
         case cfgact_step_up:
-            return canvas_move(ctx->canvas, cm_step_up);
+            return canvas_move(cm_step_up);
         case cfgact_step_down:
-            return canvas_move(ctx->canvas, cm_step_down);
+            return canvas_move(cm_step_down);
         case cfgact_zoom_in:
-            canvas_set_scale(ctx->canvas, cs_zoom_in);
+            canvas_set_scale(cs_zoom_in);
             return true;
         case cfgact_zoom_out:
-            canvas_set_scale(ctx->canvas, cs_zoom_out);
+            canvas_set_scale(cs_zoom_out);
             return true;
         case cfgact_zoom_optimal:
-            canvas_set_scale(ctx->canvas, cs_fit_or100);
+            canvas_set_scale(cs_fit_or100);
             return true;
         case cfgact_zoom_fit:
-            canvas_set_scale(ctx->canvas, cs_fit_window);
+            canvas_set_scale(cs_fit_window);
             return true;
         case cfgact_zoom_fill:
-            canvas_set_scale(ctx->canvas, cs_fill_window);
+            canvas_set_scale(cs_fill_window);
             return true;
         case cfgact_zoom_real:
-            canvas_set_scale(ctx->canvas, cs_real_size);
+            canvas_set_scale(cs_real_size);
             return true;
         case cfgact_zoom_reset:
             reset_viewport(ctx);
             return true;
         case cfgact_rotate_left:
             image_rotate(image_list_current().image, 270);
-            canvas_swap_image_size(ctx->canvas);
+            canvas_swap_image_size();
             return true;
         case cfgact_rotate_right:
             image_rotate(image_list_current().image, 90);
-            canvas_swap_image_size(ctx->canvas);
+            canvas_swap_image_size();
             return true;
         case cfgact_flip_vertical:
             image_flip_vertical(image_list_current().image);
