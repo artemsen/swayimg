@@ -72,7 +72,7 @@ struct canvas* canvas_init(void)
 
     ctx = calloc(1, sizeof(*ctx));
     if (ctx) {
-        ctx->font = font_init();
+        font_init();
     }
 
     return ctx;
@@ -81,7 +81,7 @@ struct canvas* canvas_init(void)
 void canvas_free(struct canvas* ctx)
 {
     if (ctx) {
-        font_free(ctx->font);
+        font_free();
         free(ctx);
     }
 }
@@ -95,7 +95,7 @@ bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height,
     ctx->window.height = height;
 
     ctx->wnd_scale = scale;
-    font_scale(ctx->font, scale);
+    font_scale(scale);
 
     fix_viewport(ctx);
 
@@ -333,22 +333,20 @@ void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
 
     switch (corner) {
         case cc_top_right:
-            pos.x = ctx->window.width - font_text_width(ctx->font, text, 0) -
-                TEXT_PADDING;
+            pos.x = ctx->window.width - font_text_width(text, 0) - TEXT_PADDING;
             pos.y = TEXT_PADDING;
             break;
         case cc_bottom_left:
             pos.x = TEXT_PADDING;
-            pos.y = ctx->window.height - font_height(ctx->font) - TEXT_PADDING;
+            pos.y = ctx->window.height - font_height() - TEXT_PADDING;
             break;
         case cc_bottom_right:
-            pos.x = ctx->window.width - font_text_width(ctx->font, text, 0) -
-                TEXT_PADDING;
-            pos.y = ctx->window.height - font_height(ctx->font) - TEXT_PADDING;
+            pos.x = ctx->window.width - font_text_width(text, 0) - TEXT_PADDING;
+            pos.y = ctx->window.height - font_height() - TEXT_PADDING;
             break;
     }
 
-    font_print(ctx->font, wnd, &ctx->window, &pos, text, 0);
+    font_print(wnd, &ctx->window, &pos, text, 0);
 }
 
 void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
@@ -363,17 +361,15 @@ void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
         if (key && *key) {
             size_t width;
             struct point pos_delim;
-            width = font_print(ctx->font, wnd, &ctx->window, &pos, key, 0);
+            width = font_print(wnd, &ctx->window, &pos, key, 0);
             pos_delim.x = TEXT_PADDING + width;
             pos_delim.y = pos.y;
-            width +=
-                font_print(ctx->font, wnd, &ctx->window, &pos_delim, ":", 0) *
-                3;
+            width += font_print(wnd, &ctx->window, &pos_delim, ":", 0) * 3;
             if (width > val_offset) {
                 val_offset = width;
             }
         }
-        pos.y += font_height(ctx->font);
+        pos.y += font_height();
     }
 
     // draw values block
@@ -382,9 +378,9 @@ void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
     for (size_t i = 0; i < num; ++i) {
         const char* value = info[i].value;
         if (value && *value) {
-            font_print(ctx->font, wnd, &ctx->window, &pos, value, 0);
+            font_print(wnd, &ctx->window, &pos, value, 0);
         }
-        pos.y += font_height(ctx->font);
+        pos.y += font_height();
     }
 }
 
