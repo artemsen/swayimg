@@ -90,7 +90,13 @@ struct ui {
     // global state
     enum state state;
 };
-static struct ui ctx;
+
+static struct ui ctx = {
+    .wnd.scale = 1,
+    .repeat.fd = -1,
+    .timer_animation = -1,
+    .timer_slideshow = -1,
+};
 
 /**
  * Fill timespec structure.
@@ -547,10 +553,6 @@ static const struct wl_registry_listener registry_listener = {
 
 bool ui_init(void)
 {
-    ctx.wnd.scale = 1;
-    ctx.repeat.fd = -1;
-    ctx.timer_animation = -1;
-    ctx.timer_slideshow = -1;
     ctx.wnd.width = config.geometry.width ? config.geometry.width : 800;
     ctx.wnd.height = config.geometry.height ? config.geometry.height : 600;
 
@@ -661,7 +663,9 @@ void ui_free(void)
     if (ctx.wl.registry) {
         wl_registry_destroy(ctx.wl.registry);
     }
-    wl_display_disconnect(ctx.wl.display);
+    if (ctx.wl.display) {
+        wl_display_disconnect(ctx.wl.display);
+    }
 }
 
 bool ui_run(void)
