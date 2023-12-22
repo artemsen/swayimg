@@ -28,14 +28,13 @@ struct image_desc {
 
 /** Viewer context. */
 struct viewer {
-    struct config* config;   ///< Configuration
-    struct image_list* list; ///< List of images to view
-    struct canvas* canvas;   ///< Canvas context
-    size_t frame;            ///< Index of current frame
-    bool animation;          ///< Animation is in progress
-    bool slideshow;          ///< Slideshow is in progress
-    struct image_desc desc;  ///< Text image description
-    char* message;           ///< One-time rendered notification message
+    struct config* config;  ///< Configuration
+    struct canvas* canvas;  ///< Canvas context
+    size_t frame;           ///< Index of current frame
+    bool animation;         ///< Animation is in progress
+    bool slideshow;         ///< Slideshow is in progress
+    struct image_desc desc; ///< Text image description
+    char* message;          ///< One-time rendered notification message
 };
 
 /**
@@ -45,7 +44,7 @@ struct viewer {
  */
 static void set_frame(struct viewer* ctx, size_t index)
 {
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
     const struct image_frame* frame = &entry.image->frames[index];
 
     ctx->frame = index;
@@ -68,7 +67,7 @@ static void set_frame(struct viewer* ctx, size_t index)
 static bool next_frame(struct viewer* ctx, bool forward)
 {
     size_t index = ctx->frame;
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
 
     if (forward) {
         if (++index >= entry.image->num_frames) {
@@ -110,7 +109,7 @@ static void slideshow_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 static void animation_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 {
     if (enable) {
-        const struct image_entry entry = image_list_current(ctx->list);
+        const struct image_entry entry = image_list_current();
         const size_t duration = entry.image->frames[ctx->frame].duration;
         ctx->animation = (entry.image->num_frames > 1 && duration);
         if (ctx->animation) {
@@ -123,13 +122,12 @@ static void animation_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 
 /**
  * Update window title.
- * @param ctx viewer context
  * @param ui UI context
  */
-static void update_window_title(struct viewer* ctx, struct ui* ui)
+static void update_window_title(struct ui* ui)
 {
     const char* prefix = APP_NAME ": ";
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
     const size_t len = strlen(prefix) + strlen(entry.image->file_name) + 1;
     char* title = malloc(len);
 
@@ -147,7 +145,7 @@ static void update_window_title(struct viewer* ctx, struct ui* ui)
  */
 static void reset_viewport(struct viewer* ctx)
 {
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
     const struct image_frame* frame = &entry.image->frames[ctx->frame];
     enum canvas_scale scale;
 
@@ -174,7 +172,7 @@ static void reset_viewport(struct viewer* ctx)
  */
 static void reset_state(struct viewer* ctx, struct ui* ui)
 {
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
     const struct image* image = entry.image;
     struct image_desc* desc = &ctx->desc;
     struct info_table* table = desc->table;
@@ -212,7 +210,7 @@ static void reset_state(struct viewer* ctx, struct ui* ui)
     ctx->animation = false;
     set_frame(ctx, 0);
     reset_viewport(ctx);
-    update_window_title(ctx, ui);
+    update_window_title(ui);
     animation_ctl(ctx, ui, true);
 }
 
@@ -225,7 +223,7 @@ static void reset_state(struct viewer* ctx, struct ui* ui)
  */
 static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
 {
-    if (!image_list_jump(ctx->list, jump)) {
+    if (!image_list_jump(jump)) {
         return false;
     }
     slideshow_ctl(ctx, ui, ctx->slideshow);
@@ -264,8 +262,7 @@ set_message(struct viewer* ctx, const char* fmt, ...)
     }
 }
 
-struct viewer* viewer_create(struct config* cfg, struct image_list* list,
-                             struct ui* ui)
+struct viewer* viewer_create(struct config* cfg, struct ui* ui)
 {
     struct viewer* ctx;
 
@@ -276,7 +273,6 @@ struct viewer* viewer_create(struct config* cfg, struct image_list* list,
     }
 
     ctx->config = cfg;
-    ctx->list = list;
     ctx->canvas = canvas_init(cfg);
 
     if (!ctx->canvas) {
@@ -303,7 +299,7 @@ void viewer_free(struct viewer* ctx)
 void viewer_on_redraw(void* data, argb_t* window)
 {
     struct viewer* ctx = data;
-    const struct image_entry entry = image_list_current(ctx->list);
+    const struct image_entry entry = image_list_current();
 
     canvas_clear(ctx->canvas, window);
     canvas_draw_image(ctx->canvas, entry.image->alpha,
@@ -321,9 +317,9 @@ void viewer_on_redraw(void* data, argb_t* window)
         snprintf(text, sizeof(text), "%d%%", scale);
         canvas_print_line(ctx->canvas, window, cc_bottom_left, text);
         // print file number in list
-        if (image_list_size(ctx->list) > 1) {
+        if (image_list_size() > 1) {
             snprintf(text, sizeof(text), "%lu of %lu", entry.index + 1,
-                     image_list_size(ctx->list));
+                     image_list_size());
             canvas_print_line(ctx->canvas, window, cc_top_right, text);
         }
     }
@@ -425,18 +421,18 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             reset_viewport(ctx);
             return true;
         case cfgact_rotate_left:
-            image_rotate(image_list_current(ctx->list).image, 270);
+            image_rotate(image_list_current().image, 270);
             canvas_swap_image_size(ctx->canvas);
             return true;
         case cfgact_rotate_right:
-            image_rotate(image_list_current(ctx->list).image, 90);
+            image_rotate(image_list_current().image, 90);
             canvas_swap_image_size(ctx->canvas);
             return true;
         case cfgact_flip_vertical:
-            image_flip_vertical(image_list_current(ctx->list).image);
+            image_flip_vertical(image_list_current().image);
             return true;
         case cfgact_flip_horizontal:
-            image_flip_horizontal(image_list_current(ctx->list).image);
+            image_flip_horizontal(image_list_current().image);
             return true;
         case cfgact_antialiasing:
             ctx->config->antialiasing = !ctx->config->antialiasing;
@@ -444,7 +440,7 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
                         ctx->config->antialiasing ? "on" : "off");
             return true;
         case cfgact_reload:
-            if (image_list_reset(ctx->list)) {
+            if (image_list_reset()) {
                 reset_state(ctx, ui);
                 set_message(ctx, "Image reloaded");
                 return true;
@@ -457,13 +453,13 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             ctx->config->show_info = !ctx->config->show_info;
             return true;
         case cfgact_exec: {
-            const int rc = image_list_exec(ctx->list);
+            const int rc = image_list_exec();
             if (rc) {
                 set_message(ctx, "Execute failed: code %d", rc);
             } else {
                 set_message(ctx, "Execute success");
             }
-            if (!image_list_reset(ctx->list)) {
+            if (!image_list_reset()) {
                 printf("No more images, exit\n");
                 ui_stop(ui);
                 return false;

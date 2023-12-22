@@ -10,9 +10,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/** Image list context. */
-struct image_list;
-
 /** Image entry. */
 struct image_entry {
     size_t index;        ///< Entry index in the list
@@ -34,48 +31,42 @@ enum list_jump {
  * @param files list of input files
  * @param num number of files in the file list
  * @param cfg configuration instance
- * @return created image list context
+ * @return false if no one images loaded
  */
-struct image_list* image_list_init(const char** files, size_t num,
-                                   const struct config* cfg);
+bool image_list_init(const char** files, size_t num, const struct config* cfg);
 
 /**
  * Free the image list.
- * @param ctx image list context
  */
-void image_list_free(struct image_list* ctx);
+void image_list_free(void);
 
 /**
  * Get image list size.
  * @return tital number of entries in the list include non-image files
  */
-size_t image_list_size(const struct image_list* ctx);
+size_t image_list_size(void);
 
 /**
  * Get current entry in the image list.
- * @param ctx image list context
  * @return current entry description
  */
-struct image_entry image_list_current(const struct image_list* ctx);
+struct image_entry image_list_current(void);
 
 /**
  * Execute system command for the current entry.
- * @param ctx image list context
  * @return error code from the system call
  */
-int image_list_exec(const struct image_list* ctx);
+int image_list_exec(void);
 
 /**
  * Reset cache and reload current image.
- * @param ctx image list context
  * @return false if reset failed (no more images)
  */
-bool image_list_reset(struct image_list* ctx);
+bool image_list_reset(void);
 
 /**
  * Move through image list.
- * @param ctx image list context
  * @param jump position to set
  * @return false if iterator can not be moved
  */
-bool image_list_jump(struct image_list* ctx, enum list_jump jump);
+bool image_list_jump(enum list_jump jump);

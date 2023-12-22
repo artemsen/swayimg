@@ -14,12 +14,10 @@ struct viewer;
 /**
  * Create User Interface context.
  * @param cfg configuration instance
- * @param list list of images to view
  * @param ui UI context
  * @return viewer context or NULL on errors
  */
-struct viewer* viewer_create(struct config* cfg, struct image_list* list,
-                             struct ui* ui);
+struct viewer* viewer_create(struct config* cfg, struct ui* ui);
 
 /**
  * Free viewer context.

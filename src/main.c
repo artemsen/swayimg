@@ -222,7 +222,6 @@ int main(int argc, char* argv[])
 {
     bool rc = false;
     struct config* cfg = NULL;
-    struct image_list* list = NULL;
     struct viewer* viewer = NULL;
     struct ui* ui = NULL;
     struct ui_handlers handlers;
@@ -244,15 +243,14 @@ int main(int argc, char* argv[])
     }
 
     // compose file list
-    list = image_list_init((const char**)&argv[index], argc - index, cfg);
-    if (!list) {
+    if (!image_list_init((const char**)&argv[index], argc - index, cfg)) {
         goto done;
     }
 
     // set window size form the first image
     if (cfg->geometry.width == SAME_AS_IMAGE ||
         cfg->geometry.height == SAME_AS_IMAGE) {
-        struct image_entry first = image_list_current(list);
+        struct image_entry first = image_list_current();
         cfg->geometry.width = first.image->frames[0].width;
         cfg->geometry.height = first.image->frames[0].height;
     }
@@ -264,7 +262,7 @@ int main(int argc, char* argv[])
     // no sway or fullscreen
     if (cfg->geometry.width == SAME_AS_PARENT &&
         cfg->geometry.height == SAME_AS_PARENT) {
-        struct image_entry first = image_list_current(list);
+        struct image_entry first = image_list_current();
         cfg->geometry.width = first.image->frames[0].width;
         cfg->geometry.height = first.image->frames[0].height;
     }
@@ -280,7 +278,7 @@ int main(int argc, char* argv[])
     }
 
     // create viewer
-    viewer = viewer_create(cfg, list, ui);
+    viewer = viewer_create(cfg, ui);
     if (!viewer) {
         goto done;
     }
@@ -292,7 +290,7 @@ int main(int argc, char* argv[])
 done:
     viewer_free(viewer);
     ui_free(ui);
-    image_list_free(list);
+    image_list_free();
     config_free(cfg);
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
