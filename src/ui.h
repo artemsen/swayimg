@@ -6,58 +6,14 @@
 
 #include "types.h"
 
-#include <xkbcommon/xkbcommon.h>
-
-/** UI context */
-struct ui;
-
 /** Available timers. */
 enum ui_timer { ui_timer_animation, ui_timer_slideshow };
 
-/** UI event handlers. */
-struct ui_handlers {
-    /**
-     * Redraw handler.
-     * @param data callback data pointer
-     * @param window pointer to window's pixel data
-     */
-    void (*on_redraw)(void* data, argb_t* window);
-
-    /**
-     * Window resize handler.
-     * @param data callback data pointer
-     * @param width,height new window size
-     * @param scale window scale factor
-     */
-    void (*on_resize)(void* data, size_t width, size_t height, size_t scale);
-
-    /**
-     * Key press handler.
-     * @param data callback data pointer
-     * @param key code of key pressed
-     * @return true if state has changed and window should be redrawn
-     */
-    bool (*on_keyboard)(void* data, xkb_keysym_t key);
-
-    /**
-     * Timer event handler.
-     * @param data callback data pointer
-     * @param timer timer type
-     */
-    void (*on_timer)(void* data, enum ui_timer timer);
-
-    /**
-     * Pointer used for callback data.
-     */
-    void* data;
-};
-
 /**
  * Create User Interface context.
- * @param handlers event handlers
  * @return false on errors
  */
-bool ui_create(const struct ui_handlers* handlers);
+bool ui_init(void);
 
 /**
  * Free UI context.

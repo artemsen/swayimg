@@ -6,6 +6,7 @@
 
 #include "buildcfg.h"
 #include "config.h"
+#include "viewer.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>
@@ -85,9 +86,6 @@ struct ui {
     // timers
     int timer_animation;
     int timer_slideshow;
-
-    // event handlers
-    const struct ui_handlers* handlers;
 
     // global state
     enum state state;
@@ -189,8 +187,7 @@ static bool recreate_buffers(void)
     }
 
     ctx.wnd.current = ctx.wnd.buffer0;
-    ctx.handlers->on_resize(ctx.handlers->data, ctx.wnd.width, ctx.wnd.height,
-                            ctx.wnd.scale);
+    viewer_on_resize(ctx.wnd.width, ctx.wnd.height, ctx.wnd.scale);
     return true;
 }
 
@@ -210,7 +207,7 @@ static void redraw(void)
 
     // draw to window buffer
     wnd_data = wl_buffer_get_user_data(ctx.wnd.current);
-    ctx.handlers->on_redraw(ctx.handlers->data, wnd_data);
+    viewer_on_redraw(wnd_data);
 
     // show window buffer
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
@@ -287,7 +284,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
         if (keysym != XKB_KEY_NoSymbol) {
             // handle key in viewer
-            if (ctx.handlers->on_keyboard(ctx.handlers->data, keysym)) {
+            if (viewer_on_keyboard(keysym)) {
                 redraw();
             }
             // handle key repeat
@@ -331,7 +328,7 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
 {
     xkb_keysym_t key = value > 0 ? XKB_KEY_SunPageDown : XKB_KEY_SunPageUp;
 
-    if (ctx.handlers->on_keyboard(ctx.handlers->data, key)) {
+    if (viewer_on_keyboard(key)) {
         redraw();
     }
 }
@@ -548,7 +545,7 @@ static const struct wl_registry_listener registry_listener = {
 
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
-bool ui_create(const struct ui_handlers* handlers)
+bool ui_init(void)
 {
     ctx.wnd.scale = 1;
     ctx.repeat.fd = -1;
@@ -556,7 +553,6 @@ bool ui_create(const struct ui_handlers* handlers)
     ctx.timer_slideshow = -1;
     ctx.wnd.width = config.geometry.width ? config.geometry.width : 800;
     ctx.wnd.height = config.geometry.height ? config.geometry.height : 600;
-    ctx.handlers = handlers;
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {
@@ -706,8 +702,7 @@ bool ui_run(void)
                 sizeof(repeats)) {
                 bool handled = false;
                 while (repeats--) {
-                    handled |= ctx.handlers->on_keyboard(ctx.handlers->data,
-                                                         ctx.repeat.key);
+                    handled |= viewer_on_keyboard(ctx.repeat.key);
                 }
                 if (handled) {
                     redraw();
@@ -719,14 +714,14 @@ bool ui_run(void)
         if (fds[2].revents & POLLIN) {
             const struct itimerspec ts = { 0 };
             timerfd_settime(ctx.timer_animation, 0, &ts, NULL);
-            ctx.handlers->on_timer(ctx.handlers->data, ui_timer_animation);
+            viewer_on_anim_timer();
             redraw();
         }
         // slideshow timer
         if (fds[3].revents & POLLIN) {
             const struct itimerspec ts = { 0 };
             timerfd_settime(ctx.timer_slideshow, 0, &ts, NULL);
-            ctx.handlers->on_timer(ctx.handlers->data, ui_timer_slideshow);
+            viewer_on_ss_timer();
             redraw();
         }
     }

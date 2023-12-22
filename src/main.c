@@ -6,7 +6,9 @@
 #include "config.h"
 #include "font.h"
 #include "formats/loader.h"
+#include "imagelist.h"
 #include "sway.h"
+#include "ui.h"
 #include "viewer.h"
 
 #include <getopt.h>
@@ -220,8 +222,6 @@ static void sway_setup(void)
 int main(int argc, char* argv[])
 {
     bool rc = false;
-    struct viewer* viewer = NULL;
-    struct ui_handlers handlers;
     int index;
 
     config_init();
@@ -242,6 +242,7 @@ int main(int argc, char* argv[])
         goto done;
     }
 
+    // load font
     font_init();
 
     // set window size form the first image
@@ -264,28 +265,20 @@ int main(int argc, char* argv[])
         config.geometry.height = first.image->frames[0].height;
     }
 
-    // create ui
-    handlers.on_redraw = viewer_on_redraw;
-    handlers.on_resize = viewer_on_resize;
-    handlers.on_keyboard = viewer_on_keyboard;
-    handlers.on_timer = viewer_on_timer;
-    if (!ui_create(&handlers)) {
+    // initialize ui
+    if (!ui_init()) {
         goto done;
     }
 
     // create viewer
-    viewer = viewer_create();
-    if (!viewer) {
-        goto done;
-    }
-    handlers.data = viewer;
+    viewer_init();
 
     // run main loop
     rc = ui_run();
 
 done:
-    viewer_free(viewer);
     ui_free();
+    viewer_free();
     font_free();
     image_list_free();
     config_free();
