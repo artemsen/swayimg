@@ -4,8 +4,8 @@
 
 #include "buildcfg.h"
 #include "config.h"
-#include "formats/loader.h"
 #include "font.h"
+#include "formats/loader.h"
 #include "sway.h"
 #include "viewer.h"
 
@@ -221,7 +221,6 @@ int main(int argc, char* argv[])
 {
     bool rc = false;
     struct viewer* viewer = NULL;
-    struct ui* ui = NULL;
     struct ui_handlers handlers;
     int index;
 
@@ -270,26 +269,25 @@ int main(int argc, char* argv[])
     handlers.on_resize = viewer_on_resize;
     handlers.on_keyboard = viewer_on_keyboard;
     handlers.on_timer = viewer_on_timer;
-    ui = ui_create(&handlers);
-    if (!ui) {
+    if (!ui_create(&handlers)) {
         goto done;
     }
 
     // create viewer
-    viewer = viewer_create(ui);
+    viewer = viewer_create();
     if (!viewer) {
         goto done;
     }
     handlers.data = viewer;
 
     // run main loop
-    rc = ui_run(ui);
+    rc = ui_run();
 
 done:
     viewer_free(viewer);
-    ui_free(ui);
-    image_list_free();
+    ui_free();
     font_free();
+    image_list_free();
     config_free();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;

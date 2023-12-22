@@ -88,31 +88,29 @@ static bool next_frame(struct viewer* ctx, bool forward)
 /**
  * Start slide show.
  * @param ctx viewer context
- * @param ui UI context
  * @param enable state to set
  */
-static void slideshow_ctl(struct viewer* ctx, struct ui* ui, bool enable)
+static void slideshow_ctl(struct viewer* ctx, bool enable)
 {
     ctx->slideshow = enable;
     if (enable) {
-        ui_set_timer(ui, ui_timer_slideshow, config.slideshow_sec * 1000);
+        ui_set_timer(ui_timer_slideshow, config.slideshow_sec * 1000);
     }
 }
 
 /**
  * Start animation if image supports it.
  * @param ctx viewer context
- * @param ui UI context
  * @param enable state to set
  */
-static void animation_ctl(struct viewer* ctx, struct ui* ui, bool enable)
+static void animation_ctl(struct viewer* ctx, bool enable)
 {
     if (enable) {
         const struct image_entry entry = image_list_current();
         const size_t duration = entry.image->frames[ctx->frame].duration;
         ctx->animation = (entry.image->num_frames > 1 && duration);
         if (ctx->animation) {
-            ui_set_timer(ui, ui_timer_animation, duration);
+            ui_set_timer(ui_timer_animation, duration);
         }
     } else {
         ctx->animation = false;
@@ -121,9 +119,8 @@ static void animation_ctl(struct viewer* ctx, struct ui* ui, bool enable)
 
 /**
  * Update window title.
- * @param ui UI context
  */
-static void update_window_title(struct ui* ui)
+static void update_window_title(void)
 {
     const char* prefix = APP_NAME ": ";
     const struct image_entry entry = image_list_current();
@@ -133,7 +130,7 @@ static void update_window_title(struct ui* ui)
     if (title) {
         strcpy(title, prefix);
         strcat(title, entry.image->file_name);
-        ui_set_title(ui, title);
+        ui_set_title(title);
         free(title);
     }
 }
@@ -167,9 +164,8 @@ static void reset_viewport(struct viewer* ctx)
 /**
  * Reset state after loading new file.
  * @param ctx viewer context
- * @param ui UI context
  */
-static void reset_state(struct viewer* ctx, struct ui* ui)
+static void reset_state(struct viewer* ctx)
 {
     const struct image_entry entry = image_list_current();
     const struct image* image = entry.image;
@@ -209,24 +205,23 @@ static void reset_state(struct viewer* ctx, struct ui* ui)
     ctx->animation = false;
     set_frame(ctx, 0);
     reset_viewport(ctx);
-    update_window_title(ui);
-    animation_ctl(ctx, ui, true);
+    update_window_title();
+    animation_ctl(ctx, true);
 }
 
 /**
  * Load next file.
  * @param ctx viewer context
- * @param ui UI context
  * @param jump position of the next file in list
  * @return false if file was not loaded
  */
-static bool next_file(struct viewer* ctx, struct ui* ui, enum list_jump jump)
+static bool next_file(struct viewer* ctx, enum list_jump jump)
 {
     if (!image_list_jump(jump)) {
         return false;
     }
-    slideshow_ctl(ctx, ui, ctx->slideshow);
-    reset_state(ctx, ui);
+    slideshow_ctl(ctx, ctx->slideshow);
+    reset_state(ctx);
     return true;
 }
 
@@ -261,7 +256,7 @@ set_message(struct viewer* ctx, const char* fmt, ...)
     }
 }
 
-struct viewer* viewer_create(struct ui* ui)
+struct viewer* viewer_create(void)
 {
     struct viewer* ctx;
 
@@ -272,7 +267,7 @@ struct viewer* viewer_create(struct ui* ui)
     }
 
     if (config.slideshow) {
-        slideshow_ctl(ctx, ui, true); // start slide show
+        slideshow_ctl(ctx, true); // start slide show
     }
 
     return ctx;
@@ -322,17 +317,16 @@ void viewer_on_redraw(void* data, argb_t* window)
     }
 }
 
-void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
-                      size_t scale)
+void viewer_on_resize(void* data, size_t width, size_t height, size_t scale)
 {
     struct viewer* ctx = data;
 
     canvas_reset_window(width, height, scale);
     reset_viewport(ctx);
-    reset_state(ctx, ui);
+    reset_state(ctx);
 }
 
-bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
+bool viewer_on_keyboard(void* data, xkb_keysym_t key)
 {
     struct viewer* ctx = data;
     enum config_action action = cfgact_none;
@@ -354,32 +348,32 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
         case cfgact_none:
             return false;
         case cfgact_first_file:
-            return next_file(ctx, ui, jump_first_file);
+            return next_file(ctx, jump_first_file);
         case cfgact_last_file:
-            return next_file(ctx, ui, jump_last_file);
+            return next_file(ctx, jump_last_file);
         case cfgact_prev_dir:
-            return next_file(ctx, ui, jump_prev_dir);
+            return next_file(ctx, jump_prev_dir);
         case cfgact_next_dir:
-            return next_file(ctx, ui, jump_next_dir);
+            return next_file(ctx, jump_next_dir);
         case cfgact_prev_file:
-            return next_file(ctx, ui, jump_prev_file);
+            return next_file(ctx, jump_prev_file);
         case cfgact_next_file:
-            return next_file(ctx, ui, jump_next_file);
+            return next_file(ctx, jump_next_file);
         case cfgact_prev_frame:
         case cfgact_next_frame:
-            slideshow_ctl(ctx, ui, false);
-            animation_ctl(ctx, ui, false);
+            slideshow_ctl(ctx, false);
+            animation_ctl(ctx, false);
             return next_frame(ctx, action == cfgact_next_frame);
         case cfgact_animation:
-            animation_ctl(ctx, ui, !ctx->animation);
+            animation_ctl(ctx, !ctx->animation);
             return false;
         case cfgact_slideshow:
-            slideshow_ctl(
-                ctx, ui, !ctx->slideshow && next_file(ctx, ui, jump_next_file));
+            slideshow_ctl(ctx,
+                          !ctx->slideshow && next_file(ctx, jump_next_file));
             return true;
         case cfgact_fullscreen:
             config.fullscreen = !config.fullscreen;
-            ui_set_fullscreen(ui, config.fullscreen);
+            ui_set_fullscreen(config.fullscreen);
             return false;
         case cfgact_step_left:
             return canvas_move(cm_step_left);
@@ -431,12 +425,12 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             return true;
         case cfgact_reload:
             if (image_list_reset()) {
-                reset_state(ctx, ui);
+                reset_state(ctx);
                 set_message(ctx, "Image reloaded");
                 return true;
             } else {
                 printf("No more images, exit\n");
-                ui_stop(ui);
+                ui_stop();
                 return false;
             }
         case cfgact_info:
@@ -451,30 +445,30 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
             }
             if (!image_list_reset()) {
                 printf("No more images, exit\n");
-                ui_stop(ui);
+                ui_stop();
                 return false;
             }
-            reset_state(ctx, ui);
+            reset_state(ctx);
             return true;
         }
         case cfgact_quit:
-            ui_stop(ui);
+            ui_stop();
             return false;
     }
     return false;
 }
 
-void viewer_on_timer(void* data, enum ui_timer timer, struct ui* ui)
+void viewer_on_timer(void* data, enum ui_timer timer)
 {
     struct viewer* ctx = data;
 
     if (timer == ui_timer_slideshow && ctx->slideshow &&
-        next_file(ctx, ui, jump_next_file)) {
-        slideshow_ctl(ctx, ui, true);
+        next_file(ctx, jump_next_file)) {
+        slideshow_ctl(ctx, true);
     }
 
     if (timer == ui_timer_animation && ctx->animation) {
         next_frame(ctx, true);
-        animation_ctl(ctx, ui, true);
+        animation_ctl(ctx, true);
     }
 }
