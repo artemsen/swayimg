@@ -261,6 +261,14 @@ int main(int argc, char* argv[])
         sway_setup(cfg);
     }
 
+    // no sway or fullscreen
+    if (cfg->geometry.width == SAME_AS_PARENT &&
+        cfg->geometry.height == SAME_AS_PARENT) {
+        struct image_entry first = image_list_current(list);
+        cfg->geometry.width = first.image->frames[0].width;
+        cfg->geometry.height = first.image->frames[0].height;
+    }
+
     // create ui
     handlers.on_redraw = viewer_on_redraw;
     handlers.on_resize = viewer_on_resize;
