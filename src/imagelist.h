@@ -63,14 +63,14 @@ struct image_entry image_list_current(const struct image_list* ctx);
  * @param ctx image list context
  * @return error code from the system call
  */
-int image_list_cur_exec(const struct image_list* ctx);
+int image_list_exec(const struct image_list* ctx);
 
 /**
- * Reload the current image.
+ * Reset cache and reload current image.
  * @param ctx image list context
- * @return false if reload failed
+ * @return false if reset failed (no more images)
  */
-bool image_list_cur_reload(struct image_list* ctx);
+bool image_list_reset(struct image_list* ctx);
 
 /**
  * Move through image list.

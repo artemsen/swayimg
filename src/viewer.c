@@ -444,24 +444,31 @@ bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key)
                         ctx->config->antialiasing ? "on" : "off");
             return true;
         case cfgact_reload:
-            if (image_list_cur_reload(ctx->list)) {
+            if (image_list_reset(ctx->list)) {
                 reset_state(ctx, ui);
                 set_message(ctx, "Image reloaded");
                 return true;
             } else {
-                set_message(ctx, "Reload failed");
+                printf("No more images, exit\n");
+                ui_stop(ui);
                 return false;
             }
         case cfgact_info:
             ctx->config->show_info = !ctx->config->show_info;
             return true;
         case cfgact_exec: {
-            const int rc = image_list_cur_exec(ctx->list);
+            const int rc = image_list_exec(ctx->list);
             if (rc) {
                 set_message(ctx, "Execute failed: code %d", rc);
             } else {
                 set_message(ctx, "Execute success");
             }
+            if (!image_list_reset(ctx->list)) {
+                printf("No more images, exit\n");
+                ui_stop(ui);
+                return false;
+            }
+            reset_state(ctx, ui);
             return true;
         }
         case cfgact_quit:

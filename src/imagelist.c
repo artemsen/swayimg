@@ -461,7 +461,7 @@ struct image_entry image_list_current(const struct image_list* ctx)
     return entry;
 }
 
-int image_list_cur_exec(const struct image_list* ctx)
+int image_list_exec(const struct image_list* ctx)
 {
     const char* template = ctx->config->exec_cmd;
     const char* path = ctx->current->file_path;
@@ -511,14 +511,30 @@ int image_list_cur_exec(const struct image_list* ctx)
     return rc;
 }
 
-bool image_list_cur_reload(struct image_list* ctx)
+bool image_list_reset(struct image_list* ctx)
 {
-    struct image* image = image_from_file(ctx->current->file_path);
-    if (image) {
-        image_free(ctx->current);
-        ctx->current = image;
+    // reset cache
+    preloader_ctl(ctx, false);
+    if (ctx->prev) {
+        image_free(ctx->prev);
+        ctx->prev = NULL;
     }
-    return !!image;
+    if (ctx->next) {
+        image_free(ctx->next);
+        ctx->next = NULL;
+    }
+
+    // reload current image
+    image_free(ctx->current);
+    ctx->current = image_from_file(ctx->entries[ctx->index]->path);
+    if (ctx->current) {
+        preloader_ctl(ctx, true);
+        return true;
+    }
+
+    // open nearest image
+    return image_list_jump(ctx, jump_next_file) ||
+        image_list_jump(ctx, jump_prev_file);
 }
 
 bool image_list_jump(struct image_list* ctx, enum list_jump jump)
