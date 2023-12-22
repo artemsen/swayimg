@@ -4,6 +4,8 @@
 
 #include "imagelist.h"
 
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
@@ -37,15 +39,14 @@ struct image_list {
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread
-    const struct config* config; ///< Configuration
 };
+static struct image_list ctx;
 
 /**
  * Add file to the list.
- * @param ctx image list context
  * @param file path to the file
  */
-static void add_file(struct image_list* ctx, const char* file)
+static void add_file(const char* file)
 {
     struct entry* entry;
     size_t entry_sz;
@@ -58,21 +59,21 @@ static void add_file(struct image_list* ctx, const char* file)
     }
 
     // search for duplicates
-    for (size_t i = 0; i < ctx->size; ++i) {
-        if (strcmp(ctx->entries[i]->path, file) == 0) {
+    for (size_t i = 0; i < ctx.size; ++i) {
+        if (strcmp(ctx.entries[i]->path, file) == 0) {
             return;
         }
     }
 
     // relocate array, if needed
-    if (ctx->index >= ctx->alloc) {
-        const size_t num = ctx->alloc + ALLOCATE_SIZE;
-        struct entry** ptr = realloc(ctx->entries, num * sizeof(struct entry*));
+    if (ctx.index >= ctx.alloc) {
+        const size_t num = ctx.alloc + ALLOCATE_SIZE;
+        struct entry** ptr = realloc(ctx.entries, num * sizeof(struct entry*));
         if (!ptr) {
             return;
         }
-        ctx->alloc = num;
-        ctx->entries = ptr;
+        ctx.alloc = num;
+        ctx.entries = ptr;
     }
 
     // add new entry
@@ -80,20 +81,19 @@ static void add_file(struct image_list* ctx, const char* file)
     entry = malloc(entry_sz);
     if (entry) {
         memcpy(entry->path, file, path_len + 1);
-        entry->index = ctx->index;
-        ctx->entries[ctx->index] = entry;
-        ++ctx->index;
-        ++ctx->size;
+        entry->index = ctx.index;
+        ctx.entries[ctx.index] = entry;
+        ++ctx.index;
+        ++ctx.size;
     }
 }
 
 /**
  * Add files from the directory to the list.
- * @param ctx image list context
  * @param dir full path to the directory
  * @param recursive flag to handle directory recursively
  */
-static void add_dir(struct image_list* ctx, const char* dir, bool recursive)
+static void add_dir(const char* dir, bool recursive)
 {
     DIR* dir_handle;
     struct dirent* dir_entry;
@@ -128,10 +128,10 @@ static void add_dir(struct image_list* ctx, const char* dir, bool recursive)
             if (stat(path, &file_stat) == 0) {
                 if (S_ISDIR(file_stat.st_mode)) {
                     if (recursive) {
-                        add_dir(ctx, path, recursive);
+                        add_dir(path, recursive);
                     }
                 } else if (file_stat.st_size) {
-                    add_file(ctx, path);
+                    add_file(path);
                 }
             }
             free(path);
@@ -143,30 +143,28 @@ static void add_dir(struct image_list* ctx, const char* dir, bool recursive)
 
 /**
  * Peek next file entry.
- * @param ctx image list context
  * @param start index of the start position
  * @param forward step direction
  * @return index of the next entry or SIZE_MAX if not found
  */
-static size_t peek_next_file(const struct image_list* ctx, size_t start,
-                             bool forward)
+static size_t peek_next_file(size_t start, bool forward)
 {
     size_t index = start;
 
     while (true) {
         if (forward) {
-            if (++index >= ctx->size) {
-                if (!ctx->config->loop) {
+            if (++index >= ctx.size) {
+                if (!config.loop) {
                     break;
                 }
                 index = 0;
             }
         } else {
             if (index-- == 0) {
-                if (!ctx->config->loop) {
+                if (!config.loop) {
                     break;
                 }
-                index = ctx->size - 1;
+                index = ctx.size - 1;
             }
         }
 
@@ -174,7 +172,7 @@ static size_t peek_next_file(const struct image_list* ctx, size_t start,
             break;
         }
 
-        if (ctx->entries[index]) {
+        if (ctx.entries[index]) {
             return index;
         }
     }
@@ -184,14 +182,12 @@ static size_t peek_next_file(const struct image_list* ctx, size_t start,
 
 /**
  * Peek next directory entry.
- * @param ctx image list context
  * @param file path to extarct source directory
  * @param start index of the start position
  * @param forward step direction
  * @return index of the next entry or SIZE_MAX if not found
  */
-static size_t peek_next_dir(const struct image_list* ctx, const char* file,
-                            size_t start, bool forward)
+static size_t peek_next_dir(const char* file, size_t start, bool forward)
 {
     const char* cur_path = file;
     size_t cur_len;
@@ -208,12 +204,12 @@ static size_t peek_next_dir(const struct image_list* ctx, const char* file,
         const char* next_path;
         size_t next_len;
 
-        index = peek_next_file(ctx, index, forward);
+        index = peek_next_file(index, forward);
         if (index == SIZE_MAX || index == start) {
             break; // not found
         }
 
-        next_path = ctx->entries[index]->path;
+        next_path = ctx.entries[index]->path;
         next_len = strlen(next_path) - 1;
         while (next_len && next_path[next_len] != '/') {
             --next_len;
@@ -228,87 +224,83 @@ static size_t peek_next_dir(const struct image_list* ctx, const char* file,
 
 /**
  * Peek first/last entry.
- * @param ctx image list context
  * @param first direction, true=first, false=last
  * @return index of the next entry or SIZE_MAX if not found
  */
-static size_t peek_edge(const struct image_list* ctx, bool first)
+static size_t peek_edge(bool first)
 {
-    size_t index = first ? 0 : ctx->size - 1;
-    if (index == ctx->index || ctx->entries[index]) {
+    size_t index = first ? 0 : ctx.size - 1;
+    if (index == ctx.index || ctx.entries[index]) {
         return index;
     }
-    return peek_next_file(ctx, ctx->index, first);
+    return peek_next_file(ctx.index, first);
 }
 
 /**
  * Sort the image list alphabetically.
- * @param ctx image list context
  */
-static void sort_list(struct image_list* ctx)
+static void sort_list(void)
 {
-    for (size_t i = 0; i < ctx->size; ++i) {
-        for (size_t j = i + 1; j < ctx->size; ++j) {
-            if (strcoll(ctx->entries[i]->path, ctx->entries[j]->path) > 0) {
-                struct entry* swap = ctx->entries[i];
-                ctx->entries[i] = ctx->entries[j];
-                ctx->entries[j] = swap;
+    for (size_t i = 0; i < ctx.size; ++i) {
+        for (size_t j = i + 1; j < ctx.size; ++j) {
+            if (strcoll(ctx.entries[i]->path, ctx.entries[j]->path) > 0) {
+                struct entry* swap = ctx.entries[i];
+                ctx.entries[i] = ctx.entries[j];
+                ctx.entries[j] = swap;
             }
         }
-        ctx->entries[i]->index = i;
+        ctx.entries[i]->index = i;
     }
 }
 
 /**
  * Shuffle the image list.
- * @param ctx image list context
  */
-static void shuffle_list(struct image_list* ctx)
+static void shuffle_list(void)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     srand(ts.tv_nsec);
 
     // swap random entries
-    for (size_t i = 0; i < ctx->size; ++i) {
-        const size_t j = rand() % ctx->size;
+    for (size_t i = 0; i < ctx.size; ++i) {
+        const size_t j = rand() % ctx.size;
         if (i != j) {
-            struct entry* swap = ctx->entries[i];
-            ctx->entries[i] = ctx->entries[j];
-            ctx->entries[j] = swap;
+            struct entry* swap = ctx.entries[i];
+            ctx.entries[i] = ctx.entries[j];
+            ctx.entries[j] = swap;
         }
     }
 }
 
 /** Image preloader executed in background thread. */
-static void* preloader_thread(void* data)
+static void* preloader_thread(__attribute__((unused)) void* data)
 {
-    struct image_list* ctx = data;
-    size_t index = ctx->index;
+    size_t index = ctx.index;
 
     while (true) {
         struct image* img;
 
-        index = peek_next_file(ctx, index, true);
+        index = peek_next_file(index, true);
         if (index == SIZE_MAX) {
             break; // next image not found
         }
-        if ((ctx->next && ctx->next->file_path == ctx->entries[index]->path) ||
-            (ctx->prev && ctx->prev->file_path == ctx->entries[index]->path)) {
+        if ((ctx.next && ctx.next->file_path == ctx.entries[index]->path) ||
+            (ctx.prev && ctx.prev->file_path == ctx.entries[index]->path)) {
             break; // already loaded
         }
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-        img = image_from_file(ctx->entries[index]->path);
+        img = image_from_file(ctx.entries[index]->path);
         if (img) {
-            image_free(ctx->next);
-            ctx->next = img;
+            image_free(ctx.next);
+            ctx.next = img;
             break;
         } else {
             // not an image, remove entry from list
-            free(ctx->entries[index]);
-            ctx->entries[index] = NULL;
+            free(ctx.entries[index]);
+            ctx.entries[index] = NULL;
         }
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -319,40 +311,30 @@ static void* preloader_thread(void* data)
 
 /**
  * Stop or restart background thread to preload adjacent images.
- * @param ctx image list context
  * @param restart action: true=restart, false=stop preloader
  */
-static void preloader_ctl(struct image_list* ctx, bool restart)
+static void preloader_ctl(bool restart)
 {
-    if (ctx->preloader) {
-        pthread_cancel(ctx->preloader);
-        pthread_join(ctx->preloader, NULL);
-        ctx->preloader = 0;
+    if (ctx.preloader) {
+        pthread_cancel(ctx.preloader);
+        pthread_join(ctx.preloader, NULL);
+        ctx.preloader = 0;
     }
     if (restart) {
-        pthread_create(&ctx->preloader, NULL, preloader_thread, ctx);
+        pthread_create(&ctx.preloader, NULL, preloader_thread, NULL);
     }
 }
 
-struct image_list* image_list_init(const char** files, size_t num,
-                                   const struct config* cfg)
+bool image_list_init(const char** files, size_t num)
 {
-    struct image_list* ctx;
     const char* force_start = NULL;
-
-    ctx = calloc(1, sizeof(*ctx));
-    if (!ctx) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    ctx->config = cfg;
 
     if (num == 0) {
         // no input files specified, use all from the current directory
-        add_dir(ctx, ".", cfg->recursive);
+        add_dir(".", config.recursive);
     } else if (num == 1 && strcmp(files[0], "-") == 0) {
         // pipe mode
-        add_file(ctx, STDIN_FILE_NAME);
+        add_file(STDIN_FILE_NAME);
         force_start = STDIN_FILE_NAME;
     } else {
         for (size_t i = 0; i < num; ++i) {
@@ -362,22 +344,22 @@ struct image_list* image_list_init(const char** files, size_t num,
                         strerror(errno));
             } else {
                 if (S_ISDIR(file_stat.st_mode)) {
-                    add_dir(ctx, files[i], cfg->recursive);
+                    add_dir(files[i], config.recursive);
                 } else {
-                    if (!cfg->all_files) {
-                        add_file(ctx, files[i]);
+                    if (!config.all_files) {
+                        add_file(files[i]);
                     } else {
                         // add all files from the same directory
                         const char* delim = strrchr(files[i], '/');
                         const size_t len = delim ? delim - files[i] : 0;
                         if (len == 0) {
-                            add_dir(ctx, ".", cfg->recursive);
+                            add_dir(".", config.recursive);
                         } else {
                             char* dir = malloc(len + 1);
                             if (dir) {
                                 memcpy(dir, files[i], len);
                                 dir[len] = 0;
-                                add_dir(ctx, dir, cfg->recursive);
+                                add_dir(dir, config.recursive);
                                 free(dir);
                             }
                         }
@@ -390,81 +372,79 @@ struct image_list* image_list_init(const char** files, size_t num,
         }
     }
 
-    if (ctx->size == 0) {
+    if (ctx.size == 0) {
         // empty list
-        image_list_free(ctx);
-        return NULL;
+        image_list_free();
+        return false;
     }
 
     // sort or shuffle
-    if (cfg->order == cfgord_alpha) {
-        sort_list(ctx);
-    } else if (cfg->order == cfgord_random) {
-        shuffle_list(ctx);
+    if (config.order == cfgord_alpha) {
+        sort_list();
+    } else if (config.order == cfgord_random) {
+        shuffle_list();
     }
 
     // set initial index
     if (!force_start) {
-        ctx->index = 0;
+        ctx.index = 0;
     } else {
         if (force_start[0] == '.' && force_start[1] == '/') {
             force_start += 2;
         }
-        for (size_t i = 0; i < ctx->size; ++i) {
-            if (strcmp(ctx->entries[i]->path, force_start) == 0) {
-                ctx->index = i;
+        for (size_t i = 0; i < ctx.size; ++i) {
+            if (strcmp(ctx.entries[i]->path, force_start) == 0) {
+                ctx.index = i;
                 break;
             }
         }
     }
 
     // load the first image
-    if (strcmp(ctx->entries[ctx->index]->path, STDIN_FILE_NAME) == 0) {
-        ctx->current = image_from_stdin();
+    if (strcmp(ctx.entries[ctx.index]->path, STDIN_FILE_NAME) == 0) {
+        ctx.current = image_from_stdin();
     } else {
-        ctx->current = image_from_file(ctx->entries[ctx->index]->path);
+        ctx.current = image_from_file(ctx.entries[ctx.index]->path);
     }
-    if (!ctx->current &&
-        ((force_start && num == 1) || !image_list_jump(ctx, jump_next_file))) {
-        image_list_free(ctx);
-        return NULL;
+    if (!ctx.current &&
+        ((force_start && num == 1) || !image_list_jump(jump_next_file))) {
+        image_list_free();
+        return false;
     }
 
-    preloader_ctl(ctx, true);
+    preloader_ctl(true);
 
-    return ctx;
+    return true;
 }
 
-void image_list_free(struct image_list* ctx)
+void image_list_free(void)
 {
-    if (ctx) {
-        preloader_ctl(ctx, false);
-        for (size_t i = 0; i < ctx->size; ++i) {
-            free(ctx->entries[i]);
-        }
-        free(ctx->entries);
-        image_free(ctx->prev);
-        image_free(ctx->current);
-        image_free(ctx->next);
-        free(ctx);
+    preloader_ctl(false);
+    for (size_t i = 0; i < ctx.size; ++i) {
+        free(ctx.entries[i]);
     }
+    free(ctx.entries);
+    image_free(ctx.prev);
+    image_free(ctx.current);
+    image_free(ctx.next);
+    memset(&ctx, 0, sizeof(ctx));
 }
 
-size_t image_list_size(const struct image_list* ctx)
+size_t image_list_size(void)
 {
-    return ctx->size;
+    return ctx.size;
 }
 
-struct image_entry image_list_current(const struct image_list* ctx)
+struct image_entry image_list_current(void)
 {
-    struct image_entry entry = { .index = ctx->index, .image = ctx->current };
+    struct image_entry entry = { .index = ctx.index, .image = ctx.current };
     return entry;
 }
 
-int image_list_cur_exec(const struct image_list* ctx)
+int image_list_exec(void)
 {
-    const char* template = ctx->config->exec_cmd;
-    const char* path = ctx->current->file_path;
+    const char* template = config.exec_cmd;
+    const char* path = ctx.current->file_path;
     size_t pos = 0;
     size_t len = 0;
     char* cmd = NULL;
@@ -511,72 +491,87 @@ int image_list_cur_exec(const struct image_list* ctx)
     return rc;
 }
 
-bool image_list_cur_reload(struct image_list* ctx)
+bool image_list_reset(void)
 {
-    struct image* image = image_from_file(ctx->current->file_path);
-    if (image) {
-        image_free(ctx->current);
-        ctx->current = image;
+    // reset cache
+    preloader_ctl(false);
+    if (ctx.prev) {
+        image_free(ctx.prev);
+        ctx.prev = NULL;
     }
-    return !!image;
+    if (ctx.next) {
+        image_free(ctx.next);
+        ctx.next = NULL;
+    }
+
+    // reload current image
+    image_free(ctx.current);
+    ctx.current = image_from_file(ctx.entries[ctx.index]->path);
+    if (ctx.current) {
+        preloader_ctl(true);
+        return true;
+    }
+
+    // open nearest image
+    return image_list_jump(jump_next_file) || image_list_jump(jump_prev_file);
 }
 
-bool image_list_jump(struct image_list* ctx, enum list_jump jump)
+bool image_list_jump(enum list_jump jump)
 {
     struct image* image = NULL;
-    size_t index = ctx->index;
+    size_t index = ctx.index;
 
-    preloader_ctl(ctx, false);
+    preloader_ctl(false);
 
     while (!image) {
         switch (jump) {
             case jump_first_file:
-                index = peek_edge(ctx, true);
+                index = peek_edge(true);
                 break;
             case jump_last_file:
-                index = peek_edge(ctx, false);
+                index = peek_edge(false);
                 break;
             case jump_next_file:
-                index = peek_next_file(ctx, index, true);
+                index = peek_next_file(index, true);
                 break;
             case jump_prev_file:
-                index = peek_next_file(ctx, index, false);
+                index = peek_next_file(index, false);
                 break;
             case jump_next_dir:
-                index = peek_next_dir(ctx, ctx->entries[ctx->index]->path,
-                                      index, true);
+                index =
+                    peek_next_dir(ctx.entries[ctx.index]->path, index, true);
                 break;
             case jump_prev_dir:
-                index = peek_next_dir(ctx, ctx->entries[ctx->index]->path,
-                                      index, false);
+                index =
+                    peek_next_dir(ctx.entries[ctx.index]->path, index, false);
                 break;
         }
         if (index == SIZE_MAX) {
             return false;
         }
-        if (ctx->next && ctx->next->file_path == ctx->entries[index]->path) {
-            image = ctx->next;
-            ctx->next = NULL;
-        } else if (ctx->prev &&
-                   ctx->prev->file_path == ctx->entries[index]->path) {
-            image = ctx->prev;
-            ctx->prev = NULL;
+        if (ctx.next && ctx.next->file_path == ctx.entries[index]->path) {
+            image = ctx.next;
+            ctx.next = NULL;
+        } else if (ctx.prev &&
+                   ctx.prev->file_path == ctx.entries[index]->path) {
+            image = ctx.prev;
+            ctx.prev = NULL;
         } else {
-            image = image_from_file(ctx->entries[index]->path);
+            image = image_from_file(ctx.entries[index]->path);
             if (!image) {
                 // not an image, remove entry from list
-                free(ctx->entries[index]);
-                ctx->entries[index] = NULL;
+                free(ctx.entries[index]);
+                ctx.entries[index] = NULL;
             }
         }
     }
 
-    image_free(ctx->prev);
-    ctx->prev = ctx->current;
-    ctx->current = image;
-    ctx->index = index;
+    image_free(ctx.prev);
+    ctx.prev = ctx.current;
+    ctx.current = image;
+    ctx.index = index;
 
-    preloader_ctl(ctx, true);
+    preloader_ctl(true);
 
     return true;
 }

@@ -15,7 +15,7 @@
 // Copy position or size from parent window
 #define SAME_AS_PARENT 0xffffffff
 // Copy size from image
-#define SAME_AS_IMAGE  0
+#define SAME_AS_IMAGE 0
 
 // Max number of key bindings
 #define MAX_KEYBINDINGS 128
@@ -100,28 +100,27 @@ struct config {
     const char* exec_cmd;    ///< Command to execute
     struct config_keybind keybind[MAX_KEYBINDINGS]; ///< Key bindings table
 };
+extern struct config config;
 
 /**
  * Initialize configuration: set defaults and load from file.
- * @return created configuration context
  */
-struct config* config_init(void);
+void config_init(void);
 
 /**
  * Free configuration instance.
- * @param ctx configuration context
  */
-void config_free(struct config* ctx);
+void config_free(void);
 
 // Configuration setters
-bool config_set_scale(struct config* ctx, const char* val);
-bool config_set_background(struct config* ctx, const char* val);
-bool config_set_wndbkg(struct config* ctx, const char* val);
-bool config_set_wndpos(struct config* ctx, const char* val);
-bool config_set_wndsize(struct config* ctx, const char* val);
-bool config_set_font_name(struct config* ctx, const char* val);
-bool config_set_font_size(struct config* ctx, const char* val);
-bool config_set_order(struct config* ctx, const char* val);
-bool config_set_slideshow_sec(struct config* ctx, const char* val);
-bool config_set_appid(struct config* ctx, const char* val);
-bool config_set_exec_cmd(struct config* ctx, const char* val);
+bool config_set_scale(const char* val);
+bool config_set_background(const char* val);
+bool config_set_wndbkg(const char* val);
+bool config_set_wndpos(const char* val);
+bool config_set_wndsize(const char* val);
+bool config_set_font_name(const char* val);
+bool config_set_font_size(const char* val);
+bool config_set_order(const char* val);
+bool config_set_slideshow_sec(const char* val);
+bool config_set_appid(const char* val);
+bool config_set_exec_cmd(const char* val);

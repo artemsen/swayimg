@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include "config.h"
-
-/** Canvas context. */
-struct canvas;
+#include "types.h"
 
 /** Viewport movement. */
 enum canvas_move {
@@ -40,98 +37,71 @@ struct info_table {
 };
 
 /**
- * Initialize canvas.
- * @param ctx canvas context
- * @param cfg configuration instance
- */
-struct canvas* canvas_init(struct config* cfg);
-
-/**
- * Free canvas resources.
- * @param ctx canvas context
- */
-void canvas_free(struct canvas* ctx);
-
-/**
- * Resize canvas window.
- * @param ctx canvas context
+ * Reset window parameters.
  * @param width,height new window size
  * @param scale window scale factor
  * @return true if it was the first resize
  */
-bool canvas_resize_window(struct canvas* ctx, size_t width, size_t height,
-                          size_t scale);
+bool canvas_reset_window(size_t width, size_t height, size_t scale);
 
 /**
  * Reset image position, size and scale.
- * @param ctx canvas context
  * @param width,height new image size
  * @param sc scale to use
  */
-void canvas_reset_image(struct canvas* ctx, size_t width, size_t height,
-                        enum canvas_scale sc);
+void canvas_reset_image(size_t width, size_t height, enum canvas_scale sc);
 
 /**
  * Recalculate position after rotating image on 90 degree.
- * @param ctx canvas context
  */
-void canvas_swap_image_size(struct canvas* ctx);
+void canvas_swap_image_size(void);
 
 /**
  * Clear canvas window.
- * @param ctx canvas context
  * @param wnd window buffer
  */
-void canvas_clear(const struct canvas* ctx, argb_t* wnd);
+void canvas_clear(argb_t* wnd);
 
 /**
  * Draw image on canvas.
- * @param ctx canvas context
  * @param alpha flag to use alpha blending
  * @param img buffer with image data
  * @param wnd window buffer
  */
-void canvas_draw_image(const struct canvas* ctx, bool aplha, const argb_t* img,
-                       argb_t* wnd);
+void canvas_draw_image(bool aplha, const argb_t* img, argb_t* wnd);
 
 /**
  * Print text line on canvas.
- * @param ctx canvas context
  * @param wnd window buffer
  * @param corner text block position
  * @param text printed text
  */
-void canvas_print_line(const struct canvas* ctx, argb_t* wnd,
-                       enum canvas_corner corner, const char* text);
+void canvas_print_line(argb_t* wnd, enum canvas_corner corner,
+                       const char* text);
 
 /**
  * Print meta info table on the left top corner.
- * @param ctx canvas context
  * @param wnd window buffer
  * @param num total number of lines
  * @param info meta data table to print
  */
-void canvas_print_info(const struct canvas* ctx, argb_t* wnd, size_t num,
-                       const struct info_table* info);
+void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info);
 
 /**
  * Move viewport.
- * @param ctx canvas context
  * @param mv viewport movement direction
  * @return true if coordinates were changed
  */
-bool canvas_move(struct canvas* ctx, enum canvas_move mv);
+bool canvas_move(enum canvas_move mv);
 
 /**
  * Scale image on the canvas.
- * @param ctx canvas context
  * @param sc scale operation
  */
-void canvas_set_scale(struct canvas* ctx, enum canvas_scale sc);
+void canvas_set_scale(enum canvas_scale sc);
 
 /**
  * Get current scale.
- * @param ctx canvas context
  * @return current scale, 1.0 = 100%
  */
-float canvas_get_scale(struct canvas* ctx);
+float canvas_get_scale(void);

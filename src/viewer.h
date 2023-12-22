@@ -1,35 +1,49 @@
 // SPDX-License-Identifier: MIT
-// Business logic of application.
+// Business logic of application and UI event handlers.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
 
-#include "config.h"
-#include "imagelist.h"
-#include "ui.h"
+#include "types.h"
 
-/** Viewer context. */
-struct viewer;
+#include <xkbcommon/xkbcommon.h>
 
 /**
- * Create User Interface context.
- * @param cfg configuration instance
- * @param list list of images to view
- * @param ui UI context
- * @return viewer context or NULL on errors
+ * Initialize viewer context.
  */
-struct viewer* viewer_create(struct config* cfg, struct image_list* list,
-                             struct ui* ui);
+void viewer_init(void);
 
 /**
  * Free viewer context.
- * @param ctx viewer context
  */
-void viewer_free(struct viewer* ctx);
+void viewer_free(void);
 
-// UI callbacks, see ui_handlers for details
-void viewer_on_redraw(void* data, argb_t* window);
-void viewer_on_resize(void* data, struct ui* ui, size_t width, size_t height,
-                      size_t scale);
-bool viewer_on_keyboard(void* data, struct ui* ui, xkb_keysym_t key);
-void viewer_on_timer(void* data, enum ui_timer timer, struct ui* ui);
+/**
+ * Redraw handler.
+ * @param window pointer to window's pixel data
+ */
+void viewer_on_redraw(argb_t* window);
+
+/**
+ * Window resize handler.
+ * @param width,height new window size
+ * @param scale window scale factor
+ */
+void viewer_on_resize(size_t width, size_t height, size_t scale);
+
+/**
+ * Key press handler.
+ * @param key code of key pressed
+ * @return true if state has changed and window should be redrawn
+ */
+bool viewer_on_keyboard(xkb_keysym_t key);
+
+/**
+ * Animation timer event handler.
+ */
+void viewer_on_anim_timer(void);
+
+/**
+ * Slideshow timer event handler.
+ */
+void viewer_on_ss_timer(void);

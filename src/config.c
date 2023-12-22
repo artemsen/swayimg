@@ -129,6 +129,9 @@ static const struct location config_locations[] = {
     { NULL, "/etc/xdg/swayimg/config" }
 };
 
+/** Singleton config instance. */
+struct config config;
+
 /**
  * Expand path from environment variable.
  * @param prefix_env path prefix (var name)
@@ -265,51 +268,50 @@ static bool set_string(const char* src, char** dst)
 
 /**
  * Apply global property to configuration.
- * @param ctx configuration context
  * @param key property key
  * @param value property value
  * @return operation complete status, false if key was not handled
  */
-static bool apply_conf(struct config* ctx, const char* key, const char* value)
+static bool apply_conf(const char* key, const char* value)
 {
     if (strcmp(key, "scale") == 0) {
-        return config_set_scale(ctx, value);
+        return config_set_scale(value);
     } else if (strcmp(key, "fullscreen") == 0) {
-        return set_boolean(value, &ctx->fullscreen);
+        return set_boolean(value, &config.fullscreen);
     } else if (strcmp(key, "background") == 0) {
-        return config_set_background(ctx, value);
+        return config_set_background(value);
     } else if (strcmp(key, "wndbkg") == 0) {
-        return config_set_wndbkg(ctx, value);
+        return config_set_wndbkg(value);
     } else if (strcmp(key, "wndpos") == 0) {
-        return config_set_wndpos(ctx, value);
+        return config_set_wndpos(value);
     } else if (strcmp(key, "wndsize") == 0) {
-        return config_set_wndsize(ctx, value);
+        return config_set_wndsize(value);
     } else if (strcmp(key, "info") == 0) {
-        return set_boolean(value, &ctx->show_info);
+        return set_boolean(value, &config.show_info);
     } else if (strcmp(key, "font") == 0) {
-        return config_set_font_name(ctx, value);
+        return config_set_font_name(value);
     } else if (strcmp(key, "font-size") == 0) {
-        return config_set_font_size(ctx, value);
+        return config_set_font_size(value);
     } else if (strcmp(key, "font-color") == 0) {
-        return set_color(value, &ctx->font_color);
+        return set_color(value, &config.font_color);
     } else if (strcmp(key, "order") == 0) {
-        return config_set_order(ctx, value);
+        return config_set_order(value);
     } else if (strcmp(key, "loop") == 0) {
-        return set_boolean(value, &ctx->loop);
+        return set_boolean(value, &config.loop);
     } else if (strcmp(key, "recursive") == 0) {
-        return set_boolean(value, &ctx->recursive);
+        return set_boolean(value, &config.recursive);
     } else if (strcmp(key, "all") == 0) {
-        return set_boolean(value, &ctx->all_files);
+        return set_boolean(value, &config.all_files);
     } else if (strcmp(key, "slideshow") == 0) {
-        return config_set_slideshow_sec(ctx, value);
+        return config_set_slideshow_sec(value);
     } else if (strcmp(key, "exec") == 0) {
-        return config_set_exec_cmd(ctx, value);
+        return config_set_exec_cmd(value);
     } else if (strcmp(key, "antialiasing") == 0) {
-        return set_boolean(value, &ctx->antialiasing);
+        return set_boolean(value, &config.antialiasing);
     } else if (strcmp(key, "app_id") == 0) {
-        return config_set_appid(ctx, value);
+        return config_set_appid(value);
     } else if (strcmp(key, "sway") == 0) {
-        return set_boolean(value, &ctx->sway_wm);
+        return set_boolean(value, &config.sway_wm);
     }
     fprintf(stderr, "Invalid config key name: %s\n", key);
     return false;
@@ -317,12 +319,11 @@ static bool apply_conf(struct config* ctx, const char* key, const char* value)
 
 /**
  * Apply key binding to configuration.
- * @param ctx configuration context
  * @param key property key
  * @param value property value
  * @return operation complete status, false if key was not handled
  */
-static bool apply_key(struct config* ctx, const char* key, const char* value)
+static bool apply_key(const char* key, const char* value)
 {
     xkb_keysym_t keysym;
     enum config_action action;
@@ -350,7 +351,7 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
 
     // replace previous binding
     for (index = 0; index < MAX_KEYBINDINGS; ++index) {
-        struct config_keybind* bind = &ctx->keybind[index];
+        struct config_keybind* bind = &config.keybind[index];
         if (bind->key == XKB_KEY_NoSymbol) {
             break;
         }
@@ -365,72 +366,18 @@ static bool apply_key(struct config* ctx, const char* key, const char* value)
         fprintf(stderr, "Too many key bindins\n");
         return false;
     }
-    ctx->keybind[index].key = keysym;
-    ctx->keybind[index].action = action;
+    config.keybind[index].key = keysym;
+    config.keybind[index].action = action;
 
     return true;
 }
 
 /**
- * Allocate and initialize default configuration instance.
- * @return created configuration instance
- */
-static struct config* default_config(void)
-{
-    struct config* ctx;
-    struct timespec ts;
-
-    ctx = calloc(1, sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
-    }
-
-    // default settings
-    ctx->scale = cfgsc_optimal;
-    ctx->background = BACKGROUND_GRID;
-    ctx->window = COLOR_TRANSPARENT;
-    ctx->sway_wm = true;
-    ctx->geometry.x = SAME_AS_PARENT;
-    ctx->geometry.y = SAME_AS_PARENT;
-    ctx->geometry.width = SAME_AS_PARENT;
-    ctx->geometry.height = SAME_AS_PARENT;
-    config_set_font_name(ctx, "monospace");
-    ctx->font_color = 0xcccccc;
-    ctx->font_size = 14;
-    ctx->slideshow = false;
-    ctx->slideshow_sec = 3;
-    ctx->order = cfgord_alpha;
-    ctx->loop = true;
-    ctx->recursive = false;
-    ctx->all_files = false;
-    ctx->antialiasing = false;
-    config_set_exec_cmd(ctx, "echo '%'");
-    memcpy(ctx->keybind, default_bindings, sizeof(default_bindings));
-
-    // create unique application id
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-        char app_id[64];
-        snprintf(app_id, sizeof(app_id), APP_ID_BASE "_%lx",
-                 (ts.tv_sec << 32) | ts.tv_nsec);
-        config_set_appid(ctx, app_id);
-    } else {
-        config_set_appid(ctx, APP_ID_BASE);
-    }
-    if (!ctx->app_id) {
-        free(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-/**
  * Load configuration from a file.
- * @param ctx configuration context
  * @param path full path to the file
  * @return operation complete status, false on error
  */
-static bool load_config(struct config* ctx, const char* path)
+static bool load_config(const char* path)
 {
     FILE* fd = NULL;
     char* buff = NULL;
@@ -502,9 +449,9 @@ static bool load_config(struct config* ctx, const char* path)
 
         // add configuration parameter from key/value pair
         if (!section || strcmp(section, SECTION_GENERAL) == 0) {
-            status = apply_conf(ctx, line, value);
+            status = apply_conf(line, value);
         } else if (strcmp(section, SECTION_KEYBIND) == 0) {
-            status = apply_key(ctx, line, value);
+            status = apply_key(line, value);
         } else {
             fprintf(stderr, "Invalid section name: '%s'\n", section);
         }
@@ -521,50 +468,72 @@ static bool load_config(struct config* ctx, const char* path)
     return true;
 }
 
-struct config* config_init(void)
+void config_init(void)
 {
-    struct config* ctx;
+    struct timespec ts;
 
-    ctx = default_config();
-    if (!ctx) {
-        return NULL;
+    // default settings
+    config.scale = cfgsc_optimal;
+    config.background = BACKGROUND_GRID;
+    config.window = COLOR_TRANSPARENT;
+    config.sway_wm = true;
+    config.geometry.x = SAME_AS_PARENT;
+    config.geometry.y = SAME_AS_PARENT;
+    config.geometry.width = SAME_AS_PARENT;
+    config.geometry.height = SAME_AS_PARENT;
+    config_set_font_name("monospace");
+    config.font_color = 0xcccccc;
+    config.font_size = 14;
+    config.slideshow = false;
+    config.slideshow_sec = 3;
+    config.order = cfgord_alpha;
+    config.loop = true;
+    config.recursive = false;
+    config.all_files = false;
+    config.antialiasing = false;
+    config_set_exec_cmd("echo '%'");
+    memcpy(config.keybind, default_bindings, sizeof(default_bindings));
+
+    // create unique application id
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        char app_id[64];
+        snprintf(app_id, sizeof(app_id), APP_ID_BASE "_%lx",
+                 (ts.tv_sec << 32) | ts.tv_nsec);
+        config_set_appid(app_id);
+    } else {
+        config_set_appid(APP_ID_BASE);
     }
 
-    // find first available config file
+    // find and load first available config file
     for (size_t i = 0;
          i < sizeof(config_locations) / sizeof(config_locations[0]); ++i) {
         const struct location* cl = &config_locations[i];
         char* path = expand_path(cl->prefix, cl->postfix);
-        if (path && load_config(ctx, path)) {
+        if (path && load_config(path)) {
             free(path);
             break;
         }
         free(path);
     }
-
-    return ctx;
 }
 
-void config_free(struct config* ctx)
+void config_free(void)
 {
-    if (ctx) {
-        free((void*)ctx->font_face);
-        free((void*)ctx->exec_cmd);
-        free((void*)ctx->app_id);
-        free(ctx);
-    }
+    free((void*)config.font_face);
+    free((void*)config.exec_cmd);
+    free((void*)config.app_id);
 }
 
-bool config_set_scale(struct config* ctx, const char* val)
+bool config_set_scale(const char* val)
 {
     if (strcmp(val, "optimal") == 0) {
-        ctx->scale = cfgsc_optimal;
+        config.scale = cfgsc_optimal;
     } else if (strcmp(val, "fit") == 0) {
-        ctx->scale = cfgsc_fit;
+        config.scale = cfgsc_fit;
     } else if (strcmp(val, "fill") == 0) {
-        ctx->scale = cfgsc_fill;
+        config.scale = cfgsc_fill;
     } else if (strcmp(val, "real") == 0) {
-        ctx->scale = cfgsc_real;
+        config.scale = cfgsc_real;
     } else {
         fprintf(stderr, "Invalid scale: %s\n", val);
         fprintf(stderr, "Expected 'optimal', 'fit', 'fill', or 'real'.\n");
@@ -573,13 +542,13 @@ bool config_set_scale(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_background(struct config* ctx, const char* val)
+bool config_set_background(const char* val)
 {
     if (strcmp(val, "grid") == 0) {
-        ctx->background = BACKGROUND_GRID;
+        config.background = BACKGROUND_GRID;
     } else if (strcmp(val, "none") == 0) {
-        ctx->background = COLOR_TRANSPARENT;
-    } else if (!set_color(val, &ctx->background)) {
+        config.background = COLOR_TRANSPARENT;
+    } else if (!set_color(val, &config.background)) {
         fprintf(stderr, "Invalid image background: %s\n", val);
         fprintf(stderr, "Expected 'none', 'grid', or RGB hex value.\n");
         return false;
@@ -587,11 +556,11 @@ bool config_set_background(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_wndbkg(struct config* ctx, const char* val)
+bool config_set_wndbkg(const char* val)
 {
     if (strcmp(val, "none") == 0) {
-        ctx->window = COLOR_TRANSPARENT;
-    } else if (!set_color(val, &ctx->window)) {
+        config.window = COLOR_TRANSPARENT;
+    } else if (!set_color(val, &config.window)) {
         fprintf(stderr, "Invalid window background: %s\n", val);
         fprintf(stderr, "Expected 'none' or RGB hex value.\n");
         return false;
@@ -599,17 +568,17 @@ bool config_set_wndbkg(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_wndpos(struct config* ctx, const char* val)
+bool config_set_wndpos(const char* val)
 {
     if (strcmp(val, "parent") == 0) {
-        ctx->geometry.x = SAME_AS_PARENT;
-        ctx->geometry.y = SAME_AS_PARENT;
+        config.geometry.x = SAME_AS_PARENT;
+        config.geometry.y = SAME_AS_PARENT;
         return true;
     } else {
         long x, y;
         if (parse_numpair(val, &x, &y)) {
-            ctx->geometry.x = (ssize_t)x;
-            ctx->geometry.y = (ssize_t)y;
+            config.geometry.x = (ssize_t)x;
+            config.geometry.y = (ssize_t)y;
             return true;
         }
     }
@@ -618,21 +587,21 @@ bool config_set_wndpos(struct config* ctx, const char* val)
     return false;
 }
 
-bool config_set_wndsize(struct config* ctx, const char* val)
+bool config_set_wndsize(const char* val)
 {
     if (strcmp(val, "parent") == 0) {
-        ctx->geometry.width = SAME_AS_PARENT;
-        ctx->geometry.height = SAME_AS_PARENT;
+        config.geometry.width = SAME_AS_PARENT;
+        config.geometry.height = SAME_AS_PARENT;
         return true;
     } else if (strcmp(val, "image") == 0) {
-        ctx->geometry.width = SAME_AS_IMAGE;
-        ctx->geometry.height = SAME_AS_IMAGE;
+        config.geometry.width = SAME_AS_IMAGE;
+        config.geometry.height = SAME_AS_IMAGE;
         return true;
     } else {
         long width, height;
         if (parse_numpair(val, &width, &height) && width > 0 && height > 0) {
-            ctx->geometry.width = (size_t)width;
-            ctx->geometry.height = (size_t)height;
+            config.geometry.width = (size_t)width;
+            config.geometry.height = (size_t)height;
             return true;
         }
     }
@@ -642,17 +611,17 @@ bool config_set_wndsize(struct config* ctx, const char* val)
     return false;
 }
 
-bool config_set_font_name(struct config* ctx, const char* val)
+bool config_set_font_name(const char* val)
 {
     const size_t len = strlen(val);
     if (len == 0) {
         fprintf(stderr, "Invalid font name\n");
         return false;
     }
-    return set_string(val, (char**)&ctx->font_face);
+    return set_string(val, (char**)&config.font_face);
 }
 
-bool config_set_font_size(struct config* ctx, const char* val)
+bool config_set_font_size(const char* val)
 {
     char* endptr;
     const unsigned long sz = strtoul(val, &endptr, 10);
@@ -660,18 +629,18 @@ bool config_set_font_size(struct config* ctx, const char* val)
         fprintf(stderr, "Invalid font size\n");
         return false;
     }
-    ctx->font_size = sz;
+    config.font_size = sz;
     return true;
 }
 
-bool config_set_order(struct config* ctx, const char* val)
+bool config_set_order(const char* val)
 {
     if (strcmp(val, "none") == 0) {
-        ctx->order = cfgord_none;
+        config.order = cfgord_none;
     } else if (strcmp(val, "alpha") == 0) {
-        ctx->order = cfgord_alpha;
+        config.order = cfgord_alpha;
     } else if (strcmp(val, "random") == 0) {
-        ctx->order = cfgord_random;
+        config.order = cfgord_random;
     } else {
         fprintf(stderr, "Invalid file list order: %s\n", val);
         fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
@@ -680,7 +649,7 @@ bool config_set_order(struct config* ctx, const char* val)
     return true;
 }
 
-bool config_set_slideshow_sec(struct config* ctx, const char* val)
+bool config_set_slideshow_sec(const char* val)
 {
     char* endptr;
     const unsigned long sec = strtoul(val, &endptr, 10);
@@ -688,11 +657,11 @@ bool config_set_slideshow_sec(struct config* ctx, const char* val)
         fprintf(stderr, "Invalid slideshow duration\n");
         return false;
     }
-    ctx->slideshow_sec = sec;
+    config.slideshow_sec = sec;
     return true;
 }
 
-bool config_set_appid(struct config* ctx, const char* val)
+bool config_set_appid(const char* val)
 {
     const size_t len = strlen(val);
     if (len == 0 || len > APP_ID_MAX) {
@@ -701,14 +670,14 @@ bool config_set_appid(struct config* ctx, const char* val)
                 APP_ID_MAX);
         return false;
     }
-    return set_string(val, (char**)&ctx->app_id);
+    return set_string(val, (char**)&config.app_id);
 }
 
-bool config_set_exec_cmd(struct config* ctx, const char* val)
+bool config_set_exec_cmd(const char* val)
 {
     const size_t len = strlen(val);
     if (len) {
-        return set_string(val, (char**)&ctx->exec_cmd);
+        return set_string(val, (char**)&config.exec_cmd);
     }
     return true;
 }
