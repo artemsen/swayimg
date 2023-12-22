@@ -30,6 +30,12 @@ enum state {
     state_error,
 };
 
+/** Custom event */
+struct custom_event {
+    int fd;
+    fd_event handler;
+};
+
 /** UI context */
 struct ui {
     // wayland specific
@@ -83,9 +89,9 @@ struct ui {
         uint32_t delay;
     } repeat;
 
-    // timers
-    int timer_animation;
-    int timer_slideshow;
+    // custom events
+    struct custom_event* events;
+    size_t num_events;
 
     // global state
     enum state state;
@@ -94,8 +100,6 @@ struct ui {
 static struct ui ctx = {
     .wnd.scale = 1,
     .repeat.fd = -1,
-    .timer_animation = -1,
-    .timer_slideshow = -1,
 };
 
 /**
@@ -596,10 +600,6 @@ bool ui_init(void)
     wl_surface_commit(ctx.wl.surface);
 
     ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    ctx.timer_animation =
-        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    ctx.timer_slideshow =
-        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
 
     return true;
 }
@@ -608,12 +608,6 @@ void ui_free(void)
 {
     if (ctx.repeat.fd != -1) {
         close(ctx.repeat.fd);
-    }
-    if (ctx.timer_animation != -1) {
-        close(ctx.timer_animation);
-    }
-    if (ctx.timer_slideshow != -1) {
-        close(ctx.timer_slideshow);
     }
     if (ctx.xkb.state) {
         xkb_state_unref(ctx.xkb.state);
@@ -670,15 +664,30 @@ void ui_free(void)
 
 bool ui_run(void)
 {
-    // file descriptors to poll
-    struct pollfd fds[] = {
-        { .fd = wl_display_get_fd(ctx.wl.display), .events = POLLIN },
-        { .fd = ctx.repeat.fd, .events = POLLIN },
-        { .fd = ctx.timer_animation, .events = POLLIN },
-        { .fd = ctx.timer_slideshow, .events = POLLIN },
-    };
+    const size_t num_fds = ctx.num_events + 2; // wayland + key repeat
+    const size_t idx_wayland = num_fds - 1;
+    const size_t idx_krepeat = num_fds - 2;
+    struct pollfd* fds;
 
+    // file descriptors to poll
+    fds = calloc(1, num_fds * sizeof(struct pollfd));
+    if (!fds) {
+        fprintf(stderr, "Not enough memory\n");
+        return false;
+    }
+    for (size_t i = 0; i < ctx.num_events; ++i) {
+        fds[i].fd = ctx.events[i].fd;
+        fds[i].events = POLLIN;
+    }
+    fds[idx_wayland].fd = wl_display_get_fd(ctx.wl.display);
+    fds[idx_wayland].events = POLLIN;
+    fds[idx_krepeat].fd = ctx.repeat.fd;
+    fds[idx_krepeat].events = POLLIN;
+
+    // main event loop
     while (ctx.state == state_ok) {
+        bool need_redraw = false;
+
         // prepare to read wayland events
         while (wl_display_prepare_read(ctx.wl.display) != 0) {
             wl_display_dispatch_pending(ctx.wl.display);
@@ -686,13 +695,13 @@ bool ui_run(void)
         wl_display_flush(ctx.wl.display);
 
         // poll events
-        if (poll(fds, sizeof(fds) / sizeof(fds[0]), -1) <= 0) {
+        if (poll(fds, num_fds, -1) <= 0) {
             wl_display_cancel_read(ctx.wl.display);
             continue;
         }
 
         // read and handle wayland events
-        if (fds[0].revents & POLLIN) {
+        if (fds[idx_wayland].revents & POLLIN) {
             wl_display_read_events(ctx.wl.display);
             wl_display_dispatch_pending(ctx.wl.display);
         } else {
@@ -700,35 +709,30 @@ bool ui_run(void)
         }
 
         // read and handle key repeat events from timer
-        if (fds[1].revents & POLLIN) {
+        if (fds[idx_krepeat].revents & POLLIN) {
             uint64_t repeats;
-            if (read(ctx.repeat.fd, &repeats, sizeof(repeats)) ==
-                sizeof(repeats)) {
-                bool handled = false;
+            const size_t sz = sizeof(repeats);
+            if (read(ctx.repeat.fd, &repeats, sz) == sz) {
                 while (repeats--) {
-                    handled |= viewer_on_keyboard(ctx.repeat.key);
-                }
-                if (handled) {
-                    redraw();
+                    need_redraw |= viewer_on_keyboard(ctx.repeat.key);
                 }
             }
         }
 
-        // animation timer
-        if (fds[2].revents & POLLIN) {
-            const struct itimerspec ts = { 0 };
-            timerfd_settime(ctx.timer_animation, 0, &ts, NULL);
-            viewer_on_anim_timer();
-            redraw();
+        // read custom events
+        for (size_t i = 0; i < ctx.num_events; ++i) {
+            if (fds[i].revents & POLLIN) {
+                ctx.events[i].handler();
+                need_redraw = true;
+            }
         }
-        // slideshow timer
-        if (fds[3].revents & POLLIN) {
-            const struct itimerspec ts = { 0 };
-            timerfd_settime(ctx.timer_slideshow, 0, &ts, NULL);
-            viewer_on_ss_timer();
+
+        if (need_redraw) {
             redraw();
         }
     }
+
+    free(fds);
 
     return ctx.state != state_error;
 }
@@ -752,22 +756,14 @@ void ui_set_fullscreen(bool enable)
     }
 }
 
-void ui_set_timer(enum ui_timer timer, size_t ms)
+void ui_add_event(int fd, fd_event handler)
 {
-    int fd;
-    struct itimerspec ts = { 0 };
-
-    switch (timer) {
-        case ui_timer_animation:
-            fd = ctx.timer_animation;
-            break;
-        case ui_timer_slideshow:
-            fd = ctx.timer_slideshow;
-            break;
-        default:
-            return;
+    const size_t new_sz = (ctx.num_events + 1) * sizeof(struct custom_event);
+    struct custom_event* events = realloc(ctx.events, new_sz);
+    if (events) {
+        ctx.events = events;
+        ctx.events[ctx.num_events].fd = fd;
+        ctx.events[ctx.num_events].handler = handler;
+        ++ctx.num_events;
     }
-
-    set_timespec(&ts.it_value, ms);
-    timerfd_settime(fd, 0, &ts, NULL);
 }

@@ -6,9 +6,6 @@
 
 #include "types.h"
 
-/** Available timers. */
-enum ui_timer { ui_timer_animation, ui_timer_slideshow };
-
 /**
  * Create User Interface context.
  * @return false on errors
@@ -43,9 +40,12 @@ void ui_set_title(const char* title);
  */
 void ui_set_fullscreen(bool enable);
 
+/** Custom event handler. */
+typedef void (*fd_event)(void);
+
 /**
- * Set timer callback.
- * @param timer type of the timer to set
- * @param ms timeout in milliseconds
+ * Add custom event handler.
+ * @param fd file descritpor for polling
+ * @param handler callback
  */
-void ui_set_timer(enum ui_timer timer, size_t ms);
+void ui_add_event(int fd, fd_event handler);

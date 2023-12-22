@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/timerfd.h>
+#include <unistd.h>
 
 #define KIBIBYTE 1024
 #define MEBIBYTE (KIBIBYTE * 1024)
@@ -29,15 +31,24 @@ struct image_desc {
     size_t size; ///< Total number of lines in the table
 };
 
+/** Timer events */
+struct timer {
+    int fd;      ///< Timer's file descriptor
+    bool enable; ///< Enable/disable mode
+};
+
 /** Viewer context. */
 struct viewer {
     size_t frame;           ///< Index of current frame
-    bool animation;         ///< Animation is in progress
-    bool slideshow;         ///< Slideshow is in progress
+    struct timer animation; ///< Animation timer
+    struct timer slideshow; ///< Slideshow timer
     struct image_desc desc; ///< Text image description
     char* message;          ///< One-time rendered notification message
 };
-static struct viewer ctx;
+static struct viewer ctx = {
+    .animation.fd = -1,
+    .slideshow.fd = -1,
+};
 
 /**
  * Set current frame.
@@ -87,18 +98,6 @@ static bool next_frame(bool forward)
 }
 
 /**
- * Start slide show.
- * @param enable state to set
- */
-static void slideshow_ctl(bool enable)
-{
-    ctx.slideshow = enable;
-    if (enable) {
-        ui_set_timer(ui_timer_slideshow, config.slideshow_sec * 1000);
-    }
-}
-
-/**
  * Start animation if image supports it.
  * @param enable state to set
  */
@@ -107,12 +106,38 @@ static void animation_ctl(bool enable)
     if (enable) {
         const struct image_entry entry = image_list_current();
         const size_t duration = entry.image->frames[ctx.frame].duration;
-        ctx.animation = (entry.image->num_frames > 1 && duration);
-        if (ctx.animation) {
-            ui_set_timer(ui_timer_animation, duration);
+        ctx.animation.enable = (entry.image->num_frames > 1 && duration);
+        if (ctx.animation.enable) {
+            const struct itimerspec ts = {
+                .it_value = {
+                    .tv_sec = duration / 1000,
+                    .tv_nsec = (duration % 1000) * 1000000,
+                },
+            };
+            timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
         }
     } else {
-        ctx.animation = false;
+        const struct itimerspec ts = { 0 };
+        timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
+        ctx.animation.enable = false;
+    }
+}
+
+/**
+ * Start slide show.
+ * @param enable state to set
+ */
+static void slideshow_ctl(bool enable)
+{
+    struct itimerspec ts = { 0 };
+
+    ctx.slideshow.enable = enable;
+
+    if (enable) {
+        ts.it_value.tv_sec = config.slideshow_sec;
+        timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
+    } else {
+        timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
     }
 }
 
@@ -199,7 +224,7 @@ static void reset_state(void)
         table[desc->size++].value = desc->frame_index;
     }
 
-    ctx.animation = false;
+    animation_ctl(false);
     set_frame(0);
     reset_viewport();
     update_window_title();
@@ -216,7 +241,7 @@ static bool next_file(enum list_jump jump)
     if (!image_list_jump(jump)) {
         return false;
     }
-    slideshow_ctl(ctx.slideshow);
+    slideshow_ctl(ctx.slideshow.enable);
     reset_state();
     return true;
 }
@@ -251,8 +276,43 @@ __attribute__((format(printf, 1, 2))) static void set_message(const char* fmt,
     }
 }
 
+/**
+ * Animation timer event handler.
+ */
+static void on_animation_timer(void)
+{
+    if (ctx.animation.enable) {
+        next_frame(true);
+        animation_ctl(true);
+    }
+}
+
+/**
+ * Slideshow timer event handler.
+ */
+static void viewer_on_ss_timer(void)
+{
+    if (ctx.slideshow.enable && next_file(jump_next_file)) {
+        slideshow_ctl(true);
+    }
+}
+
 void viewer_init(void)
 {
+    // setup animation timer
+    ctx.animation.fd =
+        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    if (ctx.animation.fd != -1) {
+        ui_add_event(ctx.animation.fd, on_animation_timer);
+    }
+
+    // setup slideshow timer
+    ctx.slideshow.fd =
+        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    if (ctx.slideshow.fd != -1) {
+        ui_add_event(ctx.slideshow.fd, viewer_on_ss_timer);
+    }
+
     if (config.slideshow) {
         slideshow_ctl(true); // start slide show
     }
@@ -260,6 +320,12 @@ void viewer_init(void)
 
 void viewer_free(void)
 {
+    if (ctx.animation.fd != -1) {
+        close(ctx.animation.fd);
+    }
+    if (ctx.slideshow.fd != -1) {
+        close(ctx.slideshow.fd);
+    }
     free(ctx.message);
 }
 
@@ -343,10 +409,10 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             animation_ctl(false);
             return next_frame(action == cfgact_next_frame);
         case cfgact_animation:
-            animation_ctl(!ctx.animation);
+            animation_ctl(!ctx.animation.enable);
             return false;
         case cfgact_slideshow:
-            slideshow_ctl(!ctx.slideshow && next_file(jump_next_file));
+            slideshow_ctl(!ctx.slideshow.enable && next_file(jump_next_file));
             return true;
         case cfgact_fullscreen:
             config.fullscreen = !config.fullscreen;
@@ -432,19 +498,4 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             return false;
     }
     return false;
-}
-
-void viewer_on_anim_timer(void)
-{
-    if (ctx.animation) {
-        next_frame(true);
-        animation_ctl(true);
-    }
-}
-
-void viewer_on_ss_timer(void)
-{
-    if (ctx.slideshow && next_file(jump_next_file)) {
-        slideshow_ctl(true);
-    }
 }

@@ -37,13 +37,3 @@ void viewer_on_resize(size_t width, size_t height, size_t scale);
  * @return true if state has changed and window should be redrawn
  */
 bool viewer_on_keyboard(xkb_keysym_t key);
-
-/**
- * Animation timer event handler.
- */
-void viewer_on_anim_timer(void);
-
-/**
- * Slideshow timer event handler.
- */
-void viewer_on_ss_timer(void);
