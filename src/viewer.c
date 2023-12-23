@@ -11,6 +11,7 @@
 #include "keybind.h"
 #include "ui.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -278,6 +279,82 @@ __attribute__((format(printf, 1, 2))) static void set_message(const char* fmt,
 }
 
 /**
+ * Execute system command for the current image.
+ * @param expr command expression
+ */
+static void execute_command(const char* expr)
+{
+    const char* path = image_list_current().image->file_path;
+    char* cmd = NULL;
+    size_t pos = 0;
+    size_t buf_sz = 0;
+    int rc = EINVAL;
+
+    // construct command from template
+    while (expr && *expr) {
+        const char* append_ptr = expr;
+        size_t append_sz = 1;
+        if (*expr == '%') {
+            if (*(expr + 1) == '%') {
+                // escaped %
+                ++expr;
+            } else {
+                // replace % with path
+                append_ptr = path;
+                append_sz = strlen(path);
+            }
+        }
+        ++expr;
+        if (pos + append_sz >= buf_sz) {
+            char* ptr;
+            buf_sz = pos + append_sz + 32;
+            ptr = realloc(cmd, buf_sz);
+            if (!ptr) {
+                free(cmd);
+                cmd = NULL;
+                break;
+            }
+            cmd = ptr;
+        }
+        memcpy(cmd + pos, append_ptr, append_sz);
+        pos += append_sz;
+    }
+
+    if (cmd) {
+        cmd[pos] = 0;     // set eol
+        rc = system(cmd); // execute
+        if (rc != -1) {
+            rc = WEXITSTATUS(rc);
+        } else {
+            rc = errno ? errno : EINVAL;
+        }
+    }
+
+    // show execution status
+    if (!cmd) {
+        set_message("Error: no command to execute");
+    } else {
+        if (pos > 30) { // trim long command
+            strcpy(&cmd[27], "...");
+        }
+        if (rc) {
+            set_message("Error %d: %s", rc, cmd);
+        } else {
+            set_message("OK: %s", cmd);
+        }
+    }
+
+    free(cmd);
+
+    if (!image_list_reset()) {
+        printf("No more images, exit\n");
+        ui_stop();
+        return;
+    }
+    reset_state();
+}
+
+/**
  * Zoom in/out.
  * @param zoom_in in/out flag
  * @param params optional zoom step in percents
@@ -521,21 +598,9 @@ bool viewer_on_keyboard(xkb_keysym_t key)
         case kb_info:
             config.show_info = !config.show_info;
             return true;
-        case kb_exec: {
-            const int rc = image_list_exec(kbind->params);
-            if (rc) {
-                set_message("Execute failed: code %d", rc);
-            } else {
-                set_message("Execute success");
-            }
-            if (!image_list_reset()) {
-                printf("No more images, exit\n");
-                ui_stop();
-                return false;
-            }
-            reset_state();
+        case kb_exec:
+            execute_command(kbind->params);
             return true;
-        }
         case kb_quit:
             ui_stop();
             return false;

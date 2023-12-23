@@ -48,13 +48,6 @@ size_t image_list_size(void);
 struct image_entry image_list_current(void);
 
 /**
- * Execute system command for the current entry.
- * @param cmd command template
- * @return result code from the system call
- */
-int image_list_exec(const char* cmd);
-
-/**
  * Reset cache and reload current image.
  * @return false if reset failed (no more images)
  */

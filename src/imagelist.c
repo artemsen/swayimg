@@ -441,56 +441,6 @@ struct image_entry image_list_current(void)
     return entry;
 }
 
-int image_list_exec(const char* cmd)
-{
-    const char* path = ctx.current->file_path;
-    char* real_cmd = NULL;
-    size_t pos = 0;
-    size_t len = 0;
-    int rc = -1;
-
-    if (!cmd || !*cmd) {
-        return EINVAL;
-    }
-
-    // construct command text
-    while (*cmd) {
-        const char* append_ptr = cmd;
-        size_t append_sz = 1;
-        if (*cmd == '%') {
-            if (*(cmd + 1) == '%') {
-                // escaped %
-                ++cmd;
-            } else {
-                // replace % with path
-                append_ptr = path;
-                append_sz = strlen(path);
-            }
-        }
-        ++cmd;
-        if (pos + append_sz >= len) {
-            char* ptr;
-            len = pos + append_sz + 32;
-            ptr = realloc(real_cmd, len);
-            if (!ptr) {
-                free(real_cmd);
-                return ENOMEM;
-            }
-            real_cmd = ptr;
-        }
-        memcpy(real_cmd + pos, append_ptr, append_sz);
-        pos += append_sz;
-    }
-    real_cmd[pos] = 0;
-
-    // execute command
-    rc = system(real_cmd);
-
-    free(real_cmd);
-
-    return rc;
-}
-
 bool image_list_reset(void)
 {
     // reset cache
