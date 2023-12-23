@@ -110,6 +110,7 @@ void keybind_init(void)
         memcpy(ctx.bindings, default_bindings, sizeof(default_bindings));
         ctx.size = sizeof(default_bindings) / sizeof(default_bindings[0]);
     }
+    keybind_set(XKB_KEY_e, kb_exec, "echo \"Current file: %\"");
 }
 
 void keybind_free(void)

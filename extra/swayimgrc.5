@@ -61,7 +61,6 @@ Empty lines and comments are ignored.
 .IP "\fBrecursive\fR: read directories recursively, \fIyes\fR or [\fIno\fR];"
 .IP "\fBall\fR: always open all files in the same directory, \fIyes\fR or [\fIno\fR];"
 .IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
-.IP "\fBexec\fR: set a command to be executed when the corresponding key is pressed, use % for image path, default is 'echo %';"
 .IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
 .IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
 .SS Key bindins
@@ -72,7 +71,7 @@ The key name can be obtained with the \fIxkbcli\fR tool:
 `xkbcli interactive-wayland`.
 .PP
 Valid action are:
-.IP "\fBnone\fR: used for removig default action;"
+.IP "\fBnone\fR: can be used for removing built-in action;"
 .IP "\fBfirst_file\fR: jump to the first file;"
 .IP "\fBlast_file\fR: jump to the last file;"
 .IP "\fBprev_dir\fR: jump to previous directory;"
@@ -102,7 +101,7 @@ Valid action are:
 .IP "\fBreload\fR: reset cache and reload current image;"
 .IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
 .IP "\fBinfo\fR: show/hide image info;"
-.IP "\fBexec\fR: execute external command;"
+.IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBquit\fR: quit the application."
 .\" example file
 .SH EXAMPLES
@@ -118,6 +117,8 @@ font-color = #b4b3b2
 sway = no
 [keys]
 q = quit
+r = exec rm "%"
+R = exec echo "%" > mylist.txt
 .EE
 .\" related man pages
 .SH SEE ALSO

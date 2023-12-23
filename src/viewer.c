@@ -471,7 +471,7 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             config.show_info = !config.show_info;
             return true;
         case kb_exec: {
-            const int rc = image_list_exec();
+            const int rc = image_list_exec(kbind->params);
             if (rc) {
                 set_message("Execute failed: code %d", rc);
             } else {

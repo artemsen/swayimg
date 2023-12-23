@@ -52,7 +52,6 @@ struct config {
     bool loop;               ///< File list loop mode
     bool recursive;          ///< Read directories recursively
     bool all_files;          ///< Open all files from the same directory
-    const char* exec_cmd;    ///< Command to execute
 };
 extern struct config config;
 
@@ -77,4 +76,3 @@ bool config_set_font_size(const char* val);
 bool config_set_order(const char* val);
 bool config_set_slideshow_sec(const char* val);
 bool config_set_appid(const char* val);
-bool config_set_exec_cmd(const char* val);

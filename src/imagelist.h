@@ -49,9 +49,10 @@ struct image_entry image_list_current(void);
 
 /**
  * Execute system command for the current entry.
- * @return error code from the system call
+ * @param cmd command template
+ * @return result code from the system call
  */
-int image_list_exec(void);
+int image_list_exec(const char* cmd);
 
 /**
  * Reset cache and reload current image.

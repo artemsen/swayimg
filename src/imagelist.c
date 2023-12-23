@@ -441,52 +441,52 @@ struct image_entry image_list_current(void)
     return entry;
 }
 
-int image_list_exec(void)
+int image_list_exec(const char* cmd)
 {
-    const char* template = config.exec_cmd;
     const char* path = ctx.current->file_path;
+    char* real_cmd = NULL;
     size_t pos = 0;
     size_t len = 0;
-    char* cmd = NULL;
     int rc = -1;
 
+    if (!cmd || !*cmd) {
+        return EINVAL;
+    }
+
     // construct command text
-    while (*template) {
-        const char* append = template;
+    while (*cmd) {
+        const char* append_ptr = cmd;
         size_t append_sz = 1;
-        if (*template == '%') {
-            if (*(template + 1) == '%') {
+        if (*cmd == '%') {
+            if (*(cmd + 1) == '%') {
                 // escaped %
-                ++template;
+                ++cmd;
             } else {
                 // replace % with path
-                append = path;
+                append_ptr = path;
                 append_sz = strlen(path);
             }
         }
-        ++template;
+        ++cmd;
         if (pos + append_sz >= len) {
             char* ptr;
             len = pos + append_sz + 32;
-            ptr = realloc(cmd, len);
+            ptr = realloc(real_cmd, len);
             if (!ptr) {
-                fprintf(stderr, "Not enough memory\n");
-                free(cmd);
-                cmd = NULL;
-                break;
+                free(real_cmd);
+                return ENOMEM;
             }
-            cmd = ptr;
+            real_cmd = ptr;
         }
-        memcpy(cmd + pos, append, append_sz);
+        memcpy(real_cmd + pos, append_ptr, append_sz);
         pos += append_sz;
     }
+    real_cmd[pos] = 0;
 
     // execute command
-    if (cmd) {
-        cmd[pos] = 0;
-        rc = system(cmd);
-        free(cmd);
-    }
+    rc = system(real_cmd);
+
+    free(real_cmd);
 
     return rc;
 }

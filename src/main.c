@@ -38,7 +38,6 @@ static const struct cmdarg arguments[] = {
     { 'p', "wndpos",     "POS",     "set window position [parent]/X,Y" },
     { 'g', "wndsize",    "SIZE",    "set window size: [parent]/image/W,H" },
     { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
-    { 'e', "exec",       "CMD",     "set execution command" },
     { 'c', "class",      "NAME",    "set window class/app_id" },
     { 'n', "no-sway",    NULL,      "disable integration with Sway WM" },
     { 'v', "version",    NULL,      "print version info and exit" },
@@ -149,11 +148,6 @@ static int parse_cmdargs(int argc, char* argv[])
                 break;
             case 'i':
                 config.show_info = true;
-                break;
-            case 'e':
-                if (!config_set_exec_cmd(optarg)) {
-                    return -1;
-                }
                 break;
             case 'c':
                 if (!config_set_appid(optarg)) {

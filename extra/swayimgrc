@@ -53,9 +53,6 @@ all = no
 # Slideshow image duration in seconds
 slideshow = 3
 
-# Executable command
-exec = echo '%'
-
 # Anti-aliasing
 antialiasing = no
 
@@ -111,7 +108,7 @@ F8 = flip_horizontal
 a = antialiasing
 r = reload
 i = info
-e = exec
+e = exec echo "Current file: %"
 Escape = quit
 Return = quit
 F10 = quit

@@ -14,7 +14,6 @@ _swayimg()
                 -p --wndpos \
                 -g --wndsize \
                 -i --info \
-                -e --exec \
                 -c --class \
                 -n --no-sway \
                 -v --version \

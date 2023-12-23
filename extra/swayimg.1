@@ -70,9 +70,6 @@ Set the default scale of the image. \fISCALE\fR is one of the named values.
 \fIreal\fR: real image size (100%).
 .IP "\fB\-i\fR, \fB\-\-info\fR"
 Show image meta info (file name, size, EXIF, current scale, etc).
-.IP "\fB\-e\fR, \fB\-\-exec\fR"
-Set a command to be executed when the corresponding key is pressed, use % for
-image path, default is "echo '%'".
 .IP "\fB\-c\fR, \fB\-\-class\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
 .IP "\fB\-n\fR, \fB\-\-no\-sway\fR"
@@ -131,9 +128,9 @@ Start/stop slideshow mode.
 .IP "\fBa\fR"
 Enable/disable anti-aliasing.
 .IP "\fBr\fR"
-Reload current image.
+Reset cache and reload current image.
 .IP "\fBe\fR"
-Execute system command for the current file.
+Execute external command: print path to the current file.
 .IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP"
 Exit the program.
 .SH ENVIRONMENT

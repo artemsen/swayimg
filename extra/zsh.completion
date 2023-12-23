@@ -15,7 +15,6 @@ _arguments \
   '(-p --wndpos)'{-p,--wndpos=}'[set window position]:wndpos:(parent)' \
   '(-g --wndsize)'{-g,--wndsize=}'[set window size]:wndsize:(parent image)' \
   '(-i --info)'{-i,--info}'[show image meta information (name, EXIF, etc)]' \
-  '(-e --exec)'{-e,--exec=}'[set execution command]' \
   '(-c --class)'{-c,--class=}'[set window class/app_id]:class' \
   '(-n --no-sway)'{-n,--no-sway}'[disable integration with Sway WM]' \
   '(-v --version)'{-v,--version}'[print version info and exit]' \

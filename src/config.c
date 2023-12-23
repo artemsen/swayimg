@@ -211,8 +211,6 @@ static bool apply_conf(const char* key, const char* value)
         return set_boolean(value, &config.all_files);
     } else if (strcmp(key, "slideshow") == 0) {
         return config_set_slideshow_sec(value);
-    } else if (strcmp(key, "exec") == 0) {
-        return config_set_exec_cmd(value);
     } else if (strcmp(key, "antialiasing") == 0) {
         return set_boolean(value, &config.antialiasing);
     } else if (strcmp(key, "app_id") == 0) {
@@ -386,7 +384,6 @@ void config_init(void)
     config.recursive = false;
     config.all_files = false;
     config.antialiasing = false;
-    config_set_exec_cmd("echo '%'");
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -414,7 +411,6 @@ void config_init(void)
 void config_free(void)
 {
     free((void*)config.font_face);
-    free((void*)config.exec_cmd);
     free((void*)config.app_id);
 }
 
@@ -565,13 +561,4 @@ bool config_set_appid(const char* val)
         return false;
     }
     return set_string(val, (char**)&config.app_id);
-}
-
-bool config_set_exec_cmd(const char* val)
-{
-    const size_t len = strlen(val);
-    if (len) {
-        return set_string(val, (char**)&config.exec_cmd);
-    }
-    return true;
 }
