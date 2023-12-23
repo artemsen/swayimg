@@ -6,17 +6,6 @@
 
 #include "types.h"
 
-/** Viewport movement. */
-enum canvas_move {
-    cm_center,     ///< Center of the image
-    cm_cnt_hor,    ///< Center horizontally
-    cm_cnt_vert,   ///< Center vertically
-    cm_step_left,  ///< One step to the left
-    cm_step_right, ///< One step to the right
-    cm_step_up,    ///< One step up
-    cm_step_down   ///< One step down
-};
-
 /** Scaling operations. */
 enum canvas_scale {
     cs_fit_or100,   ///< Fit to window, but not more than 100%
@@ -87,10 +76,11 @@ void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info);
 
 /**
  * Move viewport.
- * @param mv viewport movement direction
+ * @param horizontal axis along which to move (false for vertical)
+ * @param percent percentage increment to current position
  * @return true if coordinates were changed
  */
-bool canvas_move(enum canvas_move mv);
+bool canvas_move(bool horizontal, ssize_t percent);
 
 /**
  * Zoom in/out.

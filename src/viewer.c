@@ -304,6 +304,33 @@ static void zoom_image(bool zoom_in, const char* params)
 }
 
 /**
+ * Move viewport.
+ * @param horizontal axis along which to move (false for vertical)
+ * @param positive direction (increase/decrease)
+ * @param params optional move step in percents
+ */
+static bool move_viewport(bool horizontal, bool positive, const char* params)
+{
+    ssize_t percent = 10;
+
+    if (params) {
+        char* endptr;
+        const unsigned long val = strtoul(params, &endptr, 0);
+        if (val != 0 && val <= 1000 && !*endptr) {
+            percent = val;
+        } else {
+            fprintf(stderr, "Invalid move step: \"%s\"\n", params);
+        }
+    }
+
+    if (!positive) {
+        percent = -percent;
+    }
+
+    return canvas_move(horizontal, percent);
+}
+
+/**
  * Animation timer event handler.
  */
 static void on_animation_timer(void)
@@ -437,13 +464,13 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             ui_set_fullscreen(config.fullscreen);
             return false;
         case kb_step_left:
-            return canvas_move(cm_step_left);
+            return move_viewport(true, true, kbind->params);
         case kb_step_right:
-            return canvas_move(cm_step_right);
+            return move_viewport(true, false, kbind->params);
         case kb_step_up:
-            return canvas_move(cm_step_up);
+            return move_viewport(false, true, kbind->params);
         case kb_step_down:
-            return canvas_move(cm_step_down);
+            return move_viewport(false, false, kbind->params);
         case kb_zoom_in:
         case kb_zoom_out:
             zoom_image(kbind->action == kb_zoom_in, kbind->params);

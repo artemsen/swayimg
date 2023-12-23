@@ -83,10 +83,10 @@ Valid action are:
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
 .IP "\fBfullscreen\fR: switch fullscreen mode;"
-.IP "\fBstep_left\fR: move viewport left;"
-.IP "\fBstep_right\fR: move viewport right;"
-.IP "\fBstep_up\fR: move viewport up;"
-.IP "\fBstep_down\fR: move viewport down;"
+.IP "\fBstep_left \fI[PERCENT]\fR\fR: move viewport left, default is 10%;"
+.IP "\fBstep_right \fI[PERCENT]\fR\fR: move viewport right, default is 10%;"
+.IP "\fBstep_up \fI[PERCENT]\fR\fR: move viewport up, default is 10%;"
+.IP "\fBstep_down \fI[PERCENT]\fR\fR: move viewport down, default is 10%;"
 .IP "\fBzoom_in\fR \fI[PERCENT]\fR: zoom in, by default increases scale by 10%;"
 .IP "\fBzoom_out\fR \fI[PERCENT]\fR: zoom out, by default decreases scale by 10%;"
 .IP "\fBzoom_optimal\fR: set to optimal zoom (100% or less to fit to window);"
@@ -115,10 +115,11 @@ info = yes
 font = monospace 14
 font-color = #b4b3b2
 sway = no
+
 [keys]
 q = quit
-r = exec rm "%"
-R = exec echo "%" > mylist.txt
+Up = step_up 5
+e = exec echo "%" > mylist.txt
 .EE
 .\" related man pages
 .SH SEE ALSO

@@ -356,43 +356,20 @@ void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info)
     }
 }
 
-bool canvas_move(enum canvas_move mv)
+bool canvas_move(bool horizontal, ssize_t percent)
 {
-    const size_t scaled_width = ctx.scale * ctx.image.width;
-    const size_t scaled_height = ctx.scale * ctx.image.height;
-    const size_t step_x = ctx.window.width / 10;
-    const size_t step_y = ctx.window.height / 10;
-    ssize_t prev_x = ctx.image.x;
-    ssize_t prev_y = ctx.image.y;
+    const ssize_t old_x = ctx.image.x;
+    const ssize_t old_y = ctx.image.y;
 
-    switch (mv) {
-        case cm_center:
-            ctx.image.x = ctx.window.width / 2 - scaled_width / 2;
-            ctx.image.y = ctx.window.height / 2 - scaled_height / 2;
-            break;
-        case cm_cnt_hor:
-            ctx.image.x = ctx.window.width / 2 - scaled_width / 2;
-            break;
-        case cm_cnt_vert:
-            ctx.image.y = ctx.window.height / 2 - scaled_height / 2;
-            break;
-        case cm_step_left:
-            ctx.image.x += step_x;
-            break;
-        case cm_step_right:
-            ctx.image.x -= step_x;
-            break;
-        case cm_step_up:
-            ctx.image.y += step_y;
-            break;
-        case cm_step_down:
-            ctx.image.y -= step_y;
-            break;
+    if (horizontal) {
+        ctx.image.x += (ctx.window.width / 100) * percent;
+    } else {
+        ctx.image.y += (ctx.window.height / 100) * percent;
     }
 
     fix_viewport();
 
-    return (ctx.image.x != prev_x || ctx.image.y != prev_y);
+    return (ctx.image.x != old_x || ctx.image.y != old_y);
 }
 
 void canvas_zoom(ssize_t percent)
@@ -452,7 +429,11 @@ void canvas_set_scale(enum canvas_scale sc)
             break;
     }
 
-    canvas_move(cm_center);
+    // center viewport
+    ctx.image.x = ctx.window.width / 2 - (ctx.scale * ctx.image.width) / 2;
+    ctx.image.y = ctx.window.height / 2 - (ctx.scale * ctx.image.height) / 2;
+
+    fix_viewport();
 }
 
 float canvas_get_scale(void)
