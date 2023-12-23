@@ -101,7 +101,8 @@ static struct key_binding default_bindings[] = {
 struct keybind_context {
     struct key_binding* bindings;
     size_t size;
-} static ctx; // singleton
+};
+static struct keybind_context ctx;
 
 void keybind_init(void)
 {
