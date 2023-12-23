@@ -8,6 +8,7 @@
 #include "canvas.h"
 #include "config.h"
 #include "imagelist.h"
+#include "keybind.h"
 #include "ui.h"
 
 #include <stdio.h>
@@ -373,99 +374,90 @@ void viewer_on_resize(size_t width, size_t height, size_t scale)
 
 bool viewer_on_keyboard(xkb_keysym_t key)
 {
-    enum config_action action = cfgact_none;
-
-    // get action binded to the key
-    for (size_t i = 0; i < MAX_KEYBINDINGS; ++i) {
-        struct config_keybind* bind = &config.keybind[i];
-        if (bind->key == key) {
-            action = bind->action;
-            break;
-        }
-        if (bind->key == XKB_KEY_NoSymbol) {
-            return false; // end of binding table
-        }
+    const struct key_binding* kbind = keybind_get(key);
+    if (!kbind) {
+        return false;
     }
 
     // handle action
-    switch (action) {
-        case cfgact_none:
+    switch (kbind->action) {
+        case kb_none:
             return false;
-        case cfgact_first_file:
+        case kb_first_file:
             return next_file(jump_first_file);
-        case cfgact_last_file:
+        case kb_last_file:
             return next_file(jump_last_file);
-        case cfgact_prev_dir:
+        case kb_prev_dir:
             return next_file(jump_prev_dir);
-        case cfgact_next_dir:
+        case kb_next_dir:
             return next_file(jump_next_dir);
-        case cfgact_prev_file:
+        case kb_prev_file:
             return next_file(jump_prev_file);
-        case cfgact_next_file:
+        case kb_next_file:
             return next_file(jump_next_file);
-        case cfgact_prev_frame:
-        case cfgact_next_frame:
+        case kb_prev_frame:
+        case kb_next_frame:
             slideshow_ctl(false);
             animation_ctl(false);
-            return next_frame(action == cfgact_next_frame);
-        case cfgact_animation:
+            return next_frame(kbind->action == kb_next_frame);
+        case kb_animation:
             animation_ctl(!ctx.animation.enable);
             return false;
-        case cfgact_slideshow:
+        case kb_slideshow:
             slideshow_ctl(!ctx.slideshow.enable && next_file(jump_next_file));
             return true;
-        case cfgact_fullscreen:
+        case kb_fullscreen:
             config.fullscreen = !config.fullscreen;
             ui_set_fullscreen(config.fullscreen);
             return false;
-        case cfgact_step_left:
+        case kb_step_left:
             return canvas_move(cm_step_left);
-        case cfgact_step_right:
+        case kb_step_right:
             return canvas_move(cm_step_right);
-        case cfgact_step_up:
+        case kb_step_up:
             return canvas_move(cm_step_up);
-        case cfgact_step_down:
+        case kb_step_down:
             return canvas_move(cm_step_down);
-        case cfgact_zoom_in:
+        case kb_zoom_in:
             canvas_set_scale(cs_zoom_in);
             return true;
-        case cfgact_zoom_out:
+        case kb_zoom_out:
             canvas_set_scale(cs_zoom_out);
             return true;
-        case cfgact_zoom_optimal:
+        case kb_zoom_optimal:
             canvas_set_scale(cs_fit_or100);
             return true;
-        case cfgact_zoom_fit:
+        case kb_zoom_fit:
             canvas_set_scale(cs_fit_window);
             return true;
-        case cfgact_zoom_fill:
+        case kb_zoom_fill:
             canvas_set_scale(cs_fill_window);
             return true;
-        case cfgact_zoom_real:
+        case kb_zoom_real:
             canvas_set_scale(cs_real_size);
             return true;
-        case cfgact_zoom_reset:
+        case kb_zoom_reset:
             reset_viewport();
             return true;
-        case cfgact_rotate_left:
+        case kb_rotate_left:
             image_rotate(image_list_current().image, 270);
             canvas_swap_image_size();
             return true;
-        case cfgact_rotate_right:
+        case kb_rotate_right:
             image_rotate(image_list_current().image, 90);
             canvas_swap_image_size();
             return true;
-        case cfgact_flip_vertical:
+        case kb_flip_vertical:
             image_flip_vertical(image_list_current().image);
             return true;
-        case cfgact_flip_horizontal:
+        case kb_flip_horizontal:
             image_flip_horizontal(image_list_current().image);
             return true;
-        case cfgact_antialiasing:
+        case kb_antialiasing:
             config.antialiasing = !config.antialiasing;
             set_message("Anti-aliasing %s", config.antialiasing ? "on" : "off");
             return true;
-        case cfgact_reload:
+        case kb_reload:
             if (image_list_reset()) {
                 reset_state();
                 set_message("Image reloaded");
@@ -475,10 +467,10 @@ bool viewer_on_keyboard(xkb_keysym_t key)
                 ui_stop();
                 return false;
             }
-        case cfgact_info:
+        case kb_info:
             config.show_info = !config.show_info;
             return true;
-        case cfgact_exec: {
+        case kb_exec: {
             const int rc = image_list_exec();
             if (rc) {
                 set_message("Execute failed: code %d", rc);
@@ -493,7 +485,7 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             reset_state();
             return true;
         }
-        case cfgact_quit:
+        case kb_quit:
             ui_stop();
             return false;
     }

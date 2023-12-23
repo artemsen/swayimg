@@ -4,6 +4,8 @@
 
 #include "config.h"
 
+#include "keybind.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -20,101 +22,6 @@
 // Section names
 #define SECTION_GENERAL "general"
 #define SECTION_KEYBIND "keys"
-
-// Default key bindings
-static struct config_keybind default_bindings[] = {
-    { XKB_KEY_Home, cfgact_first_file },
-    { XKB_KEY_g, cfgact_first_file },
-    { XKB_KEY_End, cfgact_last_file },
-    { XKB_KEY_G, cfgact_last_file },
-    { XKB_KEY_P, cfgact_prev_dir },
-    { XKB_KEY_N, cfgact_next_dir },
-    { XKB_KEY_SunPageUp, cfgact_prev_file },
-    { XKB_KEY_p, cfgact_prev_file },
-    { XKB_KEY_SunPageDown, cfgact_next_file },
-    { XKB_KEY_n, cfgact_next_file },
-    { XKB_KEY_space, cfgact_next_file },
-    { XKB_KEY_F2, cfgact_prev_frame },
-    { XKB_KEY_O, cfgact_prev_frame },
-    { XKB_KEY_F3, cfgact_next_frame },
-    { XKB_KEY_o, cfgact_next_frame },
-    { XKB_KEY_F4, cfgact_animation },
-    { XKB_KEY_s, cfgact_animation },
-    { XKB_KEY_F9, cfgact_slideshow },
-    { XKB_KEY_F11, cfgact_fullscreen },
-    { XKB_KEY_f, cfgact_fullscreen },
-    { XKB_KEY_Left, cfgact_step_left },
-    { XKB_KEY_h, cfgact_step_left },
-    { XKB_KEY_Right, cfgact_step_right },
-    { XKB_KEY_l, cfgact_step_right },
-    { XKB_KEY_Up, cfgact_step_up },
-    { XKB_KEY_k, cfgact_step_up },
-    { XKB_KEY_Down, cfgact_step_down },
-    { XKB_KEY_j, cfgact_step_down },
-    { XKB_KEY_equal, cfgact_zoom_in },
-    { XKB_KEY_plus, cfgact_zoom_in },
-    { XKB_KEY_minus, cfgact_zoom_out },
-    { XKB_KEY_x, cfgact_zoom_optimal },
-    { XKB_KEY_z, cfgact_zoom_fit },
-    { XKB_KEY_Z, cfgact_zoom_fill },
-    { XKB_KEY_0, cfgact_zoom_real },
-    { XKB_KEY_BackSpace, cfgact_zoom_reset },
-    { XKB_KEY_F5, cfgact_rotate_left },
-    { XKB_KEY_bracketleft, cfgact_rotate_left },
-    { XKB_KEY_F6, cfgact_rotate_right },
-    { XKB_KEY_bracketright, cfgact_rotate_right },
-    { XKB_KEY_F7, cfgact_flip_vertical },
-    { XKB_KEY_F8, cfgact_flip_horizontal },
-    { XKB_KEY_a, cfgact_antialiasing },
-    { XKB_KEY_r, cfgact_reload },
-    { XKB_KEY_i, cfgact_info },
-    { XKB_KEY_e, cfgact_exec },
-    { XKB_KEY_Escape, cfgact_quit },
-    { XKB_KEY_Return, cfgact_quit },
-    { XKB_KEY_F10, cfgact_quit },
-    { XKB_KEY_q, cfgact_quit },
-};
-
-/* Link between action id and its name in config file */
-struct action_name {
-    const char* name;
-    enum config_action action;
-};
-
-static const struct action_name action_names[] = {
-    { "none", cfgact_none },
-    { "first_file", cfgact_first_file },
-    { "last_file", cfgact_last_file },
-    { "prev_dir", cfgact_prev_dir },
-    { "next_dir", cfgact_next_dir },
-    { "prev_file", cfgact_prev_file },
-    { "next_file", cfgact_next_file },
-    { "prev_frame", cfgact_prev_frame },
-    { "next_frame", cfgact_next_frame },
-    { "animation", cfgact_animation },
-    { "slideshow", cfgact_slideshow },
-    { "fullscreen", cfgact_fullscreen },
-    { "step_left", cfgact_step_left },
-    { "step_right", cfgact_step_right },
-    { "step_up", cfgact_step_up },
-    { "step_down", cfgact_step_down },
-    { "zoom_in", cfgact_zoom_in },
-    { "zoom_out", cfgact_zoom_out },
-    { "zoom_optimal", cfgact_zoom_optimal },
-    { "zoom_fit", cfgact_zoom_fit },
-    { "zoom_fill", cfgact_zoom_fill },
-    { "zoom_real", cfgact_zoom_real },
-    { "zoom_reset", cfgact_zoom_reset },
-    { "rotate_left", cfgact_rotate_left },
-    { "rotate_right", cfgact_rotate_right },
-    { "flip_vertical", cfgact_flip_vertical },
-    { "flip_horizontal", cfgact_flip_horizontal },
-    { "antialiasing", cfgact_antialiasing },
-    { "reload", cfgact_reload },
-    { "info", cfgact_info },
-    { "exec", cfgact_exec },
-    { "quit", cfgact_quit },
-};
 
 /** Config file location. */
 struct location {
@@ -319,15 +226,22 @@ static bool apply_conf(const char* key, const char* value)
 
 /**
  * Apply key binding to configuration.
- * @param key property key
- * @param value property value
- * @return operation complete status, false if key was not handled
+ * @param key name of the key
+ * @param action action name
+ * @param params action specific parameters
+ * @return operation complete status, false on error
  */
-static bool apply_key(const char* key, const char* value)
+static bool apply_key(const char* key, const char* action, const char* params)
 {
     xkb_keysym_t keysym;
-    enum config_action action;
-    size_t index;
+    enum kb_action action_id;
+
+    // convert action name to code
+    action_id = keybind_action(action);
+    if (action_id == kb_none && strcmp(action, "none")) {
+        fprintf(stderr, "Invalid binding action: %s\n", action);
+        return false;
+    }
 
     // convert key name to code
     keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
@@ -336,38 +250,7 @@ static bool apply_key(const char* key, const char* value)
         return false;
     }
 
-    // convert action name to code
-    for (index = 0; index < sizeof(action_names) / sizeof(action_names[0]);
-         ++index) {
-        if (strcmp(value, action_names[index].name) == 0) {
-            action = action_names[index].action;
-            break;
-        }
-    }
-    if (index == sizeof(action_names) / sizeof(action_names[0])) {
-        fprintf(stderr, "Invalid binding action: %s\n", value);
-        return false;
-    }
-
-    // replace previous binding
-    for (index = 0; index < MAX_KEYBINDINGS; ++index) {
-        struct config_keybind* bind = &config.keybind[index];
-        if (bind->key == XKB_KEY_NoSymbol) {
-            break;
-        }
-        if (bind->key == keysym) {
-            bind->action = action;
-            return true;
-        }
-    }
-
-    // add new binding
-    if (index == MAX_KEYBINDINGS) {
-        fprintf(stderr, "Too many key bindins\n");
-        return false;
-    }
-    config.keybind[index].key = keysym;
-    config.keybind[index].action = action;
+    keybind_set(keysym, action_id, params);
 
     return true;
 }
@@ -393,7 +276,7 @@ static bool load_config(const char* path)
 
     while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
         char* delim;
-        const char* value;
+        char* value;
         char* line = buff;
         bool status = false;
 
@@ -451,7 +334,19 @@ static bool load_config(const char* path)
         if (!section || strcmp(section, SECTION_GENERAL) == 0) {
             status = apply_conf(line, value);
         } else if (strcmp(section, SECTION_KEYBIND) == 0) {
-            status = apply_key(line, value);
+            // split value to action name and parameters
+            char* params = value;
+            while (*params && !isspace(*params)) {
+                ++params;
+            }
+            if (isspace(*params)) {
+                *params = 0;
+                ++params;
+                while (*params && isspace(*params)) {
+                    ++params;
+                }
+            }
+            status = apply_key(line, value, params);
         } else {
             fprintf(stderr, "Invalid section name: '%s'\n", section);
         }
@@ -492,7 +387,6 @@ void config_init(void)
     config.all_files = false;
     config.antialiasing = false;
     config_set_exec_cmd("echo '%'");
-    memcpy(config.keybind, default_bindings, sizeof(default_bindings));
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {

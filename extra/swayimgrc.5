@@ -28,6 +28,7 @@ Empty lines and comments are ignored.
 .nf
 \fIoptimal\fR: 100% or less to fit to window (default);
 \fIfit\fR: fit to window;
+\fIfill\fR: crop to window size;
 \fIreal\fR: real size (100%);
 .IP "\fBfullscreen\fR: start in full screen mode, \fIyes\fR or [\fIno\fR];"
 .IP "\fBbackground\fR: background for transparent images:"
@@ -66,16 +67,43 @@ Empty lines and comments are ignored.
 .SS Key bindins
 .PP
 The key bindings are described in the "keys" section.
-Each line associates a key with some action.
+Each line associates a key with some action and optional parameters.
 The key name can be obtained with the \fIxkbcli\fR tool:
 `xkbcli interactive-wayland`.
 .PP
 Valid action are:
-none, first_file, last_file, prev_dir, next_dir, prev_file, next_file, prev_frame,
-next_frame, animation, slideshow, fullscreen, step_left, step_right, step_up,
-step_down, zoom_in, zoom_out, zoom_optimal, zoom_fit, zoom_real, zoom_reset,
-rotate_left, rotate_right, flip_vertical, flip_horizontal,
-antialiasing, reload, info, exec, quit.
+.IP "\fBnone\fR: used for removig default action;"
+.IP "\fBfirst_file\fR: jump to the first file;"
+.IP "\fBlast_file\fR: jump to the last file;"
+.IP "\fBprev_dir\fR: jump to previous directory;"
+.IP "\fBnext_dir\fR: jump to next directory;"
+.IP "\fBprev_file\fR: jump to previous file;"
+.IP "\fBnext_file\fR: jump to next file;"
+.IP "\fBprev_frame\fR: show previous frame;"
+.IP "\fBnext_frame\fR: show next frame;"
+.IP "\fBanimation\fR: start/stop animation;"
+.IP "\fBslideshow\fR: start/stop slideshow;"
+.IP "\fBfullscreen\fR: switch fullscreen mode;"
+.IP "\fBstep_left\fR: move viewport left;"
+.IP "\fBstep_right\fR: move viewport right;"
+.IP "\fBstep_up\fR: move viewport up;"
+.IP "\fBstep_down\fR: move viewport down;"
+.IP "\fBzoom_in\fR: zoom in;"
+.IP "\fBzoom_out\fR: zoom out;"
+.IP "\fBzoom_optimal\fR: set to optimal zoom (100% or less to fit to window);"
+.IP "\fBzoom_fit\fR: set scale to fit the window;"
+.IP "\fBzoom_fill\fR: set scale to fill the window;"
+.IP "\fBzoom_real\fR: set 100% scale;"
+.IP "\fBzoom_reset\fR: reset zoom to default settings;"
+.IP "\fBrotate_left\fR: rotate image anticlockwise;"
+.IP "\fBrotate_right\fR: rotate image clockwise;"
+.IP "\fBflip_vertical\fR: flip image vertically;"
+.IP "\fBflip_horizontal\fR: flip image horizontally;"
+.IP "\fBreload\fR: reset cache and reload current image;"
+.IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
+.IP "\fBinfo\fR: show/hide image info;"
+.IP "\fBexec\fR: execute external command;"
+.IP "\fBquit\fR: quit the application."
 .\" example file
 .SH EXAMPLES
 .EX

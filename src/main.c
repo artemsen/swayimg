@@ -7,6 +7,7 @@
 #include "font.h"
 #include "formats/loader.h"
 #include "imagelist.h"
+#include "keybind.h"
 #include "sway.h"
 #include "ui.h"
 #include "viewer.h"
@@ -224,6 +225,7 @@ int main(int argc, char* argv[])
     bool rc = false;
     int index;
 
+    keybind_init();
     config_init();
 
     // parse command arguments
@@ -282,6 +284,7 @@ done:
     font_free();
     image_list_free();
     config_free();
+    keybind_free();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }
