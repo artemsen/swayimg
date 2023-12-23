@@ -278,6 +278,32 @@ __attribute__((format(printf, 1, 2))) static void set_message(const char* fmt,
 }
 
 /**
+ * Zoom in/out.
+ * @param zoom_in in/out flag
+ * @param params optional zoom step in percents
+ */
+static void zoom_image(bool zoom_in, const char* params)
+{
+    ssize_t percent = 10;
+
+    if (params) {
+        char* endptr;
+        const unsigned long val = strtoul(params, &endptr, 0);
+        if (val != 0 && val <= 1000 && !*endptr) {
+            percent = val;
+        } else {
+            fprintf(stderr, "Invalid zoom value: \"%s\"\n", params);
+        }
+    }
+
+    if (!zoom_in) {
+        percent = -percent;
+    }
+
+    canvas_zoom(percent);
+}
+
+/**
  * Animation timer event handler.
  */
 static void on_animation_timer(void)
@@ -419,10 +445,8 @@ bool viewer_on_keyboard(xkb_keysym_t key)
         case kb_step_down:
             return canvas_move(cm_step_down);
         case kb_zoom_in:
-            canvas_set_scale(cs_zoom_in);
-            return true;
         case kb_zoom_out:
-            canvas_set_scale(cs_zoom_out);
+            zoom_image(kbind->action == kb_zoom_in, kbind->params);
             return true;
         case kb_zoom_optimal:
             canvas_set_scale(cs_fit_or100);

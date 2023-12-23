@@ -23,8 +23,6 @@ enum canvas_scale {
     cs_fit_window,  ///< Fit to window size
     cs_fill_window, ///< Fill the window
     cs_real_size,   ///< Real image size (100%)
-    cs_zoom_in,     ///< Enlarge by one step
-    cs_zoom_out     ///< Reduce by one step
 };
 
 /** Corner position. */
@@ -95,8 +93,14 @@ void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info);
 bool canvas_move(enum canvas_move mv);
 
 /**
- * Scale image on the canvas.
- * @param sc scale operation
+ * Zoom in/out.
+ * @param percent percentage increment to current scale
+ */
+void canvas_zoom(ssize_t percent);
+
+/**
+ * Set fixed scale for the image.
+ * @param sc scale to set
  */
 void canvas_set_scale(enum canvas_scale sc);
 

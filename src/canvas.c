@@ -395,59 +395,64 @@ bool canvas_move(enum canvas_move mv)
     return (ctx.image.x != prev_x || ctx.image.y != prev_y);
 }
 
+void canvas_zoom(ssize_t percent)
+{
+    const size_t old_w = ctx.scale * ctx.image.width;
+    const size_t old_h = ctx.scale * ctx.image.height;
+    const float step = (ctx.scale / 100) * percent;
+
+    if (percent > 0) {
+        ctx.scale += step;
+        if (ctx.scale > MAX_SCALE) {
+            ctx.scale = MAX_SCALE;
+        }
+    } else {
+        const float scale_w = (float)MIN_SCALE / ctx.image.width;
+        const float scale_h = (float)MIN_SCALE / ctx.image.height;
+        const float scale_min = max(scale_w, scale_h);
+        ctx.scale += step;
+        if (ctx.scale < scale_min) {
+            ctx.scale = scale_min;
+        }
+    }
+
+    // move viewport to save the center of previous coordinates
+    const size_t new_w = ctx.scale * ctx.image.width;
+    const size_t new_h = ctx.scale * ctx.image.height;
+    const ssize_t delta_w = old_w - new_w;
+    const ssize_t delta_h = old_h - new_h;
+    const ssize_t cntr_x = ctx.window.width / 2 - ctx.image.x;
+    const ssize_t cntr_y = ctx.window.height / 2 - ctx.image.y;
+    ctx.image.x += ((float)cntr_x / old_w) * delta_w;
+    ctx.image.y += ((float)cntr_y / old_h) * delta_h;
+
+    fix_viewport();
+}
+
 void canvas_set_scale(enum canvas_scale sc)
 {
-    const float prev = ctx.scale;
+    const float scale_w = 1.0 / ((float)ctx.image.width / ctx.window.width);
+    const float scale_h = 1.0 / ((float)ctx.image.height / ctx.window.height);
 
-    // set new scale factor
-    if (sc == cs_fit_or100 || sc == cs_fit_window || sc == cs_fill_window) {
-        const float sw = 1.0 / ((float)ctx.image.width / ctx.window.width);
-        const float sh = 1.0 / ((float)ctx.image.height / ctx.window.height);
-        if (sc == cs_fill_window) {
-            ctx.scale = max(sw, sh);
-        } else {
-            ctx.scale = min(sw, sh);
-            if (sc == cs_fit_or100 && ctx.scale > 1.0) {
+    switch (sc) {
+        case cs_fit_or100:
+            ctx.scale = min(scale_w, scale_h);
+            if (ctx.scale > 1.0) {
                 ctx.scale = 1.0;
             }
-        }
-    } else if (sc == cs_real_size) {
-        ctx.scale = 1.0; // 100 %
-    } else {
-        const float step = ctx.scale / 10.0;
-        if (sc == cs_zoom_in) {
-            ctx.scale += step;
-            if (ctx.scale > MAX_SCALE) {
-                ctx.scale = MAX_SCALE;
-            }
-        } else if (sc == cs_zoom_out) {
-            const float sw = (float)MIN_SCALE / ctx.image.width;
-            const float sh = (float)MIN_SCALE / ctx.image.height;
-            const float scale_min = max(sw, sh);
-            ctx.scale -= step;
-            if (ctx.scale < scale_min) {
-                ctx.scale = scale_min;
-            }
-        }
+            break;
+        case cs_fit_window:
+            ctx.scale = min(scale_w, scale_h);
+            break;
+        case cs_fill_window:
+            ctx.scale = max(scale_w, scale_h);
+            break;
+        case cs_real_size:
+            ctx.scale = 1.0; // 100 %
+            break;
     }
 
-    // move viewport
-    if (sc != cs_zoom_in && sc != cs_zoom_out) {
-        canvas_move(cm_center);
-    } else {
-        // move to save the center of previous coordinates
-        const size_t old_w = prev * ctx.image.width;
-        const size_t old_h = prev * ctx.image.height;
-        const size_t new_w = ctx.scale * ctx.image.width;
-        const size_t new_h = ctx.scale * ctx.image.height;
-        const ssize_t delta_w = old_w - new_w;
-        const ssize_t delta_h = old_h - new_h;
-        const ssize_t cntr_x = ctx.window.width / 2 - ctx.image.x;
-        const ssize_t cntr_y = ctx.window.height / 2 - ctx.image.y;
-        ctx.image.x += ((float)cntr_x / old_w) * delta_w;
-        ctx.image.y += ((float)cntr_y / old_h) * delta_h;
-        fix_viewport();
-    }
+    canvas_move(cm_center);
 }
 
 float canvas_get_scale(void)
