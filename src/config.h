@@ -6,8 +6,6 @@
 
 #include "types.h"
 
-#include <xkbcommon/xkbcommon.h>
-
 // Background modes
 #define COLOR_TRANSPARENT 0xff000000
 #define BACKGROUND_GRID   0xfe000000
@@ -31,6 +29,13 @@ enum config_scale {
     cfgsc_fill,    ///< Fill the window
     cfgsc_real     ///< Real image size (100%)
 };
+
+/**
+ * Custom section loader.
+ * @param key,value configuration parameters
+ * @return load status, false on errors
+ */
+typedef bool (*config_loader)(const char* key, const char* value);
 
 /** App configuration. */
 struct config {
@@ -64,6 +69,13 @@ void config_init(void);
  * Free configuration instance.
  */
 void config_free(void);
+
+/**
+ * Register custom section loader.
+ * @param name statically allocated name of the section
+ * @param loader section data handler
+ */
+void config_add_section(const char* name, config_loader loader);
 
 // Configuration setters
 bool config_set_scale(const char* val);

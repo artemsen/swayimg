@@ -4,12 +4,19 @@
 
 #include "keybind.h"
 
+#include "config.h"
+
+#include <ctype.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
+// Section name in the config file
+#define CONFIG_SECTION "keys"
+
 /** Action names. */
 static const char* action_names[] = {
-    [kb_none] = NULL,
+    [kb_none] = "none",
     [kb_first_file] = "first_file",
     [kb_last_file] = "last_file",
     [kb_prev_dir] = "prev_dir",
@@ -104,25 +111,14 @@ struct keybind_context {
 };
 static struct keybind_context ctx;
 
-void keybind_init(void)
-{
-    ctx.bindings = malloc(sizeof(default_bindings));
-    if (ctx.bindings) {
-        memcpy(ctx.bindings, default_bindings, sizeof(default_bindings));
-        ctx.size = sizeof(default_bindings) / sizeof(default_bindings[0]);
-    }
-    keybind_set(XKB_KEY_e, kb_exec, "echo \"Current file: %\"");
-}
-
-void keybind_free(void)
-{
-    for (size_t i = 0; i < ctx.size; ++i) {
-        free(ctx.bindings[i].params);
-    }
-    free(ctx.bindings);
-}
-
-void keybind_set(xkb_keysym_t key, enum kb_action action, const char* params)
+/**
+ * Set key binding.
+ * @param key keyboard key
+ * @param action action to set
+ * @param params additional parameters (action specific)
+ */
+static void keybind_set(xkb_keysym_t key, enum kb_action action,
+                        const char* params)
 {
     struct key_binding* new_binding = NULL;
 
@@ -165,6 +161,76 @@ void keybind_set(xkb_keysym_t key, enum kb_action action, const char* params)
     }
 }
 
+static bool keybind_load(const char* key, const char* value)
+{
+    enum kb_action action_id = kb_none;
+    size_t action_len;
+    const char* params;
+    xkb_keysym_t keysym;
+    const char* action_end;
+
+    // get action length
+    action_end = value;
+    while (*action_end && !isspace(*action_end)) {
+        ++action_end;
+    }
+    action_len = action_end - value;
+
+    // get action id form its name
+    for (size_t i = 1; i < sizeof(action_names) / sizeof(action_names[0]);
+         ++i) {
+        const char* cn = action_names[i];
+        if (strlen(cn) == action_len && strncmp(value, cn, action_len) == 0) {
+            action_id = (enum kb_action)i;
+        }
+    }
+    if (action_id == kb_none &&
+        strncmp(value, action_names[kb_none], strlen(action_names[kb_none]))) {
+        fprintf(stderr, "Invalid binding action: %s\n", value);
+        return false;
+    }
+
+    // get parameters
+    params = action_end;
+    while (*params && isspace(*params)) {
+        ++params;
+    }
+    if (!*params) {
+        params = NULL;
+    }
+
+    // convert key name to code
+    keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
+    if (keysym == XKB_KEY_NoSymbol) {
+        fprintf(stderr, "Invalid key binding: %s\n", key);
+        return false;
+    }
+
+    keybind_set(keysym, action_id, params);
+
+    return true;
+}
+
+void keybind_init(void)
+{
+    ctx.bindings = malloc(sizeof(default_bindings));
+    if (ctx.bindings) {
+        memcpy(ctx.bindings, default_bindings, sizeof(default_bindings));
+        ctx.size = sizeof(default_bindings) / sizeof(default_bindings[0]);
+    }
+    keybind_set(XKB_KEY_e, kb_exec, "echo \"Current file: %\"");
+
+    config_add_section(CONFIG_SECTION, keybind_load);
+}
+
+void keybind_free(void)
+{
+    for (size_t i = 0; i < ctx.size; ++i) {
+        free(ctx.bindings[i].params);
+    }
+    free(ctx.bindings);
+}
+
 const struct key_binding* keybind_get(xkb_keysym_t key)
 {
     for (size_t i = 0; i < ctx.size; ++i) {
@@ -174,15 +240,4 @@ const struct key_binding* keybind_get(xkb_keysym_t key)
         }
     }
     return NULL;
-}
-
-enum kb_action keybind_action(const char* name)
-{
-    size_t i;
-    for (i = 1; i < sizeof(action_names) / sizeof(action_names[0]); ++i) {
-        if (strcmp(name, action_names[i]) == 0) {
-            return (enum kb_action)i;
-        }
-    }
-    return kb_none;
 }

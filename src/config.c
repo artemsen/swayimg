@@ -21,13 +21,19 @@
 
 // Section names
 #define SECTION_GENERAL "general"
-#define SECTION_KEYBIND "keys"
 
 /** Config file location. */
 struct location {
     const char* prefix;  ///< Environment variable name
     const char* postfix; ///< Constant postfix
 };
+
+/** Section loader. */
+struct config_section {
+    const char* name;
+    config_loader loader;
+};
+static struct config_section sections[3];
 
 static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config" },
@@ -223,37 +229,6 @@ static bool apply_conf(const char* key, const char* value)
 }
 
 /**
- * Apply key binding to configuration.
- * @param key name of the key
- * @param action action name
- * @param params action specific parameters
- * @return operation complete status, false on error
- */
-static bool apply_key(const char* key, const char* action, const char* params)
-{
-    xkb_keysym_t keysym;
-    enum kb_action action_id;
-
-    // convert action name to code
-    action_id = keybind_action(action);
-    if (action_id == kb_none && strcmp(action, "none")) {
-        fprintf(stderr, "Invalid binding action: %s\n", action);
-        return false;
-    }
-
-    // convert key name to code
-    keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
-    if (keysym == XKB_KEY_NoSymbol) {
-        fprintf(stderr, "Invalid key binding: %s\n", key);
-        return false;
-    }
-
-    keybind_set(keysym, action_id, params);
-
-    return true;
-}
-
-/**
  * Load configuration from a file.
  * @param path full path to the file
  * @return operation complete status, false on error
@@ -328,25 +303,25 @@ static bool load_config(const char* path)
             *delim = 0;
         }
 
-        // add configuration parameter from key/value pair
+        // apply configuration parameter from key/value pair
         if (!section || strcmp(section, SECTION_GENERAL) == 0) {
             status = apply_conf(line, value);
-        } else if (strcmp(section, SECTION_KEYBIND) == 0) {
-            // split value to action name and parameters
-            char* params = value;
-            while (*params && !isspace(*params)) {
-                ++params;
-            }
-            if (isspace(*params)) {
-                *params = 0;
-                ++params;
-                while (*params && isspace(*params)) {
-                    ++params;
+        } else {
+            // get loader
+            struct config_section* sec = NULL;
+            for (size_t i = 0;
+                 i < sizeof(sections) / sizeof(sections[0]) && sections[i].name;
+                 ++i) {
+                if (strcmp(sections[i].name, section) == 0) {
+                    sec = &sections[i];
+                    break;
                 }
             }
-            status = apply_key(line, value, params);
-        } else {
-            fprintf(stderr, "Invalid section name: '%s'\n", section);
+            if (sec) {
+                status = sec->loader(line, value);
+            } else {
+                fprintf(stderr, "Invalid section name: '%s'\n", section);
+            }
         }
         if (!status) {
             fprintf(stderr, "Invalid configuration in %s:%lu\n", path,
@@ -412,6 +387,20 @@ void config_free(void)
 {
     free((void*)config.font_face);
     free((void*)config.app_id);
+}
+
+void config_add_section(const char* name, config_loader loader)
+{
+    size_t index = 0;
+    struct config_section* section = sections;
+    while (section->name) {
+        if (++index >= sizeof(sections) / sizeof(sections[0])) {
+            return;
+        }
+        ++section;
+    }
+    section->name = name;
+    section->loader = loader;
 }
 
 bool config_set_scale(const char* val)

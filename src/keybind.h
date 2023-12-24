@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <xkbcommon/xkbcommon.h>
 
 /** Available actions. */
@@ -61,23 +60,8 @@ void keybind_init(void);
 void keybind_free(void);
 
 /**
- * Set kay binding.
- * @param key keyboard key
- * @param action action to set
- * @param params additional parameters (action specific)
- */
-void keybind_set(xkb_keysym_t key, enum kb_action action, const char* params);
-
-/**
  * Get key binding description.
  * @param key keyboard key
  * @return pointer to the binding or NULL if not found
  */
 const struct key_binding* keybind_get(xkb_keysym_t key);
-
-/**
- * Get action name by its id.
- * @param name action name
- * @return action id, id_none if not found
- */
-enum kb_action keybind_action(const char* name);
