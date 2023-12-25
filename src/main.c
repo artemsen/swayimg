@@ -220,6 +220,7 @@ int main(int argc, char* argv[])
     int index;
 
     keybind_init();
+    font_init();
     config_init();
 
     // parse command arguments
@@ -237,9 +238,6 @@ int main(int argc, char* argv[])
         fprintf(stderr, "No images to view, exit\n");
         goto done;
     }
-
-    // load font
-    font_init();
 
     // set window size form the first image
     if (config.geometry.width == SAME_AS_IMAGE ||
@@ -275,9 +273,9 @@ int main(int argc, char* argv[])
 done:
     ui_free();
     viewer_free();
-    font_free();
     image_list_free();
     config_free();
+    font_free();
     keybind_free();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;

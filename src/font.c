@@ -17,12 +17,23 @@
 #define SPACE_WH_REL 2
 #define GLYPH_GW_REL 4
 
+// Section name in the config file
+#define CONFIG_SECTION "font"
+
+// Defaults
+#define DEFALT_FONT  "monospace"
+#define DEFALT_COLOR 0x00cccccc
+#define DEFALT_SIZE  14
+#define DEFALT_SCALE 1
+
 /** Font context. */
 struct font {
-    FT_Library font_lib; ///< Font lib instance
-    FT_Face font_face;   ///< Font face
-    wchar_t* wbuf;       ///< Buffer for wide char text
-    size_t wbuf_sz;      ///< Size of wide buffer in bytes
+    FT_Library lib; ///< Font lib instance
+    FT_Face face;   ///< Font face instance
+    char* name;     ///< Font face name
+    argb_t color;   ///< Font color
+    size_t size;    ///< Base font size (pt)
+    size_t scale;   ///< Scale factor (HiDPI)
 };
 static struct font ctx;
 
@@ -70,32 +81,48 @@ static bool search_font_file(const char* name, char* font_file, size_t len)
 }
 
 /**
+ * Load font.
+ * @return false if font wasn't initialized
+ */
+static bool lazy_load(void)
+{
+    bool rc = ctx.face != NULL;
+
+    if (!rc) {
+        char file[256];
+        rc = search_font_file(ctx.name, file, sizeof(file)) &&
+            FT_Init_FreeType(&ctx.lib) == 0 &&
+            FT_New_Face(ctx.lib, file, 0, &ctx.face) == 0;
+    }
+    if (rc) {
+        const FT_F26Dot6 size = ctx.size * ctx.scale * 64;
+        FT_Set_Char_Size(ctx.face, size, 0, 96, 0);
+    }
+
+    return rc;
+}
+
+/**
  * Convert utf-8 string to wide char format.
  * @param text source string to encode
  * @param len length of the input string, 0 for auto
- * @return pointer to wide string
+ * @return pointer to wide string, called must free it
  */
-static const wchar_t* to_wide(const char* text, size_t len)
+static wchar_t* to_wide(const char* text, size_t len)
 {
     size_t ansi_sz = len ? len : strlen(text);
     const size_t wide_sz = (ansi_sz + 1 /*last null*/) * sizeof(wchar_t);
-    wchar_t cpt = 0;
     wchar_t* wide;
+    wchar_t* ptr;
 
-    if (wide_sz < ctx.wbuf_sz) {
-        wide = ctx.wbuf;
-    } else {
-        wide = malloc(wide_sz);
-        if (wide) {
-            free(ctx.wbuf);
-            ctx.wbuf = wide;
-            ctx.wbuf_sz = wide_sz;
-        } else {
-            return NULL;
-        }
+    wide = malloc(wide_sz);
+    if (!wide) {
+        return NULL;
     }
+    ptr = wide;
 
     while (*text && ansi_sz--) {
+        wchar_t cpt = 0;
         const uint8_t ch = *text;
         if (ch <= 0x7f)
             cpt = ch;
@@ -109,137 +136,152 @@ static const wchar_t* to_wide(const char* text, size_t len)
             cpt = ch & 0x07;
         ++text;
         if (((*text & 0xc0) != 0x80) && (cpt <= 0x10ffff)) {
-            *wide = cpt;
-            ++wide;
+            *ptr = cpt;
+            ++ptr;
         }
     }
-    *wide = 0;
+    *ptr = 0; // last null
 
-    return ctx.wbuf;
-}
-
-/**
- * Get width of current glyph plus right gap.
- * @return width in pixels
- */
-static inline size_t glyph_width(void)
-{
-    const FT_GlyphSlot glyph = ctx.font_face->glyph;
-    const FT_Bitmap* bitmap = &glyph->bitmap;
-    return bitmap->width + config.font_size / GLYPH_GW_REL;
+    return wide;
 }
 
 /**
  * Draw glyph on window buffer.
  * @param wnd_buf window buffer
  * @param wnd_size window buffer size
- * @param pos top-left coordinates of the glyph
- * @return false if whole glyph out of window
+ * @param x,y top-left coordinates of the glyph
  */
-static bool draw_glyph(argb_t* wnd_buf, const struct size* wnd_size,
-                       const struct point* pos)
+static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x1,
+                       ssize_t y1)
 {
-    const FT_GlyphSlot glyph = ctx.font_face->glyph;
+    const FT_GlyphSlot glyph = ctx.face->glyph;
     const FT_Bitmap* bitmap = &glyph->bitmap;
     const size_t fheight = font_height();
 
     for (size_t y = 0; y < bitmap->rows; ++y) {
         argb_t* wnd_line;
         const uint8_t* glyph_line;
-        const size_t wnd_y = pos->y + y + fheight - glyph->bitmap_top;
+        const size_t wnd_y = y1 + y + fheight - glyph->bitmap_top;
 
         if (wnd_y >= wnd_size->height && y == 0) {
-            return false;
+            return; // out of window
         }
         wnd_line = &wnd_buf[wnd_y * wnd_size->width];
         glyph_line = &bitmap->buffer[y * bitmap->width];
 
         for (size_t x = 0; x < bitmap->width; ++x) {
             const uint8_t alpha = glyph_line[x];
-            const size_t wnd_x = pos->x + glyph->bitmap_left + x;
+            const size_t wnd_x = x1 + glyph->bitmap_left + x;
             if (wnd_x < wnd_size->width && alpha) {
                 argb_t* wnd_pixel = &wnd_line[wnd_x];
                 const argb_t bg = *wnd_pixel;
-                const argb_t fg = config.font_color;
+                const argb_t fg = ctx.color;
                 *wnd_pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
             }
         }
     }
+}
 
-    return true;
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static bool load_config(const char* key, const char* value)
+{
+    if (strcmp(key, "name") == 0) {
+        const size_t sz = strlen(value) + 1;
+        char* name = realloc(ctx.name, sz);
+        if (ctx.name) {
+            ctx.name = name;
+            memcpy(ctx.name, value, sz);
+        }
+        return true;
+    } else if (strcmp(key, "size") == 0) {
+        ssize_t num;
+        if (!config_parse_num(value, &num, 0) || num <= 0 || num > 1024) {
+            return false;
+        }
+        ctx.size = num;
+        return true;
+    } else if (strcmp(key, "color") == 0) {
+        argb_t color;
+        if (!config_parse_color(value, &color)) {
+            return false;
+        }
+        ctx.color = color;
+        return true;
+    }
+    return false;
 }
 
 void font_init(void)
 {
-    char font_file[256];
-    if (search_font_file(config.font_face, font_file, sizeof(font_file)) &&
-        FT_Init_FreeType(&ctx.font_lib) == 0 &&
-        FT_New_Face(ctx.font_lib, font_file, 0, &ctx.font_face) == 0) {
-        font_scale(1);
+    // set defaults
+    const char* default_font = DEFALT_FONT;
+    const size_t sz = strlen(default_font) + 1;
+    ctx.name = malloc(sz);
+    if (ctx.name) {
+        memcpy(ctx.name, default_font, sz);
     }
+    ctx.color = DEFALT_COLOR;
+    ctx.size = DEFALT_SIZE;
+    ctx.scale = DEFALT_SCALE;
+
+    // register configuration loader
+    config_add_section(CONFIG_SECTION, load_config);
 }
 
 void font_free(void)
 {
-    if (ctx.font_face) {
-        FT_Done_Face(ctx.font_face);
+    if (ctx.face) {
+        FT_Done_Face(ctx.face);
     }
-    if (ctx.font_lib) {
-        FT_Done_FreeType(ctx.font_lib);
+    if (ctx.lib) {
+        FT_Done_FreeType(ctx.lib);
     }
-    free(ctx.wbuf);
+    free(ctx.name);
 }
 
-void font_scale(size_t scale)
+void font_set_scale(size_t scale)
 {
-    if (ctx.font_face) {
-        const FT_F26Dot6 size = config.font_size * scale * 64;
-        FT_Set_Char_Size(ctx.font_face, size, 0, 96, 0);
-    }
+    ctx.scale = scale;
 }
 
 size_t font_height(void)
 {
-    return ctx.font_face
-        ? ctx.font_face->size->metrics.y_ppem + config.font_size / 4
-        : 0;
-}
-
-size_t font_text_width(const char* text, size_t len)
-{
-    size_t width = 0;
-    const wchar_t* wtext = to_wide(text, len);
-    const size_t wlen = wtext ? wcslen(wtext) : 0;
-
-    for (size_t i = 0; i < wlen; ++i) {
-        if (wtext[i] == L' ') {
-            width += font_height() / SPACE_WH_REL;
-        } else if (FT_Load_Char(ctx.font_face, wtext[i], FT_LOAD_DEFAULT) ==
-                   0) {
-            width += glyph_width();
-        }
-    }
-
-    return width;
+    return lazy_load() ? ctx.face->size->metrics.y_ppem + ctx.size / 4 : 0;
 }
 
 size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
                   const struct point* pos, const char* text, size_t len)
 {
-    struct point pen = *pos;
-    const wchar_t* wtext = to_wide(text, len);
-    const size_t wlen = wtext ? wcslen(wtext) : 0;
+    wchar_t* wide;
+    size_t wlen;
+    size_t width = 0;
+
+    if (!lazy_load()) {
+        return 0;
+    }
+
+    wide = to_wide(text, len);
+    if (!wide) {
+        return 0;
+    }
+    wlen = wcslen(wide);
 
     for (size_t i = 0; i < wlen; ++i) {
-        if (wtext[i] == L' ') {
-            pen.x += font_height() / SPACE_WH_REL;
-        } else if (FT_Load_Char(ctx.font_face, wtext[i], FT_LOAD_RENDER) == 0) {
-            if (!draw_glyph(wnd_buf, wnd_size, &pen)) {
-                break;
+        if (wide[i] == L' ') {
+            width += font_height() / SPACE_WH_REL;
+        } else if (FT_Load_Char(ctx.face, wide[i], FT_LOAD_RENDER) == 0) {
+            const size_t glyph_width =
+                ctx.face->glyph->bitmap.width + ctx.size / GLYPH_GW_REL;
+            if (wnd_buf && wnd_size && pos) {
+                draw_glyph(wnd_buf, wnd_size, pos->x + width, pos->y);
             }
-            pen.x += glyph_width();
+            width += glyph_width;
         }
     }
 
-    return pen.x - pos->x;
+    free(wide);
+
+    return width;
 }

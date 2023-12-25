@@ -8,6 +8,11 @@
 # 4. /etc/xdg/swayimg/config
 # See `man swayimgrc` for details.
 
+################################################################################
+# General options
+################################################################################
+[general]
+
 # Initial scale (optimal, fit, fill, or real)
 scale = optimal
 
@@ -28,15 +33,6 @@ wndsize = parent
 
 # Show image info: format, size, EXIF, and current scale (yes/no)
 info = no
-
-# Font used to show image info
-font = monospace
-
-# Font size (in pt)
-font-size = 14
-
-# Color for image info text
-font-color = #cccccc
 
 # Default order of the image list (none, alpha, or random)
 order = alpha
@@ -62,7 +58,21 @@ antialiasing = no
 # Enable/disable integration with Sway WM (window position managing)
 sway = yes
 
-# Section with key bindings (key -> action)
+################################################################################
+# Font configuration
+################################################################################
+[font]
+# Font name
+name = monospace
+# Font size (in pt)
+size = 14
+# Font color
+color = #cccccc
+
+################################################################################
+# Key binding section: key = action [parameters]
+# Use the `xkbcli` tool to get key name: `xkbcli interactive-wayland`
+################################################################################
 [keys]
 Home = first_file
 g = first_file

@@ -48,9 +48,6 @@ struct config {
     argb_t window;           ///< Window background mode/color
     enum config_scale scale; ///< Initial scale
     bool show_info;          ///< Show image info
-    const char* font_face;   ///< Font name
-    size_t font_size;        ///< Font size
-    argb_t font_color;       ///< Font color
     bool slideshow;          ///< Slide show mode
     size_t slideshow_sec;    ///< Slide show mode timing
     enum config_order order; ///< File list order
@@ -77,14 +74,29 @@ void config_free(void);
  */
 void config_add_section(const char* name, config_loader loader);
 
+/**
+ * Parse text to number.
+ * @param text text to convert
+ * @param color output variable
+ * @param base numeric base
+ * @return false if text has invalid format
+ */
+bool config_parse_num(const char* text, ssize_t* value, int base);
+
+/**
+ * Parse text value to ARGB color.
+ * @param text text to convert
+ * @param color output variable
+ * @return false if text has invalid format
+ */
+bool config_parse_color(const char* text, argb_t* color);
+
 // Configuration setters
 bool config_set_scale(const char* val);
 bool config_set_background(const char* val);
 bool config_set_wndbkg(const char* val);
 bool config_set_wndpos(const char* val);
 bool config_set_wndsize(const char* val);
-bool config_set_font_name(const char* val);
-bool config_set_font_size(const char* val);
 bool config_set_order(const char* val);
 bool config_set_slideshow_sec(const char* val);
 bool config_set_appid(const char* val);

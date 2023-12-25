@@ -103,31 +103,6 @@ static bool set_boolean(const char* text, bool* value)
 }
 
 /**
- * Convert text value to RGB color.
- * @param text text to convert
- * @param value target variable
- * @return false if value has invalid format
- */
-static bool set_color(const char* text, uint32_t* value)
-{
-    char* endptr;
-    unsigned long rgb;
-
-    if (*text == '#') {
-        ++text;
-    }
-
-    rgb = strtoul(text, &endptr, 16);
-    if (*endptr || rgb > 0x00ffffff || errno == ERANGE ||
-        (rgb == 0 && errno == EINVAL)) {
-        return false;
-    }
-    *value = rgb;
-
-    return true;
-}
-
-/**
  * Parse pair of numbers.
  * @param text text to parse
  * @param n1,n2 output values
@@ -201,12 +176,6 @@ static bool apply_conf(const char* key, const char* value)
         return config_set_wndsize(value);
     } else if (strcmp(key, "info") == 0) {
         return set_boolean(value, &config.show_info);
-    } else if (strcmp(key, "font") == 0) {
-        return config_set_font_name(value);
-    } else if (strcmp(key, "font-size") == 0) {
-        return config_set_font_size(value);
-    } else if (strcmp(key, "font-color") == 0) {
-        return set_color(value, &config.font_color);
     } else if (strcmp(key, "order") == 0) {
         return config_set_order(value);
     } else if (strcmp(key, "loop") == 0) {
@@ -349,9 +318,6 @@ void config_init(void)
     config.geometry.y = SAME_AS_PARENT;
     config.geometry.width = SAME_AS_PARENT;
     config.geometry.height = SAME_AS_PARENT;
-    config_set_font_name("monospace");
-    config.font_color = 0xcccccc;
-    config.font_size = 14;
     config.slideshow = false;
     config.slideshow_sec = 3;
     config.order = cfgord_alpha;
@@ -385,7 +351,6 @@ void config_init(void)
 
 void config_free(void)
 {
-    free((void*)config.font_face);
     free((void*)config.app_id);
 }
 
@@ -401,6 +366,37 @@ void config_add_section(const char* name, config_loader loader)
     }
     section->name = name;
     section->loader = loader;
+}
+
+bool config_parse_num(const char* text, ssize_t* value, int base)
+{
+    char* endptr;
+    long long num;
+
+    errno = 0;
+    num = strtoll(text, &endptr, base);
+    if (!*endptr && errno == 0) {
+        *value = num;
+        return true;
+    }
+
+    return false;
+}
+
+bool config_parse_color(const char* text, argb_t* color)
+{
+    ssize_t num;
+
+    if (*text == '#') {
+        ++text;
+    }
+
+    if (config_parse_num(text, &num, 16) && num >= 0 && num <= 0xffffffff) {
+        *color = num;
+        return true;
+    }
+
+    return false;
 }
 
 bool config_set_scale(const char* val)
@@ -427,7 +423,7 @@ bool config_set_background(const char* val)
         config.background = BACKGROUND_GRID;
     } else if (strcmp(val, "none") == 0) {
         config.background = COLOR_TRANSPARENT;
-    } else if (!set_color(val, &config.background)) {
+    } else if (!config_parse_color(val, &config.background)) {
         fprintf(stderr, "Invalid image background: %s\n", val);
         fprintf(stderr, "Expected 'none', 'grid', or RGB hex value.\n");
         return false;
@@ -439,7 +435,7 @@ bool config_set_wndbkg(const char* val)
 {
     if (strcmp(val, "none") == 0) {
         config.window = COLOR_TRANSPARENT;
-    } else if (!set_color(val, &config.window)) {
+    } else if (!config_parse_color(val, &config.window)) {
         fprintf(stderr, "Invalid window background: %s\n", val);
         fprintf(stderr, "Expected 'none' or RGB hex value.\n");
         return false;
@@ -488,28 +484,6 @@ bool config_set_wndsize(const char* val)
     fprintf(stderr, "Invalid window size: %s\n", val);
     fprintf(stderr, "Expected 'parent', 'image', or WIDTH,HEIGHT.\n");
     return false;
-}
-
-bool config_set_font_name(const char* val)
-{
-    const size_t len = strlen(val);
-    if (len == 0) {
-        fprintf(stderr, "Invalid font name\n");
-        return false;
-    }
-    return set_string(val, (char**)&config.font_face);
-}
-
-bool config_set_font_size(const char* val)
-{
-    char* endptr;
-    const unsigned long sz = strtoul(val, &endptr, 10);
-    if (*endptr || sz == 0) {
-        fprintf(stderr, "Invalid font size\n");
-        return false;
-    }
-    config.font_size = sz;
-    return true;
 }
 
 bool config_set_order(const char* val)

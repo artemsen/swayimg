@@ -161,7 +161,10 @@ static void keybind_set(xkb_keysym_t key, enum kb_action action,
     }
 }
 
-static bool keybind_load(const char* key, const char* value)
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static bool load_config(const char* key, const char* value)
 {
     enum kb_action action_id = kb_none;
     size_t action_len;
@@ -213,6 +216,7 @@ static bool keybind_load(const char* key, const char* value)
 
 void keybind_init(void)
 {
+    // set defaults
     ctx.bindings = malloc(sizeof(default_bindings));
     if (ctx.bindings) {
         memcpy(ctx.bindings, default_bindings, sizeof(default_bindings));
@@ -220,7 +224,8 @@ void keybind_init(void)
     }
     keybind_set(XKB_KEY_e, kb_exec, "echo \"Current file: %\"");
 
-    config_add_section(CONFIG_SECTION, keybind_load);
+    // register configuration loader
+    config_add_section(CONFIG_SECTION, load_config);
 }
 
 void keybind_free(void)

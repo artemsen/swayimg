@@ -49,9 +49,6 @@ Empty lines and comments are ignored.
 \fIWIDTH,HEIGHT\fR: absolute size of the window.
 .IP "\fBantialiasing\fR: enable/disable anti-aliasing, \fIyes\fR or [\fIno\fR];"
 .IP "\fBinfo\fR: show image meta information: format, size, EXIF, and current scale, \fIyes\fR or [\fIno\fR];"
-.IP "\fBfont\fR: font name used for printing image meta info, default is \fImonospace\fR;"
-.IP "\fBfont-size\fR: font size (in pt) used to render image info text, default is \fI14\fR;"
-.IP "\fBfont-color\fR: color used to render text, RGB hex format, default is \fI#cccccc\fR;"
 .IP "\fBorder\fR: order of the image list:"
 .nf
 \fInone\fR: unsorted;
@@ -63,6 +60,12 @@ Empty lines and comments are ignored.
 .IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
 .IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
 .IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
+.SS Font configuration
+.PP
+The font configuration is described in the "font" section.
+.IP "\fBname\fR: font name used for printing text, default is \fImonospace\fR;"
+.IP "\fBsize\fR: font size (in pt), default is \fI14\fR;"
+.IP "\fBcolor\fR: color in RGB hex format, default is \fI#cccccc\fR;"
 .SS Key bindins
 .PP
 The key bindings are described in the "keys" section.

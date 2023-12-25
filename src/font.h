@@ -17,24 +17,16 @@ void font_init(void);
 void font_free(void);
 
 /**
- * Scale font in HiDPI mode.
+ * Set font scaling in HiDPI mode.
  * @param scale scale factor
  */
-void font_scale(size_t scale);
+void font_set_scale(size_t scale);
 
 /**
  * Get single line height for current font.
  * @return line height in pixels
  */
 size_t font_height(void);
-
-/**
- * Get width of the line.
- * @param text string to print
- * @param len length of the input string, 0 for auto
- * @return width id the text in pixels
- */
-size_t font_text_width(const char* text, size_t len);
 
 /**
  * Print single line on window buffer.

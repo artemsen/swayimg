@@ -73,7 +73,7 @@ bool canvas_reset_window(size_t width, size_t height, size_t scale)
     ctx.window.height = height;
 
     ctx.wnd_scale = scale;
-    font_scale(scale);
+    font_set_scale(scale);
 
     fix_viewport();
 
@@ -306,7 +306,8 @@ void canvas_print_line(argb_t* wnd, enum canvas_corner corner, const char* text)
 
     switch (corner) {
         case cc_top_right:
-            pos.x = ctx.window.width - font_text_width(text, 0) - TEXT_PADDING;
+            pos.x = ctx.window.width - font_print(NULL, NULL, NULL, text, 0) -
+                TEXT_PADDING;
             pos.y = TEXT_PADDING;
             break;
         case cc_bottom_left:
@@ -314,7 +315,8 @@ void canvas_print_line(argb_t* wnd, enum canvas_corner corner, const char* text)
             pos.y = ctx.window.height - font_height() - TEXT_PADDING;
             break;
         case cc_bottom_right:
-            pos.x = ctx.window.width - font_text_width(text, 0) - TEXT_PADDING;
+            pos.x = ctx.window.width - font_print(NULL, NULL, NULL, text, 0) -
+                TEXT_PADDING;
             pos.y = ctx.window.height - font_height() - TEXT_PADDING;
             break;
     }
