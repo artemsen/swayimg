@@ -440,9 +440,9 @@ bool image_list_scan(const char** files, size_t num)
     }
 
     // sort or shuffle
-    if (ctx.order == cfgord_alpha) {
+    if (ctx.order == order_alpha) {
         sort_list();
-    } else if (ctx.order == cfgord_random) {
+    } else if (ctx.order == order_random) {
         shuffle_list();
     }
 

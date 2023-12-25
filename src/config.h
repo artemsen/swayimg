@@ -15,13 +15,6 @@
 // Copy size from image
 #define SAME_AS_IMAGE 0
 
-/** Order of file list. */
-enum config_order {
-    cfgord_none,  ///< Unsorted (system depended)
-    cfgord_alpha, ///< Alphanumeric sort
-    cfgord_random ///< Random order
-};
-
 /** Initial scaling of images. */
 enum config_scale {
     cfgsc_optimal, ///< Fit to window, but not more than 100%
@@ -47,7 +40,7 @@ typedef enum config_status (*config_loader)(const char* key, const char* value);
 
 /** App configuration. */
 struct config {
-    char* app_id;      ///< Window class/app_id name
+    char* app_id;            ///< Window class/app_id name
     bool sway_wm;            ///< Enable/disable integration with Sway WM
     struct rect geometry;    ///< Window geometry
     bool fullscreen;         ///< Full screen mode
