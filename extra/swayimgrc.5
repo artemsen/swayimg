@@ -15,15 +15,20 @@ swayimgrc \- Swayimg configuration file
 The Swayimg configuration file is a text-based INI file used to override the
 default settings.
 .PP
-The basic element contained in the INI file is the key or property. Every key
-has a name and a value, delimited by an equals sign (=). The name appears
-to the left of the equals sign, and the value to the right. The value can
-contain any character. Names and values are case sensitive.
+The structure of the INI file consists of key-value pairs for properties and
+sections that organize properties.
+The basic element contained in the INI file is the key or property.
+Every key has a name and a value, delimited by an equals sign (=).
+The name appears to the left of the equals sign. The value can contain any
+characters.
+.PP
+Keys are grouped into named sections. The section name appears on a line by
+itself, in square brackets ([ and ]). All keys after the section declaration
+are associated with that section.
 .PP
 The number sign (#) at the beginning of the line indicates a comment.
 Empty lines and comments are ignored.
-.SS Global properties
-.PP
+.SS [general] section
 .IP "\fBscale\fR: initial image scale:"
 .nf
 \fIoptimal\fR: 100% or less to fit to window (default);
@@ -52,9 +57,7 @@ Empty lines and comments are ignored.
 .IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
 .IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
 .IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
-.SS Image list configuration
-.PP
-The image list configuration is described in the "list" section.
+.SS [list] section: image list configuration
 .IP "\fBorder\fR: order of the image list:"
 .nf
 \fInone\fR: unsorted;
@@ -63,13 +66,13 @@ The image list configuration is described in the "list" section.
 .IP "\fBloop\fR: looping file list mode, [\fIyes\fR] or \fIno\fR;"
 .IP "\fBrecursive\fR: read directories recursively, \fIyes\fR or [\fIno\fR];"
 .IP "\fBall\fR: open all files in the same directory, \fIyes\fR or [\fIno\fR];"
-.SS Font configuration
+.SS [font]: font configuration
 .PP
 The font configuration is described in the "font" section.
 .IP "\fBname\fR: font name used for printing text, default is \fImonospace\fR;"
 .IP "\fBsize\fR: font size (in pt), default is \fI14\fR;"
 .IP "\fBcolor\fR: color in RGB hex format, default is \fI#cccccc\fR;"
-.SS Key bindins
+.SS [keys]: key bindins
 .PP
 The key bindings are described in the "keys" section.
 Each line associates a key with some action and optional parameters.
