@@ -16,8 +16,6 @@
 
 /** Base name of window class/app_id used by default */
 #define APP_ID_BASE "swayimg"
-/** Max length of window class/app_id name */
-#define APP_ID_MAX 32
 
 // Section names
 #define SECTION_GENERAL "general"
@@ -33,7 +31,7 @@ struct config_section {
     const char* name;
     config_loader loader;
 };
-static struct config_section sections[3];
+static struct config_section sections[4];
 
 static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config" },
@@ -82,27 +80,6 @@ static char* expand_path(const char* prefix_env, const char* postfix)
 }
 
 /**
- * Convert text value to boolean.
- * @param text text to convert
- * @param value target variable
- * @return false if value has invalid format
- */
-static bool set_boolean(const char* text, bool* value)
-{
-    bool rc = false;
-
-    if (strcmp(text, "yes") == 0 || strcmp(text, "true") == 0) {
-        *value = true;
-        rc = true;
-    } else if (strcmp(text, "no") == 0 || strcmp(text, "false") == 0) {
-        *value = false;
-        rc = true;
-    }
-
-    return rc;
-}
-
-/**
  * Parse pair of numbers.
  * @param text text to parse
  * @param n1,n2 output values
@@ -133,68 +110,110 @@ static bool parse_numpair(const char* text, long* n1, long* n2)
 }
 
 /**
- * Set (replace) string in config parameter.
- * @param src source string
- * @param dst destination buffer
- * @return false if not enough memory
- */
-static bool set_string(const char* src, char** dst)
-{
-    const size_t len = strlen(src) + 1 /*last null*/;
-    char* ptr = malloc(len);
-    if (!ptr) {
-        fprintf(stderr, "Not enough memory\n");
-        return false;
-    }
-    memcpy(ptr, src, len);
-
-    free(*dst);
-    *dst = ptr;
-
-    return true;
-}
-
-/**
  * Apply global property to configuration.
  * @param key property key
  * @param value property value
- * @return operation complete status, false if key was not handled
+ * @return operation complete status
  */
-static bool apply_conf(const char* key, const char* value)
+static enum config_status load_general(const char* key, const char* value)
 {
+    enum config_status status = cfgst_invalid_value;
+
     if (strcmp(key, "scale") == 0) {
-        return config_set_scale(value);
+        status = cfgst_ok;
+        if (strcmp(value, "optimal") == 0) {
+            config.scale = cfgsc_optimal;
+        } else if (strcmp(value, "fit") == 0) {
+            config.scale = cfgsc_fit;
+        } else if (strcmp(value, "fill") == 0) {
+            config.scale = cfgsc_fill;
+        } else if (strcmp(value, "real") == 0) {
+            config.scale = cfgsc_real;
+        } else {
+            status = cfgst_invalid_value;
+        }
     } else if (strcmp(key, "fullscreen") == 0) {
-        return set_boolean(value, &config.fullscreen);
+        if (config_parse_bool(value, &config.fullscreen)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "background") == 0) {
-        return config_set_background(value);
+        status = cfgst_ok;
+        if (strcmp(value, "grid") == 0) {
+            config.background = BACKGROUND_GRID;
+        } else if (strcmp(value, "none") == 0) {
+            config.background = COLOR_TRANSPARENT;
+        } else if (!config_parse_color(value, &config.background)) {
+            status = cfgst_invalid_value;
+        }
     } else if (strcmp(key, "wndbkg") == 0) {
-        return config_set_wndbkg(value);
+        if (strcmp(value, "none") == 0) {
+            config.window = COLOR_TRANSPARENT;
+            status = cfgst_ok;
+        } else if (config_parse_color(value, &config.window)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "wndpos") == 0) {
-        return config_set_wndpos(value);
+        if (strcmp(value, "parent") == 0) {
+            config.geometry.x = SAME_AS_PARENT;
+            config.geometry.y = SAME_AS_PARENT;
+            status = cfgst_ok;
+        } else {
+            long x, y;
+            if (parse_numpair(value, &x, &y)) {
+                config.geometry.x = (ssize_t)x;
+                config.geometry.y = (ssize_t)y;
+                status = cfgst_ok;
+            }
+        }
     } else if (strcmp(key, "wndsize") == 0) {
-        return config_set_wndsize(value);
+        if (strcmp(value, "parent") == 0) {
+            config.geometry.width = SAME_AS_PARENT;
+            config.geometry.height = SAME_AS_PARENT;
+            status = cfgst_ok;
+        } else if (strcmp(value, "image") == 0) {
+            config.geometry.width = SAME_AS_IMAGE;
+            config.geometry.height = SAME_AS_IMAGE;
+            status = cfgst_ok;
+        } else {
+            long width, height;
+            if (parse_numpair(value, &width, &height) && width > 0 &&
+                height > 0) {
+                config.geometry.width = (size_t)width;
+                config.geometry.height = (size_t)height;
+                status = cfgst_ok;
+            }
+        }
     } else if (strcmp(key, "info") == 0) {
-        return set_boolean(value, &config.show_info);
-    } else if (strcmp(key, "order") == 0) {
-        return config_set_order(value);
-    } else if (strcmp(key, "loop") == 0) {
-        return set_boolean(value, &config.loop);
-    } else if (strcmp(key, "recursive") == 0) {
-        return set_boolean(value, &config.recursive);
-    } else if (strcmp(key, "all") == 0) {
-        return set_boolean(value, &config.all_files);
+        if (config_parse_bool(value, &config.show_info)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "slideshow") == 0) {
-        return config_set_slideshow_sec(value);
+        ssize_t num;
+        if (config_parse_num(value, &num, 0) && num != 0) {
+            config.slideshow_sec = num;
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "antialiasing") == 0) {
-        return set_boolean(value, &config.antialiasing);
+        if (config_parse_bool(value, &config.antialiasing)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "app_id") == 0) {
-        return config_set_appid(value);
+        const size_t sz = strlen(value) + 1;
+        char* ptr = realloc(config.app_id, sz);
+        if (ptr) {
+            memcpy(ptr, value, sz);
+            config.app_id = ptr;
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "sway") == 0) {
-        return set_boolean(value, &config.sway_wm);
+        if (config_parse_bool(value, &config.sway_wm)) {
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
     }
-    fprintf(stderr, "Invalid config key name: %s\n", key);
-    return false;
+
+    return status;
 }
 
 /**
@@ -218,9 +237,9 @@ static bool load_config(const char* path)
 
     while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
         char* delim;
-        char* value;
+        const char* value;
         char* line = buff;
-        bool status = false;
+        enum config_status status;
 
         ++line_num;
 
@@ -272,27 +291,9 @@ static bool load_config(const char* path)
             *delim = 0;
         }
 
-        // apply configuration parameter from key/value pair
-        if (!section || strcmp(section, SECTION_GENERAL) == 0) {
-            status = apply_conf(line, value);
-        } else {
-            // get loader
-            struct config_section* sec = NULL;
-            for (size_t i = 0;
-                 i < sizeof(sections) / sizeof(sections[0]) && sections[i].name;
-                 ++i) {
-                if (strcmp(sections[i].name, section) == 0) {
-                    sec = &sections[i];
-                    break;
-                }
-            }
-            if (sec) {
-                status = sec->loader(line, value);
-            } else {
-                fprintf(stderr, "Invalid section name: '%s'\n", section);
-            }
-        }
-        if (!status) {
+        // load configuration parameter from key/value pair
+        status = config_set(section ? section : SECTION_GENERAL, line, value);
+        if (status != cfgst_ok) {
             fprintf(stderr, "Invalid configuration in %s:%lu\n", path,
                     line_num);
         }
@@ -320,21 +321,21 @@ void config_init(void)
     config.geometry.height = SAME_AS_PARENT;
     config.slideshow = false;
     config.slideshow_sec = 3;
-    config.order = cfgord_alpha;
-    config.loop = true;
-    config.recursive = false;
-    config.all_files = false;
     config.antialiasing = false;
 
     // create unique application id
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-        char app_id[64];
-        snprintf(app_id, sizeof(app_id), APP_ID_BASE "_%lx",
-                 (ts.tv_sec << 32) | ts.tv_nsec);
-        config_set_appid(app_id);
-    } else {
-        config_set_appid(APP_ID_BASE);
+    const size_t idlen = 32;
+    config.app_id = malloc(idlen);
+    if (config.app_id) {
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+            snprintf(config.app_id, idlen, APP_ID_BASE "_%lx",
+                     (ts.tv_sec << 32) | ts.tv_nsec);
+        } else {
+            strcpy(config.app_id, APP_ID_BASE);
+        }
     }
+
+    config_add_section(SECTION_GENERAL, load_general);
 
     // find and load first available config file
     for (size_t i = 0;
@@ -354,6 +355,76 @@ void config_free(void)
     free((void*)config.app_id);
 }
 
+enum config_status config_set(const char* section, const char* key,
+                              const char* value)
+{
+    enum config_status status = cfgst_invalid_section;
+
+    for (size_t i = 0; i < sizeof(sections) / sizeof(sections[0]); ++i) {
+        if (strcmp(sections[i].name, section) == 0) {
+            status = sections[i].loader(key, value);
+            break;
+        }
+    }
+
+    switch (status) {
+        case cfgst_ok:
+            break;
+        case cfgst_invalid_section:
+            fprintf(stderr, "Invalid section \"%s\"\n", section);
+            break;
+        case cfgst_invalid_key:
+            fprintf(stderr, "Invalid key \"%s\"\n", key);
+            break;
+        case cfgst_invalid_value:
+            fprintf(stderr, "Invalid value \"%s\"\n", value);
+            break;
+    }
+
+    return status;
+}
+
+bool config_command(const char* cmd)
+{
+    char section[32];
+    char key[32];
+    const char* value;
+    char* ptr;
+    const char* it = cmd;
+
+    // get section name
+    ptr = section;
+    while (*it != '.') {
+        if (!*it || ptr >= section + sizeof(section) - 1) {
+            goto format_error;
+        }
+        *ptr++ = *it++;
+    }
+    *ptr = 0; // last null
+    ++it;     // skip delimeter
+
+    // get key
+    ptr = key;
+    while (*it != '=') {
+        if (!*it || ptr >= key + sizeof(key) - 1) {
+            goto format_error;
+        }
+        *ptr++ = *it++;
+    }
+    *ptr = 0; // last null
+    ++it;     // skip delimeter
+
+    // get value
+    value = it;
+
+    // load setting
+    return config_set(section, key, value) == cfgst_ok;
+
+format_error:
+    fprintf(stderr, "Invalid format: \"%s\"\n", cmd);
+    return false;
+}
+
 void config_add_section(const char* name, config_loader loader)
 {
     size_t index = 0;
@@ -366,6 +437,21 @@ void config_add_section(const char* name, config_loader loader)
     }
     section->name = name;
     section->loader = loader;
+}
+
+bool config_parse_bool(const char* text, bool* flag)
+{
+    bool rc = false;
+
+    if (strcmp(text, "yes") == 0 || strcmp(text, "true") == 0) {
+        *flag = true;
+        rc = true;
+    } else if (strcmp(text, "no") == 0 || strcmp(text, "false") == 0) {
+        *flag = false;
+        rc = true;
+    }
+
+    return rc;
 }
 
 bool config_parse_num(const char* text, ssize_t* value, int base)
@@ -397,131 +483,4 @@ bool config_parse_color(const char* text, argb_t* color)
     }
 
     return false;
-}
-
-bool config_set_scale(const char* val)
-{
-    if (strcmp(val, "optimal") == 0) {
-        config.scale = cfgsc_optimal;
-    } else if (strcmp(val, "fit") == 0) {
-        config.scale = cfgsc_fit;
-    } else if (strcmp(val, "fill") == 0) {
-        config.scale = cfgsc_fill;
-    } else if (strcmp(val, "real") == 0) {
-        config.scale = cfgsc_real;
-    } else {
-        fprintf(stderr, "Invalid scale: %s\n", val);
-        fprintf(stderr, "Expected 'optimal', 'fit', 'fill', or 'real'.\n");
-        return false;
-    }
-    return true;
-}
-
-bool config_set_background(const char* val)
-{
-    if (strcmp(val, "grid") == 0) {
-        config.background = BACKGROUND_GRID;
-    } else if (strcmp(val, "none") == 0) {
-        config.background = COLOR_TRANSPARENT;
-    } else if (!config_parse_color(val, &config.background)) {
-        fprintf(stderr, "Invalid image background: %s\n", val);
-        fprintf(stderr, "Expected 'none', 'grid', or RGB hex value.\n");
-        return false;
-    }
-    return true;
-}
-
-bool config_set_wndbkg(const char* val)
-{
-    if (strcmp(val, "none") == 0) {
-        config.window = COLOR_TRANSPARENT;
-    } else if (!config_parse_color(val, &config.window)) {
-        fprintf(stderr, "Invalid window background: %s\n", val);
-        fprintf(stderr, "Expected 'none' or RGB hex value.\n");
-        return false;
-    }
-    return true;
-}
-
-bool config_set_wndpos(const char* val)
-{
-    if (strcmp(val, "parent") == 0) {
-        config.geometry.x = SAME_AS_PARENT;
-        config.geometry.y = SAME_AS_PARENT;
-        return true;
-    } else {
-        long x, y;
-        if (parse_numpair(val, &x, &y)) {
-            config.geometry.x = (ssize_t)x;
-            config.geometry.y = (ssize_t)y;
-            return true;
-        }
-    }
-    fprintf(stderr, "Invalid window position: %s\n", val);
-    fprintf(stderr, "Expected 'parent' or X,Y.\n");
-    return false;
-}
-
-bool config_set_wndsize(const char* val)
-{
-    if (strcmp(val, "parent") == 0) {
-        config.geometry.width = SAME_AS_PARENT;
-        config.geometry.height = SAME_AS_PARENT;
-        return true;
-    } else if (strcmp(val, "image") == 0) {
-        config.geometry.width = SAME_AS_IMAGE;
-        config.geometry.height = SAME_AS_IMAGE;
-        return true;
-    } else {
-        long width, height;
-        if (parse_numpair(val, &width, &height) && width > 0 && height > 0) {
-            config.geometry.width = (size_t)width;
-            config.geometry.height = (size_t)height;
-            return true;
-        }
-    }
-
-    fprintf(stderr, "Invalid window size: %s\n", val);
-    fprintf(stderr, "Expected 'parent', 'image', or WIDTH,HEIGHT.\n");
-    return false;
-}
-
-bool config_set_order(const char* val)
-{
-    if (strcmp(val, "none") == 0) {
-        config.order = cfgord_none;
-    } else if (strcmp(val, "alpha") == 0) {
-        config.order = cfgord_alpha;
-    } else if (strcmp(val, "random") == 0) {
-        config.order = cfgord_random;
-    } else {
-        fprintf(stderr, "Invalid file list order: %s\n", val);
-        fprintf(stderr, "Expected 'none', 'alpha', or 'random'.\n");
-        return false;
-    }
-    return true;
-}
-
-bool config_set_slideshow_sec(const char* val)
-{
-    char* endptr;
-    const unsigned long sec = strtoul(val, &endptr, 10);
-    if (*endptr || sec == 0) {
-        fprintf(stderr, "Invalid slideshow duration\n");
-        return false;
-    }
-    config.slideshow_sec = sec;
-    return true;
-}
-
-bool config_set_appid(const char* val)
-{
-    const size_t len = strlen(val);
-    if (len == 0 || len > APP_ID_MAX) {
-        fprintf(stderr, "Invalid class/app_id: %s\n", val);
-        fprintf(stderr, "Expected non-empty string up to %d chars.\n",
-                APP_ID_MAX);
-        return false;
-    }
-    return set_string(val, (char**)&config.app_id);
 }

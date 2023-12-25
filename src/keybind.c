@@ -164,7 +164,7 @@ static void keybind_set(xkb_keysym_t key, enum kb_action action,
 /**
  * Custom section loader, see `config_loader` for details.
  */
-static bool load_config(const char* key, const char* value)
+static enum config_status load_config(const char* key, const char* value)
 {
     enum kb_action action_id = kb_none;
     size_t action_len;
@@ -189,8 +189,7 @@ static bool load_config(const char* key, const char* value)
     }
     if (action_id == kb_none &&
         strncmp(value, action_names[kb_none], strlen(action_names[kb_none]))) {
-        fprintf(stderr, "Invalid binding action: %s\n", value);
-        return false;
+        return cfgst_invalid_value;
     }
 
     // get parameters
@@ -205,13 +204,12 @@ static bool load_config(const char* key, const char* value)
     // convert key name to code
     keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
     if (keysym == XKB_KEY_NoSymbol) {
-        fprintf(stderr, "Invalid key binding: %s\n", key);
-        return false;
+        return cfgst_invalid_key;
     }
 
     keybind_set(keysym, action_id, params);
 
-    return true;
+    return cfgst_ok;
 }
 
 void keybind_init(void)

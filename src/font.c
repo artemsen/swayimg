@@ -185,32 +185,33 @@ static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x1,
 /**
  * Custom section loader, see `config_loader` for details.
  */
-static bool load_config(const char* key, const char* value)
+static enum config_status load_config(const char* key, const char* value)
 {
+    enum config_status status = cfgst_invalid_value;
+
     if (strcmp(key, "name") == 0) {
         const size_t sz = strlen(value) + 1;
         char* name = realloc(ctx.name, sz);
         if (ctx.name) {
             ctx.name = name;
             memcpy(ctx.name, value, sz);
+            status = cfgst_ok;
         }
-        return true;
     } else if (strcmp(key, "size") == 0) {
         ssize_t num;
-        if (!config_parse_num(value, &num, 0) || num <= 0 || num > 1024) {
-            return false;
+        if (config_parse_num(value, &num, 0) && num > 0 && num < 1024) {
+            ctx.size = num;
+            status = cfgst_ok;
         }
-        ctx.size = num;
-        return true;
     } else if (strcmp(key, "color") == 0) {
-        argb_t color;
-        if (!config_parse_color(value, &color)) {
-            return false;
+        if (config_parse_color(value, &ctx.color)) {
+            status = cfgst_ok;
         }
-        ctx.color = color;
-        return true;
+    } else {
+        status = cfgst_invalid_key;
     }
-    return false;
+
+    return status;
 }
 
 void font_init(void)

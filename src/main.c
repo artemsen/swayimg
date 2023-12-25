@@ -23,25 +23,28 @@ struct cmdarg {
     const char* long_opt; ///< Long option name
     const char* format;   ///< Format description
     const char* help;     ///< Help string
+    const char* section;  ///< Section name of the param
+    const char* key;      ///< Key of the param
+    const char* value;    ///< Static value to set
 };
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'o', "order",      "ORDER",   "set sort order for image list: none/[alpha]/random" },
-    { 'r', "recursive",  NULL,      "read directories recursively" },
-    { 'a', "all",        NULL,      "open all files from the same directory" },
-    { 'l', "slideshow",  NULL,      "activate slideshow mode on startup" },
-    { 'f', "fullscreen", NULL,      "show image in full screen mode" },
-    { 's', "scale",      "SCALE",   "set initial image scale: [optimal]/fit/fill/real" },
-    { 'b', "background", "COLOR",   "set image background color: none/[grid]/RGB" },
-    { 'w', "wndbkg",     "COLOR",   "set window background color: [none]/RGB" },
-    { 'p', "wndpos",     "POS",     "set window position [parent]/X,Y" },
-    { 'g', "wndsize",    "SIZE",    "set window size: [parent]/image/W,H" },
-    { 'i', "info",       NULL,      "show image meta information (name, EXIF, etc)" },
-    { 'c', "class",      "NAME",    "set window class/app_id" },
-    { 'n', "no-sway",    NULL,      "disable integration with Sway WM" },
-    { 'v', "version",    NULL,      "print version info and exit" },
-    { 'h', "help",       NULL,      "print this help and exit" }
+    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random", "list", "order", NULL },
+    { 'r', "recursive",  NULL,    "read directories recursively", "list", "recursive", "yes" },
+    { 'a', "all",        NULL,    "open all files from the same directory", "list", "all", "yes" },
+    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup", NULL, NULL, NULL },
+    { 'f', "fullscreen", NULL,    "show image in full screen mode", NULL, NULL, NULL },
+    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/fill/real", "general", "scale", NULL },
+    { 'b', "background", "COLOR", "set image background color: none/[grid]/RGB", "general", "background", NULL },
+    { 'w', "wndbkg",     "COLOR", "set window background color: [none]/RGB", "general", "wndbkg", NULL },
+    { 'p', "wndpos",     "POS",   "set window position [parent]/X,Y", "general", "wndpos", NULL },
+    { 'g', "wndsize",    "SIZE",  "set window size: [parent]/image/W,H", "general", "wndsize", NULL },
+    { 'i', "info",       NULL,    "show image meta information (name, EXIF, etc)", "general", "info", "yes" },
+    { 'c', "class",      "NAME",  "set window class/app_id", "general", "app_id", NULL },
+    { 't', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL, NULL, NULL },
+    { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
+    { 'h', "help",       NULL,    "print this help and exit", NULL, NULL, NULL }
 };
 // clang-format on
 
@@ -103,59 +106,28 @@ static int parse_cmdargs(int argc, char* argv[])
 
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
+        const struct cmdarg* arg = arguments;
+        while (arg->short_opt != opt) {
+            ++arg;
+        }
+        if (arg->section) {
+            if (config_set(arg->section, arg->key,
+                           arg->value ? arg->value : optarg) != cfgst_ok) {
+                return -1;
+            }
+            continue;
+        }
         switch (opt) {
-            case 'o':
-                if (!config_set_order(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'r':
-                config.recursive = true;
-                break;
-            case 'a':
-                config.all_files = true;
-                break;
             case 'l':
                 config.slideshow = true;
                 break;
             case 'f':
                 config.fullscreen = true;
                 break;
-            case 's':
-                if (!config_set_scale(optarg)) {
+            case 't':
+                if (!config_command(optarg)) {
                     return -1;
                 }
-                break;
-            case 'b':
-                if (!config_set_background(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'w':
-                if (!config_set_wndbkg(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'p':
-                if (!config_set_wndpos(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'g':
-                if (!config_set_wndsize(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'i':
-                config.show_info = true;
-                break;
-            case 'c':
-                if (!config_set_appid(optarg)) {
-                    return -1;
-                }
-                break;
-            case 'n':
-                config.sway_wm = false;
                 break;
             case 'v':
                 puts(APP_NAME " version " APP_VERSION ".");
@@ -221,6 +193,7 @@ int main(int argc, char* argv[])
 
     keybind_init();
     font_init();
+    image_list_init();
     config_init();
 
     // parse command arguments
@@ -234,7 +207,7 @@ int main(int argc, char* argv[])
     }
 
     // compose file list
-    if (!image_list_init((const char**)&argv[index], argc - index)) {
+    if (!image_list_scan((const char**)&argv[index], argc - index)) {
         fprintf(stderr, "No images to view, exit\n");
         goto done;
     }
@@ -273,8 +246,8 @@ int main(int argc, char* argv[])
 done:
     ui_free();
     viewer_free();
-    image_list_free();
     config_free();
+    image_list_free();
     font_free();
     keybind_free();
 

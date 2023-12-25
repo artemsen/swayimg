@@ -12,6 +12,13 @@ struct image_entry {
     struct image* image; ///< Image handle
 };
 
+/** Order of file list. */
+enum list_order {
+    order_none,  ///< Unsorted (system depended)
+    order_alpha, ///< Alphanumeric sort
+    order_random ///< Random order
+};
+
 /** Movement directions. */
 enum list_jump {
     jump_first_file,
@@ -24,16 +31,21 @@ enum list_jump {
 
 /**
  * Initialize the image list.
- * @param files list of input files
- * @param num number of files in the file list
- * @return false if no one images loaded
  */
-bool image_list_init(const char** files, size_t num);
+void image_list_init(void);
 
 /**
  * Free the image list.
  */
 void image_list_free(void);
+
+/**
+ * Scan directoried and fill the image list.
+ * @param files list of input files
+ * @param num number of files in the file list
+ * @return false if no one images loaded
+ */
+bool image_list_scan(const char** files, size_t num);
 
 /**
  * Get image list size.

@@ -30,16 +30,24 @@ enum config_scale {
     cfgsc_real     ///< Real image size (100%)
 };
 
+/** Load status. */
+enum config_status {
+    cfgst_ok,
+    cfgst_invalid_section,
+    cfgst_invalid_key,
+    cfgst_invalid_value,
+};
+
 /**
  * Custom section loader.
  * @param key,value configuration parameters
- * @return load status, false on errors
+ * @return load status
  */
-typedef bool (*config_loader)(const char* key, const char* value);
+typedef enum config_status (*config_loader)(const char* key, const char* value);
 
 /** App configuration. */
 struct config {
-    const char* app_id;      ///< Window class/app_id name
+    char* app_id;      ///< Window class/app_id name
     bool sway_wm;            ///< Enable/disable integration with Sway WM
     struct rect geometry;    ///< Window geometry
     bool fullscreen;         ///< Full screen mode
@@ -50,10 +58,6 @@ struct config {
     bool show_info;          ///< Show image info
     bool slideshow;          ///< Slide show mode
     size_t slideshow_sec;    ///< Slide show mode timing
-    enum config_order order; ///< File list order
-    bool loop;               ///< File list loop mode
-    bool recursive;          ///< Read directories recursively
-    bool all_files;          ///< Open all files from the same directory
 };
 extern struct config config;
 
@@ -68,11 +72,34 @@ void config_init(void);
 void config_free(void);
 
 /**
+ * Set option.
+ * @param section section name
+ * @param key,value configuration parameters
+ * @return load status
+ */
+enum config_status config_set(const char* section, const char* key,
+                              const char* value);
+/**
+ * Execute config command to set option.
+ * @param cmd command in format: "section.key=value"
+ * @return false if error
+ */
+bool config_command(const char* cmd);
+
+/**
  * Register custom section loader.
  * @param name statically allocated name of the section
  * @param loader section data handler
  */
 void config_add_section(const char* name, config_loader loader);
+
+/**
+ * Convert text value to boolean.
+ * @param text text to convert
+ * @param flag target variable
+ * @return false if text has invalid format
+ */
+bool config_parse_bool(const char* text, bool* flag);
 
 /**
  * Parse text to number.
@@ -90,13 +117,3 @@ bool config_parse_num(const char* text, ssize_t* value, int base);
  * @return false if text has invalid format
  */
 bool config_parse_color(const char* text, argb_t* color);
-
-// Configuration setters
-bool config_set_scale(const char* val);
-bool config_set_background(const char* val);
-bool config_set_wndbkg(const char* val);
-bool config_set_wndpos(const char* val);
-bool config_set_wndsize(const char* val);
-bool config_set_order(const char* val);
-bool config_set_slideshow_sec(const char* val);
-bool config_set_appid(const char* val);

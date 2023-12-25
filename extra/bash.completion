@@ -13,9 +13,8 @@ _swayimg()
                 -w --wndbkg \
                 -p --wndpos \
                 -g --wndsize \
-                -i --info \
                 -c --class \
-                -n --no-sway \
+                -t --config \
                 -v --version \
                 -h --help"
     if [[ ${cur} == -* ]]; then

@@ -49,6 +49,12 @@ Empty lines and comments are ignored.
 \fIWIDTH,HEIGHT\fR: absolute size of the window.
 .IP "\fBantialiasing\fR: enable/disable anti-aliasing, \fIyes\fR or [\fIno\fR];"
 .IP "\fBinfo\fR: show image meta information: format, size, EXIF, and current scale, \fIyes\fR or [\fIno\fR];"
+.IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
+.IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
+.IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
+.SS Image list configuration
+.PP
+The image list configuration is described in the "list" section.
 .IP "\fBorder\fR: order of the image list:"
 .nf
 \fInone\fR: unsorted;
@@ -56,10 +62,7 @@ Empty lines and comments are ignored.
 \fIrandom\fR: randomize list.
 .IP "\fBloop\fR: looping file list mode, [\fIyes\fR] or \fIno\fR;"
 .IP "\fBrecursive\fR: read directories recursively, \fIyes\fR or [\fIno\fR];"
-.IP "\fBall\fR: always open all files in the same directory, \fIyes\fR or [\fIno\fR];"
-.IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
-.IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
-.IP "\fBsway\fR: enable or disable integration with sway WM (window position management), [\fIyes\fR] or \fIno\fR."
+.IP "\fBall\fR: open all files in the same directory, \fIyes\fR or [\fIno\fR];"
 .SS Font configuration
 .PP
 The font configuration is described in the "font" section.
@@ -110,18 +113,13 @@ Valid action are:
 .SH EXAMPLES
 .EX
 # comment
-scale = fit
-fullscreen = no
-background = none
+[general]
 window = #112233
-info = yes
-font = monospace 14
-font-color = #b4b3b2
-sway = no
-
+[list]
+order = random
+[font]
+size = 16
 [keys]
-q = quit
-Up = step_up 5
 e = exec echo "%" > mylist.txt
 .EE
 .\" related man pages

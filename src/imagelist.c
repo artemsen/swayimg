@@ -23,6 +23,9 @@
 /** Name used for image, that is read from stdin through pipe. */
 #define STDIN_FILE_NAME "*stdin*"
 
+// Section name in the config file
+#define CONFIG_SECTION "list"
+
 /** Single list entry. */
 struct entry {
     size_t index; ///< Entry index in the list
@@ -39,8 +42,19 @@ struct image_list {
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread
+    enum list_order order;  ///< File list order
+    bool loop;              ///< File list loop mode
+    bool recursive;         ///< Read directories recursively
+    bool all_files;         ///< Open all files from the same directory
 };
 static struct image_list ctx;
+
+/** Order names. */
+static const char* order_names[] = {
+    [order_none] = "none",
+    [order_alpha] = "alpha",
+    [order_random] = "random",
+};
 
 /**
  * Add file to the list.
@@ -154,14 +168,14 @@ static size_t peek_next_file(size_t start, bool forward)
     while (true) {
         if (forward) {
             if (++index >= ctx.size) {
-                if (!config.loop) {
+                if (!ctx.loop) {
                     break;
                 }
                 index = 0;
             }
         } else {
             if (index-- == 0) {
-                if (!config.loop) {
+                if (!ctx.loop) {
                     break;
                 }
                 index = ctx.size - 1;
@@ -325,13 +339,60 @@ static void preloader_ctl(bool restart)
     }
 }
 
-bool image_list_init(const char** files, size_t num)
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, "order") == 0) {
+        const size_t arrsz = sizeof(order_names) / sizeof(order_names[0]);
+        for (size_t i = 0; i < arrsz; ++i) {
+            if (strcmp(order_names[i], value) == 0) {
+                ctx.order = (enum list_order)i;
+                status = cfgst_ok;
+                break;
+            }
+        }
+    } else if (strcmp(key, "loop") == 0) {
+        if (config_parse_bool(value, &ctx.loop)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "recursive") == 0) {
+        if (config_parse_bool(value, &ctx.recursive)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "all") == 0) {
+        if (config_parse_bool(value, &ctx.all_files)) {
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
+void image_list_init(void)
+{
+    // set defaults
+    ctx.order = order_alpha;
+    ctx.loop = true;
+    ctx.recursive = false;
+    ctx.all_files = false;
+
+    // register configuration loader
+    config_add_section(CONFIG_SECTION, load_config);
+}
+
+bool image_list_scan(const char** files, size_t num)
 {
     const char* force_start = NULL;
 
     if (num == 0) {
         // no input files specified, use all from the current directory
-        add_dir(".", config.recursive);
+        add_dir(".", ctx.recursive);
     } else if (num == 1 && strcmp(files[0], "-") == 0) {
         // pipe mode
         add_file(STDIN_FILE_NAME);
@@ -344,22 +405,22 @@ bool image_list_init(const char** files, size_t num)
                         strerror(errno));
             } else {
                 if (S_ISDIR(file_stat.st_mode)) {
-                    add_dir(files[i], config.recursive);
+                    add_dir(files[i], ctx.recursive);
                 } else {
-                    if (!config.all_files) {
+                    if (!ctx.all_files) {
                         add_file(files[i]);
                     } else {
                         // add all files from the same directory
                         const char* delim = strrchr(files[i], '/');
                         const size_t len = delim ? delim - files[i] : 0;
                         if (len == 0) {
-                            add_dir(".", config.recursive);
+                            add_dir(".", ctx.recursive);
                         } else {
                             char* dir = malloc(len + 1);
                             if (dir) {
                                 memcpy(dir, files[i], len);
                                 dir[len] = 0;
-                                add_dir(dir, config.recursive);
+                                add_dir(dir, ctx.recursive);
                                 free(dir);
                             }
                         }
@@ -379,9 +440,9 @@ bool image_list_init(const char** files, size_t num)
     }
 
     // sort or shuffle
-    if (config.order == cfgord_alpha) {
+    if (ctx.order == cfgord_alpha) {
         sort_list();
-    } else if (config.order == cfgord_random) {
+    } else if (ctx.order == cfgord_random) {
         shuffle_list();
     }
 
