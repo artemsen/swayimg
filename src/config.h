@@ -41,7 +41,6 @@ typedef enum config_status (*config_loader)(const char* key, const char* value);
 /** App configuration. */
 struct config {
     char* app_id;            ///< Window class/app_id name
-    bool sway_wm;            ///< Enable/disable integration with Sway WM
     struct rect geometry;    ///< Window geometry
     bool fullscreen;         ///< Full screen mode
     bool antialiasing;       ///< Anti-aliasing

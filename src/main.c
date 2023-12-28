@@ -42,8 +42,8 @@ static const struct cmdarg arguments[] = {
     { 'w', "wndbkg",     "COLOR", "set window background color: [none]/RGB", "general", "wndbkg", NULL },
     { 'p', "wndpos",     "POS",   "set window position [parent]/X,Y", "general", "wndpos", NULL },
     { 'g', "wndsize",    "SIZE",  "set window size: [parent]/image/W,H", "general", "wndsize", NULL },
-    { 'c', "class",      "NAME",  "set window class/app_id", "general", "app_id", NULL },
-    { 't', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL, NULL, NULL },
+    { 'n', "class",      "NAME",  "set window class/app_id", "general", "app_id", NULL },
+    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL, NULL, NULL },
     { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
     { 'h', "help",       NULL,    "print this help and exit", NULL, NULL, NULL }
 };
@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
         config.geometry.height = first.image->frames[0].height;
     }
 
-    if (config.sway_wm && !config.fullscreen) {
+    if (!config.fullscreen) {
         sway_setup();
     }
 

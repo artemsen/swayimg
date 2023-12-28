@@ -201,10 +201,6 @@ static enum config_status load_general(const char* key, const char* value)
             config.app_id = ptr;
             status = cfgst_ok;
         }
-    } else if (strcmp(key, "sway") == 0) {
-        if (config_parse_bool(value, &config.sway_wm)) {
-            status = cfgst_ok;
-        }
     } else {
         status = cfgst_invalid_key;
     }
@@ -310,7 +306,6 @@ void config_init(void)
     config.scale = cfgsc_optimal;
     config.background = BACKGROUND_GRID;
     config.window = COLOR_TRANSPARENT;
-    config.sway_wm = true;
     config.geometry.x = SAME_AS_PARENT;
     config.geometry.y = SAME_AS_PARENT;
     config.geometry.width = SAME_AS_PARENT;

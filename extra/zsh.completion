@@ -14,8 +14,8 @@ _arguments \
   '(-w --wndbkg)'{-w,--wndbkg=}'[set window background color]:wndbkg:(none)' \
   '(-p --wndpos)'{-p,--wndpos=}'[set window position]:wndpos:(parent)' \
   '(-g --wndsize)'{-g,--wndsize=}'[set window size]:wndsize:(parent image)' \
-  '(-c --class)'{-c,--class=}'[set window class/app_id]:class' \
-  '(-t --config)'{-t,--config=}'[set configuration parameter]:config' \
+  '(-n --class)'{-c,--class=}'[set window class/app_id]:class' \
+  '(-c --config)'{-c,--config=}'[set configuration parameter]:config' \
   '(-v --version)'{-v,--version}'[print version info and exit]' \
   '(-h --help)'{-h,--help}'[print help and exit]' \
   '*:file:_files'
