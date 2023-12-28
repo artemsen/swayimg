@@ -69,24 +69,20 @@ static bool next_frame(bool forward)
  */
 static void animation_ctl(bool enable)
 {
+    struct itimerspec ts = { 0 };
+
     if (enable) {
         const struct image_entry entry = image_list_current();
         const size_t duration = entry.image->frames[ctx.frame].duration;
-        ctx.animation.enable = (entry.image->num_frames > 1 && duration);
-        if (ctx.animation.enable) {
-            const struct itimerspec ts = {
-                .it_value = {
-                    .tv_sec = duration / 1000,
-                    .tv_nsec = (duration % 1000) * 1000000,
-                },
-            };
-            timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
+        enable = (entry.image->num_frames > 1 && duration);
+        if (enable) {
+            ts.it_value.tv_sec = duration / 1000;
+            ts.it_value.tv_nsec = (duration % 1000) * 1000000;
         }
-    } else {
-        const struct itimerspec ts = { 0 };
-        timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
-        ctx.animation.enable = false;
     }
+
+    ctx.animation.enable = enable;
+    timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
 }
 
 /**
@@ -98,13 +94,11 @@ static void slideshow_ctl(bool enable)
     struct itimerspec ts = { 0 };
 
     ctx.slideshow.enable = enable;
-
     if (enable) {
         ts.it_value.tv_sec = config.slideshow_sec;
-        timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
-    } else {
-        timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
     }
+
+    timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
 }
 
 /**
@@ -160,6 +154,9 @@ static void reset_state(void)
     reset_viewport();
     update_window_title();
     animation_ctl(true);
+    if (config.slideshow) {
+        slideshow_ctl(true); // start slide show
+    }
 }
 
 /**
@@ -320,7 +317,7 @@ static void on_animation_timer(void)
 /**
  * Slideshow timer event handler.
  */
-static void viewer_on_ss_timer(void)
+static void on_slideshow_timer(void)
 {
     if (ctx.slideshow.enable && next_file(jump_next_file)) {
         slideshow_ctl(true);
@@ -340,11 +337,7 @@ void viewer_init(void)
     ctx.slideshow.fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow.fd != -1) {
-        ui_add_event(ctx.slideshow.fd, viewer_on_ss_timer);
-    }
-
-    if (config.slideshow) {
-        slideshow_ctl(true); // start slide show
+        ui_add_event(ctx.slideshow.fd, on_slideshow_timer);
     }
 }
 
