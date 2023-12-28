@@ -106,6 +106,10 @@ xdg_shell_h = custom_target(
   command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
 )
 
+# install sample config
+install_data('extra/swayimgrc',
+  install_dir: join_paths(get_option('datadir'), 'swayimg'))
+
 # man installation
 if get_option('man')
   install_man('extra/swayimg.1')
