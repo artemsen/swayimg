@@ -121,11 +121,7 @@ struct info_context {
     struct info_line fields[INFO_FIELDS_NUM];
     struct info_block blocks[MODES_NUM][INFO_POSITION_NUM];
 };
-static struct info_context ctx = {
-    .mode = info_mode_full,
-    .frame = UINT32_MAX,
-    .index = UINT32_MAX,
-};
+static struct info_context ctx;
 
 /**
  * Convert ansi string to wide char format.
@@ -335,6 +331,9 @@ void info_init(void)
     ctx.fields[info_image_size].key = copy_wide(L"Image size");
 
     // set defaults
+    ctx.mode = info_mode_full;
+    ctx.frame = UINT32_MAX;
+    ctx.index = UINT32_MAX;
     SET_DEFAULT(info_mode_full, info_top_left, default_full_top_left);
     SET_DEFAULT(info_mode_full, info_top_right, default_full_top_right);
     SET_DEFAULT(info_mode_full, info_bottom_left, default_full_bottom_left);
