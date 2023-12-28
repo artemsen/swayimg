@@ -107,7 +107,12 @@ static int parse_cmdargs(int argc, char* argv[])
 
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
-        const struct cmdarg* arg = arguments;
+        const struct cmdarg* arg;
+        if (opt == '?') {
+            return -1;
+        }
+        // get argument description
+        arg = arguments;
         while (arg->short_opt != opt) {
             ++arg;
         }

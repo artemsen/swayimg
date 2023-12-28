@@ -312,8 +312,14 @@ static enum config_status load_config(const char* key, const char* value)
     }
 
     // set new scheme
-    block->scheme = realloc(block->scheme, scheme_sz * sizeof(enum info_field));
-    memcpy(block->scheme, scheme, scheme_sz * sizeof(enum info_field));
+    if (scheme_sz) {
+        block->scheme =
+            realloc(block->scheme, scheme_sz * sizeof(enum info_field));
+        memcpy(block->scheme, scheme, scheme_sz * sizeof(enum info_field));
+    } else {
+        free(block->scheme);
+        block->scheme = NULL;
+    }
     block->scheme_sz = scheme_sz;
 
     return cfgst_ok;
