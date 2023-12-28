@@ -27,11 +27,17 @@ struct location {
 };
 
 /** Section loader. */
-struct config_section {
+struct section {
     const char* name;
     config_loader loader;
 };
-static struct config_section sections[5];
+
+/** Config context. */
+struct config_context {
+    struct section* sections;
+    size_t num_sections;
+};
+static struct config_context ctx;
 
 static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config" },
@@ -344,6 +350,7 @@ void config_init(void)
 void config_free(void)
 {
     free((void*)config.app_id);
+    free(ctx.sections);
 }
 
 enum config_status config_set(const char* section, const char* key,
@@ -351,9 +358,9 @@ enum config_status config_set(const char* section, const char* key,
 {
     enum config_status status = cfgst_invalid_section;
 
-    for (size_t i = 0; i < sizeof(sections) / sizeof(sections[0]); ++i) {
-        if (strcmp(sections[i].name, section) == 0) {
-            status = sections[i].loader(key, value);
+    for (size_t i = 0; i < ctx.num_sections; ++i) {
+        if (strcmp(ctx.sections[i].name, section) == 0) {
+            status = ctx.sections[i].loader(key, value);
             break;
         }
     }
@@ -418,16 +425,14 @@ format_error:
 
 void config_add_section(const char* name, config_loader loader)
 {
-    size_t index = 0;
-    struct config_section* section = sections;
-    while (section->name) {
-        if (++index >= sizeof(sections) / sizeof(sections[0])) {
-            return;
-        }
-        ++section;
+    const size_t new_sz = (ctx.num_sections + 1) * sizeof(struct section);
+    struct section* sections = realloc(ctx.sections, new_sz);
+    if (sections) {
+        ctx.sections = sections;
+        ctx.sections[ctx.num_sections].name = name;
+        ctx.sections[ctx.num_sections].loader = loader;
+        ++ctx.num_sections;
     }
-    section->name = name;
-    section->loader = loader;
 }
 
 bool config_parse_bool(const char* text, bool* flag)
