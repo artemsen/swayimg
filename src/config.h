@@ -48,11 +48,16 @@ struct config {
     argb_t background;       ///< Image background mode/color
     argb_t window;           ///< Window background mode/color
     enum config_scale scale; ///< Initial scale
-    bool show_info;          ///< Show image info
     bool slideshow;          ///< Slide show mode
     size_t slideshow_sec;    ///< Slide show mode timing
 };
 extern struct config config;
+
+/** Token description. */
+struct config_token {
+    const char* value;
+    size_t len;
+};
 
 /**
  * Initialize configuration: set defaults and load from file.
@@ -110,3 +115,14 @@ bool config_parse_num(const char* text, ssize_t* value, int base);
  * @return false if text has invalid format
  */
 bool config_parse_color(const char* text, argb_t* color);
+
+/**
+ * Parse text value to tokens ("abc,def" -> "abc", "def").
+ * @param text text to convert
+ * @param delimeter delimeter character
+ * @param torkens output array of parsed tokens
+ * @param max_tokens max number of tokens (size of array)
+ * @return real number of tokens in input string
+ */
+size_t config_parse_tokens(const char* text, char delimeter,
+                           struct config_token* tokens, size_t max_tokens);

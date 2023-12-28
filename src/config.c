@@ -31,7 +31,7 @@ struct config_section {
     const char* name;
     config_loader loader;
 };
-static struct config_section sections[4];
+static struct config_section sections[5];
 
 static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config" },
@@ -182,10 +182,6 @@ static enum config_status load_general(const char* key, const char* value)
                 config.geometry.height = (size_t)height;
                 status = cfgst_ok;
             }
-        }
-    } else if (strcmp(key, "info") == 0) {
-        if (config_parse_bool(value, &config.show_info)) {
-            status = cfgst_ok;
         }
     } else if (strcmp(key, "slideshow") == 0) {
         ssize_t num;
@@ -483,4 +479,51 @@ bool config_parse_color(const char* text, argb_t* color)
     }
 
     return false;
+}
+
+size_t config_parse_tokens(const char* text, char delimeter,
+                           struct config_token* tokens, size_t max_tokens)
+{
+    size_t token_num = 0;
+
+    while (*text) {
+        struct config_token token;
+
+        // skip spaces
+        while (*text && isspace(*text)) {
+            ++text;
+        }
+        if (!*text) {
+            break;
+        }
+
+        // construct token
+        if (*text == delimeter) {
+            // empty token
+            token.value = "";
+            token.len = 0;
+        } else {
+            token.value = text;
+            while (*text && *text != delimeter) {
+                ++text;
+            }
+            token.len = text - token.value;
+            // trim spaces
+            while (token.len && isspace(token.value[token.len - 1])) {
+                --token.len;
+            }
+        }
+
+        // add to output array
+        if (tokens && token_num < max_tokens) {
+            memcpy(&tokens[token_num], &token, sizeof(token));
+        }
+        ++token_num;
+
+        if (*text) {
+            ++text; // skip delimeter
+        }
+    }
+
+    return token_num;
 }

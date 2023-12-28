@@ -31,9 +31,6 @@ wndpos = parent
 # Window size (parent, image, or absolute size, e.g. 800,600)
 wndsize = parent
 
-# Show image info: format, size, EXIF, and current scale (yes/no)
-info = no
-
 # Slideshow image duration (seconds)
 slideshow = 3
 
@@ -69,6 +66,23 @@ name = monospace
 size = 14
 # Font color
 color = #cccccc
+
+################################################################################
+# Image meta info scheme (format, size, EXIF, etc)
+################################################################################
+[info]
+# Mode on startup (off/brief/full)
+mode = full
+# Display scheme for the "full" mode: position = content
+full.topleft = name,format,filesize,imagesize,exif
+full.topright = index
+full.bottomleft = scale,frame
+full.bottomright = status
+# Display scheme for the "brief" mode: position = content
+brief.topleft = index
+brief.topright = none
+brief.bottomleft = none
+brief.bottomright = status
 
 ################################################################################
 # Key binding section: key = action [parameters]

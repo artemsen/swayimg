@@ -7,12 +7,14 @@
 #include "font.h"
 #include "formats/loader.h"
 #include "imagelist.h"
+#include "info.h"
 #include "keybind.h"
 #include "sway.h"
 #include "ui.h"
 #include "viewer.h"
 
 #include <getopt.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +42,6 @@ static const struct cmdarg arguments[] = {
     { 'w', "wndbkg",     "COLOR", "set window background color: [none]/RGB", "general", "wndbkg", NULL },
     { 'p', "wndpos",     "POS",   "set window position [parent]/X,Y", "general", "wndpos", NULL },
     { 'g', "wndsize",    "SIZE",  "set window size: [parent]/image/W,H", "general", "wndsize", NULL },
-    { 'i', "info",       NULL,    "show image meta information (name, EXIF, etc)", "general", "info", "yes" },
     { 'c', "class",      "NAME",  "set window class/app_id", "general", "app_id", NULL },
     { 't', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL, NULL, NULL },
     { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
@@ -191,8 +192,11 @@ int main(int argc, char* argv[])
     bool rc = false;
     int index;
 
+    setlocale(LC_ALL, "");
+
     keybind_init();
     font_init();
+    info_init();
     image_list_init();
     config_init();
 
@@ -248,6 +252,7 @@ done:
     viewer_free();
     config_free();
     image_list_free();
+    info_free();
     font_free();
     keybind_free();
 

@@ -72,6 +72,28 @@ The font configuration is described in the "font" section.
 .IP "\fBname\fR: font name used for printing text, default is \fImonospace\fR;"
 .IP "\fBsize\fR: font size (in pt), default is \fI14\fR;"
 .IP "\fBcolor\fR: color in RGB hex format, default is \fI#cccccc\fR;"
+.SS [info] section: text info layout
+.IP "\fBmode\fR: startup mode, \fIoff\fR, \fIbrief\fR, or [\fIfull\fR];"
+.IP "\fBfull.topleft\fR: comma delimited list of content for the \fIfull\fR mode, top left corner of the window:"
+.nf
+\fIname\fR: file name;
+\fIpath\fR: full path;
+\fIfilesize\fR: file size;
+\fIformat\fR: image format;
+\fIimagesize\fR: image size;
+\fIexif\fR: EXIF data;
+\fIframe\fR: current/total frame index;
+\fIindex\fR: current/total file index;
+\fIscale\fR: current scale in percent;
+\fIstatus\fR: status message;
+\fInone\fR: empty field (ignored);
+.IP "\fBfull.topright\fR: \fIfull\fR mode, top right corner of the window;"
+.IP "\fBfull.bottomleft\fR: \fIfull\fR mode, bottom left corner of the window;"
+.IP "\fBfull.bottomright\fR: \fIfull\fR mode, bottom right corner of the window;"
+.IP "\fBbrief.topleft\fR: \fIbrief\fR mode, top right corner of the window;"
+.IP "\fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;"
+.IP "\fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;"
+.IP "\fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window;"
 .SS [keys]: key bindins
 .PP
 The key bindings are described in the "keys" section.
@@ -92,10 +114,10 @@ Valid action are:
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
 .IP "\fBfullscreen\fR: switch fullscreen mode;"
-.IP "\fBstep_left \fI[PERCENT]\fR\fR: move viewport left, default is 10%;"
-.IP "\fBstep_right \fI[PERCENT]\fR\fR: move viewport right, default is 10%;"
-.IP "\fBstep_up \fI[PERCENT]\fR\fR: move viewport up, default is 10%;"
-.IP "\fBstep_down \fI[PERCENT]\fR\fR: move viewport down, default is 10%;"
+.IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
+.IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
+.IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"
+.IP "\fBstep_down\fR \fI[PERCENT]\fR: move viewport down, default is 10%;"
 .IP "\fBzoom_in\fR \fI[PERCENT]\fR: zoom in, by default increases scale by 10%;"
 .IP "\fBzoom_out\fR \fI[PERCENT]\fR: zoom out, by default decreases scale by 10%;"
 .IP "\fBzoom_optimal\fR: set to optimal zoom (100% or less to fit to window);"
@@ -109,7 +131,7 @@ Valid action are:
 .IP "\fBflip_horizontal\fR: flip image horizontally;"
 .IP "\fBreload\fR: reset cache and reload current image;"
 .IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
-.IP "\fBinfo\fR: show/hide image info;"
+.IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIbrief\fR/\fIfull\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBquit\fR: quit the application."
 .\" example file

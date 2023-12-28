@@ -103,49 +103,6 @@ static bool lazy_load(void)
 }
 
 /**
- * Convert utf-8 string to wide char format.
- * @param text source string to encode
- * @param len length of the input string, 0 for auto
- * @return pointer to wide string, called must free it
- */
-static wchar_t* to_wide(const char* text, size_t len)
-{
-    size_t ansi_sz = len ? len : strlen(text);
-    const size_t wide_sz = (ansi_sz + 1 /*last null*/) * sizeof(wchar_t);
-    wchar_t* wide;
-    wchar_t* ptr;
-
-    wide = malloc(wide_sz);
-    if (!wide) {
-        return NULL;
-    }
-    ptr = wide;
-
-    while (*text && ansi_sz--) {
-        wchar_t cpt = 0;
-        const uint8_t ch = *text;
-        if (ch <= 0x7f)
-            cpt = ch;
-        else if (ch <= 0xbf)
-            cpt = (cpt << 6) | (ch & 0x3f);
-        else if (ch <= 0xdf)
-            cpt = ch & 0x1f;
-        else if (ch <= 0xef)
-            cpt = ch & 0x0f;
-        else
-            cpt = ch & 0x07;
-        ++text;
-        if (((*text & 0xc0) != 0x80) && (cpt <= 0x10ffff)) {
-            *ptr = cpt;
-            ++ptr;
-        }
-    }
-    *ptr = 0; // last null
-
-    return wide;
-}
-
-/**
  * Draw glyph on window buffer.
  * @param wnd_buf window buffer
  * @param wnd_size window buffer size
@@ -163,9 +120,10 @@ static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x1,
         const uint8_t* glyph_line;
         const size_t wnd_y = y1 + y + fheight - glyph->bitmap_top;
 
-        if (wnd_y >= wnd_size->height && y == 0) {
+        if (wnd_y >= wnd_size->height) {
             return; // out of window
         }
+
         wnd_line = &wnd_buf[wnd_y * wnd_size->width];
         glyph_line = &bitmap->buffer[y * bitmap->width];
 
@@ -253,26 +211,18 @@ size_t font_height(void)
 }
 
 size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
-                  const struct point* pos, const char* text, size_t len)
+                  const struct point* pos, const wchar_t* text)
 {
-    wchar_t* wide;
-    size_t wlen;
     size_t width = 0;
 
-    if (!lazy_load()) {
+    if (!text || !lazy_load()) {
         return 0;
     }
 
-    wide = to_wide(text, len);
-    if (!wide) {
-        return 0;
-    }
-    wlen = wcslen(wide);
-
-    for (size_t i = 0; i < wlen; ++i) {
-        if (wide[i] == L' ') {
+    while (*text) {
+        if (*text == L' ') {
             width += font_height() / SPACE_WH_REL;
-        } else if (FT_Load_Char(ctx.face, wide[i], FT_LOAD_RENDER) == 0) {
+        } else if (FT_Load_Char(ctx.face, *text, FT_LOAD_RENDER) == 0) {
             const size_t glyph_width =
                 ctx.face->glyph->bitmap.width + ctx.size / GLYPH_GW_REL;
             if (wnd_buf && wnd_size && pos) {
@@ -280,9 +230,8 @@ size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
             }
             width += glyph_width;
         }
+        ++text;
     }
-
-    free(wide);
 
     return width;
 }

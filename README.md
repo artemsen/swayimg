@@ -61,7 +61,7 @@ Default key bindings can be overridden using a configuration file.
 | `F6` or `]`                  | Rotate 90 degrees clockwise |
 | `F7`                         | Flip vertical |
 | `F8`                         | Flip horizontal |
-| `i`                          | Show/hide image properties |
+| `i`                          | Switch text info mode |
 | `F11` or `f`                 | Toggle full screen mode |
 | `PgDown`, `Space`, or `n`    | Open next file |
 | `PgUp` or `p`                | Open previous file |

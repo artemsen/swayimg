@@ -300,61 +300,89 @@ void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
     }
 }
 
-void canvas_print_line(argb_t* wnd, enum canvas_corner corner, const char* text)
+void canvas_print(const struct info_line* lines, size_t lines_num,
+                  enum info_position pos, argb_t* wnd)
 {
-    struct point pos = { 0, 0 };
+    size_t max_key_width = 0;
+    const size_t height = font_height();
 
-    switch (corner) {
-        case cc_top_right:
-            pos.x = ctx.window.width - font_print(NULL, NULL, NULL, text, 0) -
-                TEXT_PADDING;
-            pos.y = TEXT_PADDING;
-            break;
-        case cc_bottom_left:
-            pos.x = TEXT_PADDING;
-            pos.y = ctx.window.height - font_height() - TEXT_PADDING;
-            break;
-        case cc_bottom_right:
-            pos.x = ctx.window.width - font_print(NULL, NULL, NULL, text, 0) -
-                TEXT_PADDING;
-            pos.y = ctx.window.height - font_height() - TEXT_PADDING;
-            break;
-    }
-
-    font_print(wnd, &ctx.window, &pos, text, 0);
-}
-
-void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info)
-{
-    size_t val_offset = 0;
-    struct point pos = { .x = TEXT_PADDING, .y = TEXT_PADDING };
-
-    // draw keys block
-    for (size_t i = 0; i < num; ++i) {
-        const char* key = info[i].key;
+    // calc max width of keys
+    for (size_t i = 0; i < lines_num; ++i) {
+        const wchar_t* key = lines[i].key;
         if (key && *key) {
-            size_t width;
-            struct point pos_delim;
-            width = font_print(wnd, &ctx.window, &pos, key, 0);
-            pos_delim.x = TEXT_PADDING + width;
-            pos_delim.y = pos.y;
-            width += font_print(wnd, &ctx.window, &pos_delim, ":", 0) * 3;
-            if (width > val_offset) {
-                val_offset = width;
+            const size_t width = font_print(NULL, NULL, NULL, key) +
+                font_print(NULL, NULL, NULL, L": ");
+            if (width > max_key_width) {
+                max_key_width = width;
             }
         }
-        pos.y += font_height();
     }
 
-    // draw values block
-    pos.x = TEXT_PADDING + val_offset + TEXT_PADDING;
-    pos.y = TEXT_PADDING;
-    for (size_t i = 0; i < num; ++i) {
-        const char* value = info[i].value;
-        if (value && *value) {
-            font_print(wnd, &ctx.window, &pos, value, 0);
+    // draw info block
+    for (size_t i = 0; i < lines_num; ++i) {
+        const wchar_t* key = lines[i].key;
+        const wchar_t* val = lines[i].value;
+        size_t key_width = font_print(NULL, NULL, NULL, key);
+        const size_t val_width = font_print(NULL, NULL, NULL, val);
+
+        struct point pt_key = { 0, 0 };
+        struct point pt_val = { 0, 0 };
+
+        if (key_width) {
+            key_width += font_print(NULL, NULL, NULL, L": ");
         }
-        pos.y += font_height();
+
+        // calculate line position
+        switch (pos) {
+            case info_top_left:
+                if (key_width) {
+                    pt_key.x = TEXT_PADDING;
+                    pt_key.y = TEXT_PADDING + i * height;
+                    pt_val.x = TEXT_PADDING + max_key_width;
+                    pt_val.y = pt_key.y;
+                } else {
+                    pt_val.x = TEXT_PADDING;
+                    pt_val.y = TEXT_PADDING + i * height;
+                }
+                break;
+            case info_top_right:
+                pt_val.x = ctx.window.width - TEXT_PADDING - val_width;
+                pt_val.y = TEXT_PADDING + i * height;
+                if (key_width) {
+                    pt_key.x = pt_val.x - key_width;
+                    pt_key.y = pt_val.y;
+                }
+                break;
+            case info_bottom_left:
+                if (key_width) {
+                    pt_key.x = TEXT_PADDING;
+                    pt_key.y = ctx.window.height - TEXT_PADDING -
+                        height * lines_num + i * height;
+                    pt_val.x = TEXT_PADDING + max_key_width;
+                    pt_val.y = pt_key.y;
+                } else {
+                    pt_val.x = TEXT_PADDING;
+                    pt_val.y = ctx.window.height - TEXT_PADDING -
+                        height * lines_num + i * height;
+                }
+                break;
+            case info_bottom_right:
+                pt_val.x = ctx.window.width - TEXT_PADDING - val_width;
+                pt_val.y = TEXT_PADDING + i * height;
+                pt_val.y = ctx.window.height - TEXT_PADDING -
+                    height * lines_num + i * height;
+                if (key_width) {
+                    pt_key.x = pt_val.x - key_width;
+                    pt_key.y = pt_val.y;
+                }
+                break;
+        }
+
+        if (key_width) {
+            pt_key.x += font_print(wnd, &ctx.window, &pt_key, key);
+            font_print(wnd, &ctx.window, &pt_key, L": ");
+        }
+        font_print(wnd, &ctx.window, &pt_val, val);
     }
 }
 

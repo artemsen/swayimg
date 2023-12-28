@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "info.h"
 #include "types.h"
 
 /** Scaling operations. */
@@ -12,15 +13,6 @@ enum canvas_scale {
     cs_fit_window,  ///< Fit to window size
     cs_fill_window, ///< Fill the window
     cs_real_size,   ///< Real image size (100%)
-};
-
-/** Corner position. */
-enum canvas_corner { cc_top_right, cc_bottom_left, cc_bottom_right };
-
-/** Meta data info table. */
-struct info_table {
-    const char* key;
-    const char* value;
 };
 
 /**
@@ -58,21 +50,14 @@ void canvas_clear(argb_t* wnd);
 void canvas_draw_image(bool aplha, const argb_t* img, argb_t* wnd);
 
 /**
- * Print text line on canvas.
- * @param wnd window buffer
- * @param corner text block position
- * @param text printed text
- */
-void canvas_print_line(argb_t* wnd, enum canvas_corner corner,
-                       const char* text);
-
-/**
- * Print meta info table on the left top corner.
- * @param wnd window buffer
+ * Print information text block.
+ * @param line array of lines to pprint
  * @param num total number of lines
- * @param info meta data table to print
+ * @param pos block position
+ * @param wnd window buffer
  */
-void canvas_print_info(argb_t* wnd, size_t num, const struct info_table* info);
+void canvas_print(const struct info_line* lines, size_t lines_num,
+                  enum info_position pos, argb_t* wnd);
 
 /**
  * Move viewport.

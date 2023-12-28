@@ -151,6 +151,7 @@ sources = [
   'src/font.c',
   'src/image.c',
   'src/imagelist.c',
+  'src/info.c',
   'src/keybind.c',
   'src/main.c',
   'src/sway.c',

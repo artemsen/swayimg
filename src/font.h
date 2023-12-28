@@ -34,8 +34,7 @@ size_t font_height(void);
  * @param wnd_size window buffer size
  * @param pos top-left coordinates of text
  * @param text string to print
- * @param len length of the input string, 0 for auto
  * @return width of the line in pixels
  */
 size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
-                  const struct point* pos, const char* text, size_t len);
+                  const struct point* pos, const wchar_t* text);
