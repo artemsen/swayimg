@@ -436,6 +436,12 @@ bool viewer_on_keyboard(xkb_keysym_t key)
         case kb_zoom_fit:
             canvas_set_scale(cs_fit_window);
             return true;
+        case kb_zoom_fit_width:
+            canvas_set_scale(cs_fit_width);
+            return true;
+        case kb_zoom_fit_height:
+            canvas_set_scale(cs_fit_height);
+            return true;
         case kb_zoom_fill:
             canvas_set_scale(cs_fill_window);
             return true;

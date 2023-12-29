@@ -37,7 +37,7 @@ static const struct cmdarg arguments[] = {
     { 'a', "all",        NULL,    "open all files from the same directory", "list", "all", "yes" },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup", NULL, NULL, NULL },
     { 'f', "fullscreen", NULL,    "show image in full screen mode", NULL, NULL, NULL },
-    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/fill/real", "general", "scale", NULL },
+    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/fit-width/fit-height/fill/real", "general", "scale", NULL },
     { 'b', "background", "COLOR", "set image background color: none/[grid]/RGB", "general", "background", NULL },
     { 'w', "wndbkg",     "COLOR", "set window background color: [none]/RGB", "general", "wndbkg", NULL },
     { 'p', "wndpos",     "POS",   "set window position [parent]/X,Y", "general", "wndpos", NULL },
