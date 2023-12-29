@@ -17,10 +17,12 @@
 
 /** Initial scaling of images. */
 enum config_scale {
-    cfgsc_optimal, ///< Fit to window, but not more than 100%
-    cfgsc_fit,     ///< Fit to window size
-    cfgsc_fill,    ///< Fill the window
-    cfgsc_real     ///< Real image size (100%)
+    cfgsc_optimal,    ///< Fit to window, but not more than 100%
+    cfgsc_fit,        ///< Fit to window size
+    cfgsc_fit_width,  ///< Fit to window size
+    cfgsc_fit_height, ///< Fit to window size
+    cfgsc_fill,       ///< Fill the window
+    cfgsc_real        ///< Real image size (100%)
 };
 
 /** Load status. */

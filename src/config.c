@@ -131,6 +131,10 @@ static enum config_status load_general(const char* key, const char* value)
             config.scale = cfgsc_optimal;
         } else if (strcmp(value, "fit") == 0) {
             config.scale = cfgsc_fit;
+        } else if (strcmp(value, "fit-width") == 0) {
+            config.scale = cfgsc_fit_width;
+        } else if (strcmp(value, "fit-height") == 0) {
+            config.scale = cfgsc_fit_height;
         } else if (strcmp(value, "fill") == 0) {
             config.scale = cfgsc_fill;
         } else if (strcmp(value, "real") == 0) {

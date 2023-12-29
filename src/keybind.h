@@ -27,8 +27,10 @@ enum kb_action {
     kb_zoom_in,
     kb_zoom_out,
     kb_zoom_optimal,
-    kb_zoom_fit,
-    kb_zoom_fill,
+    kb_zoom_fit_width,
+    kb_zoom_fit_height,
+    kb_zoom_fit,   // Fit largest dimension
+    kb_zoom_fill,  // Fit smallest dimension
     kb_zoom_real,
     kb_zoom_reset,
     kb_rotate_left,

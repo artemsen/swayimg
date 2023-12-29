@@ -11,6 +11,8 @@
 enum canvas_scale {
     cs_fit_or100,   ///< Fit to window, but not more than 100%
     cs_fit_window,  ///< Fit to window size
+    cs_fit_width,   ///< Fit width to window width
+    cs_fit_height,  ///< Fit height to window height
     cs_fill_window, ///< Fill the window
     cs_real_size,   ///< Real image size (100%)
 };

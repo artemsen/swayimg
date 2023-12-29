@@ -451,6 +451,12 @@ void canvas_set_scale(enum canvas_scale sc)
         case cs_fit_window:
             ctx.scale = min(scale_w, scale_h);
             break;
+        case cs_fit_width:
+            ctx.scale = scale_w;
+            break;
+        case cs_fit_height:
+            ctx.scale = scale_h;
+            break;
         case cs_fill_window:
             ctx.scale = max(scale_w, scale_h);
             break;
