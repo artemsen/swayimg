@@ -54,8 +54,10 @@ Default key bindings can be overridden using a configuration file.
 | `-`                          | Zoom out |
 | `0`                          | Set scale to 100% |
 | `x`                          | Scale image to fit window, but no more than 100% |
-| `z`                          | Scale image to fit window |
 | `Z`                          | Scale image to fill window |
+| `z`                          | Scale image to fit window |
+| `w`                          | Scale image to fit width of the window |
+| `W`                          | Scale image to fit height of the window |
 | `Backspace`                  | Reset position and scale to defaults |
 | `F5` or `[`                  | Rotate 90 degrees anticlockwise |
 | `F6` or `]`                  | Rotate 90 degrees clockwise |
