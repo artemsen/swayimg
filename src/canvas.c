@@ -211,8 +211,8 @@ static enum config_status load_config(const char* key, const char* value)
         if (strcmp(value, "none") == 0) {
             ctx.window_bkg = COLOR_TRANSPARENT;
             status = cfgst_ok;
-        } else if (!config_parse_color(value, &ctx.window_bkg)) {
-            status = cfgst_invalid_value;
+        } else if (config_parse_color(value, &ctx.window_bkg)) {
+            status = cfgst_ok;
         }
     } else {
         status = cfgst_invalid_key;
