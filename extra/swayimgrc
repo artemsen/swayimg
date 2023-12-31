@@ -6,42 +6,45 @@
 # 2. $HOME/.config/swayimg/config
 # 3. $XDG_CONFIG_DIRS/swayimg/config
 # 4. /etc/xdg/swayimg/config
+
+# An example configuration file: /usr/share/swayimg/swayimgrc
 # See `man swayimgrc` for details.
+
 
 ################################################################################
 # General options
 ################################################################################
 [general]
 
-# Initial scale (optimal, fit, fill, or real)
+# Initial scale (optimal/fit/width/height/fill/real)
 scale = optimal
 
 # Start in full screen mode (yes/no)
 fullscreen = no
 
-# Background for transparent images (none, grid, or RGB, e.g. #112233)
-background = grid
-
-# Window background mode/color (none or RGB, e.g. #112233)
-wndbkg = none
-
-# Window position (parent or absolute coordiantes, e.g. 100,200)
-wndpos = parent
-
-# Window size (parent, image, or absolute size, e.g. 800,600)
-wndsize = parent
-
-# Slideshow image display time (seconds)
-slideshow = 3
-
 # Anti-aliasing (yes/no)
 antialiasing = no
+
+# Background for transparent images (none/grid/RGB, e.g. #112233)
+transparency = grid
+
+# Window position (parent or absolute coordiantes, e.g. 100,200)
+position = parent
+# Window size (parent, image, or absolute size, e.g. 800,600)
+size = parent
+# Window background mode/color (none/RGB, e.g. #112233)
+background = none
+
+# Run slideshow at startup (yes/no)
+slideshow = no
+# Slideshow image display time (seconds)
+slideshow_time = 3
 
 ################################################################################
 # Image list configuration
 ################################################################################
 [list]
-# Default order (none, alpha, or random)
+# Default order (none/alpha/random)
 order = alpha
 # Looping list of images (yes/no)
 loop = yes
@@ -110,16 +113,15 @@ Up = step_up 10
 k = step_up 10
 Down = step_down 10
 j = step_down 10
-equal = zoom_in 10
-plus = zoom_in 10
-minus = zoom_out 10
-w = fit_width
-W = fit_height
-x = zoom_optimal
-z = zoom_fit
-Z = zoom_fill
-0 = zoom_real
-BackSpace = zoom_reset
+equal = zoom +10
+plus = zoom +10
+minus = zoom -10
+w = zoom width
+W = zoom height
+z = zoom fit
+Z = zoom fill
+0 = zoom real
+BackSpace = zoom optimal
 F5 = rotate_left
 bracketleft = rotate_left
 F6 = rotate_right

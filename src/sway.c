@@ -287,7 +287,9 @@ int sway_connect(void)
 
 void sway_disconnect(int ipc)
 {
-    close(ipc);
+    if (ipc != INVALID_SWAY_IPC) {
+        close(ipc);
+    }
 }
 
 bool sway_current(int ipc, struct rect* wnd, bool* fullscreen)

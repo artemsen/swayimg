@@ -6,24 +6,8 @@
 
 #include "types.h"
 
-// Background modes
-#define COLOR_TRANSPARENT 0xff000000
-#define BACKGROUND_GRID   0xfe000000
-
-// Copy position or size from parent window
-#define SAME_AS_PARENT 0xffffffff
-// Copy size from image
-#define SAME_AS_IMAGE 0
-
-/** Initial scaling of images. */
-enum config_scale {
-    cfgsc_optimal,    ///< Fit to window, but not more than 100%
-    cfgsc_fit,        ///< Fit to window size
-    cfgsc_fit_width,  ///< Fit to window size
-    cfgsc_fit_height, ///< Fit to window size
-    cfgsc_fill,       ///< Fill the window
-    cfgsc_real        ///< Real image size (100%)
-};
+// Name of the general configuration section
+#define GENERAL_CONFIG "general"
 
 /** Load status. */
 enum config_status {
@@ -39,20 +23,6 @@ enum config_status {
  * @return load status
  */
 typedef enum config_status (*config_loader)(const char* key, const char* value);
-
-/** App configuration. */
-struct config {
-    char* app_id;            ///< Window class/app_id name
-    struct rect geometry;    ///< Window geometry
-    bool fullscreen;         ///< Full screen mode
-    bool antialiasing;       ///< Anti-aliasing
-    argb_t background;       ///< Image background mode/color
-    argb_t window;           ///< Window background mode/color
-    enum config_scale scale; ///< Initial scale
-    bool slideshow;          ///< Slide show mode
-    size_t slideshow_sec;    ///< Slide show mode timing
-};
-extern struct config config;
 
 /** Token description. */
 struct config_token {
@@ -103,7 +73,7 @@ bool config_parse_bool(const char* text, bool* flag);
 /**
  * Parse text to number.
  * @param text text to convert
- * @param color output variable
+ * @param value output variable
  * @param base numeric base
  * @return false if text has invalid format
  */
@@ -116,6 +86,14 @@ bool config_parse_num(const char* text, ssize_t* value, int base);
  * @return false if text has invalid format
  */
 bool config_parse_color(const char* text, argb_t* color);
+
+/**
+ * Parse pair of numbers.
+ * @param text text to convert
+ * @param n1,n2 output values
+ * @return false if values have invalid format
+ */
+bool config_parse_numpair(const char* text, long* n1, long* n2);
 
 /**
  * Parse text value to tokens ("abc,def" -> "abc", "def").

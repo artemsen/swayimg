@@ -25,50 +25,38 @@ creates a new Wayland window and draws an image from the specified file.
 Display help message.
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
+.IP "\fB\-r\fR, \fB\-\-recursive\fR"
+Read directories recursively.
 .IP "\fB\-o\fR, \fB\-\-order\fR\fB=\fR\fIORDER\fR:"
 Set the order of the image file list:
 .nf
 \fInone\fR: unsorted;
 \fIalpha\fR: sorted alphabetically (default);
 \fIrandom\fR: randomize list.
-.IP "\fB\-r\fR, \fB\-\-recursive\fR"
-Read directories recursively.
-.IP "\fB\-a\fR, \fB\-\-all\fR"
-Always open all files in the same directory. Even if you specify \fIFILE\fR
-as a path to some file (not a directory), \fBswayimg\fR will add all files
-in that directory to the image list.
+.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"
+Set the default scale of the image. \fISCALE\fR is one of the named values.
+\fIoptimal\fR: 100% or less to fit to window;
+\fIwidth\fR: fit image width to window width;
+\fIheight\fR: fit image height to window height;
+\fIfit\fR: fit to window;
+\fIfill\fR: crop image to fill the window;
+\fIreal\fR: real size (100%).
 .IP "\fB\-l\fR, \fB\-\-slideshow\fR"
 Activate slideshow mode on startup.
-.IP "\fB\-b\fR, \fB\-\-background\fR\fB=\fR\fIXXXXXX\fR"
-Set background for transparent images:
-.nf
-\fInone\fR: transparent;
-\fIgrid\fR: show grid as background (default);
-\fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fB\-w\fR, \fB\-\-wndbkg\fR\fB=\fR\fICOLOR\fR"
-Set window background:
-.nf
-\fInone\fR: transparent (default);
-\fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fB\-p\fR, \fB\-\-wndpos\fR\fB=\fR\fIPOS\fR"
+.IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
+Start in full screen mode.
+.IP "\fB\-p\fR, \fB\-\-position\fR\fB=\fR\fIPOS\fR"
 Set the absolute position of the window:
 .nf
 \fIparent\fR: set position from parent (currently active) window (default);
 \fIX,Y\fR: absolute coordinates of the top left corner.
-.IP "\fB\-g\fR, \fB\-\-wndsize\fR\fB=\fR\fISIZE\fR"
+.IP "\fB\-g\fR, \fB\-\-size\fR\fB=\fR\fISIZE\fR"
 Set window size:
 .nf
 \fIparent\fR: set size from parent (currently active) window (default);
 \fIimage\fR: set size from the first image;
 \fIWIDTH,HEIGHT\fR: absolute size of the window.
-.IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
-Start in full screen mode.
-.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"
-Set the default scale of the image. \fISCALE\fR is one of the named values.
-\fIoptimal\fR: reduce the image to fit the window, but do not enlarge it;
-\fIfit\fR: reduce or enlarge the image to fit the window;
-\fIreal\fR: real image size (100%).
-.IP "\fB\-n\fR, \fB\-\-class\fR"
+.IP "\fB\-a\fR, \fB\-\-class\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
 .IP "\fB\-c\fR, \fB\-\-config\fR\fB=\fR\fISECTION.KEY=VALUE\fR"
 Set a configuration parameter, see `man swayimgrc` for a list of sections and its parameters.

@@ -23,9 +23,6 @@
 /** Name used for image, that is read from stdin through pipe. */
 #define STDIN_FILE_NAME "*stdin*"
 
-// Section name in the config file
-#define CONFIG_SECTION "list"
-
 /** Single list entry. */
 struct entry {
     size_t index; ///< Entry index in the list
@@ -346,7 +343,7 @@ static enum config_status load_config(const char* key, const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
-    if (strcmp(key, "order") == 0) {
+    if (strcmp(key, INFO_CFG_ORDER) == 0) {
         const size_t arrsz = sizeof(order_names) / sizeof(order_names[0]);
         for (size_t i = 0; i < arrsz; ++i) {
             if (strcmp(order_names[i], value) == 0) {
@@ -355,15 +352,15 @@ static enum config_status load_config(const char* key, const char* value)
                 break;
             }
         }
-    } else if (strcmp(key, "loop") == 0) {
+    } else if (strcmp(key, INFO_CFG_LOOP) == 0) {
         if (config_parse_bool(value, &ctx.loop)) {
             status = cfgst_ok;
         }
-    } else if (strcmp(key, "recursive") == 0) {
+    } else if (strcmp(key, INFO_CFG_RECURSIVE) == 0) {
         if (config_parse_bool(value, &ctx.recursive)) {
             status = cfgst_ok;
         }
-    } else if (strcmp(key, "all") == 0) {
+    } else if (strcmp(key, INFO_CFG_ALL) == 0) {
         if (config_parse_bool(value, &ctx.all_files)) {
             status = cfgst_ok;
         }
@@ -383,7 +380,7 @@ void image_list_init(void)
     ctx.all_files = false;
 
     // register configuration loader
-    config_add_section(CONFIG_SECTION, load_config);
+    config_add_section(INFO_CFG_SECTION, load_config);
 }
 
 bool image_list_scan(const char** files, size_t num)

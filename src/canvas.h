@@ -7,15 +7,16 @@
 #include "info.h"
 #include "types.h"
 
-/** Scaling operations. */
-enum canvas_scale {
-    cs_fit_or100,   ///< Fit to window, but not more than 100%
-    cs_fit_window,  ///< Fit to window size
-    cs_fit_width,   ///< Fit width to window width
-    cs_fit_height,  ///< Fit height to window height
-    cs_fill_window, ///< Fill the window
-    cs_real_size,   ///< Real image size (100%)
-};
+// Configuration parameters
+#define CANVAS_CFG_ANTIALIASING "antialiasing"
+#define CANVAS_CFG_SCALE        "scale"
+#define CANVAS_CFG_TRANSPARENCY "transparency"
+#define CANVAS_CFG_BACKGROUND   "background"
+
+/**
+ * Initialize canvas context.
+ */
+void canvas_init(void);
 
 /**
  * Reset window parameters.
@@ -30,7 +31,7 @@ bool canvas_reset_window(size_t width, size_t height, size_t scale);
  * @param width,height new image size
  * @param sc scale to use
  */
-void canvas_reset_image(size_t width, size_t height, enum canvas_scale sc);
+void canvas_reset_image(size_t width, size_t height);
 
 /**
  * Recalculate position after rotating image on 90 degree.
@@ -70,19 +71,19 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
 bool canvas_move(bool horizontal, ssize_t percent);
 
 /**
- * Zoom in/out.
- * @param percent percentage increment to current scale
+ * Zoom image.
+ * @param op zoom operation name
  */
-void canvas_zoom(ssize_t percent);
-
-/**
- * Set fixed scale for the image.
- * @param sc scale to set
- */
-void canvas_set_scale(enum canvas_scale sc);
+void canvas_zoom(const char* op);
 
 /**
  * Get current scale.
  * @return current scale, 1.0 = 100%
  */
 float canvas_get_scale(void);
+
+/**
+ * Switch antialiasing.
+ * @return current state
+ */
+bool canvas_switch_aa(void);

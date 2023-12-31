@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,6 +63,8 @@ struct ui {
         struct wl_buffer* buffer0;
         struct wl_buffer* buffer1;
         struct wl_buffer* current;
+        ssize_t x;
+        ssize_t y;
         size_t width;
         size_t height;
         int32_t scale;
@@ -89,6 +92,12 @@ struct ui {
         uint32_t delay;
     } repeat;
 
+    // app_id name (window class)
+    char* app_id;
+
+    // fullscreen mode
+    bool fullscreen;
+
     // custom events
     struct custom_event* events;
     size_t num_events;
@@ -99,7 +108,12 @@ struct ui {
 
 static struct ui ctx = {
     .wnd.scale = 1,
+    .wnd.x = POS_FROM_PARENT,
+    .wnd.y = POS_FROM_PARENT,
+    .wnd.width = SIZE_FROM_PARENT,
+    .wnd.height = SIZE_FROM_PARENT,
     .repeat.fd = -1,
+    .state = state_ok,
 };
 
 /**
@@ -545,7 +559,8 @@ static void on_registry_global(void* data, struct wl_registry* registry,
     }
 }
 
-void on_registry_remove(void* data, struct wl_registry* registry, uint32_t name)
+static void on_registry_remove(void* data, struct wl_registry* registry,
+                               uint32_t name)
 {
 }
 
@@ -555,10 +570,13 @@ static const struct wl_registry_listener registry_listener = {
 
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
-bool ui_init(void)
+static bool create_window(void)
 {
-    ctx.wnd.width = config.geometry.width ? config.geometry.width : 800;
-    ctx.wnd.height = config.geometry.height ? config.geometry.height : 600;
+    if (ctx.wnd.width < 10 || ctx.wnd.height < 10) {
+        // fixup window size
+        ctx.wnd.width = 640;
+        ctx.wnd.height = 480;
+    }
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {
@@ -592,8 +610,8 @@ bool ui_init(void)
     xdg_surface_add_listener(ctx.xdg.surface, &xdg_surface_listener, NULL);
     ctx.xdg.toplevel = xdg_surface_get_toplevel(ctx.xdg.surface);
     xdg_toplevel_add_listener(ctx.xdg.toplevel, &xdg_toplevel_listener, NULL);
-    xdg_toplevel_set_app_id(ctx.xdg.toplevel, config.app_id);
-    if (config.fullscreen) {
+    xdg_toplevel_set_app_id(ctx.xdg.toplevel, ctx.app_id);
+    if (ctx.fullscreen) {
         xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
     }
 
@@ -604,8 +622,87 @@ bool ui_init(void)
     return true;
 }
 
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, UI_CFG_APP_ID) == 0) {
+        const size_t sz = strlen(value) + 1;
+        char* ptr = realloc(ctx.app_id, sz);
+        if (ptr) {
+            memcpy(ptr, value, sz);
+            ctx.app_id = ptr;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, UI_CFG_FULLSCREEN) == 0) {
+        if (config_parse_bool(value, &ctx.fullscreen)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, UI_CFG_SIZE) == 0) {
+        long width, height;
+        if (strcmp(value, "parent") == 0) {
+            ctx.wnd.width = SIZE_FROM_PARENT;
+            ctx.wnd.height = SIZE_FROM_PARENT;
+            status = cfgst_ok;
+        } else if (strcmp(value, "image") == 0) {
+            ctx.wnd.width = SIZE_FROM_IMAGE;
+            ctx.wnd.height = SIZE_FROM_IMAGE;
+            status = cfgst_ok;
+        } else if (config_parse_numpair(value, &width, &height) && width > 0 &&
+                   width < 100000 && height > 0 && height < 100000) {
+            ctx.wnd.width = width;
+            ctx.wnd.height = height;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, UI_CFG_POSITION) == 0) {
+        if (strcmp(value, "parent") == 0) {
+            ctx.wnd.x = POS_FROM_PARENT;
+            ctx.wnd.y = POS_FROM_PARENT;
+            status = cfgst_ok;
+        } else {
+            long x, y;
+            if (config_parse_numpair(value, &x, &y)) {
+                ctx.wnd.x = (ssize_t)x;
+                ctx.wnd.y = (ssize_t)y;
+                status = cfgst_ok;
+            }
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
+void ui_init(void)
+{
+    struct timespec ts;
+    char app_id[64];
+    size_t len;
+
+    // create unique application id
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        const uint64_t timestamp = (ts.tv_sec << 32) | ts.tv_nsec;
+        snprintf(app_id, sizeof(app_id), APP_NAME "_%lx", timestamp);
+    } else {
+        strncpy(app_id, APP_NAME, sizeof(app_id));
+    }
+    len = strlen(app_id) + 1;
+    ctx.app_id = malloc(len);
+    if (ctx.app_id) {
+        memcpy(ctx.app_id, app_id, len);
+    }
+
+    // register configuration loader
+    config_add_section(GENERAL_CONFIG, load_config);
+}
+
 void ui_free(void)
 {
+    free(ctx.app_id);
     if (ctx.repeat.fd != -1) {
         close(ctx.repeat.fd);
     }
@@ -668,6 +765,10 @@ bool ui_run(void)
     const size_t idx_wayland = num_fds - 1;
     const size_t idx_krepeat = num_fds - 2;
     struct pollfd* fds;
+
+    if (!create_window()) {
+        return false;
+    }
 
     // file descriptors to poll
     fds = calloc(1, num_fds * sizeof(struct pollfd));
@@ -742,18 +843,85 @@ void ui_stop(void)
     ctx.state = state_exit;
 }
 
-void ui_set_title(const char* title)
+const char* ui_get_appid(void)
 {
-    xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+    return ctx.app_id;
 }
 
-void ui_set_fullscreen(bool enable)
+void ui_set_title(const char* fmt, ...)
 {
-    if (enable) {
-        xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
-    } else {
-        xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
+    va_list args;
+    int len;
+    void* title;
+
+    va_start(args, fmt);
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
     }
+    ++len; // last null
+    title = malloc(len);
+    if (!title) {
+        return;
+    }
+    va_start(args, fmt);
+    vsprintf(title, fmt, args);
+    va_end(args);
+
+    xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+
+    free(title);
+}
+
+void ui_set_position(ssize_t x, ssize_t y)
+{
+    ctx.wnd.x = x;
+    ctx.wnd.y = y;
+}
+
+ssize_t ui_get_x(void)
+{
+    return ctx.wnd.x;
+}
+
+ssize_t ui_get_y(void)
+{
+    return ctx.wnd.y;
+}
+
+void ui_set_size(size_t width, size_t height)
+{
+    ctx.wnd.width = width;
+    ctx.wnd.height = height;
+}
+
+size_t ui_get_width(void)
+{
+    return ctx.wnd.width;
+}
+
+size_t ui_get_height(void)
+{
+    return ctx.wnd.height;
+}
+
+void ui_toggle_fullscreen(void)
+{
+    ctx.fullscreen = !ctx.fullscreen;
+
+    if (ctx.xdg.toplevel) {
+        if (ctx.fullscreen) {
+            xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
+        } else {
+            xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
+        }
+    }
+}
+
+bool ui_get_fullscreen(void)
+{
+    return ctx.fullscreen;
 }
 
 void ui_add_event(int fd, fd_event handler)

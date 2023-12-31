@@ -19,22 +19,23 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-/** Timer events */
-struct timer {
-    int fd;      ///< Timer's file descriptor
-    bool enable; ///< Enable/disable mode
-};
-
 /** Viewer context. */
 struct viewer {
-    size_t frame;           ///< Index of current frame
-    struct timer animation; ///< Animation timer
-    struct timer slideshow; ///< Slideshow timer
+    size_t frame; ///< Index of the current frame
+
+    bool animation_enable; ///< Animation enable/disable
+    int animation_fd;      ///< Animation timer
+
+    bool slideshow_enable; ///< Slideshow enable/disable
+    int slideshow_fd;      ///< Slideshow timer
+    size_t slideshow_time; ///< Slideshow image display time (seconds)
 };
-static struct viewer ctx = {
-    .animation.fd = -1,
-    .slideshow.fd = -1,
-};
+
+static struct viewer ctx = { .animation_enable = true,
+                             .animation_fd = -1,
+                             .slideshow_enable = false,
+                             .slideshow_fd = -1,
+                             .slideshow_time = 3 };
 
 /**
  * Switch to the next or previous frame.
@@ -81,8 +82,8 @@ static void animation_ctl(bool enable)
         }
     }
 
-    ctx.animation.enable = enable;
-    timerfd_settime(ctx.animation.fd, 0, &ts, NULL);
+    ctx.animation_enable = enable;
+    timerfd_settime(ctx.animation_fd, 0, &ts, NULL);
 }
 
 /**
@@ -93,55 +94,12 @@ static void slideshow_ctl(bool enable)
 {
     struct itimerspec ts = { 0 };
 
-    ctx.slideshow.enable = enable;
+    ctx.slideshow_enable = enable;
     if (enable) {
-        ts.it_value.tv_sec = config.slideshow_sec;
+        ts.it_value.tv_sec = ctx.slideshow_time;
     }
 
-    timerfd_settime(ctx.slideshow.fd, 0, &ts, NULL);
-}
-
-/**
- * Update window title.
- */
-static void update_window_title(void)
-{
-    const char* prefix = APP_NAME ": ";
-    const struct image_entry entry = image_list_current();
-    const size_t len = strlen(prefix) + strlen(entry.image->file_name) + 1;
-    char* title = malloc(len);
-
-    if (title) {
-        strcpy(title, prefix);
-        strcat(title, entry.image->file_name);
-        ui_set_title(title);
-        free(title);
-    }
-}
-
-/**
- * Reset image view state, recalculate position and scale.
- */
-static void reset_viewport(void)
-{
-    const struct image_entry entry = image_list_current();
-    const struct image_frame* frame = &entry.image->frames[ctx.frame];
-    enum canvas_scale scale;
-
-    switch (config.scale) {
-        case cfgsc_fit:
-            scale = cs_fit_window;
-            break;
-        case cfgsc_fill:
-            scale = cs_fill_window;
-            break;
-        case cfgsc_real:
-            scale = cs_real_size;
-            break;
-        default:
-            scale = cs_fit_or100;
-    }
-    canvas_reset_image(frame->width, frame->height, scale);
+    timerfd_settime(ctx.slideshow_fd, 0, &ts, NULL);
 }
 
 /**
@@ -149,14 +107,14 @@ static void reset_viewport(void)
  */
 static void reset_state(void)
 {
-    animation_ctl(false);
+    const struct image_entry entry = image_list_current();
+    const struct image_frame* frame = &entry.image->frames[0];
+
     ctx.frame = 0;
-    reset_viewport();
-    update_window_title();
+    canvas_reset_image(frame->width, frame->height);
+    ui_set_title(APP_NAME ": %s", entry.image->file_name);
     animation_ctl(true);
-    if (config.slideshow) {
-        slideshow_ctl(true); // start slide show
-    }
+    slideshow_ctl(ctx.slideshow_enable);
 }
 
 /**
@@ -169,7 +127,6 @@ static bool next_file(enum list_jump jump)
     if (!image_list_jump(jump)) {
         return false;
     }
-    slideshow_ctl(ctx.slideshow.enable);
     reset_state();
     return true;
 }
@@ -251,32 +208,6 @@ static void execute_command(const char* expr)
 }
 
 /**
- * Zoom in/out.
- * @param zoom_in in/out flag
- * @param params optional zoom step in percents
- */
-static void zoom_image(bool zoom_in, const char* params)
-{
-    ssize_t percent = 10;
-
-    if (params) {
-        char* endptr;
-        const unsigned long val = strtoul(params, &endptr, 0);
-        if (val != 0 && val <= 1000 && !*endptr) {
-            percent = val;
-        } else {
-            fprintf(stderr, "Invalid zoom value: \"%s\"\n", params);
-        }
-    }
-
-    if (!zoom_in) {
-        percent = -percent;
-    }
-
-    canvas_zoom(percent);
-}
-
-/**
  * Move viewport.
  * @param horizontal axis along which to move (false for vertical)
  * @param positive direction (increase/decrease)
@@ -308,10 +239,8 @@ static bool move_viewport(bool horizontal, bool positive, const char* params)
  */
 static void on_animation_timer(void)
 {
-    if (ctx.animation.enable) {
-        next_frame(true);
-        animation_ctl(true);
-    }
+    next_frame(true);
+    animation_ctl(true);
 }
 
 /**
@@ -319,35 +248,60 @@ static void on_animation_timer(void)
  */
 static void on_slideshow_timer(void)
 {
-    if (ctx.slideshow.enable && next_file(jump_next_file)) {
-        slideshow_ctl(true);
+    slideshow_ctl(next_file(jump_next_file));
+}
+
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_key;
+
+    if (strcmp(key, VIEWER_CFG_SLIDESHOW) == 0) {
+        status = config_parse_bool(value, &ctx.slideshow_enable)
+            ? cfgst_ok
+            : cfgst_invalid_value;
+    } else if (strcmp(key, VIEWER_CFG_SLIDESHOW_TIME) == 0) {
+        ssize_t num;
+        if (config_parse_num(value, &num, 0) && num != 0 && num <= 86400) {
+            ctx.slideshow_time = num;
+            status = cfgst_ok;
+        } else {
+            status = cfgst_invalid_value;
+        }
     }
+
+    return status;
 }
 
 void viewer_init(void)
 {
     // setup animation timer
-    ctx.animation.fd =
+    ctx.animation_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (ctx.animation.fd != -1) {
-        ui_add_event(ctx.animation.fd, on_animation_timer);
+    if (ctx.animation_fd != -1) {
+        ui_add_event(ctx.animation_fd, on_animation_timer);
     }
 
     // setup slideshow timer
-    ctx.slideshow.fd =
+    ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (ctx.slideshow.fd != -1) {
-        ui_add_event(ctx.slideshow.fd, on_slideshow_timer);
+    if (ctx.slideshow_fd != -1) {
+        ui_add_event(ctx.slideshow_fd, on_slideshow_timer);
     }
+
+    // register configuration loader
+    config_add_section(GENERAL_CONFIG, load_config);
 }
 
 void viewer_free(void)
 {
-    if (ctx.animation.fd != -1) {
-        close(ctx.animation.fd);
+    if (ctx.animation_fd != -1) {
+        close(ctx.animation_fd);
     }
-    if (ctx.slideshow.fd != -1) {
-        close(ctx.slideshow.fd);
+    if (ctx.slideshow_fd != -1) {
+        close(ctx.slideshow_fd);
     }
 }
 
@@ -376,7 +330,6 @@ void viewer_on_redraw(argb_t* window)
 void viewer_on_resize(size_t width, size_t height, size_t scale)
 {
     canvas_reset_window(width, height, scale);
-    reset_viewport();
     reset_state();
 }
 
@@ -405,18 +358,16 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             return next_file(jump_next_file);
         case kb_prev_frame:
         case kb_next_frame:
-            slideshow_ctl(false);
             animation_ctl(false);
             return next_frame(kbind->action == kb_next_frame);
         case kb_animation:
-            animation_ctl(!ctx.animation.enable);
+            animation_ctl(!ctx.animation_enable);
             return false;
         case kb_slideshow:
-            slideshow_ctl(!ctx.slideshow.enable && next_file(jump_next_file));
+            slideshow_ctl(!ctx.slideshow_enable && next_file(jump_next_file));
             return true;
         case kb_fullscreen:
-            config.fullscreen = !config.fullscreen;
-            ui_set_fullscreen(config.fullscreen);
+            ui_toggle_fullscreen();
             return false;
         case kb_step_left:
             return move_viewport(true, true, kbind->params);
@@ -426,30 +377,8 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             return move_viewport(false, true, kbind->params);
         case kb_step_down:
             return move_viewport(false, false, kbind->params);
-        case kb_zoom_in:
-        case kb_zoom_out:
-            zoom_image(kbind->action == kb_zoom_in, kbind->params);
-            return true;
-        case kb_zoom_optimal:
-            canvas_set_scale(cs_fit_or100);
-            return true;
-        case kb_zoom_fit:
-            canvas_set_scale(cs_fit_window);
-            return true;
-        case kb_zoom_fit_width:
-            canvas_set_scale(cs_fit_width);
-            return true;
-        case kb_zoom_fit_height:
-            canvas_set_scale(cs_fit_height);
-            return true;
-        case kb_zoom_fill:
-            canvas_set_scale(cs_fill_window);
-            return true;
-        case kb_zoom_real:
-            canvas_set_scale(cs_real_size);
-            return true;
-        case kb_zoom_reset:
-            reset_viewport();
+        case kb_zoom:
+            canvas_zoom(kbind->params);
             return true;
         case kb_rotate_left:
             image_rotate(image_list_current().image, 270);
@@ -466,9 +395,8 @@ bool viewer_on_keyboard(xkb_keysym_t key)
             image_flip_horizontal(image_list_current().image);
             return true;
         case kb_antialiasing:
-            config.antialiasing = !config.antialiasing;
             info_set_status("Anti-aliasing %s",
-                            config.antialiasing ? "on" : "off");
+                            canvas_switch_aa() ? "on" : "off");
             return true;
         case kb_reload:
             if (image_list_reset()) {

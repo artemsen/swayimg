@@ -32,29 +32,31 @@ Empty lines and comments are ignored.
 .IP "\fBscale\fR: initial image scale:"
 .nf
 \fIoptimal\fR: 100% or less to fit to window (default);
+\fIwidth\fR: fit image width to window width;
+\fIheight\fR: fit image height to window height;
 \fIfit\fR: fit to window;
-\fIfill\fR: crop to window size;
+\fIfill\fR: crop image to fill the window;
 \fIreal\fR: real size (100%);
 .IP "\fBfullscreen\fR: start in full screen mode, \fIyes\fR or [\fIno\fR];"
-.IP "\fBbackground\fR: background for transparent images:"
+.IP "\fBantialiasing\fR: enable/disable anti-aliasing, \fIyes\fR or [\fIno\fR];"
+.IP "\fBtransparency\fR: background for transparent images:"
 .nf
 \fInone\fR: transparent;
 \fIgrid\fR: show grid as background (default);
 \fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fBwndbkg\fR: window background:"
-.nf
-\fInone\fR: transparent (default);
-\fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fBwndpos\fR: window position:"
+.IP "\fBposition\fR: window position:"
 \fIparent\fR: set position from parent (currently active) window (default);
 \fIX,Y\fR: absolute coordinates of the top left corner.
-.IP "\fBwndsize\fR: window size:"
+.IP "\fBsize\fR: window size:"
 \fIparent\fR: set size from parent (currently active) window (default);
 \fIimage\fR: set size from the first image;
 \fIWIDTH,HEIGHT\fR: absolute size of the window.
-.IP "\fBantialiasing\fR: enable/disable anti-aliasing, \fIyes\fR or [\fIno\fR];"
-.IP "\fBinfo\fR: show image meta information: format, size, EXIF, and current scale, \fIyes\fR or [\fIno\fR];"
-.IP "\fBslideshow\fR: slideshow image duration in seconds, default is \fI3\fR;"
+.IP "\fBbackground\fR: window background:"
+.nf
+\fInone\fR: transparent (default);
+\fIXXXXXX\fR: hexadecimal RGB color.
+.IP "\fBslideshow\fR: run slideshow at startup, \fIyes\fR or [\fIno\fR];"
+.IP "\fBslideshow_time\fR: slideshow image duration in seconds, default is \fI3\fR;"
 .IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
 .SS [list] section: image list configuration
 .IP "\fBorder\fR: order of the image list:"
@@ -117,13 +119,7 @@ Valid action are:
 .IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
 .IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"
 .IP "\fBstep_down\fR \fI[PERCENT]\fR: move viewport down, default is 10%;"
-.IP "\fBzoom_in\fR \fI[PERCENT]\fR: zoom in, by default increases scale by 10%;"
-.IP "\fBzoom_out\fR \fI[PERCENT]\fR: zoom out, by default decreases scale by 10%;"
-.IP "\fBzoom_optimal\fR: set to optimal zoom (100% or less to fit to window);"
-.IP "\fBzoom_fit\fR: set scale to fit the window;"
-.IP "\fBzoom_fill\fR: set scale to fill the window;"
-.IP "\fBzoom_real\fR: set 100% scale;"
-.IP "\fBzoom_reset\fR: reset zoom to default settings;"
+.IP "\fBzoom\fR \fI[SCALE]\fR: zoom in/ou/fix, \fISCALE\fR is one of \fIoptimal\fR, \fIwidth\fR, \fIheight\fR, \fIfit\fR, \fIfill\fR, \fIreal\fR, or percent, e.g. \fI+10\fR;"
 .IP "\fBrotate_left\fR: rotate image anticlockwise;"
 .IP "\fBrotate_right\fR: rotate image clockwise;"
 .IP "\fBflip_vertical\fR: flip image vertically;"

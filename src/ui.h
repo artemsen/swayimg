@@ -6,11 +6,21 @@
 
 #include "types.h"
 
+// Configuration parameters
+#define UI_CFG_APP_ID     "app_id"
+#define UI_CFG_FULLSCREEN "fullscreen"
+#define UI_CFG_SIZE       "size"
+#define UI_CFG_POSITION   "position"
+
+// Special ids for windows size and position
+#define SIZE_FROM_IMAGE  0
+#define SIZE_FROM_PARENT 1
+#define POS_FROM_PARENT  0xffffffff
+
 /**
- * Create User Interface context.
- * @return false on errors
+ * Initialize User Interface context.
  */
-bool ui_init(void);
+void ui_init(void);
 
 /**
  * Free UI context.
@@ -29,16 +39,63 @@ bool ui_run(void);
 void ui_stop(void);
 
 /**
+ * Get app id (window class name).
+ * @return app id
+ */
+const char* ui_get_appid(void);
+
+/**
  * Set window title.
  * @param title window title to set
  */
-void ui_set_title(const char* title);
+void ui_set_title(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 /**
- * Enable or disable full screen mode.
- * @param enable fullscreen mode
+ * Set window position.
+ * @param x,y new window coordinates
  */
-void ui_set_fullscreen(bool enable);
+void ui_set_position(ssize_t x, ssize_t y);
+
+/**
+ * Get window x position.
+ * @return window x position
+ */
+ssize_t ui_get_x(void);
+
+/**
+ * Get window y position.
+ * @return window y position
+ */
+ssize_t ui_get_y(void);
+
+/**
+ * Set window size.
+ * @param width,height window size in pixels
+ */
+void ui_set_size(size_t width, size_t height);
+
+/**
+ * Get window width.
+ * @return window width in pixels
+ */
+size_t ui_get_width(void);
+
+/**
+ * Get window height.
+ * @return window height in pixels
+ */
+size_t ui_get_height(void);
+
+/**
+ * Toggle full screen mode.
+ */
+void ui_toggle_fullscreen(void);
+
+/**
+ * Check if full screen mode ia active.
+ * @return current mode
+ */
+bool ui_get_fullscreen(void);
 
 /** Custom event handler. */
 typedef void (*fd_event)(void);

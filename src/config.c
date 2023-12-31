@@ -4,21 +4,11 @@
 
 #include "config.h"
 
-#include "keybind.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
-
-/** Base name of window class/app_id used by default */
-#define APP_ID_BASE "swayimg"
-
-// Section names
-#define SECTION_GENERAL "general"
 
 /** Config file location. */
 struct location {
@@ -45,9 +35,6 @@ static const struct location config_locations[] = {
     { "XDG_CONFIG_DIRS", "/swayimg/config" },
     { NULL, "/etc/xdg/swayimg/config" }
 };
-
-/** Singleton config instance. */
-struct config config;
 
 /**
  * Expand path from environment variable.
@@ -83,139 +70,6 @@ static char* expand_path(const char* prefix_env, const char* postfix)
     }
 
     return path;
-}
-
-/**
- * Parse pair of numbers.
- * @param text text to parse
- * @param n1,n2 output values
- * @return false if values have invalid format
- */
-static bool parse_numpair(const char* text, long* n1, long* n2)
-{
-    char* endptr;
-
-    errno = 0;
-
-    // first number
-    *n1 = strtol(text, &endptr, 0);
-    if (errno) {
-        return false;
-    }
-    // skip delimeter
-    while (*endptr && *endptr == ',') {
-        ++endptr;
-    }
-    // second number
-    *n2 = strtol(endptr, &endptr, 0);
-    if (errno) {
-        return false;
-    }
-
-    return *endptr == 0;
-}
-
-/**
- * Apply global property to configuration.
- * @param key property key
- * @param value property value
- * @return operation complete status
- */
-static enum config_status load_general(const char* key, const char* value)
-{
-    enum config_status status = cfgst_invalid_value;
-
-    if (strcmp(key, "scale") == 0) {
-        status = cfgst_ok;
-        if (strcmp(value, "optimal") == 0) {
-            config.scale = cfgsc_optimal;
-        } else if (strcmp(value, "fit") == 0) {
-            config.scale = cfgsc_fit;
-        } else if (strcmp(value, "fit-width") == 0) {
-            config.scale = cfgsc_fit_width;
-        } else if (strcmp(value, "fit-height") == 0) {
-            config.scale = cfgsc_fit_height;
-        } else if (strcmp(value, "fill") == 0) {
-            config.scale = cfgsc_fill;
-        } else if (strcmp(value, "real") == 0) {
-            config.scale = cfgsc_real;
-        } else {
-            status = cfgst_invalid_value;
-        }
-    } else if (strcmp(key, "fullscreen") == 0) {
-        if (config_parse_bool(value, &config.fullscreen)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "background") == 0) {
-        status = cfgst_ok;
-        if (strcmp(value, "grid") == 0) {
-            config.background = BACKGROUND_GRID;
-        } else if (strcmp(value, "none") == 0) {
-            config.background = COLOR_TRANSPARENT;
-        } else if (!config_parse_color(value, &config.background)) {
-            status = cfgst_invalid_value;
-        }
-    } else if (strcmp(key, "wndbkg") == 0) {
-        if (strcmp(value, "none") == 0) {
-            config.window = COLOR_TRANSPARENT;
-            status = cfgst_ok;
-        } else if (config_parse_color(value, &config.window)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "wndpos") == 0) {
-        if (strcmp(value, "parent") == 0) {
-            config.geometry.x = SAME_AS_PARENT;
-            config.geometry.y = SAME_AS_PARENT;
-            status = cfgst_ok;
-        } else {
-            long x, y;
-            if (parse_numpair(value, &x, &y)) {
-                config.geometry.x = (ssize_t)x;
-                config.geometry.y = (ssize_t)y;
-                status = cfgst_ok;
-            }
-        }
-    } else if (strcmp(key, "wndsize") == 0) {
-        if (strcmp(value, "parent") == 0) {
-            config.geometry.width = SAME_AS_PARENT;
-            config.geometry.height = SAME_AS_PARENT;
-            status = cfgst_ok;
-        } else if (strcmp(value, "image") == 0) {
-            config.geometry.width = SAME_AS_IMAGE;
-            config.geometry.height = SAME_AS_IMAGE;
-            status = cfgst_ok;
-        } else {
-            long width, height;
-            if (parse_numpair(value, &width, &height) && width > 0 &&
-                height > 0) {
-                config.geometry.width = (size_t)width;
-                config.geometry.height = (size_t)height;
-                status = cfgst_ok;
-            }
-        }
-    } else if (strcmp(key, "slideshow") == 0) {
-        ssize_t num;
-        if (config_parse_num(value, &num, 0) && num != 0) {
-            config.slideshow_sec = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "antialiasing") == 0) {
-        if (config_parse_bool(value, &config.antialiasing)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "app_id") == 0) {
-        const size_t sz = strlen(value) + 1;
-        char* ptr = realloc(config.app_id, sz);
-        if (ptr) {
-            memcpy(ptr, value, sz);
-            config.app_id = ptr;
-            status = cfgst_ok;
-        }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
 }
 
 /**
@@ -294,7 +148,7 @@ static bool load_config(const char* path)
         }
 
         // load configuration parameter from key/value pair
-        status = config_set(section ? section : SECTION_GENERAL, line, value);
+        status = config_set(section, line, value);
         if (status != cfgst_ok) {
             fprintf(stderr, "Invalid configuration in %s:%lu\n", path,
                     line_num);
@@ -310,34 +164,6 @@ static bool load_config(const char* path)
 
 void config_init(void)
 {
-    struct timespec ts;
-
-    // default settings
-    config.scale = cfgsc_optimal;
-    config.background = BACKGROUND_GRID;
-    config.window = COLOR_TRANSPARENT;
-    config.geometry.x = SAME_AS_PARENT;
-    config.geometry.y = SAME_AS_PARENT;
-    config.geometry.width = SAME_AS_PARENT;
-    config.geometry.height = SAME_AS_PARENT;
-    config.slideshow = false;
-    config.slideshow_sec = 3;
-    config.antialiasing = false;
-
-    // create unique application id
-    const size_t idlen = 32;
-    config.app_id = malloc(idlen);
-    if (config.app_id) {
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-            snprintf(config.app_id, idlen, APP_ID_BASE "_%lx",
-                     (ts.tv_sec << 32) | ts.tv_nsec);
-        } else {
-            strcpy(config.app_id, APP_ID_BASE);
-        }
-    }
-
-    config_add_section(SECTION_GENERAL, load_general);
-
     // find and load first available config file
     for (size_t i = 0;
          i < sizeof(config_locations) / sizeof(config_locations[0]); ++i) {
@@ -353,7 +179,6 @@ void config_init(void)
 
 void config_free(void)
 {
-    free((void*)config.app_id);
     free(ctx.sections);
 }
 
@@ -362,10 +187,19 @@ enum config_status config_set(const char* section, const char* key,
 {
     enum config_status status = cfgst_invalid_section;
 
+    if (!section || !*section) {
+        fprintf(stderr, "Empty section name\n");
+        return cfgst_invalid_section;
+    }
+
     for (size_t i = 0; i < ctx.num_sections; ++i) {
-        if (strcmp(ctx.sections[i].name, section) == 0) {
-            status = ctx.sections[i].loader(key, value);
-            break;
+        const struct section* sl = &ctx.sections[i];
+        if (strcmp(sl->name, section) == 0) {
+            status = sl->loader(key, value);
+            if (status != cfgst_invalid_key ||
+                strcmp(sl->name, GENERAL_CONFIG) != 0) {
+                break;
+            }
         }
     }
 
@@ -483,6 +317,32 @@ bool config_parse_color(const char* text, argb_t* color)
     }
 
     return false;
+}
+
+bool config_parse_numpair(const char* text, long* n1, long* n2)
+{
+    char* endptr;
+
+    errno = 0;
+
+    // first number
+    *n1 = strtol(text, &endptr, 0);
+    if (errno) {
+        return false;
+    }
+
+    // skip delimeter
+    while (*endptr && *endptr == ',') {
+        ++endptr;
+    }
+
+    // second number
+    *n2 = strtol(endptr, &endptr, 0);
+    if (errno) {
+        return false;
+    }
+
+    return *endptr == 0;
 }
 
 size_t config_parse_tokens(const char* text, char delimeter,

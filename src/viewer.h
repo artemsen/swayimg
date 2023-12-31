@@ -8,6 +8,10 @@
 
 #include <xkbcommon/xkbcommon.h>
 
+// Configuration parameters
+#define VIEWER_CFG_SLIDESHOW      "slideshow"
+#define VIEWER_CFG_SLIDESHOW_TIME "slideshow_time"
+
 /**
  * Initialize viewer context.
  */

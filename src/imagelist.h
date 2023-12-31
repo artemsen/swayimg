@@ -6,6 +6,13 @@
 
 #include "image.h"
 
+// Configuration parameters
+#define INFO_CFG_SECTION   "list"
+#define INFO_CFG_ORDER     "order"
+#define INFO_CFG_LOOP      "loop"
+#define INFO_CFG_RECURSIVE "recursive"
+#define INFO_CFG_ALL       "all"
+
 /** Image entry. */
 struct image_entry {
     size_t index;        ///< Entry index in the list

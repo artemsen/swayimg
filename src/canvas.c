@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Background modes
+#define COLOR_TRANSPARENT 0xff000000
+#define BACKGROUND_GRID   0xfe000000
+
 // Background grid parameters
 #define GRID_STEP   10
 #define GRID_COLOR1 0xff333333
@@ -26,14 +30,45 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+/** Scaling operations. */
+enum canvas_scale {
+    scale_fit_optimal, ///< Fit to window, but not more than 100%
+    scale_fit_window,  ///< Fit to window size
+    scale_fit_width,   ///< Fit width to window width
+    scale_fit_height,  ///< Fit height to window height
+    scale_fill_window, ///< Fill the window
+    scale_real_size,   ///< Real image size (100%)
+};
+
+// clang-format off
+static const char* scale_names[] = {
+    [scale_fit_optimal] = "optimal",
+    [scale_fit_window] = "fit",
+    [scale_fit_width] = "width",
+    [scale_fit_height] = "height",
+    [scale_fill_window] = "fill",
+    [scale_real_size] = "real",
+};
+// clang-format on
+
 /** Canvas context. */
 struct canvas {
-    float scale;        ///< Scale, 1.0 = 100%
+    argb_t image_bkg;  ///< Image background mode/color
+    argb_t window_bkg; ///< Window background mode/color
+    bool antialiasing; ///< Anti-aliasing (bicubic interpolation)
+
+    enum canvas_scale initial_scale; ///< Initial scale
+    float scale;                     ///< Current scale factor
+
     struct rect image;  ///< Image position and size
     struct size window; ///< Output window size
     size_t wnd_scale;   ///< Window scale factor (HiDPI)
 };
-static struct canvas ctx;
+
+static struct canvas ctx = {
+    .image_bkg = BACKGROUND_GRID,
+    .window_bkg = COLOR_TRANSPARENT,
+};
 
 /**
  * Fix viewport position to minimize gap between image and window edge.
@@ -65,6 +100,133 @@ static void fix_viewport(void)
     }
 }
 
+/**
+ * Set fixed scale for the image.
+ * @param sc scale to set
+ */
+static void set_scale(enum canvas_scale sc)
+{
+    const float scale_w = 1.0 / ((float)ctx.image.width / ctx.window.width);
+    const float scale_h = 1.0 / ((float)ctx.image.height / ctx.window.height);
+
+    switch (sc) {
+        case scale_fit_optimal:
+            ctx.scale = min(scale_w, scale_h);
+            if (ctx.scale > 1.0) {
+                ctx.scale = 1.0;
+            }
+            break;
+        case scale_fit_window:
+            ctx.scale = min(scale_w, scale_h);
+            break;
+        case scale_fit_width:
+            ctx.scale = scale_w;
+            break;
+        case scale_fit_height:
+            ctx.scale = scale_h;
+            break;
+        case scale_fill_window:
+            ctx.scale = max(scale_w, scale_h);
+            break;
+        case scale_real_size:
+            ctx.scale = 1.0; // 100 %
+            break;
+    }
+
+    // center viewport
+    ctx.image.x = ctx.window.width / 2 - (ctx.scale * ctx.image.width) / 2;
+    ctx.image.y = ctx.window.height / 2 - (ctx.scale * ctx.image.height) / 2;
+
+    fix_viewport();
+}
+
+/**
+ * Zoom in/out.
+ * @param percent percentage increment to current scale
+ */
+static void zoom(ssize_t percent)
+{
+    const size_t old_w = ctx.scale * ctx.image.width;
+    const size_t old_h = ctx.scale * ctx.image.height;
+    const float step = (ctx.scale / 100) * percent;
+
+    if (percent > 0) {
+        ctx.scale += step;
+        if (ctx.scale > MAX_SCALE) {
+            ctx.scale = MAX_SCALE;
+        }
+    } else {
+        const float scale_w = (float)MIN_SCALE / ctx.image.width;
+        const float scale_h = (float)MIN_SCALE / ctx.image.height;
+        const float scale_min = max(scale_w, scale_h);
+        ctx.scale += step;
+        if (ctx.scale < scale_min) {
+            ctx.scale = scale_min;
+        }
+    }
+
+    // move viewport to save the center of previous coordinates
+    const size_t new_w = ctx.scale * ctx.image.width;
+    const size_t new_h = ctx.scale * ctx.image.height;
+    const ssize_t delta_w = old_w - new_w;
+    const ssize_t delta_h = old_h - new_h;
+    const ssize_t cntr_x = ctx.window.width / 2 - ctx.image.x;
+    const ssize_t cntr_y = ctx.window.height / 2 - ctx.image.y;
+    ctx.image.x += ((float)cntr_x / old_w) * delta_w;
+    ctx.image.y += ((float)cntr_y / old_h) * delta_h;
+
+    fix_viewport();
+}
+
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, CANVAS_CFG_ANTIALIASING) == 0) {
+        if (config_parse_bool(value, &ctx.antialiasing)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, CANVAS_CFG_SCALE) == 0) {
+        const size_t num_modes = sizeof(scale_names) / sizeof(scale_names[0]);
+        for (size_t i = 0; i < num_modes; ++i) {
+            if (strcmp(value, scale_names[i]) == 0) {
+                ctx.initial_scale = i;
+                status = cfgst_ok;
+                break;
+            }
+        }
+    } else if (strcmp(key, CANVAS_CFG_TRANSPARENCY) == 0) {
+        status = cfgst_ok;
+        if (strcmp(value, "grid") == 0) {
+            ctx.image_bkg = BACKGROUND_GRID;
+        } else if (strcmp(value, "none") == 0) {
+            ctx.image_bkg = COLOR_TRANSPARENT;
+        } else if (!config_parse_color(value, &ctx.image_bkg)) {
+            status = cfgst_invalid_value;
+        }
+    } else if (strcmp(key, CANVAS_CFG_BACKGROUND) == 0) {
+        if (strcmp(value, "none") == 0) {
+            ctx.window_bkg = COLOR_TRANSPARENT;
+            status = cfgst_ok;
+        } else if (!config_parse_color(value, &ctx.window_bkg)) {
+            status = cfgst_invalid_value;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
+void canvas_init(void)
+{
+    // register configuration loader
+    config_add_section(GENERAL_CONFIG, load_config);
+}
+
 bool canvas_reset_window(size_t width, size_t height, size_t scale)
 {
     const bool first = (ctx.window.width == 0);
@@ -80,14 +242,14 @@ bool canvas_reset_window(size_t width, size_t height, size_t scale)
     return first;
 }
 
-void canvas_reset_image(size_t width, size_t height, enum canvas_scale sc)
+void canvas_reset_image(size_t width, size_t height)
 {
     ctx.image.x = 0;
     ctx.image.y = 0;
     ctx.image.width = width;
     ctx.image.height = height;
     ctx.scale = 0;
-    canvas_set_scale(sc);
+    set_scale(ctx.initial_scale);
 }
 
 void canvas_swap_image_size(void)
@@ -106,13 +268,13 @@ void canvas_swap_image_size(void)
 
 void canvas_clear(argb_t* wnd)
 {
-    if (config.window == COLOR_TRANSPARENT) {
+    if (ctx.window_bkg == COLOR_TRANSPARENT) {
         memset(wnd, 0, ctx.window.width * ctx.window.height * sizeof(argb_t));
     } else {
         for (size_t y = 0; y < ctx.window.height; ++y) {
             argb_t* line = &wnd[y * ctx.window.width];
             for (size_t x = 0; x < ctx.window.width; ++x) {
-                line[x] = ARGB_SET_A(0xff) | config.window;
+                line[x] = ARGB_SET_A(0xff) | ctx.window_bkg;
             }
         }
     }
@@ -249,7 +411,7 @@ void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
                                    .width = pos_right - pos_left,
                                    .height = pos_bottom - pos_top };
 
-    if (config.antialiasing) {
+    if (ctx.antialiasing) {
         canvas_draw_bicubic(&viewport, img, wnd);
     } else {
         for (size_t y = 0; y < viewport.height; ++y) {
@@ -279,10 +441,10 @@ void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
                 uint8_t alpha_set;
                 argb_t bg;
 
-                if (config.background == COLOR_TRANSPARENT) {
+                if (ctx.image_bkg == COLOR_TRANSPARENT) {
                     bg = 0;
                     alpha_set = alpha;
-                } else if (config.background == BACKGROUND_GRID) {
+                } else if (ctx.image_bkg == BACKGROUND_GRID) {
                     const bool shift = (y / (GRID_STEP * ctx.wnd_scale)) % 2;
                     const size_t tail = x / (GRID_STEP * ctx.wnd_scale);
                     const argb_t grid =
@@ -290,7 +452,7 @@ void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
                     bg = grid;
                     alpha_set = 0xff;
                 } else {
-                    bg = config.background;
+                    bg = ctx.image_bkg;
                     alpha_set = 0xff;
                 }
 
@@ -402,77 +564,37 @@ bool canvas_move(bool horizontal, ssize_t percent)
     return (ctx.image.x != old_x || ctx.image.y != old_y);
 }
 
-void canvas_zoom(ssize_t percent)
+void canvas_zoom(const char* op)
 {
-    const size_t old_w = ctx.scale * ctx.image.width;
-    const size_t old_h = ctx.scale * ctx.image.height;
-    const float step = (ctx.scale / 100) * percent;
+    ssize_t percent = 0;
 
-    if (percent > 0) {
-        ctx.scale += step;
-        if (ctx.scale > MAX_SCALE) {
-            ctx.scale = MAX_SCALE;
-        }
-    } else {
-        const float scale_w = (float)MIN_SCALE / ctx.image.width;
-        const float scale_h = (float)MIN_SCALE / ctx.image.height;
-        const float scale_min = max(scale_w, scale_h);
-        ctx.scale += step;
-        if (ctx.scale < scale_min) {
-            ctx.scale = scale_min;
+    if (!op || !*op) {
+        return;
+    }
+
+    for (size_t i = 0; i < sizeof(scale_names) / sizeof(scale_names[0]); ++i) {
+        if (strcmp(op, scale_names[i]) == 0) {
+            set_scale(i);
+            return;
         }
     }
 
-    // move viewport to save the center of previous coordinates
-    const size_t new_w = ctx.scale * ctx.image.width;
-    const size_t new_h = ctx.scale * ctx.image.height;
-    const ssize_t delta_w = old_w - new_w;
-    const ssize_t delta_h = old_h - new_h;
-    const ssize_t cntr_x = ctx.window.width / 2 - ctx.image.x;
-    const ssize_t cntr_y = ctx.window.height / 2 - ctx.image.y;
-    ctx.image.x += ((float)cntr_x / old_w) * delta_w;
-    ctx.image.y += ((float)cntr_y / old_h) * delta_h;
-
-    fix_viewport();
-}
-
-void canvas_set_scale(enum canvas_scale sc)
-{
-    const float scale_w = 1.0 / ((float)ctx.image.width / ctx.window.width);
-    const float scale_h = 1.0 / ((float)ctx.image.height / ctx.window.height);
-
-    switch (sc) {
-        case cs_fit_or100:
-            ctx.scale = min(scale_w, scale_h);
-            if (ctx.scale > 1.0) {
-                ctx.scale = 1.0;
-            }
-            break;
-        case cs_fit_window:
-            ctx.scale = min(scale_w, scale_h);
-            break;
-        case cs_fit_width:
-            ctx.scale = scale_w;
-            break;
-        case cs_fit_height:
-            ctx.scale = scale_h;
-            break;
-        case cs_fill_window:
-            ctx.scale = max(scale_w, scale_h);
-            break;
-        case cs_real_size:
-            ctx.scale = 1.0; // 100 %
-            break;
+    if (config_parse_num(op, &percent, 0) && percent != 0 && percent > -1000 &&
+        percent < 1000) {
+        zoom(percent);
+        return;
     }
 
-    // center viewport
-    ctx.image.x = ctx.window.width / 2 - (ctx.scale * ctx.image.width) / 2;
-    ctx.image.y = ctx.window.height / 2 - (ctx.scale * ctx.image.height) / 2;
-
-    fix_viewport();
+    fprintf(stderr, "Invalid zoom operation: \"%s\"\n", op);
 }
 
 float canvas_get_scale(void)
 {
     return ctx.scale;
+}
+
+bool canvas_switch_aa(void)
+{
+    ctx.antialiasing = !ctx.antialiasing;
+    return ctx.antialiasing;
 }

@@ -3,6 +3,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "buildcfg.h"
+#include "canvas.h"
 #include "config.h"
 #include "font.h"
 #include "formats/loader.h"
@@ -32,18 +33,24 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random", "list", "order", NULL },
-    { 'r', "recursive",  NULL,    "read directories recursively", "list", "recursive", "yes" },
-    { 'a', "all",        NULL,    "open all files from the same directory", "list", "all", "yes" },
-    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup", NULL, NULL, NULL },
-    { 'f', "fullscreen", NULL,    "show image in full screen mode", NULL, NULL, NULL },
-    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/fit-width/fit-height/fill/real", "general", "scale", NULL },
-    { 'b', "background", "COLOR", "set image background color: none/[grid]/RGB", "general", "background", NULL },
-    { 'w', "wndbkg",     "COLOR", "set window background color: [none]/RGB", "general", "wndbkg", NULL },
-    { 'p', "wndpos",     "POS",   "set window position [parent]/X,Y", "general", "wndpos", NULL },
-    { 'g', "wndsize",    "SIZE",  "set window size: [parent]/image/W,H", "general", "wndsize", NULL },
-    { 'n', "class",      "NAME",  "set window class/app_id", "general", "app_id", NULL },
-    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL, NULL, NULL },
+    { 'r', "recursive",  NULL,    "read directories recursively",
+                                  INFO_CFG_SECTION, INFO_CFG_RECURSIVE, "yes" },
+    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
+                                  INFO_CFG_SECTION, INFO_CFG_ORDER, NULL },
+    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
+                                  GENERAL_CONFIG, CANVAS_CFG_SCALE, NULL },
+    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
+                                  GENERAL_CONFIG, VIEWER_CFG_SLIDESHOW, "yes" },
+    { 'f', "fullscreen", NULL,    "show image in full screen mode",
+                                  GENERAL_CONFIG, UI_CFG_FULLSCREEN, "yes" },
+    { 'p', "position",   "POS",   "set window position [parent]/X,Y",
+                                  GENERAL_CONFIG, UI_CFG_POSITION, NULL },
+    { 'g', "size",       "SIZE",  "set window size: [parent]/image/W,H",
+                                  GENERAL_CONFIG, UI_CFG_SIZE, NULL },
+    { 'a', "class",      "NAME",  "set window class/app_id",
+                                  GENERAL_CONFIG, UI_CFG_APP_ID, NULL },
+    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value",
+                                  NULL, NULL, NULL },
     { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
     { 'h', "help",       NULL,    "print this help and exit", NULL, NULL, NULL }
 };
@@ -124,13 +131,7 @@ static int parse_cmdargs(int argc, char* argv[])
             continue;
         }
         switch (opt) {
-            case 'l':
-                config.slideshow = true;
-                break;
-            case 'f':
-                config.fullscreen = true;
-                break;
-            case 't':
+            case 'c':
                 if (!config_command(optarg)) {
                     return -1;
                 }
@@ -156,37 +157,47 @@ static int parse_cmdargs(int argc, char* argv[])
  */
 static void sway_setup(void)
 {
-    int ipc;
-    struct rect wnd_parent;
-    bool wnd_fullscreen = false;
-    const bool absolute = config.geometry.x != SAME_AS_PARENT &&
-        config.geometry.y != SAME_AS_PARENT;
+    struct rect parent;
+    bool fullscreen;
+    bool rc = false;
+    const int ipc = sway_connect();
 
-    ipc = sway_connect();
-    if (ipc == INVALID_SWAY_IPC) {
-        return;
-    }
-
-    if (sway_current(ipc, &wnd_parent, &wnd_fullscreen)) {
-        config.fullscreen |= wnd_fullscreen;
-        if (config.geometry.x == SAME_AS_PARENT &&
-            config.geometry.y == SAME_AS_PARENT) {
-            config.geometry.x = wnd_parent.x;
-            config.geometry.y = wnd_parent.y;
+    if (ipc != INVALID_SWAY_IPC && sway_current(ipc, &parent, &fullscreen)) {
+        if (fullscreen && !ui_get_fullscreen()) {
+            ui_toggle_fullscreen();
         }
-        if (config.geometry.width == SAME_AS_PARENT &&
-            config.geometry.height == SAME_AS_PARENT) {
-            config.geometry.width = wnd_parent.width;
-            config.geometry.height = wnd_parent.height;
-        }
-    }
+        if (!ui_get_fullscreen()) {
+            const bool absolute =
+                ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
 
-    if (!config.fullscreen) {
-        sway_add_rules(ipc, config.app_id, config.geometry.x, config.geometry.y,
-                       absolute);
+            if (!absolute) {
+                ui_set_position(parent.x, parent.y);
+            }
+
+            if (ui_get_width() == SIZE_FROM_PARENT ||
+                ui_get_height() == SIZE_FROM_PARENT) {
+                ui_set_size(parent.width, parent.height);
+            }
+
+            rc = sway_add_rules(ipc, ui_get_appid(), ui_get_x(), ui_get_y(),
+                                absolute);
+        }
     }
 
     sway_disconnect(ipc);
+
+    if (!rc) {
+        // set fixed app_id
+        config_set(GENERAL_CONFIG, "app_id", APP_NAME);
+
+        // fixup window size
+        if (ui_get_width() == SIZE_FROM_PARENT ||
+            ui_get_height() == SIZE_FROM_PARENT) {
+            const struct image_frame* frame =
+                image_list_current().image->frames;
+            ui_set_size(frame->width, frame->height);
+        }
+    }
 }
 
 /**
@@ -195,7 +206,7 @@ static void sway_setup(void)
 int main(int argc, char* argv[])
 {
     bool rc = false;
-    int index;
+    int argn;
 
     setlocale(LC_ALL, "");
 
@@ -203,59 +214,40 @@ int main(int argc, char* argv[])
     font_init();
     info_init();
     image_list_init();
+    canvas_init();
+    ui_init();
+    viewer_init();
     config_init();
 
     // parse command arguments
-    index = parse_cmdargs(argc, argv);
-    if (index == 0) {
-        rc = true;
-        goto done;
-    }
-    if (index < 0) {
+    argn = parse_cmdargs(argc, argv);
+    if (argn <= 0) {
+        rc = (argn == 0);
         goto done;
     }
 
     // compose file list
-    if (!image_list_scan((const char**)&argv[index], argc - index)) {
+    if (!image_list_scan((const char**)&argv[argn], argc - argn)) {
         fprintf(stderr, "No images to view, exit\n");
         goto done;
     }
 
     // set window size form the first image
-    if (config.geometry.width == SAME_AS_IMAGE ||
-        config.geometry.height == SAME_AS_IMAGE) {
-        struct image_entry first = image_list_current();
-        config.geometry.width = first.image->frames[0].width;
-        config.geometry.height = first.image->frames[0].height;
+    if (ui_get_width() == SIZE_FROM_IMAGE ||
+        ui_get_height() == SIZE_FROM_IMAGE) {
+        const struct image_frame* frame = image_list_current().image->frames;
+        ui_set_size(frame->width, frame->height);
     }
 
-    if (!config.fullscreen) {
-        sway_setup();
-    }
+    sway_setup();
 
-    // no sway or fullscreen
-    if (config.geometry.width == SAME_AS_PARENT &&
-        config.geometry.height == SAME_AS_PARENT) {
-        struct image_entry first = image_list_current();
-        config.geometry.width = first.image->frames[0].width;
-        config.geometry.height = first.image->frames[0].height;
-    }
-
-    // initialize ui
-    if (!ui_init()) {
-        goto done;
-    }
-
-    // create viewer
-    viewer_init();
-
-    // run main loop
+    // run ui event loop
     rc = ui_run();
 
 done:
-    ui_free();
-    viewer_free();
     config_free();
+    viewer_free();
+    ui_free();
     image_list_free();
     info_free();
     font_free();

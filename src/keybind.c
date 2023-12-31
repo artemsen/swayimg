@@ -32,15 +32,7 @@ static const char* action_names[] = {
     [kb_step_right] = "step_right",
     [kb_step_up] = "step_up",
     [kb_step_down] = "step_down",
-    [kb_zoom_in] = "zoom_in",
-    [kb_zoom_out] = "zoom_out",
-    [kb_zoom_optimal] = "zoom_optimal",
-    [kb_zoom_fit_width] = "zoom_fit_width",
-    [kb_zoom_fit_height] = "zoom_fit_height",
-    [kb_zoom_fit] = "zoom_fit",
-    [kb_zoom_fill] = "zoom_fill",
-    [kb_zoom_real] = "zoom_real",
-    [kb_zoom_reset] = "zoom_reset",
+    [kb_zoom] = "zoom",
     [kb_rotate_left] = "rotate_left",
     [kb_rotate_right] = "rotate_right",
     [kb_flip_vertical] = "flip_vertical",
@@ -53,7 +45,7 @@ static const char* action_names[] = {
 };
 
 // Default key bindings
-static struct key_binding default_bindings[] = {
+static const struct key_binding default_bindings[] = {
     { XKB_KEY_Home, kb_first_file, NULL },
     { XKB_KEY_g, kb_first_file, NULL },
     { XKB_KEY_End, kb_last_file, NULL },
@@ -82,16 +74,15 @@ static struct key_binding default_bindings[] = {
     { XKB_KEY_k, kb_step_up, NULL },
     { XKB_KEY_Down, kb_step_down, NULL },
     { XKB_KEY_j, kb_step_down, NULL },
-    { XKB_KEY_equal, kb_zoom_in, NULL },
-    { XKB_KEY_plus, kb_zoom_in, NULL },
-    { XKB_KEY_minus, kb_zoom_out, NULL },
-    { XKB_KEY_x, kb_zoom_optimal, NULL },
-    { XKB_KEY_w, kb_zoom_fit_width, NULL },
-    { XKB_KEY_W, kb_zoom_fit_height, NULL },
-    { XKB_KEY_z, kb_zoom_fit, NULL },
-    { XKB_KEY_Z, kb_zoom_fill, NULL },
-    { XKB_KEY_0, kb_zoom_real, NULL },
-    { XKB_KEY_BackSpace, kb_zoom_reset, NULL },
+    { XKB_KEY_equal, kb_zoom, "+10" },
+    { XKB_KEY_plus, kb_zoom, "+10" },
+    { XKB_KEY_minus, kb_zoom, "-10" },
+    { XKB_KEY_w, kb_zoom, "width" },
+    { XKB_KEY_W, kb_zoom, "height" },
+    { XKB_KEY_z, kb_zoom, "fit" },
+    { XKB_KEY_Z, kb_zoom, "fill" },
+    { XKB_KEY_0, kb_zoom, "real" },
+    { XKB_KEY_BackSpace, kb_zoom, "optimal" },
     { XKB_KEY_F5, kb_rotate_left, NULL },
     { XKB_KEY_bracketleft, kb_rotate_left, NULL },
     { XKB_KEY_F6, kb_rotate_right, NULL },
@@ -101,7 +92,7 @@ static struct key_binding default_bindings[] = {
     { XKB_KEY_a, kb_antialiasing, NULL },
     { XKB_KEY_r, kb_reload, NULL },
     { XKB_KEY_i, kb_info, NULL },
-    { XKB_KEY_e, kb_exec, NULL },
+    { XKB_KEY_e, kb_exec, "echo \"Current file: %\"" },
     { XKB_KEY_Escape, kb_quit, NULL },
     { XKB_KEY_Return, kb_quit, NULL },
     { XKB_KEY_F10, kb_quit, NULL },
@@ -219,12 +210,11 @@ static enum config_status load_config(const char* key, const char* value)
 void keybind_init(void)
 {
     // set defaults
-    ctx.bindings = malloc(sizeof(default_bindings));
-    if (ctx.bindings) {
-        memcpy(ctx.bindings, default_bindings, sizeof(default_bindings));
-        ctx.size = sizeof(default_bindings) / sizeof(default_bindings[0]);
+    for (size_t i = 0;
+         i < sizeof(default_bindings) / sizeof(default_bindings[0]); ++i) {
+        const struct key_binding* kb = &default_bindings[i];
+        keybind_set(kb->key, kb->action, kb->params);
     }
-    keybind_set(XKB_KEY_e, kb_exec, "echo \"Current file: %\"");
 
     // register configuration loader
     config_add_section(CONFIG_SECTION, load_config);
