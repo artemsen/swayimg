@@ -53,7 +53,11 @@ bool str_to_num(const char* text, size_t len, ssize_t* value, int base)
     if (len == 0) {
         ptr = text;
     } else {
-        strncpy(buffer, text, len < sizeof(buffer) ? len : sizeof(buffer));
+        if (len >= sizeof(buffer)) {
+            len = sizeof(buffer) - 1;
+        }
+        memcpy(buffer, text, len);
+        buffer[len] = 0;
         ptr = buffer;
     }
 

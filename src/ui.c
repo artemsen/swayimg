@@ -636,7 +636,7 @@ static enum config_status load_config(const char* key, const char* value)
             status = cfgst_ok;
         }
     } else if (strcmp(key, UI_CFG_SIZE) == 0) {
-        long width, height;
+        ssize_t width, height;
         if (strcmp(value, "parent") == 0) {
             ctx.wnd.width = SIZE_FROM_PARENT;
             ctx.wnd.height = SIZE_FROM_PARENT;
@@ -663,7 +663,7 @@ static enum config_status load_config(const char* key, const char* value)
             status = cfgst_ok;
         } else {
             struct str_slice slices[2];
-            long x, y;
+            ssize_t x, y;
             if (str_split(value, ',', slices, 2) == 2 &&
                 str_to_num(slices[0].value, slices[0].len, &x, 0) &&
                 str_to_num(slices[1].value, slices[1].len, &y, 0)) {
@@ -814,7 +814,7 @@ bool ui_run(void)
         // read and handle key repeat events from timer
         if (fds[idx_krepeat].revents & POLLIN) {
             uint64_t repeats;
-            const size_t sz = sizeof(repeats);
+            const ssize_t sz = sizeof(repeats);
             if (read(ctx.repeat.fd, &repeats, sz) == sz) {
                 while (repeats--) {
                     need_redraw |= viewer_on_keyboard(ctx.repeat.key);
