@@ -122,8 +122,10 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     }
 
     image_set_format(ctx, "SVG");
-    image_add_meta(ctx, "Real size", "%0.2fx%0.2f", vb_real.width,
-                   vb_real.height);
+    if (has_vb_real) {
+        image_add_meta(ctx, "Real size", "%0.2fx%0.2f", vb_real.width,
+                       vb_real.height);
+    }
     ctx->alpha = true;
 
     cairo_destroy(cr);
