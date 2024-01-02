@@ -24,6 +24,8 @@
 struct viewer {
     size_t frame; ///< Index of the current frame
 
+    bool show_help; ///< Show/hide help message
+
     bool animation_enable; ///< Animation enable/disable
     int animation_fd;      ///< Animation timer
 
@@ -199,9 +201,8 @@ static bool move_viewport(bool horizontal, bool positive, const char* params)
     ssize_t percent = 10;
 
     if (params) {
-        char* endptr;
-        const unsigned long val = strtoul(params, &endptr, 0);
-        if (val != 0 && val <= 1000 && !*endptr) {
+        ssize_t val;
+        if (str_to_num(params, 0, &val, 0) && val > 0 && val <= 1000) {
             percent = val;
         } else {
             fprintf(stderr, "Invalid move step: \"%s\"\n", params);
@@ -304,6 +305,20 @@ void viewer_on_redraw(argb_t* window)
         }
     }
 
+    if (ctx.show_help) {
+        const wchar_t** lines = malloc(key_bindings_size * sizeof(wchar_t*));
+        if (lines) {
+            size_t lines_num = 0;
+            for (size_t i = 0; i < key_bindings_size; ++i) {
+                if (key_bindings[i].help) {
+                    lines[lines_num++] = key_bindings[i].help;
+                }
+            }
+            canvas_print_center(lines, lines_num, window);
+            free(lines);
+        }
+    }
+
     // reset one-time rendered notification message
     info_set_status(NULL);
 }
@@ -325,6 +340,9 @@ bool viewer_on_keyboard(xkb_keysym_t key)
     switch (kbind->action) {
         case kb_none:
             return false;
+        case kb_help:
+            ctx.show_help = !ctx.show_help;
+            return true;
         case kb_first_file:
             return next_file(jump_first_file);
         case kb_last_file:

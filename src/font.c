@@ -169,12 +169,7 @@ static enum config_status load_config(const char* key, const char* value)
 void font_init(void)
 {
     // set defaults
-    const char* default_font = DEFALT_FONT;
-    const size_t sz = strlen(default_font) + 1;
-    ctx.name = malloc(sz);
-    if (ctx.name) {
-        memcpy(ctx.name, default_font, sz);
-    }
+    str_dup(DEFALT_FONT, &ctx.name);
     ctx.color = DEFALT_COLOR;
     ctx.size = DEFALT_SIZE;
     ctx.scale = DEFALT_SCALE;

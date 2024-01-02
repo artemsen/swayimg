@@ -86,6 +86,7 @@ brief.bottomright = status
 # Use the `xkbcli` tool to get key name: `xkbcli interactive-wayland`
 ################################################################################
 [keys]
+F1 = help
 Home = first_file
 g = first_file
 End = last_file
@@ -131,7 +132,7 @@ F8 = flip_horizontal
 a = antialiasing
 r = reload
 i = info
-e = exec echo "Current file: %"
+e = exec echo "Image: %"
 Escape = quit
 Return = quit
 F10 = quit

@@ -147,7 +147,7 @@ ssize_t str_search_index(const char** array, size_t array_sz, const char* value,
         value_len = strlen(value);
     }
 
-    for (size_t i = 1; i < array_sz; ++i) {
+    for (size_t i = 0; i < array_sz; ++i) {
         const char* check = array[i];
         if (strlen(check) == value_len &&
             strncmp(value, check, value_len) == 0) {

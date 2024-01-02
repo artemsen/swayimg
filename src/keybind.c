@@ -18,6 +18,7 @@
 /** Action names. */
 static const char* action_names[] = {
     [kb_none] = "none",
+    [kb_help] = "help",
     [kb_first_file] = "first_file",
     [kb_last_file] = "last_file",
     [kb_prev_dir] = "prev_dir",
@@ -47,65 +48,62 @@ static const char* action_names[] = {
 
 // Default key bindings
 static const struct key_binding default_bindings[] = {
-    { XKB_KEY_Home, kb_first_file, NULL },
-    { XKB_KEY_g, kb_first_file, NULL },
-    { XKB_KEY_End, kb_last_file, NULL },
-    { XKB_KEY_G, kb_last_file, NULL },
-    { XKB_KEY_P, kb_prev_dir, NULL },
-    { XKB_KEY_N, kb_next_dir, NULL },
-    { XKB_KEY_SunPageUp, kb_prev_file, NULL },
-    { XKB_KEY_p, kb_prev_file, NULL },
-    { XKB_KEY_SunPageDown, kb_next_file, NULL },
-    { XKB_KEY_n, kb_next_file, NULL },
-    { XKB_KEY_space, kb_next_file, NULL },
-    { XKB_KEY_F2, kb_prev_frame, NULL },
-    { XKB_KEY_O, kb_prev_frame, NULL },
-    { XKB_KEY_F3, kb_next_frame, NULL },
-    { XKB_KEY_o, kb_next_frame, NULL },
-    { XKB_KEY_F4, kb_animation, NULL },
-    { XKB_KEY_s, kb_animation, NULL },
-    { XKB_KEY_F9, kb_slideshow, NULL },
-    { XKB_KEY_F11, kb_fullscreen, NULL },
-    { XKB_KEY_f, kb_fullscreen, NULL },
-    { XKB_KEY_Left, kb_step_left, NULL },
-    { XKB_KEY_h, kb_step_left, NULL },
-    { XKB_KEY_Right, kb_step_right, NULL },
-    { XKB_KEY_l, kb_step_right, NULL },
-    { XKB_KEY_Up, kb_step_up, NULL },
-    { XKB_KEY_k, kb_step_up, NULL },
-    { XKB_KEY_Down, kb_step_down, NULL },
-    { XKB_KEY_j, kb_step_down, NULL },
-    { XKB_KEY_equal, kb_zoom, "+10" },
-    { XKB_KEY_plus, kb_zoom, "+10" },
-    { XKB_KEY_minus, kb_zoom, "-10" },
-    { XKB_KEY_w, kb_zoom, "width" },
-    { XKB_KEY_W, kb_zoom, "height" },
-    { XKB_KEY_z, kb_zoom, "fit" },
-    { XKB_KEY_Z, kb_zoom, "fill" },
-    { XKB_KEY_0, kb_zoom, "real" },
-    { XKB_KEY_BackSpace, kb_zoom, "optimal" },
-    { XKB_KEY_F5, kb_rotate_left, NULL },
-    { XKB_KEY_bracketleft, kb_rotate_left, NULL },
-    { XKB_KEY_F6, kb_rotate_right, NULL },
-    { XKB_KEY_bracketright, kb_rotate_right, NULL },
-    { XKB_KEY_F7, kb_flip_vertical, NULL },
-    { XKB_KEY_F8, kb_flip_horizontal, NULL },
-    { XKB_KEY_a, kb_antialiasing, NULL },
-    { XKB_KEY_r, kb_reload, NULL },
-    { XKB_KEY_i, kb_info, NULL },
-    { XKB_KEY_e, kb_exec, "echo \"Current file: %\"" },
-    { XKB_KEY_Escape, kb_quit, NULL },
-    { XKB_KEY_Return, kb_quit, NULL },
-    { XKB_KEY_F10, kb_quit, NULL },
-    { XKB_KEY_q, kb_quit, NULL },
+    { .key = XKB_KEY_F1, .action = kb_help },
+    { .key = XKB_KEY_Home, .action = kb_first_file },
+    { .key = XKB_KEY_g, .action = kb_first_file },
+    { .key = XKB_KEY_End, .action = kb_last_file },
+    { .key = XKB_KEY_G, .action = kb_last_file },
+    { .key = XKB_KEY_P, .action = kb_prev_dir },
+    { .key = XKB_KEY_N, .action = kb_next_dir },
+    { .key = XKB_KEY_SunPageUp, .action = kb_prev_file },
+    { .key = XKB_KEY_p, .action = kb_prev_file },
+    { .key = XKB_KEY_SunPageDown, .action = kb_next_file },
+    { .key = XKB_KEY_n, .action = kb_next_file },
+    { .key = XKB_KEY_space, .action = kb_next_file },
+    { .key = XKB_KEY_F2, .action = kb_prev_frame },
+    { .key = XKB_KEY_O, .action = kb_prev_frame },
+    { .key = XKB_KEY_F3, .action = kb_next_frame },
+    { .key = XKB_KEY_o, .action = kb_next_frame },
+    { .key = XKB_KEY_F4, .action = kb_animation },
+    { .key = XKB_KEY_s, .action = kb_animation },
+    { .key = XKB_KEY_F9, .action = kb_slideshow },
+    { .key = XKB_KEY_F11, .action = kb_fullscreen },
+    { .key = XKB_KEY_f, .action = kb_fullscreen },
+    { .key = XKB_KEY_Left, .action = kb_step_left },
+    { .key = XKB_KEY_h, .action = kb_step_left },
+    { .key = XKB_KEY_Right, .action = kb_step_right },
+    { .key = XKB_KEY_l, .action = kb_step_right },
+    { .key = XKB_KEY_Up, .action = kb_step_up },
+    { .key = XKB_KEY_k, .action = kb_step_up },
+    { .key = XKB_KEY_Down, .action = kb_step_down },
+    { .key = XKB_KEY_j, .action = kb_step_down },
+    { .key = XKB_KEY_equal, .action = kb_zoom, .params = "+10" },
+    { .key = XKB_KEY_plus, .action = kb_zoom, .params = "+10" },
+    { .key = XKB_KEY_minus, .action = kb_zoom, .params = "-10" },
+    { .key = XKB_KEY_w, .action = kb_zoom, .params = "width" },
+    { .key = XKB_KEY_W, .action = kb_zoom, .params = "height" },
+    { .key = XKB_KEY_z, .action = kb_zoom, .params = "fit" },
+    { .key = XKB_KEY_Z, .action = kb_zoom, .params = "fill" },
+    { .key = XKB_KEY_0, .action = kb_zoom, .params = "real" },
+    { .key = XKB_KEY_BackSpace, .action = kb_zoom, .params = "optimal" },
+    { .key = XKB_KEY_F5, .action = kb_rotate_left },
+    { .key = XKB_KEY_bracketleft, .action = kb_rotate_left },
+    { .key = XKB_KEY_F6, .action = kb_rotate_right },
+    { .key = XKB_KEY_bracketright, .action = kb_rotate_right },
+    { .key = XKB_KEY_F7, .action = kb_flip_vertical },
+    { .key = XKB_KEY_F8, .action = kb_flip_horizontal },
+    { .key = XKB_KEY_a, .action = kb_antialiasing },
+    { .key = XKB_KEY_r, .action = kb_reload },
+    { .key = XKB_KEY_i, .action = kb_info },
+    { .key = XKB_KEY_e, .action = kb_exec, .params = "echo \"Image: %\"" },
+    { .key = XKB_KEY_Escape, .action = kb_quit },
+    { .key = XKB_KEY_Return, .action = kb_quit },
+    { .key = XKB_KEY_F10, .action = kb_quit },
+    { .key = XKB_KEY_q, .action = kb_quit },
 };
 
-/** Keybind context. */
-struct keybind_context {
-    struct key_binding* bindings;
-    size_t size;
-};
-static struct keybind_context ctx;
+struct key_binding* key_bindings;
+size_t key_bindings_size;
 
 /**
  * Set key binding.
@@ -116,10 +114,12 @@ static struct keybind_context ctx;
 static void keybind_set(xkb_keysym_t key, enum kb_action action,
                         const char* params)
 {
+    char key_name[32];
+    char* help = NULL;
     struct key_binding* new_binding = NULL;
 
-    for (size_t i = 0; i < ctx.size; ++i) {
-        struct key_binding* binding = &ctx.bindings[i];
+    for (size_t i = 0; i < key_bindings_size; ++i) {
+        struct key_binding* binding = &key_bindings[i];
         if (binding->key == key) {
             new_binding = binding; // replace existing
             break;
@@ -128,33 +128,52 @@ static void keybind_set(xkb_keysym_t key, enum kb_action action,
         }
     }
 
+    if (action == kb_none) {
+        // remove existing binding
+        if (new_binding) {
+            new_binding->action = action;
+            free(new_binding->params);
+            new_binding->params = NULL;
+            free(new_binding->help);
+            new_binding->help = NULL;
+        }
+        return;
+    }
+
     if (!new_binding) {
         // add new (reallocate)
-        const size_t new_sz = (ctx.size + 1) * sizeof(struct key_binding);
-        struct key_binding* bindings = realloc(ctx.bindings, new_sz);
+        const size_t sz = (key_bindings_size + 1) * sizeof(struct key_binding);
+        struct key_binding* bindings = realloc(key_bindings, sz);
         if (!bindings) {
             return;
         }
-        new_binding = &bindings[ctx.size];
-        new_binding->params = NULL;
-        ctx.bindings = bindings;
-        ++ctx.size;
-    } else if (new_binding->params) {
-        // free existing buffer
-        free(new_binding->params);
-        new_binding->params = NULL;
+        new_binding = &bindings[key_bindings_size];
+        memset(new_binding, 0, sizeof(*new_binding));
+        key_bindings = bindings;
+        ++key_bindings_size;
     }
 
     // set new parameters
     new_binding->key = key;
     new_binding->action = action;
-    if (params && *params) {
-        const size_t sz = strlen(params) + 1;
-        new_binding->params = malloc(sz);
-        if (new_binding->params) {
-            memcpy(new_binding->params, params, sz);
-        }
+    if (new_binding->params && (!params || !*params)) {
+        free(new_binding->params);
+        new_binding->params = NULL;
+    } else if (params && *params) {
+        str_dup(params, &new_binding->params);
     }
+
+    // construct help description
+    xkb_keysym_get_name(key, key_name, sizeof(key_name));
+    str_append(key_name, 0, &help);
+    str_append(" ", 1, &help);
+    str_append(action_names[action], 0, &help);
+    if (new_binding->params) {
+        str_append(" ", 1, &help);
+        str_append(new_binding->params, 0, &help);
+    }
+    str_to_wide(help, &new_binding->help);
+    free(help);
 }
 
 /**
@@ -218,16 +237,17 @@ void keybind_init(void)
 
 void keybind_free(void)
 {
-    for (size_t i = 0; i < ctx.size; ++i) {
-        free(ctx.bindings[i].params);
+    for (size_t i = 0; i < key_bindings_size; ++i) {
+        free(key_bindings[i].params);
+        free(key_bindings[i].help);
     }
-    free(ctx.bindings);
+    free(key_bindings);
 }
 
 const struct key_binding* keybind_get(xkb_keysym_t key)
 {
-    for (size_t i = 0; i < ctx.size; ++i) {
-        struct key_binding* binding = &ctx.bindings[i];
+    for (size_t i = 0; i < key_bindings_size; ++i) {
+        struct key_binding* binding = &key_bindings[i];
         if (binding->key == key) {
             return binding;
         }

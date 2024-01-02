@@ -546,6 +546,28 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
     }
 }
 
+void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
+{
+    const size_t height = font_height();
+    const size_t max_lines = (ctx.window.height - TEXT_PADDING * 2) / height;
+    size_t col_width = 0;
+    struct point pt = { TEXT_PADDING, TEXT_PADDING };
+
+    for (size_t i = 0; i < lines_num; ++i) {
+        const size_t width = font_print(NULL, NULL, NULL, lines[i]);
+        if (width > col_width) {
+            col_width = width;
+        }
+        if (i && i % max_lines == 0) {
+            pt.y = TEXT_PADDING;
+            pt.x += col_width + font_print(NULL, NULL, NULL, L"  ");
+            col_width = 0;
+        }
+        font_print(wnd, &ctx.window, &pt, lines[i]);
+        pt.y += height;
+    }
+}
+
 bool canvas_move(bool horizontal, ssize_t percent)
 {
     const ssize_t old_x = ctx.image.x;

@@ -4,11 +4,13 @@
 
 #pragma once
 
+#include <wchar.h>
 #include <xkbcommon/xkbcommon.h>
 
 /** Available actions. */
 enum kb_action {
     kb_none,
+    kb_help,
     kb_first_file,
     kb_last_file,
     kb_prev_dir,
@@ -41,7 +43,10 @@ struct key_binding {
     xkb_keysym_t key;      ///< Keyboard key
     enum kb_action action; ///< Action
     char* params;          ///< Custom parameters for the action
+    wchar_t* help;         ///< Binding description
 };
+extern struct key_binding* key_bindings;
+extern size_t key_bindings_size;
 
 /**
  * Initialize default key bindings.

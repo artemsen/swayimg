@@ -63,6 +63,14 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
                   enum info_position pos, argb_t* wnd);
 
 /**
+ * Print text block at the center of window.
+ * @param line array of lines to pprint
+ * @param num total number of lines
+ * @param wnd window buffer
+ */
+void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd);
+
+/**
  * Move viewport.
  * @param horizontal axis along which to move (false for vertical)
  * @param percent percentage increment to current position
