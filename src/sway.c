@@ -253,7 +253,6 @@ int sway_connect(void)
 
     const char* path = getenv("SWAYSOCK");
     if (!path) {
-        fprintf(stderr, "SWAYSOCK variable is not defined\n");
         return INVALID_SWAY_IPC;
     }
     size_t len = strlen(path);
