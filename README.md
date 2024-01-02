@@ -34,51 +34,14 @@ Examples:
   ```
   swayimg photo.jpg logo.png
   ```
-- View all files (recursively) in the current directory in random order:
+- Start slideshow for all files (recursively) in the current directory in random order:
   ```
-  swayimg --recursive --order=random
+  swayimg --slideshow --recursive --order=random
   ```
 - View using pipes:
   ```
   wget -qO- https://www.kernel.org/theme/images/logos/tux.png | swayimg -
   ```
-
-### Key bindings
-
-Default key bindings can be overridden using a configuration file.
-
-| Key | Action |
-| --- | ------ |
-| `Arrows` and vim-like moving keys (`hjkl`) | Move view point |
-| `+` or `=`                   | Zoom in |
-| `-`                          | Zoom out |
-| `0`                          | Set scale to 100% |
-| `x`                          | Scale image to fit window, but no more than 100% |
-| `Z`                          | Scale image to fill window |
-| `z`                          | Scale image to fit window |
-| `w`                          | Scale image to fit width of the window |
-| `W`                          | Scale image to fit height of the window |
-| `Backspace`                  | Reset position and scale to defaults |
-| `F5` or `[`                  | Rotate 90 degrees anticlockwise |
-| `F6` or `]`                  | Rotate 90 degrees clockwise |
-| `F7`                         | Flip vertical |
-| `F8`                         | Flip horizontal |
-| `i`                          | Switch text info mode |
-| `F11` or `f`                 | Toggle full screen mode |
-| `PgDown`, `Space`, or `n`    | Open next file |
-| `PgUp` or `p`                | Open previous file |
-| `N`                          | Open file from next directory |
-| `P`                          | Open file from previous directory |
-| `Home` or `g`                | Open the first file |
-| `End` or `G`                 | Open the last file |
-| `F2` or `O`                  | Show previous frame |
-| `F3` or `o`                  | Show next frame |
-| `F4` or `s`                  | Start/stop animation |
-| `F9`                         | Start/stop slideshow mode |
-| `a`                          | Enable/disable anti-aliasing |
-| `r`                          | Reload current image |
-| `e`                          | Execute system command for the current file |
-| `Esc`, `Enter`, `F10` or `q` | Exit the program |
 
 ## Configuration
 
@@ -89,7 +52,7 @@ following directories:
 - `$XDG_CONFIG_DIRS/swayimg`
 - `/etc/xdg/swayimg`
 
-Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc).
+Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) or locally `/usr/share/swayimg/swayimgrc`.
 
 See `man swayimgrc` for details.
 

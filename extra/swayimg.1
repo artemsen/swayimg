@@ -63,63 +63,65 @@ Set a configuration parameter, see `man swayimgrc` for a list of sections and it
 .\" keys
 .SH KEYBINDINGS
 Default key bindings can be overridden with the configuration file.
-.IP "\fBF1\fP"
+.IP "\fBF1\fR"
 Show/hide help.
-.IP "\fBArrows\fR and vim-like moving keys (\fBh\fR,\fBj\fR,\fBk\fR,\fBl\fR)"
-Move the view point.
-.IP "\fB+\fP, \fB=\fR"
-Zoom in.
-.IP "\fB-\fP"
-Zoom out.
-.IP "\fB0\fP"
-Set scale to 100%.
-.IP "\fBx\fP"
-Scale the image to fit the window, but no more than 100%.
-.IP "\fBz\fP"
-Scale the image to fit the window.
-.IP "\fBZ\fP"
-Scale the image to fill the window. This will crop the image.
-.IP "\fBBackspace\fP"
-Reset position and scale to defaults.
-.IP "\fBF5\fP, \fB[\fP"
-Rotate 90 degrees anticlockwise.
-.IP "\fBF6\fP, \fB]\fP"
-Rotate 90 degrees clockwise.
-.IP "\fBF7\fP"
-Flip vertical.
-.IP "\fBF8\fP"
-Flip horizontal.
-.IP "\fBi\fP"
-Switch text info mode.
-.IP "\fBf\fP, \fBF11\fP"
-Toggle full screen mode.
-.IP "\fBPgDown\fR, \fBSpace\fR, \fBn\fR"
-Open next file.
-.IP "\fBPgUp\fR, \fBp\fR"
-Open previous file.
-.IP "\fBN\fR"
-Open file from next directory.
-.IP "\fBP\fR"
-Open file from previous directory.
-.IP "\fBHome\fR, \fBg\fR"
+.IP "\fBHome\fR"
 Open the first file.
-.IP "\fBEnd\fR, \fBG\fR"
+.IP "\fBEnd\fR"
 Open the last file.
-.IP "\fBF2\fR, \fBO\fR"
-Show previous frame.
-.IP "\fBF3\fR, \fBo\fR"
+.IP "\fBPgDown\fR, \fBSpace\fR"
+Open next file.
+.IP "\fBPgUp\fR"
+Open previous file.
+.IP "\fBd\fR"
+Open file from next directory.
+.IP "\fBD\fR"
+Open file from previous directory.
+.IP "\fBo\fR"
 Show next frame.
-.IP "\fBF4\fR, \fBs\fR"
+.IP "\fBO\fR"
+Show previous frame.
+.IP "\fBs\fR"
 Start/stop animation.
-.IP "\fBF9\fR"
-Start/stop slideshow mode.
+.IP "\fBS\fR"
+Start/stop slideshow.
+.IP "\fBf\fR"
+Toggle full screen mode.
+.IP "\fBArrows\fR"
+Move the view point.
+.IP "\fB+\fR, \fB=\fR"
+Zoom in.
+.IP "\fB\-\fR"
+Zoom out.
+.IP "\fBw\fR"
+Zoom the image to fit the window width, this will crop the image.
+.IP "\fBW\fR"
+Zoom the image to fit the window height, this will crop the image.
+.IP "\fBz\fR"
+Zoom the image to fit window.
+.IP "\fBZ\fR"
+Zoom the image to fill the window, this will crop the image.
+.IP "\fB0\fR"
+Set scale to 100%.
+.IP "\fBBackspace\fR"
+Set optimal scale to fit the window, but not more 100%.
+.IP "\fB[\fR"
+Rotate the image 90 degrees anticlockwise.
+.IP "\fB]\fR"
+Rotate the image 90 degrees clockwise.
+.IP "\fBm\fR"
+Flip the image vertically.
+.IP "\fBM\fR"
+Flip the image horizontally.
 .IP "\fBa\fR"
 Enable/disable anti-aliasing.
 .IP "\fBr\fR"
-Reset cache and reload current image.
+Reset cache and reload the current image.
+.IP "\fBi\fR"
+Switch the text info mode.
 .IP "\fBe\fR"
-Execute external command: print path to the current file.
-.IP "\fBEsc\fP, \fBEnter\fP, \fBF10\fP, \fBq\fP"
+Execute external command: prints path to the current file.
+.IP "\fBEsc\fR, \fBq\fR"
 Exit the program.
 .SH ENVIRONMENT
 .IP \fISWAYSOCK\fR
