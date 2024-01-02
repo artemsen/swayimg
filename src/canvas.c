@@ -8,6 +8,7 @@
 #include "font.h"
 #include "str.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -549,22 +550,56 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
 void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
 {
     const size_t height = font_height();
-    const size_t max_lines = (ctx.window.height - TEXT_PADDING * 2) / height;
-    size_t col_width = 0;
-    struct point pt = { TEXT_PADDING, TEXT_PADDING };
+    const size_t row_max = (ctx.window.height - TEXT_PADDING * 2) / height;
+    const size_t columns = ceil((float)lines_num / row_max);
+    const size_t rows = ceil((float)lines_num / columns);
+    const size_t col_space = font_print(NULL, NULL, NULL, L"  ");
+    struct point top_left = { TEXT_PADDING, TEXT_PADDING };
+    size_t total_width = 0;
 
-    for (size_t i = 0; i < lines_num; ++i) {
-        const size_t width = font_print(NULL, NULL, NULL, lines[i]);
-        if (width > col_width) {
-            col_width = width;
+    // calculate total width
+    for (size_t c = 0; c < columns; ++c) {
+        size_t max_width = 0;
+        for (size_t r = 0; r < rows; ++r) {
+            size_t width;
+            const size_t index = r + c * rows;
+            if (index >= lines_num) {
+                break;
+            }
+            width = font_print(NULL, NULL, NULL, lines[index]);
+            if (max_width < width) {
+                max_width = width;
+            }
         }
-        if (i && i % max_lines == 0) {
-            pt.y = TEXT_PADDING;
-            pt.x += col_width + font_print(NULL, NULL, NULL, L"  ");
-            col_width = 0;
+        total_width += max_width;
+    }
+    total_width += col_space * (columns - 1);
+
+    // top left corner of the centered text block
+    if (total_width < ctx.window.width) {
+        top_left.x = ctx.window.width / 2 - total_width / 2;
+    }
+    if (rows * height < ctx.window.height) {
+        top_left.y = ctx.window.height / 2 - (rows * height) / 2;
+    }
+
+    // print text block
+    for (size_t c = 0; c < columns; ++c) {
+        struct point pt = top_left;
+        size_t col_width = 0;
+        for (size_t r = 0; r < rows; ++r) {
+            size_t width;
+            const size_t index = r + c * rows;
+            if (index >= lines_num) {
+                break;
+            }
+            width = font_print(wnd, &ctx.window, &pt, lines[index]);
+            if (col_width < width) {
+                col_width = width;
+            }
+            pt.y += height;
         }
-        font_print(wnd, &ctx.window, &pt, lines[i]);
-        pt.y += height;
+        top_left.x += col_width + col_space;
     }
 }
 
