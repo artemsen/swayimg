@@ -63,6 +63,8 @@ name = monospace
 size = 14
 # Font color
 color = #cccccc
+# Drop shadow (none/RGB, e.g. #112233)
+shadow = #000000
 
 ################################################################################
 # Image meta info scheme (format, size, EXIF, etc)

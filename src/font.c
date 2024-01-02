@@ -16,14 +16,17 @@
 #define SPACE_WH_REL 2
 #define GLYPH_GW_REL 4
 
+#define NO_SHADOW 0xff000000
+
 // Section name in the config file
 #define CONFIG_SECTION "font"
 
 // Defaults
-#define DEFALT_FONT  "monospace"
-#define DEFALT_COLOR 0x00cccccc
-#define DEFALT_SIZE  14
-#define DEFALT_SCALE 1
+#define DEFALT_FONT   "monospace"
+#define DEFALT_COLOR  0x00cccccc
+#define DEFALT_SHADOW 0x00000000
+#define DEFALT_SIZE   14
+#define DEFALT_SCALE  1
 
 /** Font context. */
 struct font {
@@ -31,6 +34,7 @@ struct font {
     FT_Face face;   ///< Font face instance
     char* name;     ///< Font face name
     argb_t color;   ///< Font color
+    argb_t shadow;  ///< Font shadow color
     size_t size;    ///< Base font size (pt)
     size_t scale;   ///< Scale factor (HiDPI)
 };
@@ -106,33 +110,34 @@ static bool lazy_load(void)
  * @param wnd_buf window buffer
  * @param wnd_size window buffer size
  * @param x,y top-left coordinates of the glyph
+ * @param color color of the font
  */
-static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x1,
-                       ssize_t y1)
+static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x,
+                       ssize_t y, argb_t color)
 {
     const FT_GlyphSlot glyph = ctx.face->glyph;
     const FT_Bitmap* bitmap = &glyph->bitmap;
     const size_t fheight = font_height();
 
-    for (size_t y = 0; y < bitmap->rows; ++y) {
+    for (size_t bmp_y = 0; bmp_y < bitmap->rows; ++bmp_y) {
         argb_t* wnd_line;
         const uint8_t* glyph_line;
-        const size_t wnd_y = y1 + y + fheight - glyph->bitmap_top;
+        const size_t wnd_y = y + bmp_y + fheight - glyph->bitmap_top;
 
         if (wnd_y >= wnd_size->height) {
             return; // out of window
         }
 
         wnd_line = &wnd_buf[wnd_y * wnd_size->width];
-        glyph_line = &bitmap->buffer[y * bitmap->width];
+        glyph_line = &bitmap->buffer[bmp_y * bitmap->width];
 
-        for (size_t x = 0; x < bitmap->width; ++x) {
-            const uint8_t alpha = glyph_line[x];
-            const size_t wnd_x = x1 + glyph->bitmap_left + x;
+        for (size_t bmp_x = 0; bmp_x < bitmap->width; ++bmp_x) {
+            const uint8_t alpha = glyph_line[bmp_x];
+            const size_t wnd_x = x + glyph->bitmap_left + bmp_x;
             if (wnd_x < wnd_size->width && alpha) {
                 argb_t* wnd_pixel = &wnd_line[wnd_x];
                 const argb_t bg = *wnd_pixel;
-                const argb_t fg = ctx.color;
+                const argb_t fg = color;
                 *wnd_pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
             }
         }
@@ -157,6 +162,13 @@ static enum config_status load_config(const char* key, const char* value)
         }
     } else if (strcmp(key, "color") == 0) {
         if (config_to_color(value, &ctx.color)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "shadow") == 0) {
+        if (strcmp(value, "none") == 0) {
+            ctx.shadow = NO_SHADOW;
+            status = cfgst_ok;
+        } else if (config_to_color(value, &ctx.shadow)) {
             status = cfgst_ok;
         }
     } else {
@@ -215,7 +227,13 @@ size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
             const size_t glyph_width =
                 ctx.face->glyph->bitmap.width + ctx.size / GLYPH_GW_REL;
             if (wnd_buf && wnd_size && pos) {
-                draw_glyph(wnd_buf, wnd_size, pos->x + width, pos->y);
+                if (ctx.shadow != NO_SHADOW) {
+                    const size_t shift = ctx.size / 10;
+                    draw_glyph(wnd_buf, wnd_size, pos->x + width + shift,
+                               pos->y + shift, ctx.shadow);
+                }
+                draw_glyph(wnd_buf, wnd_size, pos->x + width, pos->y,
+                           ctx.color);
             }
             width += glyph_width;
         }
