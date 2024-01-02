@@ -10,6 +10,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "keybind.h"
+#include "str.h"
 #include "ui.h"
 
 #include <errno.h>
@@ -112,7 +113,7 @@ static void reset_state(void)
 
     ctx.frame = 0;
     canvas_reset_image(frame->width, frame->height);
-    ui_set_title(APP_NAME ": %s", entry.image->file_name);
+    ui_set_title(entry.image->file_name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
 }
@@ -139,42 +140,22 @@ static void execute_command(const char* expr)
 {
     const char* path = image_list_current().image->file_path;
     char* cmd = NULL;
-    size_t pos = 0;
-    size_t buf_sz = 0;
     int rc = EINVAL;
 
     // construct command from template
     while (expr && *expr) {
-        const char* append_ptr = expr;
-        size_t append_sz = 1;
         if (*expr == '%') {
-            if (*(expr + 1) == '%') {
-                // escaped %
-                ++expr;
-            } else {
-                // replace % with path
-                append_ptr = path;
-                append_sz = strlen(path);
+            ++expr;
+            if (*expr != '%') {
+                str_append(path, 0, &cmd); // replace % with path
+                continue;
             }
         }
+        str_append(expr, 1, &cmd);
         ++expr;
-        if (pos + append_sz >= buf_sz) {
-            char* ptr;
-            buf_sz = pos + append_sz + 32;
-            ptr = realloc(cmd, buf_sz);
-            if (!ptr) {
-                free(cmd);
-                cmd = NULL;
-                break;
-            }
-            cmd = ptr;
-        }
-        memcpy(cmd + pos, append_ptr, append_sz);
-        pos += append_sz;
     }
 
     if (cmd) {
-        cmd[pos] = 0;     // set eol
         rc = system(cmd); // execute
         if (rc != -1) {
             rc = WEXITSTATUS(rc);
@@ -187,7 +168,7 @@ static void execute_command(const char* expr)
     if (!cmd) {
         info_set_status("Error: no command to execute");
     } else {
-        if (pos > 30) { // trim long command
+        if (strlen(cmd) > 30) { // trim long command
             strcpy(&cmd[27], "...");
         }
         if (rc) {
@@ -259,12 +240,12 @@ static enum config_status load_config(const char* key, const char* value)
     enum config_status status = cfgst_invalid_key;
 
     if (strcmp(key, VIEWER_CFG_SLIDESHOW) == 0) {
-        status = config_parse_bool(value, &ctx.slideshow_enable)
+        status = config_to_bool(value, &ctx.slideshow_enable)
             ? cfgst_ok
             : cfgst_invalid_value;
     } else if (strcmp(key, VIEWER_CFG_SLIDESHOW_TIME) == 0) {
         ssize_t num;
-        if (config_parse_num(value, &num, 0) && num != 0 && num <= 86400) {
+        if (str_to_num(value, 0, &num, 0) && num != 0 && num <= 86400) {
             ctx.slideshow_time = num;
             status = cfgst_ok;
         } else {
@@ -292,7 +273,7 @@ void viewer_init(void)
     }
 
     // register configuration loader
-    config_add_section(GENERAL_CONFIG, load_config);
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void viewer_free(void)

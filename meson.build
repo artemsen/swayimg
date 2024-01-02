@@ -158,6 +158,7 @@ sources = [
   'src/info.c',
   'src/keybind.c',
   'src/main.c',
+  'src/str.c',
   'src/sway.c',
   'src/ui.c',
   'src/viewer.c',

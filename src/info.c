@@ -7,12 +7,12 @@
 #include "canvas.h"
 #include "config.h"
 #include "imagelist.h"
+#include "str.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 
 // clang-format off
 
@@ -108,7 +108,6 @@ struct info_block {
 /** Info data context. */
 struct info_context {
     enum info_mode mode;
-
     const char* file;
     struct info_line* exif_lines;
     size_t exif_num;
@@ -122,72 +121,6 @@ struct info_context {
     struct info_block blocks[MODES_NUM][INFO_POSITION_NUM];
 };
 static struct info_context ctx;
-
-/**
- * Convert ansi string to wide char format.
- * @param text source string to encode
- * @return pointer to wide string, caller must free it
- */
-static wchar_t* ansi_to_wide(wchar_t* buf, const char* text)
-{
-    wchar_t* ptr;
-    size_t len;
-
-    len = mbstowcs(NULL, text, 0);
-    if (len == (size_t)-1) {
-        goto error;
-    }
-
-    ++len; // last null
-
-    ptr = realloc(buf, len * sizeof(wchar_t));
-    if (!ptr) {
-        goto error;
-    }
-
-    mbstowcs(ptr, text, len);
-
-    return ptr;
-
-error:
-    if (buf) {
-        *buf = 0;
-    }
-    return buf;
-}
-
-/**
- * Copy wide string (strdup).
- * @param text source text to copy
- * @return pointer to the allocated buffer
- */
-static wchar_t* copy_wide(const wchar_t* text)
-{
-    const size_t len = (wcslen(text) + 1) * sizeof(wchar_t);
-    wchar_t* buffer = malloc(len);
-    if (buffer) {
-        memcpy(buffer, text, len);
-    }
-    return buffer;
-}
-
-/**
- * Update field value.
- * @param field field to update
- * @param fmt value format
- */
-__attribute__((format(printf, 2, 3))) static void
-update_field(enum info_field field, const char* fmt, ...)
-{
-    va_list args;
-    char buffer[256];
-
-    va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-
-    ctx.fields[field].value = ansi_to_wide(ctx.fields[field].value, buffer);
-}
 
 /**
  * Import meta data from image.
@@ -217,8 +150,8 @@ static void import_exif(const struct image* image)
 
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         const struct image_info* exif = &image->info[i];
-        line->key = ansi_to_wide(NULL, exif->key);
-        line->value = ansi_to_wide(NULL, exif->value);
+        line->key = str_to_wide(exif->key, NULL);
+        line->value = str_to_wide(exif->value, NULL);
         ++line;
     }
 }
@@ -228,81 +161,59 @@ static void import_exif(const struct image* image)
  */
 static enum config_status load_config(const char* key, const char* value)
 {
-    enum info_mode mode = info_mode_off;
+    enum info_mode mode;
     struct info_block* block = NULL;
-    struct config_token tokens[INFO_FIELDS_NUM];
-    size_t token_num;
+    struct str_slice slices[INFO_FIELDS_NUM];
+    size_t num_slices;
     enum info_field scheme[INFO_FIELDS_NUM];
     size_t scheme_sz = 0;
+    ssize_t index;
 
     if (strcmp(key, "mode") == 0) {
-        const size_t num_modes = sizeof(mode_names) / sizeof(mode_names[0]);
-        for (size_t i = 0; i < num_modes; ++i) {
-            if (strcmp(value, mode_names[i]) == 0) {
-                ctx.mode = i;
-                return cfgst_ok;
-            }
+        index = str_index(mode_names, value, 0);
+        if (index < 0) {
+            return cfgst_invalid_value;
         }
-        return cfgst_invalid_value;
+        ctx.mode = index;
+        return cfgst_ok;
     }
 
-    // tokenize key (mode.position)
-    if (config_parse_tokens(key, '.', tokens,
-                            sizeof(tokens) / sizeof(tokens[0])) != 2) {
+    // parse key (mode.position)
+    if (str_split(key, '.', slices, 2) != 2) {
         return cfgst_invalid_key;
     }
 
     // get mode
-    for (size_t i = 0; i < MODES_NUM; ++i) {
-        const char* name = mode_names[i];
-        if (strlen(name) == tokens[0].len &&
-            strncmp(tokens[0].value, name, tokens[0].len) == 0) {
-            mode = i;
-            break;
-        }
+    index =
+        str_search_index(mode_names, MODES_NUM, slices[0].value, slices[0].len);
+    if (index < 0) {
+        return cfgst_invalid_value;
     }
-    if (mode == info_mode_off) {
-        return cfgst_invalid_key;
-    }
+    mode = index;
 
     // get position and its block
-    for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-        const char* name = position_names[i];
-        if (strlen(name) == tokens[1].len &&
-            strncmp(tokens[1].value, name, tokens[1].len) == 0) {
-            block = &ctx.blocks[mode][i];
-            break;
-        }
+    index = str_index(position_names, slices[1].value, slices[1].len);
+    if (index < 0) {
+        return cfgst_invalid_value;
     }
-    if (!block) {
-        return cfgst_invalid_key;
+    block = &ctx.blocks[mode][index];
+
+    // split into list fileds
+    num_slices =
+        str_split(value, ',', slices, sizeof(slices) / sizeof(slices[0]));
+    if (num_slices > sizeof(slices) / sizeof(slices[0])) {
+        num_slices = sizeof(slices) / sizeof(slices[0]);
     }
-
-    // tokenize value (list of fields)
-    token_num = config_parse_tokens(value, ',', tokens,
-                                    sizeof(tokens) / sizeof(tokens[0]));
-    // convert tokens to fields
-    if (token_num > sizeof(tokens) / sizeof(tokens[0])) {
-        token_num = sizeof(tokens) / sizeof(tokens[0]);
-    }
-    for (size_t i = 0; i < token_num; ++i) {
-        bool found = false;
-
-        // skip empty fields
-        if (tokens[i].len == 0 ||
-            (tokens[i].len == 4 && strncmp(tokens[i].value, "none", 4) == 0)) {
-            continue;
-        }
-
-        for (size_t j = 0; !found && j < INFO_FIELDS_NUM; ++j) {
-            const char* name = field_names[j];
-            found = strlen(name) == tokens[i].len &&
-                strncmp(tokens[i].value, name, tokens[i].len) == 0;
-            if (found) {
-                scheme[scheme_sz++] = j;
+    for (size_t i = 0; i < num_slices; ++i) {
+        index = str_index(field_names, slices[i].value, slices[i].len);
+        if (index >= 0) {
+            scheme[scheme_sz++] = index;
+        } else {
+            if (slices[i].len == 0 ||
+                (slices[i].len == 4 &&
+                 strncmp(slices[i].value, "none", 4) == 0)) {
+                continue; // skip empty fields
             }
-        }
-        if (!found) {
             return cfgst_invalid_value;
         }
     }
@@ -324,11 +235,11 @@ static enum config_status load_config(const char* key, const char* value)
 void info_init(void)
 {
     // standart fields
-    ctx.fields[info_file_name].key = copy_wide(L"File name");
-    ctx.fields[info_file_path].key = copy_wide(L"File path");
-    ctx.fields[info_file_size].key = copy_wide(L"File size");
-    ctx.fields[info_image_format].key = copy_wide(L"Image format");
-    ctx.fields[info_image_size].key = copy_wide(L"Image size");
+    ctx.fields[info_file_name].key = str_to_wide("File name", NULL);
+    ctx.fields[info_file_path].key = str_to_wide("File path", NULL);
+    ctx.fields[info_file_size].key = str_to_wide("File size", NULL);
+    ctx.fields[info_image_format].key = str_to_wide("Image format", NULL);
+    ctx.fields[info_image_size].key = str_to_wide("Image size", NULL);
 
     // set defaults
     ctx.mode = info_mode_full;
@@ -342,7 +253,7 @@ void info_init(void)
     SET_DEFAULT(info_mode_brief, info_bottom_right, default_bottom_right);
 
     // register configuration loader
-    config_add_section(CONFIG_SECTION, load_config);
+    config_add_loader(CONFIG_SECTION, load_config);
 }
 
 void info_free(void)
@@ -383,6 +294,7 @@ void info_update(size_t frame_idx)
     const struct image* image = entry.image;
     const struct image_frame* frame = &image->frames[frame_idx];
     const size_t scale_percent = canvas_get_scale() * 100;
+    char buffer[64];
 
     if (ctx.file != image->file_path) {
         const size_t mib = 1024 * 1024;
@@ -390,16 +302,14 @@ void info_update(size_t frame_idx)
         const float sz =
             (float)image->file_size / (image->file_size >= mib ? mib : 1024);
 
-        update_field(info_file_size, "%.02f %ciB", sz, unit);
+        snprintf(buffer, sizeof(buffer), "%.02f %ciB", sz, unit);
+        str_to_wide(buffer, &ctx.fields[info_file_size].value);
 
         import_exif(image);
 
-        ctx.fields[info_file_name].value =
-            ansi_to_wide(ctx.fields[info_file_name].value, image->file_name);
-        ctx.fields[info_file_path].value =
-            ansi_to_wide(ctx.fields[info_file_path].value, image->file_path);
-        ctx.fields[info_image_format].value =
-            ansi_to_wide(ctx.fields[info_image_format].value, image->format);
+        str_to_wide(image->file_name, &ctx.fields[info_file_name].value);
+        str_to_wide(image->file_path, &ctx.fields[info_file_path].value);
+        str_to_wide(image->format, &ctx.fields[info_image_format].value);
 
         ctx.frame = UINT32_MAX; // this will refresh frame info
 
@@ -409,45 +319,48 @@ void info_update(size_t frame_idx)
     if (ctx.frame != frame_idx || ctx.frame_total != image->num_frames) {
         ctx.frame = frame_idx;
         ctx.frame_total = image->num_frames;
-        update_field(info_frame, "%lu of %lu", ctx.frame + 1, ctx.frame_total);
+        snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.frame + 1,
+                 ctx.frame_total);
+        str_to_wide(buffer, &ctx.fields[info_frame].value);
     }
 
     if (ctx.index != entry.index) {
         ctx.index = entry.index;
-        update_field(info_index, "%lu of %lu", ctx.index + 1,
-                     image_list_size());
+        snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.index + 1,
+                 image_list_size());
+        str_to_wide(buffer, &ctx.fields[info_index].value);
     }
 
     if (ctx.scale != scale_percent) {
         ctx.scale = scale_percent;
-        update_field(info_scale, "%ld%%", ctx.scale);
+        snprintf(buffer, sizeof(buffer), "%ld%%", ctx.scale);
+        str_to_wide(buffer, &ctx.fields[info_scale].value);
     }
 
     if (ctx.width != frame->width || ctx.height != frame->height) {
         ctx.width = frame->width;
         ctx.height = frame->height;
-        update_field(info_image_size, "%lux%lu", ctx.width, ctx.height);
+        snprintf(buffer, sizeof(buffer), "%lux%lu", ctx.width, ctx.height);
+        str_to_wide(buffer, &ctx.fields[info_image_size].value);
     }
 }
 
 void info_set_status(const char* fmt, ...)
 {
-    va_list args;
-    char buffer[256];
-
     if (!fmt) {
         if (ctx.fields[info_status].value) {
             *ctx.fields[info_status].value = 0;
         }
-        return;
+    } else {
+        va_list args;
+        char buffer[256];
+
+        va_start(args, fmt);
+        vsnprintf(buffer, sizeof(buffer), fmt, args);
+        va_end(args);
+
+        str_to_wide(buffer, &ctx.fields[info_status].value);
     }
-
-    va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-
-    ctx.fields[info_status].value =
-        ansi_to_wide(ctx.fields[info_status].value, buffer);
 }
 
 size_t info_height(enum info_position pos)

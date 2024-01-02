@@ -5,8 +5,7 @@
 #include "font.h"
 
 #include "config.h"
-
-#include <wchar.h>
+#include "str.h"
 
 // font realted
 #include <fontconfig/fontconfig.h>
@@ -148,21 +147,16 @@ static enum config_status load_config(const char* key, const char* value)
     enum config_status status = cfgst_invalid_value;
 
     if (strcmp(key, "name") == 0) {
-        const size_t sz = strlen(value) + 1;
-        char* name = realloc(ctx.name, sz);
-        if (ctx.name) {
-            ctx.name = name;
-            memcpy(ctx.name, value, sz);
-            status = cfgst_ok;
-        }
+        str_dup(value, &ctx.name);
+        status = cfgst_ok;
     } else if (strcmp(key, "size") == 0) {
         ssize_t num;
-        if (config_parse_num(value, &num, 0) && num > 0 && num < 1024) {
+        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
             ctx.size = num;
             status = cfgst_ok;
         }
     } else if (strcmp(key, "color") == 0) {
-        if (config_parse_color(value, &ctx.color)) {
+        if (config_to_color(value, &ctx.color)) {
             status = cfgst_ok;
         }
     } else {
@@ -186,7 +180,7 @@ void font_init(void)
     ctx.scale = DEFALT_SCALE;
 
     // register configuration loader
-    config_add_section(CONFIG_SECTION, load_config);
+    config_add_loader(CONFIG_SECTION, load_config);
 }
 
 void font_free(void)

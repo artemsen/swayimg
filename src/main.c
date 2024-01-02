@@ -38,17 +38,17 @@ static const struct cmdarg arguments[] = {
     { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
                                   INFO_CFG_SECTION, INFO_CFG_ORDER, NULL },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
-                                  GENERAL_CONFIG, CANVAS_CFG_SCALE, NULL },
+                                  GENERAL_CONFIG_SECTION, CANVAS_CFG_SCALE, NULL },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
-                                  GENERAL_CONFIG, VIEWER_CFG_SLIDESHOW, "yes" },
+                                  GENERAL_CONFIG_SECTION, VIEWER_CFG_SLIDESHOW, "yes" },
     { 'f', "fullscreen", NULL,    "show image in full screen mode",
-                                  GENERAL_CONFIG, UI_CFG_FULLSCREEN, "yes" },
+                                  GENERAL_CONFIG_SECTION, UI_CFG_FULLSCREEN, "yes" },
     { 'p', "position",   "POS",   "set window position [parent]/X,Y",
-                                  GENERAL_CONFIG, UI_CFG_POSITION, NULL },
+                                  GENERAL_CONFIG_SECTION, UI_CFG_POSITION, NULL },
     { 'g', "size",       "SIZE",  "set window size: [parent]/image/W,H",
-                                  GENERAL_CONFIG, UI_CFG_SIZE, NULL },
+                                  GENERAL_CONFIG_SECTION, UI_CFG_SIZE, NULL },
     { 'a', "class",      "NAME",  "set window class/app_id",
-                                  GENERAL_CONFIG, UI_CFG_APP_ID, NULL },
+                                  GENERAL_CONFIG_SECTION, UI_CFG_APP_ID, NULL },
     { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value",
                                   NULL, NULL, NULL },
     { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
@@ -188,7 +188,7 @@ static void sway_setup(void)
 
     if (!rc) {
         // set fixed app_id
-        config_set(GENERAL_CONFIG, "app_id", APP_NAME);
+        config_set(GENERAL_CONFIG_SECTION, "app_id", APP_NAME);
 
         // fixup window size
         if (ui_get_width() == SIZE_FROM_PARENT ||

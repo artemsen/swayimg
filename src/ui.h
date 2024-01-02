@@ -46,9 +46,9 @@ const char* ui_get_appid(void);
 
 /**
  * Set window title.
- * @param title window title to set
+ * @param name file name of the current image
  */
-void ui_set_title(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+void ui_set_title(const char* name);
 
 /**
  * Set window position.

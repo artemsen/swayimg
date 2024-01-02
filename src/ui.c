@@ -6,14 +6,13 @@
 
 #include "buildcfg.h"
 #include "config.h"
+#include "str.h"
 #include "viewer.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -630,15 +629,10 @@ static enum config_status load_config(const char* key, const char* value)
     enum config_status status = cfgst_invalid_value;
 
     if (strcmp(key, UI_CFG_APP_ID) == 0) {
-        const size_t sz = strlen(value) + 1;
-        char* ptr = realloc(ctx.app_id, sz);
-        if (ptr) {
-            memcpy(ptr, value, sz);
-            ctx.app_id = ptr;
-            status = cfgst_ok;
-        }
+        str_dup(value, &ctx.app_id);
+        status = cfgst_ok;
     } else if (strcmp(key, UI_CFG_FULLSCREEN) == 0) {
-        if (config_parse_bool(value, &ctx.fullscreen)) {
+        if (config_to_bool(value, &ctx.fullscreen)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, UI_CFG_SIZE) == 0) {
@@ -651,11 +645,16 @@ static enum config_status load_config(const char* key, const char* value)
             ctx.wnd.width = SIZE_FROM_IMAGE;
             ctx.wnd.height = SIZE_FROM_IMAGE;
             status = cfgst_ok;
-        } else if (config_parse_numpair(value, &width, &height) && width > 0 &&
-                   width < 100000 && height > 0 && height < 100000) {
-            ctx.wnd.width = width;
-            ctx.wnd.height = height;
-            status = cfgst_ok;
+        } else {
+            struct str_slice slices[2];
+            if (str_split(value, ',', slices, 2) == 2 &&
+                str_to_num(slices[0].value, slices[0].len, &width, 0) &&
+                str_to_num(slices[1].value, slices[1].len, &height, 0) &&
+                width > 0 && width < 100000 && height > 0 && height < 100000) {
+                ctx.wnd.width = width;
+                ctx.wnd.height = height;
+                status = cfgst_ok;
+            }
         }
     } else if (strcmp(key, UI_CFG_POSITION) == 0) {
         if (strcmp(value, "parent") == 0) {
@@ -663,8 +662,11 @@ static enum config_status load_config(const char* key, const char* value)
             ctx.wnd.y = POS_FROM_PARENT;
             status = cfgst_ok;
         } else {
+            struct str_slice slices[2];
             long x, y;
-            if (config_parse_numpair(value, &x, &y)) {
+            if (str_split(value, ',', slices, 2) == 2 &&
+                str_to_num(slices[0].value, slices[0].len, &x, 0) &&
+                str_to_num(slices[1].value, slices[1].len, &y, 0)) {
                 ctx.wnd.x = (ssize_t)x;
                 ctx.wnd.y = (ssize_t)y;
                 status = cfgst_ok;
@@ -697,7 +699,7 @@ void ui_init(void)
     }
 
     // register configuration loader
-    config_add_section(GENERAL_CONFIG, load_config);
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void ui_free(void)
@@ -848,30 +850,17 @@ const char* ui_get_appid(void)
     return ctx.app_id;
 }
 
-void ui_set_title(const char* fmt, ...)
+void ui_set_title(const char* name)
 {
-    va_list args;
-    int len;
-    void* title;
+    char* title = NULL;
 
-    va_start(args, fmt);
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
+    str_append(APP_NAME ": ", 0, &title);
+    str_append(name, 0, &title);
+
+    if (title) {
+        xdg_toplevel_set_title(ctx.xdg.toplevel, title);
+        free(title);
     }
-    ++len; // last null
-    title = malloc(len);
-    if (!title) {
-        return;
-    }
-    va_start(args, fmt);
-    vsprintf(title, fmt, args);
-    va_end(args);
-
-    xdg_toplevel_set_title(ctx.xdg.toplevel, title);
-
-    free(title);
 }
 
 void ui_set_position(ssize_t x, ssize_t y)

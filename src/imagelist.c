@@ -5,6 +5,7 @@
 #include "imagelist.h"
 
 #include "config.h"
+#include "str.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -344,24 +345,21 @@ static enum config_status load_config(const char* key, const char* value)
     enum config_status status = cfgst_invalid_value;
 
     if (strcmp(key, INFO_CFG_ORDER) == 0) {
-        const size_t arrsz = sizeof(order_names) / sizeof(order_names[0]);
-        for (size_t i = 0; i < arrsz; ++i) {
-            if (strcmp(order_names[i], value) == 0) {
-                ctx.order = (enum list_order)i;
-                status = cfgst_ok;
-                break;
-            }
+        const ssize_t index = str_index(order_names, value, 0);
+        if (index >= 0) {
+            ctx.order = index;
+            status = cfgst_ok;
         }
     } else if (strcmp(key, INFO_CFG_LOOP) == 0) {
-        if (config_parse_bool(value, &ctx.loop)) {
+        if (config_to_bool(value, &ctx.loop)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, INFO_CFG_RECURSIVE) == 0) {
-        if (config_parse_bool(value, &ctx.recursive)) {
+        if (config_to_bool(value, &ctx.recursive)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, INFO_CFG_ALL) == 0) {
-        if (config_parse_bool(value, &ctx.all_files)) {
+        if (config_to_bool(value, &ctx.all_files)) {
             status = cfgst_ok;
         }
     } else {
@@ -380,7 +378,7 @@ void image_list_init(void)
     ctx.all_files = false;
 
     // register configuration loader
-    config_add_section(INFO_CFG_SECTION, load_config);
+    config_add_loader(INFO_CFG_SECTION, load_config);
 }
 
 bool image_list_scan(const char** files, size_t num)

@@ -5,6 +5,7 @@
 #include "keybind.h"
 
 #include "config.h"
+#include "str.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -166,6 +167,7 @@ static enum config_status load_config(const char* key, const char* value)
     const char* params;
     xkb_keysym_t keysym;
     const char* action_end;
+    ssize_t index;
 
     // get action length
     action_end = value;
@@ -175,17 +177,11 @@ static enum config_status load_config(const char* key, const char* value)
     action_len = action_end - value;
 
     // get action id form its name
-    for (size_t i = 1; i < sizeof(action_names) / sizeof(action_names[0]);
-         ++i) {
-        const char* cn = action_names[i];
-        if (strlen(cn) == action_len && strncmp(value, cn, action_len) == 0) {
-            action_id = (enum kb_action)i;
-        }
-    }
-    if (action_id == kb_none &&
-        strncmp(value, action_names[kb_none], strlen(action_names[kb_none]))) {
+    index = str_index(action_names, value, action_len);
+    if (index < 0) {
         return cfgst_invalid_value;
     }
+    action_id = index;
 
     // get parameters
     params = action_end;
@@ -217,7 +213,7 @@ void keybind_init(void)
     }
 
     // register configuration loader
-    config_add_section(CONFIG_SECTION, load_config);
+    config_add_loader(CONFIG_SECTION, load_config);
 }
 
 void keybind_free(void)

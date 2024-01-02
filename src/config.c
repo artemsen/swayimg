@@ -4,8 +4,9 @@
 
 #include "config.h"
 
+#include "str.h"
+
 #include <ctype.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,7 +198,7 @@ enum config_status config_set(const char* section, const char* key,
         if (strcmp(sl->name, section) == 0) {
             status = sl->loader(key, value);
             if (status != cfgst_invalid_key ||
-                strcmp(sl->name, GENERAL_CONFIG) != 0) {
+                strcmp(sl->name, GENERAL_CONFIG_SECTION) != 0) {
                 break;
             }
         }
@@ -261,19 +262,19 @@ format_error:
     return false;
 }
 
-void config_add_section(const char* name, config_loader loader)
+void config_add_loader(const char* section, config_loader loader)
 {
     const size_t new_sz = (ctx.num_sections + 1) * sizeof(struct section);
     struct section* sections = realloc(ctx.sections, new_sz);
     if (sections) {
         ctx.sections = sections;
-        ctx.sections[ctx.num_sections].name = name;
+        ctx.sections[ctx.num_sections].name = section;
         ctx.sections[ctx.num_sections].loader = loader;
         ++ctx.num_sections;
     }
 }
 
-bool config_parse_bool(const char* text, bool* flag)
+bool config_to_bool(const char* text, bool* flag)
 {
     bool rc = false;
 
@@ -288,22 +289,7 @@ bool config_parse_bool(const char* text, bool* flag)
     return rc;
 }
 
-bool config_parse_num(const char* text, ssize_t* value, int base)
-{
-    char* endptr;
-    long long num;
-
-    errno = 0;
-    num = strtoll(text, &endptr, base);
-    if (!*endptr && errno == 0) {
-        *value = num;
-        return true;
-    }
-
-    return false;
-}
-
-bool config_parse_color(const char* text, argb_t* color)
+bool config_to_color(const char* text, argb_t* color)
 {
     ssize_t num;
 
@@ -311,83 +297,10 @@ bool config_parse_color(const char* text, argb_t* color)
         ++text;
     }
 
-    if (config_parse_num(text, &num, 16) && num >= 0 && num <= 0xffffffff) {
+    if (str_to_num(text, 0, &num, 16) && num >= 0 && num <= 0xffffffff) {
         *color = num;
         return true;
     }
 
     return false;
-}
-
-bool config_parse_numpair(const char* text, long* n1, long* n2)
-{
-    char* endptr;
-
-    errno = 0;
-
-    // first number
-    *n1 = strtol(text, &endptr, 0);
-    if (errno) {
-        return false;
-    }
-
-    // skip delimeter
-    while (*endptr && *endptr == ',') {
-        ++endptr;
-    }
-
-    // second number
-    *n2 = strtol(endptr, &endptr, 0);
-    if (errno) {
-        return false;
-    }
-
-    return *endptr == 0;
-}
-
-size_t config_parse_tokens(const char* text, char delimeter,
-                           struct config_token* tokens, size_t max_tokens)
-{
-    size_t token_num = 0;
-
-    while (*text) {
-        struct config_token token;
-
-        // skip spaces
-        while (*text && isspace(*text)) {
-            ++text;
-        }
-        if (!*text) {
-            break;
-        }
-
-        // construct token
-        if (*text == delimeter) {
-            // empty token
-            token.value = "";
-            token.len = 0;
-        } else {
-            token.value = text;
-            while (*text && *text != delimeter) {
-                ++text;
-            }
-            token.len = text - token.value;
-            // trim spaces
-            while (token.len && isspace(token.value[token.len - 1])) {
-                --token.len;
-            }
-        }
-
-        // add to output array
-        if (tokens && token_num < max_tokens) {
-            memcpy(&tokens[token_num], &token, sizeof(token));
-        }
-        ++token_num;
-
-        if (*text) {
-            ++text; // skip delimeter
-        }
-    }
-
-    return token_num;
 }

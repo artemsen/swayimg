@@ -6,9 +6,9 @@
 
 #include "config.h"
 #include "font.h"
+#include "str.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // Background modes
@@ -186,32 +186,30 @@ static enum config_status load_config(const char* key, const char* value)
     enum config_status status = cfgst_invalid_value;
 
     if (strcmp(key, CANVAS_CFG_ANTIALIASING) == 0) {
-        if (config_parse_bool(value, &ctx.antialiasing)) {
+        if (config_to_bool(value, &ctx.antialiasing)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, CANVAS_CFG_SCALE) == 0) {
-        const size_t num_modes = sizeof(scale_names) / sizeof(scale_names[0]);
-        for (size_t i = 0; i < num_modes; ++i) {
-            if (strcmp(value, scale_names[i]) == 0) {
-                ctx.initial_scale = i;
-                status = cfgst_ok;
-                break;
-            }
+        const ssize_t index = str_index(scale_names, value, 0);
+        if (index >= 0) {
+            ctx.initial_scale = index;
+            status = cfgst_ok;
         }
     } else if (strcmp(key, CANVAS_CFG_TRANSPARENCY) == 0) {
-        status = cfgst_ok;
         if (strcmp(value, "grid") == 0) {
             ctx.image_bkg = BACKGROUND_GRID;
+            status = cfgst_ok;
         } else if (strcmp(value, "none") == 0) {
             ctx.image_bkg = COLOR_TRANSPARENT;
-        } else if (!config_parse_color(value, &ctx.image_bkg)) {
-            status = cfgst_invalid_value;
+            status = cfgst_ok;
+        } else if (config_to_color(value, &ctx.image_bkg)) {
+            status = cfgst_ok;
         }
     } else if (strcmp(key, CANVAS_CFG_BACKGROUND) == 0) {
         if (strcmp(value, "none") == 0) {
             ctx.window_bkg = COLOR_TRANSPARENT;
             status = cfgst_ok;
-        } else if (config_parse_color(value, &ctx.window_bkg)) {
+        } else if (config_to_color(value, &ctx.window_bkg)) {
             status = cfgst_ok;
         }
     } else {
@@ -224,7 +222,7 @@ static enum config_status load_config(const char* key, const char* value)
 void canvas_init(void)
 {
     // register configuration loader
-    config_add_section(GENERAL_CONFIG, load_config);
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 bool canvas_reset_window(size_t width, size_t height, size_t scale)
@@ -579,7 +577,7 @@ void canvas_zoom(const char* op)
         }
     }
 
-    if (config_parse_num(op, &percent, 0) && percent != 0 && percent > -1000 &&
+    if (str_to_num(op, 0, &percent, 0) && percent != 0 && percent > -1000 &&
         percent < 1000) {
         zoom(percent);
         return;
