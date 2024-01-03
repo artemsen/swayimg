@@ -63,6 +63,7 @@ if not jxl.found() and (jxl_feature.auto() or jxl_feature.enabled())
 endif
 # non-Linux (BSD specific)
 epoll = dependency('epoll-shim', required: false)
+inotify = dependency('libinotify', required: false)
 
 # configuration file
 conf = configuration_data()
@@ -77,7 +78,7 @@ conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
-conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h'))
+conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -212,6 +213,7 @@ executable(
     threads,
     wlcln,
     epoll,
+    inotify,
     json,
     xkb,
     fontconfig,
