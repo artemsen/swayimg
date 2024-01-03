@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 /** Viewer context. */
