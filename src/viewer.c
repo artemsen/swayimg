@@ -413,7 +413,7 @@ bool viewer_on_keyboard(xkb_keysym_t key)
         case kb_exec:
             execute_command(kbind->params);
             return true;
-        case kb_quit:
+        case kb_exit:
             ui_stop();
             return false;
     }

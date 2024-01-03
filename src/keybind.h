@@ -35,7 +35,7 @@ enum kb_action {
     kb_antialiasing,
     kb_info,
     kb_exec,
-    kb_quit,
+    kb_exit,
 };
 
 /** Key binding. */

@@ -120,7 +120,7 @@ a = antialiasing
 r = reload
 i = info
 e = exec echo "Image: %"
-Escape = quit
-q = quit
+Escape = exit
+q = exit
 
 # vim: filetype=dosini

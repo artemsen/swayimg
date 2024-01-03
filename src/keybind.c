@@ -43,7 +43,7 @@ static const char* action_names[] = {
     [kb_antialiasing] = "antialiasing",
     [kb_info] = "info",
     [kb_exec] = "exec",
-    [kb_quit] = "quit",
+    [kb_exit] = "exit",
 };
 
 // Default key bindings
@@ -82,8 +82,8 @@ static const struct key_binding default_bindings[] = {
     { .key = XKB_KEY_r, .action = kb_reload },
     { .key = XKB_KEY_i, .action = kb_info },
     { .key = XKB_KEY_e, .action = kb_exec, .params = "echo \"Image: %\"" },
-    { .key = XKB_KEY_Escape, .action = kb_quit },
-    { .key = XKB_KEY_q, .action = kb_quit },
+    { .key = XKB_KEY_Escape, .action = kb_exit },
+    { .key = XKB_KEY_q, .action = kb_exit },
 };
 
 struct key_binding* key_bindings;
