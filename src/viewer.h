@@ -23,6 +23,11 @@ void viewer_init(void);
 void viewer_free(void);
 
 /**
+ * Reset state: reload image file, set initial scale etc.
+ */
+void viewer_reset(void);
+
+/**
  * Redraw handler.
  * @param window pointer to window's pixel data
  */
@@ -38,6 +43,5 @@ void viewer_on_resize(size_t width, size_t height, size_t scale);
 /**
  * Key press handler.
  * @param key code of key pressed
- * @return true if state has changed and window should be redrawn
  */
-bool viewer_on_keyboard(xkb_keysym_t key);
+void viewer_on_keyboard(xkb_keysym_t key);

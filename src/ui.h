@@ -39,6 +39,11 @@ bool ui_run(void);
 void ui_stop(void);
 
 /**
+ * Redraw window.
+ */
+void ui_redraw(void);
+
+/**
  * Get app id (window class name).
  * @return app id
  */

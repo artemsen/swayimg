@@ -223,6 +223,7 @@ static void on_animation_timer(void)
 {
     next_frame(true);
     animation_ctl(true);
+    ui_redraw();
 }
 
 /**
@@ -231,6 +232,7 @@ static void on_animation_timer(void)
 static void on_slideshow_timer(void)
 {
     slideshow_ctl(next_file(jump_next_file));
+    ui_redraw();
 }
 
 /**
@@ -287,6 +289,18 @@ void viewer_free(void)
     }
 }
 
+void viewer_reset(void)
+{
+    if (image_list_reset()) {
+        reset_state();
+        info_set_status("Image reloaded");
+        ui_redraw();
+    } else {
+        printf("No more images, exit\n");
+        ui_stop();
+    }
+}
+
 void viewer_on_redraw(argb_t* window)
 {
     const struct image_entry entry = image_list_current();
@@ -329,93 +343,112 @@ void viewer_on_resize(size_t width, size_t height, size_t scale)
     reset_state();
 }
 
-bool viewer_on_keyboard(xkb_keysym_t key)
+void viewer_on_keyboard(xkb_keysym_t key)
 {
+    bool redraw = false;
     const struct key_binding* kbind = keybind_get(key);
+
     if (!kbind) {
-        return false;
+        return;
     }
 
     // handle action
     switch (kbind->action) {
         case kb_none:
-            return false;
+            break;
         case kb_help:
             ctx.show_help = !ctx.show_help;
-            return true;
+            redraw = true;
+            break;
         case kb_first_file:
-            return next_file(jump_first_file);
+            redraw = next_file(jump_first_file);
+            break;
         case kb_last_file:
-            return next_file(jump_last_file);
+            redraw = next_file(jump_last_file);
+            break;
         case kb_prev_dir:
-            return next_file(jump_prev_dir);
+            redraw = next_file(jump_prev_dir);
+            break;
         case kb_next_dir:
-            return next_file(jump_next_dir);
+            redraw = next_file(jump_next_dir);
+            break;
         case kb_prev_file:
-            return next_file(jump_prev_file);
+            redraw = next_file(jump_prev_file);
+            break;
         case kb_next_file:
-            return next_file(jump_next_file);
+            redraw = next_file(jump_next_file);
+            break;
         case kb_prev_frame:
         case kb_next_frame:
             animation_ctl(false);
-            return next_frame(kbind->action == kb_next_frame);
+            redraw = next_frame(kbind->action == kb_next_frame);
+            break;
         case kb_animation:
             animation_ctl(!ctx.animation_enable);
-            return false;
+            break;
         case kb_slideshow:
             slideshow_ctl(!ctx.slideshow_enable && next_file(jump_next_file));
-            return true;
+            redraw = true;
+            break;
         case kb_fullscreen:
             ui_toggle_fullscreen();
-            return false;
+            break;
         case kb_step_left:
-            return move_viewport(true, true, kbind->params);
+            redraw = move_viewport(true, true, kbind->params);
+            break;
         case kb_step_right:
-            return move_viewport(true, false, kbind->params);
+            redraw = move_viewport(true, false, kbind->params);
+            break;
         case kb_step_up:
-            return move_viewport(false, true, kbind->params);
+            redraw = move_viewport(false, true, kbind->params);
+            break;
         case kb_step_down:
-            return move_viewport(false, false, kbind->params);
+            redraw = move_viewport(false, false, kbind->params);
+            break;
         case kb_zoom:
             canvas_zoom(kbind->params);
-            return true;
+            redraw = true;
+            break;
         case kb_rotate_left:
             image_rotate(image_list_current().image, 270);
             canvas_swap_image_size();
-            return true;
+            redraw = true;
+            break;
         case kb_rotate_right:
             image_rotate(image_list_current().image, 90);
             canvas_swap_image_size();
-            return true;
+            redraw = true;
+            break;
         case kb_flip_vertical:
             image_flip_vertical(image_list_current().image);
-            return true;
+            redraw = true;
+            break;
         case kb_flip_horizontal:
             image_flip_horizontal(image_list_current().image);
-            return true;
+            redraw = true;
+            break;
         case kb_antialiasing:
             info_set_status("Anti-aliasing %s",
                             canvas_switch_aa() ? "on" : "off");
-            return true;
+            redraw = true;
+            break;
         case kb_reload:
-            if (image_list_reset()) {
-                reset_state();
-                info_set_status("Image reloaded");
-                return true;
-            } else {
-                printf("No more images, exit\n");
-                ui_stop();
-                return false;
-            }
+            viewer_reset();
+            break;
         case kb_info:
             info_set_mode(kbind->params);
-            return true;
+            redraw = true;
+            break;
         case kb_exec:
             execute_command(kbind->params);
-            return true;
+            redraw = true;
+            break;
         case kb_exit:
             ui_stop();
-            return false;
+            break;
     }
-    return false;
+
+    if (redraw) {
+        ui_redraw();
+    }
 }

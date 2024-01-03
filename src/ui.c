@@ -214,31 +214,6 @@ static bool recreate_buffers(void)
     return true;
 }
 
-/**
- * Redraw window.
- */
-static void redraw(void)
-{
-    argb_t* wnd_data;
-
-    // switch buffers
-    if (ctx.wnd.current == ctx.wnd.buffer0) {
-        ctx.wnd.current = ctx.wnd.buffer1;
-    } else {
-        ctx.wnd.current = ctx.wnd.buffer0;
-    }
-
-    // draw to window buffer
-    wnd_data = wl_buffer_get_user_data(ctx.wnd.current);
-    viewer_on_redraw(wnd_data);
-
-    // show window buffer
-    wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
-    wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
-    wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
-    wl_surface_commit(ctx.wl.surface);
-}
-
 // suppress unused parameter warnings
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -306,10 +281,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
         key += 8;
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
         if (keysym != XKB_KEY_NoSymbol) {
-            // handle key in viewer
-            if (viewer_on_keyboard(keysym)) {
-                redraw();
-            }
+            viewer_on_keyboard(keysym);
             // handle key repeat
             if (ctx.repeat.rate &&
                 xkb_keymap_key_repeats(ctx.xkb.keymap, key)) {
@@ -350,10 +322,7 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
                             uint32_t time, uint32_t axis, wl_fixed_t value)
 {
     xkb_keysym_t key = value > 0 ? XKB_KEY_SunPageDown : XKB_KEY_SunPageUp;
-
-    if (viewer_on_keyboard(key)) {
-        redraw();
-    }
+    viewer_on_keyboard(key);
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -414,7 +383,7 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
         return;
     }
 
-    redraw();
+    ui_redraw();
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -513,7 +482,7 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
         if (recreate_buffers()) {
-            redraw();
+            ui_redraw();
         } else {
             ctx.state = state_error;
         }
@@ -789,8 +758,6 @@ bool ui_run(void)
 
     // main event loop
     while (ctx.state == state_ok) {
-        bool need_redraw = false;
-
         // prepare to read wayland events
         while (wl_display_prepare_read(ctx.wl.display) != 0) {
             wl_display_dispatch_pending(ctx.wl.display);
@@ -817,7 +784,7 @@ bool ui_run(void)
             const ssize_t sz = sizeof(repeats);
             if (read(ctx.repeat.fd, &repeats, sz) == sz) {
                 while (repeats--) {
-                    need_redraw |= viewer_on_keyboard(ctx.repeat.key);
+                    viewer_on_keyboard(ctx.repeat.key);
                 }
             }
         }
@@ -826,12 +793,7 @@ bool ui_run(void)
         for (size_t i = 0; i < ctx.num_events; ++i) {
             if (fds[i].revents & POLLIN) {
                 ctx.events[i].handler();
-                need_redraw = true;
             }
-        }
-
-        if (need_redraw) {
-            redraw();
         }
     }
 
@@ -843,6 +805,28 @@ bool ui_run(void)
 void ui_stop(void)
 {
     ctx.state = state_exit;
+}
+
+void ui_redraw(void)
+{
+    argb_t* wnd_data;
+
+    // switch buffers
+    if (ctx.wnd.current == ctx.wnd.buffer0) {
+        ctx.wnd.current = ctx.wnd.buffer1;
+    } else {
+        ctx.wnd.current = ctx.wnd.buffer0;
+    }
+
+    // draw to window buffer
+    wnd_data = wl_buffer_get_user_data(ctx.wnd.current);
+    viewer_on_redraw(wnd_data);
+
+    // show window buffer
+    wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
+    wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
+    wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
+    wl_surface_commit(ctx.wl.surface);
 }
 
 const char* ui_get_appid(void)
