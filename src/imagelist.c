@@ -359,6 +359,21 @@ static void preloader_ctl(bool restart)
 
 #ifdef HAVE_INOTIFY
 /**
+ * Register watcher for current file.
+ */
+static void watch_current(void)
+{
+    if (ctx.notify >= 0) {
+        if (ctx.watch != -1) {
+            inotify_rm_watch(ctx.notify, ctx.watch);
+            ctx.watch = -1;
+        }
+        ctx.watch = inotify_add_watch(ctx.notify, ctx.current->file_path,
+                                      IN_CLOSE_WRITE | IN_MOVE_SELF);
+    }
+}
+
+/**
  * Notify handler.
  */
 static void on_notify(void)
@@ -380,8 +395,8 @@ static void on_notify(void)
                 ctx.watch = -1;
             }
             pos += sizeof(struct inotify_event) + event->len;
-            viewer_reset();
         }
+        viewer_reset();
     }
 }
 #endif // HAVE_INOTIFY
@@ -520,6 +535,12 @@ bool image_list_scan(const char** files, size_t num)
 
     preloader_ctl(true);
 
+#ifdef HAVE_INOTIFY
+    if (ctx.watch == -1) {
+        watch_current();
+    }
+#endif // HAVE_INOTIFY
+
     return true;
 }
 
@@ -630,14 +651,7 @@ bool image_list_jump(enum list_jump jump)
     preloader_ctl(true);
 
 #ifdef HAVE_INOTIFY
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-            ctx.watch = -1;
-        }
-        ctx.watch = inotify_add_watch(ctx.notify, ctx.current->file_path,
-                                      IN_CLOSE_WRITE | IN_MOVE_SELF);
-    }
+    watch_current();
 #endif // HAVE_INOTIFY
 
     return true;

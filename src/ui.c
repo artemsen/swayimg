@@ -811,6 +811,10 @@ void ui_redraw(void)
 {
     argb_t* wnd_data;
 
+    if (!ctx.wnd.current) {
+        return; // not yet intialized
+    }
+
     // switch buffers
     if (ctx.wnd.current == ctx.wnd.buffer0) {
         ctx.wnd.current = ctx.wnd.buffer1;
