@@ -4,8 +4,11 @@
 
 #include "imagelist.h"
 
+#include "buildcfg.h"
 #include "config.h"
 #include "str.h"
+#include "ui.h"
+#include "viewer.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -18,6 +21,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef HAVE_INOTIFY
+#include <sys/inotify.h>
+#endif
 
 /** Number of entries added on reallocation. */
 #define ALLOCATE_SIZE 32
@@ -44,8 +51,21 @@ struct image_list {
     bool loop;              ///< File list loop mode
     bool recursive;         ///< Read directories recursively
     bool all_files;         ///< Open all files from the same directory
+#ifdef HAVE_INOTIFY
+    int notify; ///< inotify file handler
+    int watch;  ///< Current file watcher
+#endif          // HAVE_INOTIFY
 };
-static struct image_list ctx;
+static struct image_list ctx = {
+    .order = order_alpha,
+    .loop = true,
+    .recursive = false,
+    .all_files = false,
+#ifdef HAVE_INOTIFY
+    .notify = -1,
+    .watch = -1,
+#endif // HAVE_INOTIFY
+};
 
 /** Order names. */
 static const char* order_names[] = {
@@ -337,6 +357,35 @@ static void preloader_ctl(bool restart)
     }
 }
 
+#ifdef HAVE_INOTIFY
+/**
+ * Notify handler.
+ */
+static void on_notify(void)
+{
+    while (true) {
+        uint8_t buffer[1024];
+        ssize_t pos = 0;
+        const ssize_t len = read(ctx.notify, buffer, sizeof(buffer));
+        if (len < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return; // something went wrong
+        }
+        while (pos + sizeof(struct inotify_event) <= (size_t)len) {
+            const struct inotify_event* event =
+                (struct inotify_event*)&buffer[pos];
+            if (event->mask & IN_IGNORED) {
+                ctx.watch = -1;
+            }
+            pos += sizeof(struct inotify_event) + event->len;
+            viewer_reset();
+        }
+    }
+}
+#endif // HAVE_INOTIFY
+
 /**
  * Custom section loader, see `config_loader` for details.
  */
@@ -371,14 +420,15 @@ static enum config_status load_config(const char* key, const char* value)
 
 void image_list_init(void)
 {
-    // set defaults
-    ctx.order = order_alpha;
-    ctx.loop = true;
-    ctx.recursive = false;
-    ctx.all_files = false;
-
     // register configuration loader
     config_add_loader(INFO_CFG_SECTION, load_config);
+
+#ifdef HAVE_INOTIFY
+    ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+    if (ctx.notify >= 0) {
+        ui_add_event(ctx.notify, on_notify);
+    }
+#endif // HAVE_INOTIFY
 }
 
 bool image_list_scan(const char** files, size_t num)
@@ -578,6 +628,17 @@ bool image_list_jump(enum list_jump jump)
     ctx.index = index;
 
     preloader_ctl(true);
+
+#ifdef HAVE_INOTIFY
+    if (ctx.notify >= 0) {
+        if (ctx.watch != -1) {
+            inotify_rm_watch(ctx.notify, ctx.watch);
+            ctx.watch = -1;
+        }
+        ctx.watch = inotify_add_watch(ctx.notify, ctx.current->file_path,
+                                      IN_CLOSE_WRITE | IN_MOVE_SELF);
+    }
+#endif // HAVE_INOTIFY
 
     return true;
 }
