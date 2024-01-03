@@ -8,7 +8,6 @@
 #include "font.h"
 #include "str.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -551,8 +550,9 @@ void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
 {
     const size_t height = font_height();
     const size_t row_max = (ctx.window.height - TEXT_PADDING * 2) / height;
-    const size_t columns = ceil((float)lines_num / row_max);
-    const size_t rows = ceil((float)lines_num / columns);
+    const size_t columns =
+        (lines_num / row_max) + (lines_num % row_max ? 1 : 0);
+    const size_t rows = (lines_num / columns) + (lines_num % columns ? 1 : 0);
     const size_t col_space = font_print(NULL, NULL, NULL, L"  ");
     struct point top_left = { TEXT_PADDING, TEXT_PADDING };
     size_t total_width = 0;
