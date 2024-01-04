@@ -234,7 +234,7 @@ static enum config_status load_config(const char* key, const char* value)
 
 void info_init(void)
 {
-    // standart fields
+    // standard fields
     ctx.fields[info_file_name].key = str_to_wide("File name", NULL);
     ctx.fields[info_file_path].key = str_to_wide("File path", NULL);
     ctx.fields[info_file_size].key = str_to_wide("File size", NULL);

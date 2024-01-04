@@ -43,7 +43,7 @@ struct image_list {
     size_t alloc;           ///< Number of allocated entries (size of array)
     size_t size;            ///< Number of files in array
     size_t index;           ///< Index of the current file entry
-    struct image* prev;     ///< Prevous image handle (cached)
+    struct image* prev;     ///< Previous image handle (cached)
     struct image* current;  ///< Current image handle
     struct image* next;     ///< Next image handle (preload)
     pthread_t preloader;    ///< Preload thread

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// User interface: Window managment, keyboard input, etc.
+// User interface: Window management, keyboard input, etc.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "ui.h"
@@ -76,7 +76,7 @@ struct ui {
         struct xdg_toplevel* toplevel;
     } xdg;
 
-    // keayboard
+    // keyboard
     struct xkb {
         struct xkb_context* context;
         struct xkb_keymap* keymap;
@@ -812,7 +812,7 @@ void ui_redraw(void)
     argb_t* wnd_data;
 
     if (!ctx.wnd.current) {
-        return; // not yet intialized
+        return; // not yet initialized
     }
 
     // switch buffers

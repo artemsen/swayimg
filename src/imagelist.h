@@ -47,7 +47,7 @@ void image_list_init(void);
 void image_list_free(void);
 
 /**
- * Scan directoried and fill the image list.
+ * Scan directories and fill the image list.
  * @param files list of input files
  * @param num number of files in the file list
  * @return false if no one images loaded
@@ -56,7 +56,7 @@ bool image_list_scan(const char** files, size_t num);
 
 /**
  * Get image list size.
- * @return tital number of entries in the list include non-image files
+ * @return total number of entries in the list include non-image files
  */
 size_t image_list_size(void);
 

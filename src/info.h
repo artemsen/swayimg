@@ -51,7 +51,7 @@ void info_set_status(const char* fmt, ...)
     __attribute__((format(printf, 1, 2)));
 
 /**
- * Get number o f lines in the specified block.
+ * Get number of lines in the specified block.
  * @param pos block position
  * @return number of lines
  */
