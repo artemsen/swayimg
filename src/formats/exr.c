@@ -149,7 +149,7 @@ static argb_t decode_pixel(const exr_decode_pipeline_t* decoder,
 }
 
 /**
- * Load scnalined EXR image.
+ * Load scanlined EXR image.
  * @param ectx EXR context
  * @param frame destination image frame
  * @return result code

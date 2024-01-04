@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// User interface: Window managment, keyboard input, etc.
+// User interface: Window management, keyboard input, etc.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -97,7 +97,7 @@ size_t ui_get_height(void);
 void ui_toggle_fullscreen(void);
 
 /**
- * Check if full screen mode ia active.
+ * Check if full screen mode is active.
  * @return current mode
  */
 bool ui_get_fullscreen(void);
@@ -107,7 +107,7 @@ typedef void (*fd_event)(void);
 
 /**
  * Add custom event handler.
- * @param fd file descritpor for polling
+ * @param fd file descriptor for polling
  * @param handler callback
  */
 void ui_add_event(int fd, fd_event handler);

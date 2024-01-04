@@ -26,7 +26,7 @@ antialiasing = no
 # Background for transparent images (none/grid/RGB, e.g. #112233)
 transparency = grid
 
-# Window position (parent or absolute coordiantes, e.g. 100,200)
+# Window position (parent or absolute coordinates, e.g. 100,200)
 position = parent
 # Window size (parent, image, or absolute size, e.g. 800,600)
 size = parent

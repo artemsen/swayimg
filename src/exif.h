@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// EXIT reader.
+// EXIF reader.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #pragma once

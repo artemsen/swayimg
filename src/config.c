@@ -238,7 +238,7 @@ bool config_command(const char* cmd)
         *ptr++ = *it++;
     }
     *ptr = 0; // last null
-    ++it;     // skip delimeter
+    ++it;     // skip delimiter
 
     // get key
     ptr = key;
@@ -249,7 +249,7 @@ bool config_command(const char* cmd)
         *ptr++ = *it++;
     }
     *ptr = 0; // last null
-    ++it;     // skip delimeter
+    ++it;     // skip delimiter
 
     // get value
     value = it;

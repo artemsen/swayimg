@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// String oprations.
+// String operations.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #include "str.h"

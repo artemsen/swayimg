@@ -294,7 +294,7 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
     }
     ctx->info = buffer;
 
-    // contruct value string
+    // construct value string
     va_start(args, fmt);
     len = vsnprintf(NULL, 0, fmt, args);
     va_end(args);

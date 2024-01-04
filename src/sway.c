@@ -173,7 +173,7 @@ static bool read_int(json_object* node, const char* name, int* value)
 }
 
 /**
- * Read rectange geometry from JSON node.
+ * Read rectangle geometry from JSON node.
  * @param node JSON parent node
  * @param name name of the rect node
  * @param rect rectangle geometry
