@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -379,24 +380,31 @@ static void watch_current(void)
 static void on_notify(void)
 {
     while (true) {
+        bool updated = false;
         uint8_t buffer[1024];
         ssize_t pos = 0;
         const ssize_t len = read(ctx.notify, buffer, sizeof(buffer));
+
         if (len < 0) {
             if (errno == EINTR) {
                 continue;
             }
             return; // something went wrong
         }
+
         while (pos + sizeof(struct inotify_event) <= (size_t)len) {
             const struct inotify_event* event =
                 (struct inotify_event*)&buffer[pos];
             if (event->mask & IN_IGNORED) {
                 ctx.watch = -1;
+            } else {
+                updated = true;
             }
             pos += sizeof(struct inotify_event) + event->len;
         }
-        viewer_reset();
+        if (updated) {
+            viewer_reset();
+        }
     }
 }
 #endif // HAVE_INOTIFY
