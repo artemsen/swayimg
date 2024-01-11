@@ -54,7 +54,7 @@ void canvas_draw_image(bool aplha, const argb_t* img, argb_t* wnd);
 
 /**
  * Print information text block.
- * @param line array of lines to pprint
+ * @param line array of lines to print
  * @param num total number of lines
  * @param pos block position
  * @param wnd window buffer
@@ -64,7 +64,7 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
 
 /**
  * Print text block at the center of window.
- * @param line array of lines to pprint
+ * @param line array of lines to print
  * @param num total number of lines
  * @param wnd window buffer
  */
@@ -77,6 +77,13 @@ void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd);
  * @return true if coordinates were changed
  */
 bool canvas_move(bool horizontal, ssize_t percent);
+
+/**
+ * Move viewport.
+ * @param dx,dy delta between current and new position
+ * @return true if coordinates were changed
+ */
+bool canvas_drag(int dx, int dy);
 
 /**
  * Zoom image.

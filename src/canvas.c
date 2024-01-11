@@ -619,6 +619,18 @@ bool canvas_move(bool horizontal, ssize_t percent)
     return (ctx.image.x != old_x || ctx.image.y != old_y);
 }
 
+bool canvas_drag(int dx, int dy)
+{
+    const ssize_t old_x = ctx.image.x;
+    const ssize_t old_y = ctx.image.y;
+
+    ctx.image.x += dx;
+    ctx.image.y += dy;
+    fix_viewport();
+
+    return (ctx.image.x != old_x || ctx.image.y != old_y);
+}
+
 void canvas_zoom(const char* op)
 {
     ssize_t percent = 0;

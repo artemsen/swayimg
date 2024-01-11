@@ -23,6 +23,11 @@
 // Max number of output displays
 #define MAX_OUTPUTS 4
 
+// Mouse button
+#ifndef BTN_LEFT
+#define BTN_LEFT 0x110 // from <linux/input-event-codes.h>
+#endif
+
 /** Loop state */
 enum state {
     state_ok,
@@ -90,6 +95,13 @@ struct ui {
         uint32_t rate;
         uint32_t delay;
     } repeat;
+
+    // mouse drag
+    struct mouse {
+        bool active;
+        int x;
+        int y;
+    } mouse;
 
     // app_id name (window class)
     char* app_id;
@@ -310,12 +322,28 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
                               uint32_t time, wl_fixed_t surface_x,
                               wl_fixed_t surface_y)
 {
+    const int x = wl_fixed_to_int(surface_x);
+    const int y = wl_fixed_to_int(surface_y);
+
+    if (ctx.mouse.active) {
+        const int dx = x - ctx.mouse.x;
+        const int dy = y - ctx.mouse.y;
+        if (dx && dy) {
+            viewer_on_drag(dx, dy);
+        }
+    }
+
+    ctx.mouse.x = x;
+    ctx.mouse.y = y;
 }
 
 static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
                               uint32_t serial, uint32_t time, uint32_t button,
                               uint32_t state)
 {
+    if (button == BTN_LEFT) {
+        ctx.mouse.active = (state == WL_POINTER_BUTTON_STATE_PRESSED);
+    }
 }
 
 static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,

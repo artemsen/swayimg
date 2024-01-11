@@ -453,3 +453,10 @@ void viewer_on_keyboard(xkb_keysym_t key)
         ui_redraw();
     }
 }
+
+void viewer_on_drag(int dx, int dy)
+{
+    if (canvas_drag(dx, dy)) {
+        ui_redraw();
+    }
+}

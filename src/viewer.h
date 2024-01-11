@@ -45,3 +45,9 @@ void viewer_on_resize(size_t width, size_t height, size_t scale);
  * @param key code of key pressed
  */
 void viewer_on_keyboard(xkb_keysym_t key);
+
+/**
+ * Image drap handler.
+ * @param dx,dy delta to move viewpoint
+ */
+void viewer_on_drag(int dx, int dy);
