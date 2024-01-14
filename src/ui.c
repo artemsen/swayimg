@@ -349,7 +349,11 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
 static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
                             uint32_t time, uint32_t axis, wl_fixed_t value)
 {
-    xkb_keysym_t key = value > 0 ? XKB_KEY_SunPageDown : XKB_KEY_SunPageUp;
+    xkb_keysym_t key;
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
+        key = value > 0 ? XKB_KEY_KP_Right : XKB_KEY_KP_Left;
+    else
+        key = value > 0 ? XKB_KEY_KP_Down : XKB_KEY_KP_Up;
     viewer_on_keyboard(key);
 }
 
