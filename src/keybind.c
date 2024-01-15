@@ -65,10 +65,10 @@ static const struct key_binding default_bindings[] = {
     { .key = XKB_KEY_Right, .action = kb_step_right },
     { .key = XKB_KEY_Up, .action = kb_step_up },
     { .key = XKB_KEY_Down, .action = kb_step_down },
-    { .key = XKB_KEY_KP_Left, .action = kb_step_left },
-    { .key = XKB_KEY_KP_Right, .action = kb_step_right },
-    { .key = XKB_KEY_KP_Up, .action = kb_step_up },
-    { .key = XKB_KEY_KP_Down, .action = kb_step_down },
+    { .key = VKEY_SCROLL_LEFT, .action = kb_step_right, .params = "5" },
+    { .key = VKEY_SCROLL_RIGHT, .action = kb_step_left, .params = "5" },
+    { .key = VKEY_SCROLL_UP, .action = kb_step_down, .params = "5" },
+    { .key = VKEY_SCROLL_DOWN, .action = kb_step_up, .params = "5" },
     { .key = XKB_KEY_equal, .action = kb_zoom, .params = "+10" },
     { .key = XKB_KEY_plus, .action = kb_zoom, .params = "+10" },
     { .key = XKB_KEY_minus, .action = kb_zoom, .params = "-10" },
@@ -88,6 +88,18 @@ static const struct key_binding default_bindings[] = {
     { .key = XKB_KEY_e, .action = kb_exec, .params = "echo \"Image: %\"" },
     { .key = XKB_KEY_Escape, .action = kb_exit },
     { .key = XKB_KEY_q, .action = kb_exit },
+};
+
+// Names of virtual keys
+struct virtual_keys {
+    xkb_keysym_t key;
+    const char* name;
+};
+static const struct virtual_keys virtual_keys[] = {
+    { VKEY_SCROLL_UP, "ScrollUp" },
+    { VKEY_SCROLL_DOWN, "ScrollDown" },
+    { VKEY_SCROLL_LEFT, "ScrollLeft" },
+    { VKEY_SCROLL_RIGHT, "ScrollRight" },
 };
 
 struct key_binding* key_bindings;
@@ -165,6 +177,27 @@ static void keybind_set(xkb_keysym_t key, enum kb_action action,
 }
 
 /**
+ * Get a keysym from its name.
+ * @returns keysym, if the name is invalid, returns XKB_KEY_NoSymbol
+ */
+static xkb_keysym_t get_key_from_name(const char* name)
+{
+    xkb_keysym_t key = xkb_keysym_from_name(name, XKB_KEYSYM_NO_FLAGS);
+
+    if (key == XKB_KEY_NoSymbol) {
+        size_t i;
+        for (i = 0; i < sizeof(virtual_keys) / sizeof(virtual_keys[0]); ++i) {
+            if (strcmp(name, virtual_keys[i].name) == 0) {
+                key = virtual_keys[i].key;
+                break;
+            }
+        }
+    }
+
+    return key;
+}
+
+/**
  * Custom section loader, see `config_loader` for details.
  */
 static enum config_status load_config(const char* key, const char* value)
@@ -200,7 +233,7 @@ static enum config_status load_config(const char* key, const char* value)
     }
 
     // convert key name to code
-    keysym = xkb_keysym_from_name(key, XKB_KEYSYM_NO_FLAGS);
+    keysym = get_key_from_name(key);
     if (keysym == XKB_KEY_NoSymbol) {
         return cfgst_invalid_key;
     }

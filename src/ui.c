@@ -6,6 +6,7 @@
 
 #include "buildcfg.h"
 #include "config.h"
+#include "keybind.h"
 #include "str.h"
 #include "viewer.h"
 #include "xdg-shell-protocol.h"
@@ -350,10 +351,11 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
                             uint32_t time, uint32_t axis, wl_fixed_t value)
 {
     xkb_keysym_t key;
-    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
-        key = value > 0 ? XKB_KEY_KP_Right : XKB_KEY_KP_Left;
-    else
-        key = value > 0 ? XKB_KEY_KP_Down : XKB_KEY_KP_Up;
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+        key = value > 0 ? VKEY_SCROLL_RIGHT : VKEY_SCROLL_LEFT;
+    } else {
+        key = value > 0 ? VKEY_SCROLL_DOWN : VKEY_SCROLL_UP;
+    }
     viewer_on_keyboard(key);
 }
 

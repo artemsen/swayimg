@@ -7,6 +7,12 @@
 #include <wchar.h>
 #include <xkbcommon/xkbcommon.h>
 
+// Virtual keys used for scrolling (mouse wheel, touchpads etc)
+#define VKEY_SCROLL_UP    0x42000001
+#define VKEY_SCROLL_DOWN  0x42000002
+#define VKEY_SCROLL_LEFT  0x42000003
+#define VKEY_SCROLL_RIGHT 0x42000004
+
 /** Available actions. */
 enum kb_action {
     kb_none,
