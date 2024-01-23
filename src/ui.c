@@ -685,20 +685,15 @@ static enum config_status load_config(const char* key, const char* value)
 void ui_init(void)
 {
     struct timespec ts;
-    char app_id[64];
-    size_t len;
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        char app_id[64];
         const uint64_t timestamp = (ts.tv_sec << 32) | ts.tv_nsec;
         snprintf(app_id, sizeof(app_id), APP_NAME "_%lx", timestamp);
+        str_dup(app_id, &ctx.app_id);
     } else {
-        strncpy(app_id, APP_NAME, sizeof(app_id));
-    }
-    len = strlen(app_id) + 1;
-    ctx.app_id = malloc(len);
-    if (ctx.app_id) {
-        memcpy(ctx.app_id, app_id, len);
+        str_dup(APP_NAME, &ctx.app_id);
     }
 
     // register configuration loader
