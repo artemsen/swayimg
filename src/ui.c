@@ -294,7 +294,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
         key += 8;
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
         if (keysym != XKB_KEY_NoSymbol) {
-            viewer_on_keyboard(keysym);
+            viewer_on_keyboard(keysym, keybind_mods(ctx.xkb.state));
             // handle key repeat
             if (ctx.repeat.rate &&
                 xkb_keymap_key_repeats(ctx.xkb.keymap, key)) {
@@ -356,7 +356,7 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
     } else {
         key = value > 0 ? VKEY_SCROLL_DOWN : VKEY_SCROLL_UP;
     }
-    viewer_on_keyboard(key);
+    viewer_on_keyboard(key, keybind_mods(ctx.xkb.state));
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -812,8 +812,9 @@ bool ui_run(void)
             uint64_t repeats;
             const ssize_t sz = sizeof(repeats);
             if (read(ctx.repeat.fd, &repeats, sz) == sz) {
+                const uint8_t mods = keybind_mods(ctx.xkb.state);
                 while (repeats--) {
-                    viewer_on_keyboard(ctx.repeat.key);
+                    viewer_on_keyboard(ctx.repeat.key, mods);
                 }
             }
         }

@@ -7,6 +7,11 @@
 #include <wchar.h>
 #include <xkbcommon/xkbcommon.h>
 
+// Key modifiers
+#define KEYMOD_CTRL  (1 << 0)
+#define KEYMOD_ALT   (1 << 1)
+#define KEYMOD_SHIFT (1 << 2)
+
 // Virtual keys used for scrolling (mouse wheel, touchpads etc)
 #define VKEY_SCROLL_UP    0x42000001
 #define VKEY_SCROLL_DOWN  0x42000002
@@ -47,6 +52,7 @@ enum kb_action {
 /** Key binding. */
 struct key_binding {
     xkb_keysym_t key;      ///< Keyboard key
+    uint8_t mods;          ///< Key modifiers
     enum kb_action action; ///< Action
     char* params;          ///< Custom parameters for the action
     wchar_t* help;         ///< Binding description
@@ -65,8 +71,16 @@ void keybind_init(void);
 void keybind_free(void);
 
 /**
+ * Get current key modifiers state.
+ * @param state XKB handle
+ * @return active key modifires (ctrl/alt/shift)
+ */
+uint8_t keybind_mods(struct xkb_state* state);
+
+/**
  * Get key binding description.
  * @param key keyboard key
+ * @param mods key modifires (ctrl/alt/shift)
  * @return pointer to the binding or NULL if not found
  */
-const struct key_binding* keybind_get(xkb_keysym_t key);
+const struct key_binding* keybind_get(xkb_keysym_t key, uint8_t mods);

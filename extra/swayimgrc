@@ -7,7 +7,9 @@
 # 3. $XDG_CONFIG_DIRS/swayimg/config
 # 4. /etc/xdg/swayimg/config
 
-# See `man swayimgrc` for details.
+# Any of these options can be overridden using the --config argument
+# on the command line, for instance:
+# $ swayimg --config="general.scale=real"
 
 ################################################################################
 # General options
@@ -83,6 +85,7 @@ brief.bottomright = status
 
 ################################################################################
 # Key binding section: key = action [parameters]
+# Key can be specified with modifiers, e.g "Ctrl+Alt+Shift+x"
 # Use the `xkbcli` tool to get key name: `xkbcli interactive-wayland`
 ################################################################################
 [keys]
@@ -91,31 +94,31 @@ Home = first_file
 End = last_file
 Prior = prev_file
 Next = next_file
-space = next_file
-D = prev_dir
+Space = next_file
+Shift+d = prev_dir
 d = next_dir
-O = prev_frame
+Shift+o = prev_frame
 o = next_frame
-S = slideshow
+Shift+s = slideshow
 s = animation
 f = fullscreen
 Left = step_left 10
 Right = step_right 10
 Up = step_up 10
 Down = step_down 10
-equal = zoom +10
-plus = zoom +10
-minus = zoom -10
+Equal = zoom +10
+Plus = zoom +10
+Minus = zoom -10
 w = zoom width
-W = zoom height
+Shift+w = zoom height
 z = zoom fit
-Z = zoom fill
+Shift+z = zoom fill
 0 = zoom real
 BackSpace = zoom optimal
 bracketleft = rotate_left
 bracketright = rotate_right
 m = flip_vertical
-M = flip_horizontal
+Shift+m = flip_horizontal
 a = antialiasing
 r = reload
 i = info

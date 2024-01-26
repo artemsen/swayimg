@@ -344,10 +344,10 @@ void viewer_on_resize(size_t width, size_t height, size_t scale)
     reset_state();
 }
 
-void viewer_on_keyboard(xkb_keysym_t key)
+void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
     bool redraw = false;
-    const struct key_binding* kbind = keybind_get(key);
+    const struct key_binding* kbind = keybind_get(key, mods);
 
     if (!kbind) {
         return;

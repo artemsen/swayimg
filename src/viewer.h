@@ -4,9 +4,8 @@
 
 #pragma once
 
+#include "keybind.h"
 #include "types.h"
-
-#include <xkbcommon/xkbcommon.h>
 
 // Configuration parameters
 #define VIEWER_CFG_SLIDESHOW      "slideshow"
@@ -43,8 +42,9 @@ void viewer_on_resize(size_t width, size_t height, size_t scale);
 /**
  * Key press handler.
  * @param key code of key pressed
+ * @param mods key modifires (ctrl/alt/shift)
  */
-void viewer_on_keyboard(xkb_keysym_t key);
+void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods);
 
 /**
  * Image drap handler.
