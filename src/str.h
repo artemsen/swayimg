@@ -8,6 +8,10 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
+#endif
+
 /** String slice. */
 struct str_slice {
     const char* value;
@@ -69,4 +73,4 @@ size_t str_split(const char* text, char delimeter, struct str_slice* slices,
  */
 ssize_t str_search_index(const char** array, size_t array_sz, const char* value,
                          size_t value_len);
-#define str_index(a, v, s) str_search_index((a), sizeof(a) / sizeof(*(a)), v, s)
+#define str_index(a, v, s) str_search_index((a), ARRAY_SIZE(a), v, s)
