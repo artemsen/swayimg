@@ -39,18 +39,12 @@ void canvas_reset_image(size_t width, size_t height);
 void canvas_swap_image_size(void);
 
 /**
- * Clear canvas window.
- * @param wnd window buffer
- */
-void canvas_clear(argb_t* wnd);
-
-/**
  * Draw image on canvas.
  * @param alpha flag to use alpha blending
  * @param img buffer with image data
  * @param wnd window buffer
  */
-void canvas_draw_image(bool aplha, const argb_t* img, argb_t* wnd);
+void canvas_draw(bool aplha, const argb_t* img, argb_t* wnd);
 
 /**
  * Print information text block.

@@ -264,15 +264,43 @@ void canvas_swap_image_size(void)
     fix_viewport();
 }
 
-void canvas_clear(argb_t* wnd)
+/**
+ * Clear canvas window.
+ * @param wnd window buffer
+ * @param vp destination viewport
+ */
+static void clear_window(argb_t* wnd, const struct rect* vp)
 {
     if (ctx.window_bkg == COLOR_TRANSPARENT) {
         memset(wnd, 0, ctx.window.width * ctx.window.height * sizeof(argb_t));
     } else {
-        for (size_t y = 0; y < ctx.window.height; ++y) {
-            argb_t* line = &wnd[y * ctx.window.width];
+        const argb_t color = ARGB_SET_A(0xff) | ctx.window_bkg;
+        if (vp->height < ctx.window.height) {
+            const size_t stride = ctx.window.width * sizeof(argb_t);
+            argb_t* template = wnd;
             for (size_t x = 0; x < ctx.window.width; ++x) {
-                line[x] = ARGB_SET_A(0xff) | ctx.window_bkg;
+                template[x] = color;
+            }
+            for (size_t y = 1; y < (size_t)vp->y; ++y) {
+                memcpy(&wnd[y * ctx.window.width], template, stride);
+            }
+            for (size_t y = vp->y + vp->height; y < ctx.window.height; ++y) {
+                memcpy(&wnd[y * ctx.window.width], template, stride);
+            }
+        }
+        if (vp->width < ctx.window.width) {
+            const size_t width = vp->x * sizeof(argb_t);
+            const size_t last_line = vp->y + vp->height;
+            const size_t right_offset = vp->x + vp->width;
+            argb_t* template = &wnd[vp->y * ctx.window.width];
+            for (size_t x = 0; x < (size_t)vp->x; ++x) {
+                template[x] = color;
+            }
+            memcpy(&template[right_offset], template, width);
+            for (size_t y = vp->y + 1; y < last_line; ++y) {
+                argb_t* line = &wnd[y * ctx.window.width];
+                memcpy(line, template, width);
+                memcpy(&line[right_offset], template, width);
             }
         }
     }
@@ -395,7 +423,30 @@ static void canvas_draw_bicubic(const struct rect* vp, const argb_t* img,
     }
 }
 
-void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
+/**
+ * Draw image on canvas (nearest).
+ * @param vp destination viewport
+ * @param img buffer with image data
+ * @param wnd window buffer
+ */
+static void canvas_draw_nearest(const struct rect* vp, const argb_t* img,
+                                argb_t* wnd)
+{
+    const size_t img_y = vp->y - ctx.image.y;
+    const size_t img_x = vp->x - ctx.image.x;
+
+    for (size_t y = 0; y < vp->height; ++y) {
+        argb_t* wnd_line = &wnd[(vp->y + y) * ctx.window.width + vp->x];
+        const size_t nearest_y = (float)(y + img_y) / ctx.scale;
+
+        for (size_t x = 0; x < vp->width; ++x) {
+            const size_t nearest_x = (float)(x + img_x) / ctx.scale;
+            wnd_line[x] = img[nearest_y * ctx.image.width + nearest_x];
+        }
+    }
+}
+
+void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
 {
     const ssize_t scaled_x = ctx.image.x + ctx.scale * ctx.image.width;
     const ssize_t scaled_y = ctx.image.y + ctx.scale * ctx.image.height;
@@ -409,21 +460,12 @@ void canvas_draw_image(bool alpha, const argb_t* img, argb_t* wnd)
                                    .width = pos_right - pos_left,
                                    .height = pos_bottom - pos_top };
 
+    clear_window(wnd, &viewport);
+
     if (ctx.antialiasing) {
         canvas_draw_bicubic(&viewport, img, wnd);
     } else {
-        for (size_t y = 0; y < viewport.height; ++y) {
-            argb_t* wnd_line =
-                &wnd[(viewport.y + y) * ctx.window.width + viewport.x];
-            const size_t img_y =
-                (float)(y + viewport.y - ctx.image.y) / ctx.scale;
-            for (size_t x = 0; x < viewport.width; ++x) {
-                const size_t img_x =
-                    (float)(x + viewport.x - ctx.image.x) / ctx.scale;
-                argb_t fg = img[img_y * ctx.image.width + img_x];
-                wnd_line[x] = fg;
-            }
-        }
+        canvas_draw_nearest(&viewport, img, wnd);
     }
 
     if (alpha) {

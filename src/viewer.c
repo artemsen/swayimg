@@ -306,9 +306,8 @@ void viewer_on_redraw(argb_t* window)
 {
     const struct image_entry entry = image_list_current();
 
-    canvas_clear(window);
-    canvas_draw_image(entry.image->alpha, entry.image->frames[ctx.frame].data,
-                      window);
+    canvas_draw(entry.image->alpha, entry.image->frames[ctx.frame].data,
+                window);
 
     info_update(ctx.frame);
     for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
