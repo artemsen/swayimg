@@ -90,6 +90,8 @@ static const struct key_binding default_bindings[] = {
     { .key = VKEY_SCROLL_RIGHT, .action = kb_step_left,  .params = "5" },
     { .key = VKEY_SCROLL_UP,    .action = kb_step_down,  .params = "5" },
     { .key = VKEY_SCROLL_DOWN,  .action = kb_step_up,    .params = "5" },
+    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "+10" },
+    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "-10" },
 };
 // clang-format on
 
