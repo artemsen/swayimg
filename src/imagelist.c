@@ -61,7 +61,7 @@ static struct image_list ctx = {
     .order = order_alpha,
     .loop = true,
     .recursive = false,
-    .all_files = false,
+    .all_files = true,
 #ifdef HAVE_INOTIFY
     .notify = -1,
     .watch = -1,

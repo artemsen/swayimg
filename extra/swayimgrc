@@ -51,7 +51,7 @@ loop = yes
 # Read directories recursively (yes/no)
 recursive = no
 # Open all files in the start directory (yes/no)
-all = no
+all = yes
 
 ################################################################################
 # Font configuration
