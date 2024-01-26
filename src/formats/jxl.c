@@ -115,7 +115,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     image_set_format(ctx, "JPEG XL %ubpp",
                      info.bits_per_sample * info.num_color_channels +
                          info.alpha_bits);
-    ctx->alpha = true;
+    ctx->alpha = info.alpha_bits != 0;
 
     JxlDecoderDestroy(jxl);
     return ldr_success;

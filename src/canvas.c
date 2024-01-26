@@ -312,8 +312,7 @@ static void clear_window(argb_t* wnd, const struct rect* vp)
  * @param img buffer with image data
  * @param wnd window buffer
  */
-static void canvas_draw_bicubic(const struct rect* vp, const argb_t* img,
-                                argb_t* wnd)
+static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd)
 {
     size_t state_zero_x = 1;
     size_t state_zero_y = 1;
@@ -429,8 +428,7 @@ static void canvas_draw_bicubic(const struct rect* vp, const argb_t* img,
  * @param img buffer with image data
  * @param wnd window buffer
  */
-static void canvas_draw_nearest(const struct rect* vp, const argb_t* img,
-                                argb_t* wnd)
+static void draw_nearest(const struct rect* vp, const argb_t* img, argb_t* wnd)
 {
     const size_t img_y = vp->y - ctx.image.y;
     const size_t img_x = vp->x - ctx.image.x;
@@ -446,6 +444,44 @@ static void canvas_draw_nearest(const struct rect* vp, const argb_t* img,
     }
 }
 
+/**
+ * Alpha blending.
+ * @param vp destination viewport
+ * @param wnd window buffer
+ */
+static void alpha_blend(const struct rect* vp, argb_t* wnd)
+{
+    const size_t grid_sz = GRID_STEP * ctx.wnd_scale;
+    const size_t max_x = vp->x + vp->width;
+    const size_t max_y = vp->y + vp->height;
+
+    for (size_t y = vp->y; y < max_y; ++y) {
+        argb_t* wnd_line = &wnd[y * ctx.window.width];
+
+        for (size_t x = vp->x; x < max_x; ++x) {
+            const argb_t fg = wnd_line[x];
+            const uint8_t alpha = ARGB_GET_A(fg);
+            uint8_t target;
+            argb_t bg;
+
+            if (ctx.image_bkg == COLOR_TRANSPARENT) {
+                bg = 0;
+                target = alpha;
+            } else if (ctx.image_bkg == BACKGROUND_GRID) {
+                const bool shift = (y / grid_sz) % 2;
+                const size_t tail = x / grid_sz;
+                bg = (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+                target = 0xff;
+            } else {
+                bg = ctx.image_bkg;
+                target = 0xff;
+            }
+
+            wnd_line[x] = ARGB_ALPHA_BLEND(alpha, target, bg, fg);
+        }
+    }
+}
+
 void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
 {
     const ssize_t scaled_x = ctx.image.x + ctx.scale * ctx.image.width;
@@ -454,6 +490,7 @@ void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
     const ssize_t pos_top = max(0, ctx.image.y);
     const ssize_t pos_right = min((ssize_t)ctx.window.width, scaled_x);
     const ssize_t pos_bottom = min((ssize_t)ctx.window.height, scaled_y);
+
     // intersection between window and image
     const struct rect viewport = { .x = pos_left,
                                    .y = pos_top,
@@ -463,42 +500,13 @@ void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
     clear_window(wnd, &viewport);
 
     if (ctx.antialiasing) {
-        canvas_draw_bicubic(&viewport, img, wnd);
+        draw_bicubic(&viewport, img, wnd);
     } else {
-        canvas_draw_nearest(&viewport, img, wnd);
+        draw_nearest(&viewport, img, wnd);
     }
 
     if (alpha) {
-        for (size_t y = 0; y < viewport.height; ++y) {
-            argb_t* wnd_line =
-                &wnd[(viewport.y + y) * ctx.window.width + viewport.x];
-            for (size_t x = 0; x < viewport.width; ++x) {
-                argb_t fg;
-                fg = wnd_line[x];
-
-                // alpha blending
-                const uint8_t alpha = ARGB_GET_A(fg);
-                uint8_t alpha_set;
-                argb_t bg;
-
-                if (ctx.image_bkg == COLOR_TRANSPARENT) {
-                    bg = 0;
-                    alpha_set = alpha;
-                } else if (ctx.image_bkg == BACKGROUND_GRID) {
-                    const bool shift = (y / (GRID_STEP * ctx.wnd_scale)) % 2;
-                    const size_t tail = x / (GRID_STEP * ctx.wnd_scale);
-                    const argb_t grid =
-                        (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
-                    bg = grid;
-                    alpha_set = 0xff;
-                } else {
-                    bg = ctx.image_bkg;
-                    alpha_set = 0xff;
-                }
-
-                wnd_line[x] = ARGB_ALPHA_BLEND(alpha, alpha_set, bg, fg);
-            }
-        }
+        alpha_blend(&viewport, wnd);
     }
 }
 
