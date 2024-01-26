@@ -103,10 +103,6 @@ Left = step_left 10
 Right = step_right 10
 Up = step_up 10
 Down = step_down 10
-ScrollLeft = step_right 5
-ScrollRight = step_left 5
-ScrollUp = step_down 5
-ScrollDown = step_up 5
 equal = zoom +10
 plus = zoom +10
 minus = zoom -10
@@ -126,5 +122,14 @@ i = info
 e = exec echo "Image: %"
 Escape = exit
 q = exit
+
+################################################################################
+# Mouse / touchpad configuration, same format as in [keys]
+################################################################################
+[mouse]
+ScrollLeft = step_right 5
+ScrollRight = step_left 5
+ScrollUp = step_down 5
+ScrollDown = step_up 5
 
 # vim: filetype=dosini

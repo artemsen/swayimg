@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Section name in the config file
-#define CONFIG_SECTION "keys"
+// Section names in the config file
+#define CONFIG_SECTION_KEYS  "keys"
+#define CONFIG_SECTION_MOUSE "mouse"
 
 /** Action names. */
 static const char* action_names[] = {
@@ -65,10 +66,6 @@ static const struct key_binding default_bindings[] = {
     { .key = XKB_KEY_Right, .action = kb_step_right },
     { .key = XKB_KEY_Up, .action = kb_step_up },
     { .key = XKB_KEY_Down, .action = kb_step_down },
-    { .key = VKEY_SCROLL_LEFT, .action = kb_step_right, .params = "5" },
-    { .key = VKEY_SCROLL_RIGHT, .action = kb_step_left, .params = "5" },
-    { .key = VKEY_SCROLL_UP, .action = kb_step_down, .params = "5" },
-    { .key = VKEY_SCROLL_DOWN, .action = kb_step_up, .params = "5" },
     { .key = XKB_KEY_equal, .action = kb_zoom, .params = "+10" },
     { .key = XKB_KEY_plus, .action = kb_zoom, .params = "+10" },
     { .key = XKB_KEY_minus, .action = kb_zoom, .params = "-10" },
@@ -88,6 +85,10 @@ static const struct key_binding default_bindings[] = {
     { .key = XKB_KEY_e, .action = kb_exec, .params = "echo \"Image: %\"" },
     { .key = XKB_KEY_Escape, .action = kb_exit },
     { .key = XKB_KEY_q, .action = kb_exit },
+    { .key = VKEY_SCROLL_LEFT, .action = kb_step_right, .params = "5" },
+    { .key = VKEY_SCROLL_RIGHT, .action = kb_step_left, .params = "5" },
+    { .key = VKEY_SCROLL_UP, .action = kb_step_down, .params = "5" },
+    { .key = VKEY_SCROLL_DOWN, .action = kb_step_up, .params = "5" },
 };
 
 // Names of virtual keys
@@ -253,7 +254,8 @@ void keybind_init(void)
     }
 
     // register configuration loader
-    config_add_loader(CONFIG_SECTION, load_config);
+    config_add_loader(CONFIG_SECTION_KEYS, load_config);
+    config_add_loader(CONFIG_SECTION_MOUSE, load_config);
 }
 
 void keybind_free(void)
