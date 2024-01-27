@@ -96,10 +96,10 @@ static bool lazy_load(void)
         rc = search_font_file(ctx.name, file, sizeof(file)) &&
             FT_Init_FreeType(&ctx.lib) == 0 &&
             FT_New_Face(ctx.lib, file, 0, &ctx.face) == 0;
-    }
-    if (rc) {
-        const FT_F26Dot6 size = ctx.size * ctx.scale * 64;
-        FT_Set_Char_Size(ctx.face, size, 0, 96, 0);
+        if (rc) {
+            const FT_F26Dot6 size = ctx.size * ctx.scale * 64;
+            FT_Set_Char_Size(ctx.face, size, 0, 96, 0);
+        }
     }
 
     return rc;
@@ -215,6 +215,9 @@ size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
                   const struct point* pos, const wchar_t* text)
 {
     size_t width = 0;
+    const size_t tracking = ctx.size / GLYPH_GW_REL;
+    const size_t space_width = font_height() / SPACE_WH_REL;
+    const size_t shadow_shift = ctx.size / 10;
 
     if (!text || !lazy_load()) {
         return 0;
@@ -222,18 +225,16 @@ size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
 
     while (*text) {
         if (*text == L' ') {
-            width += font_height() / SPACE_WH_REL;
+            width += space_width;
         } else if (FT_Load_Char(ctx.face, *text, FT_LOAD_RENDER) == 0) {
-            const size_t glyph_width =
-                ctx.face->glyph->bitmap.width + ctx.size / GLYPH_GW_REL;
+            const size_t glyph_width = ctx.face->glyph->bitmap.width + tracking;
             if (wnd_buf && wnd_size && pos) {
+                const ssize_t x = pos->x + width;
                 if (ctx.shadow != NO_SHADOW) {
-                    const size_t shift = ctx.size / 10;
-                    draw_glyph(wnd_buf, wnd_size, pos->x + width + shift,
-                               pos->y + shift, ctx.shadow);
+                    draw_glyph(wnd_buf, wnd_size, x + shadow_shift,
+                               pos->y + shadow_shift, ctx.shadow);
                 }
-                draw_glyph(wnd_buf, wnd_size, pos->x + width, pos->y,
-                           ctx.color);
+                draw_glyph(wnd_buf, wnd_size, x, pos->y, ctx.color);
             }
             width += glyph_width;
         }

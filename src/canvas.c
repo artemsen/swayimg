@@ -268,42 +268,105 @@ void canvas_swap_image_size(void)
  * Clear canvas window.
  * @param wnd window buffer
  * @param vp destination viewport
+ * @param alpha flag to use alpha background
  */
-static void clear_window(argb_t* wnd, const struct rect* vp)
+static void clear_window(argb_t* wnd, const struct rect* vp, bool alpha)
 {
-    if (ctx.window_bkg == COLOR_TRANSPARENT) {
-        memset(wnd, 0, ctx.window.width * ctx.window.height * sizeof(argb_t));
-    } else {
-        const argb_t color = ARGB_SET_A(0xff) | ctx.window_bkg;
-        if (vp->height < ctx.window.height) {
-            const size_t stride = ctx.window.width * sizeof(argb_t);
-            argb_t* template = wnd;
-            for (size_t x = 0; x < ctx.window.width; ++x) {
-                template[x] = color;
-            }
-            for (size_t y = 1; y < (size_t)vp->y; ++y) {
-                memcpy(&wnd[y * ctx.window.width], template, stride);
-            }
-            for (size_t y = vp->y + vp->height; y < ctx.window.height; ++y) {
-                memcpy(&wnd[y * ctx.window.width], template, stride);
-            }
+    // clear window background
+    const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
+                                  ? 0
+                                  : ARGB_SET_A(0xff) | ctx.window_bkg);
+    if (vp->height < ctx.window.height) {
+        const size_t stride = ctx.window.width * sizeof(argb_t);
+        argb_t* template = wnd;
+        for (size_t x = 0; x < ctx.window.width; ++x) {
+            template[x] = wnd_color;
         }
-        if (vp->width < ctx.window.width) {
-            const size_t width = vp->x * sizeof(argb_t);
-            const size_t last_line = vp->y + vp->height;
-            const size_t right_offset = vp->x + vp->width;
-            argb_t* template = &wnd[vp->y * ctx.window.width];
-            for (size_t x = 0; x < (size_t)vp->x; ++x) {
+        for (size_t y = 1; y < (size_t)vp->y; ++y) {
+            memcpy(&wnd[y * ctx.window.width], template, stride);
+        }
+        for (size_t y = vp->y + vp->height; y < ctx.window.height; ++y) {
+            memcpy(&wnd[y * ctx.window.width], template, stride);
+        }
+    }
+    if (vp->width < ctx.window.width) {
+        const size_t stride = vp->x * sizeof(argb_t);
+        const size_t last_line = vp->y + vp->height;
+        const size_t right_offset = vp->x + vp->width;
+        argb_t* template = &wnd[vp->y * ctx.window.width];
+        for (size_t x = 0; x < (size_t)vp->x; ++x) {
+            template[x] = wnd_color;
+        }
+        memcpy(&template[right_offset], template, stride);
+        for (size_t y = vp->y + 1; y < last_line; ++y) {
+            argb_t* line = &wnd[y * ctx.window.width];
+            memcpy(line, template, stride);
+            memcpy(&line[right_offset], template, stride);
+        }
+    }
+
+    if (alpha) {
+        // clear image background
+        const size_t stride = vp->width * sizeof(argb_t);
+
+        if (ctx.image_bkg == BACKGROUND_GRID) {
+            const size_t grid_sz = GRID_STEP * ctx.wnd_scale;
+            argb_t* templates[] = {
+                &wnd[vp->y * ctx.window.width + vp->x],
+                &wnd[(vp->y + grid_sz) * ctx.window.width + vp->x]
+            };
+            for (size_t y = 0; y < vp->height; ++y) {
+                const size_t shift = (y / grid_sz) % 2;
+                argb_t* wnd_line = &wnd[(y + vp->y) * ctx.window.width + vp->x];
+                if (wnd_line == templates[0] || wnd_line == templates[1]) {
+                    // create template line
+                    for (size_t x = 0; x < vp->width; ++x) {
+                        const size_t tail = x / grid_sz;
+                        wnd_line[x] =
+                            (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
+                    }
+                } else {
+                    // put template line
+                    memcpy(wnd_line, templates[shift], stride);
+                }
+            }
+        } else {
+            argb_t* template = &wnd[vp->y * ctx.window.width + vp->x];
+            const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
+                                      ? wnd_color
+                                      : ARGB_SET_A(0xff) | ctx.image_bkg);
+            for (size_t x = 0; x < vp->width; ++x) {
                 template[x] = color;
             }
-            memcpy(&template[right_offset], template, width);
-            for (size_t y = vp->y + 1; y < last_line; ++y) {
-                argb_t* line = &wnd[y * ctx.window.width];
-                memcpy(line, template, width);
-                memcpy(&line[right_offset], template, width);
+            for (size_t y = 1; y < vp->height; ++y) {
+                memcpy(&wnd[(vp->y + y) * ctx.window.width + vp->x], template,
+                       stride);
             }
         }
     }
+}
+
+/**
+ * Alpha blending.
+ * @param img color of image's pixel
+ * @param wnd pointer to window buffer to put puxel
+ */
+static inline void alpha_blend(argb_t img, argb_t* wnd)
+{
+    const uint8_t ai = ARGB_GET_A(img);
+
+    if (ai != 0xff) {
+        const argb_t wp = *wnd;
+        const uint8_t aw = ARGB_GET_A(wp);
+        const uint8_t target_alpha = max(ai, aw);
+        const argb_t inv = 256 - ai;
+        img = ARGB_SET_A(target_alpha) |
+            ARGB_SET_R((ai * ARGB_GET_R(img) + inv * ARGB_GET_R(wp)) >> 8) |
+            ARGB_SET_G((ai * ARGB_GET_G(img) + inv * ARGB_GET_G(wp)) >> 8) |
+            ARGB_SET_B((ai * ARGB_GET_B(img) + inv * ARGB_GET_B(wp)) >> 8);
+    }
+
+    *wnd = img;
 }
 
 /**
@@ -311,8 +374,10 @@ static void clear_window(argb_t* wnd, const struct rect* vp)
  * @param vp destination viewport
  * @param img buffer with image data
  * @param wnd window buffer
+ * @param alpha flag to use alpha blending
  */
-static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd)
+static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd,
+                         bool alpha)
 {
     size_t state_zero_x = 1;
     size_t state_zero_y = 1;
@@ -417,7 +482,11 @@ static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd)
                 fg |= (color << (pc * 8));
             }
 
-            wnd_line[x] = fg;
+            if (alpha) {
+                alpha_blend(fg, &wnd_line[x]);
+            } else {
+                wnd_line[x] = ARGB_SET_A(0xff) | fg;
+            }
         }
     }
 }
@@ -427,57 +496,27 @@ static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd)
  * @param vp destination viewport
  * @param img buffer with image data
  * @param wnd window buffer
+ * @param alpha flag to use alpha blending
  */
-static void draw_nearest(const struct rect* vp, const argb_t* img, argb_t* wnd)
+static void draw_nearest(const struct rect* vp, const argb_t* img, argb_t* wnd,
+                         bool alpha)
 {
-    const size_t img_y = vp->y - ctx.image.y;
-    const size_t img_x = vp->x - ctx.image.x;
+    const size_t delta_x = vp->x - ctx.image.x;
+    const size_t delta_y = vp->y - ctx.image.y;
 
     for (size_t y = 0; y < vp->height; ++y) {
         argb_t* wnd_line = &wnd[(vp->y + y) * ctx.window.width + vp->x];
-        const size_t nearest_y = (float)(y + img_y) / ctx.scale;
+        const size_t img_y = (float)(y + delta_y) / ctx.scale;
 
         for (size_t x = 0; x < vp->width; ++x) {
-            const size_t nearest_x = (float)(x + img_x) / ctx.scale;
-            wnd_line[x] = img[nearest_y * ctx.image.width + nearest_x];
-        }
-    }
-}
+            const size_t img_x = (float)(x + delta_x) / ctx.scale;
+            const argb_t img_pixel = img[img_y * ctx.image.width + img_x];
 
-/**
- * Alpha blending.
- * @param vp destination viewport
- * @param wnd window buffer
- */
-static void alpha_blend(const struct rect* vp, argb_t* wnd)
-{
-    const size_t grid_sz = GRID_STEP * ctx.wnd_scale;
-    const size_t max_x = vp->x + vp->width;
-    const size_t max_y = vp->y + vp->height;
-
-    for (size_t y = vp->y; y < max_y; ++y) {
-        argb_t* wnd_line = &wnd[y * ctx.window.width];
-
-        for (size_t x = vp->x; x < max_x; ++x) {
-            const argb_t fg = wnd_line[x];
-            const uint8_t alpha = ARGB_GET_A(fg);
-            uint8_t target;
-            argb_t bg;
-
-            if (ctx.image_bkg == COLOR_TRANSPARENT) {
-                bg = 0;
-                target = alpha;
-            } else if (ctx.image_bkg == BACKGROUND_GRID) {
-                const bool shift = (y / grid_sz) % 2;
-                const size_t tail = x / grid_sz;
-                bg = (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
-                target = 0xff;
+            if (alpha) {
+                alpha_blend(img_pixel, &wnd_line[x]);
             } else {
-                bg = ctx.image_bkg;
-                target = 0xff;
+                wnd_line[x] = ARGB_SET_A(0xff) | img_pixel;
             }
-
-            wnd_line[x] = ARGB_ALPHA_BLEND(alpha, target, bg, fg);
         }
     }
 }
@@ -497,16 +536,12 @@ void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
                                    .width = pos_right - pos_left,
                                    .height = pos_bottom - pos_top };
 
-    clear_window(wnd, &viewport);
+    clear_window(wnd, &viewport, alpha);
 
     if (ctx.antialiasing) {
-        draw_bicubic(&viewport, img, wnd);
+        draw_bicubic(&viewport, img, wnd, alpha);
     } else {
-        draw_nearest(&viewport, img, wnd);
-    }
-
-    if (alpha) {
-        alpha_blend(&viewport, wnd);
+        draw_nearest(&viewport, img, wnd, alpha);
     }
 }
 
