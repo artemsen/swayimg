@@ -107,38 +107,36 @@ static bool lazy_load(void)
 
 /**
  * Draw glyph on window buffer.
- * @param wnd_buf window buffer
- * @param wnd_size window buffer size
+ * @param pm destination pixmap
  * @param x,y top-left coordinates of the glyph
  * @param color color of the font
  */
-static void draw_glyph(argb_t* wnd_buf, const struct size* wnd_size, ssize_t x,
-                       ssize_t y, argb_t color)
+static void draw_glyph(struct pixmap* pm, size_t x, size_t y, argb_t color)
 {
     const FT_GlyphSlot glyph = ctx.face->glyph;
     const FT_Bitmap* bitmap = &glyph->bitmap;
     const size_t fheight = font_height();
 
-    for (size_t bmp_y = 0; bmp_y < bitmap->rows; ++bmp_y) {
-        argb_t* wnd_line;
+    for (size_t src_y = 0; src_y < bitmap->rows; ++src_y) {
+        argb_t* dst_line;
         const uint8_t* glyph_line;
-        const size_t wnd_y = y + bmp_y + fheight - glyph->bitmap_top;
+        const size_t dst_y = y + src_y + fheight - glyph->bitmap_top;
 
-        if (wnd_y >= wnd_size->height) {
+        if (dst_y >= pm->height) {
             return; // out of window
         }
 
-        wnd_line = &wnd_buf[wnd_y * wnd_size->width];
-        glyph_line = &bitmap->buffer[bmp_y * bitmap->width];
+        dst_line = &pm->data[dst_y * pm->width];
+        glyph_line = &bitmap->buffer[src_y * bitmap->width];
 
-        for (size_t bmp_x = 0; bmp_x < bitmap->width; ++bmp_x) {
-            const uint8_t alpha = glyph_line[bmp_x];
-            const size_t wnd_x = x + glyph->bitmap_left + bmp_x;
-            if (wnd_x < wnd_size->width && alpha) {
-                argb_t* wnd_pixel = &wnd_line[wnd_x];
-                const argb_t bg = *wnd_pixel;
+        for (size_t src_x = 0; src_x < bitmap->width; ++src_x) {
+            const uint8_t alpha = glyph_line[src_x];
+            const size_t dst_x = x + glyph->bitmap_left + src_x;
+            if (dst_x < pm->width && alpha) {
+                argb_t* pixel = &dst_line[dst_x];
+                const argb_t bg = *pixel;
                 const argb_t fg = color;
-                *wnd_pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
+                *pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
             }
         }
     }
@@ -211,8 +209,7 @@ size_t font_height(void)
     return lazy_load() ? ctx.face->size->metrics.y_ppem + ctx.size / 4 : 0;
 }
 
-size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
-                  const struct point* pos, const wchar_t* text)
+size_t font_print(struct pixmap* pm, size_t x, size_t y, const wchar_t* text)
 {
     size_t width = 0;
     const size_t tracking = ctx.size / GLYPH_GW_REL;
@@ -228,13 +225,13 @@ size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
             width += space_width;
         } else if (FT_Load_Char(ctx.face, *text, FT_LOAD_RENDER) == 0) {
             const size_t glyph_width = ctx.face->glyph->bitmap.width + tracking;
-            if (wnd_buf && wnd_size && pos) {
-                const ssize_t x = pos->x + width;
+            if (pm) {
+                const size_t letter_x = x + width;
                 if (ctx.shadow != NO_SHADOW) {
-                    draw_glyph(wnd_buf, wnd_size, x + shadow_shift,
-                               pos->y + shadow_shift, ctx.shadow);
+                    draw_glyph(pm, letter_x + shadow_shift, y + shadow_shift,
+                               ctx.shadow);
                 }
-                draw_glyph(wnd_buf, wnd_size, x, pos->y, ctx.color);
+                draw_glyph(pm, letter_x, y, ctx.color);
             }
             width += glyph_width;
         }

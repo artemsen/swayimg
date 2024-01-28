@@ -44,7 +44,7 @@ void canvas_swap_image_size(void);
  * @param img pixel buffer with image to draw
  * @param wnd window buffer
  */
-void canvas_draw(bool aplha, const struct pixmap* img, argb_t* wnd);
+void canvas_draw(bool aplha, const struct pixmap* img, struct pixmap* wnd);
 
 /**
  * Print information text block.
@@ -54,7 +54,7 @@ void canvas_draw(bool aplha, const struct pixmap* img, argb_t* wnd);
  * @param wnd window buffer
  */
 void canvas_print(const struct info_line* lines, size_t lines_num,
-                  enum info_position pos, argb_t* wnd);
+                  enum info_position pos, struct pixmap* wnd);
 
 /**
  * Print text block at the center of window.
@@ -62,7 +62,8 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
  * @param num total number of lines
  * @param wnd window buffer
  */
-void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd);
+void canvas_print_center(const wchar_t** lines, size_t lines_num,
+                         struct pixmap* wnd);
 
 /**
  * Move viewport.

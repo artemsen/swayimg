@@ -265,55 +265,52 @@ void canvas_swap_image_size(void)
     fix_viewport();
 }
 
-void canvas_draw(bool alpha, const struct pixmap* img, argb_t* wnd)
+void canvas_draw(bool alpha, const struct pixmap* img, struct pixmap* wnd)
 {
-    const ssize_t scaled_x = ctx.image.x + ctx.scale * ctx.image.width;
-    const ssize_t scaled_y = ctx.image.y + ctx.scale * ctx.image.height;
+    const ssize_t scaled_x = ctx.image.x + ctx.scale * img->width;
+    const ssize_t scaled_y = ctx.image.y + ctx.scale * img->height;
     const ssize_t wnd_x0 = max(0, ctx.image.x);
     const ssize_t wnd_y0 = max(0, ctx.image.y);
-    const ssize_t wnd_x1 = min((ssize_t)ctx.window.width, scaled_x);
-    const ssize_t wnd_y1 = min((ssize_t)ctx.window.height, scaled_y);
+    const ssize_t wnd_x1 = min((ssize_t)wnd->width, scaled_x);
+    const ssize_t wnd_y1 = min((ssize_t)wnd->height, scaled_y);
     const size_t width = wnd_x1 - wnd_x0;
     const size_t height = wnd_y1 - wnd_y0;
-
-    struct pixmap pm_wnd =
-        PIXMAP_ATTACH(wnd, ctx.window.width, ctx.window.height);
 
     // clear window background
     const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
                                   ? 0
                                   : ARGB_SET_A(0xff) | ctx.window_bkg);
-    if (height < pm_wnd.height) {
-        pixmap_fill(&pm_wnd, 0, 0, pm_wnd.width, wnd_y0, wnd_color);
-        pixmap_fill(&pm_wnd, 0, wnd_y1, pm_wnd.width, pm_wnd.height - wnd_y1,
+    if (height < wnd->height) {
+        pixmap_fill(wnd, 0, 0, wnd->width, wnd_y0, wnd_color);
+        pixmap_fill(wnd, 0, wnd_y1, wnd->width, wnd->height - wnd_y1,
                     wnd_color);
     }
-    if (width < pm_wnd.width) {
-        pixmap_fill(&pm_wnd, 0, wnd_y0, wnd_x0, height, wnd_color);
-        pixmap_fill(&pm_wnd, wnd_x1, wnd_y0, pm_wnd.width - wnd_x1, height,
+    if (width < wnd->width) {
+        pixmap_fill(wnd, 0, wnd_y0, wnd_x0, height, wnd_color);
+        pixmap_fill(wnd, wnd_x1, wnd_y0, wnd->width - wnd_x1, height,
                     wnd_color);
     }
 
     if (alpha) {
         // clear image background
         if (ctx.image_bkg == BACKGROUND_GRID) {
-            pixmap_grid(&pm_wnd, wnd_x0, wnd_y0, width, height,
+            pixmap_grid(wnd, wnd_x0, wnd_y0, width, height,
                         GRID_STEP * ctx.wnd_scale, GRID_COLOR1, GRID_COLOR2);
         } else {
             const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
                                       ? wnd_color
                                       : ARGB_SET_A(0xff) | ctx.image_bkg);
-            pixmap_fill(&pm_wnd, wnd_x0, wnd_y0, width, height, color);
+            pixmap_fill(wnd, wnd_x0, wnd_y0, width, height, color);
         }
     }
 
     // put image on window surface
-    pixmap_put(&pm_wnd, wnd_x0, wnd_y0, img, ctx.image.x, ctx.image.y,
-               ctx.scale, alpha, ctx.antialiasing);
+    pixmap_put(wnd, wnd_x0, wnd_y0, img, ctx.image.x, ctx.image.y, ctx.scale,
+               alpha, ctx.antialiasing);
 }
 
 void canvas_print(const struct info_line* lines, size_t lines_num,
-                  enum info_position pos, argb_t* wnd)
+                  enum info_position pos, struct pixmap* wnd)
 {
     size_t max_key_width = 0;
     const size_t height = font_height();
@@ -322,8 +319,8 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
     for (size_t i = 0; i < lines_num; ++i) {
         const wchar_t* key = lines[i].key;
         if (key && *key) {
-            const size_t width = font_print(NULL, NULL, NULL, key) +
-                font_print(NULL, NULL, NULL, L": ");
+            const size_t width =
+                font_print(NULL, 0, 0, key) + font_print(NULL, 0, 0, L": ");
             if (width > max_key_width) {
                 max_key_width = width;
             }
@@ -334,14 +331,14 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
     for (size_t i = 0; i < lines_num; ++i) {
         const wchar_t* key = lines[i].key;
         const wchar_t* val = lines[i].value;
-        size_t key_width = font_print(NULL, NULL, NULL, key);
-        const size_t val_width = font_print(NULL, NULL, NULL, val);
+        size_t key_width = font_print(NULL, 0, 0, key);
+        const size_t val_width = font_print(NULL, 0, 0, val);
 
         struct point pt_key = { 0, 0 };
         struct point pt_val = { 0, 0 };
 
         if (key_width) {
-            key_width += font_print(NULL, NULL, NULL, L": ");
+            key_width += font_print(NULL, 0, 0, L": ");
         }
 
         // calculate line position
@@ -391,21 +388,22 @@ void canvas_print(const struct info_line* lines, size_t lines_num,
         }
 
         if (key_width) {
-            pt_key.x += font_print(wnd, &ctx.window, &pt_key, key);
-            font_print(wnd, &ctx.window, &pt_key, L": ");
+            pt_key.x += font_print(wnd, pt_key.x, pt_key.y, key);
+            font_print(wnd, pt_key.x, pt_key.y, L": ");
         }
-        font_print(wnd, &ctx.window, &pt_val, val);
+        font_print(wnd, pt_val.x, pt_val.y, val);
     }
 }
 
-void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
+void canvas_print_center(const wchar_t** lines, size_t lines_num,
+                         struct pixmap* wnd)
 {
     const size_t height = font_height();
     const size_t row_max = (ctx.window.height - TEXT_PADDING * 2) / height;
     const size_t columns =
         (lines_num / row_max) + (lines_num % row_max ? 1 : 0);
     const size_t rows = (lines_num / columns) + (lines_num % columns ? 1 : 0);
-    const size_t col_space = font_print(NULL, NULL, NULL, L"  ");
+    const size_t col_space = font_print(NULL, 0, 0, L"  ");
     struct point top_left = { TEXT_PADDING, TEXT_PADDING };
     size_t total_width = 0;
 
@@ -418,7 +416,7 @@ void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
             if (index >= lines_num) {
                 break;
             }
-            width = font_print(NULL, NULL, NULL, lines[index]);
+            width = font_print(NULL, 0, 0, lines[index]);
             if (max_width < width) {
                 max_width = width;
             }
@@ -445,7 +443,7 @@ void canvas_print_center(const wchar_t** lines, size_t lines_num, argb_t* wnd)
             if (index >= lines_num) {
                 break;
             }
-            width = font_print(wnd, &ctx.window, &pt, lines[index]);
+            width = font_print(wnd, pt.x, pt.y, lines[index]);
             if (col_width < width) {
                 col_width = width;
             }

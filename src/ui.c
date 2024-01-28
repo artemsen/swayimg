@@ -839,7 +839,7 @@ void ui_stop(void)
 
 void ui_redraw(void)
 {
-    argb_t* wnd_data;
+    struct pixmap wnd = PIXMAP_ATTACH(NULL, ctx.wnd.width, ctx.wnd.height);
 
     if (!ctx.wnd.current) {
         return; // not yet initialized
@@ -853,8 +853,8 @@ void ui_redraw(void)
     }
 
     // draw to window buffer
-    wnd_data = wl_buffer_get_user_data(ctx.wnd.current);
-    viewer_on_redraw(wnd_data);
+    wnd.data = wl_buffer_get_user_data(ctx.wnd.current);
+    viewer_on_redraw(&wnd);
 
     // show window buffer
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);

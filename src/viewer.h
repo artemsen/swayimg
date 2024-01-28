@@ -28,9 +28,9 @@ void viewer_reset(void);
 
 /**
  * Redraw handler.
- * @param window pointer to window's pixel data
+ * @param window pixel map of window
  */
-void viewer_on_redraw(argb_t* window);
+void viewer_on_redraw(struct pixmap* window);
 
 /**
  * Window resize handler.

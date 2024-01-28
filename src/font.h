@@ -30,11 +30,9 @@ size_t font_height(void);
 
 /**
  * Print single line on window buffer.
- * @param wnd_buf window buffer
- * @param wnd_size window buffer size
- * @param pos top-left coordinates of text
+ * @param pm destination pixmap
+ * @param x,y top-left coordinates of text
  * @param text string to print
  * @return width of the line in pixels
  */
-size_t font_print(argb_t* wnd_buf, const struct size* wnd_size,
-                  const struct point* pos, const wchar_t* text);
+size_t font_print(struct pixmap* pm, size_t x, size_t y, const wchar_t* text);
