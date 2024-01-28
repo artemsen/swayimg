@@ -67,9 +67,9 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
     }
 
     if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
-        void* next = &ctx->frames[index + 1].pm.data;
-        memcpy(next, frame->pm.data,
-               frame->pm.width * frame->pm.height * sizeof(argb_t));
+        struct pixmap* next = &ctx->frames[index + 1].pm;
+        const size_t sz = next->width * next->height * sizeof(argb_t);
+        memcpy(next->data, frame->pm.data, sz);
     }
 
     if (ctl.DelayTime != 0) {
