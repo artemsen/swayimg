@@ -100,18 +100,18 @@ static int pnm_readint(struct pnm_iter* it, size_t digits)
 
 /**
  * Decode a plain/ASCII PNM file
- * @param f image frame to write data to
+ * @param pm pixel map to write data to
  * @param it image iterator
  * @param type type of PNM file
  * @param maxval maximum value for each sample
  * @return 0 on success, error code on failure
  */
-static int decode_plain(struct image_frame* f, struct pnm_iter* it,
+static int decode_plain(struct pixmap* pm, struct pnm_iter* it,
                         enum pnm_type type, int maxval)
 {
-    for (size_t y = 0; y < f->height; ++y) {
-        argb_t* dst = f->data + y * f->width;
-        for (size_t x = 0; x < f->width; ++x) {
+    for (size_t y = 0; y < pm->height; ++y) {
+        argb_t* dst = pm->data + y * pm->width;
+        for (size_t x = 0; x < pm->width; ++x) {
             argb_t pix = ARGB_SET_A(0xff);
             if (type == pnm_pbm) {
                 const int bit = pnm_readint(it, 1);
@@ -166,21 +166,22 @@ static int decode_plain(struct image_frame* f, struct pnm_iter* it,
  * @param maxval maximum value for each sample
  * @return 0 on success, error code on failure
  */
-static int decode_raw(struct image_frame* f, struct pnm_iter* it,
+static int decode_raw(struct pixmap* pm, struct pnm_iter* it,
                       enum pnm_type type, int maxval)
 {
     // PGM and PPM use bpc (bytes per channel) bytes for each channel depending
     // on the max, with 1 channel for PGM and 3 for PPM; PBM pads each row to
     // the nearest whole byte
     size_t bpc = maxval <= UINT8_MAX ? 1 : 2;
-    size_t rowsz = type == pnm_pbm ? div_ceil(f->width, 8)
-                                   : f->width * bpc * (type == pnm_pgm ? 1 : 3);
-    if (it->end < it->pos + f->height * rowsz)
+    size_t rowsz = type == pnm_pbm
+        ? div_ceil(pm->width, 8)
+        : pm->width * bpc * (type == pnm_pgm ? 1 : 3);
+    if (it->end < it->pos + pm->height * rowsz)
         return PNM_EEOF;
-    for (size_t y = 0; y < f->height; ++y) {
-        argb_t* dst = f->data + y * f->width;
+    for (size_t y = 0; y < pm->height; ++y) {
+        argb_t* dst = pm->data + y * pm->width;
         const uint8_t* src = it->pos + y * rowsz;
-        for (size_t x = 0; x < f->width; ++x) {
+        for (size_t x = 0; x < pm->width; ++x) {
             argb_t pix = ARGB_SET_A(0xff);
             if (type == pnm_pbm) {
                 const int bit = (src[x / 8] >> (7 - x % 8)) & 1;
@@ -294,12 +295,12 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
         }
         ++it.pos;
     }
-    if (!image_create_frame(ctx, width, height)) {
+    if (!image_allocate_frame(ctx, width, height)) {
         return ldr_fmterror;
     }
 
-    ret = plain ? decode_plain(ctx->frames, &it, type, maxval)
-                : decode_raw(ctx->frames, &it, type, maxval);
+    ret = plain ? decode_plain(&ctx->frames[0].pm, &it, type, maxval)
+                : decode_raw(&ctx->frames[0].pm, &it, type, maxval);
     if (ret < 0) {
         image_print_error(ctx, "%s", pnm_strerror(ret));
         image_free_frames(ctx);

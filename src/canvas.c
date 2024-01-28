@@ -265,7 +265,7 @@ void canvas_swap_image_size(void)
     fix_viewport();
 }
 
-void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
+void canvas_draw(bool alpha, const struct pixmap* img, argb_t* wnd)
 {
     const ssize_t scaled_x = ctx.image.x + ctx.scale * ctx.image.width;
     const ssize_t scaled_y = ctx.image.y + ctx.scale * ctx.image.height;
@@ -278,8 +278,6 @@ void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
 
     struct pixmap pm_wnd =
         PIXMAP_ATTACH(wnd, ctx.window.width, ctx.window.height);
-    const struct pixmap pm_img =
-        PIXMAP_ATTACH((argb_t*)img, ctx.image.width, ctx.image.height);
 
     // clear window background
     const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
@@ -310,7 +308,7 @@ void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
     }
 
     // put image on window surface
-    pixmap_put(&pm_wnd, wnd_x0, wnd_y0, &pm_img, ctx.image.x, ctx.image.y,
+    pixmap_put(&pm_wnd, wnd_x0, wnd_y0, img, ctx.image.x, ctx.image.y,
                ctx.scale, alpha, ctx.antialiasing);
 }
 

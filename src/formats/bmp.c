@@ -48,7 +48,7 @@ struct __attribute__((__packed__)) bmp_file {
 // Bitmap info: BITMAPINFOHEADER
 struct __attribute__((__packed__)) bmp_info {
     uint32_t dib_size;
-    uint32_t width;
+    int32_t width;
     int32_t height;
     uint16_t planes;
     uint16_t bpp;
@@ -134,7 +134,7 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
                           const struct bmp_mask* mask, const uint8_t* buffer,
                           size_t buffer_sz)
 {
-    struct image_frame* frame = &ctx->frames[0];
+    struct pixmap* pm = &ctx->frames[0].pm;
     const bool default_mask = !mask ||
         (mask->red == 0 && mask->green == 0 && mask->blue == 0 &&
          mask->alpha == 0);
@@ -151,15 +151,15 @@ static bool decode_masked(struct image* ctx, const struct bmp_info* bmp,
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < frame->height * stride) {
+    if (buffer_sz < pm->height * stride) {
         image_print_error(ctx, "not enough bmp data");
         return false;
     }
 
-    for (size_t y = 0; y < frame->height; ++y) {
-        argb_t* dst = &frame->data[y * frame->width];
+    for (size_t y = 0; y < pm->height; ++y) {
+        argb_t* dst = &pm->data[y * pm->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < frame->width; ++x) {
+        for (size_t x = 0; x < pm->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             uint32_t m, r, g, b, a;
             if (bmp->bpp == 32) {
@@ -205,7 +205,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    struct image_frame* frame = &ctx->frames[0];
+    struct pixmap* pm = &ctx->frames[0].pm;
     size_t x = 0, y = 0;
     size_t buffer_pos = 0;
 
@@ -219,8 +219,8 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                 ++y;
             } else if (rle2 == RLE_ESC_EOF) {
                 // remove alpha channel
-                argb_t* ptr = frame->data;
-                while (ptr < frame->data + frame->width * frame->height) {
+                argb_t* ptr = pm->data;
+                while (ptr < pm->data + pm->width * pm->height) {
                     *ptr |= ARGB_SET_A(0xff);
                     ++ptr;
                 }
@@ -240,7 +240,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                     image_print_error(ctx, "unexpected end of RLE stream");
                     return false;
                 }
-                if (x + rle2 > frame->width || y >= frame->height) {
+                if (x + rle2 > pm->width || y >= pm->height) {
                     image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
@@ -261,7 +261,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                         image_print_error(ctx, "color out of bmp palette");
                         return false;
                     }
-                    frame->data[y * bmp->width + x] = palette->table[index];
+                    pm->data[y * bmp->width + x] = palette->table[index];
                     ++x;
                 }
                 if ((bmp->compression == BI_RLE8 && rle2 & 1) ||
@@ -278,12 +278,12 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                     image_print_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > frame->width || y >= frame->height) {
+                if (x + rle1 > pm->width || y >= pm->height) {
                     image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    frame->data[y * frame->width + x] = palette->table[rle2];
+                    pm->data[y * pm->width + x] = palette->table[rle2];
                     ++x;
                 }
             } else {
@@ -293,13 +293,12 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                     image_print_error(ctx, "color out of bmp palette");
                     return false;
                 }
-                if (x + rle1 > frame->width) {
+                if (x + rle1 > pm->width) {
                     image_print_error(ctx, "pixel position out of bmp image");
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
-                    frame->data[y * frame->width + x] =
-                        palette->table[index[i & 1]];
+                    pm->data[y * pm->width + x] = palette->table[index[i & 1]];
                     ++x;
                 }
             }
@@ -323,19 +322,19 @@ static bool decode_rgb(struct image* ctx, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    struct image_frame* frame = &ctx->frames[0];
+    struct pixmap* pm = &ctx->frames[0].pm;
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
-    if (buffer_sz < frame->height * stride) {
+    if (buffer_sz < pm->height * stride) {
         image_print_error(ctx, "not enough data for bitmap image");
         return false;
     }
 
-    for (size_t y = 0; y < frame->height; ++y) {
-        argb_t* dst = &frame->data[y * frame->width];
+    for (size_t y = 0; y < pm->height; ++y) {
+        argb_t* dst = &pm->data[y * pm->width];
         const uint8_t* src_y = buffer + y * stride;
-        for (size_t x = 0; x < frame->width; ++x) {
+        for (size_t x = 0; x < pm->width; ++x) {
             const uint8_t* src = src_y + x * (bmp->bpp / BITS_PER_BYTE);
             if (bmp->bpp == 32) {
                 dst[x] = ARGB_SET_A(0xff) | *(uint32_t*)src;
@@ -397,7 +396,7 @@ enum loader_status decode_bmp(struct image* ctx, const uint8_t* data,
         return ldr_fmterror;
     }
 
-    if (!image_create_frame(ctx, bmp->width, abs(bmp->height))) {
+    if (!image_allocate_frame(ctx, abs(bmp->width), abs(bmp->height))) {
         return ldr_fmterror;
     }
 

@@ -193,9 +193,8 @@ static void sway_setup(void)
         // fixup window size
         if (ui_get_width() == SIZE_FROM_PARENT ||
             ui_get_height() == SIZE_FROM_PARENT) {
-            const struct image_frame* frame =
-                image_list_current().image->frames;
-            ui_set_size(frame->width, frame->height);
+            const struct pixmap* pm = &image_list_current().image->frames[0].pm;
+            ui_set_size(pm->width, pm->height);
         }
     }
 }
@@ -235,8 +234,8 @@ int main(int argc, char* argv[])
     // set window size form the first image
     if (ui_get_width() == SIZE_FROM_IMAGE ||
         ui_get_height() == SIZE_FROM_IMAGE) {
-        const struct image_frame* frame = image_list_current().image->frames;
-        ui_set_size(frame->width, frame->height);
+        const struct pixmap* pm = &image_list_current().image->frames[0].pm;
+        ui_set_size(pm->width, pm->height);
     }
 
     sway_setup();

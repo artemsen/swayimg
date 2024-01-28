@@ -51,8 +51,8 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     for (int y = 0; y < desc->Height; ++y) {
         const uint8_t* raster = &img->RasterBits[y * desc->Width];
-        argb_t* pixel = frame->data + desc->Top * frame->width +
-            y * frame->width + desc->Left;
+        argb_t* pixel = frame->pm.data + desc->Top * frame->pm.width +
+            y * frame->pm.width + desc->Left;
 
         for (int x = 0; x < desc->Width; ++x) {
             const uint8_t color = raster[x];
@@ -67,9 +67,9 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
     }
 
     if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
-        struct image_frame* next = &ctx->frames[index + 1];
-        memcpy(next->data, frame->data,
-               frame->width * frame->height * sizeof(argb_t));
+        void* next = &ctx->frames[index + 1].pm.data;
+        memcpy(next, frame->pm.data,
+               frame->pm.width * frame->pm.height * sizeof(argb_t));
     }
 
     if (ctl.DelayTime != 0) {
@@ -116,11 +116,10 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
         goto fail;
     }
     for (size_t i = 0; i < ctx->num_frames; ++i) {
-        struct image_frame* frame = &ctx->frames[i];
-        if (!image_frame_allocate(frame, gif->SWidth, gif->SHeight)) {
+        struct pixmap* pm = &ctx->frames[i].pm;
+        if (!pixmap_create(pm, gif->SWidth, gif->SHeight)) {
             goto fail;
         }
-        memset(frame->data, 0, frame->width * frame->height * sizeof(argb_t));
     }
 
     // decode every frame

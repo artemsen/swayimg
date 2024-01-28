@@ -112,10 +112,10 @@ static void slideshow_ctl(bool enable)
 static void reset_state(void)
 {
     const struct image_entry entry = image_list_current();
-    const struct image_frame* frame = &entry.image->frames[0];
+    const struct pixmap* pm = &entry.image->frames[0].pm;
 
     ctx.frame = 0;
-    canvas_reset_image(frame->width, frame->height);
+    canvas_reset_image(pm->width, pm->height);
     ui_set_title(entry.image->file_name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
@@ -306,7 +306,7 @@ void viewer_on_redraw(argb_t* window)
 {
     const struct image_entry entry = image_list_current();
 
-    canvas_draw(entry.image->alpha, entry.image->frames[ctx.frame].data,
+    canvas_draw(entry.image->alpha, &entry.image->frames[ctx.frame].pm,
                 window);
 
     info_update(ctx.frame);

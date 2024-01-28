@@ -6,6 +6,9 @@
 
 #include "buildcfg.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+
 // Construct function name of loader
 #define LOADER_FUNCTION(name) decode_##name
 // Declaration of loader function
@@ -94,8 +97,7 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBGIF
     &LOADER_FUNCTION(gif),
 #endif
-    &LOADER_FUNCTION(bmp),
-    &LOADER_FUNCTION(pnm),
+    &LOADER_FUNCTION(bmp),  &LOADER_FUNCTION(pnm),
 #ifdef HAVE_LIBWEBP
     &LOADER_FUNCTION(webp),
 #endif
@@ -137,4 +139,19 @@ enum loader_status load_image(struct image* ctx, const uint8_t* data,
     }
 
     return status;
+}
+
+void image_print_error(const struct image* ctx, const char* fmt, ...)
+{
+    va_list args;
+
+    if (ctx) {
+        fprintf(stderr, "%s: ", ctx->file_name);
+    }
+
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+
+    fprintf(stderr, "\n");
 }

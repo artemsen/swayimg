@@ -58,17 +58,17 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
         uint8_t* buffer;
         int timestamp;
         struct image_frame* frame = &ctx->frames[i];
+        struct pixmap* pm = &frame->pm;
 
-        if (!image_frame_allocate(frame, webp_info.canvas_width,
-                                  webp_info.canvas_height)) {
+        if (!pixmap_create(pm, webp_info.canvas_width,
+                           webp_info.canvas_height)) {
             goto fail;
         }
         if (!WebPAnimDecoderGetNext(webp_dec, &buffer, &timestamp)) {
             image_print_error(ctx, "failed to decode webp frame");
             goto fail;
         }
-        memcpy(frame->data, buffer,
-               frame->width * frame->height * sizeof(argb_t));
+        memcpy(pm->data, buffer, pm->width * pm->height * sizeof(argb_t));
 
         if (ctx->num_frames > 1) {
             frame->duration = timestamp - prev_timestamp;

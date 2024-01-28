@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "pixmap.h"
 
 struct image_frame;
 struct image_info;
@@ -24,10 +24,8 @@ struct image {
 
 /** Image frame. */
 struct image_frame {
-    size_t width;    ///< Image width (px)
-    size_t height;   ///< Image height (px)
-    argb_t* data;    ///< Pointer to pixel data
-    size_t duration; ///< Frame duration in milliseconds (animation)
+    struct pixmap pm; ///< Frame data
+    size_t duration;  ///< Frame duration in milliseconds (animation)
 };
 
 /** Image meta info. */
@@ -99,13 +97,13 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
 
 /**
- * Create frame, allocate buffer and add frame to the image.
+ * Create sinlge frame, allocate buffer and add frame to the image.
  * @param width frame width in px
  * @param height frame height in px
- * @return pointer to the frame or NULL on errors
+ * @return pointer to the pixmap associated with the frame, or NULL on errors
  */
-struct image_frame* image_create_frame(struct image* ctx, size_t width,
-                                       size_t height);
+struct pixmap* image_allocate_frame(struct image* ctx, size_t width,
+                                    size_t height);
 
 /**
  * Create list of empty frames.
@@ -120,20 +118,3 @@ struct image_frame* image_create_frames(struct image* ctx, size_t num);
  * @param ctx image context
  */
 void image_free_frames(struct image* ctx);
-
-/**
- * Allocate buffer for frame.
- * @param frame pointer to the frame description
- * @param width frame width in px
- * @param height frame height in px
- * @return false if allocation failed
- */
-bool image_frame_allocate(struct image_frame* frame, size_t width,
-                          size_t height);
-/**
- * Print decoding problem description.
- * @param ctx image context
- * @param fmt text format
- */
-void image_print_error(const struct image* ctx, const char* fmt, ...)
-    __attribute__((format(printf, 2, 3)));

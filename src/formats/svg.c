@@ -64,7 +64,7 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     GError* err = NULL;
     cairo_surface_t* surface = NULL;
     cairo_t* cr = NULL;
-    struct image_frame* frame;
+    struct pixmap* pm;
     cairo_status_t status;
 
     if (!is_svg(data, size)) {
@@ -97,14 +97,14 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     }
 
     // allocate and bind buffer
-    frame = image_create_frame(ctx, vb_render.width, vb_render.height);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, vb_render.width, vb_render.height);
+    if (!pm) {
         goto fail;
     }
-    memset(frame->data, 0, frame->width * frame->height * sizeof(argb_t));
+    memset(pm->data, 0, pm->width * pm->height * sizeof(argb_t));
     surface = cairo_image_surface_create_for_data(
-        (uint8_t*)frame->data, CAIRO_FORMAT_ARGB32, frame->width, frame->height,
-        frame->width * sizeof(argb_t));
+        (uint8_t*)pm->data, CAIRO_FORMAT_ARGB32, pm->width, pm->height,
+        pm->width * sizeof(argb_t));
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
         const char* desc = cairo_status_to_string(status);

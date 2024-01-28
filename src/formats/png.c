@@ -58,19 +58,19 @@ static bool do_read_png_image(png_structp png, uint32_t* out, uint32_t width,
 // get a single png frame
 static bool decode_png_frame(struct image* ctx, png_structp png, png_infop info)
 {
-    struct image_frame* frame;
+    struct pixmap* pm;
     uint32_t width, height;
 
     width = png_get_image_width(png, info);
     height = png_get_image_height(png, info);
 
-    frame = image_create_frame(ctx, width, height);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, width, height);
+    if (!pm) {
         png_destroy_read_struct(&png, &info, NULL);
         return false;
     }
 
-    if (do_read_png_image(png, frame->data, width, height)) {
+    if (do_read_png_image(png, pm->data, width, height)) {
         return true;
     } else {
         image_free_frames(ctx);

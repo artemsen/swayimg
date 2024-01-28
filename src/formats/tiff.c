@@ -90,7 +90,7 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
 {
     TIFF* tiff;
     TIFFRGBAImage timg;
-    struct image_frame* frame;
+    struct pixmap* pm;
     char err[LIBTIFF_ERRMSG_SZ];
     struct mem_reader reader;
 
@@ -121,18 +121,18 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
         goto fail;
     }
 
-    frame = image_create_frame(ctx, timg.width, timg.height);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, timg.width, timg.height);
+    if (!pm) {
         goto fail;
     }
-    if (!TIFFRGBAImageGet(&timg, frame->data, timg.width, timg.height)) {
+    if (!TIFFRGBAImageGet(&timg, pm->data, timg.width, timg.height)) {
         image_print_error(ctx, "unable to decode tiff");
         goto fail;
     }
 
     // convert ABGR -> ARGB
-    for (size_t i = 0; i < frame->width * frame->height; ++i) {
-        frame->data[i] = ARGB_SET_ABGR(frame->data[i]);
+    for (size_t i = 0; i < pm->width * pm->height; ++i) {
+        pm->data[i] = ARGB_SET_ABGR(pm->data[i]);
     }
 
     if (timg.orientation == ORIENTATION_TOPLEFT) {

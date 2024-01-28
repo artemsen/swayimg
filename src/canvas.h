@@ -5,7 +5,7 @@
 #pragma once
 
 #include "info.h"
-#include "types.h"
+#include "pixmap.h"
 
 // Configuration parameters
 #define CANVAS_CFG_ANTIALIASING "antialiasing"
@@ -41,10 +41,10 @@ void canvas_swap_image_size(void);
 /**
  * Draw image on canvas.
  * @param alpha flag to use alpha blending
- * @param img buffer with image data
+ * @param img pixel buffer with image to draw
  * @param wnd window buffer
  */
-void canvas_draw(bool aplha, const argb_t* img, argb_t* wnd);
+void canvas_draw(bool aplha, const struct pixmap* img, argb_t* wnd);
 
 /**
  * Print information text block.

@@ -37,7 +37,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
                                size_t size)
 {
-    struct image_frame* frame;
+    struct pixmap* pm;
     struct jpeg_decompress_struct jpg;
     struct jpg_error_manager err;
 
@@ -64,15 +64,14 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    frame = image_create_frame(ctx, jpg.output_width, jpg.output_height);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, jpg.output_width, jpg.output_height);
+    if (!pm) {
         jpeg_destroy_decompress(&jpg);
         return ldr_fmterror;
     }
 
     while (jpg.output_scanline < jpg.output_height) {
-        uint8_t* line =
-            (uint8_t*)&frame->data[jpg.output_scanline * frame->width];
+        uint8_t* line = (uint8_t*)&pm->data[jpg.output_scanline * pm->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
         // convert grayscale to argb

@@ -151,18 +151,17 @@ static argb_t decode_pixel(const exr_decode_pipeline_t* decoder,
 /**
  * Load scanlined EXR image.
  * @param ectx EXR context
- * @param frame destination image frame
+ * @param pm destination pixmap
  * @return result code
  */
-static exr_result_t load_scanlined(const exr_context_t ectx,
-                                   struct image_frame* frame)
+static exr_result_t load_scanlined(const exr_context_t ectx, struct pixmap* pm)
 {
     exr_result_t rc;
     int32_t scanlines;
     uint64_t chunk_size;
     uint8_t* buffer = NULL;
     exr_decode_pipeline_t decoder = EXR_DECODE_PIPELINE_INITIALIZER;
-    argb_t* dst = frame->data;
+    argb_t* dst = pm->data;
     exr_attr_box2i_t dwnd;
 
     // temporary buffer for decoded chunk's scanlines
@@ -205,7 +204,7 @@ static exr_result_t load_scanlined(const exr_context_t ectx,
         }
         for (size_t i = 0; i < chunk_size; i += bpp) {
             *dst = decode_pixel(&decoder, buffer + i);
-            if (++dst >= frame->data + (frame->width * frame->height)) {
+            if (++dst >= pm->data + (pm->width * pm->height)) {
                 break;
             }
         }
@@ -219,11 +218,10 @@ static exr_result_t load_scanlined(const exr_context_t ectx,
 /**
  * Load tailed EXR image.
  * @param ectx EXR context
- * @param frame destination image frame
+ * @param pm destination pixmap
  * @return result code
  */
-static exr_result_t load_tailed(const exr_context_t ectx,
-                                struct image_frame* frame)
+static exr_result_t load_tailed(const exr_context_t ectx, struct pixmap* pm)
 {
     exr_result_t rc;
     uint64_t chunk_size;
@@ -286,8 +284,7 @@ static exr_result_t load_tailed(const exr_context_t ectx,
                     for (int32_t y = 0; y < chunk.height; ++y) {
                         const uint8_t* src_line =
                             &buffer[y * chunk.width * bpp];
-                        argb_t* dst_line =
-                            &frame->data[(img_y + y) * frame->width];
+                        argb_t* dst_line = &pm->data[(img_y + y) * pm->width];
                         for (int32_t x = 0; x < chunk.width; ++x) {
                             dst_line[img_x + x] =
                                 decode_pixel(&decoder, src_line + x * bpp);
@@ -313,7 +310,7 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
     exr_result_t rc;
     exr_context_t exr;
     exr_context_initializer_t einit = EXR_DEFAULT_CONTEXT_INITIALIZER;
-    struct image_frame* frame;
+    struct pixmap* pm;
     exr_attr_box2i_t dwnd;
     exr_storage_t storage;
     struct data_buffer buf = {
@@ -341,9 +338,9 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         goto done;
     }
 
-    frame = image_create_frame(ctx, dwnd.max.x - dwnd.min.x + 1,
-                               dwnd.max.y - dwnd.min.y + 1);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, dwnd.max.x - dwnd.min.x + 1,
+                              dwnd.max.y - dwnd.min.y + 1);
+    if (!pm) {
         rc = EXR_ERR_OUT_OF_MEMORY;
         goto done;
     }
@@ -357,9 +354,9 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
     ctx->alpha = true;
 
     if (storage == EXR_STORAGE_SCANLINE) {
-        rc = load_scanlined(exr, frame);
+        rc = load_scanlined(exr, pm);
     } else if (storage == EXR_STORAGE_TILED) {
-        rc = load_tailed(exr, frame);
+        rc = load_tailed(exr, pm);
     } else {
         rc = EXR_ERR_FEATURE_NOT_IMPLEMENTED;
         image_print_error(ctx, "unsupported storage format %d", storage);

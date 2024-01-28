@@ -7,19 +7,18 @@
 
 #include <avif/avif.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 // AVI signature
 static const uint32_t signature = 'f' | 't' << 8 | 'y' << 16 | 'p' << 24;
 #define SIGNATURE_OFFSET 4
 
-static int decode_frame(struct image* ctx, avifDecoder *decoder)
+static int decode_frame(struct image* ctx, avifDecoder* decoder)
 {
     avifRGBImage rgb;
     avifResult rc;
-    struct image_frame* frame;
+    struct pixmap* pm;
 
     rc = avifDecoderNextImage(decoder);
     if (rc != AVIF_RESULT_OK) {
@@ -38,14 +37,13 @@ static int decode_frame(struct image* ctx, avifDecoder *decoder)
         goto fail_pixels;
     }
 
-    frame = image_create_frame(ctx, decoder->image->width,
-                       decoder->image->height);
-    if (!frame) {
+    pm = image_allocate_frame(ctx, decoder->image->width,
+                              decoder->image->height);
+    if (!pm) {
         goto fail_pixels;
     }
 
-    memcpy((void*)frame->data, rgb.pixels,
-           rgb.width * rgb.height * sizeof(argb_t));
+    memcpy(pm->data, rgb.pixels, rgb.width * rgb.height * sizeof(argb_t));
 
     avifRGBImageFreePixels(&rgb);
     return 0;
@@ -57,7 +55,7 @@ decode_fail:
     return -1;
 }
 
-static int decode_frames(struct image* ctx, avifDecoder *decoder)
+static int decode_frames(struct image* ctx, avifDecoder* decoder)
 {
     avifImageTiming timing;
     avifRGBImage rgb;
@@ -84,7 +82,7 @@ static int decode_frames(struct image* ctx, avifDecoder *decoder)
             goto fail_pixels;
         }
 
-        if (!image_frame_allocate(&ctx->frames[i], rgb.width, rgb.height)) {
+        if (!pixmap_create(&ctx->frames[i].pm, rgb.width, rgb.height)) {
             goto fail_pixels;
         }
 
@@ -93,9 +91,10 @@ static int decode_frames(struct image* ctx, avifDecoder *decoder)
             goto fail_pixels;
         }
 
-        ctx->frames[i].duration = (size_t)(1000.0f / (float)timing.timescale * (float)timing.durationInTimescales);
+        ctx->frames[i].duration = (size_t)(1000.0f / (float)timing.timescale *
+                                           (float)timing.durationInTimescales);
 
-        memcpy((void*)ctx->frames[i].data, rgb.pixels,
+        memcpy(ctx->frames[i].pm.data, rgb.pixels,
                rgb.width * rgb.height * sizeof(argb_t));
 
         avifRGBImageFreePixels(&rgb);
@@ -151,7 +150,7 @@ enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
     ctx->alpha = decoder->alphaPresent;
 
     image_set_format(ctx, "AV1 %dbpc %s", decoder->image->depth,
-                   avifPixelFormatToString(decoder->image->yuvFormat));
+                     avifPixelFormatToString(decoder->image->yuvFormat));
 
     avifDecoderDestroy(decoder);
     return ldr_success;
@@ -159,7 +158,8 @@ enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
 fail:
     avifDecoderDestroy(decoder);
     if (rc != AVIF_RESULT_OK) {
-        image_print_error(ctx, "error decoding av1: %s\n", avifResultToString(rc));
+        image_print_error(ctx, "error decoding av1: %s\n",
+                          avifResultToString(rc));
     }
     image_free_frames(ctx);
     return ldr_fmterror;

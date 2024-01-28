@@ -302,7 +302,7 @@ void pixmap_rotate(struct pixmap* pm, size_t angle)
             *color2 = swap;
         }
     } else if (angle == 90 || angle == 270) {
-        argb_t* data = malloc(pm->width * sizeof(argb_t));
+        argb_t* data = malloc(pm->height * pm->width * sizeof(argb_t));
         if (data) {
             const size_t width = pm->height;
             const size_t height = pm->width;

@@ -46,7 +46,7 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     struct heif_image* img = NULL;
     struct heif_error err;
     const uint8_t* decoded;
-    struct image_frame* frame;
+    struct pixmap* pm;
     int stride = 0;
 
     if (heif_check_filetype(data, size) != heif_filetype_yes_supported) {
@@ -78,17 +78,17 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
         goto decode_fail;
     }
 
-    frame = image_create_frame(ctx, heif_image_get_primary_width(img),
-                               heif_image_get_primary_height(img));
-    if (!frame) {
+    pm = image_allocate_frame(ctx, heif_image_get_primary_width(img),
+                              heif_image_get_primary_height(img));
+    if (!pm) {
         goto alloc_fail;
     }
 
     // convert to plain image frame
-    for (size_t y = 0; y < frame->height; ++y) {
+    for (size_t y = 0; y < pm->height; ++y) {
         const argb_t* src = (const argb_t*)(decoded + y * stride);
-        argb_t* dst = &frame->data[y * frame->width];
-        for (size_t x = 0; x < frame->width; ++x) {
+        argb_t* dst = &pm->data[y * pm->width];
+        for (size_t x = 0; x < pm->width; ++x) {
             dst[x] = ARGB_SET_ABGR(src[x]);
         }
     }

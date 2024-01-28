@@ -15,7 +15,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     JxlBasicInfo info;
     JxlDecoderStatus status;
     size_t buffer_sz;
-    struct image_frame* frame = NULL;
+    struct pixmap* pm = NULL;
 
     const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
                                         .data_type = JXL_TYPE_UINT8,
@@ -78,18 +78,17 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                         ctx, "unable to get jpeg xl buffer: error %d", rc);
                     goto fail;
                 }
-                frame = image_create_frame(ctx, info.xsize, info.ysize);
-                if (!frame) {
+                pm = image_allocate_frame(ctx, info.xsize, info.ysize);
+                if (!pm) {
                     goto fail;
                 }
                 // check buffer format
-                if (buffer_sz !=
-                    frame->width * frame->height * sizeof(argb_t)) {
+                if (buffer_sz != pm->width * pm->height * sizeof(argb_t)) {
                     image_print_error(ctx, "unsupported jpeg xl buffer format");
                     goto fail;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, frame->data,
+                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, pm->data,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     image_print_error(
@@ -102,14 +101,14 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
         }
     } while (status != JXL_DEC_SUCCESS);
 
-    if (!frame) {
+    if (!pm) {
         image_print_error(ctx, "jxl frame is empty");
         goto fail;
     }
 
     // convert ABGR -> ARGB
-    for (size_t i = 0; i < frame->width * frame->height; ++i) {
-        frame->data[i] = ARGB_SET_ABGR(frame->data[i]);
+    for (size_t i = 0; i < pm->width * pm->height; ++i) {
+        pm->data[i] = ARGB_SET_ABGR(pm->data[i]);
     }
 
     image_set_format(ctx, "JPEG XL %ubpp",

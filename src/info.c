@@ -292,7 +292,7 @@ void info_update(size_t frame_idx)
 {
     const struct image_entry entry = image_list_current();
     const struct image* image = entry.image;
-    const struct image_frame* frame = &image->frames[frame_idx];
+    const struct pixmap* pm = &image->frames[frame_idx].pm;
     const size_t scale_percent = canvas_get_scale() * 100;
     char buffer[64];
 
@@ -337,9 +337,9 @@ void info_update(size_t frame_idx)
         str_to_wide(buffer, &ctx.fields[info_scale].value);
     }
 
-    if (ctx.width != frame->width || ctx.height != frame->height) {
-        ctx.width = frame->width;
-        ctx.height = frame->height;
+    if (ctx.width != pm->width || ctx.height != pm->height) {
+        ctx.width = pm->width;
+        ctx.height = pm->height;
         snprintf(buffer, sizeof(buffer), "%lux%lu", ctx.width, ctx.height);
         str_to_wide(buffer, &ctx.fields[info_image_size].value);
     }
