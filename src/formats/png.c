@@ -182,7 +182,7 @@ static void delete_frames_keep_default(struct image* ctx, uint32_t last_frame)
 
     ctx->num_frames = 1;
     for (uint32_t i = 1; i <= last_frame; ++i) {
-        free(ctx->frames[i].data);
+        pixmap_free(&ctx->frames[i].pm);
     }
 
     tmp = realloc(ctx->frames, sizeof(*ctx->frames));
@@ -228,7 +228,7 @@ static bool decode_png_frames(struct image* ctx, png_structp png,
     memset(output_buffer, 0, buffer_size);
 
     for (uint32_t frame_num = 0; frame_num < num_frames; frame_num++) {
-        if (!image_frame_allocate(&ctx->frames[frame_num], width, height)) {
+        if (!pixmap_create(&ctx->frames[frame_num].pm, width, height)) {
             goto fail;
         }
 
@@ -307,7 +307,8 @@ static bool decode_png_frames(struct image* ctx, png_structp png,
 
         switch (dispose_op) {
             case PNG_DISPOSE_OP_PREVIOUS:
-                memcpy(ctx->frames[frame_num].data, output_buffer, buffer_size);
+                memcpy(ctx->frames[frame_num].pm.data, output_buffer,
+                       buffer_size);
 
                 if (tmp) {
                     paste_frame(output_buffer, width, tmp, sub_width,
@@ -317,13 +318,15 @@ static bool decode_png_frames(struct image* ctx, png_structp png,
                 }
                 break;
             case PNG_DISPOSE_OP_BACKGROUND:
-                memcpy(ctx->frames[frame_num].data, output_buffer, buffer_size);
+                memcpy(ctx->frames[frame_num].pm.data, output_buffer,
+                       buffer_size);
 
                 clear_area(output_buffer, width, sub_width, sub_height,
                            x_offset, y_offset);
                 break;
             case PNG_DISPOSE_OP_NONE:
-                memcpy(ctx->frames[frame_num].data, output_buffer, buffer_size);
+                memcpy(ctx->frames[frame_num].pm.data, output_buffer,
+                       buffer_size);
                 break;
             default:
                 image_print_error(ctx, "unsupported disposition type");
@@ -347,7 +350,7 @@ static bool decode_png_frames(struct image* ctx, png_structp png,
     if (first_frame_hidden) {
         struct image_frame* tmp;
         ctx->num_frames -= 1;
-        free(ctx->frames[0].data);
+        pixmap_free(&ctx->frames[0].pm);
         memmove(&ctx->frames[0], &ctx->frames[1],
                 ctx->num_frames * sizeof(*ctx->frames));
 
