@@ -6,6 +6,7 @@
 
 #include "config.h"
 #include "font.h"
+#include "pixmap.h"
 #include "str.h"
 
 #include <stdio.h>
@@ -264,285 +265,53 @@ void canvas_swap_image_size(void)
     fix_viewport();
 }
 
-/**
- * Clear canvas window.
- * @param wnd window buffer
- * @param vp destination viewport
- * @param alpha flag to use alpha background
- */
-static void clear_window(argb_t* wnd, const struct rect* vp, bool alpha)
-{
-    // clear window background
-    const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
-                                  ? 0
-                                  : ARGB_SET_A(0xff) | ctx.window_bkg);
-    if (vp->height < ctx.window.height) {
-        const size_t stride = ctx.window.width * sizeof(argb_t);
-        argb_t* template = wnd;
-        for (size_t x = 0; x < ctx.window.width; ++x) {
-            template[x] = wnd_color;
-        }
-        for (size_t y = 1; y < (size_t)vp->y; ++y) {
-            memcpy(&wnd[y * ctx.window.width], template, stride);
-        }
-        for (size_t y = vp->y + vp->height; y < ctx.window.height; ++y) {
-            memcpy(&wnd[y * ctx.window.width], template, stride);
-        }
-    }
-    if (vp->width < ctx.window.width) {
-        const size_t stride = vp->x * sizeof(argb_t);
-        const size_t last_line = vp->y + vp->height;
-        const size_t right_offset = vp->x + vp->width;
-        argb_t* template = &wnd[vp->y * ctx.window.width];
-        for (size_t x = 0; x < (size_t)vp->x; ++x) {
-            template[x] = wnd_color;
-        }
-        memcpy(&template[right_offset], template, stride);
-        for (size_t y = vp->y + 1; y < last_line; ++y) {
-            argb_t* line = &wnd[y * ctx.window.width];
-            memcpy(line, template, stride);
-            memcpy(&line[right_offset], template, stride);
-        }
-    }
-
-    if (alpha) {
-        // clear image background
-        const size_t stride = vp->width * sizeof(argb_t);
-
-        if (ctx.image_bkg == BACKGROUND_GRID) {
-            const size_t grid_sz = GRID_STEP * ctx.wnd_scale;
-            argb_t* templates[] = {
-                &wnd[vp->y * ctx.window.width + vp->x],
-                &wnd[(vp->y + grid_sz) * ctx.window.width + vp->x]
-            };
-            for (size_t y = 0; y < vp->height; ++y) {
-                const size_t shift = (y / grid_sz) % 2;
-                argb_t* wnd_line = &wnd[(y + vp->y) * ctx.window.width + vp->x];
-                if (wnd_line == templates[0] || wnd_line == templates[1]) {
-                    // create template line
-                    for (size_t x = 0; x < vp->width; ++x) {
-                        const size_t tail = x / grid_sz;
-                        wnd_line[x] =
-                            (tail % 2) ^ shift ? GRID_COLOR1 : GRID_COLOR2;
-                    }
-                } else {
-                    // put template line
-                    memcpy(wnd_line, templates[shift], stride);
-                }
-            }
-        } else {
-            argb_t* template = &wnd[vp->y * ctx.window.width + vp->x];
-            const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
-                                      ? wnd_color
-                                      : ARGB_SET_A(0xff) | ctx.image_bkg);
-            for (size_t x = 0; x < vp->width; ++x) {
-                template[x] = color;
-            }
-            for (size_t y = 1; y < vp->height; ++y) {
-                memcpy(&wnd[(vp->y + y) * ctx.window.width + vp->x], template,
-                       stride);
-            }
-        }
-    }
-}
-
-/**
- * Alpha blending.
- * @param img color of image's pixel
- * @param wnd pointer to window buffer to put puxel
- */
-static inline void alpha_blend(argb_t img, argb_t* wnd)
-{
-    const uint8_t ai = ARGB_GET_A(img);
-
-    if (ai != 0xff) {
-        const argb_t wp = *wnd;
-        const uint8_t aw = ARGB_GET_A(wp);
-        const uint8_t target_alpha = max(ai, aw);
-        const argb_t inv = 256 - ai;
-        img = ARGB_SET_A(target_alpha) |
-            ARGB_SET_R((ai * ARGB_GET_R(img) + inv * ARGB_GET_R(wp)) >> 8) |
-            ARGB_SET_G((ai * ARGB_GET_G(img) + inv * ARGB_GET_G(wp)) >> 8) |
-            ARGB_SET_B((ai * ARGB_GET_B(img) + inv * ARGB_GET_B(wp)) >> 8);
-    }
-
-    *wnd = img;
-}
-
-/**
- * Draw image on canvas (bicubic filter).
- * @param vp destination viewport
- * @param img buffer with image data
- * @param wnd window buffer
- * @param alpha flag to use alpha blending
- */
-static void draw_bicubic(const struct rect* vp, const argb_t* img, argb_t* wnd,
-                         bool alpha)
-{
-    size_t state_zero_x = 1;
-    size_t state_zero_y = 1;
-    float state[4][4][4]; // color channel, y, x
-
-    for (size_t y = 0; y < vp->height; ++y) {
-        argb_t* wnd_line = &wnd[(vp->y + y) * ctx.window.width + vp->x];
-        const float scaled_y =
-            (float)(y + vp->y - ctx.image.y) / ctx.scale - 0.5;
-        const size_t img_y = (size_t)scaled_y;
-        const float diff_y = scaled_y - img_y;
-        const float diff_y2 = diff_y * diff_y;
-        const float diff_y3 = diff_y * diff_y2;
-
-        for (size_t x = 0; x < vp->width; ++x) {
-            const float scaled_x =
-                (float)(x + vp->x - ctx.image.x) / ctx.scale - 0.5;
-            const size_t img_x = (size_t)scaled_x;
-            const float diff_x = scaled_x - img_x;
-            const float diff_x2 = diff_x * diff_x;
-            const float diff_x3 = diff_x * diff_x2;
-            argb_t fg = 0;
-
-            // update cached state
-            if (state_zero_x != img_x || state_zero_y != img_y) {
-                float pixels[4][4][4]; // color channel, y, x
-                state_zero_x = img_x;
-                state_zero_y = img_y;
-                for (size_t pc = 0; pc < 4; ++pc) {
-                    // get colors for the current area
-                    for (size_t py = 0; py < 4; ++py) {
-                        size_t iy = img_y + py;
-                        if (iy > 0) {
-                            --iy;
-                            if (iy >= ctx.image.height) {
-                                iy = ctx.image.height - 1;
-                            }
-                        }
-                        for (size_t px = 0; px < 4; ++px) {
-                            size_t ix = img_x + px;
-                            if (ix > 0) {
-                                --ix;
-                                if (ix >= ctx.image.width) {
-                                    ix = ctx.image.width - 1;
-                                }
-                            }
-                            const argb_t pixel = img[iy * ctx.image.width + ix];
-                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
-                        }
-                    }
-                    // recalc state cache for the current area
-                    // clang-format off
-                    state[pc][0][0] = pixels[pc][1][1];
-                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
-                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
-                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
-                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
-                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
-                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
-                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
-                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
-                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
-                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
-                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
-                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
-                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
-                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
-                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
-                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
-                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
-                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
-                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
-                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
-                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
-                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
-                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
-                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
-                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    // clang-format on
-                }
-            }
-
-            // set pixel
-            for (size_t pc = 0; pc < 4; ++pc) {
-                // clang-format off
-                const float inter =
-                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
-                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
-                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
-                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
-                // clang-format on
-                const uint8_t color = max(min(inter, 255), 0);
-                fg |= (color << (pc * 8));
-            }
-
-            if (alpha) {
-                alpha_blend(fg, &wnd_line[x]);
-            } else {
-                wnd_line[x] = ARGB_SET_A(0xff) | fg;
-            }
-        }
-    }
-}
-
-/**
- * Draw image on canvas (nearest).
- * @param vp destination viewport
- * @param img buffer with image data
- * @param wnd window buffer
- * @param alpha flag to use alpha blending
- */
-static void draw_nearest(const struct rect* vp, const argb_t* img, argb_t* wnd,
-                         bool alpha)
-{
-    const size_t delta_x = vp->x - ctx.image.x;
-    const size_t delta_y = vp->y - ctx.image.y;
-
-    for (size_t y = 0; y < vp->height; ++y) {
-        argb_t* wnd_line = &wnd[(vp->y + y) * ctx.window.width + vp->x];
-        const size_t img_y = (float)(y + delta_y) / ctx.scale;
-
-        for (size_t x = 0; x < vp->width; ++x) {
-            const size_t img_x = (float)(x + delta_x) / ctx.scale;
-            const argb_t img_pixel = img[img_y * ctx.image.width + img_x];
-
-            if (alpha) {
-                alpha_blend(img_pixel, &wnd_line[x]);
-            } else {
-                wnd_line[x] = ARGB_SET_A(0xff) | img_pixel;
-            }
-        }
-    }
-}
-
 void canvas_draw(bool alpha, const argb_t* img, argb_t* wnd)
 {
     const ssize_t scaled_x = ctx.image.x + ctx.scale * ctx.image.width;
     const ssize_t scaled_y = ctx.image.y + ctx.scale * ctx.image.height;
-    const ssize_t pos_left = max(0, ctx.image.x);
-    const ssize_t pos_top = max(0, ctx.image.y);
-    const ssize_t pos_right = min((ssize_t)ctx.window.width, scaled_x);
-    const ssize_t pos_bottom = min((ssize_t)ctx.window.height, scaled_y);
+    const ssize_t wnd_x0 = max(0, ctx.image.x);
+    const ssize_t wnd_y0 = max(0, ctx.image.y);
+    const ssize_t wnd_x1 = min((ssize_t)ctx.window.width, scaled_x);
+    const ssize_t wnd_y1 = min((ssize_t)ctx.window.height, scaled_y);
+    const size_t width = wnd_x1 - wnd_x0;
+    const size_t height = wnd_y1 - wnd_y0;
 
-    // intersection between window and image
-    const struct rect viewport = { .x = pos_left,
-                                   .y = pos_top,
-                                   .width = pos_right - pos_left,
-                                   .height = pos_bottom - pos_top };
+    struct pixmap pm_wnd =
+        PIXMAP_ATTACH(wnd, ctx.window.width, ctx.window.height);
+    const struct pixmap pm_img =
+        PIXMAP_ATTACH((argb_t*)img, ctx.image.width, ctx.image.height);
 
-    clear_window(wnd, &viewport, alpha);
-
-    if (ctx.antialiasing) {
-        draw_bicubic(&viewport, img, wnd, alpha);
-    } else {
-        draw_nearest(&viewport, img, wnd, alpha);
+    // clear window background
+    const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
+                                  ? 0
+                                  : ARGB_SET_A(0xff) | ctx.window_bkg);
+    if (height < pm_wnd.height) {
+        pixmap_fill(&pm_wnd, 0, 0, pm_wnd.width, wnd_y0, wnd_color);
+        pixmap_fill(&pm_wnd, 0, wnd_y1, pm_wnd.width, pm_wnd.height - wnd_y1,
+                    wnd_color);
     }
+    if (width < pm_wnd.width) {
+        pixmap_fill(&pm_wnd, 0, wnd_y0, wnd_x0, height, wnd_color);
+        pixmap_fill(&pm_wnd, wnd_x1, wnd_y0, pm_wnd.width - wnd_x1, height,
+                    wnd_color);
+    }
+
+    if (alpha) {
+        // clear image background
+        if (ctx.image_bkg == BACKGROUND_GRID) {
+            pixmap_grid(&pm_wnd, wnd_x0, wnd_y0, width, height,
+                        GRID_STEP * ctx.wnd_scale, GRID_COLOR1, GRID_COLOR2);
+        } else {
+            const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
+                                      ? wnd_color
+                                      : ARGB_SET_A(0xff) | ctx.image_bkg);
+            pixmap_fill(&pm_wnd, wnd_x0, wnd_y0, width, height, color);
+        }
+    }
+
+    // put image on window surface
+    pixmap_put(&pm_wnd, wnd_x0, wnd_y0, &pm_img, ctx.image.x, ctx.image.y,
+               ctx.scale, alpha, ctx.antialiasing);
 }
 
 void canvas_print(const struct info_line* lines, size_t lines_num,

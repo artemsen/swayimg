@@ -160,6 +160,7 @@ sources = [
   'src/info.c',
   'src/keybind.c',
   'src/main.c',
+  'src/pixmap.c',
   'src/str.c',
   'src/sway.c',
   'src/ui.c',
