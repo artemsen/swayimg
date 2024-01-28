@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "pixmap.h"
 
 // Configuration parameters
 #define UI_CFG_APP_ID     "app_id"

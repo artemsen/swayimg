@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "pixmap.h"
 
 // Name of the general configuration section
 #define GENERAL_CONFIG_SECTION "general"

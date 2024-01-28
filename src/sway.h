@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "pixmap.h"
 
 #include <stdbool.h>
 

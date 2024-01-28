@@ -5,7 +5,7 @@
 #pragma once
 
 #include "keybind.h"
-#include "types.h"
+#include "pixmap.h"
 
 // Configuration parameters
 #define VIEWER_CFG_SLIDESHOW      "slideshow"
