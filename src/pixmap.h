@@ -89,20 +89,6 @@ bool pixmap_create(struct pixmap* pm, size_t width, size_t height);
 void pixmap_free(struct pixmap* pm);
 
 /**
- * Put one pixmap on another.
- * @param dst destination pixmap
- * @param dst_x,dst_y destination left top point
- * @param src source pixmap
- * @param src_x,src_y left top point of source pixmap
- * @param src_scale scale of source pixmap
- * @param alpha flag to use alpha blending
- * @param antialiasing flag to use antialiasing
- */
-void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
-                const struct pixmap* src, ssize_t src_x, ssize_t src_y,
-                float src_scale, bool alpha, bool antialiasing);
-
-/**
  * Fill pixmap with specified color.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
@@ -123,6 +109,42 @@ void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
  */
 void pixmap_grid(struct pixmap* pm, size_t x, size_t y, size_t width,
                  size_t height, size_t tail_sz, argb_t color0, argb_t color1);
+
+/**
+ * Apply mask to pixmap: change color according alpha channel.
+ * @param dst destination pixmap
+ * @param x,y destination left top point
+ * @param mask array with alpha channel mask
+ * @param width,height mask size
+ * @param color color to set
+ */
+void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
+                       const uint8_t* mask, size_t width, size_t height,
+                       argb_t color);
+
+/**
+ * Put one pixmap on another.
+ * @param dst destination pixmap
+ * @param dst_x,dst_y destination left top point
+ * @param src source pixmap
+ * @param src_width,src_height source pixmap area to copy
+ */
+void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
+                 const struct pixmap* src, size_t src_width, size_t src_height);
+
+/**
+ * Put one scaled pixmap on another.
+ * @param dst destination pixmap
+ * @param dst_x,dst_y destination left top point
+ * @param src source pixmap
+ * @param src_x,src_y left top point of source pixmap
+ * @param src_scale scale of source pixmap
+ * @param alpha flag to use alpha blending
+ * @param antialiasing flag to use antialiasing
+ */
+void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
+                const struct pixmap* src, ssize_t src_x, ssize_t src_y,
+                float src_scale, bool alpha, bool antialiasing);
 
 /**
  * Flip pixel map vertically.

@@ -205,17 +205,6 @@ void pixmap_free(struct pixmap* pm)
     free(pm->data);
 }
 
-void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
-                const struct pixmap* src, ssize_t src_x, ssize_t src_y,
-                float src_scale, bool alpha, bool antialiasing)
-{
-    if (antialiasing) {
-        put_bicubic(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
-    } else {
-        put_nearest(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
-    }
-}
-
 void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
                  size_t height, argb_t color)
 {
@@ -254,6 +243,66 @@ void pixmap_grid(struct pixmap* pm, size_t x, size_t y, size_t width,
                 line[j] = (tail % 2) ^ shift ? color1 : color2;
             }
         }
+    }
+}
+
+void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
+                       const uint8_t* mask, size_t width, size_t height,
+                       argb_t color)
+{
+    for (size_t mask_y = 0; mask_y < height; ++mask_y) {
+        argb_t* dst_line = &dst->data[(y + mask_y) * dst->width + x];
+        const uint8_t* mask_line = &mask[mask_y * width];
+
+        if (y + mask_y >= dst->height) {
+            break; // out of map
+        }
+
+        for (size_t mask_x = 0; mask_x < width; ++mask_x) {
+            uint8_t alpha;
+
+            if (x + mask_x >= dst->width) {
+                break; // out of map
+            }
+
+            alpha = mask_line[mask_x];
+            if (alpha) {
+                argb_t* pixel = &dst_line[mask_x];
+                const argb_t bg = *pixel;
+                const argb_t fg = color;
+                *pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
+            }
+        }
+    }
+}
+
+void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
+                 const struct pixmap* src, size_t src_width, size_t src_height)
+{
+    if (src_width >= dst_x + dst->width) {
+        src_width = dst->width - dst_x;
+    }
+    if (src_height >= dst_y + dst->height) {
+        src_height = dst->height - dst_y;
+    }
+
+    const size_t len = src_width * sizeof(argb_t);
+
+    for (size_t y = 0; y < src_height; ++y) {
+        argb_t* dst_ptr = &dst->data[(y + dst_y) * dst->width + dst_x];
+        const argb_t* src_ptr = &src->data[y * src->width];
+        memcpy(dst_ptr, src_ptr, len);
+    }
+}
+
+void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
+                const struct pixmap* src, ssize_t src_x, ssize_t src_y,
+                float src_scale, bool alpha, bool antialiasing)
+{
+    if (antialiasing) {
+        put_bicubic(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
+    } else {
+        put_nearest(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
     }
 }
 

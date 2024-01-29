@@ -106,7 +106,7 @@ static bool lazy_load(void)
 }
 
 /**
- * Draw glyph on window buffer.
+ * Draw current glyph on pixmap.
  * @param pm destination pixmap
  * @param x,y top-left coordinates of the glyph
  * @param color color of the font
@@ -114,32 +114,12 @@ static bool lazy_load(void)
 static void draw_glyph(struct pixmap* pm, size_t x, size_t y, argb_t color)
 {
     const FT_GlyphSlot glyph = ctx.face->glyph;
-    const FT_Bitmap* bitmap = &glyph->bitmap;
-    const size_t fheight = font_height();
+    const FT_Bitmap* bmp = &glyph->bitmap;
 
-    for (size_t src_y = 0; src_y < bitmap->rows; ++src_y) {
-        argb_t* dst_line;
-        const uint8_t* glyph_line;
-        const size_t dst_y = y + src_y + fheight - glyph->bitmap_top;
+    y += font_height() - glyph->bitmap_top;
+    x += glyph->bitmap_left;
 
-        if (dst_y >= pm->height) {
-            return; // out of window
-        }
-
-        dst_line = &pm->data[dst_y * pm->width];
-        glyph_line = &bitmap->buffer[src_y * bitmap->width];
-
-        for (size_t src_x = 0; src_x < bitmap->width; ++src_x) {
-            const uint8_t alpha = glyph_line[src_x];
-            const size_t dst_x = x + glyph->bitmap_left + src_x;
-            if (dst_x < pm->width && alpha) {
-                argb_t* pixel = &dst_line[dst_x];
-                const argb_t bg = *pixel;
-                const argb_t fg = color;
-                *pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
-            }
-        }
-    }
+    pixmap_apply_mask(pm, x, y, bmp->buffer, bmp->width, bmp->rows, color);
 }
 
 /**

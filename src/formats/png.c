@@ -95,9 +95,9 @@ static inline void copy_frame(uint32_t* dst, uint32_t dw, uint32_t dh,
                               uint32_t* src, uint32_t sw, uint32_t xo,
                               uint32_t yo)
 {
-    for (uint32_t i = 0; i < dh; ++i) {
-        memcpy(dst + (i * dw), src + (yo + i) * sw + xo, dw * sizeof(*dst));
-    }
+    const struct pixmap pm_src = PIXMAP_ATTACH(src, sw, dh);
+    struct pixmap pm_dst = PIXMAP_ATTACH(dst, dw, dh);
+    pixmap_copy(&pm_dst, xo, yo, &pm_src, pm_src.width, pm_src.height);
 }
 
 /**
@@ -113,9 +113,9 @@ static inline void paste_frame(uint32_t* dst, uint32_t dw, uint32_t* src,
                                uint32_t sw, uint32_t sh, uint32_t xo,
                                uint32_t yo)
 {
-    for (uint32_t i = 0; i < sh; ++i) {
-        memcpy(dst + (yo + i) * dw + xo, src + (i * sw), sw * sizeof(*src));
-    }
+    const struct pixmap pm_src = PIXMAP_ATTACH(src, sw, sh);
+    struct pixmap pm_dst = PIXMAP_ATTACH(dst, dw, sh);
+    pixmap_copy(&pm_dst, xo, yo, &pm_src, pm_src.width, pm_src.height);
 }
 
 /**
