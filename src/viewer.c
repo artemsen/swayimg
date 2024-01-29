@@ -443,7 +443,12 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
             redraw = true;
             break;
         case kb_exit:
-            ui_stop();
+            if (!ctx.show_help) {
+                ui_stop();
+            } else {
+                ctx.show_help = false;
+                redraw = true;
+            }
             break;
     }
 
