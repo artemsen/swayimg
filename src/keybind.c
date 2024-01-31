@@ -92,6 +92,8 @@ static const struct key_binding default_bindings[] = {
     { .key = VKEY_SCROLL_DOWN,  .action = kb_step_up,    .params = "5" },
     { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "+10" },
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "-10" },
+    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_SHIFT, .action = kb_prev_file },
+    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = kb_next_file },
 };
 // clang-format on
 
