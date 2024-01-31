@@ -385,9 +385,9 @@ void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
     for (size_t i = 0; i < lines_num; ++i) {
         const struct text_surface* key = &lines[i].key;
         const struct text_surface* value = &lines[i].value;
-        size_t y;
-        size_t x_key;
-        size_t x_val;
+        size_t y = 0;
+        size_t x_key = 0;
+        size_t x_val = 0;
 
         // calculate line position
         switch (pos) {

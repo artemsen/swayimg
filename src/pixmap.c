@@ -288,6 +288,21 @@ void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
     }
 }
 
+void pixmap_over(struct pixmap* dst, size_t dst_x, size_t dst_y,
+                 const struct pixmap* src, size_t src_width, size_t src_height)
+{
+    src_width = min(src_width, dst->width - dst_x);
+    src_height = min(src_height, dst->height - dst_y);
+
+    for (size_t y = 0; y < src_height; ++y) {
+        argb_t* dst_line = &dst->data[(y + dst_y) * dst->width + dst_x];
+        const argb_t* src_line = &src->data[y * src->width];
+        for (size_t x = 0; x < src_width; ++x) {
+            alpha_blend(src_line[x], &dst_line[x]);
+        }
+    }
+}
+
 void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
                 const struct pixmap* src, ssize_t src_x, ssize_t src_y,
                 float src_scale, bool alpha, bool antialiasing)

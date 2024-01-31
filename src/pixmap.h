@@ -59,7 +59,7 @@ struct rect {
 struct pixmap {
     size_t width;  ///< Width (px)
     size_t height; ///< Height (px)
-    argb_t* data;  ///< Pixel data
+    argb_t* data; ///< Pixel data
 };
 
 // Attach buffer to pixel map
@@ -124,6 +124,16 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
  * @param src_width,src_height source pixmap area to copy
  */
 void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
+                 const struct pixmap* src, size_t src_width, size_t src_height);
+
+/**
+ * Put one pixmap on another with alpha blending.
+ * @param dst destination pixmap
+ * @param dst_x,dst_y destination left top point
+ * @param src source pixmap
+ * @param src_width,src_height source pixmap area to copy
+ */
+void pixmap_over(struct pixmap* dst, size_t dst_x, size_t dst_y,
                  const struct pixmap* src, size_t src_width, size_t src_height);
 
 /**
