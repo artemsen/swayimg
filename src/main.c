@@ -34,9 +34,9 @@ struct cmdarg {
 // clang-format off
 static const struct cmdarg arguments[] = {
     { 'r', "recursive",  NULL,    "read directories recursively",
-                                  INFO_CFG_SECTION, INFO_CFG_RECURSIVE, "yes" },
+                                  IMGLIST_CFG_SECTION, IMGLIST_CFG_RECURSIVE, "yes" },
     { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
-                                  INFO_CFG_SECTION, INFO_CFG_ORDER, NULL },
+                                  IMGLIST_CFG_SECTION, IMGLIST_CFG_ORDER, NULL },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
                                   GENERAL_CONFIG_SECTION, CANVAS_CFG_SCALE, NULL },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
@@ -210,13 +210,15 @@ int main(int argc, char* argv[])
     setlocale(LC_ALL, "");
 
     keybind_init();
-    font_init();
-    info_init();
+    font_create();
+    info_create();
     image_list_init();
     canvas_init();
     ui_init();
     viewer_init();
     config_init();
+    font_init();
+    info_init();
 
     // parse command arguments
     argn = parse_cmdargs(argc, argv);

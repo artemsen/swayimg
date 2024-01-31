@@ -197,8 +197,7 @@ enum config_status config_set(const char* section, const char* key,
         const struct section* sl = &ctx.sections[i];
         if (strcmp(sl->name, section) == 0) {
             status = sl->loader(key, value);
-            if (status != cfgst_invalid_key ||
-                strcmp(sl->name, GENERAL_CONFIG_SECTION) != 0) {
+            if (status != cfgst_invalid_key) {
                 break;
             }
         }

@@ -416,21 +416,21 @@ static enum config_status load_config(const char* key, const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
-    if (strcmp(key, INFO_CFG_ORDER) == 0) {
+    if (strcmp(key, IMGLIST_CFG_ORDER) == 0) {
         const ssize_t index = str_index(order_names, value, 0);
         if (index >= 0) {
             ctx.order = index;
             status = cfgst_ok;
         }
-    } else if (strcmp(key, INFO_CFG_LOOP) == 0) {
+    } else if (strcmp(key, IMGLIST_CFG_LOOP) == 0) {
         if (config_to_bool(value, &ctx.loop)) {
             status = cfgst_ok;
         }
-    } else if (strcmp(key, INFO_CFG_RECURSIVE) == 0) {
+    } else if (strcmp(key, IMGLIST_CFG_RECURSIVE) == 0) {
         if (config_to_bool(value, &ctx.recursive)) {
             status = cfgst_ok;
         }
-    } else if (strcmp(key, INFO_CFG_ALL) == 0) {
+    } else if (strcmp(key, IMGLIST_CFG_ALL) == 0) {
         if (config_to_bool(value, &ctx.all_files)) {
             status = cfgst_ok;
         }
@@ -444,7 +444,7 @@ static enum config_status load_config(const char* key, const char* value)
 void image_list_init(void)
 {
     // register configuration loader
-    config_add_loader(INFO_CFG_SECTION, load_config);
+    config_add_loader(IMGLIST_CFG_SECTION, load_config);
 
 #ifdef HAVE_INOTIFY
     ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);

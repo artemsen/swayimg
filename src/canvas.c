@@ -5,8 +5,6 @@
 #include "canvas.h"
 
 #include "config.h"
-#include "font.h"
-#include "pixmap.h"
 #include "str.h"
 
 #include <stdio.h>
@@ -16,6 +14,13 @@
 #define COLOR_TRANSPARENT 0xff000000
 #define BACKGROUND_GRID   0xfe000000
 
+// Text rendering parameters
+#define TEXT_COLOR     0x00cccccc
+#define TEXT_SHADOW    0x00000000
+#define TEXT_NO_SHADOW 0xff000000
+#define TEXT_PADDING   10 // space between text layout and window edge
+#define TEXT_LINESP    4  // line spacing factor
+
 // Background grid parameters
 #define GRID_STEP   10
 #define GRID_COLOR1 0xff333333
@@ -24,9 +29,6 @@
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
 #define MAX_SCALE 100.0 // factor
-
-/** Text padding: space between text layout and window edge. */
-#define TEXT_PADDING 10
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -58,6 +60,9 @@ struct canvas {
     argb_t window_bkg; ///< Window background mode/color
     bool antialiasing; ///< Anti-aliasing (bicubic interpolation)
 
+    argb_t font_color;  ///< Font color
+    argb_t font_shadow; ///< Font shadow color
+
     enum canvas_scale initial_scale; ///< Initial scale
     float scale;                     ///< Current scale factor
 
@@ -69,6 +74,8 @@ struct canvas {
 static struct canvas ctx = {
     .image_bkg = BACKGROUND_GRID,
     .window_bkg = COLOR_TRANSPARENT,
+    .font_color = TEXT_COLOR,
+    .font_shadow = TEXT_SHADOW,
 };
 
 /**
@@ -180,6 +187,28 @@ static void zoom(ssize_t percent)
 }
 
 /**
+ * Draw text surface on window.
+ * @param wnd destination window
+ * @param x,y text position
+ * @param text text surface to draw
+ */
+static void draw_text(struct pixmap* wnd, size_t x, size_t y,
+                      const struct text_surface* text)
+{
+    if (ctx.font_shadow != TEXT_NO_SHADOW) {
+        size_t shadow_offset = text->height / 16;
+        if (shadow_offset < 1) {
+            shadow_offset = 1;
+        }
+        pixmap_apply_mask(wnd, x + shadow_offset, y + shadow_offset, text->data,
+                          text->width, text->height, ctx.font_shadow);
+    }
+
+    pixmap_apply_mask(wnd, x, y, text->data, text->width, text->height,
+                      ctx.font_color);
+}
+
+/**
  * Custom section loader, see `config_loader` for details.
  */
 static enum config_status load_config(const char* key, const char* value)
@@ -220,10 +249,36 @@ static enum config_status load_config(const char* key, const char* value)
     return status;
 }
 
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_font_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, "color") == 0) {
+        if (config_to_color(value, &ctx.font_color)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "shadow") == 0) {
+        if (strcmp(value, "none") == 0) {
+            ctx.font_shadow = TEXT_NO_SHADOW;
+            status = cfgst_ok;
+        } else if (config_to_color(value, &ctx.font_shadow)) {
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
 void canvas_init(void)
 {
     // register configuration loader
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
+    config_add_loader(FONT_CONFIG_SECTION, load_font_config);
 }
 
 bool canvas_reset_window(size_t width, size_t height, size_t scale)
@@ -265,10 +320,12 @@ void canvas_swap_image_size(void)
     fix_viewport();
 }
 
-void canvas_draw(bool alpha, const struct pixmap* img, struct pixmap* wnd)
+void canvas_draw_image(struct pixmap* wnd, const struct image* img,
+                       size_t frame)
 {
-    const ssize_t scaled_x = ctx.image.x + ctx.scale * img->width;
-    const ssize_t scaled_y = ctx.image.y + ctx.scale * img->height;
+    const struct pixmap* pm = &img->frames[frame].pm;
+    const ssize_t scaled_x = ctx.image.x + ctx.scale * pm->width;
+    const ssize_t scaled_y = ctx.image.y + ctx.scale * pm->height;
     const ssize_t wnd_x0 = max(0, ctx.image.x);
     const ssize_t wnd_y0 = max(0, ctx.image.y);
     const ssize_t wnd_x1 = min((ssize_t)wnd->width, scaled_x);
@@ -291,7 +348,7 @@ void canvas_draw(bool alpha, const struct pixmap* img, struct pixmap* wnd)
                     wnd_color);
     }
 
-    if (alpha) {
+    if (img->alpha) {
         // clear image background
         if (ctx.image_bkg == BACKGROUND_GRID) {
             pixmap_grid(wnd, wnd_x0, wnd_y0, width, height,
@@ -305,120 +362,102 @@ void canvas_draw(bool alpha, const struct pixmap* img, struct pixmap* wnd)
     }
 
     // put image on window surface
-    pixmap_put(wnd, wnd_x0, wnd_y0, img, ctx.image.x, ctx.image.y, ctx.scale,
-               alpha, ctx.antialiasing);
+    pixmap_put(wnd, wnd_x0, wnd_y0, pm, ctx.image.x, ctx.image.y, ctx.scale,
+               img->alpha, ctx.antialiasing);
 }
 
-void canvas_print(const struct info_line* lines, size_t lines_num,
-                  enum info_position pos, struct pixmap* wnd)
+void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
+                      const struct info_line* lines, size_t lines_num)
 {
     size_t max_key_width = 0;
-    const size_t height = font_height();
+    const size_t height =
+        lines[0].value.height + lines[0].value.height / TEXT_LINESP;
 
-    // calc max width of keys
+    // calc max width of keys, used if block on the left side
     for (size_t i = 0; i < lines_num; ++i) {
-        const wchar_t* key = lines[i].key;
-        if (key && *key) {
-            const size_t width =
-                font_print(NULL, 0, 0, key) + font_print(NULL, 0, 0, L": ");
-            if (width > max_key_width) {
-                max_key_width = width;
-            }
+        if (lines[i].key.width > max_key_width) {
+            max_key_width = lines[i].key.width;
         }
     }
+    max_key_width += height / 2;
 
     // draw info block
     for (size_t i = 0; i < lines_num; ++i) {
-        const wchar_t* key = lines[i].key;
-        const wchar_t* val = lines[i].value;
-        size_t key_width = font_print(NULL, 0, 0, key);
-        const size_t val_width = font_print(NULL, 0, 0, val);
-
-        struct point pt_key = { 0, 0 };
-        struct point pt_val = { 0, 0 };
-
-        if (key_width) {
-            key_width += font_print(NULL, 0, 0, L": ");
-        }
+        const struct text_surface* key = &lines[i].key;
+        const struct text_surface* value = &lines[i].value;
+        size_t y;
+        size_t x_key;
+        size_t x_val;
 
         // calculate line position
         switch (pos) {
             case info_top_left:
-                if (key_width) {
-                    pt_key.x = TEXT_PADDING;
-                    pt_key.y = TEXT_PADDING + i * height;
-                    pt_val.x = TEXT_PADDING + max_key_width;
-                    pt_val.y = pt_key.y;
+                y = TEXT_PADDING + i * height;
+                if (key->data) {
+                    x_key = TEXT_PADDING;
+                    x_val = TEXT_PADDING + max_key_width;
                 } else {
-                    pt_val.x = TEXT_PADDING;
-                    pt_val.y = TEXT_PADDING + i * height;
+                    x_val = TEXT_PADDING;
                 }
                 break;
             case info_top_right:
-                pt_val.x = ctx.window.width - TEXT_PADDING - val_width;
-                pt_val.y = TEXT_PADDING + i * height;
-                if (key_width) {
-                    pt_key.x = pt_val.x - key_width;
-                    pt_key.y = pt_val.y;
+                y = TEXT_PADDING + i * height;
+                x_val = wnd->width - TEXT_PADDING - value->width;
+                if (key->data) {
+                    x_key = x_val - key->width - TEXT_PADDING;
                 }
                 break;
             case info_bottom_left:
-                if (key_width) {
-                    pt_key.x = TEXT_PADDING;
-                    pt_key.y = ctx.window.height - TEXT_PADDING -
-                        height * lines_num + i * height;
-                    pt_val.x = TEXT_PADDING + max_key_width;
-                    pt_val.y = pt_key.y;
+                y = wnd->height - TEXT_PADDING - height * lines_num +
+                    i * height;
+                if (key->data) {
+                    x_key = TEXT_PADDING;
+                    x_val = TEXT_PADDING + max_key_width;
                 } else {
-                    pt_val.x = TEXT_PADDING;
-                    pt_val.y = ctx.window.height - TEXT_PADDING -
-                        height * lines_num + i * height;
+                    x_val = TEXT_PADDING;
                 }
                 break;
             case info_bottom_right:
-                pt_val.x = ctx.window.width - TEXT_PADDING - val_width;
-                pt_val.y = TEXT_PADDING + i * height;
-                pt_val.y = ctx.window.height - TEXT_PADDING -
-                    height * lines_num + i * height;
-                if (key_width) {
-                    pt_key.x = pt_val.x - key_width;
-                    pt_key.y = pt_val.y;
+                y = wnd->height - TEXT_PADDING - height * lines_num +
+                    i * height;
+                x_val = wnd->width - TEXT_PADDING - value->width;
+                if (key->data) {
+                    x_key = x_val - key->width - TEXT_PADDING;
                 }
                 break;
         }
 
-        if (key_width) {
-            pt_key.x += font_print(wnd, pt_key.x, pt_key.y, key);
-            font_print(wnd, pt_key.x, pt_key.y, L": ");
+        if (key->data) {
+            draw_text(wnd, x_key, y, key);
+            x_key += key->width;
         }
-        font_print(wnd, pt_val.x, pt_val.y, val);
+        draw_text(wnd, x_val, y, value);
     }
 }
 
-void canvas_print_center(const wchar_t** lines, size_t lines_num,
-                         struct pixmap* wnd)
+void canvas_draw_ctext(struct pixmap* wnd, const struct text_surface* lines,
+                       size_t lines_num)
 {
-    const size_t height = font_height();
-    const size_t row_max = (ctx.window.height - TEXT_PADDING * 2) / height;
+    const size_t line_height = lines[0].height + lines[0].height / TEXT_LINESP;
+    const size_t row_max = (wnd->height - TEXT_PADDING * 2) / line_height;
     const size_t columns =
         (lines_num / row_max) + (lines_num % row_max ? 1 : 0);
     const size_t rows = (lines_num / columns) + (lines_num % columns ? 1 : 0);
-    const size_t col_space = font_print(NULL, 0, 0, L"  ");
-    struct point top_left = { TEXT_PADDING, TEXT_PADDING };
+    const size_t col_space = line_height;
     size_t total_width = 0;
+    size_t top = 0;
+    size_t left = 0;
 
     // calculate total width
-    for (size_t c = 0; c < columns; ++c) {
+    for (size_t col = 0; col < columns; ++col) {
         size_t max_width = 0;
-        for (size_t r = 0; r < rows; ++r) {
-            size_t width;
-            const size_t index = r + c * rows;
+        for (size_t row = 0; row < rows; ++row) {
+            const size_t index = row + col * rows;
             if (index >= lines_num) {
                 break;
             }
-            width = font_print(NULL, 0, 0, lines[index]);
-            if (max_width < width) {
-                max_width = width;
+            if (max_width < lines[index].width) {
+                max_width = lines[index].width;
             }
         }
         total_width += max_width;
@@ -427,29 +466,28 @@ void canvas_print_center(const wchar_t** lines, size_t lines_num,
 
     // top left corner of the centered text block
     if (total_width < ctx.window.width) {
-        top_left.x = ctx.window.width / 2 - total_width / 2;
+        left = wnd->width / 2 - total_width / 2;
     }
-    if (rows * height < ctx.window.height) {
-        top_left.y = ctx.window.height / 2 - (rows * height) / 2;
+    if (rows * line_height < ctx.window.height) {
+        top = wnd->height / 2 - (rows * line_height) / 2;
     }
 
-    // print text block
-    for (size_t c = 0; c < columns; ++c) {
-        struct point pt = top_left;
+    // put text on window
+    for (size_t col = 0; col < columns; ++col) {
+        size_t y = top;
         size_t col_width = 0;
-        for (size_t r = 0; r < rows; ++r) {
-            size_t width;
-            const size_t index = r + c * rows;
+        for (size_t row = 0; row < rows; ++row) {
+            const size_t index = row + col * rows;
             if (index >= lines_num) {
                 break;
             }
-            width = font_print(wnd, pt.x, pt.y, lines[index]);
-            if (col_width < width) {
-                col_width = width;
+            draw_text(wnd, left, y, &lines[index]);
+            if (col_width < lines[index].width) {
+                col_width = lines[index].width;
             }
-            pt.y += height;
+            y += line_height;
         }
-        top_left.x += col_width + col_space;
+        left += col_width + col_space;
     }
 }
 

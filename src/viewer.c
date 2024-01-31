@@ -25,7 +25,8 @@
 struct viewer {
     size_t frame; ///< Index of the current frame
 
-    bool show_help; ///< Show/hide help message
+    struct text_surface* help; ///< Help lines
+    size_t help_sz;            ///< Number of lines in help
 
     bool animation_enable; ///< Animation enable/disable
     int animation_fd;      ///< Animation timer
@@ -40,6 +41,28 @@ static struct viewer ctx = { .animation_enable = true,
                              .slideshow_enable = false,
                              .slideshow_fd = -1,
                              .slideshow_time = 3 };
+
+static void switch_help(void)
+{
+    if (ctx.help) {
+        for (size_t i = 0; i < ctx.help_sz; i++) {
+            free(ctx.help[i].data);
+        }
+        free(ctx.help);
+        ctx.help = NULL;
+        ctx.help_sz = 0;
+    } else {
+        ctx.help_sz = 0;
+        ctx.help = calloc(1, key_bindings_size * sizeof(struct text_surface));
+        if (ctx.help) {
+            for (size_t i = 0; i < key_bindings_size; i++) {
+                if (key_bindings[i].help) {
+                    font_render(key_bindings[i].help, &ctx.help[ctx.help_sz++]);
+                }
+            }
+        }
+    }
+}
 
 /**
  * Switch to the next or previous frame.
@@ -282,6 +305,9 @@ void viewer_init(void)
 
 void viewer_free(void)
 {
+    for (size_t i = 0; i < ctx.help_sz; i++) {
+        free(ctx.help[i].data);
+    }
     if (ctx.animation_fd != -1) {
         close(ctx.animation_fd);
     }
@@ -306,30 +332,22 @@ void viewer_on_redraw(struct pixmap* window)
 {
     const struct image_entry entry = image_list_current();
 
-    canvas_draw(entry.image->alpha, &entry.image->frames[ctx.frame].pm, window);
-
     info_update(ctx.frame);
+
+    canvas_draw_image(window, entry.image, ctx.frame);
+
+    // put text info blocks on window surface
     for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
         const size_t lines_num = info_height(i);
         if (lines_num) {
             const enum info_position pos = (enum info_position)i;
             const struct info_line* lines = info_lines(pos);
-            canvas_print(lines, lines_num, pos, window);
+            canvas_draw_text(window, pos, lines, lines_num);
         }
     }
 
-    if (ctx.show_help) {
-        const wchar_t** lines = malloc(key_bindings_size * sizeof(wchar_t*));
-        if (lines) {
-            size_t lines_num = 0;
-            for (size_t i = 0; i < key_bindings_size; ++i) {
-                if (key_bindings[i].help) {
-                    lines[lines_num++] = key_bindings[i].help;
-                }
-            }
-            canvas_print_center(lines, lines_num, window);
-            free(lines);
-        }
+    if (ctx.help) {
+        canvas_draw_ctext(window, ctx.help, ctx.help_sz);
     }
 
     // reset one-time rendered notification message
@@ -356,7 +374,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
         case kb_none:
             break;
         case kb_help:
-            ctx.show_help = !ctx.show_help;
+            switch_help();
             redraw = true;
             break;
         case kb_first_file:
@@ -443,11 +461,11 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
             redraw = true;
             break;
         case kb_exit:
-            if (!ctx.show_help) {
-                ui_stop();
-            } else {
-                ctx.show_help = false;
+            if (ctx.help) {
+                switch_help(); // remove help overlay
                 redraw = true;
+            } else {
+                ui_stop();
             }
             break;
     }

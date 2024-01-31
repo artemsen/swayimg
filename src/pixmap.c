@@ -193,11 +193,13 @@ static void put_bicubic(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
 
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
 {
-    pm->width = width;
-    pm->height = height;
-    pm->data = calloc(1, height * width * sizeof(argb_t));
-
-    return !!(pm->data);
+    argb_t* data = calloc(1, height * width * sizeof(argb_t));
+    if (data) {
+        pm->width = width;
+        pm->height = height;
+        pm->data = data;
+    }
+    return !!data;
 }
 
 void pixmap_free(struct pixmap* pm)
@@ -250,27 +252,21 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color)
 {
-    for (size_t mask_y = 0; mask_y < height; ++mask_y) {
+    const size_t real_width = min(width, dst->width - x);
+    const size_t real_height = min(height, dst->height - y);
+
+    if (x >= dst->width || y >= dst->height) {
+        return;
+    }
+
+    for (size_t mask_y = 0; mask_y < real_height; ++mask_y) {
         argb_t* dst_line = &dst->data[(y + mask_y) * dst->width + x];
         const uint8_t* mask_line = &mask[mask_y * width];
 
-        if (y + mask_y >= dst->height) {
-            break; // out of map
-        }
-
-        for (size_t mask_x = 0; mask_x < width; ++mask_x) {
-            uint8_t alpha;
-
-            if (x + mask_x >= dst->width) {
-                break; // out of map
-            }
-
-            alpha = mask_line[mask_x];
-            if (alpha) {
-                argb_t* pixel = &dst_line[mask_x];
-                const argb_t bg = *pixel;
-                const argb_t fg = color;
-                *pixel = ARGB_ALPHA_BLEND(alpha, 0xff, bg, fg);
+        for (size_t mask_x = 0; mask_x < real_width; ++mask_x) {
+            const uint8_t alpha = mask_line[mask_x];
+            if (alpha != 0) {
+                alpha_blend(ARGB_SET_A(alpha) | color, &dst_line[mask_x]);
             }
         }
     }
@@ -279,14 +275,11 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
 void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
                  const struct pixmap* src, size_t src_width, size_t src_height)
 {
-    if (src_width >= dst_x + dst->width) {
-        src_width = dst->width - dst_x;
-    }
-    if (src_height >= dst_y + dst->height) {
-        src_height = dst->height - dst_y;
-    }
+    size_t len;
 
-    const size_t len = src_width * sizeof(argb_t);
+    src_width = min(src_width, dst->width - dst_x);
+    src_height = min(src_height, dst->height - dst_y);
+    len = src_width * sizeof(argb_t);
 
     for (size_t y = 0; y < src_height; ++y) {
         argb_t* dst_ptr = &dst->data[(y + dst_y) * dst->width + dst_x];

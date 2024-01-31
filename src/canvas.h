@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include "image.h"
 #include "info.h"
-#include "pixmap.h"
 
 // Configuration parameters
 #define CANVAS_CFG_ANTIALIASING "antialiasing"
@@ -29,7 +29,6 @@ bool canvas_reset_window(size_t width, size_t height, size_t scale);
 /**
  * Reset image position, size and scale.
  * @param width,height new image size
- * @param sc scale to use
  */
 void canvas_reset_image(size_t width, size_t height);
 
@@ -39,32 +38,32 @@ void canvas_reset_image(size_t width, size_t height);
 void canvas_swap_image_size(void);
 
 /**
- * Draw image on canvas.
- * @param alpha flag to use alpha blending
- * @param img pixel buffer with image to draw
- * @param wnd window buffer
+ * Draw image on window.
+ * @param wnd destination window
+ * @param img image to draw
+ * @param frame frame number to draw
  */
-void canvas_draw(bool aplha, const struct pixmap* img, struct pixmap* wnd);
+void canvas_draw_image(struct pixmap* wnd, const struct image* img,
+                       size_t frame);
 
 /**
  * Print information text block.
- * @param line array of lines to print
- * @param num total number of lines
+ * @param wnd destination window
  * @param pos block position
- * @param wnd window buffer
+ * @param lines array of lines to print
+ * @param lines_num total number of lines
  */
-void canvas_print(const struct info_line* lines, size_t lines_num,
-                  enum info_position pos, struct pixmap* wnd);
+void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
+                      const struct info_line* lines, size_t lines_num);
 
 /**
  * Print text block at the center of window.
- * @param line array of lines to print
- * @param num total number of lines
- * @param wnd window buffer
+ * @param wnd destination window
+ * @param lines array of lines to print
+ * @param lines_num total number of lines
  */
-void canvas_print_center(const wchar_t** lines, size_t lines_num,
-                         struct pixmap* wnd);
-
+void canvas_draw_ctext(struct pixmap* wnd, const struct text_surface* lines,
+                       size_t lines_num);
 /**
  * Move viewport.
  * @param horizontal axis along which to move (false for vertical)

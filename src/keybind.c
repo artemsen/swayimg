@@ -113,7 +113,7 @@ size_t key_bindings_size;
 /**
  * Set key binding.
  * @param key keyboard key
- * @param mods key modifires (ctrl/alt/shift)
+ * @param mods key modifiers (ctrl/alt/shift)
  * @param action action to set
  * @param params additional parameters (action specific)
  */
@@ -171,32 +171,29 @@ static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
 
     // construct help description
     if (xkb_keysym_get_name(key, key_name, sizeof(key_name)) > 0) {
-        char* help = NULL;
         if (mods & KEYMOD_CTRL) {
-            str_append("Ctrl+", 0, &help);
+            str_append("Ctrl+", 0, &new_binding->help);
         }
         if (mods & KEYMOD_ALT) {
-            str_append("Alt+", 0, &help);
+            str_append("Alt+", 0, &new_binding->help);
         }
         if (mods & KEYMOD_SHIFT) {
-            str_append("Shift+", 0, &help);
+            str_append("Shift+", 0, &new_binding->help);
         }
-        str_append(key_name, 0, &help);
-        str_append(" ", 1, &help);
-        str_append(action_names[action], 0, &help);
+        str_append(key_name, 0, &new_binding->help);
+        str_append(" ", 1, &new_binding->help);
+        str_append(action_names[action], 0, &new_binding->help);
         if (new_binding->params) {
-            str_append(" ", 1, &help);
-            str_append(new_binding->params, 0, &help);
+            str_append(" ", 1, &new_binding->help);
+            str_append(new_binding->params, 0, &new_binding->help);
         }
-        str_to_wide(help, &new_binding->help);
-        free(help);
     }
 }
 
 /**
  * Get a keysym from its name.
  * @param key keyboard key
- * @param mods key modifires (ctrl/alt/shift)
+ * @param mods key modifiers (ctrl/alt/shift)
  * @return false if name is invalid
  */
 static bool get_key_from_name(const char* name, xkb_keysym_t* key,

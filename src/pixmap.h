@@ -41,12 +41,6 @@ typedef uint32_t argb_t;
         ARGB_SET_G((a * ARGB_GET_G(f) + (256 - a) * ARGB_GET_G(b)) >> 8) | \
         ARGB_SET_B((a * ARGB_GET_B(f) + (256 - a) * ARGB_GET_B(b)) >> 8)
 
-/** 2D coordinates. */
-struct point {
-    ssize_t x;
-    ssize_t y;
-};
-
 /** Size description. */
 struct size {
     size_t width;
@@ -75,10 +69,10 @@ struct pixmap {
     }
 
 /**
- * Create new pixel map.
+ * Allocate/reallocate pixel map.
  * @param pm pixmap context to create
  * @param width,height pixmap size
- * @return true if it was the first resize
+ * @return true pixmap was allocated
  */
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height);
 

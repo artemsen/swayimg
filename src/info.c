@@ -123,6 +123,43 @@ struct info_context {
 static struct info_context ctx;
 
 /**
+ * Check if field is visible.
+ * @param field field to check
+ * @return true if field is visible
+ */
+static bool is_visible(enum info_field field)
+{
+    if (ctx.mode == info_mode_off) {
+        return false;
+    }
+
+    for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+        const struct info_block* block = &ctx.blocks[ctx.mode][i];
+        for (size_t j = 0; j < block->scheme_sz; ++j) {
+            if (field == block->scheme[j]) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Update field.
+ * @param text text to set
+ * @param surface field's surface
+ */
+static void update_field(const char* text, struct text_surface* surface)
+{
+    if (surface->data) {
+        free(surface->data);
+        surface->data = NULL;
+    }
+    font_render(text, surface);
+}
+
+/**
  * Import meta data from image.
  * @param image source image
  */
@@ -131,8 +168,8 @@ static void import_exif(const struct image* image)
     struct info_line* line;
 
     for (size_t i = 0; i < ctx.exif_num; ++i) {
-        free(ctx.exif_lines[i].key);
-        free(ctx.exif_lines[i].value);
+        free(ctx.exif_lines[i].key.data);
+        free(ctx.exif_lines[i].value.data);
     }
     ctx.exif_num = 0;
 
@@ -150,8 +187,10 @@ static void import_exif(const struct image* image)
 
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         const struct image_info* exif = &image->info[i];
-        line->key = str_to_wide(exif->key, NULL);
-        line->value = str_to_wide(exif->value, NULL);
+        char key[64];
+        snprintf(key, sizeof(key), "%s:", exif->key);
+        font_render(key, &line->key);
+        font_render(exif->value, &line->value);
         ++line;
     }
 }
@@ -232,15 +271,8 @@ static enum config_status load_config(const char* key, const char* value)
     return cfgst_ok;
 }
 
-void info_init(void)
+void info_create(void)
 {
-    // standard fields
-    ctx.fields[info_file_name].key = str_to_wide("File name", NULL);
-    ctx.fields[info_file_path].key = str_to_wide("File path", NULL);
-    ctx.fields[info_file_size].key = str_to_wide("File size", NULL);
-    ctx.fields[info_image_format].key = str_to_wide("Image format", NULL);
-    ctx.fields[info_image_size].key = str_to_wide("Image size", NULL);
-
     // set defaults
     ctx.mode = info_mode_full;
     ctx.frame = UINT32_MAX;
@@ -256,22 +288,42 @@ void info_init(void)
     config_add_loader(CONFIG_SECTION, load_config);
 }
 
+void info_init(void)
+{
+    update_field("File name:", &ctx.fields[info_file_name].key);
+    update_field("File path:", &ctx.fields[info_file_path].key);
+    update_field("File size:", &ctx.fields[info_file_size].key);
+    update_field("Image format:", &ctx.fields[info_image_format].key);
+    update_field("Image size:", &ctx.fields[info_image_size].key);
+}
+
 void info_free(void)
 {
+    for (size_t i = 0; i < ctx.exif_num; ++i) {
+        free(ctx.exif_lines[i].key.data);
+        free(ctx.exif_lines[i].value.data);
+    }
+
     for (size_t i = 0; i < MODES_NUM; ++i) {
         for (size_t j = 0; j < INFO_POSITION_NUM; ++j) {
             free(ctx.blocks[i][j].lines);
             free(ctx.blocks[i][j].scheme);
         }
     }
+
     for (size_t i = 0; i < INFO_FIELDS_NUM; ++i) {
-        free(ctx.fields[i].key);
-        free(ctx.fields[i].value);
+        free(ctx.fields[i].key.data);
+        free(ctx.fields[i].value.data);
     }
 }
 
 void info_set_mode(const char* mode)
 {
+    // reset state to force refresh
+    ctx.file = NULL;
+    ctx.index = UINT32_MAX;
+    ctx.frame = UINT32_MAX;
+
     if (mode && *mode) {
         const size_t num_modes = sizeof(mode_names) / sizeof(mode_names[0]);
         for (size_t i = 0; i < num_modes; ++i) {
@@ -292,74 +344,97 @@ void info_update(size_t frame_idx)
 {
     const struct image_entry entry = image_list_current();
     const struct image* image = entry.image;
-    const struct pixmap* pm = &image->frames[frame_idx].pm;
-    const size_t scale_percent = canvas_get_scale() * 100;
     char buffer[64];
 
     if (ctx.file != image->file_path) {
-        const size_t mib = 1024 * 1024;
-        const char unit = image->file_size >= mib ? 'M' : 'K';
-        const float sz =
-            (float)image->file_size / (image->file_size >= mib ? mib : 1024);
+        if (is_visible(info_file_name)) {
+            update_field(image->file_name, &ctx.fields[info_file_name].value);
+        }
+        if (is_visible(info_file_path)) {
+            update_field(image->file_path, &ctx.fields[info_file_path].value);
+        }
+        if (is_visible(info_file_size)) {
+            const size_t mib = 1024 * 1024;
+            const char unit = image->file_size >= mib ? 'M' : 'K';
+            const float sz = (float)image->file_size /
+                (image->file_size >= mib ? mib : 1024);
+            snprintf(buffer, sizeof(buffer), "%.02f %ciB", sz, unit);
+            update_field(buffer, &ctx.fields[info_file_size].value);
+        }
+        if (is_visible(info_image_format)) {
+            update_field(image->format, &ctx.fields[info_image_format].value);
+        }
+        if (is_visible(info_exif)) {
+            import_exif(image);
+        }
 
-        snprintf(buffer, sizeof(buffer), "%.02f %ciB", sz, unit);
-        str_to_wide(buffer, &ctx.fields[info_file_size].value);
-
-        import_exif(image);
-
-        str_to_wide(image->file_name, &ctx.fields[info_file_name].value);
-        str_to_wide(image->file_path, &ctx.fields[info_file_path].value);
-        str_to_wide(image->format, &ctx.fields[info_image_format].value);
-
-        ctx.frame = UINT32_MAX; // this will refresh frame info
-
+        ctx.frame = UINT32_MAX; // force refresh frame info
         ctx.file = image->file_path;
     }
 
-    if (ctx.frame != frame_idx || ctx.frame_total != image->num_frames) {
+    if (is_visible(info_frame) &&
+        (ctx.frame != frame_idx || ctx.frame_total != image->num_frames)) {
         ctx.frame = frame_idx;
         ctx.frame_total = image->num_frames;
         snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.frame + 1,
                  ctx.frame_total);
-        str_to_wide(buffer, &ctx.fields[info_frame].value);
+        update_field(buffer, &ctx.fields[info_frame].value);
     }
 
-    if (ctx.index != entry.index) {
+    if (is_visible(info_index) && ctx.index != entry.index) {
         ctx.index = entry.index;
         snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.index + 1,
                  image_list_size());
-        str_to_wide(buffer, &ctx.fields[info_index].value);
+        update_field(buffer, &ctx.fields[info_index].value);
     }
 
-    if (ctx.scale != scale_percent) {
-        ctx.scale = scale_percent;
-        snprintf(buffer, sizeof(buffer), "%ld%%", ctx.scale);
-        str_to_wide(buffer, &ctx.fields[info_scale].value);
+    if (is_visible(info_scale)) {
+        const size_t scale_percent = canvas_get_scale() * 100;
+        if (ctx.scale != scale_percent) {
+            ctx.scale = scale_percent;
+            snprintf(buffer, sizeof(buffer), "%ld%%", ctx.scale);
+            update_field(buffer, &ctx.fields[info_scale].value);
+        }
     }
 
-    if (ctx.width != pm->width || ctx.height != pm->height) {
-        ctx.width = pm->width;
-        ctx.height = pm->height;
-        snprintf(buffer, sizeof(buffer), "%lux%lu", ctx.width, ctx.height);
-        str_to_wide(buffer, &ctx.fields[info_image_size].value);
+    if (is_visible(info_image_size)) {
+        const struct pixmap* pm = &image->frames[frame_idx].pm;
+        if (ctx.width != pm->width || ctx.height != pm->height) {
+            ctx.width = pm->width;
+            ctx.height = pm->height;
+            snprintf(buffer, sizeof(buffer), "%lux%lu", ctx.width, ctx.height);
+            update_field(buffer, &ctx.fields[info_image_size].value);
+        }
     }
 }
 
 void info_set_status(const char* fmt, ...)
 {
-    if (!fmt) {
-        if (ctx.fields[info_status].value) {
-            *ctx.fields[info_status].value = 0;
-        }
-    } else {
+    struct text_surface* surface = &ctx.fields[info_status].value;
+    free(surface->data);
+    surface->data = NULL;
+
+    if (fmt) {
         va_list args;
-        char buffer[256];
+        int len;
+        void* buffer;
 
         va_start(args, fmt);
-        vsnprintf(buffer, sizeof(buffer), fmt, args);
+        len = vsnprintf(NULL, 0, fmt, args);
+        va_end(args);
+        if (len <= 0) {
+            return;
+        }
+        buffer = malloc(len + 1 /* last null */);
+        if (!buffer) {
+            return;
+        }
+        va_start(args, fmt);
+        vsprintf(buffer, fmt, args);
         va_end(args);
 
-        str_to_wide(buffer, &ctx.fields[info_status].value);
+        update_field(buffer, surface);
+        free(buffer);
     }
 }
 
@@ -387,8 +462,7 @@ size_t info_height(enum info_position pos)
                 }
                 break;
             case info_status:
-                if (!ctx.fields[info_status].value ||
-                    !*ctx.fields[info_status].value) {
+                if (!ctx.fields[info_status].value.data) {
                     --lines_num;
                 }
                 break;
@@ -437,8 +511,7 @@ const struct info_line* info_lines(enum info_position pos)
                 }
                 break;
             case info_status:
-                if (ctx.fields[info_status].value &&
-                    *ctx.fields[info_status].value) {
+                if (ctx.fields[info_status].value.data) {
                     memcpy(line, &ctx.fields[block->scheme[i]], sizeof(*line));
                     ++line;
                 }

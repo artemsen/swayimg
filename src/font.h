@@ -4,10 +4,27 @@
 
 #pragma once
 
-#include "pixmap.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+// Configuration section
+#define FONT_CONFIG_SECTION "font"
+
+/** Text surface: array of alpha pixels. */
+struct text_surface {
+    size_t width;  ///< Width (px)
+    size_t height; ///< Height (px)
+    uint8_t* data; ///< Pixel data
+};
 
 /**
- * Initialize font.
+ * Create text renderer.
+ */
+void font_create(void);
+
+/**
+ * Initialize (load font).
  */
 void font_init(void);
 
@@ -23,16 +40,9 @@ void font_free(void);
 void font_set_scale(size_t scale);
 
 /**
- * Get single line height for current font.
- * @return line height in pixels
- */
-size_t font_height(void);
-
-/**
- * Print single line on window buffer.
- * @param pm destination pixmap
- * @param x,y top-left coordinates of text
+ * Render single text line.
  * @param text string to print
- * @return width of the line in pixels
+ * @param surface array of alpha pixels
+ * @return false on error
  */
-size_t font_print(struct pixmap* pm, size_t x, size_t y, const wchar_t* text);
+bool font_render(const char* text, struct text_surface* surface);

@@ -7,11 +7,11 @@
 #include "image.h"
 
 // Configuration parameters
-#define INFO_CFG_SECTION   "list"
-#define INFO_CFG_ORDER     "order"
-#define INFO_CFG_LOOP      "loop"
-#define INFO_CFG_RECURSIVE "recursive"
-#define INFO_CFG_ALL       "all"
+#define IMGLIST_CFG_SECTION   "list"
+#define IMGLIST_CFG_ORDER     "order"
+#define IMGLIST_CFG_LOOP      "loop"
+#define IMGLIST_CFG_RECURSIVE "recursive"
+#define IMGLIST_CFG_ALL       "all"
 
 /** Image entry. */
 struct image_entry {

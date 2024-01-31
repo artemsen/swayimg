@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <stddef.h>
+#include "font.h"
 
 /** Info block position. */
 enum info_position {
@@ -17,9 +17,14 @@ enum info_position {
 
 /** Info line. */
 struct info_line {
-    wchar_t* key;
-    wchar_t* value;
+    struct text_surface key;
+    struct text_surface value;
 };
+
+/**
+ * Create info context.
+ */
+void info_create(void);
 
 /**
  * Initialize info context.
