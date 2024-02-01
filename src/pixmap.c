@@ -214,7 +214,7 @@ void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
     size_t template_sz;
     argb_t* template;
 
-    if (width == 0 || height == 0) {
+    if (width == 0 || x >= pm->width || height == 0 || y >= pm->height) {
         return;
     }
 
@@ -238,9 +238,19 @@ void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
 void pixmap_grid(struct pixmap* pm, size_t x, size_t y, size_t width,
                  size_t height, size_t tail_sz, argb_t color1, argb_t color2)
 {
-    const size_t template_sz = width * sizeof(argb_t);
-    argb_t* templates[] = { &pm->data[y * pm->width + x],
-                            &pm->data[(y + tail_sz) * pm->width + x] };
+    argb_t* templates[2];
+    size_t template_sz;
+
+    if (width == 0 || x >= pm->width || height == 0 || y >= pm->height) {
+        return;
+    }
+
+    width = min(width, pm->width - x);
+    height = min(height, pm->height - y);
+
+    template_sz = width * sizeof(argb_t);
+    templates[0] = &pm->data[y * pm->width + x];
+    templates[1] = &pm->data[(y + tail_sz) * pm->width + x];
 
     for (size_t i = 0; i < height; ++i) {
         const size_t shift = (i / tail_sz) % 2;
@@ -262,18 +272,21 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color)
 {
-    const size_t real_width = min(width, dst->width - x);
-    const size_t real_height = min(height, dst->height - y);
+    size_t mask_width;
+    size_t mask_height;
 
-    if (x >= dst->width || y >= dst->height) {
+    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
         return;
     }
 
-    for (size_t mask_y = 0; mask_y < real_height; ++mask_y) {
+    mask_width = min(width, dst->width - x);
+    mask_height = min(height, dst->height - y);
+
+    for (size_t mask_y = 0; mask_y < mask_height; ++mask_y) {
         argb_t* dst_line = &dst->data[(y + mask_y) * dst->width + x];
         const uint8_t* mask_line = &mask[mask_y * width];
 
-        for (size_t mask_x = 0; mask_x < real_width; ++mask_x) {
+        for (size_t mask_x = 0; mask_x < mask_width; ++mask_x) {
             const uint8_t alpha = mask_line[mask_x];
             if (alpha != 0) {
                 alpha_blend(ARGB_SET_A(alpha) | color, &dst_line[mask_x]);
@@ -282,32 +295,40 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
     }
 }
 
-void pixmap_copy(struct pixmap* dst, size_t dst_x, size_t dst_y,
-                 const struct pixmap* src, size_t src_width, size_t src_height)
+void pixmap_copy(struct pixmap* dst, size_t x, size_t y,
+                 const struct pixmap* src, size_t width, size_t height)
 {
     size_t len;
 
-    src_width = min(src_width, dst->width - dst_x);
-    src_height = min(src_height, dst->height - dst_y);
-    len = src_width * sizeof(argb_t);
+    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
+        return;
+    }
 
-    for (size_t y = 0; y < src_height; ++y) {
-        argb_t* dst_ptr = &dst->data[(y + dst_y) * dst->width + dst_x];
-        const argb_t* src_ptr = &src->data[y * src->width];
+    width = min(width, dst->width - x);
+    height = min(height, dst->height - y);
+    len = width * sizeof(argb_t);
+
+    for (size_t i = 0; i < height; ++i) {
+        argb_t* dst_ptr = &dst->data[(i + y) * dst->width + x];
+        const argb_t* src_ptr = &src->data[i * src->width];
         memcpy(dst_ptr, src_ptr, len);
     }
 }
 
-void pixmap_over(struct pixmap* dst, size_t dst_x, size_t dst_y,
-                 const struct pixmap* src, size_t src_width, size_t src_height)
+void pixmap_over(struct pixmap* dst, size_t x, size_t y,
+                 const struct pixmap* src, size_t width, size_t height)
 {
-    src_width = min(src_width, dst->width - dst_x);
-    src_height = min(src_height, dst->height - dst_y);
+    width = min(width, dst->width - x);
+    height = min(height, dst->height - y);
 
-    for (size_t y = 0; y < src_height; ++y) {
-        argb_t* dst_line = &dst->data[(y + dst_y) * dst->width + dst_x];
-        const argb_t* src_line = &src->data[y * src->width];
-        for (size_t x = 0; x < src_width; ++x) {
+    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
+        return;
+    }
+
+    for (size_t i = 0; i < height; ++i) {
+        argb_t* dst_line = &dst->data[(i + y) * dst->width + x];
+        const argb_t* src_line = &src->data[i * src->width];
+        for (size_t x = 0; x < width; ++x) {
             alpha_blend(src_line[x], &dst_line[x]);
         }
     }
