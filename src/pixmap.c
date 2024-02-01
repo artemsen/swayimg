@@ -210,16 +210,26 @@ void pixmap_free(struct pixmap* pm)
 void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
                  size_t height, argb_t color)
 {
-    const size_t max_y = y + height;
-    const size_t template_sz = width * sizeof(argb_t);
-    argb_t* template = &pm->data[y * pm->width + x];
+    size_t max_y;
+    size_t template_sz;
+    argb_t* template;
+
+    if (width == 0 || height == 0) {
+        return;
+    }
+
+    width = min(width, pm->width - x);
+    height = min(height, pm->height - y);
 
     // compose template line
+    template = &pm->data[y * pm->width + x];
+    template_sz = width * sizeof(argb_t);
     for (size_t i = 0; i < width; ++i) {
         template[i] = color;
     }
 
     // put template line
+    max_y = y + height;
     for (size_t i = y + 1; i < max_y; ++i) {
         memcpy(&pm->data[i * pm->width + x], template, template_sz);
     }
