@@ -29,30 +29,23 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
 }
 
 /**
- * Decode current frame.
- * @param png png decoder
- * @param pm destination pixmap
+ * Bind pixmap with PNG decode buffer.
+ * @param buffer png buffer to reallocate
+ * @param pm pixmap to bind
  * @return false if decode failed
  */
-static bool read_frame(png_structp png, struct pixmap* pm)
+static bool bind_pixmap(png_bytep** buffer, const struct pixmap* pm)
 {
-    png_bytepp rows = malloc(pm->height * sizeof(png_bytep));
-    if (!rows) {
+    png_bytep* ptr = realloc(*buffer, pm->height * sizeof(png_bytep));
+
+    if (!ptr) {
         return false;
     }
 
+    *buffer = ptr;
     for (uint32_t i = 0; i < pm->height; ++i) {
-        rows[i] = (png_bytep)&pm->data[i * pm->width];
+        ptr[i] = (png_bytep)&pm->data[i * pm->width];
     }
-
-    if (setjmp(png_jmpbuf(png))) {
-        free(rows);
-        return false;
-    }
-
-    png_read_image(png, rows);
-
-    free(rows);
 
     return true;
 }
@@ -69,10 +62,118 @@ static bool decode_single(struct image* ctx, png_struct* png, png_info* info)
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
     struct pixmap* pm = image_allocate_frame(ctx, width, height);
-    return pm && read_frame(png, pm);
+    png_bytep* rdrows = NULL;
+
+    if (!pm) {
+        return false;
+    }
+    if (!bind_pixmap(&rdrows, pm)) {
+        return false;
+    }
+
+    if (setjmp(png_jmpbuf(png))) {
+        free(rdrows);
+        return false;
+    }
+    png_read_image(png, rdrows);
+
+    free(rdrows);
+
+    return true;
 }
 
 #ifdef PNG_APNG_SUPPORTED
+/**
+ * Decode single PNG frame.
+ * @param ctx image context
+ * @param png png decoder
+ * @param info png image info
+ * @param index number of the frame to load
+ * @return true if completed successfully
+ */
+static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
+                         size_t index)
+{
+    bool rc = false;
+    struct image_frame* frame = &ctx->frames[index];
+    png_byte dispose = 0, blend = 0;
+    png_uint_16 delay_num = 0, delay_den = 0;
+    png_uint_32 x = 0, y = 0, width = 0, height = 0;
+    png_bytep* rdrows = NULL;
+    struct pixmap frame_pm = { 0, 0, NULL };
+
+    if (setjmp(png_jmpbuf(png))) {
+        goto done;
+    }
+
+    // get frame params
+    if (png_get_valid(png, info, PNG_INFO_acTL)) {
+        png_read_frame_head(png, info);
+    }
+    if (png_get_valid(png, info, PNG_INFO_fcTL)) {
+        png_get_next_frame_fcTL(png, info, &width, &height, &x, &y, &delay_num,
+                                &delay_den, &dispose, &blend);
+    }
+
+    // fixup frame params
+    if (width == 0) {
+        width = png_get_image_width(png, info);
+    }
+    if (height == 0) {
+        height = png_get_image_height(png, info);
+    }
+    if (delay_den == 0) {
+        delay_den = 100;
+    }
+    if (delay_num == 0) {
+        delay_num = 100;
+    }
+    frame->duration = (float)delay_num * 1000 / delay_den;
+
+    // decode frame into pixmap
+    if (!pixmap_create(&frame_pm, width, height) ||
+        !bind_pixmap(&rdrows, &frame_pm)) {
+        goto done;
+    }
+    png_read_image(png, rdrows);
+
+    // handle dispose
+    if (dispose == PNG_DISPOSE_OP_PREVIOUS) {
+        if (index == 0) {
+            dispose = PNG_DISPOSE_OP_BACKGROUND;
+        } else if (index + 1 < ctx->num_frames) {
+            struct pixmap* next = &ctx->frames[index + 1].pm;
+            pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width,
+                        frame->pm.height);
+        }
+    }
+
+    // put frame on final pixmap
+    switch (blend) {
+        case PNG_BLEND_OP_SOURCE:
+            pixmap_copy(&frame->pm, x, y, &frame_pm, frame_pm.width,
+                        frame_pm.height);
+            break;
+        case PNG_BLEND_OP_OVER:
+            pixmap_over(&frame->pm, x, y, &frame_pm, frame_pm.width,
+                        frame_pm.height);
+            break;
+    }
+
+    // handle dispose
+    if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < ctx->num_frames) {
+        struct pixmap* next = &ctx->frames[index + 1].pm;
+        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
+    }
+
+    rc = true;
+
+done:
+    pixmap_free(&frame_pm);
+    free(rdrows);
+    return rc;
+}
+
 /**
  * Decode multi framed image.
  * @param ctx image context
@@ -85,101 +186,41 @@ static bool decode_multiple(struct image* ctx, png_struct* png, png_info* info)
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
     const uint32_t frames = png_get_num_frames(png, info);
-    struct pixmap canvas;
-    bool rc = false;
+    uint32_t index;
 
-    if (!pixmap_create(&canvas, width, height)) {
-        image_print_error(ctx, "not enough memory");
+    // allocate frames
+    if (!image_create_frames(ctx, frames)) {
         return false;
     }
-    if (!image_create_frames(ctx, frames)) {
-        goto done;
-    }
-
-    for (uint32_t index = 0; index < frames; ++index) {
+    for (index = 0; index < frames; ++index) {
         struct image_frame* frame = &ctx->frames[index];
-        png_byte dispose_op = PNG_DISPOSE_OP_BACKGROUND;
-        png_byte blend_op = PNG_BLEND_OP_SOURCE;
-        png_uint_16 delay_num = 100;
-        png_uint_16 delay_den = 100;
-        png_uint_32 x_offset = 0;
-        png_uint_32 y_offset = 0;
-        png_uint_32 frame_width = width;
-        png_uint_32 frame_height = height;
-        struct pixmap framebuf;
-
         if (!pixmap_create(&frame->pm, width, height)) {
-            goto done;
+            return false;
         }
-
-        if (setjmp(png_jmpbuf(png))) {
-            free(framebuf.data);
-            goto done;
-        }
-
-        if (png_get_valid(png, info, PNG_INFO_acTL)) {
-            png_read_frame_head(png, info);
-        }
-        if (png_get_valid(png, info, PNG_INFO_fcTL)) {
-            png_get_next_frame_fcTL(png, info, &frame_width, &frame_height,
-                                    &x_offset, &y_offset, &delay_num,
-                                    &delay_den, &dispose_op, &blend_op);
-        }
-
-        if (frame_width + x_offset > width ||
-            frame_height + y_offset > height) {
-            image_print_error(ctx, "malformed png");
-            goto done;
-        }
-
-        if (!pixmap_create(&framebuf, frame_width, frame_height)) {
-            image_print_error(ctx, "not enough memory for frame buffer");
-            goto done;
-        }
-
-        if (!read_frame(png, &framebuf)) {
-            pixmap_free(&framebuf);
-            goto done;
-        }
-
-        switch (blend_op) {
-            case PNG_BLEND_OP_SOURCE:
-                pixmap_copy(&canvas, x_offset, y_offset, &framebuf,
-                            framebuf.width, framebuf.height);
-                break;
-            case PNG_BLEND_OP_OVER:
-                pixmap_over(&canvas, x_offset, y_offset, &framebuf,
-                            framebuf.width, framebuf.height);
-                break;
-        }
-        memcpy(frame->pm.data, canvas.data,
-               canvas.width * canvas.height * sizeof(argb_t));
-
-        if (dispose_op == PNG_DISPOSE_OP_BACKGROUND) {
-            pixmap_fill(&canvas, x_offset, y_offset, frame_width, frame_height,
-                        0);
-        }
-
-        if (delay_den == 0) {
-            delay_den = 100;
-        }
-        frame->duration = (float)delay_num * 1000 / delay_den;
-
-        pixmap_free(&framebuf);
     }
 
-    if (png_get_first_frame_is_hidden(png, info)) {
+    // decode frames
+    for (index = 0; index < frames; ++index) {
+        if (!decode_frame(ctx, png, info, index)) {
+            break;
+        }
+    }
+    if (index != frames) {
+        // not all frames were decoded, leave only the first
+        for (index = 1; index < frames; ++index) {
+            pixmap_free(&ctx->frames[index].pm);
+        }
+        ctx->num_frames = 1;
+    }
+
+    if (png_get_first_frame_is_hidden(png, info) && ctx->num_frames > 1) {
         --ctx->num_frames;
         pixmap_free(&ctx->frames[0].pm);
         memmove(&ctx->frames[0], &ctx->frames[1],
                 ctx->num_frames * sizeof(*ctx->frames));
     }
 
-    rc = true;
-
-done:
-    pixmap_free(&canvas);
-    return rc;
+    return true;
 }
 #endif // PNG_APNG_SUPPORTED
 
