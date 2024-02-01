@@ -138,5 +138,7 @@ Ctrl+ScrollUp = zoom +10
 Ctrl+ScrollDown = zoom -10
 Shift+ScrollUp = prev_file
 Shift+ScrollDown = next_file
+Alt+ScrollUp = prev_frame
+Alt+ScrollDown = next_frame
 
 # vim: filetype=dosini
