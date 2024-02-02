@@ -49,6 +49,11 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     DGifSavedExtensionToGCB(gif, index, &ctl);
 
+    if (ctl.DisposalMode == DISPOSE_PREVIOUS && index < ctx->num_frames - 1) {
+        struct pixmap* next = &ctx->frames[index + 1].pm;
+        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
+    }
+
     for (int y = 0; y < desc->Height; ++y) {
         const uint8_t* raster = &img->RasterBits[y * desc->Width];
         argb_t* pixel = frame->pm.data + desc->Top * frame->pm.width +
@@ -68,8 +73,7 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
         struct pixmap* next = &ctx->frames[index + 1].pm;
-        const size_t sz = next->width * next->height * sizeof(argb_t);
-        memcpy(next->data, frame->pm.data, sz);
+        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
     }
 
     if (ctl.DelayTime != 0) {
