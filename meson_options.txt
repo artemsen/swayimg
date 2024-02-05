@@ -67,5 +67,5 @@ option('desktop',
 # project version
 option('version',
        type : 'string',
-       value : '0.0.0',
+       value : '2.1',
        description : 'project version')
