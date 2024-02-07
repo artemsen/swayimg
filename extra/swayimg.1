@@ -1,12 +1,14 @@
 .\" Swayimg: image viewer for Sway/Wayland
 .\" Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 .TH SWAYIMG 1 2021-12-28 swayimg "Swayimg manual"
-.SH NAME
+.SH "NAME"
 swayimg \- lightweight image viewer for Wayland display servers
-.SH SYNOPSIS
+.SH "SYNOPSIS"
 swayimg [\fIOPTIONS\fR]... \fI[FILE]...\fR
-.SH DESCRIPTION
-.PP
+.\" ****************************************************************************
+.\" Description
+.\" ****************************************************************************
+.SH "DESCRIPTION"
 If no input files or directories are specified, the viewer will try to read all
 files in the current directory.
 .PP
@@ -19,49 +21,66 @@ the currently focused workspace and window. This data is used to calculate the
 position and size of a new window. Then the program adds two rules to the sway
 application \fBswayimg\fR: "floating enable" and "move position". This
 creates a new Wayland window and draws an image from the specified file.
-.\" options
-.SH OPTIONS
+.\" ****************************************************************************
+.\" Options
+.\" ****************************************************************************
+.SH "OPTIONS"
+Mandatory arguments to long options are mandatory for short options too.
+.\" ----------------------------------------------------------------------------
 .IP "\fB\-h\fR, \fB\-\-help\fR"
 Display help message.
+.\" ----------------------------------------------------------------------------
 .IP "\fB\-v\fR, \fB\-\-version\fR"
 Display version information and list of supported image formats.
+.\" ----------------------------------------------------------------------------
 .IP "\fB\-r\fR, \fB\-\-recursive\fR"
 Read directories recursively.
-.IP "\fB\-o\fR, \fB\-\-order\fR\fB=\fR\fIORDER\fR:"
-Set the order of the image file list:
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-o\fR, \fB\-\-order\fR=\fIORDER\fR:"
+Set order of the image list:
 .nf
-\fInone\fR: unsorted;
+\fInone\fR: unsorted, order is system depended;
 \fIalpha\fR: sorted alphabetically (default);
 \fIrandom\fR: randomize list.
-.IP "\fB\-s\fR, \fB\-\-scale\fR\fB=\fR\fISCALE\fR"
-Set the default scale of the image. \fISCALE\fR is one of the named values.
-\fIoptimal\fR: 100% or less to fit to window;
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-s\fR, \fB\-\-scale\fR=\fIMODE\fR"
+Set the default image scale, valid modes are:
+.nf
+\fIoptimal\fR: 100% or less to fit to window (default);
 \fIwidth\fR: fit image width to window width;
 \fIheight\fR: fit image height to window height;
 \fIfit\fR: fit to window;
 \fIfill\fR: crop image to fill the window;
 \fIreal\fR: real size (100%).
+.\" ----------------------------------------------------------------------------
 .IP "\fB\-l\fR, \fB\-\-slideshow\fR"
-Activate slideshow mode on startup.
+Run slideshow mode on startup.
+.\" ----------------------------------------------------------------------------
 .IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
 Start in full screen mode.
-.IP "\fB\-p\fR, \fB\-\-position\fR\fB=\fR\fIPOS\fR"
-Set the absolute position of the window:
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-p\fR, \fB\-\-position\fR=\fIPOS\fR"
+Set initial position of the window (Sway only):
 .nf
 \fIparent\fR: set position from parent (currently active) window (default);
 \fIX,Y\fR: absolute coordinates of the top left corner.
-.IP "\fB\-g\fR, \fB\-\-size\fR\fB=\fR\fISIZE\fR"
-Set window size:
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-g\fR, \fB\-\-size\fR=\fISIZE\fR"
+Set initial size of the window:
 .nf
-\fIparent\fR: set size from parent (currently active) window (default);
-\fIimage\fR: set size from the first image;
-\fIWIDTH,HEIGHT\fR: absolute size of the window.
-.IP "\fB\-a\fR, \fB\-\-class\fR"
+\fIparent\fR: set size from parent (currently active) window (Sway only, default);
+\fIimage\fR: set size from the first loaded image;
+\fIWIDTH,HEIGHT\fR: absolute size of the window in pixels.
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-a\fR, \fB\-\-class\fR=\fINAME\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
-.IP "\fB\-c\fR, \fB\-\-config\fR\fB=\fR\fISECTION.KEY=VALUE\fR"
-Set a configuration parameter, see `man swayimgrc` for a list of sections and its parameters.
-.\" keys
-.SH KEYBINDINGS
+.\" ----------------------------------------------------------------------------
+.IP "\fB\-c\fR, \fB\-\-config\fR=\fISECTION.KEY=VALUE\fR"
+Set a configuration parameter, see swayimgrc(5) for a list of sections and its parameters.
+.\" ****************************************************************************
+.\" Key bindings
+.\" ****************************************************************************
+.SH "KEYBINDINGS"
 Default key bindings can be overridden with the configuration file.
 .IP "\fBF1\fR"
 Show/hide help.
@@ -123,13 +142,20 @@ Switch the text info mode.
 Execute external command: prints path to the current file.
 .IP "\fBEsc\fR, \fBq\fR"
 Exit the program.
-.SH ENVIRONMENT
+.\" ****************************************************************************
+.\" Environment variables
+.\" ****************************************************************************
+.SH "ENVIRONMENT"
 .IP \fISWAYSOCK\fR
 Path to the socket file used for Sway IPC.
-.\" related man pages
+.\" ****************************************************************************
+.\" Cross links
+.\" ****************************************************************************
 .SH SEE ALSO
 swayimgrc(5)
-.\" link to homepage
+.\" ****************************************************************************
+.\" Home page
+.\" ****************************************************************************
 .SH BUGS
 For suggestions, comments, bug reports etc. visit the
 .UR https://github.com/artemsen/swayimg

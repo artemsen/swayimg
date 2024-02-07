@@ -77,7 +77,7 @@ static void print_help(void)
             strcat(buf_lopt, "=");
             strcat(buf_lopt, arg->format);
         }
-        printf("  -%c, --%-18s %s\n", arg->short_opt, buf_lopt, arg->help);
+        printf("  -%c, --%-14s %s\n", arg->short_opt, buf_lopt, arg->help);
     }
 }
 

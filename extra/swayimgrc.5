@@ -1,24 +1,31 @@
 .\" Swayimg configuration file format.
 .\" Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 .TH SWAYIMGRC 5 2022-02-09 swayimg "Swayimg configuration"
-.SH NAME
-swayimgrc \- Swayimg configuration file
-.\" possible file locations
-.SH SYNOPSIS
-.SY \fI$XDG_CONFIG_HOME\fR/swayimg/config
-.SY \fI$HOME\fR/.config/swayimg/config
-.SY \fI$XDG_CONFIG_DIRS\fR/swayimg/config
-.SY \fR/etc/xdg/swayimg/config
-.\" format description
-.SH DESCRIPTION
-.SS General format description
+.SH "NAME"
+swayimgrc \- configuration file for the Swayimg viewer
+.SH "SYNOPSIS"
 The Swayimg configuration file is a text-based INI file used to override the
 default settings.
-.PP
+.\" ****************************************************************************
+.\" Config file location
+.\" ****************************************************************************
+.SH "LOCATION"
+Swayimg searches for a config file in the following locations, in this order:
+.nf
+\- $XDG_CONFIG_HOME/swayimg/config
+\- $HOME/.config/swayimg/config
+\- $XDG_CONFIG_DIRS/swayimg/config
+\- /etc/xdg/swayimg/config
+.\" ****************************************************************************
+.\" Format description
+.\" ****************************************************************************
+.SH "DESCRIPTION"
 The structure of the INI file consists of key-value pairs for properties and
 sections that organize properties.
+.PP
 The basic element contained in the INI file is the key or property.
 Every key has a name and a value, delimited by an equals sign (=).
+.PP
 The name appears to the left of the equals sign. The value can contain any
 characters.
 .PP
@@ -28,82 +35,153 @@ are associated with that section.
 .PP
 The number sign (#) at the beginning of the line indicates a comment.
 Empty lines and comments are ignored.
-.SS [general] section
-.IP "\fBscale\fR: initial image scale:"
+.PP
+Any option can be overridden using the \fI--config\fR argument in the command
+line, for instance: `swayimg --config="general.scale=real"`.
+.\" ****************************************************************************
+.\" General config section
+.\" ****************************************************************************
+.SH "SECTIONS"
+.SS "General"
+The general configuration is stored in the section \fB[general]\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBscale\fR = \fIMODE\fR"
+Set the initial image scale, valid modes are:
 .nf
 \fIoptimal\fR: 100% or less to fit to window (default);
 \fIwidth\fR: fit image width to window width;
 \fIheight\fR: fit image height to window height;
 \fIfit\fR: fit to window;
 \fIfill\fR: crop image to fill the window;
-\fIreal\fR: real size (100%);
-.IP "\fBfullscreen\fR: start in full screen mode, \fIyes\fR or [\fIno\fR];"
-.IP "\fBantialiasing\fR: enable/disable anti-aliasing, \fIyes\fR or [\fIno\fR];"
-.IP "\fBtransparency\fR: background for transparent images:"
+\fIreal\fR: real size (100%).
+.\" ----------------------------------------------------------------------------
+.IP "\fBfullscreen\fR = \fI[yes|no]\fR"
+Start in full screen mode, \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
+Enable or disable antialising (better quality, but slow rendering), \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBtransparency\fR = \fI[MODE|#COLOR]\fR"
+Set background for transparent images:
 .nf
-\fInone\fR: transparent;
-\fIgrid\fR: show grid as background (default);
-\fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fBposition\fR: window position:"
+\fInone\fR: fully transparent, window color will be use;
+\fIgrid\fR: draw chessboard (default);
+\fI#COLOR\fR: solid RGB color in hex format, e.g `#102030`.
+.\" ----------------------------------------------------------------------------
+.IP "\fBposition\fR = \fI[MODE|COORDINATES]\fR"
+Set initial position of the window (Sway only):
+.nf
 \fIparent\fR: set position from parent (currently active) window (default);
 \fIX,Y\fR: absolute coordinates of the top left corner.
-.IP "\fBsize\fR: window size:"
-\fIparent\fR: set size from parent (currently active) window (default);
-\fIimage\fR: set size from the first image;
-\fIWIDTH,HEIGHT\fR: absolute size of the window.
-.IP "\fBbackground\fR: window background:"
+.\" ----------------------------------------------------------------------------
+.IP "\fBsize\fR = \fI[MODE|SIZE]\fR"
+Set initial size of the window:
 .nf
-\fInone\fR: transparent (default);
-\fIXXXXXX\fR: hexadecimal RGB color.
-.IP "\fBslideshow\fR: run slideshow at startup, \fIyes\fR or [\fIno\fR];"
-.IP "\fBslideshow_time\fR: slideshow image duration in seconds, default is \fI3\fR;"
-.IP "\fBapp_id\fR: set a constant window class/app_id. Setting this may break the window layout;"
-.SS [list] section: image list configuration
-.IP "\fBorder\fR: order of the image list:"
+\fIparent\fR: set size from parent (currently active) window (Sway only, default);
+\fIimage\fR: set size from the first loaded image;
+\fIWIDTH,HEIGHT\fR: absolute size of the window in pixels.
+.\" ----------------------------------------------------------------------------
+.IP "\fBbackground\fR = \fI[MODE|#COLOR]\fR"
+Set window background:
+\fInone\fR: transparent window (default);
+\fI#COLOR\fR: solid RGB color in hex format, e.g `#102030`.
+.\" ----------------------------------------------------------------------------
+.IP "\fBslideshow\fR = \fI[yes|no]\fR"
+Run slideshow at startup, \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBslideshow_time\fR = \fISECONDS\fR"
+Set slideshow image duration in seconds, default is \fI3\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBapp_id\fR = \fINAME\fR"
+Set a constant window class/app_id. Setting this may break the window layout.
+.\" ****************************************************************************
+.\" Image list config section
+.\" ****************************************************************************
+.SS "Image list"
+The image list configuration is stored in the section \fB[list]\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBorder\fR = \fIORDER\fR"
+Set order of the image list:
 .nf
-\fInone\fR: unsorted;
+\fInone\fR: unsorted, order is system depended;
 \fIalpha\fR: sorted alphabetically (default);
 \fIrandom\fR: randomize list.
-.IP "\fBloop\fR: looping file list mode, [\fIyes\fR] or \fIno\fR;"
-.IP "\fBrecursive\fR: read directories recursively, \fIyes\fR or [\fIno\fR];"
-.IP "\fBall\fR: open all files in the same directory, [\fIyes\fR] or \fIno\fR;"
-.SS [font]: font configuration
-.PP
-.IP "\fBname\fR: font name used for printing text, default is \fImonospace\fR;"
-.IP "\fBsize\fR: font size (in pt), default is \fI14\fR;"
-.IP "\fBcolor\fR: color in RGB hex format, default is \fI#cccccc\fR;"
-.IP "\fBshadow\fR: drop shadow, \fInone\fR or color in RGB hex format, default is \fI#000000\fR;"
-.SS [info] section: text info layout
-.IP "\fBmode\fR: startup mode, \fIoff\fR, \fIbrief\fR, or [\fIfull\fR];"
-.IP "\fBfull.topleft\fR: comma delimited list of content for the \fIfull\fR mode, top left corner of the window:"
+.\" ----------------------------------------------------------------------------
+.IP "\fBloop\fR\fR = \fI[yes|no]\fR"
+Looping file list mode, \fIyes\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBrecursive\fR = \fI[yes|no]\fR"
+Read directories recursively, \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBall\fR = \fI[yes|no]\fR"
+Open all files in the same directory, \fIyes\fR by default.
+.\" ****************************************************************************
+.\" Font config section
+.\" ****************************************************************************
+.SS "Font"
+The font configuration is stored in the section \fB[font]\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBname\fR\fR = \fINAME\fR"
+Set the font name used for text, default is \fImonospace\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBsize\fR = \fISIZE\fR"
+Set the font size (in pt), default is \fI14\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBcolor\fR = \fI#COLOR\fR"
+Set text color in RGB hex format, default is \fI#cccccc\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBshadow\fR = \fI[none|COLOR]\fR"
+Draw text shadow with specified color, default is \fI#000000\fR.
+.\" ****************************************************************************
+.\" Text info config section
+.\" ****************************************************************************
+.SS "Text info"
+The section \fB[info]\fR describes how to display image meta data (file name,
+size, EXIF etc). Two modes are supported, each of them can have their own
+display scheme.
+.\" ----------------------------------------------------------------------------
+.IP "\fBmode\fR = \fIMODE\fR"
+Set startup mode:
 .nf
-\fIname\fR: file name;
-\fIpath\fR: full path;
-\fIfilesize\fR: file size;
-\fIformat\fR: image format;
-\fIimagesize\fR: image size;
+\fIfull\fR: show all info (default);
+\fIbrief\fR: show brief info;
+\fIoff\fR: don't display any text.
+.\" ----------------------------------------------------------------------------
+.IP "\fBfull.topleft\fR = \fILIST\fR"
+Set display scheme for the \fIfull\fR mode, top left corner of the window.
+\fILIST\fR is a comma delimited list of the following lines:
+\fIname\fR: file name of the current image;
+\fIpath\fR: full path to the current image;
+\fIfilesize\fR: file size in human readable format;
+\fIformat\fR: image format description;
+\fIimagesize\fR: image dimensions in pixels;
 \fIexif\fR: EXIF data;
 \fIframe\fR: current/total frame index;
 \fIindex\fR: current/total file index;
 \fIscale\fR: current scale in percent;
 \fIstatus\fR: status message;
-\fInone\fR: empty field (ignored);
-.IP "\fBfull.topright\fR: \fIfull\fR mode, top right corner of the window;"
-.IP "\fBfull.bottomleft\fR: \fIfull\fR mode, bottom left corner of the window;"
-.IP "\fBfull.bottomright\fR: \fIfull\fR mode, bottom right corner of the window;"
-.IP "\fBbrief.topleft\fR: \fIbrief\fR mode, top right corner of the window;"
-.IP "\fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;"
-.IP "\fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;"
-.IP "\fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window;"
-.SS [keys]: key bindings
+\fInone\fR: empty field (ignored).
 .PP
-The key bindings are described in the "keys" section.
+.nf
+\fBfull.topright\fR: \fIfull\fR mode, top right corner of the window;
+\fBfull.bottomleft\fR: \fIfull\fR mode, bottom left corner of the window;
+\fBfull.bottomright\fR: \fIfull\fR mode, bottom right corner of the window;
+\fBbrief.topleft\fR: \fIbrief\fR mode, top right corner of the window;
+\fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;
+\fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;
+\fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window.
+.\" ****************************************************************************
+.\" Key bindings config section
+.\" ****************************************************************************
+.SS "Key bindings"
+The key bindings are described in the \fB[keys]\fR section.
 Each line associates a key with some action and optional parameters.
 The key name can be obtained with the \fIxkbcli\fR tool:
 `xkbcli interactive-wayland`.
-One or more key modifiers (Ctrl, Alt, Shift) can be specified in the key name.
+One or more key modifiers (\fICtrl\fR, \fIAlt\fR, \fIShift\fR) can be specified
+in the key name.
 .PP
-Valid action are:
+Valid actions:
 .IP "\fBnone\fR: can be used for removing built-in action;"
 .IP "\fBhelp\fR: show/hide help;"
 .IP "\fBfirst_file\fR: jump to the first file;"
@@ -116,12 +194,12 @@ Valid action are:
 .IP "\fBnext_frame\fR: show next frame;"
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
-.IP "\fBfullscreen\fR: switch fullscreen mode;"
+.IP "\fBfullscreen\fR: switch full screen mode;"
 .IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
 .IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
 .IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"
 .IP "\fBstep_down\fR \fI[PERCENT]\fR: move viewport down, default is 10%;"
-.IP "\fBzoom\fR \fI[SCALE]\fR: zoom in/ou/fix, \fISCALE\fR is one of \fIoptimal\fR, \fIwidth\fR, \fIheight\fR, \fIfit\fR, \fIfill\fR, \fIreal\fR, or percent, e.g. \fI+10\fR;"
+.IP "\fBzoom\fR \fI[SCALE]\fR: zoom in/out/fix, \fISCALE\fR is one of \fIoptimal\fR, \fIwidth\fR, \fIheight\fR, \fIfit\fR, \fIfill\fR, \fIreal\fR, or percent, e.g. \fI+10\fR;"
 .IP "\fBrotate_left\fR: rotate image anticlockwise;"
 .IP "\fBrotate_right\fR: rotate image clockwise;"
 .IP "\fBflip_vertical\fR: flip image vertically;"
@@ -131,17 +209,22 @@ Valid action are:
 .IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIbrief\fR/\fIfull\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBexit\fR: exit the application."
-.\" [mouse]
-.SS [mouse]: mouse/touchpad configuration
-.PP
-Same format as in [keys].
+.\" ****************************************************************************
+.\" Mouse / touchpad config section
+.\" ****************************************************************************
+.SS "Mouse/touchpad"
+The mouse configuration is stored in the section \fB[mouse]\fR.
+Same format as in \fB[keys]\fR.
 .PP
 Valid keys:
-.IP "\fBScrollUp\fR: mouse wheel up or touch scroll up;"
-.IP "\fBScrollDown\fR: mouse wheel down or touch scroll down;"
-.IP "\fBScrollLeft\fR: touch scroll left;"
-.IP "\fBScrollRight\fR: touch scroll right;"
-.\" example file
+.nf
+\fBScrollUp\fR: mouse wheel up or touchpad scroll up;
+\fBScrollDown\fR: mouse wheel down or touchpad scroll down;
+\fBScrollLeft\fR: touchpad scroll left;
+\fBScrollRight\fR: touchpad scroll right.
+.\" ****************************************************************************
+.\" Example
+.\" ****************************************************************************
 .SH EXAMPLES
 .EX
 # comment
@@ -152,12 +235,18 @@ order = random
 [font]
 size = 16
 [keys]
-e = exec echo "%" > mylist.txt
+Ctrl+Alt+e = exec echo "%" > mylist.txt
 .EE
-.\" related man pages
+.PP
+See `/usr/share/swayimg/swayimgrc` for full example.
+.\" ****************************************************************************
+.\" Cross links
+.\" ****************************************************************************
 .SH SEE ALSO
 swayimg(1)
-.\" link to homepage
+.\" ****************************************************************************
+.\" Home page
+.\" ****************************************************************************
 .SH BUGS
 For suggestions, comments, bug reports etc. visit the
 .UR https://github.com/artemsen/swayimg
