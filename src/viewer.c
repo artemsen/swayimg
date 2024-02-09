@@ -205,13 +205,6 @@ static void execute_command(const char* expr)
     }
 
     free(cmd);
-
-    if (!image_list_reset()) {
-        printf("No more images, exit\n");
-        ui_stop();
-        return;
-    }
-    reset_state();
 }
 
 /**
@@ -458,7 +451,13 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
             break;
         case kb_exec:
             execute_command(kbind->params);
-            redraw = true;
+            if (image_list_reset()) {
+                reset_state();
+                redraw = true;
+            } else {
+                printf("No more images, exit\n");
+                ui_stop();
+            }
             break;
         case kb_exit:
             if (ctx.help) {
