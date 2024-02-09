@@ -270,18 +270,24 @@ static size_t peek_edge(bool first)
 }
 
 /**
+ * Compare paths with strcoll
+ * @return negative if a < b, positive if a > b, 0 otherwise
+ */
+static int compare_paths(const void* a, const void* b)
+{
+    const struct entry* entry_a = *(const struct entry**)a;
+    const struct entry* entry_b = *(const struct entry**)b;
+
+    return strcoll(entry_a->path, entry_b->path);
+}
+
+/**
  * Sort the image list alphabetically.
  */
 static void sort_list(void)
 {
+    qsort(ctx.entries, ctx.size, sizeof(struct entry*), compare_paths);
     for (size_t i = 0; i < ctx.size; ++i) {
-        for (size_t j = i + 1; j < ctx.size; ++j) {
-            if (strcoll(ctx.entries[i]->path, ctx.entries[j]->path) > 0) {
-                struct entry* swap = ctx.entries[i];
-                ctx.entries[i] = ctx.entries[j];
-                ctx.entries[j] = swap;
-            }
-        }
         ctx.entries[i]->index = i;
     }
 }
