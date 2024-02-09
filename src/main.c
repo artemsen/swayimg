@@ -159,44 +159,39 @@ static void sway_setup(void)
 {
     struct rect parent;
     bool fullscreen;
-    bool rc = false;
-    const int ipc = sway_connect();
+    bool absolute;
+    int ipc;
 
-    if (ipc != INVALID_SWAY_IPC && sway_current(ipc, &parent, &fullscreen)) {
+    ipc = sway_connect();
+    if (ipc == INVALID_SWAY_IPC) {
+        return;
+    }
+
+    absolute = ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
+
+    if (sway_current(ipc, &parent, &fullscreen)) {
         if (fullscreen && !ui_get_fullscreen()) {
+            // force set full screen mode if current window in it
             ui_toggle_fullscreen();
         }
-        if (!ui_get_fullscreen()) {
-            const bool absolute =
-                ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
-
-            if (!absolute) {
-                ui_set_position(parent.x, parent.y);
-            }
-
-            if (ui_get_width() == SIZE_FROM_PARENT ||
-                ui_get_height() == SIZE_FROM_PARENT) {
-                ui_set_size(parent.width, parent.height);
-            }
-
-            rc = sway_add_rules(ipc, ui_get_appid(), ui_get_x(), ui_get_y(),
-                                absolute);
+        if (ui_get_fullscreen()) {
         }
+
+        // set window position and size from the parent one
+        if (!absolute) {
+            ui_set_position(parent.x, parent.y);
+        }
+        if (ui_get_width() == SIZE_FROM_PARENT ||
+            ui_get_height() == SIZE_FROM_PARENT) {
+            ui_set_size(parent.width, parent.height);
+        }
+    }
+
+    if (!ui_get_fullscreen()) {
+        sway_add_rules(ipc, ui_get_appid(), ui_get_x(), ui_get_y(), absolute);
     }
 
     sway_disconnect(ipc);
-
-    if (!rc) {
-        // set fixed app_id
-        config_set(GENERAL_CONFIG_SECTION, "app_id", APP_NAME);
-
-        // fixup window size
-        if (ui_get_width() == SIZE_FROM_PARENT ||
-            ui_get_height() == SIZE_FROM_PARENT) {
-            const struct pixmap* pm = &image_list_current().image->frames[0].pm;
-            ui_set_size(pm->width, pm->height);
-        }
-    }
 }
 
 /**
@@ -233,14 +228,18 @@ int main(int argc, char* argv[])
         goto done;
     }
 
-    // set window size form the first image
+    //setup window position and size
+    if (!ui_get_fullscreen()) {
+        sway_setup();
+    }
+    // fixup window size form the first image
     if (ui_get_width() == SIZE_FROM_IMAGE ||
-        ui_get_height() == SIZE_FROM_IMAGE) {
+        ui_get_height() == SIZE_FROM_IMAGE ||
+        ui_get_width() == SIZE_FROM_PARENT ||
+        ui_get_height() == SIZE_FROM_PARENT) {
         const struct pixmap* pm = &image_list_current().image->frames[0].pm;
         ui_set_size(pm->width, pm->height);
     }
-
-    sway_setup();
 
     // run ui event loop
     rc = ui_run();
