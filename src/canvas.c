@@ -154,9 +154,13 @@ static void set_scale(enum canvas_scale sc)
  */
 static void zoom(ssize_t percent)
 {
-    const size_t old_w = ctx.scale * ctx.image.width;
-    const size_t old_h = ctx.scale * ctx.image.height;
+    const double wnd_half_w = ctx.window.width / 2;
+    const double wnd_half_h = ctx.window.height / 2;
     const float step = (ctx.scale / 100) * percent;
+
+    // get current center
+    const double center_x = wnd_half_w / ctx.scale - ctx.image.x / ctx.scale;
+    const double center_y = wnd_half_h / ctx.scale - ctx.image.y / ctx.scale;
 
     if (percent > 0) {
         ctx.scale += step;
@@ -173,15 +177,9 @@ static void zoom(ssize_t percent)
         }
     }
 
-    // move viewport to save the center of previous coordinates
-    const size_t new_w = ctx.scale * ctx.image.width;
-    const size_t new_h = ctx.scale * ctx.image.height;
-    const ssize_t delta_w = old_w - new_w;
-    const ssize_t delta_h = old_h - new_h;
-    const ssize_t cntr_x = ctx.window.width / 2 - ctx.image.x;
-    const ssize_t cntr_y = ctx.window.height / 2 - ctx.image.y;
-    ctx.image.x += ((float)cntr_x / old_w) * delta_w;
-    ctx.image.y += ((float)cntr_y / old_h) * delta_h;
+    // restore center
+    ctx.image.x = wnd_half_w - center_x * ctx.scale;
+    ctx.image.y = wnd_half_h - center_y * ctx.scale;
 
     fix_viewport();
 }
