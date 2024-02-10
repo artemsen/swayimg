@@ -225,20 +225,24 @@ static struct json_object* current_workspace(json_object* node)
  */
 static struct json_object* current_window(json_object* node)
 {
+    static const char* nnames[] = { "nodes", "floating_nodes" };
+
     struct json_object* focused;
     if (json_object_object_get_ex(node, "focused", &focused) &&
         json_object_get_boolean(focused)) {
         return node;
     }
 
-    struct json_object* nodes;
-    if (json_object_object_get_ex(node, "nodes", &nodes)) {
-        int idx = json_object_array_length(nodes);
-        while (--idx >= 0) {
-            struct json_object* sub = json_object_array_get_idx(nodes, idx);
-            struct json_object* focus = current_window(sub);
-            if (focus) {
-                return focus;
+    for (size_t i = 0; i < sizeof(nnames) / sizeof(nnames[0]); ++i) {
+        struct json_object* nodes;
+        if (json_object_object_get_ex(node, nnames[i], &nodes)) {
+            int idx = json_object_array_length(nodes);
+            while (--idx >= 0) {
+                struct json_object* sub = json_object_array_get_idx(nodes, idx);
+                struct json_object* focus = current_window(sub);
+                if (focus) {
+                    return focus;
+                }
             }
         }
     }
