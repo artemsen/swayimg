@@ -47,6 +47,13 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
     GraphicsControlBlock ctl = { .TransparentColor = NO_TRANSPARENT_COLOR };
     struct image_frame* frame = &ctx->frames[index];
 
+    const size_t width = (size_t)desc->Width > frame->pm.width - desc->Left
+        ? frame->pm.width - desc->Left
+        : (size_t)desc->Width;
+    const size_t height = (size_t)desc->Height > frame->pm.height - desc->Top
+        ? frame->pm.height - desc->Top
+        : (size_t)desc->Height;
+
     DGifSavedExtensionToGCB(gif, index, &ctl);
 
     if (ctl.DisposalMode == DISPOSE_PREVIOUS && index < ctx->num_frames - 1) {
@@ -54,12 +61,12 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
         pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
     }
 
-    for (int y = 0; y < desc->Height; ++y) {
+    for (size_t y = 0; y < height; ++y) {
         const uint8_t* raster = &img->RasterBits[y * desc->Width];
         argb_t* pixel = frame->pm.data + desc->Top * frame->pm.width +
             y * frame->pm.width + desc->Left;
 
-        for (int x = 0; x < desc->Width; ++x) {
+        for (size_t x = 0; x < width; ++x) {
             const uint8_t color = raster[x];
             if (color != ctl.TransparentColor &&
                 color < color_map->ColorCount) {
