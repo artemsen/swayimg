@@ -21,7 +21,8 @@ the image directly in a terminal window.
 - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
 - EXR (via [OpenEXR](https://openexr.com));
 - BMP (built-in);
-- PNM (built-in).
+- PNM (built-in);
+- TGA (built-in).
 
 ## Usage
 
