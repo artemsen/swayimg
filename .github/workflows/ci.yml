@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Update package info
+      run: sudo apt update
     - name: Install dependencies
       run: >
           sudo apt install --no-install-recommends --yes
