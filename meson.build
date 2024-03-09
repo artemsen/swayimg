@@ -47,6 +47,7 @@ gif = cc.find_library('gif', required: get_option('gif'))
 heif = dependency('libheif', required: get_option('heif'))
 avif = dependency('libavif', required: get_option('avif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
+jxl = dependency('libjxl', required: get_option('jxl'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
@@ -55,12 +56,6 @@ webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
-# Arch specific: https://bugs.archlinux.org/task/73931
-jxl_feature = get_option('jxl')
-jxl = dependency('libjxl', required: false)
-if not jxl.found() and (jxl_feature.auto() or jxl_feature.enabled())
-  jxl = cc.find_library('libjxl', required: jxl_feature)
-endif
 # non-Linux (BSD specific)
 epoll = dependency('epoll-shim', required: false)
 inotify = dependency('libinotify', required: false)
@@ -85,16 +80,16 @@ configure_file(output: 'buildcfg.h', configuration: conf)
 
 # Wayland protocols
 wlproto = dependency('wayland-protocols')
-wlproto_dir = wlproto.get_variable(pkgconfig : 'pkgdatadir')
+wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
 wlscan = dependency('wayland-scanner', required: false, native: true)
 if wlscan.found()
-  wl_scanner = find_program(wlscan.get_variable(pkgconfig : 'wayland_scanner'), native: true)
+  wl_scanner = find_program(wlscan.get_variable(pkgconfig: 'wayland_scanner'), native: true)
 else
   wl_scanner = find_program('wayland-scanner', native: true)
 endif
 
 # XDG shell Wayland protocol
-xdg_shell_xml = join_paths(wlproto_dir, 'stable/xdg-shell/xdg-shell.xml')
+xdg_shell_xml = wlproto_dir / 'stable/xdg-shell/xdg-shell.xml'
 xdg_shell_c = custom_target(
   'xdg-shell-protocol.c',
   output: 'xdg-shell-protocol.c',
@@ -109,8 +104,7 @@ xdg_shell_h = custom_target(
 )
 
 # install sample config
-install_data('extra/swayimgrc',
-  install_dir: join_paths(get_option('datadir'), 'swayimg'))
+install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
 
 # man installation
 if get_option('man')
@@ -120,10 +114,8 @@ endif
 
 # desktop file + icon
 if get_option('desktop')
-  install_data('extra/swayimg.desktop',
-    install_dir: join_paths(get_option('datadir'), 'applications'))
-  install_data('extra/swayimg.png',
-    install_dir: join_paths(get_option('datadir'), 'icons/hicolor/64x64/apps'))
+  install_data('extra/swayimg.desktop', install_dir: get_option('datadir') / 'applications')
+  install_data('extra/swayimg.png', install_dir: get_option('datadir') / 'icons/hicolor/64x64/apps')
 endif
 
 # zsh completion
@@ -134,7 +126,7 @@ if zsh.auto()
 endif
 if zsh.allowed()
   datadir = get_option('datadir')
-  zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
+  zsh_install_dir = datadir / 'zsh' / 'site-functions'
   install_data('extra/zsh.completion',
                install_dir: zsh_install_dir,
                rename: '_swayimg')
@@ -143,7 +135,7 @@ endif
 # bash completion installation
 if bash.found()
   datadir = get_option('datadir')
-  bash_install_dir = bash.get_variable(pkgconfig : 'completionsdir',
+  bash_install_dir = bash.get_variable(pkgconfig: 'completionsdir',
                                        pkgconfig_define: ['datadir', datadir])
   install_data('extra/bash.completion',
                install_dir: bash_install_dir,
