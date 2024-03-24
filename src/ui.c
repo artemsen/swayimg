@@ -77,6 +77,7 @@ struct ui {
 
     // cross-desktop
     struct xdg {
+        bool initialized;
         struct xdg_wm_base* base;
         struct xdg_surface* surface;
         struct xdg_toplevel* toplevel;
@@ -412,12 +413,17 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
 {
     xdg_surface_ack_configure(surface, serial);
 
-    if (!ctx.wnd.current && !recreate_buffers()) {
+    if (!recreate_buffers()) {
         ctx.state = state_error;
         return;
     }
 
-    ui_redraw();
+    if (ctx.xdg.initialized) {
+        ui_redraw();
+    } else {
+        wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
+        wl_surface_commit(ctx.wl.surface);
+    }
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -437,15 +443,10 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
                                           int32_t width, int32_t height,
                                           struct wl_array* states)
 {
-    const int32_t cur_width = (int32_t)(ctx.wnd.width / ctx.wnd.scale);
-    const int32_t cur_height = (int32_t)(ctx.wnd.height / ctx.wnd.scale);
-
-    if (width && height && (width != cur_width || height != cur_height)) {
+    if (width && height) {
+        ctx.xdg.initialized = true;
         ctx.wnd.width = width * ctx.wnd.scale;
         ctx.wnd.height = height * ctx.wnd.scale;
-        if (!recreate_buffers()) {
-            ctx.state = state_error;
-        }
     }
 }
 
