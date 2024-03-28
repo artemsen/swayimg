@@ -814,9 +814,7 @@ bool ui_run(void)
             const ssize_t sz = sizeof(repeats);
             if (read(ctx.repeat.fd, &repeats, sz) == sz) {
                 const uint8_t mods = keybind_mods(ctx.xkb.state);
-                while (repeats--) {
-                    viewer_on_keyboard(ctx.repeat.key, mods);
-                }
+                viewer_on_keyboard(ctx.repeat.key, mods);
             }
         }
 
