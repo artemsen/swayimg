@@ -137,19 +137,17 @@ static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
         }
     }
 
-    if (action == kb_none) {
-        // remove existing binding
-        if (new_binding) {
-            new_binding->action = action;
-            free(new_binding->params);
-            new_binding->params = NULL;
-            free(new_binding->help);
-            new_binding->help = NULL;
+    if (new_binding) {
+        // use existing, clear previous buffers
+        free(new_binding->params);
+        new_binding->params = NULL;
+        free(new_binding->help);
+        new_binding->help = NULL;
+        if (action == kb_none) {
+            new_binding->action = kb_none; // mark as free
+            return;
         }
-        return;
-    }
-
-    if (!new_binding) {
+    } else {
         // add new (reallocate)
         const size_t sz = (key_bindings_size + 1) * sizeof(struct key_binding);
         struct key_binding* bindings = realloc(key_bindings, sz);
@@ -166,10 +164,7 @@ static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
     new_binding->key = key;
     new_binding->mods = mods;
     new_binding->action = action;
-    if (new_binding->params && (!params || !*params)) {
-        free(new_binding->params);
-        new_binding->params = NULL;
-    } else if (params && *params) {
+    if (params && *params) {
         str_dup(params, &new_binding->params);
     }
 
