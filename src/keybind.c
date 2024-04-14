@@ -185,7 +185,7 @@ static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
             str_append("Shift+", 0, &new_binding->help);
         }
         str_append(key_name, 0, &new_binding->help);
-        str_append(" ", 1, &new_binding->help);
+        str_append(": ", 2, &new_binding->help);
         str_append(action_names[action], 0, &new_binding->help);
         if (new_binding->params) {
             str_append(" ", 1, &new_binding->help);
@@ -224,6 +224,7 @@ static bool get_key_from_name(const char* name, xkb_keysym_t* key,
     // get key
     *key = xkb_keysym_from_name(slices[snum - 1].value,
                                 XKB_KEYSYM_CASE_INSENSITIVE);
+    // check for virtual keys
     if (*key == XKB_KEY_NoSymbol) {
         for (size_t i = 0; i < ARRAY_SIZE(virtual_keys); ++i) {
             if (strcmp(slices[snum - 1].value, virtual_keys[i].name) == 0) {
@@ -231,6 +232,12 @@ static bool get_key_from_name(const char* name, xkb_keysym_t* key,
                 break;
             }
         }
+    }
+    // check for international symbols
+    if (*key == XKB_KEY_NoSymbol) {
+        wchar_t* wide = str_to_wide(slices[snum - 1].value, NULL);
+        *key = xkb_utf32_to_keysym(wide[0]);
+        free(wide);
     }
 
     return (*key != XKB_KEY_NoSymbol);
