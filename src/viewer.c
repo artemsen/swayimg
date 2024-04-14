@@ -359,6 +359,12 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
     const struct key_binding* kbind = keybind_get(key, mods);
 
     if (!kbind) {
+        char* name = keybind_name(key, mods);
+        if (name) {
+            info_set_status("Key %s is not bound", name);
+            free(name);
+            ui_redraw();
+        }
         return;
     }
 

@@ -77,6 +77,14 @@ void keybind_free(void);
 uint8_t keybind_mods(struct xkb_state* state);
 
 /**
+ * Get key name.
+ * @param key keyboard key
+ * @param mods key modifiers (ctrl/alt/shift)
+ * @return text name of key, caller should free the buffer
+ */
+char* keybind_name(xkb_keysym_t key, uint8_t mods);
+
+/**
  * Get key binding description.
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
