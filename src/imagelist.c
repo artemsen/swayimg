@@ -163,7 +163,7 @@ static void add_dir(const char* dir, bool recursive)
                     if (recursive) {
                         add_dir(path, recursive);
                     }
-                } else if (file_stat.st_size) {
+                } else {
                     add_file(path);
                 }
             }
