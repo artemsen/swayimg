@@ -361,7 +361,7 @@ void canvas_draw_image(struct pixmap* wnd, const struct image* img,
 
     // put image on window surface
     pixmap_put(wnd, wnd_x0, wnd_y0, pm, ctx.image.x, ctx.image.y, ctx.scale,
-               img->alpha, ctx.antialiasing);
+               img->alpha, ctx.scale == 1.0 ? false : ctx.antialiasing);
 }
 
 void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
