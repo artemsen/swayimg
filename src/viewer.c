@@ -394,6 +394,15 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
         case kb_next_file:
             redraw = next_file(jump_next_file);
             break;
+        case kb_skip_file:
+            if (image_list_skip()) {
+                reset_state();
+                redraw = true;
+            } else {
+                printf("No more images, exit\n");
+                ui_stop();
+            }
+            break;
         case kb_prev_frame:
         case kb_next_frame:
             animation_ctl(false);

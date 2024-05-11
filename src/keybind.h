@@ -27,6 +27,7 @@ enum kb_action {
     kb_next_dir,
     kb_prev_file,
     kb_next_file,
+    kb_skip_file,
     kb_prev_frame,
     kb_next_frame,
     kb_animation,

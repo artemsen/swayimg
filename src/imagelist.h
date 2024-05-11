@@ -67,6 +67,12 @@ size_t image_list_size(void);
 struct image_entry image_list_current(void);
 
 /**
+ * Skip current entry (remove from the image list).
+ * @return false if the image list is now empty
+ */
+bool image_list_skip(void);
+
+/**
  * Reset cache and reload current image.
  * @return false if reset failed (no more images)
  */

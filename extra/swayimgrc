@@ -99,6 +99,7 @@ Shift+d = prev_dir
 d = next_dir
 Shift+o = prev_frame
 o = next_frame
+c = skip_file
 Shift+s = slideshow
 s = animation
 f = fullscreen

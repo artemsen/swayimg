@@ -582,6 +582,16 @@ struct image_entry image_list_current(void)
     return entry;
 }
 
+bool image_list_skip(void)
+{
+    // remove current entry from list
+    free(ctx.entries[ctx.index]);
+    ctx.entries[ctx.index] = NULL;
+
+    // open next image
+    return image_list_jump(jump_next_file);
+}
+
 bool image_list_reset(void)
 {
     // reset cache
