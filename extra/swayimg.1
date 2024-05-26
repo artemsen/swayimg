@@ -12,15 +12,11 @@ swayimg [\fIOPTIONS\fR]... \fI[FILE]...\fR
 If no input files or directories are specified, the viewer will try to read all
 files in the current directory.
 .PP
-Use '-' as \fIFILE\fR to read image data from stdin.
+By default, the application generates a list of images with all files in the
+same directory as the image being loaded. This behavior can be changed with
+the \fBlist.all\fR parameter in the config file.
 .PP
-In a sway compatible mode, the viewer creates an "overlay" above the currently
-active window, which gives the illusion that you are opening the image directly
-in a terminal window. The program uses sway's IPC to determine the geometry of
-the currently focused workspace and window. This data is used to calculate the
-position and size of a new window. Then the program adds two rules to the sway
-application \fBswayimg\fR: "floating enable" and "move position". This
-creates a new Wayland window and draws an image from the specified file.
+Use '-' as \fIFILE\fR to read image data from stdin.
 .\" ****************************************************************************
 .\" Options
 .\" ****************************************************************************
@@ -145,11 +141,24 @@ Execute external command: prints path to the current file.
 .IP "\fBEsc\fR, \fBq\fR"
 Exit the program.
 .\" ****************************************************************************
+.\" SWAY integration
+.\" ****************************************************************************
+.SH "SWAY MODE"
+The Sway compatible mode is automatically enabled if the environment variable
+\fISWAYSOCK\fR points to a valid Sway IPC socket file.
+This mode provides some features such as setting the window position and getting
+the workspace layout.
+By default, the application creates an "overlay" above the currently active
+window, which gives the illusion that the image is opened directly inside the
+terminal window.
+.\" ****************************************************************************
 .\" Environment variables
 .\" ****************************************************************************
 .SH "ENVIRONMENT"
 .IP \fISWAYSOCK\fR
 Path to the socket file used for Sway IPC.
+.IP "\fIXDG_CONFIG_HOME\fR, \fIXDG_CONFIG_DIRS\fR, \fIHOME\fR"
+Prefix of the path to the application config file.
 .\" ****************************************************************************
 .\" Cross links
 .\" ****************************************************************************
