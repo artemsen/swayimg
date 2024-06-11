@@ -29,8 +29,6 @@
 
 /** Number of entries added on reallocation. */
 #define ALLOCATE_SIZE 32
-/** Name used for image, that is read from stdin through pipe. */
-#define STDIN_FILE_NAME "*stdin*"
 
 /** Single list entry. */
 struct entry {
@@ -594,7 +592,7 @@ bool image_list_skip(void)
 
 bool image_list_is_stdin(void)
 {
-    return strcmp(ctx.current->file_path, "{STDIN}") == 0;
+    return strcmp(ctx.current->file_path, STDIN_FILE_NAME) == 0;
 }
 
 bool image_list_reset(void)

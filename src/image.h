@@ -6,6 +6,9 @@
 
 #include "pixmap.h"
 
+/** Name used for image, that is read from stdin through pipe. */
+#define STDIN_FILE_NAME "{STDIN}"
+
 struct image_frame;
 struct image_info;
 
