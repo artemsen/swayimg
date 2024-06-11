@@ -6,6 +6,7 @@ project(
   default_options: [
     'c_std=c99',
     'warning_level=3',
+    'buildtype=release',
   ],
   license: 'MIT',
   version: '0.0.0',
