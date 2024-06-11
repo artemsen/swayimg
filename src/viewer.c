@@ -312,13 +312,19 @@ void viewer_free(void)
 
 void viewer_reset(void)
 {
-    if (image_list_reset()) {
+    if (image_list_is_stdin()) {
         reset_state();
-        info_set_status("Image reloaded");
+        info_set_status("Cannot reload stdin image");
         ui_redraw();
     } else {
-        printf("No more images, exit\n");
-        ui_stop();
+        if (image_list_reset()) {
+            reset_state();
+            info_set_status("Image reloaded");
+            ui_redraw();
+        } else {
+            printf("No more images, exit\n");
+            ui_stop();
+        }
     }
 }
 
