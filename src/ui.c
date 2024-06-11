@@ -413,11 +413,6 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
 {
     xdg_surface_ack_configure(surface, serial);
 
-    if (!recreate_buffers()) {
-        ctx.state = state_error;
-        return;
-    }
-
     if (ctx.xdg.initialized) {
         ui_redraw();
     } else {
@@ -443,10 +438,22 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
                                           int32_t width, int32_t height,
                                           struct wl_array* states)
 {
+    bool reset_buffers = (ctx.wnd.current == NULL);
+
     if (width && height) {
+        const size_t new_width = width * ctx.wnd.scale;
+        const size_t new_height = height * ctx.wnd.scale;
+        if (width != (int32_t)ctx.wnd.width ||
+            height != (int32_t)ctx.wnd.height) {
+            ctx.wnd.width = new_width;
+            ctx.wnd.height = new_height;
+            reset_buffers = true;
+        }
         ctx.xdg.initialized = true;
-        ctx.wnd.width = width * ctx.wnd.scale;
-        ctx.wnd.height = height * ctx.wnd.scale;
+    }
+
+    if (reset_buffers && !recreate_buffers()) {
+        ctx.state = state_error;
     }
 }
 
