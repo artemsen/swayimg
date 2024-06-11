@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Text renderer.
+// Font renderer.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "font.h"
@@ -17,9 +17,8 @@
 #define GLYPH_GW_REL 4
 
 // Defaults
-#define DEFALT_FONT  "monospace"
-#define DEFALT_SIZE  14
-#define DEFALT_SCALE 1
+#define DEFALT_FONT "monospace"
+#define DEFALT_SIZE 14
 
 /** Font context. */
 struct font {
@@ -27,7 +26,6 @@ struct font {
     FT_Face face;   ///< Font face instance
     char* name;     ///< Font face name
     size_t size;    ///< Font size (pt)
-    size_t scale;   ///< Scale factor (HiDPI)
 };
 static struct font ctx;
 
@@ -102,7 +100,6 @@ void font_create(void)
     // set defaults
     str_dup(DEFALT_FONT, &ctx.name);
     ctx.size = DEFALT_SIZE;
-    ctx.scale = DEFALT_SCALE;
 
     // register configuration loader
     config_add_loader(FONT_CONFIG_SECTION, load_config);
@@ -111,7 +108,7 @@ void font_create(void)
 void font_init(void)
 {
     char file[256];
-    const FT_F26Dot6 size = ctx.size * ctx.scale * 64;
+    const FT_F26Dot6 size = ctx.size * 64;
 
     if (!search_font_file(ctx.name, file, sizeof(file))) {
         return;
@@ -135,11 +132,6 @@ void font_free(void)
         FT_Done_FreeType(ctx.lib);
     }
     free(ctx.name);
-}
-
-void font_set_scale(size_t scale)
-{
-    ctx.scale = scale;
 }
 
 bool font_render(const char* text, struct text_surface* surface)

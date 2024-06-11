@@ -34,10 +34,8 @@ void viewer_on_redraw(struct pixmap* window);
 
 /**
  * Window resize handler.
- * @param width,height new window size
- * @param scale window scale factor
  */
-void viewer_on_resize(size_t width, size_t height, size_t scale);
+void viewer_on_resize(void);
 
 /**
  * Key press handler.

@@ -11,6 +11,7 @@
 #include "info.h"
 #include "keybind.h"
 #include "sway.h"
+#include "text.h"
 #include "ui.h"
 #include "viewer.h"
 
@@ -174,8 +175,6 @@ static void sway_setup(void)
             // force set full screen mode if current window in it
             ui_toggle_fullscreen();
         }
-        if (ui_get_fullscreen()) {
-        }
 
         // set window position and size from the parent one
         if (!absolute) {
@@ -211,6 +210,7 @@ int main(int argc, char* argv[])
     canvas_init();
     ui_init();
     viewer_init();
+    text_init();
     config_init();
     font_init();
     info_init();
@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
         goto done;
     }
 
-    //setup window position and size
+    // setup window position and size
     if (!ui_get_fullscreen()) {
         sway_setup();
     }

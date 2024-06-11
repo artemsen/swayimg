@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Text renderer.
+// Font renderer.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -19,7 +19,7 @@ struct text_surface {
 };
 
 /**
- * Create text renderer.
+ * Create font renderer.
  */
 void font_create(void);
 
@@ -32,12 +32,6 @@ void font_init(void);
  * Free font resources.
  */
 void font_free(void);
-
-/**
- * Set font scaling in HiDPI mode.
- * @param scale scale factor
- */
-void font_set_scale(size_t scale);
 
 /**
  * Render single text line.

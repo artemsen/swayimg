@@ -224,7 +224,8 @@ static bool recreate_buffers(void)
     }
 
     ctx.wnd.current = ctx.wnd.buffer0;
-    viewer_on_resize(ctx.wnd.width, ctx.wnd.height, ctx.wnd.scale);
+    viewer_on_resize();
+
     return true;
 }
 
@@ -919,6 +920,11 @@ size_t ui_get_width(void)
 size_t ui_get_height(void)
 {
     return ctx.wnd.height;
+}
+
+size_t ui_get_scale(void)
+{
+    return ctx.wnd.scale;
 }
 
 void ui_toggle_fullscreen(void)

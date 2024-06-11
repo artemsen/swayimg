@@ -11,6 +11,7 @@
 #include "info.h"
 #include "keybind.h"
 #include "str.h"
+#include "text.h"
 #include "ui.h"
 
 #include <errno.h>
@@ -335,21 +336,21 @@ void viewer_on_redraw(struct pixmap* window)
         if (lines_num) {
             const enum info_position pos = (enum info_position)i;
             const struct info_line* lines = info_lines(pos);
-            canvas_draw_text(window, pos, lines, lines_num);
+            text_print(window, pos, lines, lines_num);
         }
     }
 
     if (ctx.help) {
-        canvas_draw_ctext(window, ctx.help, ctx.help_sz);
+        text_print_centered(window, ctx.help, ctx.help_sz);
     }
 
     // reset one-time rendered notification message
     info_set_status(NULL);
 }
 
-void viewer_on_resize(size_t width, size_t height, size_t scale)
+void viewer_on_resize(void)
 {
-    canvas_reset_window(width, height, scale);
+    canvas_reset_window();
     reset_state();
 }
 

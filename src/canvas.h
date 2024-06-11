@@ -21,11 +21,8 @@ void canvas_init(void);
 
 /**
  * Reset window parameters.
- * @param width,height new window size
- * @param scale window scale factor
- * @return true if it was the first resize
  */
-bool canvas_reset_window(size_t width, size_t height, size_t scale);
+void canvas_reset_window(void);
 
 /**
  * Reset image position, size and scale.
@@ -47,24 +44,6 @@ void canvas_swap_image_size(void);
 void canvas_draw_image(struct pixmap* wnd, const struct image* img,
                        size_t frame);
 
-/**
- * Print information text block.
- * @param wnd destination window
- * @param pos block position
- * @param lines array of lines to print
- * @param lines_num total number of lines
- */
-void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
-                      const struct info_line* lines, size_t lines_num);
-
-/**
- * Print text block at the center of window.
- * @param wnd destination window
- * @param lines array of lines to print
- * @param lines_num total number of lines
- */
-void canvas_draw_ctext(struct pixmap* wnd, const struct text_surface* lines,
-                       size_t lines_num);
 /**
  * Move viewport.
  * @param horizontal axis along which to move (false for vertical)
