@@ -60,6 +60,8 @@ struct canvas {
     argb_t window_bkg; ///< Window background mode/color
     bool antialiasing; ///< Anti-aliasing (bicubic interpolation)
 
+    bool fixed; ///< Fix canvas position
+
     argb_t font_color;  ///< Font color
     argb_t font_shadow; ///< Font shadow color
 
@@ -74,37 +76,59 @@ struct canvas {
 static struct canvas ctx = {
     .image_bkg = BACKGROUND_GRID,
     .window_bkg = COLOR_TRANSPARENT,
+    .fixed = true,
     .font_color = TEXT_COLOR,
     .font_shadow = TEXT_SHADOW,
 };
 
 /**
- * Fix viewport position to minimize gap between image and window edge.
+ * Fix canvas position.
  */
-static void fix_viewport(void)
+static void fix_position(bool force)
 {
-    const struct rect img = { .x = ctx.image.x,
-                              .y = ctx.image.y,
-                              .width = ctx.scale * ctx.image.width,
-                              .height = ctx.scale * ctx.image.height };
+    const ssize_t width = ctx.scale * ctx.image.width;
+    const ssize_t height = ctx.scale * ctx.image.height;
 
-    if (img.x > 0 && img.x + img.width > ctx.window.width) {
-        ctx.image.x = 0;
+    if (force || ctx.fixed) {
+        // bind to window border
+        if (ctx.image.x > 0 &&
+            ctx.image.x + width > (ssize_t)ctx.window.width) {
+            ctx.image.x = 0;
+        }
+        if (ctx.image.y > 0 &&
+            ctx.image.y + height > (ssize_t)ctx.window.height) {
+            ctx.image.y = 0;
+        }
+        if (ctx.image.x < 0 &&
+            ctx.image.x + width < (ssize_t)ctx.window.width) {
+            ctx.image.x = ctx.window.width - width;
+        }
+        if (ctx.image.y < 0 &&
+            ctx.image.y + height < (ssize_t)ctx.window.height) {
+            ctx.image.y = ctx.window.height - height;
+        }
+
+        // centering small image
+        if (width <= (ssize_t)ctx.window.width) {
+            ctx.image.x = ctx.window.width / 2 - width / 2;
+        }
+        if (height <= (ssize_t)ctx.window.height) {
+            ctx.image.y = ctx.window.height / 2 - height / 2;
+        }
     }
-    if (img.y > 0 && img.y + img.height > ctx.window.height) {
-        ctx.image.y = 0;
+
+    // don't let canvas to be far out of window
+    if (ctx.image.x + width < 0) {
+        ctx.image.x = -width;
     }
-    if (img.x < 0 && img.x + img.width < ctx.window.width) {
-        ctx.image.x = ctx.window.width - img.width;
+    if (ctx.image.x > (ssize_t)ctx.window.width) {
+        ctx.image.x = ctx.window.width;
     }
-    if (img.y < 0 && img.y + img.height < ctx.window.height) {
-        ctx.image.y = ctx.window.height - img.height;
+    if (ctx.image.y + height < 0) {
+        ctx.image.y = -height;
     }
-    if (img.width <= ctx.window.width) {
-        ctx.image.x = ctx.window.width / 2 - img.width / 2;
-    }
-    if (img.height <= ctx.window.height) {
-        ctx.image.y = ctx.window.height / 2 - img.height / 2;
+    if (ctx.image.y > (ssize_t)ctx.window.height) {
+        ctx.image.y = ctx.window.height;
     }
 }
 
@@ -145,7 +169,7 @@ static void set_scale(enum canvas_scale sc)
     ctx.image.x = ctx.window.width / 2 - (ctx.scale * ctx.image.width) / 2;
     ctx.image.y = ctx.window.height / 2 - (ctx.scale * ctx.image.height) / 2;
 
-    fix_viewport();
+    fix_position(true);
 }
 
 /**
@@ -181,7 +205,7 @@ static void zoom(ssize_t percent)
     ctx.image.x = wnd_half_w - center_x * ctx.scale;
     ctx.image.y = wnd_half_h - center_y * ctx.scale;
 
-    fix_viewport();
+    fix_position(false);
 }
 
 /**
@@ -240,6 +264,10 @@ static enum config_status load_config(const char* key, const char* value)
         } else if (config_to_color(value, &ctx.window_bkg)) {
             status = cfgst_ok;
         }
+    } else if (strcmp(key, CANVAS_CFG_FIXED) == 0) {
+        if (config_to_bool(value, &ctx.fixed)) {
+            status = cfgst_ok;
+        }
     } else {
         status = cfgst_invalid_key;
     }
@@ -289,7 +317,7 @@ bool canvas_reset_window(size_t width, size_t height, size_t scale)
     ctx.wnd_scale = scale;
     font_set_scale(scale);
 
-    fix_viewport();
+    fix_position(true);
 
     return first;
 }
@@ -315,53 +343,39 @@ void canvas_swap_image_size(void)
     ctx.image.width = ctx.image.height;
     ctx.image.height = old_width;
 
-    fix_viewport();
+    fix_position(false);
 }
 
 void canvas_draw_image(struct pixmap* wnd, const struct image* img,
                        size_t frame)
 {
     const struct pixmap* pm = &img->frames[frame].pm;
-    const ssize_t scaled_x = ctx.image.x + ctx.scale * pm->width;
-    const ssize_t scaled_y = ctx.image.y + ctx.scale * pm->height;
-    const ssize_t wnd_x0 = max(0, ctx.image.x);
-    const ssize_t wnd_y0 = max(0, ctx.image.y);
-    const ssize_t wnd_x1 = min((ssize_t)wnd->width, scaled_x);
-    const ssize_t wnd_y1 = min((ssize_t)wnd->height, scaled_y);
-    const size_t width = wnd_x1 - wnd_x0;
-    const size_t height = wnd_y1 - wnd_y0;
+    const size_t width = ctx.scale * ctx.image.width;
+    const size_t height = ctx.scale * ctx.image.height;
 
     // clear window background
     const argb_t wnd_color = (ctx.window_bkg == COLOR_TRANSPARENT
                                   ? 0
                                   : ARGB_SET_A(0xff) | ctx.window_bkg);
-    if (height < wnd->height) {
-        pixmap_fill(wnd, 0, 0, wnd->width, wnd_y0, wnd_color);
-        pixmap_fill(wnd, 0, wnd_y1, wnd->width, wnd->height - wnd_y1,
-                    wnd_color);
-    }
-    if (width < wnd->width) {
-        pixmap_fill(wnd, 0, wnd_y0, wnd_x0, height, wnd_color);
-        pixmap_fill(wnd, wnd_x1, wnd_y0, wnd->width - wnd_x1, height,
-                    wnd_color);
-    }
+    pixmap_inverse_fill(wnd, ctx.image.x, ctx.image.y, width, height,
+                        wnd_color);
 
+    // clear image background
     if (img->alpha) {
-        // clear image background
         if (ctx.image_bkg == BACKGROUND_GRID) {
-            pixmap_grid(wnd, wnd_x0, wnd_y0, width, height,
+            pixmap_grid(wnd, ctx.image.x, ctx.image.y, width, height,
                         GRID_STEP * ctx.wnd_scale, GRID_COLOR1, GRID_COLOR2);
         } else {
             const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
                                       ? wnd_color
                                       : ARGB_SET_A(0xff) | ctx.image_bkg);
-            pixmap_fill(wnd, wnd_x0, wnd_y0, width, height, color);
+            pixmap_fill(wnd, ctx.image.x, ctx.image.y, width, height, color);
         }
     }
 
     // put image on window surface
-    pixmap_put(wnd, wnd_x0, wnd_y0, pm, ctx.image.x, ctx.image.y, ctx.scale,
-               img->alpha, ctx.scale == 1.0 ? false : ctx.antialiasing);
+    pixmap_put(wnd, pm, ctx.image.x, ctx.image.y, ctx.scale, img->alpha,
+               ctx.scale == 1.0 ? false : ctx.antialiasing);
 }
 
 void canvas_draw_text(struct pixmap* wnd, enum info_position pos,
@@ -500,7 +514,7 @@ bool canvas_move(bool horizontal, ssize_t percent)
         ctx.image.y += (ctx.window.height / 100) * percent;
     }
 
-    fix_viewport();
+    fix_position(false);
 
     return (ctx.image.x != old_x || ctx.image.y != old_y);
 }
@@ -512,7 +526,8 @@ bool canvas_drag(int dx, int dy)
 
     ctx.image.x += dx;
     ctx.image.y += dy;
-    fix_viewport();
+
+    fix_position(false);
 
     return (ctx.image.x != old_x || ctx.image.y != old_y);
 }

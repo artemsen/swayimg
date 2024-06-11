@@ -12,6 +12,7 @@
 #define CANVAS_CFG_SCALE        "scale"
 #define CANVAS_CFG_TRANSPARENCY "transparency"
 #define CANVAS_CFG_BACKGROUND   "background"
+#define CANVAS_CFG_FIXED        "fixed"
 
 /**
  * Initialize canvas context.

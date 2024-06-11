@@ -36,31 +36,30 @@ static inline void alpha_blend(argb_t src, argb_t* dst)
 /**
  * Put one pixmap on another: nearest filter, fast but ugly.
  */
-static void put_nearest(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
-                        const struct pixmap* src, ssize_t src_x, ssize_t src_y,
-                        float src_scale, bool alpha)
+static void put_nearest(struct pixmap* dst, const struct pixmap* src, ssize_t x,
+                        ssize_t y, float scale, bool alpha)
 {
-    const size_t max_dst_x = min(dst->width, src_x + src_scale * src->width);
-    const size_t max_dst_y = min(dst->height, src_y + src_scale * src->height);
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
 
-    const size_t dst_width = max_dst_x - dst_x;
-    const size_t dst_height = max_dst_y - dst_y;
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
 
-    const size_t delta_x = dst_x - src_x;
-    const size_t delta_y = dst_y - src_y;
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        const size_t src_y = (float)(dst_y - top + delta_y) / scale;
+        const argb_t* src_line = &src->data[src_y * src->width];
+        argb_t* dst_line = &dst->data[dst_y * dst->width];
 
-    for (size_t y = 0; y < dst_height; ++y) {
-        const size_t scaled_src_y = (float)(y + delta_y) / src_scale;
-        const argb_t* src_line = &src->data[scaled_src_y * src->width];
-        argb_t* dst_line = &dst->data[(y + dst_y) * dst->width + dst_x];
-
-        for (size_t x = 0; x < dst_width; ++x) {
-            const size_t src_x = (float)(x + delta_x) / src_scale;
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const size_t src_x = (float)(dst_x - left + delta_x) / scale;
             const argb_t color = src_line[src_x];
+
             if (alpha) {
-                alpha_blend(color, &dst_line[x]);
+                alpha_blend(color, &dst_line[dst_x]);
             } else {
-                dst_line[x] = ARGB_SET_A(0xff) | color;
+                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
             }
         }
     }
@@ -69,31 +68,31 @@ static void put_nearest(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
 /**
  * Put one pixmap on another: bicubic filter, nice but slow.
  */
-static void put_bicubic(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
-                        const struct pixmap* src, ssize_t src_x, ssize_t src_y,
-                        float src_scale, bool alpha)
+static void put_bicubic(struct pixmap* dst, const struct pixmap* src, ssize_t x,
+                        ssize_t y, float scale, bool alpha)
 {
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
+
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
+
     size_t state_zero_x = 1;
     size_t state_zero_y = 1;
     float state[4][4][4]; // color channel, y, x
 
-    const size_t max_dst_x = min(dst->width, src_x + src_scale * src->width);
-    const size_t max_dst_y = min(dst->height, src_y + src_scale * src->height);
-    const size_t dst_width = max_dst_x - dst_x;
-    const size_t dst_height = max_dst_y - dst_y;
-    const size_t delta_x = dst_x - src_x;
-    const size_t delta_y = dst_y - src_y;
-
-    for (size_t y = 0; y < dst_height; ++y) {
-        argb_t* dst_line = &dst->data[(dst_y + y) * dst->width + dst_x];
-        const float scaled_y = (float)(y + delta_y) / src_scale - 0.5;
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        argb_t* dst_line = &dst->data[dst_y * dst->width];
+        const double scaled_y = (double)(dst_y - top + delta_y) / scale;
         const size_t fixed_y = (size_t)scaled_y;
         const float diff_y = scaled_y - fixed_y;
         const float diff_y2 = diff_y * diff_y;
         const float diff_y3 = diff_y * diff_y2;
 
-        for (size_t x = 0; x < dst_width; ++x) {
-            const float scaled_x = (float)(x + delta_x) / src_scale - 0.5;
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const double scaled_x = (double)(dst_x - left + delta_x) / scale;
             const size_t fixed_x = (size_t)scaled_x;
             const float diff_x = scaled_x - fixed_x;
             const float diff_x2 = diff_x * diff_x;
@@ -183,9 +182,9 @@ static void put_bicubic(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
             }
 
             if (alpha) {
-                alpha_blend(fg, &dst_line[x]);
+                alpha_blend(fg, &dst_line[dst_x]);
             } else {
-                dst_line[x] = ARGB_SET_A(0xff) | fg;
+                dst_line[dst_x] = ARGB_SET_A(0xff) | fg;
             }
         }
     }
@@ -207,62 +206,83 @@ void pixmap_free(struct pixmap* pm)
     free(pm->data);
 }
 
-void pixmap_fill(struct pixmap* pm, size_t x, size_t y, size_t width,
+void pixmap_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                  size_t height, argb_t color)
 {
-    size_t max_y;
-    size_t template_sz;
-    argb_t* template;
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)pm->width, (ssize_t)width + x);
+    const ssize_t bottom = min((ssize_t)pm->height, (ssize_t)height + y);
+    const ssize_t fill_width = right - left;
+    const ssize_t fill_height = bottom - top;
 
-    if (width == 0 || x >= pm->width || height == 0 || y >= pm->height) {
+    const size_t template_sz = fill_width * sizeof(argb_t);
+    argb_t* template = &pm->data[top * pm->width + left];
+
+    if (right < 0 || bottom < 0 || fill_width <= 0 || fill_height <= 0) {
         return;
     }
 
-    width = min(width, pm->width - x);
-    height = min(height, pm->height - y);
-
-    // compose template line
-    template = &pm->data[y * pm->width + x];
-    template_sz = width * sizeof(argb_t);
-    for (size_t i = 0; i < width; ++i) {
-        template[i] = color;
+    // compose and copy template line
+    for (x = 0; x < fill_width; ++x) {
+        template[x] = color;
     }
-
-    // put template line
-    max_y = y + height;
-    for (size_t i = y + 1; i < max_y; ++i) {
-        memcpy(&pm->data[i * pm->width + x], template, template_sz);
+    for (y = top + 1; y < bottom; ++y) {
+        memcpy(&pm->data[y * pm->width + left], template, template_sz);
     }
 }
 
-void pixmap_grid(struct pixmap* pm, size_t x, size_t y, size_t width,
+void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                         size_t height, argb_t color)
+{
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)pm->width, (ssize_t)width + x);
+    const ssize_t bottom = min((ssize_t)pm->height, (ssize_t)height + y);
+
+    if (left > 0) {
+        pixmap_fill(pm, 0, top, left, bottom - top, color);
+    }
+    if (right < (ssize_t)pm->width) {
+        pixmap_fill(pm, right, top, pm->width - right, bottom - top, color);
+    }
+    if (top > 0) {
+        pixmap_fill(pm, 0, 0, pm->width, top, color);
+    }
+    if (bottom < (ssize_t)pm->height) {
+        pixmap_fill(pm, 0, bottom, pm->width, pm->height - bottom, color);
+    }
+}
+
+void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                  size_t height, size_t tail_sz, argb_t color1, argb_t color2)
 {
-    argb_t* templates[2];
-    size_t template_sz;
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)pm->width, (ssize_t)width + x);
+    const ssize_t bottom = min((ssize_t)pm->height, (ssize_t)height + y);
+    const ssize_t grid_width = right - left;
+    const ssize_t grid_height = bottom - top;
 
-    if (width == 0 || x >= pm->width || height == 0 || y >= pm->height) {
+    const size_t template_sz = grid_width * sizeof(argb_t);
+    argb_t* templates[] = { &pm->data[top * pm->width + left],
+                            &pm->data[(top + tail_sz) * pm->width + left] };
+
+    if (right < 0 || bottom < 0 || grid_width <= 0 || grid_height <= 0) {
         return;
     }
 
-    width = min(width, pm->width - x);
-    height = min(height, pm->height - y);
-
-    template_sz = width * sizeof(argb_t);
-    templates[0] = &pm->data[y * pm->width + x];
-    templates[1] = &pm->data[(y + tail_sz) * pm->width + x];
-
-    for (size_t i = 0; i < height; ++i) {
-        const size_t shift = (i / tail_sz) % 2;
-        argb_t* line = &pm->data[(y + i) * pm->width + x];
+    for (y = 0; y < grid_height; ++y) {
+        const size_t shift = (y / tail_sz) % 2;
+        argb_t* line = &pm->data[(y + top) * pm->width + left];
         if (line != templates[0] && line != templates[1]) {
             // put template line
             memcpy(line, templates[shift], template_sz);
         } else {
             // compose template line
-            for (size_t j = 0; j < width; ++j) {
-                const size_t tail = j / tail_sz;
-                line[j] = (tail % 2) ^ shift ? color1 : color2;
+            for (x = 0; x < grid_width; ++x) {
+                const size_t tail = x / tail_sz;
+                line[x] = (tail % 2) ^ shift ? color1 : color2;
             }
         }
     }
@@ -334,14 +354,13 @@ void pixmap_over(struct pixmap* dst, size_t x, size_t y,
     }
 }
 
-void pixmap_put(struct pixmap* dst, ssize_t dst_x, ssize_t dst_y,
-                const struct pixmap* src, ssize_t src_x, ssize_t src_y,
-                float src_scale, bool alpha, bool antialiasing)
+void pixmap_put(struct pixmap* dst, const struct pixmap* src, ssize_t x,
+                ssize_t y, float scale, bool alpha, bool antialiasing)
 {
     if (antialiasing) {
-        put_bicubic(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
+        put_bicubic(dst, src, x, y, scale, alpha);
     } else {
-        put_nearest(dst, dst_x, dst_y, src, src_x, src_y, src_scale, alpha);
+        put_nearest(dst, src, x, y, scale, alpha);
     }
 }
 
