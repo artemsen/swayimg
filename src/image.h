@@ -34,6 +34,9 @@ struct image_info {
     char* value;     ///< Meta value
 };
 
+/** Name used for image, that is read from stdin through pipe. */
+#define STDIN_FILE_NAME "{STDIN}"
+
 /**
  * Load image from file.
  * @param file path to the file to load

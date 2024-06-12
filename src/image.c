@@ -132,7 +132,7 @@ struct image* image_from_stdin(void)
     }
 
     if (data) {
-        ctx = image_create("{STDIN}", data, size);
+        ctx = image_create(STDIN_FILE_NAME, data, size);
     }
 
 done:

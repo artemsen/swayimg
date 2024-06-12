@@ -607,6 +607,10 @@ void viewer_free(void)
 
 bool viewer_reload(void)
 {
+    if (image_list_is_stdin()) {
+        reset_state();
+        return true;
+    }
     if (!image_list_reset()) {
         printf("No more images, exit\n");
         ui_stop();

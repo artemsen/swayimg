@@ -73,6 +73,14 @@ struct image_entry image_list_current(void);
 bool image_list_skip(void);
 
 /**
+ * Get whether the current image is from stdin.
+ *
+ * This implies that it is also the only image open.
+ * @return false if the current image is not from stdin
+ */
+bool image_list_is_stdin(void);
+
+/**
  * Reset cache and reload current image.
  * @return false if reset failed (no more images)
  */
