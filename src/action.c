@@ -38,6 +38,7 @@ static const char* action_names[] = {
     [action_antialiasing] = "antialiasing",
     [action_info] = "info",
     [action_exec] = "exec",
+    [action_status] = "status",
     [action_exit] = "exit",
 };
 

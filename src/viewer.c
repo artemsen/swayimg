@@ -764,6 +764,10 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 execute_command(action->params);
                 redraw = true;
                 break;
+            case action_status:
+                info_set_status("%s", action->params);
+                redraw = true;
+                break;
             case action_exit:
                 if (ctx.help) {
                     switch_help(); // remove help overlay
