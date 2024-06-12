@@ -331,7 +331,7 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
     if (ctx.mouse.active) {
         const int dx = x - ctx.mouse.x;
         const int dy = y - ctx.mouse.y;
-        if (dx && dy) {
+        if (dx || dy) {
             viewer_on_drag(dx, dy);
         }
     }
