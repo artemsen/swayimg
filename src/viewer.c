@@ -605,16 +605,17 @@ void viewer_free(void)
     }
 }
 
-void viewer_reset(void)
+bool viewer_reload(void)
 {
-    if (image_list_reset()) {
-        reset_state();
-        info_set_status("Image reloaded");
-        ui_redraw();
-    } else {
+    if (!image_list_reset()) {
         printf("No more images, exit\n");
         ui_stop();
+        return false;
     }
+    reset_state();
+    info_set_status("Image reloaded");
+    ui_redraw();
+    return true;
 }
 
 void viewer_on_redraw(struct pixmap* window)
@@ -648,9 +649,9 @@ void viewer_on_resize(void)
 void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
     bool redraw = false;
-    const struct key_binding* kbind = keybind_get(key, mods);
+    const struct action* action = keybind_actions(key, mods);
 
-    if (!kbind) {
+    if (!action) {
         char* name = keybind_name(key, mods);
         if (name) {
             info_set_status("Key %s is not bound", name);
@@ -660,124 +661,128 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
         return;
     }
 
-    // handle action
-    switch (kbind->action) {
-        case kb_none:
-            break;
-        case kb_help:
-            switch_help();
-            redraw = true;
-            break;
-        case kb_first_file:
-            redraw = next_file(jump_first_file);
-            break;
-        case kb_last_file:
-            redraw = next_file(jump_last_file);
-            break;
-        case kb_prev_dir:
-            redraw = next_file(jump_prev_dir);
-            break;
-        case kb_next_dir:
-            redraw = next_file(jump_next_dir);
-            break;
-        case kb_prev_file:
-            redraw = next_file(jump_prev_file);
-            break;
-        case kb_next_file:
-            redraw = next_file(jump_next_file);
-            break;
-        case kb_skip_file:
-            if (image_list_skip()) {
-                reset_state();
+    // handle actions
+    while (action->type != action_none) {
+        switch (action->type) {
+            case action_none:
+                break;
+            case action_help:
+                switch_help();
                 redraw = true;
-            } else {
-                printf("No more images, exit\n");
-                ui_stop();
-            }
-            break;
-        case kb_prev_frame:
-        case kb_next_frame:
-            animation_ctl(false);
-            redraw = next_frame(kbind->action == kb_next_frame);
-            break;
-        case kb_animation:
-            animation_ctl(!ctx.animation_enable);
-            break;
-        case kb_slideshow:
-            slideshow_ctl(!ctx.slideshow_enable && next_file(jump_next_file));
-            redraw = true;
-            break;
-        case kb_fullscreen:
-            ui_toggle_fullscreen();
-            break;
-        case kb_step_left:
-            redraw = move_image(true, true, kbind->params);
-            break;
-        case kb_step_right:
-            redraw = move_image(true, false, kbind->params);
-            break;
-        case kb_step_up:
-            redraw = move_image(false, true, kbind->params);
-            break;
-        case kb_step_down:
-            redraw = move_image(false, false, kbind->params);
-            break;
-        case kb_zoom:
-            zoom_image(kbind->params);
-            redraw = true;
-            break;
-        case kb_rotate_left:
-            rotate_image(false);
-            redraw = true;
-            break;
-        case kb_rotate_right:
-            rotate_image(true);
-            redraw = true;
-            break;
-        case kb_flip_vertical:
-            image_flip_vertical(image_list_current().image);
-            redraw = true;
-            break;
-        case kb_flip_horizontal:
-            image_flip_horizontal(image_list_current().image);
-            redraw = true;
-            break;
-        case kb_antialiasing:
-            ctx.antialiasing = !ctx.antialiasing;
-            info_set_status("Anti-aliasing %s",
-                            ctx.antialiasing ? "on" : "off");
-            redraw = true;
-            break;
-        case kb_reload:
-            viewer_reset();
-            break;
-        case kb_info:
-            info_set_mode(kbind->params);
-            redraw = true;
-            break;
-        case kb_exec:
-            execute_command(kbind->params);
-            if (image_list_reset()) {
-                reset_state();
+                break;
+            case action_first_file:
+                redraw |= next_file(jump_first_file);
+                break;
+            case action_last_file:
+                redraw |= next_file(jump_last_file);
+                break;
+            case action_prev_dir:
+                redraw |= next_file(jump_prev_dir);
+                break;
+            case action_next_dir:
+                redraw |= next_file(jump_next_dir);
+                break;
+            case action_prev_file:
+                redraw |= next_file(jump_prev_file);
+                break;
+            case action_next_file:
+                redraw |= next_file(jump_next_file);
+                break;
+            case action_skip_file:
+                if (image_list_skip()) {
+                    reset_state();
+                    redraw = true;
+                } else {
+                    printf("No more images, exit\n");
+                    goto stop;
+                }
+                break;
+            case action_prev_frame:
+            case action_next_frame:
+                animation_ctl(false);
+                redraw |= next_frame(action->type == action_next_frame);
+                break;
+            case action_animation:
+                animation_ctl(!ctx.animation_enable);
+                break;
+            case action_slideshow:
+                slideshow_ctl(!ctx.slideshow_enable &&
+                              next_file(jump_next_file));
                 redraw = true;
-            } else {
-                printf("No more images, exit\n");
-                ui_stop();
-            }
-            break;
-        case kb_exit:
-            if (ctx.help) {
-                switch_help(); // remove help overlay
+                break;
+            case action_fullscreen:
+                ui_toggle_fullscreen();
+                break;
+            case action_step_left:
+                redraw |= move_image(true, true, action->params);
+                break;
+            case action_step_right:
+                redraw |= move_image(true, false, action->params);
+                break;
+            case action_step_up:
+                redraw |= move_image(false, true, action->params);
+                break;
+            case action_step_down:
+                redraw |= move_image(false, false, action->params);
+                break;
+            case action_zoom:
+                zoom_image(action->params);
                 redraw = true;
-            } else {
-                ui_stop();
-            }
-            break;
+                break;
+            case action_rotate_left:
+                rotate_image(false);
+                redraw = true;
+                break;
+            case action_rotate_right:
+                rotate_image(true);
+                redraw = true;
+                break;
+            case action_flip_vertical:
+                image_flip_vertical(image_list_current().image);
+                redraw = true;
+                break;
+            case action_flip_horizontal:
+                image_flip_horizontal(image_list_current().image);
+                redraw = true;
+                break;
+            case action_antialiasing:
+                ctx.antialiasing = !ctx.antialiasing;
+                info_set_status("Anti-aliasing %s",
+                                ctx.antialiasing ? "on" : "off");
+                redraw = true;
+                break;
+            case action_reload:
+                if (!viewer_reload()) {
+                    goto stop;
+                }
+                break;
+            case action_info:
+                info_set_mode(action->params);
+                redraw = true;
+                break;
+            case action_exec:
+                execute_command(action->params);
+                redraw = true;
+                break;
+            case action_exit:
+                if (ctx.help) {
+                    switch_help(); // remove help overlay
+                    redraw = true;
+                } else {
+                    goto stop;
+                }
+                break;
+        }
+        ++action;
     }
 
     if (redraw) {
         ui_redraw();
     }
+    return;
+
+stop:
+    ui_stop();
 }
 
 void viewer_on_drag(int dx, int dy)

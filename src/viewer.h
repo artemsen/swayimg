@@ -28,8 +28,9 @@ void viewer_free(void);
 
 /**
  * Reset state: reload image file, set initial scale etc.
+ * @return false if reload failed and no more images to view
  */
-void viewer_reset(void);
+bool viewer_reload(void);
 
 /**
  * Redraw handler.

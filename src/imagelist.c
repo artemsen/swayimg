@@ -409,7 +409,7 @@ static void on_notify(void)
             pos += sizeof(struct inotify_event) + event->len;
         }
         if (updated) {
-            viewer_reset();
+            viewer_reload();
         }
     }
 }

@@ -30,14 +30,16 @@ char* str_dup(const char* src, char** dst)
 char* str_append(const char* src, size_t len, char** dst)
 {
     const size_t src_len = len ? len : strlen(src);
-    const size_t dst_len = *dst ? strlen(*dst) : 0;
+    const size_t dst_len = dst && *dst ? strlen(*dst) : 0;
     const size_t buf_len = dst_len + src_len + 1 /* last null */;
-    char* buffer = realloc(*dst, buf_len);
+    char* buffer = realloc(dst ? *dst : NULL, buf_len);
 
     if (buffer) {
         memcpy(buffer + dst_len, src, src_len);
         buffer[buf_len - 1] = 0;
-        *dst = buffer;
+        if (dst) {
+            *dst = buffer;
+        }
     }
 
     return buffer;

@@ -178,7 +178,8 @@ Set display scheme for the \fIfull\fR mode, top left corner of the window.
 .\" ****************************************************************************
 .SS "Key bindings"
 The key bindings are described in the \fB[keys]\fR section.
-Each line associates a key with some action and optional parameters.
+Each line associates a key with a list of actions and optional parameters.
+Actions are separated by semicolons.
 The key name can be obtained with the \fIxkbcli\fR tool:
 `xkbcli interactive-wayland`.
 One or more key modifiers (\fICtrl\fR, \fIAlt\fR, \fIShift\fR) can be specified
@@ -239,7 +240,7 @@ order = random
 [font]
 size = 16
 [keys]
-Delete = exec rm "%"
+Delete = exec rm "%"; reload
 Ctrl+Alt+e = exec echo "%" > mylist.txt
 .EE
 .PP

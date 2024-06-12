@@ -16,88 +16,61 @@
 #define CONFIG_SECTION_KEYS  "keys"
 #define CONFIG_SECTION_MOUSE "mouse"
 
-/** Action names. */
-static const char* action_names[] = {
-    [kb_none] = "none",
-    [kb_help] = "help",
-    [kb_first_file] = "first_file",
-    [kb_last_file] = "last_file",
-    [kb_prev_dir] = "prev_dir",
-    [kb_next_dir] = "next_dir",
-    [kb_prev_file] = "prev_file",
-    [kb_next_file] = "next_file",
-    [kb_skip_file] = "skip_file",
-    [kb_prev_frame] = "prev_frame",
-    [kb_next_frame] = "next_frame",
-    [kb_animation] = "animation",
-    [kb_slideshow] = "slideshow",
-    [kb_fullscreen] = "fullscreen",
-    [kb_step_left] = "step_left",
-    [kb_step_right] = "step_right",
-    [kb_step_up] = "step_up",
-    [kb_step_down] = "step_down",
-    [kb_zoom] = "zoom",
-    [kb_rotate_left] = "rotate_left",
-    [kb_rotate_right] = "rotate_right",
-    [kb_flip_vertical] = "flip_vertical",
-    [kb_flip_horizontal] = "flip_horizontal",
-    [kb_reload] = "reload",
-    [kb_antialiasing] = "antialiasing",
-    [kb_info] = "info",
-    [kb_exec] = "exec",
-    [kb_exit] = "exit",
-};
-
 // Default key bindings
+struct keybind_default {
+    xkb_keysym_t key;     ///< Keyboard key
+    uint8_t mods;         ///< Key modifiers
+    struct action action; ///< Action
+};
 // clang-format off
-static const struct key_binding default_bindings[] = {
-    { .key = XKB_KEY_F1,    .action = kb_help },
-    { .key = XKB_KEY_Home,  .action = kb_first_file },
-    { .key = XKB_KEY_End,   .action = kb_last_file },
-    { .key = XKB_KEY_space, .action = kb_next_file },
-    { .key = XKB_KEY_SunPageDown, .action = kb_next_file },
-    { .key = XKB_KEY_SunPageUp,   .action = kb_prev_file },
-    { .key = XKB_KEY_c,   .action = kb_skip_file },
-    { .key = XKB_KEY_d, .action = kb_next_dir },
-    { .key = XKB_KEY_d, .mods = KEYMOD_SHIFT,.action = kb_prev_dir },
-    { .key = XKB_KEY_o, .action = kb_next_frame },
-    { .key = XKB_KEY_o, .mods = KEYMOD_SHIFT,.action = kb_prev_frame },
-    { .key = XKB_KEY_s, .action = kb_animation },
-    { .key = XKB_KEY_s, .mods = KEYMOD_SHIFT,.action = kb_slideshow },
-    { .key = XKB_KEY_f, .action = kb_fullscreen },
-    { .key = XKB_KEY_Left,  .action = kb_step_left },
-    { .key = XKB_KEY_Right, .action = kb_step_right },
-    { .key = XKB_KEY_Up,    .action = kb_step_up },
-    { .key = XKB_KEY_Down,  .action = kb_step_down },
-    { .key = XKB_KEY_equal, .action = kb_zoom, .params = "+10" },
-    { .key = XKB_KEY_plus,  .action = kb_zoom, .params = "+10" },
-    { .key = XKB_KEY_minus, .action = kb_zoom, .params = "-10" },
-    { .key = XKB_KEY_w, .action = kb_zoom, .params = "width" },
-    { .key = XKB_KEY_w, .mods = KEYMOD_SHIFT, .action = kb_zoom, .params = "height" },
-    { .key = XKB_KEY_z, .action = kb_zoom, .params = "fit" },
-    { .key = XKB_KEY_z, .mods = KEYMOD_SHIFT,.action = kb_zoom, .params = "fill" },
-    { .key = XKB_KEY_0, .action = kb_zoom, .params = "real" },
-    { .key = XKB_KEY_BackSpace, .action = kb_zoom, .params = "optimal" },
-    { .key = XKB_KEY_bracketleft,  .action = kb_rotate_left },
-    { .key = XKB_KEY_bracketright, .action = kb_rotate_right },
-    { .key = XKB_KEY_m, .action = kb_flip_vertical },
-    { .key = XKB_KEY_m, .mods = KEYMOD_SHIFT, .action = kb_flip_horizontal },
-    { .key = XKB_KEY_a, .action = kb_antialiasing },
-    { .key = XKB_KEY_r, .action = kb_reload },
-    { .key = XKB_KEY_i, .action = kb_info },
-    { .key = XKB_KEY_e, .action = kb_exec, .params = "echo \"Image: %\"" },
-    { .key = XKB_KEY_Escape, .action = kb_exit },
-    { .key = XKB_KEY_q,      .action = kb_exit },
-    { .key = VKEY_SCROLL_LEFT,  .action = kb_step_right, .params = "5" },
-    { .key = VKEY_SCROLL_RIGHT, .action = kb_step_left,  .params = "5" },
-    { .key = VKEY_SCROLL_UP,    .action = kb_step_down,  .params = "5" },
-    { .key = VKEY_SCROLL_DOWN,  .action = kb_step_up,    .params = "5" },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "+10" },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_CTRL, .action = kb_zoom, .params = "-10" },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_SHIFT, .action = kb_prev_file },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = kb_next_file },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT, .action = kb_prev_frame },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT, .action = kb_next_frame },
+static const struct keybind_default default_bindings[] = {
+    { .key = XKB_KEY_F1,          .action = { action_help, NULL } },
+    { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
+    { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
+    { .key = XKB_KEY_space,       .action = { action_next_file, NULL } },
+    { .key = XKB_KEY_SunPageDown, .action = { action_next_file, NULL } },
+    { .key = XKB_KEY_SunPageUp,   .action = { action_prev_file, NULL } },
+    { .key = XKB_KEY_c,           .action = { action_skip_file, NULL } },
+    { .key = XKB_KEY_d,           .action = { action_next_dir, NULL } },
+    { .key = XKB_KEY_d, .mods = KEYMOD_SHIFT, .action = { action_prev_dir, NULL } },
+    { .key = XKB_KEY_o,                       .action = { action_next_frame, NULL } },
+    { .key = XKB_KEY_o, .mods = KEYMOD_SHIFT, .action = { action_prev_frame, NULL } },
+    { .key = XKB_KEY_s,                       .action = { action_animation, NULL } },
+    { .key = XKB_KEY_s, .mods = KEYMOD_SHIFT, .action = { action_slideshow, NULL } },
+    { .key = XKB_KEY_f,           .action = { action_fullscreen, NULL } },
+    { .key = XKB_KEY_Left,        .action = { action_step_left, NULL } },
+    { .key = XKB_KEY_Right,       .action = { action_step_right, NULL } },
+    { .key = XKB_KEY_Up,          .action = { action_step_up, NULL } },
+    { .key = XKB_KEY_Down,        .action = { action_step_down, NULL } },
+    { .key = XKB_KEY_equal,       .action = { action_zoom, "+10" } },
+    { .key = XKB_KEY_plus,        .action = { action_zoom, "+10" } },
+    { .key = XKB_KEY_minus,       .action = { action_zoom, "-10" } },
+    { .key = XKB_KEY_w,           .action = { action_zoom, "width" } },
+    { .key = XKB_KEY_w, .mods = KEYMOD_SHIFT, .action = { action_zoom, "height" } },
+    { .key = XKB_KEY_z,                       .action = { action_zoom, "fit" } },
+    { .key = XKB_KEY_z, .mods = KEYMOD_SHIFT, .action = { action_zoom, "fill" } },
+    { .key = XKB_KEY_0,                       .action = { action_zoom, "real" } },
+    { .key = XKB_KEY_BackSpace,               .action = { action_zoom, "optimal" } },
+    { .key = XKB_KEY_bracketleft,             .action = { action_rotate_left, NULL } },
+    { .key = XKB_KEY_bracketright,            .action = { action_rotate_right, NULL } },
+    { .key = XKB_KEY_m,                       .action = { action_flip_vertical, NULL } },
+    { .key = XKB_KEY_m, .mods = KEYMOD_SHIFT, .action = { action_flip_horizontal, NULL } },
+    { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
+    { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
+    { .key = XKB_KEY_i,           .action = { action_info, NULL } },
+    { .key = XKB_KEY_e,           .action = { action_exec, "echo \"Image: %\"" } },
+    { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
+    { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
+    { .key = VKEY_SCROLL_LEFT,    .action = { action_step_right, "5" } },
+    { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  "5" } },
+    { .key = VKEY_SCROLL_UP,      .action = { action_step_down,  "5" } },
+    { .key = VKEY_SCROLL_DOWN,    .action = { action_step_up,    "5" } },
+    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_CTRL,  .action = { action_zoom, "+10" } },
+    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_CTRL,  .action = { action_zoom, "-10" } },
+    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_SHIFT, .action = { action_prev_file, NULL } },
+    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = { action_next_file, NULL } },
+    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT,   .action = { action_prev_frame, NULL } },
+    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT,   .action = { action_next_frame, NULL } },
 };
 // clang-format on
 
@@ -117,71 +90,105 @@ struct key_binding* key_bindings;
 size_t key_bindings_size;
 
 /**
- * Set key binding.
+ * Remove all actions from binding.
+ * @param binding key binding
+ */
+static void free_binding(struct key_binding* binding)
+{
+    struct action* it = binding->actions;
+    while (it && it->type != action_none) {
+        action_free(it);
+        ++it;
+    }
+    free(binding->actions);
+    free(binding->help);
+    memset(binding, 0, sizeof(*binding));
+}
+
+/**
+ * Create new key binding.
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
- * @param action action to set
- * @param params additional parameters (action specific)
+ * @return pointer to the binding description
  */
-static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
-                        const char* params)
+static struct key_binding* create_binding(xkb_keysym_t key, uint8_t mods)
 {
-    char* key_name;
-    struct key_binding* new_binding = NULL;
+    struct key_binding* binding = NULL;
 
+    // search for empty node
     for (size_t i = 0; i < key_bindings_size; ++i) {
-        struct key_binding* binding = &key_bindings[i];
-        if (binding->key == key && binding->mods == mods) {
-            new_binding = binding; // replace existing
+        struct key_binding* kb = &key_bindings[i];
+        if (kb->key == key && kb->mods == mods) {
+            binding = kb; // replace existing
             break;
-        } else if (binding->action == kb_none && !new_binding) {
-            new_binding = binding; // reuse existing
+        } else if (!kb->actions && !binding) {
+            binding = kb; // reuse empty node
         }
     }
 
-    if (new_binding) {
-        // use existing, clear previous buffers
-        free(new_binding->params);
-        new_binding->params = NULL;
-        free(new_binding->help);
-        new_binding->help = NULL;
-        if (action == kb_none) {
-            new_binding->action = kb_none; // mark as free
-            return;
-        }
+    if (binding) {
+        free_binding(binding);
     } else {
-        // add new (reallocate)
+        // add new node (reallocate)
         const size_t sz = (key_bindings_size + 1) * sizeof(struct key_binding);
-        struct key_binding* bindings = realloc(key_bindings, sz);
-        if (!bindings) {
-            return;
+        struct key_binding* kb = realloc(key_bindings, sz);
+        if (!kb) {
+            return NULL;
         }
-        new_binding = &bindings[key_bindings_size];
-        memset(new_binding, 0, sizeof(*new_binding));
-        key_bindings = bindings;
+        binding = &kb[key_bindings_size];
+        memset(binding, 0, sizeof(*binding));
+        key_bindings = kb;
         ++key_bindings_size;
     }
 
-    // set new parameters
-    new_binding->key = key;
-    new_binding->mods = mods;
-    new_binding->action = action;
-    if (params && *params) {
-        str_dup(params, &new_binding->params);
+    binding->key = key;
+    binding->mods = mods;
+
+    return binding;
+}
+
+/**
+ * Add one more action for specified key binding.
+ * @param binding target binding
+ * @param action action to add
+ * @return true if action added
+ */
+static bool add_action(struct key_binding* binding, const struct action* action)
+{
+    struct action* buf;
+    size_t size = 1;
+
+    if (binding->actions) {
+        while (binding->actions[size].type != action_none) {
+            ++size;
+        }
+        ++size;
+    }
+
+    buf = realloc(binding->actions, (size + 1) * sizeof(struct action));
+    if (buf) {
+        binding->actions = buf;
+        action_dup(action, &binding->actions[size - 1]);
+        binding->actions[size].type = action_none;
+        binding->actions[size].params = NULL;
     }
 
     // construct help description
-    key_name = keybind_name(key, mods);
-    if (key_name) {
-        str_append(key_name, 0, &new_binding->help);
-        str_append(": ", 2, &new_binding->help);
-        str_append(action_names[action], 0, &new_binding->help);
-        if (new_binding->params) {
-            str_append(" ", 1, &new_binding->help);
-            str_append(new_binding->params, 0, &new_binding->help);
+    if (!binding->help) {
+        char* key_name = keybind_name(binding->key, binding->mods);
+        if (key_name) {
+            str_append(key_name, 0, &binding->help);
+            str_append(": ", 2, &binding->help);
+            str_append(action_typename(action), 0, &binding->help);
+            if (action->params) {
+                str_append(" ", 1, &binding->help);
+                str_append(action->params, 0, &binding->help);
+            }
+            free(key_name);
         }
-        free(key_name);
     }
+
+    return !!buf;
 }
 
 /**
@@ -190,8 +197,7 @@ static void keybind_set(xkb_keysym_t key, uint8_t mods, enum kb_action action,
  * @param mods key modifiers (ctrl/alt/shift)
  * @return false if name is invalid
  */
-static bool get_key_from_name(const char* name, xkb_keysym_t* key,
-                              uint8_t* mods)
+static bool parse_key(const char* name, xkb_keysym_t* key, uint8_t* mods)
 {
     struct str_slice slices[4]; // mod[alt+ctrl+shift]+key
     const size_t snum = str_split(name, '+', slices, ARRAY_SIZE(slices));
@@ -238,43 +244,44 @@ static bool get_key_from_name(const char* name, xkb_keysym_t* key,
  */
 static enum config_status load_config(const char* key, const char* value)
 {
-    enum kb_action action_id = kb_none;
-    size_t action_len;
-    const char* params;
+    struct key_binding* binding;
     xkb_keysym_t keysym;
     uint8_t mods;
-    const char* action_end;
-    ssize_t index;
 
-    // get action length
-    action_end = value;
-    while (*action_end && !isspace(*action_end)) {
-        ++action_end;
-    }
-    action_len = action_end - value;
+    struct str_slice slices[32];
+    const size_t num = str_split(value, ';', slices, ARRAY_SIZE(slices));
 
-    // get action id form its name
-    index = str_index(action_names, value, action_len);
-    if (index < 0) {
+    if (num == 0) {
         return cfgst_invalid_value;
-    }
-    action_id = index;
-
-    // get parameters
-    params = action_end;
-    while (*params && isspace(*params)) {
-        ++params;
-    }
-    if (!*params) {
-        params = NULL;
     }
 
     // convert key name to code
-    if (!get_key_from_name(key, &keysym, &mods)) {
+    if (!parse_key(key, &keysym, &mods)) {
         return cfgst_invalid_key;
     }
 
-    keybind_set(keysym, mods, action_id, params);
+    binding = create_binding(keysym, mods);
+    if (!binding) {
+        return cfgst_invalid_key;
+    }
+
+    for (size_t i = 0; i < num; ++i) {
+        struct action action;
+        if (slices[i].len == 0) {
+            continue;
+        }
+        if (!action_load(&action, slices[i].value, slices[i].len)) {
+            return cfgst_invalid_value;
+        }
+        if (action.type == action_none) {
+            continue;
+        }
+        if (!add_action(binding, &action)) {
+            action_free(&action);
+            return cfgst_invalid_value;
+        }
+        action_free(&action);
+    }
 
     return cfgst_ok;
 }
@@ -283,8 +290,11 @@ void keybind_init(void)
 {
     // set defaults
     for (size_t i = 0; i < ARRAY_SIZE(default_bindings); ++i) {
-        const struct key_binding* kb = &default_bindings[i];
-        keybind_set(kb->key, kb->mods, kb->action, kb->params);
+        const struct keybind_default* kb = &default_bindings[i];
+        struct key_binding* binding = create_binding(kb->key, kb->mods);
+        if (binding) {
+            add_action(binding, &kb->action);
+        }
     }
 
     // register configuration loader
@@ -295,8 +305,7 @@ void keybind_init(void)
 void keybind_free(void)
 {
     for (size_t i = 0; i < key_bindings_size; ++i) {
-        free(key_bindings[i].params);
-        free(key_bindings[i].help);
+        free_binding(&key_bindings[i]);
     }
     free(key_bindings);
 }
@@ -355,7 +364,7 @@ char* keybind_name(xkb_keysym_t key, uint8_t mods)
     return name;
 }
 
-const struct key_binding* keybind_get(xkb_keysym_t key, uint8_t mods)
+const struct action* keybind_actions(xkb_keysym_t key, uint8_t mods)
 {
     // we always use lowercase + Shift modifier
     key = xkb_keysym_to_lower(key);
@@ -363,7 +372,7 @@ const struct key_binding* keybind_get(xkb_keysym_t key, uint8_t mods)
     for (size_t i = 0; i < key_bindings_size; ++i) {
         struct key_binding* binding = &key_bindings[i];
         if (binding->key == key && binding->mods == mods) {
-            return binding;
+            return binding->actions;
         }
     }
 
