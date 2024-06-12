@@ -4,7 +4,6 @@
 
 #include "info.h"
 
-#include "canvas.h"
 #include "config.h"
 #include "imagelist.h"
 #include "str.h"
@@ -340,7 +339,7 @@ void info_set_mode(const char* mode)
     }
 }
 
-void info_update(size_t frame_idx)
+void info_update(size_t frame_idx, float scale)
 {
     const struct image_entry entry = image_list_current();
     const struct image* image = entry.image;
@@ -389,7 +388,7 @@ void info_update(size_t frame_idx)
     }
 
     if (is_visible(info_scale)) {
-        const size_t scale_percent = canvas_get_scale() * 100;
+        const size_t scale_percent = scale * 100;
         if (ctx.scale != scale_percent) {
             ctx.scale = scale_percent;
             snprintf(buffer, sizeof(buffer), "%ld%%", ctx.scale);

@@ -7,9 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
 /**
  * Alpha blending.
  * @param img color of image's pixel

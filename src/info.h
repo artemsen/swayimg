@@ -45,8 +45,9 @@ void info_set_mode(const char* mode);
 /**
  * Refresh info data.
  * @param frame_idx index of the current frame
+ * @param scale current scale factor
  */
-void info_update(size_t frame_idx);
+void info_update(size_t frame_idx, float scale);
 
 /**
  * Set status text.

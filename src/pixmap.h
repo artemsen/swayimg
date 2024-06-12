@@ -34,6 +34,9 @@ typedef uint32_t argb_t;
 #define ARGB_SET_ABGR(c) \
     ((c & 0xff00ff00) | ARGB_SET_R(ARGB_GET_B(c)) | ARGB_SET_B(ARGB_GET_R(c)))
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 /** Size description. */
 struct size {
     size_t width;

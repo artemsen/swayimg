@@ -3,7 +3,6 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "buildcfg.h"
-#include "canvas.h"
 #include "config.h"
 #include "font.h"
 #include "formats/loader.h"
@@ -39,7 +38,7 @@ static const struct cmdarg arguments[] = {
     { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
                                   IMGLIST_CFG_SECTION, IMGLIST_CFG_ORDER, NULL },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
-                                  GENERAL_CONFIG_SECTION, CANVAS_CFG_SCALE, NULL },
+                                  GENERAL_CONFIG_SECTION, VIEWER_CFG_SCALE, NULL },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
                                   GENERAL_CONFIG_SECTION, VIEWER_CFG_SLIDESHOW, "yes" },
     { 'f', "fullscreen", NULL,    "show image in full screen mode",
@@ -207,7 +206,6 @@ int main(int argc, char* argv[])
     font_create();
     info_create();
     image_list_init();
-    canvas_init();
     ui_init();
     viewer_init();
     text_init();

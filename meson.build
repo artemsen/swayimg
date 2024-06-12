@@ -145,7 +145,6 @@ endif
 
 # source files
 sources = [
-  'src/canvas.c',
   'src/config.c',
   'src/font.c',
   'src/image.c',
