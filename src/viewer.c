@@ -73,6 +73,9 @@ struct viewer {
     bool slideshow_enable; ///< Slideshow enable/disable
     int slideshow_fd;      ///< Slideshow timer
     size_t slideshow_time; ///< Slideshow image display time (seconds)
+
+    bool info_timedout; ///< Indicates info block shouldn't be displayed anymore
+    int info_timeout_fd; ///< Info timer
 };
 
 static struct viewer ctx = {
@@ -83,6 +86,8 @@ static struct viewer ctx = {
     .slideshow_enable = false,
     .slideshow_fd = -1,
     .slideshow_time = 3,
+    .info_timedout = false,
+    .info_timeout_fd = -1,
 };
 
 /**
@@ -336,12 +341,30 @@ static void reset_state(void)
     ctx.img_x = 0;
     ctx.img_y = 0;
     ctx.scale = 0;
+    ctx.info_timedout = false;
     scale_image(ctx.scale_init);
     fixup_position(true);
 
     ui_set_title(entry.image->file_name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
+
+    // Expire info block after timeout
+    const int timeout = info_timeout();
+    if (timeout != 0) {
+        struct itimerspec info_ts = { 0 };
+        if (!ctx.slideshow_enable && timeout < 0) {
+            // If timeout is relative to slideshow, but slideshow is not
+            // enabled, then disable info timeout too
+            info_ts.it_value.tv_sec = 0;
+        } else if (timeout < 0) {
+            // If timeout < 0 => it's relative to slideshow time
+            info_ts.it_value.tv_sec = ctx.slideshow_time * -1 * timeout / 100;
+        } else {
+            info_ts.it_value.tv_sec = timeout;
+        }
+        timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
+    }
 }
 
 /**
@@ -401,6 +424,18 @@ static void on_animation_timer(void)
 static void on_slideshow_timer(void)
 {
     slideshow_ctl(next_file(jump_next_file));
+    ui_redraw();
+}
+
+/**
+ * Info block timer event handler.
+ */
+static void on_info_block_timeout(void)
+{
+    // Reset timer to 0, so it won't fire again
+    struct itimerspec info_ts = { 0 };
+    timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
+    ctx.info_timedout = true;
     ui_redraw();
 }
 
@@ -574,6 +609,13 @@ void viewer_init(void)
         ui_add_event(ctx.slideshow_fd, on_slideshow_timer);
     }
 
+    // setup info block timer
+    ctx.info_timeout_fd =
+        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    if (ctx.info_timeout_fd != -1) {
+        ui_add_event(ctx.info_timeout_fd, on_info_block_timeout);
+    }
+
     // register configuration loader
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
@@ -588,6 +630,9 @@ void viewer_free(void)
     }
     if (ctx.slideshow_fd != -1) {
         close(ctx.slideshow_fd);
+    }
+    if (ctx.info_timeout_fd != -1) {
+        close(ctx.info_timeout_fd);
     }
 }
 
@@ -614,12 +659,14 @@ void viewer_on_redraw(struct pixmap* window)
     draw_image(window);
 
     // put text info blocks on window surface
-    for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-        const size_t lines_num = info_height(i);
-        if (lines_num) {
-            const enum info_position pos = (enum info_position)i;
-            const struct info_line* lines = info_lines(pos);
-            text_print(window, pos, lines, lines_num);
+    if (!ctx.info_timedout) {
+        for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+            const size_t lines_num = info_height(i);
+            if (lines_num) {
+                const enum info_position pos = (enum info_position)i;
+                const struct info_line* lines = info_lines(pos);
+                text_print(window, pos, lines, lines_num);
+            }
         }
     }
     if (ctx.help) {
