@@ -75,6 +75,8 @@ shadow = #000000
 [info]
 # Mode on startup (off/brief/full)
 mode = full
+# Hide image information after a timeout (seconds e.g. `5`, or percent of slideshow_time e.g. `50%`)
+timeout = 50%
 # Display scheme for the "full" mode: position = content
 full.topleft = name,format,filesize,imagesize,exif
 full.topright = index

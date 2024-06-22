@@ -150,6 +150,9 @@ Set startup mode:
 \fIbrief\fR: show brief info;
 \fIoff\fR: don't display any text.
 .\" ----------------------------------------------------------------------------
+.IP "\fBtimeout\fR = \fISECONDS|PERCENT\fR"
+Set timeout of image information displayed on screen. Value is in seconds (e.g. `5`) or in percentage of slideshow_time (e.g. `50%`). `timeout=0` disables the timeout (info block is shown forever). If set as a percentage of the slideshow time, but slideshow is disabled, this timeout will be disabled too. Default is \fI0\fR.
+.\" ----------------------------------------------------------------------------
 .IP "\fBfull.topleft\fR = \fILIST\fR"
 Set display scheme for the \fIfull\fR mode, top left corner of the window.
 \fILIST\fR is a comma delimited list of the following lines:

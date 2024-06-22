@@ -107,6 +107,7 @@ struct info_block {
 /** Info data context. */
 struct info_context {
     enum info_mode mode;
+    int timeout;
     const char* file;
     struct info_line* exif_lines;
     size_t exif_num;
@@ -207,6 +208,24 @@ static enum config_status load_config(const char* key, const char* value)
     size_t scheme_sz = 0;
     ssize_t index;
 
+    if (strcmp(key, VIEWER_CFG_INFO_TIMEOUT) == 0) {
+        size_t val_sz = strlen(value);
+        bool timeout_is_rel = false;
+        if (value[val_sz - 1] == '%') {
+            val_sz = val_sz - 1;
+            timeout_is_rel = true;
+        }
+
+        ssize_t num;
+        const ssize_t maxVal = timeout_is_rel ? 100 : 86400;
+        if (str_to_num(value, val_sz, &num, 0) && num != 0 && num <= maxVal) {
+            ctx.timeout = num * (timeout_is_rel ? -1 : 1);
+            return cfgst_ok;
+        } else {
+            return cfgst_invalid_value;
+        }
+    }
+
     if (strcmp(key, "mode") == 0) {
         index = str_index(mode_names, value, 0);
         if (index < 0) {
@@ -274,6 +293,7 @@ void info_create(void)
 {
     // set defaults
     ctx.mode = info_mode_full;
+    ctx.timeout = 0;
     ctx.frame = UINT32_MAX;
     ctx.index = UINT32_MAX;
     SET_DEFAULT(info_mode_full, info_top_left, default_full_top_left);
@@ -529,4 +549,9 @@ const struct info_line* info_lines(enum info_position pos)
     }
 
     return block->lines;
+}
+
+int info_timeout(void)
+{
+    return ctx.timeout;
 }

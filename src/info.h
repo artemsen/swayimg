@@ -6,6 +6,9 @@
 
 #include "font.h"
 
+// Config key for info block timeout
+#define VIEWER_CFG_INFO_TIMEOUT "timeout"
+
 /** Info block position. */
 enum info_position {
     info_top_left,
@@ -69,3 +72,10 @@ size_t info_height(enum info_position pos);
  * @return pointer to the lines array
  */
 const struct info_line* info_lines(enum info_position pos);
+
+/**
+ * Get info display timeout.
+ * @return 0 if timeout disabled, positive number for absolute time in second,
+ * or negative number for slideshow relative percents.
+ */
+int info_timeout(void);
