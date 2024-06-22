@@ -37,6 +37,9 @@ struct image_info {
 /** Name used for image, that is read from stdin through pipe. */
 #define STDIN_FILE_NAME "{STDIN}"
 
+/** Name used for image that is read directly from memory. */
+#define MEM_FILE_NAME "{MEM}"
+
 /**
  * Load image from file.
  * @param file path to the file to load
@@ -49,6 +52,12 @@ struct image* image_from_file(const char* file);
  * @return image context or NULL on errors
  */
 struct image* image_from_stdin(void);
+
+/**
+ * Load image from an arbitrary memory location.
+ * @return image context or NULL on errors
+ */
+struct image* image_create_from_memory(const uint8_t* data, size_t size);
 
 /**
  * Free image.

@@ -140,6 +140,11 @@ done:
     return ctx;
 }
 
+struct image* image_create_from_memory(const uint8_t* data, size_t size)
+{
+    return image_create(MEM_FILE_NAME, data, size);
+}
+
 void image_free(struct image* ctx)
 {
     if (ctx) {
