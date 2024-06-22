@@ -34,15 +34,22 @@ struct image_info {
     char* value;     ///< Meta value
 };
 
+struct target_resolution {
+    size_t w; ///< Maximum width this image will render to (eg screen width)
+    size_t h; ///< Maximum height this image will render to (eg screen height)
+};
+
 /** Name used for image, that is read from stdin through pipe. */
 #define STDIN_FILE_NAME "{STDIN}"
 
 /**
  * Load image from file.
  * @param file path to the file to load
+ * @param target (maximum) resolution for this image. NULL for no maximum.
  * @return image context or NULL on errors
  */
-struct image* image_from_file(const char* file);
+struct image* image_from_file(const char* file,
+                              struct target_resolution* tgt_res);
 
 /**
  * Load image from stdin data.

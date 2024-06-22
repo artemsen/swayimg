@@ -35,7 +35,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 
 // JPEG loader implementation
 enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
-                               size_t size)
+                               size_t size, size_t max_w, size_t max_h)
 {
     struct pixmap* pm;
     struct jpeg_decompress_struct jpg;
@@ -59,6 +59,22 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpeg_create_decompress(&jpg);
     jpeg_mem_src(&jpg, data, size);
     jpeg_read_header(&jpg, TRUE);
+
+    if (max_w > 0 && max_h > 0) {
+        // Find out the biggest scaler for our target resolution
+        while (max_w < jpg.image_width / jpg.scale_denom ||
+               max_h < jpg.image_height / jpg.scale_denom) {
+            jpg.scale_denom++;
+        }
+        if (jpg.scale_denom > 1) {
+            jpg.scale_denom--;
+        }
+
+        printf("XXXX SCALE %du = %du X %du\n", jpg.scale_denom,
+               jpg.image_width / jpg.scale_denom,
+               jpg.image_height / jpg.scale_denom);
+    }
+
     jpeg_start_decompress(&jpg);
 #ifdef LIBJPEG_TURBO_VERSION
     jpg.out_color_space = JCS_EXT_BGRA;
