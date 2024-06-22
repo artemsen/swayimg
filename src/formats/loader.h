@@ -24,17 +24,24 @@ extern const char* supported_formats;
  * @return loader status
  */
 typedef enum loader_status (*image_decoder)(struct image* ctx,
-                                            const uint8_t* data, size_t size);
+                                            const uint8_t* data, size_t size,
+                                            size_t max_w, size_t max_h);
 
 /**
- * Load image from memory buffer.
+ * Load image from memory buffer. If max_w and max_h are specified (both non
+ * zero), the loader will attempt to decode the image to the closest resolution
+ * that's at least as big as the specified target, respecting the aspect ratio
+ * of the source image. This is only done if the decoder supports downsampling
+ * on decode (eg jpg does)
  * @param ctx image context
  * @param data raw image data
  * @param size size of image data in bytes
+ * @param max_w Maximum render width for this image
+ * @param max_h Maximum render height for this image
  * @return loader status
  */
 enum loader_status load_image(struct image* ctx, const uint8_t* data,
-                              size_t size);
+                              size_t size, size_t max_w, size_t max_h);
 
 /**
  * Print decoding problem description.

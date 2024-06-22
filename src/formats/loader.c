@@ -12,9 +12,10 @@
 // Construct function name of loader
 #define LOADER_FUNCTION(name) decode_##name
 // Declaration of loader function
-#define LOADER_DECLARE(name)                                     \
-    enum loader_status LOADER_FUNCTION(name)(struct image * ctx, \
-                                             const uint8_t* data, size_t size)
+#define LOADER_DECLARE(name)                                                   \
+    enum loader_status LOADER_FUNCTION(name)(struct image * ctx,               \
+                                             const uint8_t* data, size_t size, \
+                                             size_t max_w, size_t max_h)
 
 const char* supported_formats = "bmp, pnm, tga"
 #ifdef HAVE_LIBJPEG
@@ -124,12 +125,12 @@ static const image_decoder decoders[] = {
 };
 
 enum loader_status load_image(struct image* ctx, const uint8_t* data,
-                              size_t size)
+                              size_t size, size_t max_w, size_t max_h)
 {
     enum loader_status status = ldr_unsupported;
 
     for (size_t i = 0; i < sizeof(decoders) / sizeof(decoders[0]); ++i) {
-        switch (decoders[i](ctx, data, size)) {
+        switch (decoders[i](ctx, data, size, max_w, max_h)) {
             case ldr_success:
                 return ldr_success;
             case ldr_unsupported:

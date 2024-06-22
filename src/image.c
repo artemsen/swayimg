@@ -26,7 +26,8 @@
  * @return image instance or NULL on errors
  */
 static struct image* image_create(const char* path, const uint8_t* data,
-                                  size_t size)
+                                  size_t size,
+                                  struct target_resolution* tgt_res)
 {
     struct image* ctx;
     enum loader_status status;
@@ -48,7 +49,11 @@ static struct image* image_create(const char* path, const uint8_t* data,
     ctx->file_size = size;
 
     // decode image
-    status = load_image(ctx, data, size);
+    if (tgt_res) {
+        status = load_image(ctx, data, size, tgt_res->w, tgt_res->h);
+    } else {
+        status = load_image(ctx, data, size, 0, 0);
+    }
     if (status != ldr_success) {
         if (status == ldr_unsupported) {
             image_print_error(ctx, "unsupported format");
@@ -64,7 +69,8 @@ static struct image* image_create(const char* path, const uint8_t* data,
     return ctx;
 }
 
-struct image* image_from_file(const char* file)
+struct image* image_from_file(const char* file,
+                              struct target_resolution* tgt_res)
 {
     struct image* ctx = NULL;
     void* data = MAP_FAILED;
@@ -89,7 +95,7 @@ struct image* image_from_file(const char* file)
         goto done;
     }
 
-    ctx = image_create(file, data, st.st_size);
+    ctx = image_create(file, data, st.st_size, tgt_res);
 
 done:
     if (data != MAP_FAILED) {
@@ -132,7 +138,7 @@ struct image* image_from_stdin(void)
     }
 
     if (data) {
-        ctx = image_create(STDIN_FILE_NAME, data, size);
+        ctx = image_create(STDIN_FILE_NAME, data, size, NULL);
     }
 
 done:
