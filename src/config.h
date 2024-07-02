@@ -65,9 +65,17 @@ void config_add_loader(const char* section, config_loader loader);
 bool config_to_bool(const char* text, bool* flag);
 
 /**
- * Convert text value to ARGB color.
+ * Convert text value to ARGB color, with a constant max value for alpha.
  * @param text text to convert
  * @param color output variable
  * @return false if text has invalid format
  */
 bool config_to_color(const char* text, argb_t* color);
+
+/**
+ * Convert text value to ARGB color which may be any alpha.
+ * @param text text to convert
+ * @param color output variable
+ * @return false if text has invalid format
+ */
+bool config_to_translucent_color(const char* text, argb_t* color);
