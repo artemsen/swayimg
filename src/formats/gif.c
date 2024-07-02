@@ -58,7 +58,7 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     if (ctl.DisposalMode == DISPOSE_PREVIOUS && index < ctx->num_frames - 1) {
         struct pixmap* next = &ctx->frames[index + 1].pm;
-        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
+        pixmap_copy(&frame->pm, next, 0, 0, false);
     }
 
     for (size_t y = 0; y < height; ++y) {
@@ -80,7 +80,7 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
         struct pixmap* next = &ctx->frames[index + 1].pm;
-        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
+        pixmap_copy(&frame->pm, next, 0, 0, false);
     }
 
     if (ctl.DelayTime != 0) {

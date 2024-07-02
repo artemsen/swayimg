@@ -30,163 +30,6 @@ static inline void alpha_blend(argb_t src, argb_t* dst)
     *dst = src;
 }
 
-/**
- * Put one pixmap on another: nearest filter, fast but ugly.
- */
-static void put_nearest(struct pixmap* dst, const struct pixmap* src, ssize_t x,
-                        ssize_t y, float scale, bool alpha)
-{
-    const ssize_t left = max(0, x);
-    const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
-    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
-
-    const ssize_t delta_x = left - x;
-    const ssize_t delta_y = top - y;
-
-    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
-        const size_t src_y = (float)(dst_y - top + delta_y) / scale;
-        const argb_t* src_line = &src->data[src_y * src->width];
-        argb_t* dst_line = &dst->data[dst_y * dst->width];
-
-        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
-            const size_t src_x = (float)(dst_x - left + delta_x) / scale;
-            const argb_t color = src_line[src_x];
-
-            if (alpha) {
-                alpha_blend(color, &dst_line[dst_x]);
-            } else {
-                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
-            }
-        }
-    }
-}
-
-/**
- * Put one pixmap on another: bicubic filter, nice but slow.
- */
-static void put_bicubic(struct pixmap* dst, const struct pixmap* src, ssize_t x,
-                        ssize_t y, float scale, bool alpha)
-{
-    const ssize_t left = max(0, x);
-    const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
-    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
-
-    const ssize_t delta_x = left - x;
-    const ssize_t delta_y = top - y;
-
-    size_t state_zero_x = 1;
-    size_t state_zero_y = 1;
-    float state[4][4][4]; // color channel, y, x
-
-    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
-        argb_t* dst_line = &dst->data[dst_y * dst->width];
-        const double scaled_y = (double)(dst_y - top + delta_y) / scale;
-        const size_t fixed_y = (size_t)scaled_y;
-        const float diff_y = scaled_y - fixed_y;
-        const float diff_y2 = diff_y * diff_y;
-        const float diff_y3 = diff_y * diff_y2;
-
-        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
-            const double scaled_x = (double)(dst_x - left + delta_x) / scale;
-            const size_t fixed_x = (size_t)scaled_x;
-            const float diff_x = scaled_x - fixed_x;
-            const float diff_x2 = diff_x * diff_x;
-            const float diff_x3 = diff_x * diff_x2;
-            argb_t fg = 0;
-
-            // update cached state
-            if (state_zero_x != fixed_x || state_zero_y != fixed_y) {
-                float pixels[4][4][4]; // color channel, y, x
-                state_zero_x = fixed_x;
-                state_zero_y = fixed_y;
-                for (size_t pc = 0; pc < 4; ++pc) {
-                    // get colors for the current area
-                    for (size_t py = 0; py < 4; ++py) {
-                        size_t iy = fixed_y + py;
-                        if (iy > 0) {
-                            --iy;
-                            if (iy >= src->height) {
-                                iy = src->height - 1;
-                            }
-                        }
-                        for (size_t px = 0; px < 4; ++px) {
-                            size_t ix = fixed_x + px;
-                            if (ix > 0) {
-                                --ix;
-                                if (ix >= src->width) {
-                                    ix = src->width - 1;
-                                }
-                            }
-                            const argb_t pixel =
-                                src->data[iy * src->width + ix];
-                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
-                        }
-                    }
-                    // recalc state cache for the current area
-                    // clang-format off
-                    state[pc][0][0] = pixels[pc][1][1];
-                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
-                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
-                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
-                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
-                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
-                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
-                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
-                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
-                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
-                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
-                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
-                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
-                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
-                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
-                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
-                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
-                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
-                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
-                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
-                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
-                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
-                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
-                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
-                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
-                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    // clang-format on
-                }
-            }
-
-            // set pixel
-            for (size_t pc = 0; pc < 4; ++pc) {
-                // clang-format off
-                const float inter =
-                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
-                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
-                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
-                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
-                // clang-format on
-                const uint8_t color = max(min(inter, 255), 0);
-                fg |= (color << (pc * 8));
-            }
-
-            if (alpha) {
-                alpha_blend(fg, &dst_line[dst_x]);
-            } else {
-                dst_line[dst_x] = ARGB_SET_A(0xff) | fg;
-            }
-        }
-    }
-}
-
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
 {
     argb_t* data = calloc(1, height * width * sizeof(argb_t));
@@ -312,52 +155,182 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
     }
 }
 
-void pixmap_copy(struct pixmap* dst, size_t x, size_t y,
-                 const struct pixmap* src, size_t width, size_t height)
+void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
+                 ssize_t y, bool alpha)
 {
-    size_t len;
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, (ssize_t)src->width + x);
+    const ssize_t bottom = min((ssize_t)dst->height, (ssize_t)src->height + y);
+    const ssize_t dst_width = right - left;
+    const ssize_t dst_height = bottom - top;
+    const size_t line_sz = dst_width * sizeof(argb_t);
 
-    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
+    if (right < 0 || bottom < 0 || dst_width <= 0 || dst_height <= 0) {
         return;
     }
 
-    width = min(width, dst->width - x);
-    height = min(height, dst->height - y);
-    len = width * sizeof(argb_t);
-
-    for (size_t i = 0; i < height; ++i) {
-        argb_t* dst_ptr = &dst->data[(i + y) * dst->width + x];
-        const argb_t* src_ptr = &src->data[i * src->width];
-        memcpy(dst_ptr, src_ptr, len);
-    }
-}
-
-void pixmap_over(struct pixmap* dst, size_t x, size_t y,
-                 const struct pixmap* src, size_t width, size_t height)
-{
-    width = min(width, dst->width - x);
-    height = min(height, dst->height - y);
-
-    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
-        return;
-    }
-
-    for (size_t i = 0; i < height; ++i) {
-        argb_t* dst_line = &dst->data[(i + y) * dst->width + x];
-        const argb_t* src_line = &src->data[i * src->width];
-        for (size_t x = 0; x < width; ++x) {
-            alpha_blend(src_line[x], &dst_line[x]);
+    for (y = 0; y < dst_height; ++y) {
+        const argb_t* src_line = &src->data[y * src->width];
+        argb_t* dst_line = &dst->data[(y + top) * dst->width + left];
+        if (alpha) {
+            for (x = 0; x < dst_width; ++x) {
+                alpha_blend(src_line[x], &dst_line[x]);
+            }
+        } else {
+            memcpy(dst_line, src_line, line_sz);
         }
     }
 }
 
-void pixmap_put(struct pixmap* dst, const struct pixmap* src, ssize_t x,
-                ssize_t y, float scale, bool alpha, bool antialiasing)
+void pixmap_scale_nearest(const struct pixmap* src, struct pixmap* dst,
+                          ssize_t x, ssize_t y, float scale, bool alpha)
 {
-    if (antialiasing) {
-        put_bicubic(dst, src, x, y, scale, alpha);
-    } else {
-        put_nearest(dst, src, x, y, scale, alpha);
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
+
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
+
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        const size_t src_y = (float)(dst_y - top + delta_y) / scale;
+        const argb_t* src_line = &src->data[src_y * src->width];
+        argb_t* dst_line = &dst->data[dst_y * dst->width];
+
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const size_t src_x = (float)(dst_x - left + delta_x) / scale;
+            const argb_t color = src_line[src_x];
+
+            if (alpha) {
+                alpha_blend(color, &dst_line[dst_x]);
+            } else {
+                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
+            }
+        }
+    }
+}
+
+void pixmap_scale_bicubic(const struct pixmap* src, struct pixmap* dst,
+                          ssize_t x, ssize_t y, float scale, bool alpha)
+{
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
+
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
+
+    size_t state_zero_x = 1;
+    size_t state_zero_y = 1;
+    float state[4][4][4]; // color channel, y, x
+
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        argb_t* dst_line = &dst->data[dst_y * dst->width];
+        const double scaled_y = (double)(dst_y - top + delta_y) / scale;
+        const size_t fixed_y = (size_t)scaled_y;
+        const float diff_y = scaled_y - fixed_y;
+        const float diff_y2 = diff_y * diff_y;
+        const float diff_y3 = diff_y * diff_y2;
+
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const double scaled_x = (double)(dst_x - left + delta_x) / scale;
+            const size_t fixed_x = (size_t)scaled_x;
+            const float diff_x = scaled_x - fixed_x;
+            const float diff_x2 = diff_x * diff_x;
+            const float diff_x3 = diff_x * diff_x2;
+            argb_t fg = 0;
+
+            // update cached state
+            if (state_zero_x != fixed_x || state_zero_y != fixed_y) {
+                float pixels[4][4][4]; // color channel, y, x
+                state_zero_x = fixed_x;
+                state_zero_y = fixed_y;
+                for (size_t pc = 0; pc < 4; ++pc) {
+                    // get colors for the current area
+                    for (size_t py = 0; py < 4; ++py) {
+                        size_t iy = fixed_y + py;
+                        if (iy > 0) {
+                            --iy;
+                            if (iy >= src->height) {
+                                iy = src->height - 1;
+                            }
+                        }
+                        for (size_t px = 0; px < 4; ++px) {
+                            size_t ix = fixed_x + px;
+                            if (ix > 0) {
+                                --ix;
+                                if (ix >= src->width) {
+                                    ix = src->width - 1;
+                                }
+                            }
+                            const argb_t pixel =
+                                src->data[iy * src->width + ix];
+                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
+                        }
+                    }
+                    // recalc state cache for the current area
+                    // clang-format off
+                    state[pc][0][0] = pixels[pc][1][1];
+                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
+                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
+                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
+                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
+                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
+                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
+                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
+                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
+                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
+                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
+                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
+                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
+                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
+                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
+                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
+                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
+                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
+                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
+                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
+                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
+                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
+                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
+                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
+                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
+                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    // clang-format on
+                }
+            }
+
+            // set pixel
+            for (size_t pc = 0; pc < 4; ++pc) {
+                // clang-format off
+                const float inter =
+                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
+                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
+                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
+                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
+                // clang-format on
+                const uint8_t color = max(min(inter, 255), 0);
+                fg |= (color << (pc * 8));
+            }
+
+            if (alpha) {
+                alpha_blend(fg, &dst_line[dst_x]);
+            } else {
+                dst_line[dst_x] = ARGB_SET_A(0xff) | fg;
+            }
+        }
     }
 }
 
