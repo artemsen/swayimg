@@ -2,7 +2,7 @@
 // Truevision TGA format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <string.h>
 

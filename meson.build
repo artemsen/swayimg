@@ -152,6 +152,7 @@ sources = [
   'src/imagelist.c',
   'src/info.c',
   'src/keybind.c',
+  'src/loader.c',
   'src/main.c',
   'src/pixmap.c',
   'src/str.c',
@@ -162,7 +163,6 @@ sources = [
   'src/formats/bmp.c',
   'src/formats/pnm.c',
   'src/formats/tga.c',
-  'src/formats/loader.c',
   xdg_shell_h,
   xdg_shell_c,
 ]

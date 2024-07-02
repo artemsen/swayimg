@@ -2,7 +2,7 @@
 // GIF format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <gif_lib.h>
 #include <stdio.h>
@@ -113,12 +113,9 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
     // decode
     gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        image_print_error(ctx, "unable to open gif decoder: [%d] %s", err,
-                          GifErrorString(err));
         return ldr_fmterror;
     }
     if (DGifSlurp(gif) != GIF_OK) {
-        image_print_error(ctx, "unable to decode gif image");
         goto fail;
     }
 

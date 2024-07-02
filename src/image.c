@@ -6,7 +6,7 @@
 
 #include "buildcfg.h"
 #include "exif.h"
-#include "formats/loader.h"
+#include "loader.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -51,7 +51,7 @@ static struct image* image_create(const char* path, const uint8_t* data,
     status = load_image(ctx, data, size);
     if (status != ldr_success) {
         if (status == ldr_unsupported) {
-            image_print_error(ctx, "unsupported format");
+            fprintf(stderr, "%s: unsupported format\n", ctx->file_path);
         }
         image_free(ctx);
         return NULL;
@@ -253,8 +253,6 @@ struct image_frame* image_create_frames(struct image* ctx, size_t num)
     if (frames) {
         ctx->frames = frames;
         ctx->num_frames = num;
-    } else {
-        image_print_error(ctx, "not enough memory");
     }
 
     return frames;

@@ -2,7 +2,7 @@
 // EXR format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -359,7 +359,6 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         rc = load_tailed(exr, pm);
     } else {
         rc = EXR_ERR_FEATURE_NOT_IMPLEMENTED;
-        image_print_error(ctx, "unsupported storage format %d", storage);
     }
 
 done:

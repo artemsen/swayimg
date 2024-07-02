@@ -2,7 +2,7 @@
 // TIFF format decoder.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <string.h>
 #include <tiffio.h>
@@ -111,13 +111,11 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
     tiff = TIFFClientOpen("", "r", &reader, tiff_read, tiff_write, tiff_seek,
                           tiff_close, tiff_size, tiff_map, tiff_unmap);
     if (!tiff) {
-        image_print_error(ctx, "unable to open tiff decoder");
         return ldr_fmterror;
     }
 
     *err = 0;
     if (!TIFFRGBAImageBegin(&timg, tiff, 0, err)) {
-        image_print_error(ctx, "unable to initialize tiff decoder: %s", err);
         goto fail;
     }
 
@@ -126,7 +124,6 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
         goto fail;
     }
     if (!TIFFRGBAImageGet(&timg, pm->data, timg.width, timg.height)) {
-        image_print_error(ctx, "unable to decode tiff");
         goto fail;
     }
 

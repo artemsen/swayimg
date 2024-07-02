@@ -2,7 +2,7 @@
 // PNM formats decoder
 // Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <limits.h>
 
@@ -29,27 +29,6 @@ struct pnm_iter {
 #define PNM_ERNG -2
 #define PNM_EFMT -3
 #define PNM_EOVF -4
-
-/**
- * Return string for error conditions above
- * @param err error code
- * @return string representing that error code
- */
-static const char* pnm_strerror(int err)
-{
-    switch (err) {
-        case PNM_EEOF:
-            return "unexpected end of image";
-        case PNM_ERNG:
-            return "integer too large";
-        case PNM_EFMT:
-            return "digit expected";
-        case PNM_EOVF:
-            return "pixel value above maxval";
-        default:
-            return "unknown error";
-    }
-}
 
 // Digits in INT_MAX
 #define INT_MAX_DIGITS 10
@@ -263,12 +242,10 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
 
     width = pnm_readint(&it, 0);
     if (width < 0) {
-        image_print_error(ctx, "%s", pnm_strerror(width));
         return ldr_fmterror;
     }
     height = pnm_readint(&it, 0);
     if (height < 0) {
-        image_print_error(ctx, "%s", pnm_strerror(height));
         return ldr_fmterror;
     }
     if (type == pnm_pbm) {
@@ -276,11 +253,9 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
     } else {
         maxval = pnm_readint(&it, 0);
         if (maxval < 0) {
-            image_print_error(ctx, "%s", pnm_strerror(maxval));
             return ldr_fmterror;
         }
         if (!maxval || maxval > UINT16_MAX) {
-            image_print_error(ctx, "invalid maxval");
             return ldr_fmterror;
         }
     }
@@ -290,7 +265,6 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
         // so we won't allow one either
         const char c = *it.pos;
         if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-            image_print_error(ctx, "single whitespace character expected");
             return ldr_fmterror;
         }
         ++it.pos;
@@ -302,7 +276,6 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
     ret = plain ? decode_plain(&ctx->frames[0].pm, &it, type, maxval)
                 : decode_raw(&ctx->frames[0].pm, &it, type, maxval);
     if (ret < 0) {
-        image_print_error(ctx, "%s", pnm_strerror(ret));
         image_free_frames(ctx);
         return ldr_fmterror;
     }
