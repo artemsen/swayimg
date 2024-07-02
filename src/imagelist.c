@@ -6,6 +6,7 @@
 
 #include "buildcfg.h"
 #include "config.h"
+#include "loader.h"
 #include "str.h"
 #include "ui.h"
 #include "viewer.h"
@@ -329,7 +330,7 @@ static void* preloader_thread(__attribute__((unused)) void* data)
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-        img = image_from_file(ctx.entries[index]->path);
+        img = loader_get_image(ctx.entries[index]->path);
         if (img) {
             image_free(ctx.next);
             ctx.next = img;
@@ -534,11 +535,7 @@ bool image_list_scan(const char** files, size_t num)
     }
 
     // load the first image
-    if (strcmp(ctx.entries[ctx.index]->path, STDIN_FILE_NAME) == 0) {
-        ctx.current = image_from_stdin();
-    } else {
-        ctx.current = image_from_file(ctx.entries[ctx.index]->path);
-    }
+    ctx.current = loader_get_image(ctx.entries[ctx.index]->path);
     if (!ctx.current &&
         ((force_start && num == 1) || !image_list_jump(jump_next_file))) {
         image_list_free();
@@ -610,7 +607,7 @@ bool image_list_reset(void)
 
     // reload current image
     image_free(ctx.current);
-    ctx.current = image_from_file(ctx.entries[ctx.index]->path);
+    ctx.current = loader_get_image(ctx.entries[ctx.index]->path);
     if (ctx.current) {
         preloader_ctl(true);
         return true;
@@ -661,7 +658,7 @@ bool image_list_jump(enum list_jump jump)
             image = ctx.prev;
             ctx.prev = NULL;
         } else {
-            image = image_from_file(ctx.entries[index]->path);
+            image = loader_get_image(ctx.entries[index]->path);
             if (!image) {
                 // not an image, remove entry from list
                 free(ctx.entries[index]);

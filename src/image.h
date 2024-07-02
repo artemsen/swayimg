@@ -34,21 +34,11 @@ struct image_info {
     char* value;     ///< Meta value
 };
 
-/** Name used for image, that is read from stdin through pipe. */
-#define STDIN_FILE_NAME "{STDIN}"
-
 /**
- * Load image from file.
- * @param file path to the file to load
+ * Create empty image instance.
  * @return image context or NULL on errors
  */
-struct image* image_from_file(const char* file);
-
-/**
- * Load image from stdin data.
- * @return image context or NULL on errors
- */
-struct image* image_from_stdin(void);
+struct image* image_create(void);
 
 /**
  * Free image.
