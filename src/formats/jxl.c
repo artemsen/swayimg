@@ -2,7 +2,7 @@
 // JPEG XL format decoder.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <jxl/decode.h>
 #include <string.h>
@@ -34,13 +34,10 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     // initialize decoder
     jxl = JxlDecoderCreate(NULL);
     if (!jxl) {
-        image_print_error(ctx, "unable to create jpeg xl decoder");
         return ldr_fmterror;
     }
     status = JxlDecoderSetInput(jxl, data, size);
     if (status != JXL_DEC_SUCCESS) {
-        image_print_error(ctx, "unable to set jpeg xl buffer: error %d",
-                          status);
         goto fail;
     }
 
@@ -48,7 +45,6 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     status =
         JxlDecoderSubscribeEvents(jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
     if (status != JXL_DEC_SUCCESS) {
-        image_print_error(ctx, "jpeg xl event subscription failed");
         goto fail;
     }
     do {
@@ -58,13 +54,10 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
             case JXL_DEC_SUCCESS:
                 break; // decoding complete
             case JXL_DEC_ERROR:
-                image_print_error(ctx, "failed to decode jpeg xl");
                 goto fail;
             case JXL_DEC_BASIC_INFO:
                 rc = JxlDecoderGetBasicInfo(jxl, &info);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_print_error(
-                        ctx, "unable to get jpeg xl info: error %d", rc);
                     goto fail;
                 }
                 break;
@@ -74,8 +67,6 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 // get image buffer size
                 rc = JxlDecoderImageOutBufferSize(jxl, &jxl_format, &buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_print_error(
-                        ctx, "unable to get jpeg xl buffer: error %d", rc);
                     goto fail;
                 }
                 pm = image_allocate_frame(ctx, info.xsize, info.ysize);
@@ -84,25 +75,21 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 }
                 // check buffer format
                 if (buffer_sz != pm->width * pm->height * sizeof(argb_t)) {
-                    image_print_error(ctx, "unsupported jpeg xl buffer format");
                     goto fail;
                 }
                 // set output buffer
                 rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, pm->data,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
-                    image_print_error(
-                        ctx, "unable to set jpeg xl buffer: error %d", rc);
                     goto fail;
                 }
                 break;
             default:
-                image_print_error(ctx, "unexpected jpeg xl status %d", status);
+                break;
         }
     } while (status != JXL_DEC_SUCCESS);
 
     if (!pm) {
-        image_print_error(ctx, "jxl frame is empty");
         goto fail;
     }
 

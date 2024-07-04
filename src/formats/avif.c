@@ -2,7 +2,7 @@
 // AV1 (AVIF/AVIFS) format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 #include "src/image.h"
 
 #include <avif/avif.h>
@@ -51,44 +51,50 @@ static int decode_frame(struct image* ctx, avifDecoder* decoder)
 fail_pixels:
     avifRGBImageFreePixels(&rgb);
 decode_fail:
-    image_print_error(ctx, "AV1 decode failed: %s", avifResultToString(rc));
     return -1;
 }
 
 static int decode_frames(struct image* ctx, avifDecoder* decoder)
 {
     avifImageTiming timing;
-    avifRGBImage rgb;
-    avifResult rc;
+    avifRGBImage rgb = { 0 };
+    avifResult rc = AVIF_RESULT_UNKNOWN_ERROR;
 
     if (!image_create_frames(ctx, decoder->imageCount)) {
-        goto decode_fail;
+        return AVIF_RESULT_UNKNOWN_ERROR;
     }
 
     for (size_t i = 0; i < ctx->num_frames; ++i) {
         rc = avifDecoderNthImage(decoder, i);
         if (rc != AVIF_RESULT_OK) {
-            goto decode_fail;
+            break;
         }
 
         avifRGBImageSetDefaults(&rgb, decoder->image);
         rgb.depth = 8;
         rgb.format = AVIF_RGB_FORMAT_BGRA;
 
+#if AVIF_VERSION_MAJOR == 0
         avifRGBImageAllocatePixels(&rgb);
+#else
+        rc = avifRGBImageAllocatePixels(&rgb);
+        if (rc != AVIF_RESULT_OK) {
+            break;
+        }
+#endif
 
         rc = avifImageYUVToRGB(decoder->image, &rgb);
         if (rc != AVIF_RESULT_OK) {
-            goto fail_pixels;
+            break;
         }
 
         if (!pixmap_create(&ctx->frames[i].pm, rgb.width, rgb.height)) {
-            goto fail_pixels;
+            break;
         }
 
         rc = avifDecoderNthImageTiming(decoder, i, &timing);
         if (rc != AVIF_RESULT_OK) {
-            goto fail_pixels;
+            break;
         }
 
         ctx->frames[i].duration = (size_t)(1000.0f / (float)timing.timescale *
@@ -98,14 +104,14 @@ static int decode_frames(struct image* ctx, avifDecoder* decoder)
                rgb.width * rgb.height * sizeof(argb_t));
 
         avifRGBImageFreePixels(&rgb);
+        rgb.pixels = NULL;
     }
 
-    return 0;
+    if (rgb.pixels) {
+        avifRGBImageFreePixels(&rgb);
+    }
 
-fail_pixels:
-    avifRGBImageFreePixels(&rgb);
-decode_fail:
-    return -1;
+    return rc;
 }
 
 // AV1 loader implementation
@@ -125,7 +131,6 @@ enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
     // open file in decoder
     decoder = avifDecoderCreate();
     if (!decoder) {
-        image_print_error(ctx, "unable to create av1 decoder");
         return ldr_fmterror;
     }
     rc = avifDecoderSetIOMemory(decoder, data, size);
@@ -157,10 +162,6 @@ enum loader_status decode_avif(struct image* ctx, const uint8_t* data,
 
 fail:
     avifDecoderDestroy(decoder);
-    if (rc != AVIF_RESULT_OK) {
-        image_print_error(ctx, "error decoding av1: %s\n",
-                          avifResultToString(rc));
-    }
     image_free_frames(ctx);
     return ldr_fmterror;
 }

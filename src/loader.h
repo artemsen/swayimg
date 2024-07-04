@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../image.h"
+#include "image.h"
 
 /** Loader status. */
 enum loader_status {
@@ -35,11 +35,3 @@ typedef enum loader_status (*image_decoder)(struct image* ctx,
  */
 enum loader_status load_image(struct image* ctx, const uint8_t* data,
                               size_t size);
-
-/**
- * Print decoding problem description.
- * @param ctx image context
- * @param fmt text format
- */
-void image_print_error(const struct image* ctx, const char* fmt, ...)
-    __attribute__((format(printf, 2, 3)));

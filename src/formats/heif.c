@@ -3,8 +3,8 @@
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
+#include "../loader.h"
 #include "buildcfg.h"
-#include "loader.h"
 
 #include <libheif/heif.h>
 #include <stdlib.h>
@@ -48,6 +48,7 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     const uint8_t* decoded;
     struct pixmap* pm;
     int stride = 0;
+    enum loader_status status = ldr_fmterror;
 
     if (heif_check_filetype(data, size) != heif_filetype_yes_supported) {
         return ldr_unsupported;
@@ -55,33 +56,31 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
 
     heif = heif_context_alloc();
     if (!heif) {
-        image_print_error(ctx, "unable to create heif context");
-        return ldr_fmterror;
+        goto done;
     }
     err = heif_context_read_from_memory(heif, data, size, NULL);
     if (err.code != heif_error_Ok) {
-        goto decode_fail;
+        goto done;
     }
     err = heif_context_get_primary_image_handle(heif, &pih);
     if (err.code != heif_error_Ok) {
-        goto decode_fail;
+        goto done;
     }
     err = heif_decode_image(pih, &img, heif_colorspace_RGB,
                             heif_chroma_interleaved_RGBA, NULL);
     if (err.code != heif_error_Ok) {
-        goto decode_fail;
+        goto done;
     }
     decoded =
         heif_image_get_plane_readonly(img, heif_channel_interleaved, &stride);
     if (!decoded) {
-        err.message = "no decoded data";
-        goto decode_fail;
+        goto done;
     }
 
     pm = image_allocate_frame(ctx, heif_image_get_primary_width(img),
                               heif_image_get_primary_height(img));
     if (!pm) {
-        goto alloc_fail;
+        goto done;
     }
 
     // convert to plain image frame
@@ -100,20 +99,20 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     read_exif(ctx, pih);
 #endif
 
-    heif_image_release(img);
-    heif_image_handle_release(pih);
-    heif_context_free(heif);
-    return ldr_success;
+    status = ldr_success;
 
-decode_fail:
-    image_print_error(ctx, "heif decode failed: %s", err.message);
-alloc_fail:
+done:
+    if (status != ldr_success) {
+        image_free_frames(ctx);
+    }
     if (img) {
         heif_image_release(img);
     }
     if (pih) {
         heif_image_handle_release(pih);
     }
-    heif_context_free(heif);
-    return ldr_fmterror;
+    if (heif) {
+        heif_context_free(heif);
+    }
+    return status;
 }

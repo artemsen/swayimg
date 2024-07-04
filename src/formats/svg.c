@@ -2,7 +2,7 @@
 // SVG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <ctype.h>
 #include <librsvg/rsvg.h>
@@ -73,8 +73,6 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
 
     svg = rsvg_handle_new_from_data(data, size, &err);
     if (!svg) {
-        image_print_error(ctx, "invalid svg format: %s",
-                          err && err->message ? err->message : "unknown error");
         return ldr_fmterror;
     }
 
@@ -107,17 +105,12 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
         pm->width * sizeof(argb_t));
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
-        const char* desc = cairo_status_to_string(status);
-        image_print_error(ctx, "unable to create cairo surface: %s",
-                          desc ? desc : "unknown error");
         goto fail;
     }
 
     // render svg to surface
     cr = cairo_create(surface);
     if (!rsvg_handle_render_document(svg, cr, &vb_render, &err)) {
-        image_print_error(ctx, "unable to decode svg: %s",
-                          err && err->message ? err->message : "unknown error");
         goto fail;
     }
 

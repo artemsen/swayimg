@@ -2,7 +2,7 @@
 // PNG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <png.h>
 #include <setjmp.h>
@@ -237,12 +237,10 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     // create decoder
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        image_print_error(ctx, "unable to initialize png decoder");
         return ldr_fmterror;
     }
     info = png_create_info_struct(png);
     if (!info) {
-        image_print_error(ctx, "unable to create png object");
         png_destroy_read_struct(&png, NULL, NULL);
         return ldr_fmterror;
     }
@@ -250,7 +248,6 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
-        image_print_error(ctx, "failed to decode png");
         return ldr_fmterror;
     }
 

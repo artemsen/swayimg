@@ -3,8 +3,8 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
+#include "../loader.h"
 #include "buildcfg.h"
-#include "loader.h"
 
 #include <string.h>
 #include <webp/demux.h>
@@ -31,7 +31,6 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
 
     // get image properties
     if (WebPGetFeatures(data, size, &prop) != VP8_STATUS_OK) {
-        image_print_error(ctx, "unable to get webp properties");
         return ldr_fmterror;
     }
 
@@ -40,11 +39,9 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
     webp_opts.color_mode = MODE_BGRA;
     webp_dec = WebPAnimDecoderNew(&raw, &webp_opts);
     if (!webp_dec) {
-        image_print_error(ctx, "unable to decode webp image");
         goto fail;
     }
     if (!WebPAnimDecoderGetInfo(webp_dec, &webp_info)) {
-        image_print_error(ctx, "unable to get webp info");
         goto fail;
     }
 
@@ -65,7 +62,6 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
             goto fail;
         }
         if (!WebPAnimDecoderGetNext(webp_dec, &buffer, &timestamp)) {
-            image_print_error(ctx, "failed to decode webp frame");
             goto fail;
         }
         memcpy(pm->data, buffer, pm->width * pm->height * sizeof(argb_t));

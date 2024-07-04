@@ -142,18 +142,3 @@ enum loader_status load_image(struct image* ctx, const uint8_t* data,
 
     return status;
 }
-
-void image_print_error(const struct image* ctx, const char* fmt, ...)
-{
-    va_list args;
-
-    if (ctx) {
-        fprintf(stderr, "%s: ", ctx->file_name);
-    }
-
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-
-    fprintf(stderr, "\n");
-}

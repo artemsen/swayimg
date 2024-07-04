@@ -2,7 +2,7 @@
 // JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "loader.h"
+#include "../loader.h"
 
 #include <errno.h>
 #include <setjmp.h>
@@ -25,11 +25,8 @@ struct jpg_error_manager {
 static void jpg_error_exit(j_common_ptr jpg)
 {
     struct jpg_error_manager* err = (struct jpg_error_manager*)jpg->err;
-
     char msg[JMSG_LENGTH_MAX] = { 0 };
     (*(jpg->err->format_message))(jpg, msg);
-    image_print_error(err->img, "failed to decode jpeg: %s", msg);
-
     longjmp(err->setjmp, 1);
 }
 
