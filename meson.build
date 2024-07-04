@@ -146,6 +146,7 @@ endif
 # source files
 sources = [
   'src/action.c',
+  'src/cache.c',
   'src/config.c',
   'src/font.c',
   'src/image.c',
