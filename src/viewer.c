@@ -21,9 +21,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define COLOR_TRANSPARENT 0x00000000
-
 // Background grid parameters
+#define GRID_BKGID  0x00f1f2f3
 #define GRID_STEP   10
 #define GRID_COLOR1 0xff333333
 #define GRID_COLOR2 0xff4c4c4c
@@ -55,13 +54,12 @@ static const char* scale_names[] = {
 
 /** Viewer context. */
 struct viewer {
-    ssize_t img_x, img_y;  ///< Top left corner of the image
-    size_t frame;          ///< Index of the current frame
-    argb_t image_bkg;      ///< Image background color
-    argb_t window_bkg;     ///< Window background color
-    bool image_bkg_grid;   ///< Whether image background is grid
-    bool antialiasing;     ///< Anti-aliasing mode on/off
-    bool fixed;            ///< Fix image position
+    ssize_t img_x, img_y; ///< Top left corner of the image
+    size_t frame;         ///< Index of the current frame
+    argb_t image_bkg;     ///< Image background mode/color
+    argb_t window_bkg;    ///< Window background mode/color
+    bool antialiasing;    ///< Anti-aliasing mode on/off
+    bool fixed;           ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
     float scale;                 ///< Current scale factor of the image
@@ -78,9 +76,7 @@ struct viewer {
 };
 
 static struct viewer ctx = {
-    .image_bkg = COLOR_TRANSPARENT,
-    .window_bkg = COLOR_TRANSPARENT,
-    .image_bkg_grid = true,
+    .image_bkg = GRID_BKGID,
     .fixed = true,
     .animation_enable = true,
     .animation_fd = -1,
@@ -494,19 +490,17 @@ static void draw_image(struct pixmap* wnd)
     const size_t height = ctx.scale * img->height;
 
     // clear window background
-    const argb_t wnd_color = (ctx.window_bkg);
-    pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height, wnd_color);
+    pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
+                        ctx.window_bkg);
 
     // clear image background
     if (entry.image->alpha) {
-        if (ctx.image_bkg_grid) {
+        if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height,
                         ui_get_scale() * GRID_STEP, GRID_COLOR1, GRID_COLOR2);
         } else {
-            const argb_t color = (ctx.image_bkg == COLOR_TRANSPARENT
-                                      ? wnd_color
-                                      : ctx.image_bkg);
-            pixmap_fill(wnd, ctx.img_x, ctx.img_y, width, height, color);
+            pixmap_fill(wnd, ctx.img_x, ctx.img_y, width, height,
+                        ctx.image_bkg);
         }
     }
 
@@ -534,21 +528,13 @@ static enum config_status load_config(const char* key, const char* value)
         }
     } else if (strcmp(key, VIEWER_CFG_TRANSPARENCY) == 0) {
         if (strcmp(value, "grid") == 0) {
-            ctx.image_bkg_grid = true;
+            ctx.image_bkg = GRID_BKGID;
             status = cfgst_ok;
-        } else if (strcmp(value, "none") == 0) {
-            ctx.image_bkg = COLOR_TRANSPARENT;
-            ctx.image_bkg_grid = false;
-            status = cfgst_ok;
-        } else if (config_to_translucent_color(value, &ctx.image_bkg)) {
-            ctx.image_bkg_grid = false;
+        } else if (config_to_color(value, &ctx.image_bkg)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, VIEWER_CFG_BACKGROUND) == 0) {
-        if (strcmp(value, "none") == 0) {
-            ctx.window_bkg = COLOR_TRANSPARENT;
-            status = cfgst_ok;
-        } else if (config_to_translucent_color(value, &ctx.window_bkg)) {
+        if (config_to_color(value, &ctx.window_bkg)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, VIEWER_CFG_FIXED) == 0) {

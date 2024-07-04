@@ -4,7 +4,6 @@
 
 #include "config.h"
 
-#include "src/pixmap.h"
 #include "str.h"
 
 #include <ctype.h>
@@ -293,38 +292,19 @@ bool config_to_color(const char* text, argb_t* color)
 {
     ssize_t num;
 
-    if (*text == '#') {
+    if (*text == '#' || isspace(*text)) {
         ++text;
     }
 
-    if (str_to_num(text, 0, &num, 16) && num >= 0 && num <= 0xffffffff) {
-        *color = num;
-        return true;
+    if (!str_to_num(text, 0, &num, 16) && num >= 0 && num <= 0xffffffff) {
+        return false;
     }
 
-    return false;
-}
-
-bool config_to_translucent_color(const char* text, argb_t* color)
-{
-    ssize_t num;
-
-    if (*text == '#') {
-        ++text;
+    if (strlen(text) > 6) { // value with alpha (RRGGBBAA)
+        *color = (num >> 8) | ARGB_SET_A(num);
+    } else {
+        *color = num | ARGB_SET_A(0xff);
     }
 
-    if (str_to_num(text, 0, &num, 16) && num >= 0 && num <= 0xffffffff) {
-        if (num > 0x00ffffff) {
-            ssize_t alpha = 0x000000ff & num;  // extract alpha
-            num >>= 8;                         // shift r, g, and b into expected position
-            num |= ARGB_SET_A(alpha);          // recompose
-        } else {
-            num |= ARGB_SET_A(0xff);
-        }
-
-        *color = num;
-        return true;
-    }
-
-    return false;
+    return true;
 }

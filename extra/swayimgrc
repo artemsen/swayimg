@@ -28,15 +28,15 @@ antialiasing = no
 # Fix position of the image on the window surface (yes/no)
 fixed = yes
 
-# Background for transparent images (none/grid/RGB/RGBA, e.g. #112233 or #11223344)
+# Background for transparent images (grid/RGB/RGBA, e.g. #112233)
 transparency = grid
 
 # Window position (parent or absolute coordinates, e.g. 100,200)
 position = parent
 # Window size (parent, image, or absolute size, e.g. 800,600)
 size = parent
-# Window background mode/color (none/RGB/RGBA, e.g. #112233 or #11223344)
-background = none
+# Window background mode/color (RGB/RGBA, e.g. #11223344)
+background = #00000000
 
 # Run slideshow at startup (yes/no)
 slideshow = no
