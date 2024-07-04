@@ -6,6 +6,7 @@
 
 #include "buildcfg.h"
 #include "cache.h"
+#include "config.h"
 #include "exif.h"
 #include "imagelist.h"
 #include "str.h"
@@ -561,11 +562,36 @@ struct image* loader_get_image(size_t index)
     return img;
 }
 
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, IMGLIST_CFG_CACHE) == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
+            ctx.previous_num = num;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, IMGLIST_CFG_PRELOAD) == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
+            ctx.preload_num = num;
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
 void loader_create(void)
 {
-    // TODO:
     // register configuration loader
-    // config_add_loader(GENERAL_CONFIG_SECTION, load_config);
+    config_add_loader(IMGLIST_CFG_SECTION, load_config);
 }
 
 bool loader_init(size_t start, bool force)

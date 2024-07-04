@@ -55,6 +55,10 @@ loop = yes
 recursive = no
 # Open all files in the start directory (yes/no)
 all = yes
+# Number of previously viewed images to store in cache
+cache = 1
+# Number of preloaded images (read ahead)
+preload = 1
 
 ################################################################################
 # Font configuration
