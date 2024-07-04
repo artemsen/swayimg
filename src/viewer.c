@@ -336,6 +336,7 @@ static void slideshow_ctl(bool enable)
 static void reset_state(void)
 {
     const struct image_entry entry = image_list_current();
+    const int timeout = info_timeout();
 
     ctx.frame = 0;
     ctx.img_x = 0;
@@ -350,18 +351,14 @@ static void reset_state(void)
     slideshow_ctl(ctx.slideshow_enable);
 
     // Expire info block after timeout
-    const int timeout = info_timeout();
     if (timeout != 0) {
         struct itimerspec info_ts = { 0 };
-        if (!ctx.slideshow_enable && timeout < 0) {
-            // If timeout is relative to slideshow, but slideshow is not
-            // enabled, then disable info timeout too
-            info_ts.it_value.tv_sec = 0;
-        } else if (timeout < 0) {
-            // If timeout < 0 => it's relative to slideshow time
-            info_ts.it_value.tv_sec = ctx.slideshow_time * -1 * timeout / 100;
-        } else {
+        if (timeout > 0) {
+            // absolute time in sec
             info_ts.it_value.tv_sec = timeout;
+        } else if (ctx.slideshow_enable) {
+            // slideshow relative in %
+            info_ts.it_value.tv_sec = ctx.slideshow_time * -timeout / 100;
         }
         timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
     }
@@ -593,6 +590,12 @@ static enum config_status load_config(const char* key, const char* value)
     return status;
 }
 
+void viewer_create(void)
+{
+    // register configuration loader
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
+}
+
 void viewer_init(void)
 {
     // setup animation timer
@@ -610,14 +613,13 @@ void viewer_init(void)
     }
 
     // setup info block timer
-    ctx.info_timeout_fd =
-        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (ctx.info_timeout_fd != -1) {
-        ui_add_event(ctx.info_timeout_fd, on_info_block_timeout);
+    if (info_timeout() != 0) {
+        ctx.info_timeout_fd =
+            timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+        if (ctx.info_timeout_fd != -1) {
+            ui_add_event(ctx.info_timeout_fd, on_info_block_timeout);
+        }
     }
-
-    // register configuration loader
-    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void viewer_free(void)
@@ -669,6 +671,7 @@ void viewer_on_redraw(struct pixmap* window)
             }
         }
     }
+
     if (ctx.help) {
         text_print_centered(window, ctx.help, ctx.help_sz);
     }

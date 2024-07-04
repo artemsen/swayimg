@@ -6,9 +6,6 @@
 
 #include "font.h"
 
-// Config key for info block timeout
-#define VIEWER_CFG_INFO_TIMEOUT "timeout"
-
 /** Info block position. */
 enum info_position {
     info_top_left,

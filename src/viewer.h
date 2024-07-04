@@ -17,6 +17,11 @@
 #define VIEWER_CFG_SLIDESHOW_TIME "slideshow_time"
 
 /**
+ * Create viewer context.
+ */
+void viewer_create(void);
+
+/**
  * Initialize viewer context.
  */
 void viewer_init(void);

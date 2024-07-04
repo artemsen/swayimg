@@ -208,22 +208,24 @@ static enum config_status load_config(const char* key, const char* value)
     size_t scheme_sz = 0;
     ssize_t index;
 
-    if (strcmp(key, VIEWER_CFG_INFO_TIMEOUT) == 0) {
-        size_t val_sz = strlen(value);
-        bool timeout_is_rel = false;
-        if (value[val_sz - 1] == '%') {
-            val_sz = val_sz - 1;
-            timeout_is_rel = true;
-        }
+    if (strcmp(key, "timeout") == 0) {
+        ssize_t num, num_max;
+        bool is_percent;
+        size_t len = strlen(value);
 
-        ssize_t num;
-        const ssize_t maxVal = timeout_is_rel ? 100 : 86400;
-        if (str_to_num(value, val_sz, &num, 0) && num != 0 && num <= maxVal) {
-            ctx.timeout = num * (timeout_is_rel ? -1 : 1);
-            return cfgst_ok;
-        } else {
+        if (len == 0) {
             return cfgst_invalid_value;
         }
+        is_percent = (value[len - 1] == '%');
+        if (is_percent) {
+            --len;
+        }
+        num_max = is_percent ? 100 : 86400;
+        if (!str_to_num(value, len, &num, 0) && num >= 0 && num <= num_max) {
+            return cfgst_invalid_value;
+        }
+        ctx.timeout = num * (is_percent ? -1 : 1);
+        return cfgst_ok;
     }
 
     if (strcmp(key, "mode") == 0) {

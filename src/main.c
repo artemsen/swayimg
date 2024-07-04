@@ -207,11 +207,12 @@ int main(int argc, char* argv[])
     info_create();
     image_list_init();
     ui_init();
-    viewer_init();
+    viewer_create();
     text_init();
     config_init();
     font_init();
     info_init();
+    viewer_init();
 
     // parse command arguments
     argn = parse_cmdargs(argc, argv);
