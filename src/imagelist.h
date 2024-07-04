@@ -13,11 +13,8 @@
 #define IMGLIST_CFG_RECURSIVE "recursive"
 #define IMGLIST_CFG_ALL       "all"
 
-/** Image entry. */
-struct image_entry {
-    size_t index;        ///< Entry index in the list
-    struct image* image; ///< Image handle
-};
+// Invalid index of the entry
+#define IMGLIST_INVALID SIZE_MAX
 
 /** Order of file list. */
 enum list_order {
@@ -26,20 +23,10 @@ enum list_order {
     order_random ///< Random order
 };
 
-/** Movement directions. */
-enum list_jump {
-    jump_first_file,
-    jump_last_file,
-    jump_next_file,
-    jump_prev_file,
-    jump_next_dir,
-    jump_prev_dir
-};
-
 /**
- * Initialize the image list.
+ * Create the image list.
  */
-void image_list_init(void);
+void image_list_create(void);
 
 /**
  * Free the image list.
@@ -47,12 +34,12 @@ void image_list_init(void);
 void image_list_free(void);
 
 /**
- * Scan directories and fill the image list.
- * @param files list of input files
- * @param num number of files in the file list
- * @return false if no one images loaded
+ * Initialize the image list: scan directories and fill the image list.
+ * @param sources list of sources
+ * @param num number of sources in the list
+ * @return size of the image list
  */
-bool image_list_scan(const char** files, size_t num);
+size_t image_list_init(const char** sources, size_t num);
 
 /**
  * Get image list size.
@@ -61,34 +48,62 @@ bool image_list_scan(const char** files, size_t num);
 size_t image_list_size(void);
 
 /**
- * Get current entry in the image list.
- * @return current entry description
+ * Get image source for specified index.
+ * @param index index of the image list entry
+ * @return image data source description (path, ...) or NULL if no source
  */
-struct image_entry image_list_current(void);
+const char* image_list_get(size_t index);
 
 /**
- * Skip current entry (remove from the image list).
- * @return false if the image list is now empty
+ * Find index for specified source.
+ * @param source image data source
+ * @return index of the entry or IMGLIST_INVALID if not found
  */
-bool image_list_skip(void);
+size_t image_list_find(const char* source);
 
 /**
- * Get whether the current image is from stdin.
- *
- * This implies that it is also the only image open.
- * @return false if the current image is not from stdin
+ * Get next entry index.
+ * @param start index of the start position
+ * @return index of the entry or IMGLIST_INVALID if not found
  */
-bool image_list_is_stdin(void);
+size_t image_list_next_file(size_t start);
 
 /**
- * Reset cache and reload current image.
- * @return false if reset failed (no more images)
+ * Get previous entry index.
+ * @param start index of the start position
+ * @return index of the entry or IMGLIST_INVALID if not found
  */
-bool image_list_reset(void);
+size_t image_list_prev_file(size_t start);
 
 /**
- * Move through image list.
- * @param jump position to set
- * @return false if iterator can not be moved
+ * Get next directory entry index (works only for paths as source).
+ * @param start index of the start position
+ * @return index of the entry or IMGLIST_INVALID if not found
  */
-bool image_list_jump(enum list_jump jump);
+size_t image_list_next_dir(size_t start);
+
+/**
+ * Get previous directory entry index (works only for paths as source).
+ * @param start index of the start position
+ * @return index of the entry or IMGLIST_INVALID if not found
+ */
+size_t image_list_prev_dir(size_t start);
+
+/**
+ * Get the first entry index.
+ * @return index of the entry or IMGLIST_INVALID if image list is empty
+ */
+size_t image_list_first(void);
+
+/**
+ * Get the first entry index.
+ * @return index of the entry or IMGLIST_INVALID if image list is empty
+ */
+size_t image_list_last(void);
+
+/**
+ * Skip entry (remove from the image list).
+ * @param index entry to remove
+ * @return next valid index of the entry or IMGLIST_INVALID if list is empty
+ */
+size_t image_list_skip(size_t index);

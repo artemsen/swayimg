@@ -33,9 +33,8 @@ void viewer_free(void);
 
 /**
  * Reset state: reload image file, set initial scale etc.
- * @return false if reload failed and no more images to view
  */
-bool viewer_reload(void);
+void viewer_reload(void);
 
 /**
  * Redraw handler.
@@ -51,12 +50,12 @@ void viewer_on_resize(void);
 /**
  * Key press handler.
  * @param key code of key pressed
- * @param mods key modifires (ctrl/alt/shift)
+ * @param mods key modifiers (ctrl/alt/shift)
  */
 void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods);
 
 /**
- * Image drap handler.
+ * Image drag handler.
  * @param dx,dy delta to move viewpoint
  */
 void viewer_on_drag(int dx, int dy);

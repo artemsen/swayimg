@@ -6,6 +6,7 @@
 
 #include "config.h"
 #include "imagelist.h"
+#include "loader.h"
 #include "str.h"
 
 #include <stdarg.h>
@@ -363,16 +364,15 @@ void info_set_mode(const char* mode)
 
 void info_update(size_t frame_idx, float scale)
 {
-    const struct image_entry entry = image_list_current();
-    const struct image* image = entry.image;
+    const struct image* image = loader_current_image();
     char buffer[64];
 
-    if (ctx.file != image->file_path) {
+    if (ctx.file != image->source) {
         if (is_visible(info_file_name)) {
-            update_field(image->file_name, &ctx.fields[info_file_name].value);
+            update_field(image->name, &ctx.fields[info_file_name].value);
         }
         if (is_visible(info_file_path)) {
-            update_field(image->file_path, &ctx.fields[info_file_path].value);
+            update_field(image->source, &ctx.fields[info_file_path].value);
         }
         if (is_visible(info_file_size)) {
             const size_t mib = 1024 * 1024;
@@ -390,7 +390,7 @@ void info_update(size_t frame_idx, float scale)
         }
 
         ctx.frame = UINT32_MAX; // force refresh frame info
-        ctx.file = image->file_path;
+        ctx.file = image->source;
     }
 
     if (is_visible(info_frame) &&
@@ -402,8 +402,8 @@ void info_update(size_t frame_idx, float scale)
         update_field(buffer, &ctx.fields[info_frame].value);
     }
 
-    if (is_visible(info_index) && ctx.index != entry.index) {
-        ctx.index = entry.index;
+    if (is_visible(info_index) && ctx.index != loader_current_index()) {
+        ctx.index = loader_current_index();
         snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.index + 1,
                  image_list_size());
         update_field(buffer, &ctx.fields[info_index].value);

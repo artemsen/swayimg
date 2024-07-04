@@ -74,7 +74,7 @@ static enum config_status load_config(const char* key, const char* value)
     return status;
 }
 
-void text_init(void)
+void text_create(void)
 {
     // register configuration loader
     config_add_loader(FONT_CONFIG_SECTION, load_config);

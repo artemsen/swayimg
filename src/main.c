@@ -199,16 +199,18 @@ int main(int argc, char* argv[])
 {
     bool rc = false;
     int argn;
+    size_t start_idx = IMGLIST_INVALID;
 
     setlocale(LC_ALL, "");
 
-    keybind_init();
     font_create();
+    image_list_create();
     info_create();
-    image_list_init();
-    ui_init();
+    keybind_create();
+    loader_create();
+    text_create();
+    ui_create();
     viewer_create();
-    text_init();
     config_init();
     font_init();
     info_init();
@@ -221,9 +223,17 @@ int main(int argc, char* argv[])
         goto done;
     }
 
-    // compose file list
-    if (!image_list_scan((const char**)&argv[argn], argc - argn)) {
+    // compose image list
+    if (image_list_init((const char**)&argv[argn], argc - argn) == 0) {
         fprintf(stderr, "No images to view, exit\n");
+        goto done;
+    }
+
+    // load first image
+    if (argc > argn) {
+        start_idx = image_list_find(argv[argn]);
+    }
+    if (!loader_init(start_idx, argc == argn + 1 /* one only arg */)) {
         goto done;
     }
 
@@ -236,7 +246,7 @@ int main(int argc, char* argv[])
         ui_get_height() == SIZE_FROM_IMAGE ||
         ui_get_width() == SIZE_FROM_PARENT ||
         ui_get_height() == SIZE_FROM_PARENT) {
-        const struct pixmap* pm = &image_list_current().image->frames[0].pm;
+        const struct pixmap* pm = &loader_current_image()->frames[0].pm;
         ui_set_size(pm->width, pm->height);
     }
 
@@ -248,6 +258,7 @@ done:
     viewer_free();
     ui_free();
     image_list_free();
+    loader_free();
     info_free();
     font_free();
     keybind_free();

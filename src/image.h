@@ -11,8 +11,8 @@ struct image_info;
 
 /** Image context. */
 struct image {
-    const char* file_path;      ///< Full path to the image file
-    const char* file_name;      ///< File name of the image file
+    char* source;               ///< Image source (e.g. path to the image file)
+    const char* name;           ///< Name of the image file
     size_t file_size;           ///< Size of image file
     char* format;               ///< Format description
     struct image_frame* frames; ///< Image frames
@@ -34,21 +34,11 @@ struct image_info {
     char* value;     ///< Meta value
 };
 
-/** Name used for image, that is read from stdin through pipe. */
-#define STDIN_FILE_NAME "{STDIN}"
-
 /**
- * Load image from file.
- * @param file path to the file to load
+ * Create empty image instance.
  * @return image context or NULL on errors
  */
-struct image* image_from_file(const char* file);
-
-/**
- * Load image from stdin data.
- * @return image context or NULL on errors
- */
-struct image* image_from_stdin(void);
+struct image* image_create(void);
 
 /**
  * Free image.
@@ -100,7 +90,7 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
 
 /**
- * Create sinlge frame, allocate buffer and add frame to the image.
+ * Create single frame, allocate buffer and add frame to the image.
  * @param width frame width in px
  * @param height frame height in px
  * @return pointer to the pixmap associated with the frame, or NULL on errors

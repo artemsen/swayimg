@@ -10,7 +10,7 @@
 /**
  * Initialize text canvas context.
  */
-void text_init(void);
+void text_create(void);
 
 /**
  * Print information text block.

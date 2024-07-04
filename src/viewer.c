@@ -9,6 +9,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "keybind.h"
+#include "loader.h"
 #include "str.h"
 #include "text.h"
 #include "ui.h"
@@ -99,8 +100,7 @@ static void fixup_position(bool force)
     const ssize_t wnd_width = ui_get_width();
     const ssize_t wnd_height = ui_get_height();
 
-    const struct image_entry entry = image_list_current();
-    const struct pixmap* img = &entry.image->frames[ctx.frame].pm;
+    const struct pixmap* img = &loader_current_image()->frames[ctx.frame].pm;
     const ssize_t img_width = ctx.scale * img->width;
     const ssize_t img_height = ctx.scale * img->height;
 
@@ -185,12 +185,12 @@ static bool move_image(bool horizontal, bool positive, const char* params)
  */
 static void rotate_image(bool clockwise)
 {
-    const struct image_entry entry = image_list_current();
-    const struct pixmap* img = &entry.image->frames[ctx.frame].pm;
-    const ssize_t diff = (ssize_t)img->width - img->height;
+    struct image* img = loader_current_image();
+    const struct pixmap* pm = &img->frames[ctx.frame].pm;
+    const ssize_t diff = (ssize_t)pm->width - pm->height;
     const ssize_t shift = (ctx.scale * diff) / 2;
 
-    image_rotate(entry.image, clockwise ? 90 : 270);
+    image_rotate(img, clockwise ? 90 : 270);
     ctx.img_x += shift;
     ctx.img_y -= shift;
     fixup_position(false);
@@ -202,12 +202,12 @@ static void rotate_image(bool clockwise)
  */
 static void scale_image(enum fixed_scale sc)
 {
-    const struct image_entry entry = image_list_current();
-    const struct pixmap* img = &entry.image->frames[ctx.frame].pm;
+    const struct image* img = loader_current_image();
+    const struct pixmap* pm = &img->frames[ctx.frame].pm;
     const size_t wnd_width = ui_get_width();
     const size_t wnd_height = ui_get_height();
-    const float scale_w = 1.0 / ((float)img->width / wnd_width);
-    const float scale_h = 1.0 / ((float)img->height / wnd_height);
+    const float scale_w = 1.0 / ((float)pm->width / wnd_width);
+    const float scale_h = 1.0 / ((float)pm->height / wnd_height);
 
     switch (sc) {
         case scale_fit_optimal:
@@ -234,8 +234,8 @@ static void scale_image(enum fixed_scale sc)
     }
 
     // center viewport
-    ctx.img_x = wnd_width / 2 - (ctx.scale * img->width) / 2;
-    ctx.img_y = wnd_height / 2 - (ctx.scale * img->height) / 2;
+    ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+    ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
 
     fixup_position(true);
 }
@@ -272,10 +272,10 @@ void zoom_image(const char* params)
                 ctx.scale = MAX_SCALE;
             }
         } else {
-            const struct image_entry entry = image_list_current();
-            const struct pixmap* img = &entry.image->frames[ctx.frame].pm;
-            const float scale_w = (float)MIN_SCALE / img->width;
-            const float scale_h = (float)MIN_SCALE / img->height;
+            const struct image* img = loader_current_image();
+            const struct pixmap* pm = &img->frames[ctx.frame].pm;
+            const float scale_w = (float)MIN_SCALE / pm->width;
+            const float scale_h = (float)MIN_SCALE / pm->height;
             const float scale_min = max(scale_w, scale_h);
             ctx.scale += step;
             if (ctx.scale < scale_min) {
@@ -301,9 +301,9 @@ static void animation_ctl(bool enable)
     struct itimerspec ts = { 0 };
 
     if (enable) {
-        const struct image_entry entry = image_list_current();
-        const size_t duration = entry.image->frames[ctx.frame].duration;
-        enable = (entry.image->num_frames > 1 && duration);
+        const struct image* img = loader_current_image();
+        const size_t duration = img->frames[ctx.frame].duration;
+        enable = (img->num_frames > 1 && duration);
         if (enable) {
             ts.it_value.tv_sec = duration / 1000;
             ts.it_value.tv_nsec = (duration % 1000) * 1000000;
@@ -335,7 +335,7 @@ static void slideshow_ctl(bool enable)
  */
 static void reset_state(void)
 {
-    const struct image_entry entry = image_list_current();
+    const struct image* img = loader_current_image();
     const int timeout = info_timeout();
 
     ctx.frame = 0;
@@ -346,7 +346,7 @@ static void reset_state(void)
     scale_image(ctx.scale_init);
     fixup_position(true);
 
-    ui_set_title(entry.image->file_name);
+    ui_set_title(img->name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
 
@@ -365,16 +365,45 @@ static void reset_state(void)
 }
 
 /**
- * Load next file.
- * @param jump position of the next file in list
- * @return false if file was not loaded
+ * Switch to the next image.
+ * @param direction next image position
+ * @return true if next image was loaded
  */
-static bool next_file(enum list_jump jump)
+static bool next_image(enum action_type direction)
 {
-    if (!image_list_jump(jump)) {
+    size_t index = loader_current_index();
+
+    do {
+        switch (direction) {
+            case action_first_file:
+                index = image_list_first();
+                break;
+            case action_last_file:
+                index = image_list_last();
+                break;
+            case action_prev_dir:
+                index = image_list_prev_dir(index);
+                break;
+            case action_next_dir:
+                index = image_list_next_dir(index);
+                break;
+            case action_prev_file:
+                index = image_list_prev_file(index);
+                break;
+            case action_next_file:
+                index = image_list_next_file(index);
+                break;
+            default:
+                break;
+        }
+    } while (index != IMGLIST_INVALID && !loader_get_image(index));
+
+    if (index == IMGLIST_INVALID) {
         return false;
     }
+
     reset_state();
+
     return true;
 }
 
@@ -386,15 +415,15 @@ static bool next_file(enum list_jump jump)
 static bool next_frame(bool forward)
 {
     size_t index = ctx.frame;
-    const struct image_entry entry = image_list_current();
+    const struct image* img = loader_current_image();
 
     if (forward) {
-        if (++index >= entry.image->num_frames) {
+        if (++index >= img->num_frames) {
             index = 0;
         }
     } else {
         if (index-- == 0) {
-            index = entry.image->num_frames - 1;
+            index = img->num_frames - 1;
         }
     }
     if (index == ctx.frame) {
@@ -420,7 +449,7 @@ static void on_animation_timer(void)
  */
 static void on_slideshow_timer(void)
 {
-    slideshow_ctl(next_file(jump_next_file));
+    slideshow_ctl(next_image(action_next_file));
     ui_redraw();
 }
 
@@ -442,7 +471,7 @@ static void on_info_block_timeout(void)
  */
 static void execute_command(const char* expr)
 {
-    const char* path = image_list_current().image->file_path;
+    const char* path = loader_current_image()->source;
     char* cmd = NULL;
     int rc = EINVAL;
 
@@ -516,17 +545,17 @@ static void switch_help(void)
  */
 static void draw_image(struct pixmap* wnd)
 {
-    const struct image_entry entry = image_list_current();
-    const struct pixmap* img = &entry.image->frames[ctx.frame].pm;
-    const size_t width = ctx.scale * img->width;
-    const size_t height = ctx.scale * img->height;
+    const struct image* img = loader_current_image();
+    const struct pixmap* img_pm = &img->frames[ctx.frame].pm;
+    const size_t width = ctx.scale * img_pm->width;
+    const size_t height = ctx.scale * img_pm->height;
 
     // clear window background
     pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
                         ctx.window_bkg);
 
     // clear image background
-    if (entry.image->alpha) {
+    if (img->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height,
                         ui_get_scale() * GRID_STEP, GRID_COLOR1, GRID_COLOR2);
@@ -538,13 +567,13 @@ static void draw_image(struct pixmap* wnd)
 
     // put image on window surface
     if (ctx.scale == 1.0) {
-        pixmap_copy(img, wnd, ctx.img_x, ctx.img_y, entry.image->alpha);
+        pixmap_copy(img_pm, wnd, ctx.img_x, ctx.img_y, img->alpha);
     } else if (ctx.antialiasing) {
-        pixmap_scale_bicubic(img, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                             entry.image->alpha);
+        pixmap_scale_bicubic(img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                             img->alpha);
     } else {
-        pixmap_scale_nearest(img, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                             entry.image->alpha);
+        pixmap_scale_nearest(img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                             img->alpha);
     }
 }
 
@@ -645,21 +674,15 @@ void viewer_free(void)
     }
 }
 
-bool viewer_reload(void)
+void viewer_reload(void)
 {
-    if (image_list_is_stdin()) {
-        reset_state();
-        return true;
-    }
-    if (!image_list_reset()) {
-        printf("No more images, exit\n");
-        ui_stop();
-        return false;
+    if (loader_reset()) {
+        info_set_status("Image reloaded");
+    } else {
+        info_set_status("Unable to reload image");
     }
     reset_state();
-    info_set_status("Image reloaded");
     ui_redraw();
-    return true;
 }
 
 void viewer_on_redraw(struct pixmap* window)
@@ -718,31 +741,22 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 redraw = true;
                 break;
             case action_first_file:
-                redraw |= next_file(jump_first_file);
-                break;
             case action_last_file:
-                redraw |= next_file(jump_last_file);
-                break;
             case action_prev_dir:
-                redraw |= next_file(jump_prev_dir);
-                break;
             case action_next_dir:
-                redraw |= next_file(jump_next_dir);
-                break;
             case action_prev_file:
-                redraw |= next_file(jump_prev_file);
-                break;
             case action_next_file:
-                redraw |= next_file(jump_next_file);
+                redraw |= next_image(action->type);
                 break;
             case action_skip_file:
-                if (image_list_skip()) {
-                    reset_state();
-                    redraw = true;
-                } else {
+                if (image_list_skip(loader_current_index()) ==
+                    IMGLIST_INVALID) {
                     printf("No more images, exit\n");
-                    goto stop;
+                    ui_stop();
+                    return;
                 }
+                reset_state();
+                redraw = true;
                 break;
             case action_prev_frame:
             case action_next_frame:
@@ -754,7 +768,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_slideshow:
                 slideshow_ctl(!ctx.slideshow_enable &&
-                              next_file(jump_next_file));
+                              next_image(action_next_file));
                 redraw = true;
                 break;
             case action_fullscreen:
@@ -785,11 +799,11 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 redraw = true;
                 break;
             case action_flip_vertical:
-                image_flip_vertical(image_list_current().image);
+                image_flip_vertical(loader_current_image());
                 redraw = true;
                 break;
             case action_flip_horizontal:
-                image_flip_horizontal(image_list_current().image);
+                image_flip_horizontal(loader_current_image());
                 redraw = true;
                 break;
             case action_antialiasing:
@@ -799,9 +813,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 redraw = true;
                 break;
             case action_reload:
-                if (!viewer_reload()) {
-                    goto stop;
-                }
+                viewer_reload();
                 break;
             case action_info:
                 info_set_mode(action->params);
@@ -820,7 +832,8 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                     switch_help(); // remove help overlay
                     redraw = true;
                 } else {
-                    goto stop;
+                    ui_stop();
+                    return;
                 }
                 break;
         }
@@ -830,10 +843,6 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
     if (redraw) {
         ui_redraw();
     }
-    return;
-
-stop:
-    ui_stop();
 }
 
 void viewer_on_drag(int dx, int dy)

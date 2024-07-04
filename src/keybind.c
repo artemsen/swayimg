@@ -286,7 +286,7 @@ static enum config_status load_config(const char* key, const char* value)
     return cfgst_ok;
 }
 
-void keybind_init(void)
+void keybind_create(void)
 {
     // set defaults
     for (size_t i = 0; i < ARRAY_SIZE(default_bindings); ++i) {

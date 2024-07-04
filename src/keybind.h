@@ -32,7 +32,7 @@ extern size_t key_bindings_size;
 /**
  * Initialize default key bindings.
  */
-void keybind_init(void);
+void keybind_create(void);
 
 /**
  * Free key binding context.

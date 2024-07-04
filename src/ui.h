@@ -18,9 +18,9 @@
 #define POS_FROM_PARENT  0xffffffff
 
 /**
- * Initialize User Interface context.
+ * Create User Interface context.
  */
-void ui_init(void);
+void ui_create(void);
 
 /**
  * Free UI context.

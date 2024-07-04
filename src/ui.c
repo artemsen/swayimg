@@ -691,7 +691,7 @@ static enum config_status load_config(const char* key, const char* value)
     return status;
 }
 
-void ui_init(void)
+void ui_create(void)
 {
     struct timespec ts;
 
