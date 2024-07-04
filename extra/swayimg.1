@@ -17,6 +17,9 @@ same directory as the image being loaded. This behavior can be changed with
 the \fBlist.all\fR parameter in the config file.
 .PP
 Use '-' as \fIFILE\fR to read image data from stdin.
+.PP
+Use prefix 'exec://' to get image data from stdout printed by external command,
+e.g. `swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png"`.
 .\" ****************************************************************************
 .\" Options
 .\" ****************************************************************************

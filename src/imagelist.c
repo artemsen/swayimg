@@ -303,11 +303,13 @@ size_t image_list_init(const char** sources, size_t num)
         add_dir(".", ctx.recursive);
     } else if (num == 1 && strcmp(sources[0], ALT_STDIN_FILE_NAME) == 0) {
         // pipe mode
-        add_file(STDIN_FILE_NAME);
+        add_file(LDRSRC_STDIN);
     } else {
         for (size_t i = 0; i < num; ++i) {
             struct stat file_stat;
-            if (stat(sources[i], &file_stat) == 0) {
+            if (strncmp(sources[i], LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+                add_entry(sources[i]);
+            } else if (stat(sources[i], &file_stat) == 0) {
                 if (S_ISDIR(file_stat.st_mode)) {
                     add_dir(sources[i], ctx.recursive);
                 } else {
@@ -362,7 +364,7 @@ size_t image_list_find(const char* source)
     }
     // handle alternate name for stdio
     if (strcmp(source, ALT_STDIN_FILE_NAME) == 0) {
-        source = STDIN_FILE_NAME;
+        source = LDRSRC_STDIN;
     }
 
     for (size_t i = 0; i < ctx.size; ++i) {

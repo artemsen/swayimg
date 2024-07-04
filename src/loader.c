@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #ifdef HAVE_INOTIFY
@@ -401,11 +402,12 @@ static enum loader_status image_from_file(struct image* img, const char* file)
 }
 
 /**
- * Load image from stdin.
+ * Load image from stream file (stdin).
  * @param img destination image
+ * @param fd file descriptor for read
  * @return loader status
  */
-static enum loader_status image_from_stdin(struct image* img)
+static enum loader_status image_from_stream(struct image* img, int fd)
 {
     enum loader_status status = ldr_ioerror;
     uint8_t* data = NULL;
@@ -425,7 +427,7 @@ static enum loader_status image_from_stdin(struct image* img)
             capacity = new_capacity;
         }
 
-        rc = read(STDIN_FILENO, data + size, capacity - size);
+        rc = read(fd, data + size, capacity - size);
         if (rc == 0) {
             status = image_from_memory(img, data, size);
             break;
@@ -437,6 +439,44 @@ static enum loader_status image_from_stdin(struct image* img)
     }
 
     free(data);
+    return status;
+}
+
+/**
+ * Load image from stdout printed by external command.
+ * @param img destination image
+ * @param cmd execution command to get stdout data
+ * @return loader status
+ */
+static enum loader_status image_from_exec(struct image* img, const char* cmd)
+{
+    enum loader_status status = ldr_ioerror;
+    int pfd[2];
+    pid_t pid;
+
+    if (pipe(pfd) == -1) {
+        abort();
+        return ldr_ioerror;
+    }
+
+    pid = fork();
+    if (pid == -1) {
+        abort();
+        return ldr_ioerror;
+    }
+
+    if (pid == 0) { // child
+        dup2(pfd[1], STDOUT_FILENO);
+        close(pfd[1]);
+        execlp("sh", "/bin/sh", "-c", cmd, NULL);
+        exit(1);
+    } else { // parent
+        close(pfd[1]);
+        status = image_from_stream(img, pfd[0]);
+        close(pfd[0]);
+        waitpid(pid, NULL, 0);
+    }
+
     return status;
 }
 
@@ -453,15 +493,17 @@ struct image* loader_load_image(const char* source, enum loader_status* status)
     // save image source info
     img->source = str_dup(source, NULL);
     img->name = strrchr(img->source, '/');
-    if (!img->name) {
+    if (!img->name || strcmp(img->name, "/") == 0) {
         img->name = img->source;
     } else {
         ++img->name; // skip slash
     }
 
     // decode image
-    if (strcmp(source, STDIN_FILE_NAME) == 0) {
-        rc = image_from_stdin(img);
+    if (strcmp(source, LDRSRC_STDIN) == 0) {
+        rc = image_from_stream(img, STDIN_FILENO);
+    } else if (strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        rc = image_from_exec(img, source + LDRSRC_EXEC_LEN);
     } else {
         rc = image_from_file(img, source);
     }

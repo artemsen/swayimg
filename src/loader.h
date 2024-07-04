@@ -7,7 +7,11 @@
 #include "image.h"
 
 // File name used for image, that is read from stdin through pipe
-#define STDIN_FILE_NAME "{STDIN}"
+#define LDRSRC_STDIN "stdin://"
+
+// Special prefix used to load images from external command output
+#define LDRSRC_EXEC     "exec://"
+#define LDRSRC_EXEC_LEN (sizeof(LDRSRC_EXEC) - 1)
 
 /** Loader status. */
 enum loader_status {
