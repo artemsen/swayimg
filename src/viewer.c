@@ -537,8 +537,15 @@ static void draw_image(struct pixmap* wnd)
     }
 
     // put image on window surface
-    pixmap_put(wnd, img, ctx.img_x, ctx.img_y, ctx.scale, entry.image->alpha,
-               ctx.scale == 1.0 ? false : ctx.antialiasing);
+    if (ctx.scale == 1.0) {
+        pixmap_copy(img, wnd, ctx.img_x, ctx.img_y, entry.image->alpha);
+    } else if (ctx.antialiasing) {
+        pixmap_scale_bicubic(img, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                             entry.image->alpha);
+    } else {
+        pixmap_scale_nearest(img, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                             entry.image->alpha);
+    }
 }
 
 /**

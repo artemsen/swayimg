@@ -117,36 +117,36 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
                        argb_t color);
 
 /**
- * Put one pixmap on another.
- * @param dst destination pixmap
- * @param x,y destination left top point
+ * Draw one pixmap on another.
  * @param src source pixmap
- * @param width,height source pixmap area to copy
+ * @param dst destination pixmap
+ * @param x,y destination left top coordinates
+ * @param alpha flag to use alpha blending
  */
-void pixmap_copy(struct pixmap* dst, size_t x, size_t y,
-                 const struct pixmap* src, size_t width, size_t height);
+void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
+                 ssize_t y, bool alpha);
 
 /**
- * Put one pixmap on another with alpha blending.
- * @param dst destination pixmap
- * @param x,y destination left top point
+ * Draw scaled pixmap: nearest filter, poor quality but fast.
  * @param src source pixmap
- * @param width,height source pixmap area to copy
- */
-void pixmap_over(struct pixmap* dst, size_t x, size_t y,
-                 const struct pixmap* src, size_t width, size_t height);
-
-/**
- * Put one scaled pixmap on another.
  * @param dst destination pixmap
- * @param src source pixmap
- * @param x,y left top point of source pixmap in window coordinates
+ * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
  * @param alpha flag to use alpha blending
- * @param antialiasing flag to use antialiasing
  */
-void pixmap_put(struct pixmap* dst, const struct pixmap* src, ssize_t x,
-                ssize_t y, float scale, bool alpha, bool antialiasing);
+void pixmap_scale_nearest(const struct pixmap* src, struct pixmap* dst,
+                          ssize_t x, ssize_t y, float scale, bool alpha);
+
+/**
+ * Draw scaled pixmap: bicubic filter, good quality but slow.
+ * @param src source pixmap
+ * @param dst destination pixmap
+ * @param x,y destination left top coordinates
+ * @param scale scale of source pixmap
+ * @param alpha flag to use alpha blending
+ */
+void pixmap_scale_bicubic(const struct pixmap* src, struct pixmap* dst,
+                          ssize_t x, ssize_t y, float scale, bool alpha);
 
 /**
  * Flip pixel map vertically.

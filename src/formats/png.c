@@ -143,27 +143,17 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
             dispose = PNG_DISPOSE_OP_BACKGROUND;
         } else if (index + 1 < ctx->num_frames) {
             struct pixmap* next = &ctx->frames[index + 1].pm;
-            pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width,
-                        frame->pm.height);
+            pixmap_copy(&frame->pm, next, 0, 0, false);
         }
     }
 
     // put frame on final pixmap
-    switch (blend) {
-        case PNG_BLEND_OP_SOURCE:
-            pixmap_copy(&frame->pm, x, y, &frame_pm, frame_pm.width,
-                        frame_pm.height);
-            break;
-        case PNG_BLEND_OP_OVER:
-            pixmap_over(&frame->pm, x, y, &frame_pm, frame_pm.width,
-                        frame_pm.height);
-            break;
-    }
+    pixmap_copy(&frame_pm, &frame->pm, x, y, blend == PNG_BLEND_OP_OVER);
 
     // handle dispose
     if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < ctx->num_frames) {
         struct pixmap* next = &ctx->frames[index + 1].pm;
-        pixmap_copy(next, 0, 0, &frame->pm, frame->pm.width, frame->pm.height);
+        pixmap_copy(&frame->pm, next, 0, 0, false);
     }
 
     rc = true;
