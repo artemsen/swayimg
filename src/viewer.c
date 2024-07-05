@@ -365,6 +365,27 @@ static void reset_state(void)
 }
 
 /**
+ * Skip current image.
+ * @return true if next image was loaded
+ */
+static bool skip_image(void)
+{
+    bool rc;
+    size_t index = image_list_skip(loader_current_index());
+
+    while (index != IMGLIST_INVALID && !loader_get_image(index)) {
+        index = image_list_next_file(index);
+    }
+    rc = (index != IMGLIST_INVALID);
+
+    if (rc) {
+        reset_state();
+    }
+
+    return rc;
+}
+
+/**
  * Switch to the next image.
  * @param direction next image position
  * @return true if next image was loaded
@@ -749,13 +770,11 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 redraw |= next_image(action->type);
                 break;
             case action_skip_file:
-                if (image_list_skip(loader_current_index()) ==
-                    IMGLIST_INVALID) {
+                if (!skip_image()) {
                     printf("No more images, exit\n");
                     ui_stop();
                     return;
                 }
-                reset_state();
                 redraw = true;
                 break;
             case action_prev_frame:

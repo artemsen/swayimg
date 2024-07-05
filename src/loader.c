@@ -615,25 +615,24 @@ bool loader_init(size_t start, bool force)
 #ifdef HAVE_INOTIFY
         watch_current();
 #endif
+    } else if (!force) {
+        fprintf(stderr, "No image files found to view, exit\n");
     } else {
-        if (force) {
-            const char* reason = "Unknown error";
-            switch (status) {
-                case ldr_success:
-                    break;
-                case ldr_unsupported:
-                    reason = "Unsupported format";
-                    break;
-                case ldr_fmterror:
-                    reason = "Invalid format";
-                    break;
-                case ldr_ioerror:
-                    reason = "I/O error";
-                    break;
-            }
-            fprintf(stderr, "%s: %s\n", image_list_get(start), reason);
+        const char* reason = "Unknown error";
+        switch (status) {
+            case ldr_success:
+                break;
+            case ldr_unsupported:
+                reason = "Unsupported format";
+                break;
+            case ldr_fmterror:
+                reason = "Invalid format";
+                break;
+            case ldr_ioerror:
+                reason = "I/O error";
+                break;
         }
-        fprintf(stderr, "Unable to load images, exit\n");
+        fprintf(stderr, "%s: %s\n", image_list_get(start), reason);
     }
 
     return (status == ldr_success);
