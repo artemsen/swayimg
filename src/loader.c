@@ -456,19 +456,18 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
     pid_t pid;
 
     if (pipe(pfd) == -1) {
-        abort();
         return ldr_ioerror;
     }
 
     pid = fork();
     if (pid == -1) {
-        abort();
         return ldr_ioerror;
     }
 
     if (pid == 0) { // child
         dup2(pfd[1], STDOUT_FILENO);
         close(pfd[1]);
+        close(pfd[0]);
         execlp("sh", "/bin/sh", "-c", cmd, NULL);
         exit(1);
     } else { // parent
