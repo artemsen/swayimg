@@ -58,7 +58,7 @@ static void add_entry(const char* source)
 
     // relocate array, if needed
     if (ctx.size + 1 >= ctx.capacity) {
-        const size_t cap = ctx.capacity ? ctx.capacity * 2 : 1;
+        const size_t cap = ctx.capacity ? ctx.capacity * 2 : 4;
         char** ptr = realloc(ctx.sources, cap * sizeof(*ctx.sources));
         if (!ptr) {
             return;
@@ -419,5 +419,5 @@ size_t image_list_skip(size_t index)
         free(ctx.sources[index]);
         ctx.sources[index] = NULL;
     }
-    return image_list_next_file(index);
+    return next_entry(index, true);
 }
