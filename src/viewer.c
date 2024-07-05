@@ -370,19 +370,13 @@ static void reset_state(void)
  */
 static bool skip_image(void)
 {
-    bool rc;
     size_t index = image_list_skip(loader_current_index());
 
     while (index != IMGLIST_INVALID && !loader_get_image(index)) {
         index = image_list_next_file(index);
     }
-    rc = (index != IMGLIST_INVALID);
 
-    if (rc) {
-        reset_state();
-    }
-
-    return rc;
+    return (index != IMGLIST_INVALID);
 }
 
 /**
@@ -699,6 +693,8 @@ void viewer_reload(void)
 {
     if (loader_reset()) {
         info_set_status("Image reloaded");
+    } else if (skip_image()) {
+        info_set_status("Image skipped due to reload error");
     } else {
         info_set_status("Unable to reload image");
     }
@@ -775,6 +771,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                     ui_stop();
                     return;
                 }
+                reset_state();
                 redraw = true;
                 break;
             case action_prev_frame:

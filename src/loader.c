@@ -546,7 +546,12 @@ struct image* loader_get_image(size_t index)
     }
 
     if (img) {
-        cache_put(&ctx.previous, ctx.cur_img, ctx.cur_idx);
+        // don't cache skipped images
+        if (image_list_get(ctx.cur_idx)) {
+            cache_put(&ctx.previous, ctx.cur_img, ctx.cur_idx);
+        } else {
+            image_free(ctx.cur_img);
+        }
 
         ctx.cur_img = img;
         ctx.cur_idx = index;
