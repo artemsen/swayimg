@@ -68,7 +68,8 @@ Fix position of the image on the window surface, \fIyes\fR by default.
 Set background for transparent images:
 .nf
 \fIgrid\fR: draw chessboard (default);
-\fI#COLOR\fR: solid RGB or RGBA color in hex format, e.g `#10203040`;
+\fI#COLOR\fR: solid RGB or RGBA color in hex format, e.g "#10ff4280".
+For RGB color, the default alpha channel is \fIFF\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBposition\fR = \fI[MODE|COORDINATES]\fR"
 Set initial position of the window (Sway only):
@@ -83,10 +84,8 @@ Set initial size of the window:
 \fIimage\fR: set size from the first loaded image;
 \fIWIDTH,HEIGHT\fR: absolute size of the window in pixels.
 .\" ----------------------------------------------------------------------------
-.IP "\fBbackground\fR = \fI[MODE|#COLOR]\fR"
-Set window background:
-\fInone\fR: transparent window (default);
-\fI#COLOR\fR: solid RGB or RGBA color in hex format, e.g `#10203040`;
+.IP "\fBbackground\fR = \fI#COLOR\fR"
+Set window background color: RGB or RGBA in hex format, default is \fI#00000000\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBslideshow\fR = \fI[yes|no]\fR"
 Run slideshow at startup, \fIno\fR by default.
