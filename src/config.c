@@ -296,7 +296,7 @@ bool config_to_color(const char* text, argb_t* color)
         ++text;
     }
 
-    if (!str_to_num(text, 0, &num, 16) && num >= 0 && num <= 0xffffffff) {
+    if (!str_to_num(text, 0, &num, 16) || num < 0 || num > 0xffffffff) {
         return false;
     }
 
