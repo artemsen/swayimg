@@ -25,7 +25,7 @@ enum config_status {
 typedef enum config_status (*config_loader)(const char* key, const char* value);
 
 /**
- * Initialize configuration: set defaults and load from file.
+ * Load configuration from file.
  */
 void config_init(void);
 
