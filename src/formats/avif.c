@@ -3,7 +3,6 @@
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
 #include "../loader.h"
-#include "src/image.h"
 
 #include <avif/avif.h>
 #include <stdio.h>
