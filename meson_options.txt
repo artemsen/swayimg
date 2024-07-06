@@ -68,4 +68,10 @@ option('desktop',
 option('version',
        type : 'string',
        value : '0.0.0',
-       description : 'project version')
+       description : 'Project version')
+
+# unit tests
+option('tests',
+       type: 'feature',
+       value: 'disabled',
+       description: 'Build unit tests')

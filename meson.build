@@ -2,7 +2,7 @@
 
 project(
   'swayimg',
-  'c',
+  'c', 'cpp',
   default_options: [
     'c_std=c99',
     'warning_level=3',
@@ -141,6 +141,11 @@ if bash.found()
   install_data('extra/bash.completion',
                install_dir: bash_install_dir,
                rename: 'swayimg')
+endif
+
+# unit tests
+if get_option('tests').enabled()
+  subdir('test')
 endif
 
 # source files
