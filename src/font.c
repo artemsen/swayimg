@@ -110,13 +110,10 @@ void font_init(void)
     char file[256];
     const FT_F26Dot6 size = ctx.size * 64;
 
-    if (!search_font_file(ctx.name, file, sizeof(file))) {
-        return;
-    }
-    if (FT_Init_FreeType(&ctx.lib) != 0) {
-        return;
-    }
-    if (FT_New_Face(ctx.lib, file, 0, &ctx.face) != 0) {
+    if (!search_font_file(ctx.name, file, sizeof(file)) ||
+        FT_Init_FreeType(&ctx.lib) != 0 ||
+        FT_New_Face(ctx.lib, file, 0, &ctx.face) != 0) {
+        fprintf(stderr, "Unable to load font %s\n", ctx.name);
         return;
     }
 
@@ -139,7 +136,13 @@ bool font_render(const char* text, struct text_surface* surface)
     size_t x;
     wchar_t* wide;
     const wchar_t* ptr;
-    const size_t space_size = ctx.face->size->metrics.y_ppem / SPACE_WH_REL;
+    size_t space_size;
+
+    if (!ctx.face) {
+        return false;
+    }
+
+    space_size = ctx.face->size->metrics.y_ppem / SPACE_WH_REL;
 
     wide = str_to_wide(text, NULL);
     if (!wide) {
