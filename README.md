@@ -1,4 +1,5 @@
 # Swayimg: image viewer for Sway/Wayland
+test
 
 Swayimg is a lightweight image viewer for Wayland display servers.
 
