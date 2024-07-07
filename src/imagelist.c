@@ -294,6 +294,9 @@ void image_list_free(void)
         free(ctx.sources[i]);
     }
     free(ctx.sources);
+    ctx.sources = NULL;
+    ctx.capacity = 0;
+    ctx.size = 0;
 }
 
 size_t image_list_init(const char** sources, size_t num)

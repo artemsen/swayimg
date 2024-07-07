@@ -26,10 +26,19 @@ protected:
         image = loader_load_image(file, &status);
         ASSERT_NE(image, nullptr);
         EXPECT_EQ(status, ldr_success);
+        EXPECT_NE(image->frames[0].pm.width, 0);
+        EXPECT_NE(image->frames[0].pm.height, 0);
         EXPECT_NE(image->frames[0].pm.data[0], 0);
     }
     struct image* image = nullptr;
 };
+
+TEST_F(Loader, External)
+{
+    image =
+        loader_load_image(LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", NULL);
+    ASSERT_NE(image, nullptr);
+}
 
 #define TEST_LOADER(n)                    \
     TEST_F(Loader, n)                     \
