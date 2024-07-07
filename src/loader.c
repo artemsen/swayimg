@@ -533,7 +533,6 @@ struct image* loader_get_image(size_t index)
 
     // search in preload
     if (!img) {
-        preloader_ctl(preloader_stop);
         img = cache_get(&ctx.preload, index);
     }
 
