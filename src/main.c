@@ -256,9 +256,9 @@ int main(int argc, char* argv[])
 done:
     config_free();
     viewer_free();
+    loader_free();
     ui_free();
     image_list_free();
-    loader_free();
     info_free();
     font_free();
     keybind_free();
