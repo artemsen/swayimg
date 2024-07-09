@@ -752,6 +752,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
     while (action->type != action_none) {
         switch (action->type) {
             case action_none:
+            case action_noop:
                 break;
             case action_help:
                 switch_help();

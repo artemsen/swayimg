@@ -10,6 +10,7 @@
 /** Supported actions. */
 enum action_type {
     action_none,
+    action_noop,
     action_help,
     action_first_file,
     action_last_file,

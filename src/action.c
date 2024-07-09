@@ -12,6 +12,7 @@
 /** Action names. */
 static const char* action_names[] = {
     [action_none] = "none",
+    [action_noop] = "noop",
     [action_help] = "help",
     [action_first_file] = "first_file",
     [action_last_file] = "last_file",
