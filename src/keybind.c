@@ -325,6 +325,8 @@ char* keybind_name(xkb_keysym_t key, uint8_t mods)
 
     // skip modifiers
     switch (key) {
+        case XKB_KEY_Super_L:
+        case XKB_KEY_Super_R:
         case XKB_KEY_Shift_L:
         case XKB_KEY_Shift_R:
         case XKB_KEY_Control_L:
