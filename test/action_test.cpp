@@ -9,7 +9,7 @@ extern "C" {
 
 class Action : public ::testing::Test {
 protected:
-    void TearDown() override { action_free(&action); }
+    void TearDown() override { free(action.params); }
     struct action action = { action_none, nullptr };
 };
 
@@ -27,19 +27,6 @@ TEST_F(Action, Params)
     ASSERT_TRUE(action_load(&action, text, strlen(text)));
     EXPECT_STREQ(action.params, "param 123");
     EXPECT_STREQ(action_typename(&action), "exec");
-}
-
-TEST_F(Action, Duplicate)
-{
-    struct action duplicate = { action_none, NULL };
-    const char* text = "exec param";
-
-    ASSERT_TRUE(action_load(&action, text, strlen(text)));
-    EXPECT_TRUE(action_dup(&action, &duplicate));
-    EXPECT_STREQ(duplicate.params, "param");
-    EXPECT_STREQ(action_typename(&duplicate), "exec");
-
-    action_free(&duplicate);
 }
 
 TEST_F(Action, Fail)

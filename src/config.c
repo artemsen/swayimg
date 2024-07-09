@@ -180,7 +180,10 @@ void config_init(void)
 
 void config_free(void)
 {
-    free(ctx.sections);
+    if (ctx.sections) {
+        free(ctx.sections);
+        ctx.sections = NULL;
+    }
 }
 
 enum config_status config_set(const char* section, const char* key,

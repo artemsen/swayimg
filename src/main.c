@@ -261,7 +261,7 @@ done:
     image_list_free();
     info_free();
     font_free();
-    keybind_free();
+    keybind_destroy();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }

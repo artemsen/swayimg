@@ -534,6 +534,8 @@ static void execute_command(const char* expr)
  */
 static void switch_help(void)
 {
+    const struct keybind* kb;
+
     if (ctx.help) {
         for (size_t i = 0; i < ctx.help_sz; i++) {
             free(ctx.help[i].data);
@@ -541,15 +543,27 @@ static void switch_help(void)
         free(ctx.help);
         ctx.help = NULL;
         ctx.help_sz = 0;
-    } else {
-        ctx.help_sz = 0;
-        ctx.help = calloc(1, key_bindings_size * sizeof(struct text_surface));
-        if (ctx.help) {
-            for (size_t i = 0; i < key_bindings_size; i++) {
-                if (key_bindings[i].help) {
-                    font_render(key_bindings[i].help, &ctx.help[ctx.help_sz++]);
-                }
+        return;
+    }
+
+    // get number of bindings
+    ctx.help_sz = 0;
+    kb = keybind_all();
+    while (kb) {
+        if (kb->help) {
+            ++ctx.help_sz;
+        }
+        kb = kb->next;
+    }
+    ctx.help = calloc(1, ctx.help_sz * sizeof(*ctx.help));
+    if (ctx.help) {
+        size_t i = 0;
+        kb = keybind_all();
+        while (kb) {
+            if (kb->help) {
+                font_render(kb->help, &ctx.help[i++]);
             }
+            kb = kb->next;
         }
     }
 }
@@ -736,9 +750,9 @@ void viewer_on_resize(void)
 void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
     bool redraw = false;
-    const struct action* action = keybind_actions(key, mods);
+    const struct keybind* kb = keybind_get(key, mods);
 
-    if (!action) {
+    if (!kb) {
         char* name = keybind_name(key, mods);
         if (name) {
             info_set_status("Key %s is not bound", name);
@@ -749,7 +763,8 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
     }
 
     // handle actions
-    while (action->type != action_none) {
+    for (size_t i = 0; i < kb->num_actions; ++i) {
+        const struct action* action = &kb->actions[i];
         switch (action->type) {
             case action_none:
                 break;

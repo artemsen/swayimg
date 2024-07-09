@@ -5,6 +5,7 @@ sources = [
   'cache_test.cpp',
   'config_test.cpp',
   'imagelist_test.cpp',
+  'keybind_test.cpp',
   'loader_test.cpp',
   'pixmap_test.cpp',
   '../src/action.c',
@@ -12,6 +13,7 @@ sources = [
   '../src/config.c',
   '../src/image.c',
   '../src/imagelist.c',
+  '../src/keybind.c',
   '../src/loader.c',
   '../src/pixmap.c',
   '../src/str.c',
@@ -60,6 +62,7 @@ test(
     sources,
     dependencies: [
       dependency('gtest', main: true, disabler: true, required: true),
+      xkb,
       exif,
       exr,
       gif,

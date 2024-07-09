@@ -90,31 +90,6 @@ bool action_load(struct action* action, const char* source, size_t len)
     return true;
 }
 
-void action_free(struct action* action)
-{
-    if (action) {
-        free(action->params);
-        action->params = NULL;
-    }
-}
-
-bool action_dup(const struct action* src, struct action* dst)
-{
-    if (!src->params) {
-        dst->params = NULL;
-    } else {
-        char* buf = str_dup(src->params, NULL);
-        if (!buf) {
-            return false;
-        }
-        dst->params = buf;
-    }
-
-    dst->type = src->type;
-
-    return true;
-}
-
 const char* action_typename(const struct action* action)
 {
     if (action->type < ARRAY_SIZE(action_names)) {

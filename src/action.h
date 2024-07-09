@@ -56,20 +56,6 @@ struct action {
 bool action_load(struct action* action, const char* source, size_t len);
 
 /**
- * Free action instance.
- * @param action to release
- */
-void action_free(struct action* action);
-
-/**
- * Duplicate action.
- * @param src source action
- * @param dst destination buffer
- * @return true if action duplicated
- */
-bool action_dup(const struct action* src, struct action* dst);
-
-/**
  * Get action's type name.
  * @param action to get type
  * @return type name

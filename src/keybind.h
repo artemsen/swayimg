@@ -5,6 +5,7 @@
 #pragma once
 
 #include "action.h"
+#include "config.h"
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -19,32 +20,44 @@
 #define VKEY_SCROLL_LEFT  0x42000003
 #define VKEY_SCROLL_RIGHT 0x42000004
 
-/** Key binding. */
-struct key_binding {
+/** Key binding list entry. */
+struct keybind {
     xkb_keysym_t key;       ///< Keyboard key
     uint8_t mods;           ///< Key modifiers
-    struct action* actions; ///< Array of action, last element is action_none
+    struct action* actions; ///< Array of action
+    size_t num_actions;     ///< Number of action in array
     char* help;             ///< Binding description
+    struct keybind* next;   ///< Next entry in list
 };
-extern struct key_binding* key_bindings;
-extern size_t key_bindings_size;
 
 /**
- * Initialize default key bindings.
+ * Create global default key binding scheme.
  */
 void keybind_create(void);
 
 /**
- * Free key binding context.
+ * Destroy global key binding scheme.
  */
-void keybind_free(void);
+void keybind_destroy(void);
 
 /**
- * Get current key modifiers state.
- * @param state XKB handle
- * @return active key modifiers (ctrl/alt/shift)
+ * Get head of the global binding list.
+ * @return pointer to the list head
  */
-uint8_t keybind_mods(struct xkb_state* state);
+struct keybind* keybind_all(void);
+
+/**
+ * Configure global key bindings, see `config_loader` for details.
+ */
+enum config_status keybind_configure(const char* key, const char* value);
+
+/**
+ * Get list of action for specified key.
+ * @param key keyboard key
+ * @param mods key modifiers (ctrl/alt/shift)
+ * @return list of actions, last is action_none, NULL if not found
+ */
+struct keybind* keybind_get(xkb_keysym_t key, uint8_t mods);
 
 /**
  * Get key name.
@@ -55,9 +68,8 @@ uint8_t keybind_mods(struct xkb_state* state);
 char* keybind_name(xkb_keysym_t key, uint8_t mods);
 
 /**
- * Get list of action for specified key.
- * @param key keyboard key
- * @param mods key modifiers (ctrl/alt/shift)
- * @return pointer to the action or NULL if not found
+ * Get current key modifiers state.
+ * @param state XKB handle
+ * @return active key modifiers (ctrl/alt/shift)
  */
-const struct action* keybind_actions(xkb_keysym_t key, uint8_t mods);
+uint8_t keybind_mods(struct xkb_state* state);

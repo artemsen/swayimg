@@ -12,10 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Section names in the config file
-#define CONFIG_SECTION_KEYS  "keys"
-#define CONFIG_SECTION_MOUSE "mouse"
-
 // Default key bindings
 struct keybind_default {
     xkb_keysym_t key;     ///< Keyboard key
@@ -86,115 +82,14 @@ static const struct virtual_keys virtual_keys[] = {
     { VKEY_SCROLL_RIGHT, "ScrollRight" },
 };
 
-struct key_binding* key_bindings;
-size_t key_bindings_size;
+/** Head of global key binding list. */
+static struct keybind* binding_list;
 
 /**
- * Remove all actions from binding.
- * @param binding key binding
- */
-static void free_binding(struct key_binding* binding)
-{
-    struct action* it = binding->actions;
-    while (it && it->type != action_none) {
-        action_free(it);
-        ++it;
-    }
-    free(binding->actions);
-    free(binding->help);
-    memset(binding, 0, sizeof(*binding));
-}
-
-/**
- * Create new key binding.
- * @param key keyboard key
- * @param mods key modifiers (ctrl/alt/shift)
- * @return pointer to the binding description
- */
-static struct key_binding* create_binding(xkb_keysym_t key, uint8_t mods)
-{
-    struct key_binding* binding = NULL;
-
-    // search for empty node
-    for (size_t i = 0; i < key_bindings_size; ++i) {
-        struct key_binding* kb = &key_bindings[i];
-        if (kb->key == key && kb->mods == mods) {
-            binding = kb; // replace existing
-            break;
-        } else if (!kb->actions && !binding) {
-            binding = kb; // reuse empty node
-        }
-    }
-
-    if (binding) {
-        free_binding(binding);
-    } else {
-        // add new node (reallocate)
-        const size_t sz = (key_bindings_size + 1) * sizeof(struct key_binding);
-        struct key_binding* kb = realloc(key_bindings, sz);
-        if (!kb) {
-            return NULL;
-        }
-        binding = &kb[key_bindings_size];
-        memset(binding, 0, sizeof(*binding));
-        key_bindings = kb;
-        ++key_bindings_size;
-    }
-
-    binding->key = key;
-    binding->mods = mods;
-
-    return binding;
-}
-
-/**
- * Add one more action for specified key binding.
- * @param binding target binding
- * @param action action to add
- * @return true if action added
- */
-static bool add_action(struct key_binding* binding, const struct action* action)
-{
-    struct action* buf;
-    size_t size = 1;
-
-    if (binding->actions) {
-        while (binding->actions[size].type != action_none) {
-            ++size;
-        }
-        ++size;
-    }
-
-    buf = realloc(binding->actions, (size + 1) * sizeof(struct action));
-    if (buf) {
-        binding->actions = buf;
-        action_dup(action, &binding->actions[size - 1]);
-        binding->actions[size].type = action_none;
-        binding->actions[size].params = NULL;
-    }
-
-    // construct help description
-    if (!binding->help) {
-        char* key_name = keybind_name(binding->key, binding->mods);
-        if (key_name) {
-            str_append(key_name, 0, &binding->help);
-            str_append(": ", 2, &binding->help);
-            str_append(action_typename(action), 0, &binding->help);
-            if (action->params) {
-                str_append(" ", 1, &binding->help);
-                str_append(action->params, 0, &binding->help);
-            }
-            free(key_name);
-        }
-    }
-
-    return !!buf;
-}
-
-/**
- * Get a keysym from its name.
- * @param key keyboard key
- * @param mods key modifiers (ctrl/alt/shift)
+ * Convert text name to key code.
+ * @param name key text name
+ * @param key output keyboard key
+ * @param mods output key modifiers (ctrl/alt/shift)
  * @return false if name is invalid
  */
 static bool parse_key(const char* name, xkb_keysym_t* key, uint8_t* mods)
@@ -240,50 +135,107 @@ static bool parse_key(const char* name, xkb_keysym_t* key, uint8_t* mods)
 }
 
 /**
- * Custom section loader, see `config_loader` for details.
+ * Allocate new key binding.
+ * @param key keyboard key
+ * @param mods key modifiers (ctrl/alt/shift)
+ * @param action list of actions to add
+ * @param sz number of actions in list
  */
-static enum config_status load_config(const char* key, const char* value)
+static struct keybind* keybind_alloc(xkb_keysym_t key, uint8_t mods,
+                                     const struct action* action, size_t sz)
 {
-    struct key_binding* binding;
-    xkb_keysym_t keysym;
-    uint8_t mods;
+    struct keybind* kb;
 
-    struct str_slice slices[32];
-    const size_t num = str_split(value, ';', slices, ARRAY_SIZE(slices));
-
-    if (num == 0) {
-        return cfgst_invalid_value;
+    if (!action || sz == 0) {
+        return NULL;
     }
 
-    // convert key name to code
-    if (!parse_key(key, &keysym, &mods)) {
-        return cfgst_invalid_key;
+    kb = calloc(1, sizeof(struct keybind) + sizeof(struct action) * sz);
+    if (!kb) {
+        return NULL;
     }
 
-    binding = create_binding(keysym, mods);
-    if (!binding) {
-        return cfgst_invalid_key;
+    kb->key = key;
+    kb->mods = mods;
+
+    // construct actions
+    kb->actions = (struct action*)((uint8_t*)kb + sizeof(struct keybind));
+    kb->num_actions = sz;
+    for (size_t i = 0; i < sz; ++i) {
+        kb->actions[i].type = action[i].type;
+        if (action[i].params) {
+            kb->actions[i].params = str_dup(action[i].params, NULL);
+        }
     }
 
-    for (size_t i = 0; i < num; ++i) {
-        struct action action;
-        if (slices[i].len == 0) {
-            continue;
+    // construct help description
+    if (sz != 1 || kb->actions[0].type != action_none) {
+        char* key_name = keybind_name(key, mods);
+        if (key_name) {
+            const struct action* action = &kb->actions[0]; // first only
+            str_append(key_name, 0, &kb->help);
+            str_append(": ", 2, &kb->help);
+            str_append(action_typename(action), 0, &kb->help);
+            if (action->params) {
+                str_append(" ", 1, &kb->help);
+                str_append(action->params, 0, &kb->help);
+            }
+            free(key_name);
         }
-        if (!action_load(&action, slices[i].value, slices[i].len)) {
-            return cfgst_invalid_value;
-        }
-        if (action.type == action_none) {
-            continue;
-        }
-        if (!add_action(binding, &action)) {
-            action_free(&action);
-            return cfgst_invalid_value;
-        }
-        action_free(&action);
     }
 
-    return cfgst_ok;
+    return kb;
+}
+
+/**
+ * Free key binding.
+ * @param kb key binding
+ */
+static void keybind_free(struct keybind* kb)
+{
+    if (kb) {
+        for (size_t i = 0; i < kb->num_actions; ++i) {
+            free(kb->actions[i].params);
+        }
+        free(kb->help);
+        free(kb);
+    }
+}
+
+/**
+ * Put key binding to the global scheme.
+ * @param key keyboard key
+ * @param mods key modifiers (ctrl/alt/shift)
+ * @param action list of actions to add
+ * @param sz number of actions in list
+ */
+static void keybind_put(xkb_keysym_t key, uint8_t mods,
+                        const struct action* action, size_t sz)
+{
+    struct keybind* kb;
+    struct keybind* prev;
+
+    // remove existing binding
+    kb = binding_list;
+    prev = NULL;
+    while (kb) {
+        if (kb->key == key && kb->mods == mods) {
+            if (prev) {
+                prev->next = kb->next;
+            } else {
+                binding_list = kb->next;
+            }
+            keybind_free(kb);
+            break;
+        }
+        prev = kb;
+        kb = kb->next;
+    }
+
+    // add to head
+    kb = keybind_alloc(key, mods, action, sz);
+    kb->next = binding_list;
+    binding_list = kb;
 }
 
 void keybind_create(void)
@@ -291,43 +243,79 @@ void keybind_create(void)
     // set defaults
     for (size_t i = 0; i < ARRAY_SIZE(default_bindings); ++i) {
         const struct keybind_default* kb = &default_bindings[i];
-        struct key_binding* binding = create_binding(kb->key, kb->mods);
-        if (binding) {
-            add_action(binding, &kb->action);
-        }
+        keybind_put(kb->key, kb->mods, &kb->action, 1);
     }
 
     // register configuration loader
-    config_add_loader(CONFIG_SECTION_KEYS, load_config);
-    config_add_loader(CONFIG_SECTION_MOUSE, load_config);
+    config_add_loader("keys", keybind_configure);
+    config_add_loader("mouse", keybind_configure);
 }
 
-void keybind_free(void)
+void keybind_destroy(void)
 {
-    for (size_t i = 0; i < key_bindings_size; ++i) {
-        free_binding(&key_bindings[i]);
+    struct keybind* it = binding_list;
+    while (it) {
+        struct keybind* next = it->next;
+        keybind_free(it);
+        it = next;
     }
-    free(key_bindings);
+    binding_list = NULL;
 }
 
-uint8_t keybind_mods(struct xkb_state* state)
+struct keybind* keybind_all(void)
 {
-    uint8_t mods = 0;
+    return binding_list;
+}
 
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_CTRL,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_CTRL;
-    }
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_ALT,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_ALT;
-    }
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_SHIFT,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_SHIFT;
+enum config_status keybind_configure(const char* key, const char* value)
+{
+    xkb_keysym_t keysym;
+    uint8_t mods;
+    struct action action[32];
+    struct str_slice action_sl[ARRAY_SIZE(action)];
+    size_t action_num;
+
+    // parse keyboard shortcut
+    if (!parse_key(key, &keysym, &mods)) {
+        return cfgst_invalid_key;
     }
 
-    return mods;
+    // parse actions
+    action_num = str_split(value, ';', action_sl, ARRAY_SIZE(action_sl));
+    if (action_num == 0) {
+        return cfgst_invalid_value;
+    }
+    for (size_t i = 0; i < action_num; ++i) {
+        struct str_slice* s = &action_sl[i];
+        if (!action_load(&action[i], s->value, s->len)) {
+            return cfgst_invalid_value;
+        }
+    }
+
+    keybind_put(keysym, mods, action, action_num);
+
+    for (size_t i = 0; i < action_num; ++i) {
+        free(action[i].params);
+    }
+
+    return cfgst_ok;
+}
+
+struct keybind* keybind_get(xkb_keysym_t key, uint8_t mods)
+{
+    struct keybind* it = binding_list;
+
+    // we always use lowercase + Shift modifier
+    key = xkb_keysym_to_lower(key);
+
+    while (it) {
+        if (it->key == key && it->mods == mods) {
+            return it;
+        }
+        it = it->next;
+    }
+
+    return NULL;
 }
 
 char* keybind_name(xkb_keysym_t key, uint8_t mods)
@@ -364,17 +352,22 @@ char* keybind_name(xkb_keysym_t key, uint8_t mods)
     return name;
 }
 
-const struct action* keybind_actions(xkb_keysym_t key, uint8_t mods)
+uint8_t keybind_mods(struct xkb_state* state)
 {
-    // we always use lowercase + Shift modifier
-    key = xkb_keysym_to_lower(key);
+    uint8_t mods = 0;
 
-    for (size_t i = 0; i < key_bindings_size; ++i) {
-        struct key_binding* binding = &key_bindings[i];
-        if (binding->key == key && binding->mods == mods) {
-            return binding->actions;
-        }
+    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_CTRL,
+                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
+        mods |= KEYMOD_CTRL;
+    }
+    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_ALT,
+                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
+        mods |= KEYMOD_ALT;
+    }
+    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_SHIFT,
+                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
+        mods |= KEYMOD_SHIFT;
     }
 
-    return NULL;
+    return mods;
 }
