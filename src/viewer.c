@@ -557,11 +557,11 @@ static void switch_help(void)
     }
     ctx.help = calloc(1, ctx.help_sz * sizeof(*ctx.help));
     if (ctx.help) {
-        size_t i = 0;
+        size_t i = ctx.help_sz - 1;
         kb = keybind_all();
         while (kb) {
             if (kb->help) {
-                font_render(kb->help, &ctx.help[i++]);
+                font_render(kb->help, &ctx.help[i--]);
             }
             kb = kb->next;
         }
