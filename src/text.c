@@ -14,7 +14,6 @@
 #define TEXT_SHADOW    0x00000000
 #define TEXT_NO_SHADOW 0xff000000
 #define TEXT_PADDING   10 // space between text layout and window edge
-#define TEXT_LINESP    4  // line spacing factor
 
 /** Text context. */
 struct text {
@@ -84,8 +83,7 @@ void text_print(struct pixmap* wnd, enum info_position pos,
                 const struct info_line* lines, size_t lines_num)
 {
     size_t max_key_width = 0;
-    const size_t height =
-        lines[0].value.height + lines[0].value.height / TEXT_LINESP;
+    const size_t height = lines[0].value.height;
 
     // calc max width of keys, used if block on the left side
     for (size_t i = 0; i < lines_num; ++i) {
@@ -152,7 +150,7 @@ void text_print(struct pixmap* wnd, enum info_position pos,
 void text_print_centered(struct pixmap* wnd, const struct text_surface* lines,
                          size_t lines_num)
 {
-    const size_t line_height = lines[0].height + lines[0].height / TEXT_LINESP;
+    const size_t line_height = lines[0].height;
     const size_t row_max = (wnd->height - TEXT_PADDING * 2) / line_height;
     const size_t columns =
         (lines_num / row_max) + (lines_num % row_max ? 1 : 0);

@@ -13,6 +13,7 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
+#define POINT_FACTOR 64 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2
 #define GLYPH_GW_REL 4
 
@@ -108,7 +109,7 @@ void font_create(void)
 void font_init(void)
 {
     char file[256];
-    const FT_F26Dot6 size = ctx.size * 64;
+    const FT_F26Dot6 size = ctx.size * POINT_FACTOR;
 
     if (!search_font_file(ctx.name, file, sizeof(file)) ||
         FT_Init_FreeType(&ctx.lib) != 0 ||
@@ -142,7 +143,7 @@ bool font_render(const char* text, struct text_surface* surface)
         return false;
     }
 
-    space_size = ctx.face->size->metrics.y_ppem / SPACE_WH_REL;
+    space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
 
     wide = str_to_wide(text, NULL);
     if (!wide) {
@@ -156,15 +157,14 @@ bool font_render(const char* text, struct text_surface* surface)
         if (*ptr == L' ') {
             x += space_size;
         } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
-            x += ctx.face->glyph->advance.x >>
-                6; // why 6? from freetype tutorial!
+            x += ctx.face->glyph->advance.x / POINT_FACTOR;
         }
         ++ptr;
     }
 
     // allocate surface buffer
     surface->width = x;
-    surface->height = ctx.face->size->metrics.y_ppem;
+    surface->height = ctx.face->size->metrics.height / POINT_FACTOR;
     surface->data = calloc(1, surface->height * surface->width);
     if (!surface->data) {
         free(wide);
@@ -180,15 +180,8 @@ bool font_render(const char* text, struct text_surface* surface)
         } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
             const FT_GlyphSlot glyph = ctx.face->glyph;
             const FT_Bitmap* bmp = &glyph->bitmap;
-            size_t y = ctx.face->size->metrics.y_ppem - glyph->bitmap_top;
-
-            // it's a hack, but idk how to up the baseline
-            const size_t baseline_offset = ctx.size / 3;
-            if (y > baseline_offset) {
-                y -= baseline_offset;
-            } else {
-                y = 0;
-            }
+            const size_t y = ctx.face->size->metrics.y_ppem -
+                             glyph->bitmap_top;
 
             for (size_t glyph_y = 0; glyph_y < bmp->rows; ++glyph_y) {
                 uint8_t* dst;
@@ -200,7 +193,7 @@ bool font_render(const char* text, struct text_surface* surface)
                 memcpy(dst, &bmp->buffer[glyph_y * bmp->pitch], bmp->width);
             }
 
-            x += glyph->advance.x >> 6;
+            x += glyph->advance.x / POINT_FACTOR;
         }
         ++ptr;
     }
