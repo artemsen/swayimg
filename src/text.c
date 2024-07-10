@@ -9,11 +9,8 @@
 
 #include <string.h>
 
-// Text rendering parameters
-#define TEXT_COLOR     0x00cccccc
-#define TEXT_SHADOW    0x00000000
-#define TEXT_NO_SHADOW 0xff000000
-#define TEXT_PADDING   10 // space between text layout and window edge
+// Space between text layout and window edge
+#define TEXT_PADDING 10
 
 /** Text context. */
 struct text {
@@ -22,8 +19,8 @@ struct text {
 };
 
 static struct text ctx = {
-    .color = TEXT_COLOR,
-    .shadow = TEXT_SHADOW,
+    .color = 0xffcccccc,
+    .shadow = 0x80000000,
 };
 
 /**
@@ -35,7 +32,7 @@ static struct text ctx = {
 static void draw_text(struct pixmap* wnd, size_t x, size_t y,
                       const struct text_surface* text)
 {
-    if (ctx.shadow != TEXT_NO_SHADOW) {
+    if (ARGB_GET_A(ctx.shadow)) {
         size_t shadow_offset = text->height / 16;
         if (shadow_offset < 1) {
             shadow_offset = 1;
@@ -61,7 +58,7 @@ static enum config_status load_config(const char* key, const char* value)
         }
     } else if (strcmp(key, "shadow") == 0) {
         if (strcmp(value, "none") == 0) {
-            ctx.shadow = TEXT_NO_SHADOW;
+            ctx.shadow = 0;
             status = cfgst_ok;
         } else if (config_to_color(value, &ctx.shadow)) {
             status = cfgst_ok;

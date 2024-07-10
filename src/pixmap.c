@@ -147,9 +147,12 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
         const uint8_t* mask_line = &mask[mask_y * width];
 
         for (size_t mask_x = 0; mask_x < mask_width; ++mask_x) {
-            const uint8_t alpha = mask_line[mask_x];
-            if (alpha != 0) {
-                alpha_blend(ARGB_SET_A(alpha) | color, &dst_line[mask_x]);
+            const uint8_t alpha_mask = mask_line[mask_x];
+            if (alpha_mask != 0) {
+                const uint8_t alpha_color = ARGB_GET_A(color);
+                const uint8_t alpha = ((uint32_t)alpha_mask + alpha_color) / 2;
+                const argb_t clr = ARGB_SET_A(alpha) | (color & 0x00ffffff);
+                alpha_blend(clr, &dst_line[mask_x]);
             }
         }
     }

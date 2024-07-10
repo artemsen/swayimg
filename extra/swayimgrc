@@ -68,10 +68,10 @@ preload = 1
 name = monospace
 # Font size (in pt)
 size = 14
-# Font color
+# Font color (RGB or RGBA, e.g. #11223344)
 color = #cccccc
-# Drop shadow (none/RGB, e.g. #112233)
-shadow = #000000
+# Shadow color (RGB or RGBA, disable: #00000000)
+shadow = #000000a0
 
 ################################################################################
 # Image meta info scheme (format, size, EXIF, etc)
