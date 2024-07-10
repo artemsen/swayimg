@@ -67,6 +67,7 @@ test(
       exr,
       gif,
       heif,
+      inotify,
       avif,
       jpeg,
       jxl,
