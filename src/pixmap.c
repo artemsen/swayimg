@@ -20,11 +20,11 @@ static inline void alpha_blend(argb_t src, argb_t* dst)
         const argb_t wp = *dst;
         const uint8_t aw = ARGB_GET_A(wp);
         const uint8_t target_alpha = max(ai, aw);
-        const argb_t inv = 256 - ai;
+        const argb_t inv = 255 - ai;
         src = ARGB_SET_A(target_alpha) |
-            ARGB_SET_R((ai * ARGB_GET_R(src) + inv * ARGB_GET_R(wp)) >> 8) |
-            ARGB_SET_G((ai * ARGB_GET_G(src) + inv * ARGB_GET_G(wp)) >> 8) |
-            ARGB_SET_B((ai * ARGB_GET_B(src) + inv * ARGB_GET_B(wp)) >> 8);
+            ARGB_SET_R((ai * ARGB_GET_R(src) + inv * ARGB_GET_R(wp)) / 255) |
+            ARGB_SET_G((ai * ARGB_GET_G(src) + inv * ARGB_GET_G(wp)) / 255) |
+            ARGB_SET_B((ai * ARGB_GET_B(src) + inv * ARGB_GET_B(wp)) / 255);
     }
 
     *dst = src;
@@ -150,7 +150,7 @@ void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
             const uint8_t alpha_mask = mask_line[mask_x];
             if (alpha_mask != 0) {
                 const uint8_t alpha_color = ARGB_GET_A(color);
-                const uint8_t alpha = ((uint32_t)alpha_mask + alpha_color) / 2;
+                const uint8_t alpha = (alpha_mask * alpha_color) / 255;
                 const argb_t clr = ARGB_SET_A(alpha) | (color & 0x00ffffff);
                 alpha_blend(clr, &dst_line[mask_x]);
             }
