@@ -44,7 +44,6 @@ threads = dependency('threads')
 rt = cc.find_library('rt')
 # optional dependencies: file formats support
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
-gif = cc.find_library('gif', required: get_option('gif'))
 heif = dependency('libheif', required: get_option('heif'))
 avif = dependency('libavif', required: get_option('avif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
@@ -54,6 +53,8 @@ rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
+# hack to build "pkgconfigless" gif in FreeBSD
+gif = cc.find_library('gif', dirs: wlcln.get_variable(pkgconfig: 'libdir'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
