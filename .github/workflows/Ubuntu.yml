@@ -1,0 +1,59 @@
+name: Ubuntu
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_PATH: /tmp/build
+      INSTALL_PATH: /tmp/install
+
+    steps:
+
+    - name: Update package info
+      run: sudo apt update
+
+    - name: Install dependencies
+      run: >
+          sudo apt install --no-install-recommends --yes
+          build-essential meson pkg-config wayland-protocols
+          libwayland-dev libjson-c-dev libxkbcommon-dev
+          libfreetype-dev libfontconfig-dev
+          libopenexr-dev libgif-dev libheif-dev libavif-dev
+          libjpeg-dev librsvg2-dev libtiff-dev libwebp-dev
+          libgtest-dev cmake
+
+    - name: Install gtest
+      run: |
+          mkdir /tmp/gtest
+          cd /tmp/gtest && cmake /usr/src/gtest && make -j$(nproc)
+          sudo cp /tmp/gtest/lib/* /usr/lib/
+
+    - name: Check out source code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get swayimg version
+      run: echo "VERSION=$(git describe --tags --long --always | sed 's/^v//;s/-/./')" >> $GITHUB_OUTPUT
+      id: version
+
+    - name: Configure
+      run: >
+        meson setup
+        -Dversion=${{steps.version.outputs.VERSION}}
+        -Dtests=enabled
+        --prefix=/usr
+        ${{ env.BUILD_PATH }}
+
+    - name: Compile and link
+      run: meson compile -C ${{ env.BUILD_PATH }}
+
+    - name: Install
+      run: env DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}
+
+    - name: Run installed
+      run: ${{ env.INSTALL_PATH }}/usr/bin/swayimg --version
+
+    - name: Run unit tests
+      run: meson test --verbose -C ${{ env.BUILD_PATH }}
