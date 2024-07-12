@@ -72,8 +72,7 @@ TEST(Config, ToColor)
     EXPECT_EQ(argb, 0xaa010203);
     EXPECT_TRUE(config_to_color("# 010203aa", &argb));
     EXPECT_EQ(argb, 0xaa010203);
-    EXPECT_TRUE(config_to_color("", &argb));
-    EXPECT_EQ(argb, 0xff000000);
+    EXPECT_FALSE(config_to_color("", &argb));
 
     EXPECT_FALSE(config_to_color("invalid value", &argb));
 }
