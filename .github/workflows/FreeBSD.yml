@@ -1,13 +1,13 @@
-name: FreeBSD check
-
-on:
-  push:
-  pull_request:
-    branches: [ "master" ]
+name: FreeBSD
+on: [push, pull_request]
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      BUILD_PATH: /tmp/build
+      INSTALL_PATH: /tmp/install
+
     steps:
     - uses: actions/checkout@v4
     - name: FreeBSD check
@@ -21,6 +21,8 @@ jobs:
           json-c libinotify googletest
           libavif giflib libheif libjxl libexif openexr png tiff webp jpeg-turbo
         run: |
-          meson setup -Dtests=enabled --prefix=/usr /tmp/build
-          ninja -C /tmp/build
-          meson test --verbose -C /tmp/build
+          meson setup -Dtests=enabled --prefix=/usr ${{ env.BUILD_PATH }}
+          meson compile -C ${{ env.BUILD_PATH }}
+          env DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}
+          ${{ env.INSTALL_PATH }}/usr/bin/swayimg --version
+          meson test --verbose -C ${{ env.BUILD_PATH }}
