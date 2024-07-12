@@ -29,7 +29,15 @@ static int decode_frame(struct image* ctx, avifDecoder* decoder)
 
     rgb.depth = 8;
     rgb.format = AVIF_RGB_FORMAT_BGRA;
+#if AVIF_VERSION_MAJOR > 0
+    rc =
+#endif
     avifRGBImageAllocatePixels(&rgb);
+#if AVIF_VERSION_MAJOR > 0
+    if (rc != AVIF_RESULT_OK) {
+        goto decode_fail;
+    }
+#endif
 
     rc = avifImageYUVToRGB(decoder->image, &rgb);
     if (rc != AVIF_RESULT_OK) {
