@@ -1,0 +1,26 @@
+name: FreeBSD check
+
+on:
+  push:
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: FreeBSD check
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: >
+          pkg install -y
+          meson pkgconf llvm
+          wayland wayland-protocols libxkbcommon freetype2 fontconfig
+          json-c libinotify googletest
+          libavif giflib libheif libjxl libexif openexr png tiff webp jpeg-turbo
+        run: |
+          meson setup -Dtests=enabled --prefix=/usr /tmp/build
+          ninja -C /tmp/build
+          meson test --verbose -C /tmp/build
