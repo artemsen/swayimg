@@ -67,11 +67,9 @@ Arch users can install the program from the extra repository: [swayimg](https://
 
 ## Build
 
-![CI](https://github.com/artemsen/swayimg/workflows/CI/badge.svg)
-
 The project uses Meson build system:
 ```
-meson build
-ninja -C build
-sudo ninja -C build install
+meson setup _build_dir
+meson compile -C _build_dir
+meson install -C _build_dir
 ```
