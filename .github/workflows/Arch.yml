@@ -1,0 +1,50 @@
+name: Arch Linux
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_PATH: /tmp/build
+      INSTALL_PATH: /tmp/install
+
+    steps:
+
+    - name: Check out source code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get swayimg version
+      run: echo "VERSION=$(git describe --tags --long --always | sed 's/^v//;s/-/./')" >> $GITHUB_OUTPUT
+      id: version
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+
+    - name: Run docker container
+      run: docker run --tty --detach --name=swayimg --volume=$PWD:$PWD:ro --workdir=$PWD swayimg
+
+    - name: Configure
+      run: >
+        docker exec swayimg
+        meson setup
+        -Dversion=${{steps.version.outputs.VERSION}}
+        -Dtests=enabled
+        --prefix=/usr
+        ${{ env.BUILD_PATH }}
+
+    - name: Compile and link
+      run: docker exec swayimg meson compile -C ${{ env.BUILD_PATH }}
+
+    - name: Install
+      run: >
+        docker exec swayimg
+        env DESTDIR=${{ env.INSTALL_PATH }}
+        meson install -C ${{ env.BUILD_PATH }}
+
+    - name: Run installed
+      run: docker exec swayimg ${{ env.INSTALL_PATH }}/usr/bin/swayimg --version
+
+    - name: Run unit tests
+      run: docker exec swayimg meson test --verbose -C ${{ env.BUILD_PATH }}
