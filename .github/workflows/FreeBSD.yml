@@ -16,7 +16,7 @@ jobs:
         usesh: true
         prepare: >
           pkg install -y
-          meson pkgconf llvm
+          meson pkgconf
           wayland wayland-protocols libxkbcommon freetype2 fontconfig
           json-c libinotify googletest
           libavif giflib libheif libjxl libexif openexr png tiff webp jpeg-turbo
