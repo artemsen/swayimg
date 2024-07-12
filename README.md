@@ -43,6 +43,11 @@ Examples:
   ```
   wget -qO- https://www.kernel.org/theme/images/logos/tux.png | swayimg -
   ```
+- Loading stdout from external commands:
+  ```
+  swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png" \
+          "exec://curl -so- https://www.kernel.org/theme/images/logos/tux.png"
+  ```
 
 ## Configuration
 
