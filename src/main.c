@@ -211,10 +211,8 @@ int main(int argc, char* argv[])
     text_create();
     ui_create();
     viewer_create();
+
     config_init();
-    font_init();
-    info_init();
-    viewer_init();
 
     // parse command arguments
     argn = parse_cmdargs(argc, argv);
@@ -222,6 +220,10 @@ int main(int argc, char* argv[])
         rc = (argn == 0);
         goto done;
     }
+
+    font_init();
+    info_init();
+    viewer_init();
 
     // compose image list
     if (image_list_init((const char**)&argv[argn], argc - argn) == 0) {
