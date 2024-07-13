@@ -225,6 +225,8 @@ int main(int argc, char* argv[])
     info_init();
     viewer_init();
 
+    config_destroy(); // configuration is applied and can be freed
+
     // compose image list
     if (image_list_init((const char**)&argv[argn], argc - argn) == 0) {
         fprintf(stderr, "No images to view, exit\n");
@@ -256,7 +258,6 @@ int main(int argc, char* argv[])
     rc = ui_run();
 
 done:
-    config_destroy();
     viewer_destroy();
     loader_destroy();
     ui_destroy();
