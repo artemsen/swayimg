@@ -13,9 +13,8 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
-#define POINT_FACTOR 64 // default points per pixel for 26.6 format
-#define SPACE_WH_REL 2
-#define GLYPH_GW_REL 4
+#define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
+#define SPACE_WH_REL 2.0
 
 // Defaults
 #define DEFALT_FONT "monospace"
@@ -121,7 +120,7 @@ void font_init(void)
     FT_Set_Char_Size(ctx.face, size, 0, 96, 0);
 }
 
-void font_free(void)
+void font_destroy(void)
 {
     if (ctx.face) {
         FT_Done_Face(ctx.face);
@@ -138,12 +137,15 @@ bool font_render(const char* text, struct text_surface* surface)
     wchar_t* wide;
     const wchar_t* ptr;
     size_t space_size;
+    ssize_t base_offset;
 
     if (!ctx.face) {
         return false;
     }
 
     space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
+    base_offset =
+        ctx.face->size->metrics.y_ppem + ctx.face->descender / POINT_FACTOR;
 
     wide = str_to_wide(text, NULL);
     if (!wide) {
@@ -180,17 +182,19 @@ bool font_render(const char* text, struct text_surface* surface)
         } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
             const FT_GlyphSlot glyph = ctx.face->glyph;
             const FT_Bitmap* bmp = &glyph->bitmap;
-            const size_t y = ctx.face->size->metrics.y_ppem -
-                             glyph->bitmap_top;
+            const ssize_t y_offset = base_offset - glyph->bitmap_top;
 
-            for (size_t glyph_y = 0; glyph_y < bmp->rows; ++glyph_y) {
+            // put glyph's bitmap on the surface
+            for (size_t y = 0; y < bmp->rows; ++y) {
                 uint8_t* dst;
-                if (glyph_y + y >= surface->height) {
-                    break; // it's a hack too =)
+                if (y_offset + (ssize_t)y < 0 ||
+                    y_offset + y >= surface->height ||
+                    x + bmp->width >= surface->width) {
+                    continue; // something wrong with size/pos calculation
                 }
-                dst = &surface->data[(glyph_y + y) * surface->width + x +
+                dst = &surface->data[(y + y_offset) * surface->width + x +
                                      glyph->bitmap_left];
-                memcpy(dst, &bmp->buffer[glyph_y * bmp->pitch], bmp->width);
+                memcpy(dst, &bmp->buffer[y * bmp->pitch], bmp->width);
             }
 
             x += glyph->advance.x / POINT_FACTOR;

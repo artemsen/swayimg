@@ -31,7 +31,7 @@ void font_init(void);
 /**
  * Free font resources.
  */
-void font_free(void);
+void font_destroy(void);
 
 /**
  * Render single text line.

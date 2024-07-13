@@ -262,7 +262,7 @@ done:
     ui_free();
     image_list_free();
     info_free();
-    font_free();
+    font_destroy();
     keybind_destroy();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
