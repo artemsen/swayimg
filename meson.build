@@ -54,7 +54,7 @@ tiff = dependency('libtiff-4', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 # hack to build "pkgconfigless" gif in FreeBSD
-gif = cc.find_library('gif', dirs: wlcln.get_variable(pkgconfig: 'libdir'))
+gif = cc.find_library('gif', dirs: wlcln.get_variable(pkgconfig: 'libdir'), required: get_option('gif'))
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
