@@ -8,6 +8,7 @@ sources = [
   'keybind_test.cpp',
   'loader_test.cpp',
   'pixmap_test.cpp',
+  'str_test.cpp',
   '../src/action.c',
   '../src/cache.c',
   '../src/config.c',
