@@ -319,7 +319,7 @@ void info_init(void)
     update_field("Image size:", &ctx.fields[info_image_size].key);
 }
 
-void info_free(void)
+void info_destroy(void)
 {
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         free(ctx.exif_lines[i].key.data);

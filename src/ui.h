@@ -23,9 +23,9 @@
 void ui_create(void);
 
 /**
- * Free UI context.
+ * Destroy global UI context.
  */
-void ui_free(void);
+void ui_destroy(void);
 
 /**
  * Run event handler loop.

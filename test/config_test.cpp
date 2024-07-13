@@ -40,7 +40,7 @@ TEST(Config, Load)
     check("nospaces", "nospaces");
     check("empty", "");
 
-    config_free();
+    config_destroy();
 }
 
 TEST(Config, ToBool)

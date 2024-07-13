@@ -30,9 +30,9 @@ typedef enum config_status (*config_loader)(const char* key, const char* value);
 void config_init(void);
 
 /**
- * Free configuration instance.
+ * Destroy global configuration instance.
  */
-void config_free(void);
+void config_destroy(void);
 
 /**
  * Set option.

@@ -256,12 +256,12 @@ int main(int argc, char* argv[])
     rc = ui_run();
 
 done:
-    config_free();
-    viewer_free();
-    loader_free();
-    ui_free();
-    image_list_free();
-    info_free();
+    config_destroy();
+    viewer_destroy();
+    loader_destroy();
+    ui_destroy();
+    image_list_destroy();
+    info_destroy();
     font_destroy();
     keybind_destroy();
 

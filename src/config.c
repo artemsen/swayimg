@@ -178,7 +178,7 @@ void config_init(void)
     }
 }
 
-void config_free(void)
+void config_destroy(void)
 {
     if (ctx.sections) {
         free(ctx.sections);

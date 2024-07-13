@@ -26,14 +26,14 @@ enum list_order {
 };
 
 /**
- * Create the image list.
+ * Create global image list context.
  */
 void image_list_create(void);
 
 /**
- * Free the image list.
+ * Destroy global image list context.
  */
-void image_list_free(void);
+void image_list_destroy(void);
 
 /**
  * Initialize the image list: scan directories and fill the image list.

@@ -687,7 +687,7 @@ void viewer_init(void)
     }
 }
 
-void viewer_free(void)
+void viewer_destroy(void)
 {
     for (size_t i = 0; i < ctx.help_sz; i++) {
         free(ctx.help[i].data);

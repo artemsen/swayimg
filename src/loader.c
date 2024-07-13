@@ -641,7 +641,7 @@ bool loader_init(size_t start, bool force)
     return (status == ldr_success);
 }
 
-void loader_free(void)
+void loader_destroy(void)
 {
     preloader_ctl(preloader_stop);
     cache_free(&ctx.previous);

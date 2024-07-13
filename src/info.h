@@ -22,19 +22,19 @@ struct info_line {
 };
 
 /**
- * Create info context.
+ * Create global info context.
  */
 void info_create(void);
 
 /**
- * Initialize info context.
+ * Initialize global info context.
  */
 void info_init(void);
 
 /**
- * Free info context.
+ * Destroy global info context.
  */
-void info_free(void);
+void info_destroy(void);
 
 /**
  * Set the display mode.

@@ -35,12 +35,12 @@ typedef enum loader_status (*image_decoder)(struct image* ctx,
                                             const uint8_t* data, size_t size);
 
 /**
- * Create loader instance.
+ * Create loader global instance.
  */
 void loader_create(void);
 
 /**
- * Initialize loader: create caches, load first image, etc.
+ * Initialize global loader: create caches, load first image, etc.
  * @param start initial index of image in the image list
  * @param force mandatory image index flag
  * @return true if image was loaded
@@ -48,9 +48,9 @@ void loader_create(void);
 bool loader_init(size_t start, bool force);
 
 /**
- * Free loader resources: destroy caches etc.
+ * Destroy global loader resources: destroy caches etc.
  */
-void loader_free(void);
+void loader_destroy(void);
 
 /**
  * Reset cache and reload current image.

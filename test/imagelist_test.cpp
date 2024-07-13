@@ -9,7 +9,7 @@ extern "C" {
 
 class ImageList : public ::testing::Test {
 protected:
-    void TearDown() override { image_list_free(); }
+    void TearDown() override { image_list_destroy(); }
 };
 
 TEST_F(ImageList, Init)

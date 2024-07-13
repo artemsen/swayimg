@@ -598,7 +598,7 @@ static bool create_window(void)
     ctx.wl.registry = wl_display_get_registry(ctx.wl.display);
     if (!ctx.wl.registry) {
         fprintf(stderr, "Failed to open registry\n");
-        ui_free();
+        ui_destroy();
         return false;
     }
     wl_registry_add_listener(ctx.wl.registry, &registry_listener, NULL);
@@ -607,7 +607,7 @@ static bool create_window(void)
     ctx.wl.surface = wl_compositor_create_surface(ctx.wl.compositor);
     if (!ctx.wl.surface) {
         fprintf(stderr, "Failed to create surface\n");
-        ui_free();
+        ui_destroy();
         return false;
     }
     wl_surface_add_listener(ctx.wl.surface, &wl_surface_listener, NULL);
@@ -615,7 +615,7 @@ static bool create_window(void)
     ctx.xdg.surface = xdg_wm_base_get_xdg_surface(ctx.xdg.base, ctx.wl.surface);
     if (!ctx.xdg.surface) {
         fprintf(stderr, "Failed to create xdg surface\n");
-        ui_free();
+        ui_destroy();
         return false;
     }
     xdg_surface_add_listener(ctx.xdg.surface, &xdg_surface_listener, NULL);
@@ -709,7 +709,7 @@ void ui_create(void)
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
-void ui_free(void)
+void ui_destroy(void)
 {
     free(ctx.app_id);
     if (ctx.repeat.fd != -1) {

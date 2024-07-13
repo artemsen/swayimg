@@ -288,7 +288,7 @@ void image_list_create(void)
     config_add_loader(IMGLIST_CFG_SECTION, load_config);
 }
 
-void image_list_free(void)
+void image_list_destroy(void)
 {
     for (size_t i = 0; i < ctx.size; ++i) {
         free(ctx.sources[i]);

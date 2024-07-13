@@ -17,19 +17,19 @@
 #define VIEWER_CFG_SLIDESHOW_TIME "slideshow_time"
 
 /**
- * Create viewer context.
+ * Create global viewer context.
  */
 void viewer_create(void);
 
 /**
- * Initialize viewer context.
+ * Initialize global viewer context.
  */
 void viewer_init(void);
 
 /**
- * Free viewer context.
+ * Destroy global viewer context.
  */
-void viewer_free(void);
+void viewer_destroy(void);
 
 /**
  * Reset state: reload image file, set initial scale etc.
