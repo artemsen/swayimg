@@ -163,6 +163,35 @@ Path to the socket file used for Sway IPC.
 .IP "\fIXDG_CONFIG_HOME\fR, \fIXDG_CONFIG_DIRS\fR, \fIHOME\fR"
 Prefix of the path to the application config file.
 .\" ****************************************************************************
+.\" Exit status
+.\" ****************************************************************************
+.SH "EXIT STATUS"
+The exit status is 0 if the program completed successfully and 1 if an error occurred.
+.\" ****************************************************************************
+.\" Examples
+.\" ****************************************************************************
+.SH "EXAMPLES"
+.PP
+swayimg photo.jpg logo.png
+.RS 4
+View multiple files.
+.RE
+.PP
+swayimg --slideshow --recursive --order=random
+.RS 4
+Start slideshow for all files (recursively) in the current directory in random order.
+.RE
+.PP
+wget -qO- https://www.kernel.org/theme/images/logos/tux.png | swayimg -
+.RS 4
+View using pipes.
+.RE
+.PP
+swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png"
+.RS 4
+Loading stdout from external commands.
+.RE
+.\" ****************************************************************************
 .\" Cross links
 .\" ****************************************************************************
 .SH SEE ALSO
