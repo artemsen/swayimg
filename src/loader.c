@@ -574,13 +574,13 @@ static enum config_status load_config(const char* key, const char* value)
 
     if (strcmp(key, IMGLIST_CFG_CACHE) == 0) {
         ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.previous_num = num;
             status = cfgst_ok;
         }
     } else if (strcmp(key, IMGLIST_CFG_PRELOAD) == 0) {
         ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.preload_num = num;
             status = cfgst_ok;
         }
