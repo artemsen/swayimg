@@ -145,7 +145,8 @@ bool font_render(const char* text, struct text_surface* surface)
 
     space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
     base_offset =
-        ctx.face->size->metrics.y_ppem + ctx.face->descender / POINT_FACTOR;
+        (ctx.face->ascender * (ctx.face->size->metrics.y_scale / 65536.0)) /
+        POINT_FACTOR;
 
     wide = str_to_wide(text, NULL);
     if (!wide) {
@@ -182,19 +183,21 @@ bool font_render(const char* text, struct text_surface* surface)
         } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
             const FT_GlyphSlot glyph = ctx.face->glyph;
             const FT_Bitmap* bmp = &glyph->bitmap;
-            const ssize_t y_offset = base_offset - glyph->bitmap_top;
+            const ssize_t off_y = base_offset - glyph->bitmap_top;
+            size_t size;
+
+            // calc line width, floating point math doesn't match bmp width
+            if (x + bmp->width < surface->width) {
+                size = bmp->width;
+            } else {
+                size = surface->width - x;
+            }
 
             // put glyph's bitmap on the surface
             for (size_t y = 0; y < bmp->rows; ++y) {
-                uint8_t* dst;
-                if (y_offset + (ssize_t)y < 0 ||
-                    y_offset + y >= surface->height ||
-                    x + bmp->width >= surface->width) {
-                    continue; // something wrong with size/pos calculation
-                }
-                dst = &surface->data[(y + y_offset) * surface->width + x +
-                                     glyph->bitmap_left];
-                memcpy(dst, &bmp->buffer[y * bmp->pitch], bmp->width);
+                const size_t offset = (y + off_y) * surface->width + x;
+                uint8_t* dst = &surface->data[offset + glyph->bitmap_left];
+                memcpy(dst, &bmp->buffer[y * bmp->pitch], size);
             }
 
             x += glyph->advance.x / POINT_FACTOR;
