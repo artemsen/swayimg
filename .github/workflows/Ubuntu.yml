@@ -41,8 +41,20 @@ jobs:
     - name: Configure
       run: >
         meson setup
-        -Dversion=${{steps.version.outputs.VERSION}}
-        -Dtests=enabled
+        -D version=${{steps.version.outputs.VERSION}}
+        -D tests=enabled
+        -D heif=enabled
+        -D bash=enabled
+        -D exif=enabled
+        -D exr=auto
+        -D gif=enabled
+        -D jpeg=enabled
+        -D jxl=auto
+        -D svg=enabled
+        -D tiff=enabled
+        -D webp=enabled
+        -D man=true
+        -D desktop=true
         --prefix=/usr
         ${{ env.BUILD_PATH }}
 

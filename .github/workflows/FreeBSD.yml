@@ -21,7 +21,7 @@ jobs:
           json-c libinotify googletest
           libavif giflib libheif libjxl libexif openexr png tiff webp jpeg-turbo
         run: |
-          meson setup -Dtests=enabled --prefix=/usr ${{ env.BUILD_PATH }}
+          meson setup -D tests=enabled -D heif=enabled -D bash=auto -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=auto -D tiff=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           env DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}
           ${{ env.INSTALL_PATH }}/usr/bin/swayimg --version
