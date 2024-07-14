@@ -18,8 +18,7 @@ the \fBlist.all\fR parameter in the config file.
 .PP
 Use '-' as \fIFILE\fR to read image data from stdin.
 .PP
-Use prefix 'exec://' to get image data from stdout printed by external command,
-e.g. `swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png"`.
+Use prefix 'exec://' to get image data from stdout printed by external command.
 .\" ****************************************************************************
 .\" Options
 .\" ****************************************************************************
@@ -162,6 +161,8 @@ terminal window.
 Path to the socket file used for Sway IPC.
 .IP "\fIXDG_CONFIG_HOME\fR, \fIXDG_CONFIG_DIRS\fR, \fIHOME\fR"
 Prefix of the path to the application config file.
+.IP "\fISHELL\fR"
+Shell for executing an external command and loading an image from stdout.
 .\" ****************************************************************************
 .\" Exit status
 .\" ****************************************************************************

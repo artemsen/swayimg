@@ -464,17 +464,21 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
         return ldr_ioerror;
     }
 
-    if (pid == 0) { // child
-        dup2(pfd[1], STDOUT_FILENO);
-        close(pfd[1]);
-        close(pfd[0]);
-        execlp("sh", "/bin/sh", "-c", cmd, NULL);
-        exit(1);
-    } else { // parent
+    if (pid) { // parent
         close(pfd[1]);
         status = image_from_stream(img, pfd[0]);
         close(pfd[0]);
         waitpid(pid, NULL, 0);
+    } else { // child
+        const char* shell = getenv("SHELL");
+        if (!shell || !*shell) {
+            shell = "/bin/sh";
+        }
+        dup2(pfd[1], STDOUT_FILENO);
+        close(pfd[1]);
+        close(pfd[0]);
+        execlp(shell, shell, "-c", cmd, NULL);
+        exit(1);
     }
 
     return status;
