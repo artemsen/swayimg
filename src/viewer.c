@@ -880,12 +880,15 @@ void viewer_on_drag(int dx, int dy)
 {
     const ssize_t old_x = ctx.img_x;
     const ssize_t old_y = ctx.img_y;
+    const bool aa = ctx.antialiasing;
 
     ctx.img_x += dx;
     ctx.img_y += dy;
 
     if (ctx.img_x != old_x || ctx.img_y != old_y) {
+        ctx.antialiasing = false;
         fixup_position(false);
         ui_redraw();
+        ctx.antialiasing = aa;
     }
 }

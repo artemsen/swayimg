@@ -347,6 +347,7 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
     if (button == BTN_LEFT) {
         ctx.mouse.active = (state == WL_POINTER_BUTTON_STATE_PRESSED);
     }
+    ui_redraw();
 }
 
 static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
