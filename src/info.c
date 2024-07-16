@@ -397,14 +397,14 @@ void info_update(size_t frame_idx, float scale)
         (ctx.frame != frame_idx || ctx.frame_total != image->num_frames)) {
         ctx.frame = frame_idx;
         ctx.frame_total = image->num_frames;
-        snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.frame + 1,
+        snprintf(buffer, sizeof(buffer), "%zu of %zu", ctx.frame + 1,
                  ctx.frame_total);
         update_field(buffer, &ctx.fields[info_frame].value);
     }
 
     if (is_visible(info_index) && ctx.index != loader_current_index()) {
         ctx.index = loader_current_index();
-        snprintf(buffer, sizeof(buffer), "%lu of %lu", ctx.index + 1,
+        snprintf(buffer, sizeof(buffer), "%zu of %zu", ctx.index + 1,
                  image_list_size());
         update_field(buffer, &ctx.fields[info_index].value);
     }
@@ -413,7 +413,7 @@ void info_update(size_t frame_idx, float scale)
         const size_t scale_percent = scale * 100;
         if (ctx.scale != scale_percent) {
             ctx.scale = scale_percent;
-            snprintf(buffer, sizeof(buffer), "%ld%%", ctx.scale);
+            snprintf(buffer, sizeof(buffer), "%zu%%", ctx.scale);
             update_field(buffer, &ctx.fields[info_scale].value);
         }
     }
@@ -423,7 +423,7 @@ void info_update(size_t frame_idx, float scale)
         if (ctx.width != pm->width || ctx.height != pm->height) {
             ctx.width = pm->width;
             ctx.height = pm->height;
-            snprintf(buffer, sizeof(buffer), "%lux%lu", ctx.width, ctx.height);
+            snprintf(buffer, sizeof(buffer), "%zux%zu", ctx.width, ctx.height);
             update_field(buffer, &ctx.fields[info_image_size].value);
         }
     }

@@ -119,7 +119,7 @@ static bool load_config(const char* path)
             ++line;
             delim = strchr(line, ']');
             if (!delim || line + 1 == delim) {
-                fprintf(stderr, "Invalid section define in %s:%lu\n", path,
+                fprintf(stderr, "Invalid section define in %s:%zu\n", path,
                         line_num);
                 continue;
             }
@@ -132,7 +132,7 @@ static bool load_config(const char* path)
 
         delim = strchr(line, '=');
         if (!delim) {
-            fprintf(stderr, "Invalid key=value format in %s:%lu\n", path,
+            fprintf(stderr, "Invalid key=value format in %s:%zu\n", path,
                     line_num);
             continue;
         }
@@ -151,7 +151,7 @@ static bool load_config(const char* path)
         // load configuration parameter from key/value pair
         status = config_set(section, line, value);
         if (status != cfgst_ok) {
-            fprintf(stderr, "Invalid configuration in %s:%lu\n", path,
+            fprintf(stderr, "Invalid configuration in %s:%zu\n", path,
                     line_num);
         }
     }
@@ -299,7 +299,8 @@ bool config_to_color(const char* text, argb_t* color)
         ++text;
     }
 
-    if (!str_to_num(text, 0, &num, 16) || num < 0 || num > 0xffffffff) {
+    if (!str_to_num(text, 0, &num, 16) || num < 0 ||
+        (uint64_t)num > (uint64_t)0xffffffff) {
         return false;
     }
 
