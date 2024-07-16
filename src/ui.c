@@ -157,8 +157,8 @@ static struct wl_buffer* create_buffer(void)
 
     // generate unique file name
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    snprintf(path, sizeof(path), "/" APP_NAME "_%lx",
-             (ts.tv_sec << 32) | ts.tv_nsec);
+    snprintf(path, sizeof(path), "/" APP_NAME "_%" PRIx64,
+             ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec);
 
     // open shared mem
     fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
@@ -698,8 +698,8 @@ void ui_create(void)
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
         char app_id[64];
-        const uint64_t timestamp = (ts.tv_sec << 32) | ts.tv_nsec;
-        snprintf(app_id, sizeof(app_id), APP_NAME "_%lx", timestamp);
+        const uint64_t timestamp = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
+        snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, timestamp);
         str_dup(app_id, &ctx.app_id);
     } else {
         str_dup(APP_NAME, &ctx.app_id);

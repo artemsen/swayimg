@@ -6,6 +6,8 @@
 
 #include "pixmap.h"
 
+#include <limits.h>
+
 // Configuration parameters
 #define UI_CFG_APP_ID     "app_id"
 #define UI_CFG_FULLSCREEN "fullscreen"
@@ -15,7 +17,7 @@
 // Special ids for windows size and position
 #define SIZE_FROM_IMAGE  0
 #define SIZE_FROM_PARENT 1
-#define POS_FROM_PARENT  0xffffffff
+#define POS_FROM_PARENT  SSIZE_MAX
 
 /**
  * Create User Interface context.
