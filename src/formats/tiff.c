@@ -129,7 +129,7 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
 
     // convert ABGR -> ARGB
     for (size_t i = 0; i < pm->width * pm->height; ++i) {
-        pm->data[i] = ARGB_SET_ABGR(pm->data[i]);
+        pm->data[i] = ABGR_TO_ARGB(pm->data[i]);
     }
 
     if (timg.orientation == ORIENTATION_TOPLEFT) {
