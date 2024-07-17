@@ -163,19 +163,18 @@ void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
 {
     const ssize_t left = max(0, x);
     const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, (ssize_t)src->width + x);
-    const ssize_t bottom = min((ssize_t)dst->height, (ssize_t)src->height + y);
+    const ssize_t right = min((ssize_t)dst->width, x + (ssize_t)src->width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + (ssize_t)src->height);
     const ssize_t dst_width = right - left;
-    const ssize_t dst_height = bottom - top;
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
     const size_t line_sz = dst_width * sizeof(argb_t);
 
-    if (right < 0 || bottom < 0 || dst_width <= 0 || dst_height <= 0) {
-        return;
-    }
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        const size_t src_y = dst_y - top + delta_y;
+        const argb_t* src_line = &src->data[src_y * src->width + delta_x];
+        argb_t* dst_line = &dst->data[dst_y * dst->width + left];
 
-    for (y = 0; y < dst_height; ++y) {
-        const argb_t* src_line = &src->data[y * src->width];
-        argb_t* dst_line = &dst->data[(y + top) * dst->width + left];
         if (alpha) {
             for (x = 0; x < dst_width; ++x) {
                 alpha_blend(src_line[x], &dst_line[x]);

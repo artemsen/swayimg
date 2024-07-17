@@ -263,3 +263,138 @@ TEST_F(Pixmap, Copy)
     pixmap_copy(&pm_src, &pm_dst, 1, 1, false);
     Compare(pm_dst, expect);
 }
+
+TEST_F(Pixmap, CopyOutsideTL)
+{
+    // clang-format off
+    argb_t src[] = {
+        0xaa, 0xbb,
+        0xcc, 0xdd,
+    };
+    argb_t dst[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    const argb_t expect[] = {
+        0xdd, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm_src = { 2, 2, src };
+    struct pixmap pm_dst = { 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, -1, -1, false);
+    Compare(pm_dst, expect);
+}
+
+TEST_F(Pixmap, CopyOutsideBR)
+{
+    // clang-format off
+    argb_t src[] = {
+        0xaa, 0xbb,
+        0xcc, 0xdd,
+    };
+    argb_t dst[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    const argb_t expect[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0xaa,
+    };
+    // clang-format on
+
+    const struct pixmap pm_src = { 2, 2, src };
+    struct pixmap pm_dst = { 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 3, 3, false);
+    Compare(pm_dst, expect);
+}
+
+TEST_F(Pixmap, CopyAlpha)
+{
+    // clang-format off
+    argb_t src[] = {
+        0xffaaaaaa, 0x80aaaaaa,
+        0x40aaaaaa, 0x00aaaaaa,
+    };
+    argb_t dst[] = {
+        0x00000000, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0x55555555, 0x66666666, 0x77777777,
+        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
+    };
+    const argb_t expect[] = {
+        0x00000000, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0xffaaaaaa, 0x80888888, 0x77777777,
+        0x88888888, 0x999d9d9d, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
+    };
+    // clang-format on
+
+    const struct pixmap pm_src = { 2, 2, src };
+    struct pixmap pm_dst = { 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 1, 1, true);
+    Compare(pm_dst, expect);
+}
+
+TEST_F(Pixmap, CopyAlphaOutsideTL)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00aaaaaa, 0x40bbbbbb,
+        0x80cccccc, 0xffdddddd,
+    };
+    argb_t dst[] = {
+        0x00000000, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0x55555555, 0x66666666, 0x77777777,
+        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
+    };
+    const argb_t expect[] = {
+        0xffdddddd, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0x55555555, 0x66666666, 0x77777777,
+        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
+    };
+    // clang-format on
+
+    const struct pixmap pm_src = { 2, 2, src };
+    struct pixmap pm_dst = { 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, -1, -1, false);
+    Compare(pm_dst, expect);
+}
+
+TEST_F(Pixmap, CopyAlphaOutsideBL)
+{
+    // clang-format off
+    argb_t src[] = {
+        0xffaaaaaa, 0x80aaaaaa,
+        0x40aaaaaa, 0x00aaaaaa,
+    };
+    argb_t dst[] = {
+        0x00000000, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0x55555555, 0x66666666, 0x77777777,
+        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
+    };
+    const argb_t expect[] = {
+        0x00000000, 0x11111111, 0x22222222, 0x33333333,
+        0x44444444, 0x55555555, 0x66666666, 0x77777777,
+        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
+        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffaaaaaa,
+    };
+    // clang-format on
+
+    const struct pixmap pm_src = { 2, 2, src };
+    struct pixmap pm_dst = { 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 3, 3, true);
+    Compare(pm_dst, expect);
+}
