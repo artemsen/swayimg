@@ -29,25 +29,21 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
 }
 
 /**
- * Bind pixmap with PNG decode buffer.
- * @param buffer png buffer to reallocate
+ * Bind pixmap with PNG line-reading decoder.
  * @param pm pixmap to bind
- * @return false if decode failed
+ * @return array of pointers to pixmap data
  */
-static bool bind_pixmap(png_bytep** buffer, const struct pixmap* pm)
+static png_bytep* bind_pixmap(const struct pixmap* pm)
 {
-    png_bytep* ptr = realloc(*buffer, pm->height * sizeof(png_bytep));
+    png_bytep* ptr = malloc(pm->height * sizeof(png_bytep));
 
-    if (!ptr) {
-        return false;
+    if (ptr) {
+        for (uint32_t i = 0; i < pm->height; ++i) {
+            ptr[i] = (png_bytep)&pm->data[i * pm->width];
+        }
     }
 
-    *buffer = ptr;
-    for (uint32_t i = 0; i < pm->height; ++i) {
-        ptr[i] = (png_bytep)&pm->data[i * pm->width];
-    }
-
-    return true;
+    return ptr;
 }
 
 /**
@@ -62,22 +58,25 @@ static bool decode_single(struct image* ctx, png_struct* png, png_info* info)
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
     struct pixmap* pm = image_allocate_frame(ctx, width, height);
-    png_bytep* rdrows = NULL;
+    png_bytep* bind;
 
     if (!pm) {
         return false;
     }
-    if (!bind_pixmap(&rdrows, pm)) {
+
+    bind = bind_pixmap(pm);
+    if (!bind) {
         return false;
     }
 
     if (setjmp(png_jmpbuf(png))) {
-        free(rdrows);
+        free(bind);
         return false;
     }
-    png_read_image(png, rdrows);
 
-    free(rdrows);
+    png_read_image(png, bind);
+
+    free(bind);
 
     return true;
 }
@@ -94,25 +93,26 @@ static bool decode_single(struct image* ctx, png_struct* png, png_info* info)
 static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
                          size_t index)
 {
-    bool rc = false;
-    struct image_frame* frame = &ctx->frames[index];
-    png_byte dispose = 0, blend = 0;
-    png_uint_16 delay_num = 0, delay_den = 0;
-    png_uint_32 x = 0, y = 0, width = 0, height = 0;
-    png_bytep* rdrows = NULL;
-    struct pixmap frame_pm = { 0, 0, NULL };
-
-    if (setjmp(png_jmpbuf(png))) {
-        goto done;
-    }
+    png_uint_32 width = 0;
+    png_uint_32 height = 0;
+    png_uint_32 offset_x = 0;
+    png_uint_32 offset_y = 0;
+    png_uint_16 delay_num = 0;
+    png_uint_16 delay_den = 0;
+    png_byte dispose = 0;
+    png_byte blend = 0;
+    png_bytep* bind;
+    struct pixmap frame_png;
+    struct image_frame* frame_img = &ctx->frames[index];
 
     // get frame params
     if (png_get_valid(png, info, PNG_INFO_acTL)) {
         png_read_frame_head(png, info);
     }
     if (png_get_valid(png, info, PNG_INFO_fcTL)) {
-        png_get_next_frame_fcTL(png, info, &width, &height, &x, &y, &delay_num,
-                                &delay_den, &dispose, &blend);
+        png_get_next_frame_fcTL(png, info, &width, &height, &offset_x,
+                                &offset_y, &delay_num, &delay_den, &dispose,
+                                &blend);
     }
 
     // fixup frame params
@@ -128,14 +128,24 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
     if (delay_num == 0) {
         delay_num = 100;
     }
-    frame->duration = (float)delay_num * 1000 / delay_den;
+
+    // allocate frame buffer and bind it to png reader
+    if (!pixmap_create(&frame_png, width, height)) {
+        return false;
+    }
+    bind = bind_pixmap(&frame_png);
+    if (!bind) {
+        pixmap_free(&frame_png);
+        return false;
+    }
 
     // decode frame into pixmap
-    if (!pixmap_create(&frame_pm, width, height) ||
-        !bind_pixmap(&rdrows, &frame_pm)) {
-        goto done;
+    if (setjmp(png_jmpbuf(png))) {
+        pixmap_free(&frame_png);
+        free(bind);
+        return false;
     }
-    png_read_image(png, rdrows);
+    png_read_image(png, bind);
 
     // handle dispose
     if (dispose == PNG_DISPOSE_OP_PREVIOUS) {
@@ -143,25 +153,27 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
             dispose = PNG_DISPOSE_OP_BACKGROUND;
         } else if (index + 1 < ctx->num_frames) {
             struct pixmap* next = &ctx->frames[index + 1].pm;
-            pixmap_copy(&frame->pm, next, 0, 0, false);
+            pixmap_copy(&frame_img->pm, next, 0, 0, false);
         }
     }
 
     // put frame on final pixmap
-    pixmap_copy(&frame_pm, &frame->pm, x, y, blend == PNG_BLEND_OP_OVER);
+    pixmap_copy(&frame_png, &frame_img->pm, offset_x, offset_y,
+                blend == PNG_BLEND_OP_OVER);
 
     // handle dispose
     if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < ctx->num_frames) {
         struct pixmap* next = &ctx->frames[index + 1].pm;
-        pixmap_copy(&frame->pm, next, 0, 0, false);
+        pixmap_copy(&frame_img->pm, next, 0, 0, false);
     }
 
-    rc = true;
+    // calc frame duration in milliseconds
+    frame_img->duration = (float)delay_num * 1000 / delay_den;
 
-done:
-    pixmap_free(&frame_pm);
-    free(rdrows);
-    return rc;
+    pixmap_free(&frame_png);
+    free(bind);
+
+    return true;
 }
 
 /**
