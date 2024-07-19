@@ -44,7 +44,7 @@ static const struct cmdarg arguments[] = {
     { 'g', "size",       "SIZE",  "set window size: [parent]/image/W,H",
                                   GENERAL_CONFIG_SECTION, UI_CFG_SIZE, NULL },
     { 'a', "class",      "NAME",  "set window class/app_id",
-                                  GENERAL_CONFIG_SECTION, UI_CFG_APP_ID, NULL },
+                                  GENERAL_CONFIG_SECTION, APP_CFG_APP_ID, NULL },
     { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value",
                                   NULL, NULL, NULL },
     { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },

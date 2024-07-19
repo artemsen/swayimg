@@ -4,20 +4,25 @@
 
 #include "application.h"
 
+#include "buildcfg.h"
+#include "config.h"
 #include "font.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#include "str.h"
 #include "sway.h"
 #include "text.h"
 #include "ui.h"
 #include "viewer.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/eventfd.h>
+#include <time.h>
 #include <unistd.h>
 
 /** Main loop state */
@@ -48,6 +53,8 @@ struct application {
 
     struct event_entry* events; ///< Event queue
     int event_fd;               ///< Queue change notification
+
+    char* app_id; ///< Application id (app_id name)
 };
 
 static struct application ctx = {
@@ -89,7 +96,7 @@ static void sway_setup(void)
     }
 
     if (!ui_get_fullscreen()) {
-        sway_add_rules(ipc, ui_get_appid(), ui_get_x(), ui_get_y(), absolute);
+        sway_add_rules(ipc, ctx.app_id, ui_get_x(), ui_get_y(), absolute);
     }
 
     sway_disconnect(ipc);
@@ -156,8 +163,25 @@ static void append_event(const struct event* event)
     eventfd_raise();
 }
 
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, APP_CFG_APP_ID) == 0) {
+        str_dup(value, &ctx.app_id);
+        status = cfgst_ok;
+    }
+
+    return status;
+}
+
 void app_create(void)
 {
+    struct timespec ts;
+
     font_create();
     image_list_create();
     info_create();
@@ -167,6 +191,16 @@ void app_create(void)
     ui_create();
     viewer_create();
 
+    // create unique application id
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        char app_id[64];
+        const uint64_t timestamp = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
+        snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, timestamp);
+        str_dup(app_id, &ctx.app_id);
+    } else {
+        str_dup(APP_NAME, &ctx.app_id);
+    }
+
     // event queue notification
     ctx.event_fd = eventfd(0, 0);
     if (ctx.event_fd == -1) {
@@ -174,6 +208,9 @@ void app_create(void)
     } else {
         app_watch(ctx.event_fd, handle_event_queue);
     }
+
+    // register configuration loader
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void app_destroy(void)
@@ -245,7 +282,7 @@ bool app_init(const char** sources, size_t num)
     info_init();
     viewer_init();
 
-    if (!ui_init()) {
+    if (!ui_init(ctx.app_id)) {
         return false;
     }
 

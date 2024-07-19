@@ -7,6 +7,9 @@
 #include "keybind.h"
 #include "pixmap.h"
 
+// Configuration parameters
+#define APP_CFG_APP_ID "app_id"
+
 /** Handler of the fd poll events. */
 typedef void (*fd_callback)(void);
 

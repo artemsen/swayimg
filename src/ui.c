@@ -16,7 +16,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
-#include <time.h>
 #include <unistd.h>
 
 // Max number of output displays
@@ -90,9 +89,6 @@ struct ui {
         int x;
         int y;
     } mouse;
-
-    // app_id name (window class)
-    char* app_id;
 
     // fullscreen mode
     bool fullscreen;
@@ -586,7 +582,7 @@ static void on_wayland_event(void)
     ctx.event_handled = true;
 }
 
-bool ui_init(void)
+bool ui_init(const char* app_id)
 {
     if (ctx.wnd.width < 10 || ctx.wnd.height < 10) {
         // fixup window size
@@ -626,7 +622,7 @@ bool ui_init(void)
     xdg_surface_add_listener(ctx.xdg.surface, &xdg_surface_listener, NULL);
     ctx.xdg.toplevel = xdg_surface_get_toplevel(ctx.xdg.surface);
     xdg_toplevel_add_listener(ctx.xdg.toplevel, &xdg_toplevel_listener, NULL);
-    xdg_toplevel_set_app_id(ctx.xdg.toplevel, ctx.app_id);
+    xdg_toplevel_set_app_id(ctx.xdg.toplevel, app_id);
     if (ctx.fullscreen) {
         xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
     }
@@ -648,10 +644,7 @@ static enum config_status load_config(const char* key, const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
-    if (strcmp(key, UI_CFG_APP_ID) == 0) {
-        str_dup(value, &ctx.app_id);
-        status = cfgst_ok;
-    } else if (strcmp(key, UI_CFG_FULLSCREEN) == 0) {
+    if (strcmp(key, UI_CFG_FULLSCREEN) == 0) {
         if (config_to_bool(value, &ctx.fullscreen)) {
             status = cfgst_ok;
         }
@@ -701,25 +694,12 @@ static enum config_status load_config(const char* key, const char* value)
 
 void ui_create(void)
 {
-    struct timespec ts;
-
-    // create unique application id
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-        char app_id[64];
-        const uint64_t timestamp = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
-        snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, timestamp);
-        str_dup(app_id, &ctx.app_id);
-    } else {
-        str_dup(APP_NAME, &ctx.app_id);
-    }
-
     // register configuration loader
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void ui_destroy(void)
 {
-    free(ctx.app_id);
     if (ctx.repeat.fd != -1) {
         close(ctx.repeat.fd);
     }
@@ -818,11 +798,6 @@ void ui_draw_commit(void)
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
     wl_surface_commit(ctx.wl.surface);
-}
-
-const char* ui_get_appid(void)
-{
-    return ctx.app_id;
 }
 
 void ui_set_title(const char* name)

@@ -9,7 +9,6 @@
 #include <limits.h>
 
 // Configuration parameters
-#define UI_CFG_APP_ID     "app_id"
 #define UI_CFG_FULLSCREEN "fullscreen"
 #define UI_CFG_SIZE       "size"
 #define UI_CFG_POSITION   "position"
@@ -26,9 +25,10 @@ void ui_create(void);
 
 /**
  * Initialize global UI context: create window, register handlers etc.
+ * @param app_id application id, used as window class
  * @return true if window created
  */
-bool ui_init(void);
+bool ui_init(const char* app_id);
 
 /**
  * Destroy global UI context.
@@ -55,12 +55,6 @@ struct pixmap* ui_draw_begin(void);
  * Finish window redraw procedure.
  */
 void ui_draw_commit(void);
-
-/**
- * Get app id (window class name).
- * @return app id
- */
-const char* ui_get_appid(void);
 
 /**
  * Set window title.
