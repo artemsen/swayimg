@@ -4,6 +4,7 @@
 
 #include "viewer.h"
 
+#include "application.h"
 #include "buildcfg.h"
 #include "config.h"
 #include "imagelist.h"
@@ -456,7 +457,7 @@ static void on_animation_timer(void)
 {
     next_frame(true);
     animation_ctl(true);
-    ui_redraw();
+    app_on_redraw();
 }
 
 /**
@@ -465,7 +466,7 @@ static void on_animation_timer(void)
 static void on_slideshow_timer(void)
 {
     slideshow_ctl(next_image(action_next_file));
-    ui_redraw();
+    app_on_redraw();
 }
 
 /**
@@ -477,7 +478,7 @@ static void on_info_block_timeout(void)
     struct itimerspec info_ts = { 0 };
     timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
     ctx.info_timedout = true;
-    ui_redraw();
+    app_on_redraw();
 }
 
 /**
@@ -667,14 +668,14 @@ void viewer_init(void)
     ctx.animation_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.animation_fd != -1) {
-        ui_add_event(ctx.animation_fd, on_animation_timer);
+        app_watch(ctx.animation_fd, on_animation_timer);
     }
 
     // setup slideshow timer
     ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow_fd != -1) {
-        ui_add_event(ctx.slideshow_fd, on_slideshow_timer);
+        app_watch(ctx.slideshow_fd, on_slideshow_timer);
     }
 
     // setup info block timer
@@ -682,7 +683,7 @@ void viewer_init(void)
         ctx.info_timeout_fd =
             timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
         if (ctx.info_timeout_fd != -1) {
-            ui_add_event(ctx.info_timeout_fd, on_info_block_timeout);
+            app_watch(ctx.info_timeout_fd, on_info_block_timeout);
         }
     }
 }
@@ -703,7 +704,10 @@ void viewer_destroy(void)
     }
 }
 
-void viewer_reload(void)
+/**
+ * Reset state: reload image file, set initial scale etc.
+ */
+static void viewer_on_reload(void)
 {
     if (loader_reset()) {
         info_set_status("Image reloaded");
@@ -713,11 +717,19 @@ void viewer_reload(void)
         info_set_status("Unable to reload image");
     }
     reset_state();
-    ui_redraw();
+    app_on_redraw();
 }
 
-void viewer_on_redraw(struct pixmap* window)
+/**
+ * Redraw handler.
+ */
+static void viewer_on_redraw(void)
 {
+    struct pixmap* window = ui_draw_begin();
+    if (!window) {
+        return;
+    }
+
     info_update(ctx.frame, ctx.scale);
     draw_image(window);
 
@@ -739,15 +751,25 @@ void viewer_on_redraw(struct pixmap* window)
 
     // reset one-time rendered notification message
     info_set_status(NULL);
+
+    ui_draw_commit();
 }
 
-void viewer_on_resize(void)
+/**
+ * Window resize handler.
+ */
+static void viewer_on_resize(void)
 {
     fixup_position(false);
     reset_state();
 }
 
-void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
+/**
+ * Key press handler.
+ * @param key code of key pressed
+ * @param mods key modifiers (ctrl/alt/shift)
+ */
+static void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
     bool redraw = false;
     const struct keybind* kb = keybind_get(key, mods);
@@ -757,7 +779,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
         if (name) {
             info_set_status("Key %s is not bound", name);
             free(name);
-            ui_redraw();
+            app_on_redraw();
         }
         return;
     }
@@ -783,7 +805,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_skip_file:
                 if (!skip_image()) {
                     printf("No more images, exit\n");
-                    ui_stop();
+                    app_on_exit(0);
                     return;
                 }
                 reset_state();
@@ -844,7 +866,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                 redraw = true;
                 break;
             case action_reload:
-                viewer_reload();
+                viewer_on_reload();
                 break;
             case action_info:
                 info_set_mode(action->params);
@@ -863,7 +885,7 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
                     switch_help(); // remove help overlay
                     redraw = true;
                 } else {
-                    ui_stop();
+                    app_on_exit(0);
                     return;
                 }
                 break;
@@ -872,11 +894,15 @@ void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
     }
 
     if (redraw) {
-        ui_redraw();
+        app_on_redraw();
     }
 }
 
-void viewer_on_drag(int dx, int dy)
+/**
+ * Image drag handler.
+ * @param dx,dy delta to move viewpoint
+ */
+static void viewer_on_drag(int dx, int dy)
 {
     const ssize_t old_x = ctx.img_x;
     const ssize_t old_y = ctx.img_y;
@@ -886,6 +912,28 @@ void viewer_on_drag(int dx, int dy)
 
     if (ctx.img_x != old_x || ctx.img_y != old_y) {
         fixup_position(false);
-        ui_redraw();
+        app_on_redraw();
+    }
+}
+
+void viewer_handle(const struct event* event)
+{
+    switch (event->type) {
+        case event_reload:
+            viewer_on_reload();
+            break;
+        case event_redraw:
+            viewer_on_redraw();
+            break;
+        case event_resize:
+            viewer_on_resize();
+            break;
+        case event_keypress:
+            viewer_on_keyboard(event->param.keypress.key,
+                               event->param.keypress.mods);
+            break;
+        case event_drag:
+            viewer_on_drag(event->param.drag.dx, event->param.drag.dy);
+            break;
     }
 }

@@ -4,16 +4,14 @@
 
 #include "ui.h"
 
+#include "application.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "keybind.h"
 #include "str.h"
-#include "viewer.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -28,19 +26,6 @@
 #ifndef BTN_LEFT
 #define BTN_LEFT 0x110 // from <linux/input-event-codes.h>
 #endif
-
-/** Loop state */
-enum state {
-    state_ok,
-    state_exit,
-    state_error,
-};
-
-/** Custom event */
-struct custom_event {
-    int fd;
-    fd_event handler;
-};
 
 /** UI context */
 struct ui {
@@ -68,6 +53,7 @@ struct ui {
         struct wl_buffer* buffer0;
         struct wl_buffer* buffer1;
         struct wl_buffer* current;
+        struct pixmap pm;
         ssize_t x;
         ssize_t y;
         size_t width;
@@ -111,12 +97,8 @@ struct ui {
     // fullscreen mode
     bool fullscreen;
 
-    // custom events
-    struct custom_event* events;
-    size_t num_events;
-
-    // global state
-    enum state state;
+    // flag to cancel event queue
+    bool event_handled;
 };
 
 static struct ui ctx = {
@@ -126,7 +108,6 @@ static struct ui ctx = {
     .wnd.width = SIZE_FROM_PARENT,
     .wnd.height = SIZE_FROM_PARENT,
     .repeat.fd = -1,
-    .state = state_ok,
 };
 
 /**
@@ -223,8 +204,12 @@ static bool recreate_buffers(void)
         return false;
     }
 
+    ctx.wnd.pm.width = ctx.wnd.width;
+    ctx.wnd.pm.height = ctx.wnd.height;
+
     ctx.wnd.current = ctx.wnd.buffer0;
-    viewer_on_resize();
+
+    app_on_resize();
 
     return true;
 }
@@ -296,7 +281,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
         key += 8;
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);
         if (keysym != XKB_KEY_NoSymbol) {
-            viewer_on_keyboard(keysym, keybind_mods(ctx.xkb.state));
+            app_on_keyboard(keysym, keybind_mods(ctx.xkb.state));
             // handle key repeat
             if (ctx.repeat.rate &&
                 xkb_keymap_key_repeats(ctx.xkb.keymap, key)) {
@@ -332,7 +317,7 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
         const int dx = x - ctx.mouse.x;
         const int dy = y - ctx.mouse.y;
         if (dx || dy) {
-            viewer_on_drag(dx, dy);
+            app_on_drag(dx, dy);
         }
     }
 
@@ -353,12 +338,14 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
                             uint32_t time, uint32_t axis, wl_fixed_t value)
 {
     xkb_keysym_t key;
+
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
         key = value > 0 ? VKEY_SCROLL_RIGHT : VKEY_SCROLL_LEFT;
     } else {
         key = value > 0 ? VKEY_SCROLL_DOWN : VKEY_SCROLL_UP;
     }
-    viewer_on_keyboard(key, keybind_mods(ctx.xkb.state));
+
+    app_on_keyboard(key, keybind_mods(ctx.xkb.state));
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -415,7 +402,7 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
     xdg_surface_ack_configure(surface, serial);
 
     if (ctx.xdg.initialized) {
-        ui_redraw();
+        app_on_redraw();
     } else {
         wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
         wl_surface_commit(ctx.wl.surface);
@@ -454,13 +441,13 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     }
 
     if (reset_buffers && !recreate_buffers()) {
-        ctx.state = state_error;
+        app_on_exit(1);
     }
 }
 
 static void handle_xdg_toplevel_close(void* data, struct xdg_toplevel* top)
 {
-    ctx.state = state_exit;
+    app_on_exit(0);
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -525,9 +512,9 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
         if (recreate_buffers()) {
-            ui_redraw();
+            app_on_redraw();
         } else {
-            ctx.state = state_error;
+            app_on_exit(1);
         }
     }
 }
@@ -581,7 +568,25 @@ static const struct wl_registry_listener registry_listener = {
 
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
-static bool create_window(void)
+// Key repeat handler
+static void on_key_repeat(void)
+{
+    uint64_t repeats;
+    const ssize_t sz = sizeof(repeats);
+    if (read(ctx.repeat.fd, &repeats, sz) == sz) {
+        app_on_keyboard(ctx.repeat.key, keybind_mods(ctx.xkb.state));
+    }
+}
+
+// Wayland event handler
+static void on_wayland_event(void)
+{
+    wl_display_read_events(ctx.wl.display);
+    wl_display_dispatch_pending(ctx.wl.display);
+    ctx.event_handled = true;
+}
+
+bool ui_init(void)
 {
     if (ctx.wnd.width < 10 || ctx.wnd.height < 10) {
         // fixup window size
@@ -628,7 +633,10 @@ static bool create_window(void)
 
     wl_surface_commit(ctx.wl.surface);
 
+    app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event);
+
     ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+    app_watch(ctx.repeat.fd, on_key_repeat);
 
     return true;
 }
@@ -768,88 +776,28 @@ void ui_destroy(void)
     }
 }
 
-bool ui_run(void)
+void ui_event_prepare(void)
 {
-    const size_t num_fds = ctx.num_events + 2; // wayland + key repeat
-    const size_t idx_wayland = num_fds - 1;
-    const size_t idx_krepeat = num_fds - 2;
-    struct pollfd* fds;
+    ctx.event_handled = false;
 
-    if (!create_window()) {
-        return false;
+    while (wl_display_prepare_read(ctx.wl.display) != 0) {
+        wl_display_dispatch_pending(ctx.wl.display);
     }
 
-    // file descriptors to poll
-    fds = calloc(1, num_fds * sizeof(struct pollfd));
-    if (!fds) {
-        fprintf(stderr, "Not enough memory\n");
-        return false;
-    }
-    for (size_t i = 0; i < ctx.num_events; ++i) {
-        fds[i].fd = ctx.events[i].fd;
-        fds[i].events = POLLIN;
-    }
-    fds[idx_wayland].fd = wl_display_get_fd(ctx.wl.display);
-    fds[idx_wayland].events = POLLIN;
-    fds[idx_krepeat].fd = ctx.repeat.fd;
-    fds[idx_krepeat].events = POLLIN;
-
-    // main event loop
-    while (ctx.state == state_ok) {
-        // prepare to read wayland events
-        while (wl_display_prepare_read(ctx.wl.display) != 0) {
-            wl_display_dispatch_pending(ctx.wl.display);
-        }
-        wl_display_flush(ctx.wl.display);
-
-        // poll events
-        if (poll(fds, num_fds, -1) <= 0) {
-            wl_display_cancel_read(ctx.wl.display);
-            continue;
-        }
-
-        // read and handle wayland events
-        if (fds[idx_wayland].revents & POLLIN) {
-            wl_display_read_events(ctx.wl.display);
-            wl_display_dispatch_pending(ctx.wl.display);
-        } else {
-            wl_display_cancel_read(ctx.wl.display);
-        }
-
-        // read and handle key repeat events from timer
-        if (fds[idx_krepeat].revents & POLLIN) {
-            uint64_t repeats;
-            const ssize_t sz = sizeof(repeats);
-            if (read(ctx.repeat.fd, &repeats, sz) == sz) {
-                const uint8_t mods = keybind_mods(ctx.xkb.state);
-                viewer_on_keyboard(ctx.repeat.key, mods);
-            }
-        }
-
-        // read custom events
-        for (size_t i = 0; i < ctx.num_events; ++i) {
-            if (fds[i].revents & POLLIN) {
-                ctx.events[i].handler();
-            }
-        }
-    }
-
-    free(fds);
-
-    return ctx.state != state_error;
+    wl_display_flush(ctx.wl.display);
 }
 
-void ui_stop(void)
+void ui_event_done(void)
 {
-    ctx.state = state_exit;
+    if (!ctx.event_handled) {
+        wl_display_cancel_read(ctx.wl.display);
+    }
 }
 
-void ui_redraw(void)
+struct pixmap* ui_draw_begin(void)
 {
-    struct pixmap wnd;
-
     if (!ctx.wnd.current) {
-        return; // not yet initialized
+        return NULL; // not yet initialized
     }
 
     // switch buffers
@@ -859,13 +807,13 @@ void ui_redraw(void)
         ctx.wnd.current = ctx.wnd.buffer0;
     }
 
-    // draw to window buffer
-    wnd.width = ctx.wnd.width;
-    wnd.height = ctx.wnd.height;
-    wnd.data = wl_buffer_get_user_data(ctx.wnd.current);
-    viewer_on_redraw(&wnd);
+    ctx.wnd.pm.data = wl_buffer_get_user_data(ctx.wnd.current);
 
-    // show window buffer
+    return &ctx.wnd.pm;
+}
+
+void ui_draw_commit(void)
+{
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
@@ -943,16 +891,4 @@ void ui_toggle_fullscreen(void)
 bool ui_get_fullscreen(void)
 {
     return ctx.fullscreen;
-}
-
-void ui_add_event(int fd, fd_event handler)
-{
-    const size_t new_sz = (ctx.num_events + 1) * sizeof(struct custom_event);
-    struct custom_event* events = realloc(ctx.events, new_sz);
-    if (events) {
-        ctx.events = events;
-        ctx.events[ctx.num_events].fd = fd;
-        ctx.events[ctx.num_events].handler = handler;
-        ++ctx.num_events;
-    }
 }

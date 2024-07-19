@@ -16,9 +16,6 @@
 #include <sys/stat.h>
 #include <time.h>
 
-// Alternate file name for stdin
-#define ALT_STDIN_FILE_NAME "-"
-
 /** Context of the image list (which is actually an array). */
 struct image_list {
     char** sources;        ///< Array of entries
@@ -301,40 +298,39 @@ void image_list_destroy(void)
 
 size_t image_list_init(const char** sources, size_t num)
 {
-    if (num == 0) {
-        // no input files specified, use all from the current directory
-        add_dir(".", ctx.recursive);
-    } else if (num == 1 && strcmp(sources[0], ALT_STDIN_FILE_NAME) == 0) {
-        // pipe mode
-        add_file(LDRSRC_STDIN);
-    } else {
-        for (size_t i = 0; i < num; ++i) {
-            struct stat file_stat;
-            if (strncmp(sources[i], LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-                add_entry(sources[i]);
-            } else if (stat(sources[i], &file_stat) == 0) {
-                if (S_ISDIR(file_stat.st_mode)) {
-                    add_dir(sources[i], ctx.recursive);
-                } else {
-                    if (!ctx.all_files) {
-                        add_file(sources[i]);
-                    } else {
-                        // add all files from the same directory
-                        const char* delim = strrchr(sources[i], '/');
-                        const size_t len = delim ? delim - sources[i] : 0;
-                        if (len == 0) {
-                            add_dir(".", ctx.recursive);
-                        } else {
-                            char* dir = malloc(len + 1);
-                            if (dir) {
-                                memcpy(dir, sources[i], len);
-                                dir[len] = 0;
-                                add_dir(dir, ctx.recursive);
-                                free(dir);
-                            }
-                        }
-                    }
-                }
+    struct stat file_stat;
+
+    for (size_t i = 0; i < num; ++i) {
+        // special files
+        if (strncmp(sources[i], LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
+            strncmp(sources[i], LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+            add_entry(sources[i]);
+            continue;
+        }
+        // file system files
+        if (stat(sources[i], &file_stat) != 0) {
+            continue;
+        }
+        if (S_ISDIR(file_stat.st_mode)) {
+            add_dir(sources[i], ctx.recursive);
+            continue;
+        }
+        if (!ctx.all_files) {
+            add_file(sources[i]);
+            continue;
+        }
+        // add all files from the same directory
+        const char* delim = strrchr(sources[i], '/');
+        const size_t len = delim ? delim - sources[i] : 0;
+        if (len == 0) {
+            add_dir(".", ctx.recursive);
+        } else {
+            char* dir = malloc(len + 1);
+            if (dir) {
+                memcpy(dir, sources[i], len);
+                dir[len] = 0;
+                add_dir(dir, ctx.recursive);
+                free(dir);
             }
         }
     }
@@ -365,11 +361,6 @@ size_t image_list_find(const char* source)
     if (source[0] == '.' && source[1] == '/') {
         source += 2;
     }
-    // handle alternate name for stdio
-    if (strcmp(source, ALT_STDIN_FILE_NAME) == 0) {
-        source = LDRSRC_STDIN;
-    }
-
     for (size_t i = 0; i < ctx.size; ++i) {
         if (ctx.sources[i] && strcmp(ctx.sources[i], source) == 0) {
             return i;

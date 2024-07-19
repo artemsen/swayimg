@@ -7,7 +7,8 @@
 #include "image.h"
 
 // File name used for image, that is read from stdin through pipe
-#define LDRSRC_STDIN "stdin://"
+#define LDRSRC_STDIN     "stdin://"
+#define LDRSRC_STDIN_LEN (sizeof(LDRSRC_STDIN) - 1)
 
 // Special prefix used to load images from external command output
 #define LDRSRC_EXEC     "exec://"

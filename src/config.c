@@ -163,7 +163,7 @@ static bool load_config(const char* path)
     return true;
 }
 
-void config_init(void)
+void config_load(void)
 {
     // find and load first available config file
     for (size_t i = 0;

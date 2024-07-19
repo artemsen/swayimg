@@ -2,15 +2,11 @@
 // Program entry point.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "application.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "font.h"
 #include "imagelist.h"
-#include "info.h"
-#include "keybind.h"
 #include "loader.h"
-#include "sway.h"
-#include "text.h"
 #include "ui.h"
 #include "viewer.h"
 
@@ -153,118 +149,32 @@ static int parse_cmdargs(int argc, char* argv[])
 }
 
 /**
- * Setup window position via Sway IPC.
- */
-static void sway_setup(void)
-{
-    struct rect parent;
-    bool fullscreen;
-    bool absolute;
-    int ipc;
-
-    ipc = sway_connect();
-    if (ipc == INVALID_SWAY_IPC) {
-        return;
-    }
-
-    absolute = ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
-
-    if (sway_current(ipc, &parent, &fullscreen)) {
-        if (fullscreen && !ui_get_fullscreen()) {
-            // force set full screen mode if current window in it
-            ui_toggle_fullscreen();
-        }
-
-        // set window position and size from the parent one
-        if (!absolute) {
-            ui_set_position(parent.x, parent.y);
-        }
-        if (ui_get_width() == SIZE_FROM_PARENT ||
-            ui_get_height() == SIZE_FROM_PARENT) {
-            ui_set_size(parent.width, parent.height);
-        }
-    }
-
-    if (!ui_get_fullscreen()) {
-        sway_add_rules(ipc, ui_get_appid(), ui_get_x(), ui_get_y(), absolute);
-    }
-
-    sway_disconnect(ipc);
-}
-
-/**
  * Application entry point.
  */
 int main(int argc, char* argv[])
 {
     bool rc = false;
     int argn;
-    size_t start_idx = IMGLIST_INVALID;
 
     setlocale(LC_ALL, "");
 
-    font_create();
-    image_list_create();
-    info_create();
-    keybind_create();
-    loader_create();
-    text_create();
-    ui_create();
-    viewer_create();
+    app_create();
 
-    config_init();
+    config_load();
 
-    // parse command arguments
     argn = parse_cmdargs(argc, argv);
+
+    config_destroy();
+
     if (argn <= 0) {
+        // args error or requested version/help
         rc = (argn == 0);
-        goto done;
+    } else {
+        // initialize and run main event loop handler
+        rc = app_init((const char**)&argv[argn], argc - argn) && app_run();
     }
 
-    font_init();
-    info_init();
-    viewer_init();
-
-    config_destroy(); // configuration is applied and can be freed
-
-    // compose image list
-    if (image_list_init((const char**)&argv[argn], argc - argn) == 0) {
-        fprintf(stderr, "No images to view, exit\n");
-        goto done;
-    }
-
-    // load first image
-    if (argc > argn) {
-        start_idx = image_list_find(argv[argn]);
-    }
-    if (!loader_init(start_idx, argc == argn + 1 /* one only arg */)) {
-        goto done;
-    }
-
-    // setup window position and size
-    if (!ui_get_fullscreen()) {
-        sway_setup();
-    }
-    // fixup window size form the first image
-    if (ui_get_width() == SIZE_FROM_IMAGE ||
-        ui_get_height() == SIZE_FROM_IMAGE ||
-        ui_get_width() == SIZE_FROM_PARENT ||
-        ui_get_height() == SIZE_FROM_PARENT) {
-        const struct pixmap* pm = &loader_current_image()->frames[0].pm;
-        ui_set_size(pm->width, pm->height);
-    }
-
-    // run ui event loop
-    rc = ui_run();
-
-done:
-    viewer_destroy();
-    loader_destroy();
-    ui_destroy();
-    image_list_destroy();
-    info_destroy();
-    font_destroy();
-    keybind_destroy();
+    app_destroy();
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }

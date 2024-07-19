@@ -27,7 +27,7 @@ typedef enum config_status (*config_loader)(const char* key, const char* value);
 /**
  * Load configuration from file.
  */
-void config_init(void);
+void config_load(void);
 
 /**
  * Destroy global configuration instance.

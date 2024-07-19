@@ -20,9 +20,15 @@
 #define POS_FROM_PARENT  SSIZE_MAX
 
 /**
- * Create User Interface context.
+ * Create global UI context.
  */
 void ui_create(void);
+
+/**
+ * Initialize global UI context: create window, register handlers etc.
+ * @return true if window created
+ */
+bool ui_init(void);
 
 /**
  * Destroy global UI context.
@@ -30,20 +36,25 @@ void ui_create(void);
 void ui_destroy(void);
 
 /**
- * Run event handler loop.
- * @return true if window was closed by user (not an error)
+ * Prepare the window system to read events.
  */
-bool ui_run(void);
+void ui_event_prepare(void);
 
 /**
- * Stop event handler loop.
+ * Event handler complete notification.
  */
-void ui_stop(void);
+void ui_event_done(void);
 
 /**
- * Redraw window.
+ * Begin window redraw procedure.
+ * @return window pixmap
  */
-void ui_redraw(void);
+struct pixmap* ui_draw_begin(void);
+
+/**
+ * Finish window redraw procedure.
+ */
+void ui_draw_commit(void);
 
 /**
  * Get app id (window class name).
@@ -109,13 +120,3 @@ void ui_toggle_fullscreen(void);
  * @return current mode
  */
 bool ui_get_fullscreen(void);
-
-/** Custom event handler. */
-typedef void (*fd_event)(void);
-
-/**
- * Add custom event handler.
- * @param fd file descriptor for polling
- * @param handler callback
- */
-void ui_add_event(int fd, fd_event handler);

@@ -4,6 +4,7 @@
 
 #include "loader.h"
 
+#include "application.h"
 #include "buildcfg.h"
 #include "cache.h"
 #include "config.h"
@@ -331,7 +332,7 @@ static void on_notify(void)
             pos += sizeof(struct inotify_event) + event->len;
         }
         if (updated) {
-            viewer_reload();
+            app_on_reload();
         }
     }
 }
@@ -611,7 +612,7 @@ bool loader_init(size_t start, bool force)
 #ifdef HAVE_INOTIFY
     ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
     if (ctx.notify >= 0) {
-        ui_add_event(ctx.notify, on_notify);
+        app_watch(ctx.notify, on_notify);
     }
 #endif
 

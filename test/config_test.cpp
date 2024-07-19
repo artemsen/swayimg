@@ -27,7 +27,7 @@ TEST(Config, Load)
     setenv("XDG_CONFIG_HOME", TEST_DATA_DIR, 1);
 
     config_add_loader("test_section", on_load);
-    config_init();
+    config_load();
 
     EXPECT_EQ(config.size(), 3);
 
