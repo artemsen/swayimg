@@ -16,6 +16,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 
 /** Main loop state */
@@ -25,21 +26,32 @@ enum loop_state {
     loop_error,
 };
 
-/** File descriptor for polling and its handler. */
+/** File descriptor and its handler. */
 struct watchfd {
     int fd;
     fd_callback callback;
 };
 
+/* Application event queue (list). */
+struct event_entry {
+    struct event event;
+    struct event_entry* next;
+};
+
 /** Application context */
 struct application {
     enum loop_state state; ///< Main loop state
-    struct watchfd* wfds;  ///< File descriptors for polling
-    size_t wfds_num;
+
+    struct watchfd* wfds; ///< FD polling descriptors
+    size_t wfds_num;      ///< Number of polling FD
+
+    struct event_entry* events; ///< Event queue
+    int event_fd;               ///< Queue change notification
 };
 
 static struct application ctx = {
     .state = loop_run,
+    .event_fd = -1,
 };
 
 /**
@@ -82,6 +94,49 @@ static void sway_setup(void)
     sway_disconnect(ipc);
 }
 
+static void handle_event_queue(void)
+{
+    // drain the notify pipe
+    uint64_t value;
+    read(ctx.event_fd, &value, sizeof(value));
+
+    // handle events from queue
+    while (ctx.events) {
+        struct event_entry* entry = ctx.events;
+        ctx.events = ctx.events->next;
+        viewer_handle(&entry->event);
+        free(entry);
+    }
+}
+
+static void append_event(const struct event* event)
+{
+    struct event_entry* entry;
+
+    // create new entry
+    entry = malloc(sizeof(*entry));
+    if (!entry) {
+        return;
+    }
+    memcpy(&entry->event, event, sizeof(entry->event));
+    entry->next = NULL;
+
+    // add to queue tail
+    if (ctx.events) {
+        struct event_entry* last = ctx.events;
+        while (last->next) {
+            last = last->next;
+        }
+        last->next = entry;
+    } else {
+        ctx.events = entry;
+    }
+
+    // raise notify fd
+    const uint64_t value = 1;
+    write(ctx.event_fd, &value, sizeof(value));
+}
+
 void app_create(void)
 {
     font_create();
@@ -92,6 +147,14 @@ void app_create(void)
     text_create();
     ui_create();
     viewer_create();
+
+    // event queue notification
+    ctx.event_fd = eventfd(0, 0);
+    if (ctx.event_fd == -1) {
+        perror("Unable to create eventfd");
+    } else {
+        app_watch(ctx.event_fd, handle_event_queue);
+    }
 }
 
 void app_destroy(void)
@@ -108,6 +171,15 @@ void app_destroy(void)
         close(ctx.wfds[i].fd);
     }
     free(ctx.wfds);
+
+    while (ctx.events) {
+        struct event_entry* entry = ctx.events;
+        ctx.events = ctx.events->next;
+        free(entry);
+    }
+    if (ctx.event_fd != -1) {
+        close(ctx.event_fd);
+    }
 }
 
 bool app_init(const char** sources, size_t num)
@@ -219,7 +291,7 @@ void app_on_reload(void)
     const struct event event = {
         .type = event_reload,
     };
-    viewer_handle(&event);
+    append_event(&event);
 }
 
 void app_on_redraw(void)
@@ -227,7 +299,25 @@ void app_on_redraw(void)
     const struct event event = {
         .type = event_redraw,
     };
-    viewer_handle(&event);
+    struct event_entry* prev = NULL;
+    struct event_entry* it = ctx.events;
+
+    // remove the same event to append the new one to tail
+    while (it) {
+        struct event_entry* next = it->next;
+        if (it->event.type == event_redraw) {
+            if (prev) {
+                prev->next = next;
+            } else {
+                ctx.events = next;
+            }
+            free(it);
+            break;
+        }
+        it = next;
+    }
+
+    append_event(&event);
 }
 
 void app_on_resize(void)
@@ -235,7 +325,7 @@ void app_on_resize(void)
     const struct event event = {
         .type = event_resize,
     };
-    viewer_handle(&event);
+    append_event(&event);
 }
 
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
@@ -245,7 +335,7 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
         .param.keypress.key = key,
         .param.keypress.mods = mods,
     };
-    viewer_handle(&event);
+    append_event(&event);
 }
 
 void app_on_drag(int dx, int dy)
@@ -253,7 +343,19 @@ void app_on_drag(int dx, int dy)
     const struct event event = { .type = event_drag,
                                  .param.drag.dx = dx,
                                  .param.drag.dy = dy };
-    viewer_handle(&event);
+    struct event_entry* it = ctx.events;
+
+    // merge with existing event
+    while (it) {
+        if (it->event.type == event_drag) {
+            it->event.param.drag.dx += dx;
+            it->event.param.drag.dy += dy;
+            return;
+        }
+        it = it->next;
+    }
+
+    append_event(&event);
 }
 
 void app_on_exit(int rc)
