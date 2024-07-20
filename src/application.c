@@ -16,12 +16,10 @@
 #include "ui.h"
 #include "viewer.h"
 
-#include <errno.h>
 #include <inttypes.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/eventfd.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -58,7 +56,7 @@ struct application {
 };
 
 static struct application ctx = {
-    .state = loop_run,
+    .state = loop_stop,
     .event_fd = -1,
 };
 
@@ -102,32 +100,10 @@ static void sway_setup(void)
     sway_disconnect(ipc);
 }
 
-/** Raise eventfd notification. */
-static void eventfd_raise(void)
-{
-    const uint64_t value = 1;
-    ssize_t len;
-
-    do {
-        len = write(ctx.event_fd, &value, sizeof(value));
-    } while (len == -1 && errno == EINTR);
-}
-
-/** Drain the notify file. */
-static void eventfd_clear(void)
-{
-    uint64_t value;
-    ssize_t len;
-
-    do {
-        len = read(ctx.event_fd, &value, sizeof(value));
-    } while (len == -1 && errno == EINTR);
-}
-
-/** eventfd callback: handle event queue. */
+/** Notification callback: handle event queue. */
 static void handle_event_queue(void)
 {
-    eventfd_clear();
+    notification_reset(ctx.event_fd);
 
     while (ctx.events) {
         struct event_entry* entry = ctx.events;
@@ -160,7 +136,7 @@ static void append_event(const struct event* event)
         ctx.events = entry;
     }
 
-    eventfd_raise();
+    notification_raise(ctx.event_fd);
 }
 
 /**
@@ -228,7 +204,7 @@ void app_destroy(void)
         free(entry);
     }
     if (ctx.event_fd != -1) {
-        close(ctx.event_fd);
+        notification_free(ctx.event_fd);
     }
 }
 
@@ -281,7 +257,7 @@ bool app_init(const char** sources, size_t num)
     }
 
     // event queue notification
-    ctx.event_fd = eventfd(0, 0);
+    ctx.event_fd = notification_create();
     if (ctx.event_fd != -1) {
         app_watch(ctx.event_fd, handle_event_queue);
     } else {

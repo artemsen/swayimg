@@ -155,6 +155,7 @@ sources = [
   'src/application.c',
   'src/cache.c',
   'src/config.c',
+  'src/event.c',
   'src/font.c',
   'src/image.c',
   'src/imagelist.c',

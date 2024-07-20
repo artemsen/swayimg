@@ -44,3 +44,27 @@ struct event {
  * @param event event to handle
  */
 typedef void (*event_handler)(const struct event* event);
+
+/**
+ * Create notification (eventfd descriptor).
+ * @return file descriptor or -1 on errors
+ */
+int notification_create(void);
+
+/**
+ * Free notification instance.
+ * @param fd file descriptor for the notification
+ */
+void notification_free(int fd);
+
+/**
+ * Send notification through file descriptor.
+ * @param fd file descriptor for the notification
+ */
+void notification_raise(int fd);
+
+/**
+ * Reset notification after raising.
+ * @param fd file descriptor for the notification
+ */
+void notification_reset(int fd);
