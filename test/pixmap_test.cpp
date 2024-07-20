@@ -398,3 +398,76 @@ TEST_F(Pixmap, CopyAlphaOutsideBL)
     pixmap_copy(&pm_src, &pm_dst, 3, 3, true);
     Compare(pm_dst, expect);
 }
+
+TEST_F(Pixmap, Rect)
+{
+    const argb_t clr = 0xff345678;
+
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    const argb_t expect[] = {
+        clr,  clr,  clr,  clr,
+        clr,  0x11, 0x12, clr,
+        clr,  0x21, 0x22, clr,
+        clr,  clr,  clr,  clr,
+    };
+    // clang-format on
+
+    struct pixmap pm = { 4, 4, src };
+
+    pixmap_rect(&pm, 0, 0, 4, 4, clr);
+    Compare(pm, expect);
+}
+
+TEST_F(Pixmap, RectOutsideTL)
+{
+    const argb_t clr = 0xff345678;
+
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    const argb_t expect[] = {
+        0x00, clr,  0x02, 0x03,
+        clr,  clr,  0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    struct pixmap pm = { 4, 4, src };
+    pixmap_rect(&pm, -2, -2, 4, 4, clr);
+    Compare(pm, expect);
+}
+
+TEST_F(Pixmap, RectOutsideBR)
+{
+    const argb_t clr = 0xff345678;
+
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    const argb_t expect[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, clr,  clr,
+        0x30, 0x31, clr,  0x33,
+    };
+    // clang-format on
+
+    struct pixmap pm = { 4, 4, src };
+    pixmap_rect(&pm, 2, 2, 4, 4, clr);
+    Compare(pm, expect);
+}

@@ -94,6 +94,39 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     }
 }
 
+void pixmap_rect(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                 size_t height, argb_t color)
+{
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)pm->width - 1, x + (ssize_t)width - 1);
+    const ssize_t bottom =
+        min((ssize_t)pm->height - 1, y + (ssize_t)height - 1);
+
+    if (y >= 0 && y < (ssize_t)pm->height) {
+        const size_t line_offset = y * pm->width;
+        for (ssize_t i = left; i <= right; ++i) {
+            alpha_blend(color, &pm->data[line_offset + i]);
+        }
+    }
+    if (y + height >= 0 && y + (ssize_t)height <= (ssize_t)pm->height) {
+        const size_t line_offset = (y + height - 1) * pm->width;
+        for (ssize_t i = left; i <= right; ++i) {
+            alpha_blend(color, &pm->data[line_offset + i]);
+        }
+    }
+    if (x >= 0 && x < (ssize_t)pm->width) {
+        for (ssize_t i = top; i <= bottom; ++i) {
+            alpha_blend(color, &pm->data[i * pm->width + x]);
+        }
+    }
+    if (x + width >= 0 && x + (ssize_t)width <= (ssize_t)pm->width) {
+        for (ssize_t i = top; i <= bottom; ++i) {
+            alpha_blend(color, &pm->data[i * pm->width + x + width - 1]);
+        }
+    }
+}
+
 void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                  size_t height, size_t tail_sz, argb_t color1, argb_t color2)
 {

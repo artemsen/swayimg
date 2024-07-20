@@ -93,6 +93,16 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                          size_t height, argb_t color);
 
 /**
+ * Draw rectangle with 1px lines.
+ * @param pm pixmap context
+ * @param x,y start coordinates, left top point
+ * @param width,height rectangle size
+ * @param color color to use
+ */
+void pixmap_rect(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                 size_t height, argb_t color);
+
+/**
  * Fill pixmap with grid.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
