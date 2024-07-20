@@ -176,7 +176,6 @@ enum preloader_op {
 /** Image preloader executed in background thread. */
 static void* preloader_thread(__attribute__((unused)) void* data)
 {
-    // size_t index = ctx.cur_idx;
     size_t index = image_list_next_file(ctx.cur_idx);
     const char* source;
     struct image* img;

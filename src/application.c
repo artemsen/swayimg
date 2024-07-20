@@ -173,6 +173,8 @@ static enum config_status load_config(const char* key, const char* value)
     if (strcmp(key, APP_CFG_APP_ID) == 0) {
         str_dup(value, &ctx.app_id);
         status = cfgst_ok;
+    } else {
+        status = cfgst_invalid_key;
     }
 
     return status;
@@ -199,14 +201,6 @@ void app_create(void)
         str_dup(app_id, &ctx.app_id);
     } else {
         str_dup(APP_NAME, &ctx.app_id);
-    }
-
-    // event queue notification
-    ctx.event_fd = eventfd(0, 0);
-    if (ctx.event_fd == -1) {
-        perror("Unable to create eventfd");
-    } else {
-        app_watch(ctx.event_fd, handle_event_queue);
     }
 
     // register configuration loader
@@ -286,6 +280,15 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
+    // event queue notification
+    ctx.event_fd = eventfd(0, 0);
+    if (ctx.event_fd != -1) {
+        app_watch(ctx.event_fd, handle_event_queue);
+    } else {
+        perror("Unable to create eventfd");
+        return false;
+    }
+
     return true;
 }
 
@@ -317,6 +320,7 @@ bool app_run(void)
     }
 
     // main event loop
+    ctx.state = loop_run;
     while (ctx.state == loop_run) {
         ui_event_prepare();
 
