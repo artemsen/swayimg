@@ -93,6 +93,26 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                          size_t height, argb_t color);
 
 /**
+ * Draw horizontal line.
+ * @param pm pixmap context
+ * @param x,y start coordinates, left top point
+ * @param width line size
+ * @param color color to use
+ */
+void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                  argb_t color);
+
+/**
+ * Draw vertical line.
+ * @param pm pixmap context
+ * @param x,y start coordinates, left top point
+ * @param height line size
+ * @param color color to use
+ */
+void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
+                  argb_t color);
+
+/**
  * Draw rectangle with 1px lines.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
