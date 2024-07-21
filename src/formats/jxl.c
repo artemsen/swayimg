@@ -5,7 +5,7 @@
 #include "../loader.h"
 
 #include <jxl/decode.h>
-#include <string.h>
+#include <stdlib.h>
 
 // JPEG XL loader implementation
 enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
@@ -15,7 +15,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     JxlBasicInfo info;
     JxlDecoderStatus status;
     size_t buffer_sz;
-    struct pixmap* pm = NULL;
+    size_t frame_num = 0;
 
     const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
                                         .data_type = JXL_TYPE_UINT8,
@@ -42,8 +42,8 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     }
 
     // process decoding
-    status =
-        JxlDecoderSubscribeEvents(jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE);
+    status = JxlDecoderSubscribeEvents(
+        jxl, JXL_DEC_BASIC_INFO | JXL_DEC_FRAME | JXL_DEC_FULL_IMAGE);
     if (status != JXL_DEC_SUCCESS) {
         goto fail;
     }
@@ -62,23 +62,53 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 }
                 break;
             case JXL_DEC_FULL_IMAGE:
-                break; // frame decoded, nothing to do
+                // convert ABGR -> ARGB
+                for (size_t i = 0; i < ctx->frames[frame_num].pm.width *
+                         ctx->frames[frame_num].pm.height;
+                     ++i) {
+                    ctx->frames[frame_num].pm.data[i] =
+                        ABGR_TO_ARGB(ctx->frames[frame_num].pm.data[i]);
+                }
+                frame_num = ctx->num_frames;
+                break;
+            case JXL_DEC_FRAME:
+                ctx->frames = realloc(
+                    ctx->frames, sizeof(*ctx->frames) * (ctx->num_frames + 1));
+                if (!ctx->frames) {
+                    goto fail;
+                }
+                if (!pixmap_create(&ctx->frames[frame_num].pm, info.xsize,
+                                   info.ysize)) {
+                    goto fail;
+                }
+                ctx->num_frames += 1;
+
+                if (info.have_animation) {
+                    JxlFrameHeader header;
+                    rc = JxlDecoderGetFrameHeader(jxl, &header);
+                    if (rc != JXL_DEC_SUCCESS) {
+                        goto fail;
+                    }
+                    ctx->frames[frame_num].duration = header.duration *
+                        1000.0f * info.animation.tps_denominator /
+                        info.animation.tps_numerator;
+                }
+                break;
             case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
                 // get image buffer size
                 rc = JxlDecoderImageOutBufferSize(jxl, &jxl_format, &buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     goto fail;
                 }
-                pm = image_allocate_frame(ctx, info.xsize, info.ysize);
-                if (!pm) {
-                    goto fail;
-                }
                 // check buffer format
-                if (buffer_sz != pm->width * pm->height * sizeof(argb_t)) {
+                if (buffer_sz !=
+                    ctx->frames[frame_num].pm.width *
+                        ctx->frames[frame_num].pm.height * sizeof(argb_t)) {
                     goto fail;
                 }
                 // set output buffer
-                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format, pm->data,
+                rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format,
+                                                 ctx->frames[frame_num].pm.data,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     goto fail;
@@ -89,13 +119,8 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
         }
     } while (status != JXL_DEC_SUCCESS);
 
-    if (!pm) {
+    if (!ctx->frames) {
         goto fail;
-    }
-
-    // convert ABGR -> ARGB
-    for (size_t i = 0; i < pm->width * pm->height; ++i) {
-        pm->data[i] = ABGR_TO_ARGB(pm->data[i]);
     }
 
     image_set_format(ctx, "JPEG XL %ubpp",
