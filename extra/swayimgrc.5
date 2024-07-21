@@ -93,6 +93,9 @@ Run slideshow at startup, \fIno\fR by default.
 .IP "\fBslideshow_time\fR = \fISECONDS\fR"
 Set slideshow image duration in seconds, default is \fI3\fR.
 .\" ----------------------------------------------------------------------------
+.IP "\fBgallery\fR = \fI[yes|no]\fR"
+Start in gallery mode, \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
 .IP "\fBapp_id\fR = \fINAME\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
 .\" ****************************************************************************
@@ -206,6 +209,7 @@ Valid actions:
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
 .IP "\fBfullscreen\fR: switch full screen mode;"
+.IP "\fBmode\fR: switch between viewer and gallery;"
 .IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
 .IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
 .IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"

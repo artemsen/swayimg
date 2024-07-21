@@ -709,15 +709,13 @@ void viewer_destroy(void)
  */
 static void viewer_on_reload(void)
 {
-    if (loader_reset()) {
+    if (loader_reset(loader_current_index(), false) == ldr_success) {
         info_set_status("Image reloaded");
-    } else if (skip_image()) {
-        info_set_status("Image skipped due to reload error");
+        reset_state();
+        app_on_redraw();
     } else {
-        info_set_status("Unable to reload image");
+        app_on_exit(0);
     }
-    reset_state();
-    app_on_redraw();
 }
 
 /**
@@ -827,6 +825,9 @@ static void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_fullscreen:
                 ui_toggle_fullscreen();
                 break;
+            case action_mode:
+                app_switch_mode();
+                break;
             case action_step_left:
                 redraw |= move_image(true, true, action->params);
                 break;
@@ -934,6 +935,10 @@ void viewer_handle(const struct event* event)
             break;
         case event_drag:
             viewer_on_drag(event->param.drag.dx, event->param.drag.dy);
+            break;
+        case event_activate:
+            reset_state();
+            app_on_redraw();
             break;
     }
 }

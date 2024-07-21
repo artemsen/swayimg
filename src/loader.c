@@ -248,38 +248,38 @@ static void preloader_ctl(enum preloader_op op)
 
 /**
  * Load first (initial) image.
- * @param start initial index of image in the image list
+ * @param index initial index of image in the image list
  * @param force mandatory image index flag
  * @return loader status
  */
-static enum loader_status load_first(size_t start, bool force)
+static enum loader_status load_first(size_t index, bool force)
 {
     enum loader_status status = ldr_ioerror;
 
-    if (force && start != IMGLIST_INVALID) {
-        const char* source = image_list_get(start);
+    if (force && index != IMGLIST_INVALID) {
+        const char* source = image_list_get(index);
         if (source) {
             struct image* img = loader_load_image(source, &status);
             if (img) {
                 ctx.cur_img = img;
-                ctx.cur_idx = start;
+                ctx.cur_idx = index;
             }
         }
     } else {
-        if (start == IMGLIST_INVALID) {
-            start = 0;
+        if (index == IMGLIST_INVALID) {
+            index = image_list_first();
         }
-        while (start != IMGLIST_INVALID) {
-            const char* source = image_list_get(start);
+        while (index != IMGLIST_INVALID) {
+            const char* source = image_list_get(index);
             if (source) {
                 struct image* img = loader_load_image(source, &status);
                 if (img) {
                     ctx.cur_img = img;
-                    ctx.cur_idx = start;
+                    ctx.cur_idx = index;
                     break;
                 }
             }
-            start = image_list_skip(start);
+            index = image_list_skip(index);
         }
     }
 
@@ -601,10 +601,8 @@ void loader_create(void)
     config_add_loader(IMGLIST_CFG_SECTION, load_config);
 }
 
-bool loader_init(size_t start, bool force)
+void loader_init(void)
 {
-    enum loader_status status;
-
     cache_init(&ctx.previous, ctx.previous_num);
     cache_init(&ctx.preload, ctx.preload_num);
 
@@ -614,35 +612,6 @@ bool loader_init(size_t start, bool force)
         app_watch(ctx.notify, on_notify);
     }
 #endif
-
-    // load the first image
-    status = load_first(start, force);
-    if (status == ldr_success) {
-        preloader_ctl(preloader_start);
-#ifdef HAVE_INOTIFY
-        watch_current();
-#endif
-    } else if (!force) {
-        fprintf(stderr, "No image files found to view, exit\n");
-    } else {
-        const char* reason = "Unknown error";
-        switch (status) {
-            case ldr_success:
-                break;
-            case ldr_unsupported:
-                reason = "Unsupported format";
-                break;
-            case ldr_fmterror:
-                reason = "Invalid format";
-                break;
-            case ldr_ioerror:
-                reason = "I/O error";
-                break;
-        }
-        fprintf(stderr, "%s: %s\n", image_list_get(start), reason);
-    }
-
-    return (status == ldr_success);
 }
 
 void loader_destroy(void)
@@ -650,25 +619,35 @@ void loader_destroy(void)
     preloader_ctl(preloader_stop);
     cache_free(&ctx.previous);
     cache_free(&ctx.preload);
+    image_free(ctx.cur_img);
 }
 
-bool loader_reset(void)
+enum loader_status loader_reset(size_t start, bool force)
 {
-    struct image* img;
+    enum loader_status status = ldr_ioerror;
 
+    // reset
     preloader_ctl(preloader_stop);
     cache_reset(&ctx.previous);
     cache_reset(&ctx.preload);
+    image_free(ctx.cur_img);
+    ctx.cur_img = NULL;
 
-    img = loader_load_image(ctx.cur_img->source, NULL);
-    if (img) {
-        image_free(ctx.cur_img);
-        ctx.cur_img = img;
-        preloader_ctl(preloader_start);
-        return true;
+    // load image
+    if (ctx.cur_img) {
+        status = load_first(ctx.cur_idx, true);
+    } else {
+        status = load_first(start, force);
     }
 
-    return false;
+    if (status == ldr_success) {
+        preloader_ctl(preloader_start);
+#ifdef HAVE_INOTIFY
+        watch_current();
+#endif
+    }
+
+    return status;
 }
 
 struct image* loader_current_image(void)

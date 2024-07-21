@@ -8,7 +8,8 @@
 #include "pixmap.h"
 
 // Configuration parameters
-#define APP_CFG_APP_ID "app_id"
+#define APP_CFG_APP_ID  "app_id"
+#define APP_CFG_GALLERY "gallery"
 
 /** Handler of the fd poll events. */
 typedef void (*fd_callback)(void);
@@ -77,3 +78,8 @@ void app_on_drag(int dx, int dy);
  * @param rc result (error) code to set
  */
 void app_on_exit(int rc);
+
+/**
+ * Switch mode (viewer/gallery).
+ */
+void app_switch_mode(void);

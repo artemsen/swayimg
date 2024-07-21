@@ -43,6 +43,9 @@ slideshow = no
 # Slideshow image display time (seconds)
 slideshow_time = 3
 
+# Run in gallery mode at startup (yes/no)
+gallery = no
+
 ################################################################################
 # Image list configuration
 ################################################################################
@@ -112,6 +115,7 @@ c = skip_file
 Shift+s = slideshow
 s = animation
 f = fullscreen
+Return = mode
 Left = step_left 10
 Right = step_right 10
 Up = step_up 10

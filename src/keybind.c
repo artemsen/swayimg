@@ -55,6 +55,7 @@ static const struct keybind_default default_bindings[] = {
     { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
     { .key = XKB_KEY_i,           .action = { action_info, NULL } },
     { .key = XKB_KEY_e,           .action = { action_exec, "echo \"Image: %\"" } },
+    { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
     { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
     { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
     { .key = VKEY_SCROLL_LEFT,    .action = { action_step_right, "5" } },

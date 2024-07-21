@@ -29,6 +29,8 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
+    { 'g', "gallery",    NULL,    "start in gallery mode",
+                                  GENERAL_CONFIG_SECTION, APP_CFG_GALLERY, "yes" },
     { 'r', "recursive",  NULL,    "read directories recursively",
                                   IMGLIST_CFG_SECTION, IMGLIST_CFG_RECURSIVE, "yes" },
     { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
@@ -41,7 +43,7 @@ static const struct cmdarg arguments[] = {
                                   GENERAL_CONFIG_SECTION, UI_CFG_FULLSCREEN, "yes" },
     { 'p', "position",   "POS",   "set window position [parent]/X,Y",
                                   GENERAL_CONFIG_SECTION, UI_CFG_POSITION, NULL },
-    { 'g', "size",       "SIZE",  "set window size: [parent]/image/W,H",
+    { 'w', "size",       "SIZE",  "set window size: [parent]/image/W,H",
                                   GENERAL_CONFIG_SECTION, UI_CFG_SIZE, NULL },
     { 'a', "class",      "NAME",  "set window class/app_id",
                                   GENERAL_CONFIG_SECTION, APP_CFG_APP_ID, NULL },

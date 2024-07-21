@@ -25,6 +25,7 @@ static const char* action_names[] = {
     [action_animation] = "animation",
     [action_slideshow] = "slideshow",
     [action_fullscreen] = "fullscreen",
+    [action_mode] = "mode",
     [action_step_left] = "step_left",
     [action_step_right] = "step_right",
     [action_step_up] = "step_up",

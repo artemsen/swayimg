@@ -3,13 +3,14 @@
 _swayimg()
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
-    local opts="-r --recursive \
+    local opts="-g --gallery \
+                -r --recursive \
                 -o --order \
                 -s --scale \
                 -l --slideshow \
                 -f --fullscreen \
                 -p --position \
-                -g --size \
+                -w --size \
                 -a --class \
                 -c --config \
                 -v --version \

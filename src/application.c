@@ -7,6 +7,7 @@
 #include "buildcfg.h"
 #include "config.h"
 #include "font.h"
+#include "gallery.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
@@ -52,13 +53,14 @@ struct application {
     struct event_entry* events; ///< Event queue
     int event_fd;               ///< Queue change notification
 
+    bool mode_gallery;          ///< Current mode (gallery/viewer)
+    event_handler mode_handler; ///< Event handler for the current mode
+
     char* app_id; ///< Application id (app_id name)
 };
 
-static struct application ctx = {
-    .state = loop_stop,
-    .event_fd = -1,
-};
+/** Global application context. */
+static struct application ctx;
 
 /**
  * Setup window position via Sway IPC.
@@ -108,7 +110,7 @@ static void handle_event_queue(void)
     while (ctx.events) {
         struct event_entry* entry = ctx.events;
         ctx.events = ctx.events->next;
-        viewer_handle(&entry->event);
+        ctx.mode_handler(&entry->event);
         free(entry);
     }
 }
@@ -149,6 +151,10 @@ static enum config_status load_config(const char* key, const char* value)
     if (strcmp(key, APP_CFG_APP_ID) == 0) {
         str_dup(value, &ctx.app_id);
         status = cfgst_ok;
+    } else if (strcmp(key, APP_CFG_GALLERY) == 0) {
+        if (config_to_bool(value, &ctx.mode_gallery)) {
+            status = cfgst_ok;
+        }
     } else {
         status = cfgst_invalid_key;
     }
@@ -168,6 +174,7 @@ void app_create(void)
     text_create();
     ui_create();
     viewer_create();
+    gallery_create();
 
     // create unique application id
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -185,6 +192,7 @@ void app_create(void)
 
 void app_destroy(void)
 {
+    gallery_destroy();
     viewer_destroy();
     loader_destroy();
     ui_destroy();
@@ -210,7 +218,7 @@ void app_destroy(void)
 
 bool app_init(const char** sources, size_t num)
 {
-    size_t start_idx = IMGLIST_INVALID;
+    bool force_load = false;
 
     // compose image list
     if (num == 0) {
@@ -218,20 +226,50 @@ bool app_init(const char** sources, size_t num)
         static const char* current_dir = ".";
         sources = &current_dir;
         num = 1;
-    } else if (num == 1 && strcmp(sources[0], "-") == 0) {
-        // load from stdin
-        static const char* stdin_name = LDRSRC_STDIN;
-        sources = &stdin_name;
+    } else if (num == 1) {
+        force_load = true;
+        if (strcmp(sources[0], "-") == 0) {
+            // load from stdin
+            static const char* stdin_name = LDRSRC_STDIN;
+            sources = &stdin_name;
+        }
     }
     if (image_list_init(sources, num) == 0) {
-        fprintf(stderr, "No images to view, exit\n");
+        if (force_load) {
+            fprintf(stderr, "%s: Unable to open\n", sources[0]);
+        } else {
+            fprintf(stderr, "No image files found to view, exit\n");
+        }
         return false;
     }
 
-    // load first image
-    start_idx = image_list_find(sources[0]);
-    if (!loader_init(start_idx, num == 1)) {
-        return false;
+    loader_init();
+    if (!ctx.mode_gallery) {
+        // load first image
+        const size_t index = image_list_find(sources[0]);
+        const enum loader_status status = loader_reset(index, force_load);
+        if (status != ldr_success) {
+            if (!force_load) {
+                fprintf(stderr, "No image files was loaded, exit\n");
+            } else {
+                const char* reason = "Unknown error";
+                switch (status) {
+                    case ldr_success:
+                        break;
+                    case ldr_unsupported:
+                        reason = "Unsupported format";
+                        break;
+                    case ldr_fmterror:
+                        reason = "Invalid format";
+                        break;
+                    case ldr_ioerror:
+                        reason = "I/O error";
+                        break;
+                }
+                fprintf(stderr, "%s: %s\n", image_list_get(index), reason);
+            }
+            return false;
+        }
     }
 
     // setup window position and size
@@ -251,6 +289,7 @@ bool app_init(const char** sources, size_t num)
     font_init();
     info_init();
     viewer_init();
+    gallery_init();
 
     if (!ui_init(ctx.app_id)) {
         return false;
@@ -263,6 +302,12 @@ bool app_init(const char** sources, size_t num)
     } else {
         perror("Unable to create eventfd");
         return false;
+    }
+
+    if (ctx.mode_gallery) {
+        ctx.mode_handler = gallery_handle;
+    } else {
+        ctx.mode_handler = viewer_handle;
     }
 
     return true;
@@ -397,4 +442,22 @@ void app_on_drag(int dx, int dy)
 void app_on_exit(int rc)
 {
     ctx.state = rc ? loop_error : loop_stop;
+}
+
+void app_switch_mode(void)
+{
+    ctx.mode_gallery = !ctx.mode_gallery;
+
+    const struct event event = {
+        .type = event_activate,
+    };
+
+    if (ctx.mode_gallery) {
+        ctx.mode_handler = gallery_handle;
+    } else {
+        ctx.mode_handler = viewer_handle;
+    }
+    ctx.mode_handler(&event);
+
+    app_on_redraw();
 }

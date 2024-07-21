@@ -23,6 +23,7 @@ enum action_type {
     action_animation,
     action_slideshow,
     action_fullscreen,
+    action_mode,
     action_step_left,
     action_step_right,
     action_step_up,

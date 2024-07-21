@@ -14,6 +14,7 @@ enum event_type {
     event_resize,
     event_keypress,
     event_drag,
+    event_activate,
 };
 
 /** Event description. */
