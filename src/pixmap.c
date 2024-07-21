@@ -110,7 +110,7 @@ void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
 void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
                   argb_t color)
 {
-    if (x >= 0 && x < (ssize_t)pm->height) {
+    if (x >= 0 && x < (ssize_t)pm->width) {
         const ssize_t begin = max(0, y);
         const ssize_t end = min((ssize_t)pm->height, y + (ssize_t)height);
         for (ssize_t i = begin; i < end; ++i) {
