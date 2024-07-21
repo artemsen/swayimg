@@ -48,8 +48,6 @@ static void create_preview(const struct pixmap* full, struct pixmap* preview)
     const ssize_t thumb_height = scale * full->height;
     const ssize_t thumb_x = preview->width / 2 - thumb_width / 2;
     const ssize_t thumb_y = preview->height / 2 - thumb_height / 2;
-
-    pixmap_fill(preview, 0, 0, preview->width, preview->height, 0xff303030);
     pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
 }
 
@@ -225,6 +223,7 @@ static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
     }
 
     // slightly zoomed thumbnail
+    pixmap_fill(window, thumb_x, thumb_y, thumb_size, thumb_size, 0xff404040);
     pixmap_scale_nearest(&thumb->preview, window, thumb_x, thumb_y, thumb_scale,
                          true);
 
@@ -264,6 +263,8 @@ static void draw_thumbnails(struct pixmap* window)
                 sel_th = th;
             } else {
                 const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
+                pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
+                            0xff202020);
                 pixmap_copy(&th->preview, window, x, y, true);
             }
 
