@@ -99,6 +99,21 @@ Start in gallery mode, \fIno\fR by default.
 .IP "\fBapp_id\fR = \fINAME\fR"
 Set a constant window class/app_id. Setting this may break the window layout.
 .\" ****************************************************************************
+.\" Gallery config section
+.\" ****************************************************************************
+.SS "Gallery"
+Configuration is defined in the \fB[gallery]\fR section.
+.IP "\fBsize\fR = \fIPIXELS\fR"
+Max size of the thumbnail in pixels, \fI200\fR by default.
+.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
+Use anti-aliasing for thumbnails, \fIno\fR by default.
+.IP "\fBwindow\fR = \fI#COLOR\fR"
+Background color of the window, default is \fI#00000000\fR.
+.IP "\fBbackground\fR = \fI#COLOR\fR"
+Background color of the tile, default is \fI#202020ff\fR.
+.IP "\fBselect\fR = \fI#COLOR\fR"
+Set window background of the selected tile, default is \fI#404040ff\fR.
+.\" ****************************************************************************
 .\" Image list config section
 .\" ****************************************************************************
 .SS "Image list"
@@ -182,19 +197,6 @@ Set display scheme for the \fIfull\fR mode, top left corner of the window.
 \fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;
 \fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;
 \fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window.
-.\" ****************************************************************************
-.\" Gallery config section
-.\" ****************************************************************************
-.SS "Gallery"
-Configuration is defined in the \fB[gallery]\fR section.
-.IP "\fBsize\fR = \fIPIXELS\fR"
-Max size of the thumbnail in pixels, \fI200\fR by default.
-.IP "\fBwindow\fR = \fI#COLOR\fR"
-Background color of the window, default is \fI#00000000\fR.
-.IP "\fBbackground\fR = \fI#COLOR\fR"
-Background color of the tile, default is \fI#202020ff\fR.
-.IP "\fBselect\fR = \fI#COLOR\fR"
-Set window background of the selected tile, default is \fI#404040ff\fR.
 .\" ****************************************************************************
 .\" Key bindings config section
 .\" ****************************************************************************

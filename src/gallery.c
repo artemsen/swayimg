@@ -26,6 +26,7 @@ struct thumbnail {
 struct gallery {
     size_t thumb_size;        ///< Max size of thumbnail
     struct thumbnail* thumbs; ///< List of preview images
+    bool thumb_aa;            ///< Use anti-aliasing for thumbnail
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -57,7 +58,12 @@ static void create_preview(const struct pixmap* full, struct pixmap* preview)
     const ssize_t thumb_height = scale * full->height;
     const ssize_t thumb_x = preview->width / 2 - thumb_width / 2;
     const ssize_t thumb_y = preview->height / 2 - thumb_height / 2;
-    pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
+
+    if (ctx.thumb_aa) {
+        pixmap_scale_bicubic(full, preview, thumb_x, thumb_y, scale, true);
+    } else {
+        pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
+    }
 }
 
 /**
@@ -234,8 +240,13 @@ static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
     // slightly zoomed thumbnail
     pixmap_fill(window, thumb_x, thumb_y, thumb_size, thumb_size,
                 ctx.clr_select);
-    pixmap_scale_nearest(&thumb->preview, window, thumb_x, thumb_y, thumb_scale,
-                         true);
+    if (ctx.thumb_aa) {
+        pixmap_scale_bicubic(&thumb->preview, window, thumb_x, thumb_y,
+                             thumb_scale, true);
+    } else {
+        pixmap_scale_nearest(&thumb->preview, window, thumb_x, thumb_y,
+                             thumb_scale, true);
+    }
 
     // border
     pixmap_rect(window, thumb_x, thumb_y, thumb_size + 1, thumb_size + 1,
@@ -299,6 +310,7 @@ static void reset_thumbnails(void)
         pixmap_free(&entry->preview);
         free(entry);
     }
+    app_redraw();
 }
 
 /**
@@ -425,6 +437,10 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_fullscreen:
                 ui_toggle_fullscreen();
                 break;
+            case action_antialiasing:
+                ctx.thumb_aa = !ctx.thumb_aa;
+                reset_thumbnails();
+                break;
             case action_first_file:
             // case action_last_file:
             case action_prev_file:
@@ -437,7 +453,6 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_reload:
                 reset_thumbnails();
-                app_redraw();
                 break;
             case action_mode:
                 if (loader_reset(ctx.selected, false) == ldr_success) {
@@ -489,6 +504,10 @@ static enum config_status load_config(const char* key, const char* value)
         }
     } else if (strcmp(key, "select") == 0) {
         if (config_to_color(value, &ctx.clr_select)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "antialiasing") == 0) {
+        if (config_to_bool(value, &ctx.thumb_aa)) {
             status = cfgst_ok;
         }
     } else {
