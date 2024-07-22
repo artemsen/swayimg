@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Application events.
+// Events processed by the viewer and gallery.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #include "event.h"

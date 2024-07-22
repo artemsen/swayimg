@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Application events.
+// Events processed by the viewer and gallery.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -9,12 +9,12 @@
 
 /** Event types. */
 enum event_type {
-    event_reload,
-    event_redraw,
-    event_resize,
-    event_keypress,
-    event_drag,
-    event_activate,
+    event_reload,   ///< Reload and reset state
+    event_redraw,   ///< Redraw window
+    event_resize,   ///< Window resize notification
+    event_keypress, ///< Key or mouse button press events
+    event_drag,     ///< Mouse or touch drag operation
+    event_activate, ///< The mode is activating (viewer/gallery switch)
 };
 
 /** Event description. */
@@ -32,10 +32,6 @@ struct event {
             int dx;
             int dy;
         } drag;
-
-        struct exit {
-            int rc;
-        } exit;
 
     } param;
 };
