@@ -85,7 +85,7 @@ Set initial size of the window:
 \fIWIDTH,HEIGHT\fR: absolute size of the window in pixels.
 .\" ----------------------------------------------------------------------------
 .IP "\fBbackground\fR = \fI#COLOR\fR"
-Set window background color: RGB or RGBA in hex format, default is \fI#00000000\fR.
+Set window background color in RGBA format, default is \fI#00000000\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBslideshow\fR = \fI[yes|no]\fR"
 Run slideshow at startup, \fIno\fR by default.
@@ -136,7 +136,7 @@ Set the font name used for text, default is \fImonospace\fR.
 Set the font size (in pt), default is \fI14\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBcolor\fR = \fI#COLOR\fR"
-Set text color in RGB hex format, default is \fI#cccccc\fR.
+Set text color in RGBA format, default is \fI#ccccccff\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBshadow\fR = \fI#COLOR\fR"
 Draw text shadow with specified color, default is \fI#000000a0\fR.
@@ -182,6 +182,19 @@ Set display scheme for the \fIfull\fR mode, top left corner of the window.
 \fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;
 \fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;
 \fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window.
+.\" ****************************************************************************
+.\" Gallery config section
+.\" ****************************************************************************
+.SS "Gallery"
+Configuration is defined in the \fB[gallery]\fR section.
+.IP "\fBsize\fR = \fIPIXELS\fR"
+Max size of the thumbnail in pixels, \fI200\fR by default.
+.IP "\fBwindow\fR = \fI#COLOR\fR"
+Background color of the window, default is \fI#00000000\fR.
+.IP "\fBbackground\fR = \fI#COLOR\fR"
+Background color of the tile, default is \fI#202020ff\fR.
+.IP "\fBselect\fR = \fI#COLOR\fR"
+Set window background of the selected tile, default is \fI#404040ff\fR.
 .\" ****************************************************************************
 .\" Key bindings config section
 .\" ****************************************************************************

@@ -96,6 +96,19 @@ brief.bottomleft = none
 brief.bottomright = status
 
 ################################################################################
+# Gallery mode configuration
+################################################################################
+[gallery]
+# Max size of the thumbnail in pixels
+size = 200
+# Background color of the window (RGB/RGBA)
+window = #00000000
+# Background color of the tile (RGB/RGBA)
+background = #202020
+# Background color of the selected tile (RGB/RGBA)
+select = #404040
+
+################################################################################
 # Key binding section: key = action [parameters]
 # Key can be specified with modifiers, e.g "Ctrl+Alt+Shift+x"
 # Use the `xkbcli` tool to get key name: `xkbcli interactive-wayland`

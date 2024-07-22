@@ -12,11 +12,6 @@
 void gallery_create(void);
 
 /**
- * Initialize global gallery context.
- */
-void gallery_init(void);
-
-/**
  * Destroy global gallery context.
  */
 void gallery_destroy(void);

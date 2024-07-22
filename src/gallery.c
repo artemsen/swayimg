@@ -7,11 +7,13 @@
 #include "application.h"
 #include "imagelist.h"
 #include "loader.h"
+#include "str.h"
 #include "text.h"
 #include "ui.h"
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 
 /** List of thumbnails. */
 struct thumbnail {
@@ -24,11 +26,18 @@ struct thumbnail {
 struct gallery {
     size_t thumb_size;        ///< Max size of thumbnail
     struct thumbnail* thumbs; ///< List of preview images
-    size_t top;               ///< Index of the first displayed image
-    size_t selected;          ///< Index of the selected displayed image
-    struct info_line name;    ///< File name layer
-    int load_complete;        ///< Thumbnail load notification
-    pthread_t loader;         ///< Thumbnail loader thread
+
+    argb_t clr_window;     ///< Window background
+    argb_t clr_background; ///< Tile background
+    argb_t clr_select;     ///< Seleted tile background
+
+    int load_complete; ///< Thumbnail load notification
+    pthread_t loader;  ///< Thumbnail loader thread
+
+    size_t top;      ///< Index of the first displayed image
+    size_t selected; ///< Index of the selected displayed image
+
+    struct info_line name; ///< File name layer
 };
 
 /** Global gallery context. */
@@ -182,7 +191,7 @@ static void get_layout(size_t* cols, size_t* rows, size_t* margin)
 static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
                           size_t col, size_t row)
 {
-    const size_t shadow_width = ctx.thumb_size / 15;
+    const size_t shadow_width = max(1, ctx.thumb_size / 15);
     const size_t alpha_step = 255 / shadow_width;
 
     const float thumb_scale = 1.15f;
@@ -223,7 +232,8 @@ static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
     }
 
     // slightly zoomed thumbnail
-    pixmap_fill(window, thumb_x, thumb_y, thumb_size, thumb_size, 0xff404040);
+    pixmap_fill(window, thumb_x, thumb_y, thumb_size, thumb_size,
+                ctx.clr_select);
     pixmap_scale_nearest(&thumb->preview, window, thumb_x, thumb_y, thumb_scale,
                          true);
 
@@ -264,7 +274,7 @@ static void draw_thumbnails(struct pixmap* window)
             } else {
                 const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
                 pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
-                            0xff202020);
+                            ctx.clr_background);
                 pixmap_copy(&th->preview, window, x, y, true);
             }
 
@@ -296,10 +306,10 @@ static void reset_thumbnails(void)
  */
 static void redraw(void)
 {
-    struct pixmap* window = ui_draw_begin();
-    if (window) {
-        pixmap_fill(window, 0, 0, window->width, window->height, 0xff101010);
-        draw_thumbnails(window);
+    struct pixmap* wnd = ui_draw_begin();
+    if (wnd) {
+        pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
+        draw_thumbnails(wnd);
         ui_draw_commit();
     }
 }
@@ -456,22 +466,53 @@ static void on_load_complete(void)
     app_on_redraw();
 }
 
-void gallery_create(void)
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config(const char* key, const char* value)
 {
-    // register configuration loader
-    // config_add_loader(GALLERY_CONFIG_SECTION, load_config);
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, "size") == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 10 && num <= 1024) {
+            ctx.thumb_size = num;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "window") == 0) {
+        if (config_to_color(value, &ctx.clr_window)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "background") == 0) {
+        if (config_to_color(value, &ctx.clr_background)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "select") == 0) {
+        if (config_to_color(value, &ctx.clr_select)) {
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
 }
 
-void gallery_init(void)
+void gallery_create(void)
 {
     ctx.thumb_size = 200;
     ctx.top = IMGLIST_INVALID;
     ctx.selected = IMGLIST_INVALID;
+    ctx.clr_background = 0xff202020;
+    ctx.clr_select = 0xff404040;
 
     ctx.load_complete = notification_create();
     if (ctx.load_complete != -1) {
         app_watch(ctx.load_complete, on_load_complete);
     }
+
+    // register configuration loader
+    config_add_loader("gallery", load_config);
 }
 
 void gallery_destroy(void)

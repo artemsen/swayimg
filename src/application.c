@@ -289,7 +289,6 @@ bool app_init(const char** sources, size_t num)
     font_init();
     info_init();
     viewer_init();
-    gallery_init();
 
     if (!ui_init(ctx.app_id)) {
         return false;
