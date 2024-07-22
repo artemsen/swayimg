@@ -22,11 +22,10 @@ struct data_buffer {
 };
 
 // EXR data reader
-static int64_t exr_reader(__attribute__((unused)) exr_const_context_t exr,
-                          void* userdata, void* buffer, uint64_t sz,
-                          uint64_t offset,
-                          __attribute__((unused))
-                          exr_stream_error_func_ptr_t error_cb)
+static int64_t
+exr_reader(__attribute__((unused)) exr_const_context_t exr, void* userdata,
+           void* buffer, uint64_t sz, uint64_t offset,
+           __attribute__((unused)) exr_stream_error_func_ptr_t error_cb)
 {
     const struct data_buffer* buf = userdata;
     if (offset + sz > buf->size) {
@@ -85,11 +84,12 @@ static exr_result_t decode_chunk(const exr_context_t ectx,
 /**
  * Decode pixel.
  * @param decoder EXR decoder instance
- * @param buffer pointer to unpacked data
+ * @param unpacked pointer to unpacked data
+ * @param size max number of bytes in unpacked buffer
  * @return ARGB value of the pixel
  */
 static argb_t decode_pixel(const exr_decode_pipeline_t* decoder,
-                           const uint8_t* unpacked)
+                           const uint8_t* unpacked, size_t size)
 {
     uint8_t a = 0xff, r = 0, g = 0, b = 0;
 
@@ -143,6 +143,10 @@ static argb_t decode_pixel(const exr_decode_pipeline_t* decoder,
         }
 
         unpacked += channel->bytes_per_element;
+        if (size <= (size_t)channel->bytes_per_element) {
+            break;
+        }
+        size -= channel->bytes_per_element;
     }
 
     return ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b);
@@ -203,10 +207,11 @@ static exr_result_t load_scanlined(const exr_context_t ectx, struct pixmap* pm)
             bpp += decoder.channels[i].bytes_per_element;
         }
         for (size_t i = 0; i < chunk_size; i += bpp) {
-            *dst = decode_pixel(&decoder, buffer + i);
-            if (++dst >= pm->data + (pm->width * pm->height)) {
+            if (dst >= pm->data + (pm->width * pm->height)) {
                 break;
             }
+            *dst = decode_pixel(&decoder, buffer + i, chunk_size - i);
+            ++dst;
         }
     }
 
@@ -287,7 +292,7 @@ static exr_result_t load_tailed(const exr_context_t ectx, struct pixmap* pm)
                         argb_t* dst_line = &pm->data[(img_y + y) * pm->width];
                         for (int32_t x = 0; x < chunk.width; ++x) {
                             dst_line[img_x + x] =
-                                decode_pixel(&decoder, src_line + x * bpp);
+                                decode_pixel(&decoder, src_line + x * bpp, 42);
                         }
                     }
                     ++tile_x;
