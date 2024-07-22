@@ -358,7 +358,12 @@ static void move_selection(enum action_type direction)
             if (index >= cols) {
                 size_t i = cols;
                 while (i-- && index != IMGLIST_INVALID) {
-                    index = image_list_prev_file(index);
+                    const size_t next = image_list_prev_file(index);
+                    if (next > index) {
+                        index = IMGLIST_INVALID;
+                    } else {
+                        index = next;
+                    }
                 }
             }
             break;
