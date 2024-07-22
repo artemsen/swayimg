@@ -80,17 +80,8 @@ struct viewer {
     int info_timeout_fd; ///< Info timer
 };
 
-static struct viewer ctx = {
-    .image_bkg = GRID_BKGID,
-    .fixed = true,
-    .animation_enable = true,
-    .animation_fd = -1,
-    .slideshow_enable = false,
-    .slideshow_fd = -1,
-    .slideshow_time = 3,
-    .info_timedout = false,
-    .info_timeout_fd = -1,
-};
+/** Global viewer context. */
+static struct viewer ctx;
 
 /**
  * Fix up image position.
@@ -150,7 +141,7 @@ static void fixup_position(bool force)
  * @param positive direction (increase/decrease)
  * @param params optional move step in percents
  */
-static bool move_image(bool horizontal, bool positive, const char* params)
+static void move_image(bool horizontal, bool positive, const char* params)
 {
     const ssize_t old_x = ctx.img_x;
     const ssize_t old_y = ctx.img_y;
@@ -177,7 +168,9 @@ static bool move_image(bool horizontal, bool positive, const char* params)
 
     fixup_position(false);
 
-    return (ctx.img_x != old_x || ctx.img_y != old_y);
+    if (ctx.img_x != old_x || ctx.img_y != old_y) {
+        app_redraw();
+    }
 }
 
 /**
@@ -195,6 +188,8 @@ static void rotate_image(bool clockwise)
     ctx.img_x += shift;
     ctx.img_y -= shift;
     fixup_position(false);
+
+    app_redraw();
 }
 
 /**
@@ -239,13 +234,14 @@ static void scale_image(enum fixed_scale sc)
     ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
 
     fixup_position(true);
+    app_redraw();
 }
 
 /**
  * Zoom in/out.
  * @param params zoom operation
  */
-void zoom_image(const char* params)
+static void zoom_image(const char* params)
 {
     ssize_t percent = 0;
     ssize_t fixed_scale;
@@ -291,6 +287,8 @@ void zoom_image(const char* params)
     } else {
         fprintf(stderr, "Invalid zoom operation: \"%s\"\n", params);
     }
+
+    app_redraw();
 }
 
 /**
@@ -363,6 +361,8 @@ static void reset_state(void)
         }
         timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
     }
+
+    app_redraw();
 }
 
 /**
@@ -426,9 +426,8 @@ static bool next_image(enum action_type direction)
 /**
  * Switch to the next or previous frame.
  * @param forward switch direction
- * @return false if there is only one frame in the image
  */
-static bool next_frame(bool forward)
+static void next_frame(bool forward)
 {
     size_t index = ctx.frame;
     const struct image* img = loader_current_image();
@@ -442,12 +441,10 @@ static bool next_frame(bool forward)
             index = img->num_frames - 1;
         }
     }
-    if (index == ctx.frame) {
-        return false;
+    if (index != ctx.frame) {
+        ctx.frame = index;
+        app_redraw();
     }
-
-    ctx.frame = index;
-    return true;
 }
 
 /**
@@ -457,7 +454,6 @@ static void on_animation_timer(void)
 {
     next_frame(true);
     animation_ctl(true);
-    app_on_redraw();
 }
 
 /**
@@ -466,7 +462,6 @@ static void on_animation_timer(void)
 static void on_slideshow_timer(void)
 {
     slideshow_ctl(next_image(action_next_file));
-    app_on_redraw();
 }
 
 /**
@@ -478,7 +473,7 @@ static void on_info_block_timeout(void)
     struct itimerspec info_ts = { 0 };
     timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
     ctx.info_timedout = true;
-    app_on_redraw();
+    app_redraw();
 }
 
 /**
@@ -528,6 +523,7 @@ static void execute_command(const char* expr)
     }
 
     free(cmd);
+    app_redraw();
 }
 
 /**
@@ -536,6 +532,8 @@ static void execute_command(const char* expr)
 static void switch_help(void)
 {
     const struct keybind* kb;
+
+    app_redraw();
 
     if (ctx.help) {
         for (size_t i = 0; i < ctx.help_sz; i++) {
@@ -608,6 +606,206 @@ static void draw_image(struct pixmap* wnd)
 }
 
 /**
+ * Reload image file and reset state (position, scale, etc).
+ */
+static void reload(void)
+{
+    if (loader_reset(loader_current_index(), false) == ldr_success) {
+        info_set_status("Image reloaded");
+        reset_state();
+        app_redraw();
+    } else {
+        app_exit(0);
+    }
+}
+
+/**
+ * Redraw handler.
+ */
+static void redraw(void)
+{
+    struct pixmap* window = ui_draw_begin();
+    if (!window) {
+        return;
+    }
+
+    info_update(ctx.frame, ctx.scale);
+    draw_image(window);
+
+    // put text info blocks on window surface
+    if (!ctx.info_timedout) {
+        for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+            const size_t lines_num = info_height(i);
+            if (lines_num) {
+                const enum info_position pos = (enum info_position)i;
+                const struct info_line* lines = info_lines(pos);
+                text_print(window, pos, lines, lines_num);
+            }
+        }
+    }
+
+    if (ctx.help) {
+        text_print_centered(window, ctx.help, ctx.help_sz);
+    }
+
+    // reset one-time rendered notification message
+    info_set_status(NULL);
+
+    ui_draw_commit();
+}
+
+/**
+ * Window resize handler.
+ */
+static void on_resize(void)
+{
+    fixup_position(false);
+    reset_state();
+}
+
+/**
+ * Key press handler.
+ * @param key code of key pressed
+ * @param mods key modifiers (ctrl/alt/shift)
+ */
+static void on_keyboard(xkb_keysym_t key, uint8_t mods)
+{
+    const struct keybind* kb = keybind_get(key, mods);
+
+    if (!kb) {
+        char* name = keybind_name(key, mods);
+        if (name) {
+            info_set_status("Key %s is not bound", name);
+            free(name);
+            app_redraw();
+        }
+        return;
+    }
+
+    // handle actions
+    for (size_t i = 0; i < kb->num_actions; ++i) {
+        const struct action* action = &kb->actions[i];
+        switch (action->type) {
+            case action_none:
+                break;
+            case action_help:
+                switch_help();
+                break;
+            case action_first_file:
+            case action_last_file:
+            case action_prev_dir:
+            case action_next_dir:
+            case action_prev_file:
+            case action_next_file:
+                next_image(action->type);
+                break;
+            case action_skip_file:
+                if (!skip_image()) {
+                    printf("No more images, exit\n");
+                    app_exit(0);
+                    return;
+                }
+                reset_state();
+                break;
+            case action_prev_frame:
+            case action_next_frame:
+                animation_ctl(false);
+                next_frame(action->type == action_next_frame);
+                break;
+            case action_animation:
+                animation_ctl(!ctx.animation_enable);
+                break;
+            case action_slideshow:
+                slideshow_ctl(!ctx.slideshow_enable &&
+                              next_image(action_next_file));
+                break;
+            case action_fullscreen:
+                ui_toggle_fullscreen();
+                break;
+            case action_mode:
+                app_switch_mode();
+                break;
+            case action_step_left:
+                move_image(true, true, action->params);
+                break;
+            case action_step_right:
+                move_image(true, false, action->params);
+                break;
+            case action_step_up:
+                move_image(false, true, action->params);
+                break;
+            case action_step_down:
+                move_image(false, false, action->params);
+                break;
+            case action_zoom:
+                zoom_image(action->params);
+                break;
+            case action_rotate_left:
+                rotate_image(false);
+                break;
+            case action_rotate_right:
+                rotate_image(true);
+                break;
+            case action_flip_vertical:
+                image_flip_vertical(loader_current_image());
+                app_redraw();
+                break;
+            case action_flip_horizontal:
+                image_flip_horizontal(loader_current_image());
+                app_redraw();
+                break;
+            case action_antialiasing:
+                ctx.antialiasing = !ctx.antialiasing;
+                info_set_status("Anti-aliasing %s",
+                                ctx.antialiasing ? "on" : "off");
+                app_redraw();
+                break;
+            case action_reload:
+                reload();
+                break;
+            case action_info:
+                info_set_mode(action->params);
+                app_redraw();
+                break;
+            case action_exec:
+                execute_command(action->params);
+                break;
+            case action_status:
+                info_set_status("%s", action->params);
+                app_redraw();
+                break;
+            case action_exit:
+                if (ctx.help) {
+                    switch_help(); // remove help overlay
+                } else {
+                    app_exit(0);
+                    return;
+                }
+                break;
+        }
+        ++action;
+    }
+}
+
+/**
+ * Image drag handler.
+ * @param dx,dy delta to move viewpoint
+ */
+static void on_drag(int dx, int dy)
+{
+    const ssize_t old_x = ctx.img_x;
+    const ssize_t old_y = ctx.img_y;
+
+    ctx.img_x += dx;
+    ctx.img_y += dy;
+
+    if (ctx.img_x != old_x || ctx.img_y != old_y) {
+        fixup_position(false);
+        app_redraw();
+    }
+}
+
+/**
  * Custom section loader, see `config_loader` for details.
  */
 static enum config_status load_config(const char* key, const char* value)
@@ -658,6 +856,17 @@ static enum config_status load_config(const char* key, const char* value)
 
 void viewer_create(void)
 {
+    // set default configuration
+    ctx.image_bkg = GRID_BKGID;
+    ctx.fixed = true;
+    ctx.animation_enable = true;
+    ctx.animation_fd = -1;
+    ctx.slideshow_enable = false;
+    ctx.slideshow_fd = -1;
+    ctx.slideshow_time = 3;
+    ctx.info_timedout = false;
+    ctx.info_timeout_fd = -1;
+
     // register configuration loader
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
@@ -704,241 +913,27 @@ void viewer_destroy(void)
     }
 }
 
-/**
- * Reset state: reload image file, set initial scale etc.
- */
-static void viewer_on_reload(void)
-{
-    if (loader_reset(loader_current_index(), false) == ldr_success) {
-        info_set_status("Image reloaded");
-        reset_state();
-        app_on_redraw();
-    } else {
-        app_on_exit(0);
-    }
-}
-
-/**
- * Redraw handler.
- */
-static void viewer_on_redraw(void)
-{
-    struct pixmap* window = ui_draw_begin();
-    if (!window) {
-        return;
-    }
-
-    info_update(ctx.frame, ctx.scale);
-    draw_image(window);
-
-    // put text info blocks on window surface
-    if (!ctx.info_timedout) {
-        for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-            const size_t lines_num = info_height(i);
-            if (lines_num) {
-                const enum info_position pos = (enum info_position)i;
-                const struct info_line* lines = info_lines(pos);
-                text_print(window, pos, lines, lines_num);
-            }
-        }
-    }
-
-    if (ctx.help) {
-        text_print_centered(window, ctx.help, ctx.help_sz);
-    }
-
-    // reset one-time rendered notification message
-    info_set_status(NULL);
-
-    ui_draw_commit();
-}
-
-/**
- * Window resize handler.
- */
-static void viewer_on_resize(void)
-{
-    fixup_position(false);
-    reset_state();
-}
-
-/**
- * Key press handler.
- * @param key code of key pressed
- * @param mods key modifiers (ctrl/alt/shift)
- */
-static void viewer_on_keyboard(xkb_keysym_t key, uint8_t mods)
-{
-    bool redraw = false;
-    const struct keybind* kb = keybind_get(key, mods);
-
-    if (!kb) {
-        char* name = keybind_name(key, mods);
-        if (name) {
-            info_set_status("Key %s is not bound", name);
-            free(name);
-            app_on_redraw();
-        }
-        return;
-    }
-
-    // handle actions
-    for (size_t i = 0; i < kb->num_actions; ++i) {
-        const struct action* action = &kb->actions[i];
-        switch (action->type) {
-            case action_none:
-                break;
-            case action_help:
-                switch_help();
-                redraw = true;
-                break;
-            case action_first_file:
-            case action_last_file:
-            case action_prev_dir:
-            case action_next_dir:
-            case action_prev_file:
-            case action_next_file:
-                redraw |= next_image(action->type);
-                break;
-            case action_skip_file:
-                if (!skip_image()) {
-                    printf("No more images, exit\n");
-                    app_on_exit(0);
-                    return;
-                }
-                reset_state();
-                redraw = true;
-                break;
-            case action_prev_frame:
-            case action_next_frame:
-                animation_ctl(false);
-                redraw |= next_frame(action->type == action_next_frame);
-                break;
-            case action_animation:
-                animation_ctl(!ctx.animation_enable);
-                break;
-            case action_slideshow:
-                slideshow_ctl(!ctx.slideshow_enable &&
-                              next_image(action_next_file));
-                redraw = true;
-                break;
-            case action_fullscreen:
-                ui_toggle_fullscreen();
-                break;
-            case action_mode:
-                app_switch_mode();
-                break;
-            case action_step_left:
-                redraw |= move_image(true, true, action->params);
-                break;
-            case action_step_right:
-                redraw |= move_image(true, false, action->params);
-                break;
-            case action_step_up:
-                redraw |= move_image(false, true, action->params);
-                break;
-            case action_step_down:
-                redraw |= move_image(false, false, action->params);
-                break;
-            case action_zoom:
-                zoom_image(action->params);
-                redraw = true;
-                break;
-            case action_rotate_left:
-                rotate_image(false);
-                redraw = true;
-                break;
-            case action_rotate_right:
-                rotate_image(true);
-                redraw = true;
-                break;
-            case action_flip_vertical:
-                image_flip_vertical(loader_current_image());
-                redraw = true;
-                break;
-            case action_flip_horizontal:
-                image_flip_horizontal(loader_current_image());
-                redraw = true;
-                break;
-            case action_antialiasing:
-                ctx.antialiasing = !ctx.antialiasing;
-                info_set_status("Anti-aliasing %s",
-                                ctx.antialiasing ? "on" : "off");
-                redraw = true;
-                break;
-            case action_reload:
-                viewer_on_reload();
-                break;
-            case action_info:
-                info_set_mode(action->params);
-                redraw = true;
-                break;
-            case action_exec:
-                execute_command(action->params);
-                redraw = true;
-                break;
-            case action_status:
-                info_set_status("%s", action->params);
-                redraw = true;
-                break;
-            case action_exit:
-                if (ctx.help) {
-                    switch_help(); // remove help overlay
-                    redraw = true;
-                } else {
-                    app_on_exit(0);
-                    return;
-                }
-                break;
-        }
-        ++action;
-    }
-
-    if (redraw) {
-        app_on_redraw();
-    }
-}
-
-/**
- * Image drag handler.
- * @param dx,dy delta to move viewpoint
- */
-static void viewer_on_drag(int dx, int dy)
-{
-    const ssize_t old_x = ctx.img_x;
-    const ssize_t old_y = ctx.img_y;
-
-    ctx.img_x += dx;
-    ctx.img_y += dy;
-
-    if (ctx.img_x != old_x || ctx.img_y != old_y) {
-        fixup_position(false);
-        app_on_redraw();
-    }
-}
-
 void viewer_handle(const struct event* event)
 {
     switch (event->type) {
         case event_reload:
-            viewer_on_reload();
+            reload();
             break;
         case event_redraw:
-            viewer_on_redraw();
+            redraw();
             break;
         case event_resize:
-            viewer_on_resize();
+            on_resize();
             break;
         case event_keypress:
-            viewer_on_keyboard(event->param.keypress.key,
-                               event->param.keypress.mods);
+            on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
         case event_drag:
-            viewer_on_drag(event->param.drag.dx, event->param.drag.dy);
+            on_drag(event->param.drag.dx, event->param.drag.dy);
             break;
         case event_activate:
             reset_state();
-            app_on_redraw();
+            app_redraw();
             break;
     }
 }

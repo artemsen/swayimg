@@ -403,7 +403,7 @@ static void move_selection(enum action_type direction)
             ctx.top = index;
         }
 
-        app_on_redraw();
+        app_redraw();
     }
 }
 
@@ -437,7 +437,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_reload:
                 reset_thumbnails();
-                app_on_redraw();
+                app_redraw();
                 break;
             case action_mode:
                 if (loader_reset(ctx.selected, false) == ldr_success) {
@@ -445,7 +445,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 }
                 break;
             case action_exit:
-                app_on_exit(0);
+                app_exit(0);
                 break;
             default:
                 break;
@@ -463,7 +463,7 @@ static void on_load_complete(void)
         move_selection(action_first_file);
     }
 
-    app_on_redraw();
+    app_redraw();
 }
 
 /**

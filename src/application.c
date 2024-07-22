@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Imag viewer application: main loop and event handler.
+// Image viewer application: main loop and event handler.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #include "application.h"
@@ -366,7 +366,30 @@ bool app_run(void)
     return ctx.state != loop_error;
 }
 
-void app_on_reload(void)
+void app_exit(int rc)
+{
+    ctx.state = rc ? loop_error : loop_stop;
+}
+
+void app_switch_mode(void)
+{
+    ctx.mode_gallery = !ctx.mode_gallery;
+
+    const struct event event = {
+        .type = event_activate,
+    };
+
+    if (ctx.mode_gallery) {
+        ctx.mode_handler = gallery_handle;
+    } else {
+        ctx.mode_handler = viewer_handle;
+    }
+    ctx.mode_handler(&event);
+
+    app_redraw();
+}
+
+void app_reload(void)
 {
     const struct event event = {
         .type = event_reload,
@@ -374,7 +397,7 @@ void app_on_reload(void)
     append_event(&event);
 }
 
-void app_on_redraw(void)
+void app_redraw(void)
 {
     const struct event event = {
         .type = event_redraw,
@@ -436,27 +459,4 @@ void app_on_drag(int dx, int dy)
     }
 
     append_event(&event);
-}
-
-void app_on_exit(int rc)
-{
-    ctx.state = rc ? loop_error : loop_stop;
-}
-
-void app_switch_mode(void)
-{
-    ctx.mode_gallery = !ctx.mode_gallery;
-
-    const struct event event = {
-        .type = event_activate,
-    };
-
-    if (ctx.mode_gallery) {
-        ctx.mode_handler = gallery_handle;
-    } else {
-        ctx.mode_handler = viewer_handle;
-    }
-    ctx.mode_handler(&event);
-
-    app_on_redraw();
 }

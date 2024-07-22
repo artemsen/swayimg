@@ -331,7 +331,7 @@ static void on_notify(void)
             pos += sizeof(struct inotify_event) + event->len;
         }
         if (updated) {
-            app_on_reload();
+            app_reload();
         }
     }
 }

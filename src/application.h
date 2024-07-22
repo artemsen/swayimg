@@ -46,14 +46,25 @@ void app_watch(int fd, fd_callback cb);
 bool app_run(void);
 
 /**
+ * Handler of external event: application exit request.
+ * @param rc result (error) code to set
+ */
+void app_exit(int rc);
+
+/**
+ * Switch mode (viewer/gallery).
+ */
+void app_switch_mode(void);
+
+/**
  * Handler of external event: reload image / reset state.
  */
-void app_on_reload(void);
+void app_reload(void);
 
 /**
  * Handler of external event: redraw window.
  */
-void app_on_redraw(void);
+void app_redraw(void);
 
 /**
  * Handler of external event: window resized.
@@ -72,14 +83,3 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
  * @param dx,dy delta between old and new position
  */
 void app_on_drag(int dx, int dy);
-
-/**
- * Handler of external event: application exit request.
- * @param rc result (error) code to set
- */
-void app_on_exit(int rc);
-
-/**
- * Switch mode (viewer/gallery).
- */
-void app_switch_mode(void);

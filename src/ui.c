@@ -398,7 +398,7 @@ static void on_xdg_surface_configure(void* data, struct xdg_surface* surface,
     xdg_surface_ack_configure(surface, serial);
 
     if (ctx.xdg.initialized) {
-        app_on_redraw();
+        app_redraw();
     } else {
         wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
         wl_surface_commit(ctx.wl.surface);
@@ -437,13 +437,13 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
     }
 
     if (reset_buffers && !recreate_buffers()) {
-        app_on_exit(1);
+        app_exit(1);
     }
 }
 
 static void handle_xdg_toplevel_close(void* data, struct xdg_toplevel* top)
 {
-    app_on_exit(0);
+    app_exit(0);
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -508,9 +508,9 @@ static void handle_enter_surface(void* data, struct wl_surface* surface,
         ctx.wnd.height = (ctx.wnd.height / ctx.wnd.scale) * scale;
         ctx.wnd.scale = scale;
         if (recreate_buffers()) {
-            app_on_redraw();
+            app_redraw();
         } else {
-            app_on_exit(1);
+            app_exit(1);
         }
     }
 }
