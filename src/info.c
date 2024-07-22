@@ -63,11 +63,13 @@ static const char* field_names[] = {
 
 /** Block position names. */
 static const char* position_names[] = {
-    [info_top_left] = "topleft",
-    [info_top_right] = "topright",
-    [info_bottom_left] = "bottomleft",
-    [info_bottom_right] = "bottomright",
+    [text_center] = "center",
+    [text_top_left] = "topleft",
+    [text_top_right] = "topright",
+    [text_bottom_left] = "bottomleft",
+    [text_bottom_right] = "bottomright",
 };
+#define INFO_POSITION_NUM ARRAY_SIZE(position_names)
 
 // Defaults
 static const enum info_field default_full_top_left[] = {
@@ -100,7 +102,7 @@ static const enum info_field default_brief_top_left[] = {
 
 /** Single info block. */
 struct info_block {
-    struct info_line* lines;
+    struct text_keyval* lines;
     enum info_field* scheme;
     size_t scheme_sz;
 };
@@ -110,7 +112,7 @@ struct info_context {
     enum info_mode mode;
     int timeout;
     const char* file;
-    struct info_line* exif_lines;
+    struct text_keyval* exif_lines;
     size_t exif_num;
     size_t frame;
     size_t frame_total;
@@ -118,9 +120,11 @@ struct info_context {
     size_t width;
     size_t height;
     size_t scale;
-    struct info_line fields[INFO_FIELDS_NUM];
+    struct text_keyval fields[INFO_FIELDS_NUM];
     struct info_block blocks[MODES_NUM][INFO_POSITION_NUM];
 };
+
+/** Global info context. */
 static struct info_context ctx;
 
 /**
@@ -166,7 +170,7 @@ static void update_field(const char* text, struct text_surface* surface)
  */
 static void import_exif(const struct image* image)
 {
-    struct info_line* line;
+    struct text_keyval* line;
 
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         free(ctx.exif_lines[i].key.data);
@@ -178,7 +182,7 @@ static void import_exif(const struct image* image)
         return;
     }
 
-    line = realloc(ctx.exif_lines, image->num_info * sizeof(struct info_line));
+    line = realloc(ctx.exif_lines, image->num_info * sizeof(*line));
     if (!line) {
         return;
     }
@@ -299,12 +303,12 @@ void info_create(void)
     ctx.timeout = 0;
     ctx.frame = UINT32_MAX;
     ctx.index = UINT32_MAX;
-    SET_DEFAULT(info_mode_full, info_top_left, default_full_top_left);
-    SET_DEFAULT(info_mode_full, info_top_right, default_full_top_right);
-    SET_DEFAULT(info_mode_full, info_bottom_left, default_full_bottom_left);
-    SET_DEFAULT(info_mode_full, info_bottom_right, default_bottom_right);
-    SET_DEFAULT(info_mode_brief, info_top_left, default_brief_top_left);
-    SET_DEFAULT(info_mode_brief, info_bottom_right, default_bottom_right);
+    SET_DEFAULT(info_mode_full, text_top_left, default_full_top_left);
+    SET_DEFAULT(info_mode_full, text_top_right, default_full_top_right);
+    SET_DEFAULT(info_mode_full, text_bottom_left, default_full_bottom_left);
+    SET_DEFAULT(info_mode_full, text_bottom_right, default_bottom_right);
+    SET_DEFAULT(info_mode_brief, text_top_left, default_brief_top_left);
+    SET_DEFAULT(info_mode_brief, text_bottom_right, default_bottom_right);
 
     // register configuration loader
     config_add_loader(CONFIG_SECTION, load_config);
@@ -459,12 +463,12 @@ void info_set_status(const char* fmt, ...)
     }
 }
 
-size_t info_height(enum info_position pos)
+size_t info_height(enum text_position pos)
 {
     const struct info_block* block;
     size_t lines_num;
 
-    if (ctx.mode == info_mode_off) {
+    if (ctx.mode == info_mode_off || pos == text_center) {
         return 0;
     }
 
@@ -500,11 +504,11 @@ size_t info_height(enum info_position pos)
     return lines_num;
 }
 
-const struct info_line* info_lines(enum info_position pos)
+const struct text_keyval* info_lines(enum text_position pos)
 {
     const size_t lines_num = info_height(pos);
     struct info_block* block;
-    struct info_line* line;
+    struct text_keyval* line;
 
     if (ctx.mode == info_mode_off) {
         return 0;
@@ -512,7 +516,7 @@ const struct info_line* info_lines(enum info_position pos)
 
     block = &ctx.blocks[ctx.mode][pos];
 
-    line = realloc(block->lines, lines_num * sizeof(struct info_line));
+    line = realloc(block->lines, lines_num * sizeof(*line));
     if (!line) {
         return NULL;
     }

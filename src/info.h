@@ -4,22 +4,7 @@
 
 #pragma once
 
-#include "font.h"
-
-/** Info block position. */
-enum info_position {
-    info_top_left,
-    info_top_right,
-    info_bottom_left,
-    info_bottom_right,
-};
-#define INFO_POSITION_NUM 4
-
-/** Info line. */
-struct info_line {
-    struct text_surface key;
-    struct text_surface value;
-};
+#include "text.h"
 
 /**
  * Create global info context.
@@ -61,14 +46,14 @@ void info_set_status(const char* fmt, ...)
  * @param pos block position
  * @return number of lines
  */
-size_t info_height(enum info_position pos);
+size_t info_height(enum text_position pos);
 
 /**
- * Get list of text lines (key->val).
+ * Get list of key/value lines for specified text block.
  * @param pos block position
  * @return pointer to the lines array
  */
-const struct info_line* info_lines(enum info_position pos);
+const struct text_keyval* info_lines(enum text_position pos);
 
 /**
  * Get info display timeout.

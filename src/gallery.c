@@ -38,7 +38,7 @@ struct gallery {
     size_t top;      ///< Index of the first displayed image
     size_t selected; ///< Index of the selected displayed image
 
-    struct info_line name; ///< File name layer
+    struct text_surface path; ///< File path text surface
 };
 
 /** Global gallery context. */
@@ -253,7 +253,7 @@ static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
                 ARGB_SET_A(0xff));
 
     // print file name
-    text_print(window, info_bottom_right, &ctx.name, 1);
+    text_print(window, text_bottom_right, &ctx.path);
 }
 
 /**
@@ -378,8 +378,12 @@ static void move_selection(enum action_type direction)
         ctx.selected = index;
 
         // create text layer with file name
-        free(ctx.name.value.data);
-        font_render(image_list_get(ctx.selected), &ctx.name.value);
+        free(ctx.path.data);
+        if (!font_render(image_list_get(ctx.selected), &ctx.path)) {
+            ctx.path.data = NULL;
+            ctx.path.width = 0;
+            ctx.path.height = 0;
+        }
 
         // rewind thumbnail list down
         if (ctx.selected > ctx.top + cols) {
@@ -543,7 +547,7 @@ void gallery_destroy(void)
     if (ctx.loader) {
         pthread_join(ctx.loader, NULL);
     }
-    free(ctx.name.value.data);
+    free(ctx.path.data);
 }
 
 void gallery_handle(const struct event* event)

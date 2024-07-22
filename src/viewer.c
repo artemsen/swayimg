@@ -634,18 +634,23 @@ static void redraw(void)
 
     // put text info blocks on window surface
     if (!ctx.info_timedout) {
-        for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-            const size_t lines_num = info_height(i);
+        const enum text_position pos[] = {
+            text_top_left,
+            text_top_right,
+            text_bottom_left,
+            text_bottom_right,
+        };
+        for (size_t i = 0; i < ARRAY_SIZE(pos); ++i) {
+            const size_t lines_num = info_height(pos[i]);
             if (lines_num) {
-                const enum info_position pos = (enum info_position)i;
-                const struct info_line* lines = info_lines(pos);
-                text_print(window, pos, lines, lines_num);
+                const struct text_keyval* lines = info_lines(pos[i]);
+                text_print_keyval(window, pos[i], lines, lines_num);
             }
         }
     }
 
     if (ctx.help) {
-        text_print_centered(window, ctx.help, ctx.help_sz);
+        text_print_lines(window, text_center, ctx.help, ctx.help_sz);
     }
 
     // reset one-time rendered notification message

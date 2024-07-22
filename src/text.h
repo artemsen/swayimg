@@ -4,8 +4,23 @@
 
 #pragma once
 
-#include "info.h"
+#include "font.h"
 #include "pixmap.h"
+
+/** Text positions. */
+enum text_position {
+    text_center,
+    text_top_left,
+    text_top_right,
+    text_bottom_left,
+    text_bottom_right,
+};
+
+/** Key/value line. */
+struct text_keyval {
+    struct text_surface key;
+    struct text_surface value;
+};
 
 /**
  * Initialize text canvas context.
@@ -13,20 +28,30 @@
 void text_create(void);
 
 /**
- * Print information text block.
+ * Print text line.
+ * @param wnd destination window
+ * @param pos text position
+ * @param text text surface to draw
+ */
+void text_print(struct pixmap* wnd, enum text_position pos,
+                const struct text_surface* text);
+
+/**
+ * Print block of text (array of lines).
  * @param wnd destination window
  * @param pos block position
  * @param lines array of lines to print
  * @param lines_num total number of lines
  */
-void text_print(struct pixmap* wnd, enum info_position pos,
-                const struct info_line* lines, size_t lines_num);
+void text_print_lines(struct pixmap* wnd, enum text_position pos,
+                      const struct text_surface* lines, size_t lines_num);
 
 /**
- * Print text block at the center of window.
+ * Print block of key/value text.
  * @param wnd destination window
- * @param lines array of lines to print
+ * @param pos block position
+ * @param lines array of key/value lines to print
  * @param lines_num total number of lines
  */
-void text_print_centered(struct pixmap* wnd, const struct text_surface* lines,
-                         size_t lines_num);
+void text_print_keyval(struct pixmap* wnd, enum text_position pos,
+                       const struct text_keyval* lines, size_t lines_num);
