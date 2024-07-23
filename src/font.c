@@ -73,6 +73,43 @@ static bool search_font_file(const char* name, char* font_file, size_t len)
 }
 
 /**
+ * Calc size of the surface and allocate memory for the mask.
+ * @param text string to print
+ * @param surface text surface
+ * @return true if operation completed successfully
+ */
+static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
+{
+    const size_t space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
+    const size_t height = ctx.face->size->metrics.height / POINT_FACTOR;
+    size_t width = 0;
+    uint8_t* data;
+    size_t data_size;
+
+    // get total width
+    while (*text) {
+        if (*text == L' ') {
+            width += space_size;
+        } else if (FT_Load_Char(ctx.face, *text, FT_LOAD_RENDER) == 0) {
+            width += ctx.face->glyph->advance.x / POINT_FACTOR;
+        }
+        ++text;
+    }
+
+    // allocate surface buffer
+    data_size = width * height;
+    data = realloc(surface->data, data_size);
+    if (data) {
+        surface->width = width;
+        surface->height = height;
+        surface->data = data;
+        memset(surface->data, 0, data_size);
+    }
+
+    return !!data;
+}
+
+/**
  * Custom section loader, see `config_loader` for details.
  */
 static enum config_status load_config(const char* key, const char* value)
@@ -133,11 +170,11 @@ void font_destroy(void)
 
 bool font_render(const char* text, struct text_surface* surface)
 {
-    size_t x;
-    wchar_t* wide;
-    const wchar_t* ptr;
     size_t space_size;
     ssize_t base_offset;
+    wchar_t* wide;
+    wchar_t* it;
+    size_t x = 0;
 
     if (!ctx.face) {
         return false;
@@ -152,35 +189,17 @@ bool font_render(const char* text, struct text_surface* surface)
     if (!wide) {
         return false;
     }
-
-    // get total width
-    x = 0;
-    ptr = wide;
-    while (*ptr) {
-        if (*ptr == L' ') {
-            x += space_size;
-        } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
-            x += ctx.face->glyph->advance.x / POINT_FACTOR;
-        }
-        ++ptr;
-    }
-
-    // allocate surface buffer
-    surface->width = x;
-    surface->height = ctx.face->size->metrics.height / POINT_FACTOR;
-    surface->data = calloc(1, surface->height * surface->width);
-    if (!surface->data) {
+    if (!allocate_surface(wide, surface)) {
         free(wide);
         return false;
     }
 
     // draw glyphs
-    x = 0;
-    ptr = wide;
-    while (*ptr) {
-        if (*ptr == L' ') {
+    it = wide;
+    while (*it) {
+        if (*it == L' ') {
             x += space_size;
-        } else if (FT_Load_Char(ctx.face, *ptr, FT_LOAD_RENDER) == 0) {
+        } else if (FT_Load_Char(ctx.face, *it, FT_LOAD_RENDER) == 0) {
             const FT_GlyphSlot glyph = ctx.face->glyph;
             const FT_Bitmap* bmp = &glyph->bitmap;
             const ssize_t off_y = base_offset - glyph->bitmap_top;
@@ -202,7 +221,7 @@ bool font_render(const char* text, struct text_surface* surface)
 
             x += glyph->advance.x / POINT_FACTOR;
         }
-        ++ptr;
+        ++it;
     }
 
     free(wide);

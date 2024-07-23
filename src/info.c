@@ -151,27 +151,15 @@ static bool is_visible(enum info_field field)
 }
 
 /**
- * Update field.
- * @param text text to set
- * @param surface field's surface
- */
-static void update_field(const char* text, struct text_surface* surface)
-{
-    if (surface->data) {
-        free(surface->data);
-        surface->data = NULL;
-    }
-    font_render(text, surface);
-}
-
-/**
  * Import meta data from image.
  * @param image source image
  */
 static void import_exif(const struct image* image)
 {
     struct text_keyval* line;
+    const size_t buf_size = image->num_info * sizeof(*line);
 
+    // free previuos lines
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         free(ctx.exif_lines[i].key.data);
         free(ctx.exif_lines[i].value.data);
@@ -182,10 +170,11 @@ static void import_exif(const struct image* image)
         return;
     }
 
-    line = realloc(ctx.exif_lines, image->num_info * sizeof(*line));
+    line = realloc(ctx.exif_lines, buf_size);
     if (!line) {
         return;
     }
+    memset(line, 0, buf_size);
 
     ctx.exif_num = image->num_info;
     ctx.exif_lines = line;
@@ -316,11 +305,11 @@ void info_create(void)
 
 void info_init(void)
 {
-    update_field("File name:", &ctx.fields[info_file_name].key);
-    update_field("File path:", &ctx.fields[info_file_path].key);
-    update_field("File size:", &ctx.fields[info_file_size].key);
-    update_field("Image format:", &ctx.fields[info_image_format].key);
-    update_field("Image size:", &ctx.fields[info_image_size].key);
+    font_render("File name:", &ctx.fields[info_file_name].key);
+    font_render("File path:", &ctx.fields[info_file_path].key);
+    font_render("File size:", &ctx.fields[info_file_size].key);
+    font_render("Image format:", &ctx.fields[info_image_format].key);
+    font_render("Image size:", &ctx.fields[info_image_size].key);
 }
 
 void info_destroy(void)
@@ -373,10 +362,10 @@ void info_update(size_t frame_idx, float scale)
 
     if (ctx.file != image->source) {
         if (is_visible(info_file_name)) {
-            update_field(image->name, &ctx.fields[info_file_name].value);
+            font_render(image->name, &ctx.fields[info_file_name].value);
         }
         if (is_visible(info_file_path)) {
-            update_field(image->source, &ctx.fields[info_file_path].value);
+            font_render(image->source, &ctx.fields[info_file_path].value);
         }
         if (is_visible(info_file_size)) {
             const size_t mib = 1024 * 1024;
@@ -384,10 +373,10 @@ void info_update(size_t frame_idx, float scale)
             const float sz = (float)image->file_size /
                 (image->file_size >= mib ? mib : 1024);
             snprintf(buffer, sizeof(buffer), "%.02f %ciB", sz, unit);
-            update_field(buffer, &ctx.fields[info_file_size].value);
+            font_render(buffer, &ctx.fields[info_file_size].value);
         }
         if (is_visible(info_image_format)) {
-            update_field(image->format, &ctx.fields[info_image_format].value);
+            font_render(image->format, &ctx.fields[info_image_format].value);
         }
         if (is_visible(info_exif)) {
             import_exif(image);
@@ -403,14 +392,14 @@ void info_update(size_t frame_idx, float scale)
         ctx.frame_total = image->num_frames;
         snprintf(buffer, sizeof(buffer), "%zu of %zu", ctx.frame + 1,
                  ctx.frame_total);
-        update_field(buffer, &ctx.fields[info_frame].value);
+        font_render(buffer, &ctx.fields[info_frame].value);
     }
 
     if (is_visible(info_index) && ctx.index != loader_current_index()) {
         ctx.index = loader_current_index();
         snprintf(buffer, sizeof(buffer), "%zu of %zu", ctx.index + 1,
                  image_list_size());
-        update_field(buffer, &ctx.fields[info_index].value);
+        font_render(buffer, &ctx.fields[info_index].value);
     }
 
     if (is_visible(info_scale)) {
@@ -418,7 +407,7 @@ void info_update(size_t frame_idx, float scale)
         if (ctx.scale != scale_percent) {
             ctx.scale = scale_percent;
             snprintf(buffer, sizeof(buffer), "%zu%%", ctx.scale);
-            update_field(buffer, &ctx.fields[info_scale].value);
+            font_render(buffer, &ctx.fields[info_scale].value);
         }
     }
 
@@ -428,7 +417,7 @@ void info_update(size_t frame_idx, float scale)
             ctx.width = pm->width;
             ctx.height = pm->height;
             snprintf(buffer, sizeof(buffer), "%zux%zu", ctx.width, ctx.height);
-            update_field(buffer, &ctx.fields[info_image_size].value);
+            font_render(buffer, &ctx.fields[info_image_size].value);
         }
     }
 }
@@ -436,31 +425,30 @@ void info_update(size_t frame_idx, float scale)
 void info_set_status(const char* fmt, ...)
 {
     struct text_surface* surface = &ctx.fields[info_status].value;
-    free(surface->data);
-    surface->data = NULL;
+    va_list args;
+    int len;
+    void* buffer;
 
-    if (fmt) {
-        va_list args;
-        int len;
-        void* buffer;
-
-        va_start(args, fmt);
-        len = vsnprintf(NULL, 0, fmt, args);
-        va_end(args);
-        if (len <= 0) {
-            return;
-        }
-        buffer = malloc(len + 1 /* last null */);
-        if (!buffer) {
-            return;
-        }
-        va_start(args, fmt);
-        vsprintf(buffer, fmt, args);
-        va_end(args);
-
-        update_field(buffer, surface);
-        free(buffer);
+    if (!fmt) {
+        return;
     }
+
+    va_start(args, fmt);
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
+    }
+    buffer = malloc(len + 1 /* last null */);
+    if (!buffer) {
+        return;
+    }
+    va_start(args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end(args);
+
+    font_render(buffer, surface);
+    free(buffer);
 }
 
 size_t info_height(enum text_position pos)

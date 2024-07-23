@@ -383,8 +383,8 @@ static void move_selection(enum action_type direction)
         ctx.selected = index;
 
         // create text layer with file name
-        free(ctx.path.data);
         if (!font_render(image_list_get(ctx.selected), &ctx.path)) {
+            free(ctx.path.data);
             ctx.path.data = NULL;
             ctx.path.width = 0;
             ctx.path.height = 0;

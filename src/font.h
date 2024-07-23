@@ -36,7 +36,7 @@ void font_destroy(void);
 /**
  * Render single text line.
  * @param text string to print
- * @param surface array of alpha pixels
- * @return false on error
+ * @param surface text surface to reallocate
+ * @return true if operation completed successfully
  */
 bool font_render(const char* text, struct text_surface* surface);
