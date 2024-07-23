@@ -17,8 +17,10 @@
 #include "ui.h"
 #include "viewer.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <poll.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -459,4 +461,81 @@ void app_on_drag(int dx, int dy)
     }
 
     append_event(&event);
+}
+
+void app_status(const char* fmt, ...)
+{
+    va_list args;
+    int len;
+    char* text;
+
+    info_set_status(NULL);
+
+    if (!fmt) {
+        return;
+    }
+
+    va_start(args, fmt);
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
+    }
+    text = malloc(len + 1 /* last null */);
+    if (!text) {
+        return;
+    }
+    va_start(args, fmt);
+    vsprintf(text, fmt, args);
+    va_end(args);
+
+    info_set_status(text);
+
+    free(text);
+
+    app_redraw();
+}
+
+void app_execute(const char* expr, const char* path)
+{
+    char* cmd = NULL;
+    int rc = -1;
+
+    // construct command from template
+    while (expr && *expr) {
+        if (*expr == '%') {
+            ++expr;
+            if (*expr != '%') {
+                str_append(path, 0, &cmd); // replace % with path
+                continue;
+            }
+        }
+        str_append(expr, 1, &cmd);
+        ++expr;
+    }
+
+    if (cmd) {
+        rc = system(cmd); // execute
+        if (rc != -1) {
+            rc = WEXITSTATUS(rc);
+        } else if (errno) {
+            rc = errno;
+        }
+    }
+
+    // show execution status
+    if (!cmd) {
+        app_status("Error: no command to execute");
+    } else {
+        if (strlen(cmd) > 30) { // trim long command
+            strcpy(&cmd[27], "...");
+        }
+        if (rc) {
+            app_status("Error %d: %s", rc, cmd);
+        } else {
+            app_status("OK: %s", cmd);
+        }
+    }
+
+    free(cmd);
 }

@@ -15,12 +15,10 @@
 #include "text.h"
 #include "ui.h"
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 // Background grid parameters
@@ -477,56 +475,6 @@ static void on_info_block_timeout(void)
 }
 
 /**
- * Execute system command for the current image.
- * @param expr command expression
- */
-static void execute_command(const char* expr)
-{
-    const char* path = loader_current_image()->source;
-    char* cmd = NULL;
-    int rc = EINVAL;
-
-    // construct command from template
-    while (expr && *expr) {
-        if (*expr == '%') {
-            ++expr;
-            if (*expr != '%') {
-                str_append(path, 0, &cmd); // replace % with path
-                continue;
-            }
-        }
-        str_append(expr, 1, &cmd);
-        ++expr;
-    }
-
-    if (cmd) {
-        rc = system(cmd); // execute
-        if (rc != -1) {
-            rc = WEXITSTATUS(rc);
-        } else {
-            rc = errno ? errno : EINVAL;
-        }
-    }
-
-    // show execution status
-    if (!cmd) {
-        info_set_status("Error: no command to execute");
-    } else {
-        if (strlen(cmd) > 30) { // trim long command
-            strcpy(&cmd[27], "...");
-        }
-        if (rc) {
-            info_set_status("Error %d: %s", rc, cmd);
-        } else {
-            info_set_status("OK: %s", cmd);
-        }
-    }
-
-    free(cmd);
-    app_redraw();
-}
-
-/**
  * Show/hide help layer.
  */
 static void switch_help(void)
@@ -611,9 +559,8 @@ static void draw_image(struct pixmap* wnd)
 static void reload(void)
 {
     if (loader_reset(loader_current_index(), false) == ldr_success) {
-        info_set_status("Image reloaded");
+        app_status("Image reloaded");
         reset_state();
-        app_redraw();
     } else {
         app_exit(0);
     }
@@ -654,7 +601,7 @@ static void redraw(void)
     }
 
     // reset one-time rendered notification message
-    info_set_status(NULL);
+    app_status(NULL);
 
     ui_draw_commit();
 }
@@ -680,7 +627,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
     if (!kb) {
         char* name = keybind_name(key, mods);
         if (name) {
-            info_set_status("Key %s is not bound", name);
+            app_status("Key %s is not bound", name);
             free(name);
             app_redraw();
         }
@@ -761,8 +708,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_antialiasing:
                 ctx.antialiasing = !ctx.antialiasing;
-                info_set_status("Anti-aliasing %s",
-                                ctx.antialiasing ? "on" : "off");
+                app_status("Anti-aliasing %s", ctx.antialiasing ? "on" : "off");
                 app_redraw();
                 break;
             case action_reload:
@@ -773,10 +719,10 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 app_redraw();
                 break;
             case action_exec:
-                execute_command(action->params);
+                app_execute(action->params, loader_current_image()->source);
                 break;
             case action_status:
-                info_set_status("%s", action->params);
+                app_status("%s", action->params);
                 app_redraw();
                 break;
             case action_exit:

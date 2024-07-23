@@ -6,6 +6,7 @@
 
 #include "application.h"
 #include "imagelist.h"
+#include "info.h"
 #include "loader.h"
 #include "str.h"
 #include "text.h"
@@ -251,9 +252,6 @@ static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
     // border
     pixmap_rect(window, thumb_x, thumb_y, thumb_size + 1, thumb_size + 1,
                 ARGB_SET_A(0xff));
-
-    // print file name
-    text_print(window, text_bottom_right, &ctx.path);
 }
 
 /**
@@ -318,12 +316,26 @@ static void reset_thumbnails(void)
  */
 static void redraw(void)
 {
+    struct text_surface* status;
     struct pixmap* wnd = ui_draw_begin();
-    if (wnd) {
-        pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
-        draw_thumbnails(wnd);
-        ui_draw_commit();
+
+    if (!wnd) {
+        return;
     }
+
+    pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
+    draw_thumbnails(wnd);
+
+    // print status or file path
+    status = info_get_status();
+    if (status) {
+        text_print(wnd, text_bottom_right, status);
+        app_status(NULL);
+    } else {
+        text_print(wnd, text_bottom_right, &ctx.path);
+    }
+
+    ui_draw_commit();
 }
 
 /**
@@ -463,6 +475,13 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_reload:
                 reset_thumbnails();
                 break;
+            case action_exec:
+                app_execute(action->params, image_list_get(ctx.selected));
+                break;
+            case action_status:
+                app_status("%s", action->params);
+                app_redraw();
+                break;
             case action_mode:
                 if (loader_reset(ctx.selected, false) == ldr_success) {
                     app_switch_mode();
@@ -564,17 +583,12 @@ void gallery_handle(const struct event* event)
         case event_redraw:
             redraw();
             break;
-        case event_resize:
-            // not supported
-            break;
         case event_keypress:
             on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
         case event_drag:
-            // not supported
-            break;
+        case event_resize:
         case event_activate:
-            // not supported
-            break;
+            break; // not supported
     }
 }

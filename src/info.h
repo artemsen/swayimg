@@ -36,10 +36,15 @@ void info_update(size_t frame_idx, float scale);
 
 /**
  * Set status text.
- * @param fmt message format description
+ * @param text status line, NULL to reset
  */
-void info_set_status(const char* fmt, ...)
-    __attribute__((format(printf, 1, 2)));
+void info_set_status(const char* text);
+
+/**
+ * Get status text surface.
+ * @return text surface or NULL it status was reset
+ */
+struct text_surface* info_get_status(void);
 
 /**
  * Get number of lines in the specified block.

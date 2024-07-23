@@ -83,3 +83,16 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
  * @param dx,dy delta between old and new position
  */
 void app_on_drag(int dx, int dy);
+
+/**
+ * Set status message.
+ * @param fmt message format description, NULL to remove
+ */
+void app_status(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+
+/**
+ * Execute system command for the specified image.
+ * @param expr command expression
+ * @param path file path to substitute into expression
+ */
+void app_execute(const char* expr, const char* path);

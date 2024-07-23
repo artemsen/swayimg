@@ -9,7 +9,6 @@
 #include "loader.h"
 #include "str.h"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -422,33 +421,21 @@ void info_update(size_t frame_idx, float scale)
     }
 }
 
-void info_set_status(const char* fmt, ...)
+void info_set_status(const char* text)
 {
     struct text_surface* surface = &ctx.fields[info_status].value;
-    va_list args;
-    int len;
-    void* buffer;
-
-    if (!fmt) {
-        return;
+    if (text) {
+        font_render(text, surface);
+    } else {
+        surface->width = 0;
+        surface->height = 0;
     }
+}
 
-    va_start(args, fmt);
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
-    }
-    buffer = malloc(len + 1 /* last null */);
-    if (!buffer) {
-        return;
-    }
-    va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
-    va_end(args);
-
-    font_render(buffer, surface);
-    free(buffer);
+struct text_surface* info_get_status(void)
+{
+    struct text_surface* surface = &ctx.fields[info_status].value;
+    return surface->width != 0 ? surface : NULL;
 }
 
 size_t info_height(enum text_position pos)
