@@ -1,12 +1,13 @@
-# Swayimg: image viewer for Sway/Wayland
+# Swayimg: image viewer for Wayland
 
-Swayimg is a lightweight image viewer for Wayland display servers.
+Lightweight image viewer for Wayland display servers.
 
 In a [Sway](https://swaywm.org) compatible mode, the viewer creates an "overlay"
 above the currently active window, which gives the illusion that you are opening
 the image directly in a terminal window.
 
-![Screenshot](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/screenshot.png)
+![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
+![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)
 
 ## Supported image formats
 
@@ -47,6 +48,10 @@ Examples:
   ```
   swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png" \
           "exec://curl -so- https://www.kernel.org/theme/images/logos/tux.png"
+  ```
+- View all images from the current directory in gallery mode:
+  ```
+  swayimg --gallery
   ```
 
 ## Configuration
