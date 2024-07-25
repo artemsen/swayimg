@@ -35,10 +35,10 @@ TEST_F(Keybind, Configure)
     const struct keybind* kb;
 
     ASSERT_EQ(keybind_configure("a", "exit"), cfgst_ok);
-    ASSERT_EQ(KeybindSize(), 1);
+    ASSERT_EQ(KeybindSize(), static_cast<size_t>(1));
     ASSERT_EQ(keybind_configure("b", "exit"), cfgst_ok);
     ASSERT_EQ(keybind_configure("c", "exit"), cfgst_ok);
-    ASSERT_EQ(KeybindSize(), 3);
+    ASSERT_EQ(KeybindSize(), static_cast<size_t>(3));
 
     kb = keybind_all();
     ASSERT_EQ(kb->actions[0].type, action_exit);
@@ -46,14 +46,14 @@ TEST_F(Keybind, Configure)
     ASSERT_EQ(kb->next->next->actions[0].type, action_exit);
 
     ASSERT_EQ(keybind_configure("b", "reload"), cfgst_ok);
-    ASSERT_EQ(KeybindSize(), 3);
+    ASSERT_EQ(KeybindSize(), static_cast<size_t>(3));
 
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'b');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('b'));
     ASSERT_EQ(kb->actions[0].type, action_reload);
-    ASSERT_EQ(kb->next->key, 'c');
+    ASSERT_EQ(kb->next->key, static_cast<xkb_keysym_t>('c'));
     ASSERT_EQ(kb->next->actions[0].type, action_exit);
-    ASSERT_EQ(kb->next->next->key, 'a');
+    ASSERT_EQ(kb->next->next->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->next->next->actions[0].type, action_exit);
 }
 
@@ -63,27 +63,27 @@ TEST_F(Keybind, ParseMods)
 
     ASSERT_EQ(keybind_configure("Ctrl+a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'a');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->mods, KEYMOD_CTRL);
 
     ASSERT_EQ(keybind_configure("Alt+a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'a');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->mods, KEYMOD_ALT);
 
     ASSERT_EQ(keybind_configure("Shift+a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'a');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->mods, KEYMOD_SHIFT);
 
     ASSERT_EQ(keybind_configure("Alt+Ctrl+a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'a');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->mods, KEYMOD_CTRL | KEYMOD_ALT);
 
     ASSERT_EQ(keybind_configure("Ctrl+Shift+Alt+a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->key, 'a');
+    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     ASSERT_EQ(kb->mods, KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT);
 }
 
@@ -93,19 +93,19 @@ TEST_F(Keybind, ParseParams)
 
     ASSERT_EQ(keybind_configure("a", "exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->num_actions, 1);
+    ASSERT_EQ(kb->num_actions, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions[0].type, action_exit);
     ASSERT_EQ(kb->actions[0].params, nullptr);
 
     ASSERT_EQ(keybind_configure("a", "exit; "), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->num_actions, 1);
+    ASSERT_EQ(kb->num_actions, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions[0].type, action_exit);
     ASSERT_EQ(kb->actions[0].params, nullptr);
 
     ASSERT_EQ(keybind_configure("a", "status  \t params 1 2 3\t"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->num_actions, 1);
+    ASSERT_EQ(kb->num_actions, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions[0].type, action_status);
     ASSERT_STREQ(kb->actions[0].params, "params 1 2 3");
 }
@@ -116,7 +116,7 @@ TEST_F(Keybind, ParseMultiaction)
 
     ASSERT_EQ(keybind_configure("a", "exec cmd;reload; exit"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->num_actions, 3);
+    ASSERT_EQ(kb->num_actions, static_cast<size_t>(3));
     ASSERT_EQ(kb->actions[0].type, action_exec);
     ASSERT_STREQ(kb->actions[0].params, "cmd");
     ASSERT_EQ(kb->actions[1].type, action_reload);
@@ -126,6 +126,6 @@ TEST_F(Keybind, ParseMultiaction)
 
     ASSERT_EQ(keybind_configure("a", "exit;"), cfgst_ok);
     kb = keybind_all();
-    ASSERT_EQ(kb->num_actions, 1);
+    ASSERT_EQ(kb->num_actions, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions[0].type, action_exit);
 }

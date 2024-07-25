@@ -63,19 +63,24 @@ TEST(Str, str_split)
 {
     struct str_slice slices[4];
 
-    ASSERT_EQ(str_split("a,bc,def", ',', slices, ARRAY_SIZE(slices)), 3);
-    ASSERT_EQ(slices[0].len, 1);
+    ASSERT_EQ(str_split("a,bc,def", ',', slices, ARRAY_SIZE(slices)),
+              static_cast<size_t>(3));
+    ASSERT_EQ(slices[0].len, static_cast<size_t>(1));
     ASSERT_EQ(strncmp(slices[0].value, "a", slices[0].len), 0);
-    ASSERT_EQ(slices[1].len, 2);
+    ASSERT_EQ(slices[1].len, static_cast<size_t>(2));
     ASSERT_EQ(strncmp(slices[1].value, "bc", slices[1].len), 0);
-    ASSERT_EQ(slices[2].len, 3);
+    ASSERT_EQ(slices[2].len, static_cast<size_t>(3));
     ASSERT_EQ(strncmp(slices[2].value, "def", slices[2].len), 0);
 
-    ASSERT_EQ(str_split("", ';', slices, ARRAY_SIZE(slices)), 0);
-    ASSERT_EQ(str_split("a", ';', slices, ARRAY_SIZE(slices)), 1);
-    ASSERT_EQ(str_split("a;b;c;", ';', slices, ARRAY_SIZE(slices)), 3);
+    ASSERT_EQ(str_split("", ';', slices, ARRAY_SIZE(slices)),
+              static_cast<size_t>(0));
+    ASSERT_EQ(str_split("a", ';', slices, ARRAY_SIZE(slices)),
+              static_cast<size_t>(1));
+    ASSERT_EQ(str_split("a;b;c;", ';', slices, ARRAY_SIZE(slices)),
+              static_cast<size_t>(3));
 
-    ASSERT_EQ(str_split("a,b,c,d,e,f", ',', slices, ARRAY_SIZE(slices)), 6);
+    ASSERT_EQ(str_split("a,b,c,d,e,f", ',', slices, ARRAY_SIZE(slices)),
+              static_cast<size_t>(6));
 }
 
 TEST(Str, str_index)

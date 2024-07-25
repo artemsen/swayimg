@@ -30,9 +30,9 @@ TEST_F(Pixmap, Create)
 
     ASSERT_TRUE(pixmap_create(&pm, 123, 456));
     EXPECT_NE(pm.data, nullptr);
-    EXPECT_EQ(pm.data[0], 0);
-    EXPECT_EQ(pm.width, 123);
-    EXPECT_EQ(pm.height, 456);
+    EXPECT_EQ(pm.data[0], static_cast<size_t>(0));
+    EXPECT_EQ(pm.width, static_cast<size_t>(123));
+    EXPECT_EQ(pm.height, static_cast<size_t>(456));
 
     pixmap_free(&pm);
 }

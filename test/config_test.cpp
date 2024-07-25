@@ -29,7 +29,7 @@ TEST(Config, Load)
     config_add_loader("test_section", on_load);
     config_load();
 
-    EXPECT_EQ(config.size(), 3);
+    EXPECT_EQ(config.size(), static_cast<size_t>(3));
 
     auto check = [](const char* key, const char* val) {
         const auto& it = config.find(key);

@@ -32,9 +32,9 @@ protected:
         image = loader_load_image(file, &status);
         ASSERT_NE(image, nullptr);
         EXPECT_EQ(status, ldr_success);
-        EXPECT_NE(image->frames[0].pm.width, 0);
-        EXPECT_NE(image->frames[0].pm.height, 0);
-        EXPECT_NE(image->frames[0].pm.data[0], 0);
+        EXPECT_NE(image->frames[0].pm.width, static_cast<size_t>(0));
+        EXPECT_NE(image->frames[0].pm.height, static_cast<size_t>(0));
+        EXPECT_NE(image->frames[0].pm.data[0], static_cast<argb_t>(0));
     }
     struct image* image = nullptr;
 };

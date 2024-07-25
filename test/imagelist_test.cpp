@@ -15,9 +15,9 @@ protected:
 TEST_F(ImageList, Init)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    ASSERT_EQ(image_list_size(), 0);
-    ASSERT_EQ(image_list_init(sources, 3), 3);
-    ASSERT_EQ(image_list_size(), 3);
+    ASSERT_EQ(image_list_size(), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_init(sources, 3), static_cast<size_t>(3));
+    ASSERT_EQ(image_list_size(), static_cast<size_t>(3));
 }
 
 TEST_F(ImageList, Find)
@@ -25,7 +25,7 @@ TEST_F(ImageList, Find)
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
     const size_t idx = image_list_find("exec://cmd2");
-    ASSERT_EQ(idx, 1);
+    ASSERT_EQ(idx, static_cast<size_t>(1));
 }
 
 TEST_F(ImageList, Skip)
@@ -33,7 +33,7 @@ TEST_F(ImageList, Skip)
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
     const size_t idx = image_list_skip(1);
-    ASSERT_EQ(idx, 2);
+    ASSERT_EQ(idx, static_cast<size_t>(2));
 }
 
 TEST_F(ImageList, Get)
@@ -48,31 +48,31 @@ TEST_F(ImageList, GetFirst)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
-    ASSERT_EQ(image_list_first(), 0);
+    ASSERT_EQ(image_list_first(), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GetLast)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
-    ASSERT_EQ(image_list_last(), 2);
+    ASSERT_EQ(image_list_last(), static_cast<size_t>(2));
 }
 
 TEST_F(ImageList, GetNextFile)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
-    ASSERT_EQ(image_list_next_file(0), 1);
-    ASSERT_EQ(image_list_next_file(1), 2);
-    ASSERT_EQ(image_list_next_file(2), 0);
+    ASSERT_EQ(image_list_next_file(0), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_next_file(1), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_next_file(2), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GePrevFile)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
-    ASSERT_EQ(image_list_prev_file(0), 2);
-    ASSERT_EQ(image_list_prev_file(1), 0);
+    ASSERT_EQ(image_list_prev_file(0), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_prev_file(1), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GetNextDir)
@@ -83,9 +83,9 @@ TEST_F(ImageList, GetNextDir)
         "exec://cmd1/dir3/image5",
     };
     image_list_init(sources, 5);
-    ASSERT_EQ(image_list_next_dir(0), 2);
-    ASSERT_EQ(image_list_next_dir(2), 4);
-    ASSERT_EQ(image_list_next_dir(4), 0);
+    ASSERT_EQ(image_list_next_dir(0), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_next_dir(2), static_cast<size_t>(4));
+    ASSERT_EQ(image_list_next_dir(4), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GetPrevDir)
@@ -96,7 +96,7 @@ TEST_F(ImageList, GetPrevDir)
         "exec://cmd1/dir3/image5",
     };
     image_list_init(sources, 5);
-    ASSERT_EQ(image_list_prev_dir(0), 4);
-    ASSERT_EQ(image_list_prev_dir(2), 1);
-    ASSERT_EQ(image_list_prev_dir(3), 1);
+    ASSERT_EQ(image_list_prev_dir(0), static_cast<size_t>(4));
+    ASSERT_EQ(image_list_prev_dir(2), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_prev_dir(3), static_cast<size_t>(1));
 }

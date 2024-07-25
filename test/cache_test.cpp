@@ -17,7 +17,7 @@ protected:
 
 TEST_F(Cache, Create)
 {
-    ASSERT_EQ(cache.capacity, 3);
+    ASSERT_EQ(cache.capacity, static_cast<size_t>(3));
     EXPECT_EQ(cache.queue[0].image, nullptr);
     EXPECT_EQ(cache.queue[1].image, nullptr);
     EXPECT_EQ(cache.queue[2].image, nullptr);
@@ -61,11 +61,11 @@ TEST_F(Cache, Put)
     cache_put(&cache, image, 42);
 
     EXPECT_EQ(cache.queue[2].image, image);
-    EXPECT_EQ(cache.queue[2].index, 42);
+    EXPECT_EQ(cache.queue[2].index, static_cast<size_t>(42));
     EXPECT_NE(cache.queue[1].image, nullptr);
-    EXPECT_EQ(cache.queue[1].index, 2);
+    EXPECT_EQ(cache.queue[1].index, static_cast<size_t>(2));
     EXPECT_NE(cache.queue[0].image, nullptr);
-    EXPECT_EQ(cache.queue[0].index, 1);
+    EXPECT_EQ(cache.queue[0].index, static_cast<size_t>(1));
 }
 
 TEST_F(Cache, Get)
@@ -80,9 +80,9 @@ TEST_F(Cache, Get)
 
     EXPECT_EQ(cache.queue[2].image, nullptr);
     EXPECT_NE(cache.queue[1].image, nullptr);
-    EXPECT_EQ(cache.queue[1].index, 2);
+    EXPECT_EQ(cache.queue[1].index, static_cast<size_t>(2));
     EXPECT_NE(cache.queue[0].image, nullptr);
-    EXPECT_EQ(cache.queue[0].index, 0);
+    EXPECT_EQ(cache.queue[0].index, static_cast<size_t>(0));
 
     EXPECT_EQ(cache_get(&cache, 1), nullptr);
 }
