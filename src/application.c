@@ -75,9 +75,13 @@ static void sway_setup(void)
     bool absolute;
     int ipc;
 
+    if (ui_get_fullscreen()) {
+        return; // integration not needed
+    }
+
     ipc = sway_connect();
     if (ipc == INVALID_SWAY_IPC) {
-        return;
+        return; // sway not available
     }
 
     absolute = ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
@@ -226,6 +230,7 @@ void app_destroy(void)
 bool app_init(const char** sources, size_t num)
 {
     bool force_load = false;
+    const struct image* first_image = NULL;
 
     // compose image list
     if (num == 0) {
@@ -250,12 +255,15 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
+    // initialize loader
     loader_init();
     if (!ctx.mode_gallery) {
         // load first image
         const size_t index = image_list_find(sources[0]);
         const enum loader_status status = loader_reset(index, force_load);
-        if (status != ldr_success) {
+        if (status == ldr_success) {
+            first_image = loader_current_image();
+        } else {
             if (!force_load) {
                 fprintf(stderr, "No image files was loaded, exit\n");
             } else {
@@ -279,17 +287,16 @@ bool app_init(const char** sources, size_t num)
         }
     }
 
-    // setup window position and size
-    if (!ui_get_fullscreen()) {
-        sway_setup();
-    }
+    // setup window position and size if Sway available
+    sway_setup();
 
     // fixup window size form the first image
-    if (ui_get_width() == SIZE_FROM_IMAGE ||
-        ui_get_height() == SIZE_FROM_IMAGE ||
-        ui_get_width() == SIZE_FROM_PARENT ||
-        ui_get_height() == SIZE_FROM_PARENT) {
-        const struct pixmap* pm = &loader_current_image()->frames[0].pm;
+    if (first_image &&
+        (ui_get_width() == SIZE_FROM_IMAGE ||
+         ui_get_height() == SIZE_FROM_IMAGE ||
+         ui_get_width() == SIZE_FROM_PARENT ||
+         ui_get_height() == SIZE_FROM_PARENT)) {
+        const struct pixmap* pm = &first_image->frames[0].pm;
         ui_set_size(pm->width, pm->height);
     }
 
@@ -548,5 +555,3 @@ void app_execute(const char* expr, const char* path)
 
     free(cmd);
 }
-
-

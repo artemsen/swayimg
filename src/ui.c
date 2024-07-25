@@ -586,8 +586,8 @@ bool ui_init(const char* app_id)
 {
     if (ctx.wnd.width < 10 || ctx.wnd.height < 10) {
         // fixup window size
-        ctx.wnd.width = 640;
-        ctx.wnd.height = 480;
+        ctx.wnd.width = 800;
+        ctx.wnd.height = 600;
     }
 
     ctx.wl.display = wl_display_connect(NULL);
