@@ -99,6 +99,18 @@ static void sway_setup(void)
     }
 
     if (!ui_get_fullscreen()) {
+        if (!ctx.app_id) {
+            // create unique application id
+            struct timespec ts;
+            if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+                char app_id[64];
+                const uint64_t uid = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
+                snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, uid);
+                str_dup(app_id, &ctx.app_id);
+            } else {
+                str_dup(APP_NAME, &ctx.app_id);
+            }
+        }
         sway_add_rules(ipc, ctx.app_id, ui_get_x(), ui_get_y(), absolute);
     }
 
@@ -118,6 +130,10 @@ static void handle_event_queue(void)
     }
 }
 
+/**
+ * Append event to queue.
+ * @param event pointer to the event
+ */
 static void append_event(const struct event* event)
 {
     struct event_entry* entry;
@@ -167,8 +183,6 @@ static enum config_status load_config(const char* key, const char* value)
 
 void app_create(void)
 {
-    struct timespec ts;
-
     font_create();
     image_list_create();
     info_create();
@@ -178,16 +192,6 @@ void app_create(void)
     ui_create();
     viewer_create();
     gallery_create();
-
-    // create unique application id
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-        char app_id[64];
-        const uint64_t timestamp = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
-        snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, timestamp);
-        str_dup(app_id, &ctx.app_id);
-    } else {
-        str_dup(APP_NAME, &ctx.app_id);
-    }
 
     // register configuration loader
     config_add_loader(GENERAL_CONFIG_SECTION, load_config);
@@ -289,13 +293,17 @@ bool app_init(const char** sources, size_t num)
         ui_set_size(pm->width, pm->height);
     }
 
-    font_init();
-    info_init();
-    viewer_init();
-
+    if (!ctx.app_id) {
+        str_dup(APP_NAME, &ctx.app_id);
+    }
     if (!ui_init(ctx.app_id)) {
         return false;
     }
+
+    // initialize other subsystems
+    font_init();
+    info_init();
+    viewer_init();
 
     // event queue notification
     ctx.event_fd = notification_create();
@@ -540,3 +548,5 @@ void app_execute(const char* expr, const char* path)
 
     free(cmd);
 }
+
+
