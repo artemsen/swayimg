@@ -562,6 +562,7 @@ static void reload(void)
         app_status("Image reloaded");
         reset_state();
     } else {
+        printf("No more images to view, exit\n");
         app_exit(0);
     }
 }

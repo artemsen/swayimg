@@ -126,7 +126,7 @@ static void handle_event_queue(void)
 {
     notification_reset(ctx.event_fd);
 
-    while (ctx.events) {
+    while (ctx.events && ctx.state == loop_run) {
         struct event_entry* entry = ctx.events;
         ctx.events = ctx.events->next;
         ctx.mode_handler(&entry->event);
