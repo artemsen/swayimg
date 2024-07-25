@@ -31,18 +31,7 @@ jobs:
         meson setup
         -D version=${{steps.version.outputs.VERSION}}
         -D tests=enabled
-        -D heif=enabled
-        -D bash=auto
-        -D exif=enabled
-        -D exr=enabled
-        -D gif=enabled
-        -D jpeg=enabled
-        -D jxl=enabled
-        -D svg=enabled
-        -D tiff=enabled
-        -D webp=enabled
-        -D man=true
-        -D desktop=true
+        --auto-features=enabled
         --prefix=/usr
         ${{ env.BUILD_PATH }}
 

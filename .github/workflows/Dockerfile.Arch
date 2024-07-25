@@ -1,13 +1,10 @@
 FROM archlinux:latest
 
 RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
-    pkgconf \
+    bash-completion \
     clang \
-    meson \
-    wayland wayland-protocols \
-    gtest \
     fontconfig \
-    libxkbcommon \
+    gtest \
     libavif \
     libexif \
     libheif \
@@ -16,7 +13,12 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     librsvg \
     libtiff \
     libwebp \
-    openexr
+    libxkbcommon \
+    meson \
+    openexr \
+    pkgconf \
+    wayland \
+    wayland-protocols
 
 RUN useradd --create-home builder
 
