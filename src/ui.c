@@ -176,6 +176,21 @@ static struct wl_buffer* create_buffer(void)
 }
 
 /**
+ * Free window buffer.
+ * @param buffer wayland buffer to free
+ */
+static void free_buffer(struct wl_buffer* buffer)
+{
+    if (buffer) {
+        const size_t stride = ctx.wnd.pm.width * sizeof(argb_t);
+        const size_t size = stride * ctx.wnd.pm.height;
+        void* data = wl_buffer_get_user_data(buffer);
+        wl_buffer_destroy(buffer);
+        munmap(data, size);
+    }
+}
+
+/**
  * Recreate window buffers.
  * @return true if operation completed successfully
  */
@@ -183,20 +198,12 @@ static bool recreate_buffers(void)
 {
     ctx.wnd.current = NULL;
 
-    // first buffer
-    if (ctx.wnd.buffer0) {
-        wl_buffer_destroy(ctx.wnd.buffer0);
-    }
+    // recreate buffers
+    free_buffer(ctx.wnd.buffer0);
     ctx.wnd.buffer0 = create_buffer();
-    if (!ctx.wnd.buffer0) {
-        return false;
-    }
-    // second buffer
-    if (ctx.wnd.buffer1) {
-        wl_buffer_destroy(ctx.wnd.buffer1);
-    }
+    free_buffer(ctx.wnd.buffer1);
     ctx.wnd.buffer1 = create_buffer();
-    if (!ctx.wnd.buffer1) {
+    if (!ctx.wnd.buffer0 || !ctx.wnd.buffer1) {
         return false;
     }
 
@@ -712,12 +719,8 @@ void ui_destroy(void)
     if (ctx.xkb.context) {
         xkb_context_unref(ctx.xkb.context);
     }
-    if (ctx.wnd.buffer0) {
-        wl_buffer_destroy(ctx.wnd.buffer0);
-    }
-    if (ctx.wnd.buffer1) {
-        wl_buffer_destroy(ctx.wnd.buffer1);
-    }
+    free_buffer(ctx.wnd.buffer0);
+    free_buffer(ctx.wnd.buffer1);
     if (ctx.wl.seat) {
         wl_seat_destroy(ctx.wl.seat);
     }
