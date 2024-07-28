@@ -552,4 +552,6 @@ void app_execute(const char* expr, const char* path)
     }
 
     free(cmd);
+
+    app_redraw();
 }
