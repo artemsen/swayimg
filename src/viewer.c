@@ -7,6 +7,7 @@
 #include "application.h"
 #include "buildcfg.h"
 #include "config.h"
+#include "fetcher.h"
 #include "imagelist.h"
 #include "info.h"
 #include "keybind.h"
@@ -76,6 +77,9 @@ struct viewer {
 
     bool info_timedout; ///< Indicates info block shouldn't be displayed anymore
     int info_timeout_fd; ///< Info timer
+
+    size_t history; ///< Max number of cached images
+    size_t preload; ///< Max number of images to preload
 };
 
 /** Global viewer context. */
@@ -90,7 +94,7 @@ static void fixup_position(bool force)
     const ssize_t wnd_width = ui_get_width();
     const ssize_t wnd_height = ui_get_height();
 
-    const struct pixmap* img = &loader_current_image()->frames[ctx.frame].pm;
+    const struct pixmap* img = &fetcher_current()->frames[ctx.frame].pm;
     const ssize_t img_width = ctx.scale * img->width;
     const ssize_t img_height = ctx.scale * img->height;
 
@@ -177,7 +181,7 @@ static void move_image(bool horizontal, bool positive, const char* params)
  */
 static void rotate_image(bool clockwise)
 {
-    struct image* img = loader_current_image();
+    struct image* img = fetcher_current();
     const struct pixmap* pm = &img->frames[ctx.frame].pm;
     const ssize_t diff = (ssize_t)pm->width - pm->height;
     const ssize_t shift = (ctx.scale * diff) / 2;
@@ -196,7 +200,7 @@ static void rotate_image(bool clockwise)
  */
 static void scale_image(enum fixed_scale sc)
 {
-    const struct image* img = loader_current_image();
+    const struct image* img = fetcher_current();
     const struct pixmap* pm = &img->frames[ctx.frame].pm;
     const size_t wnd_width = ui_get_width();
     const size_t wnd_height = ui_get_height();
@@ -232,6 +236,7 @@ static void scale_image(enum fixed_scale sc)
     ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
 
     fixup_position(true);
+    info_update(info_scale, "%.0f%%", ctx.scale * 100);
     app_redraw();
 }
 
@@ -267,7 +272,7 @@ static void zoom_image(const char* params)
                 ctx.scale = MAX_SCALE;
             }
         } else {
-            const struct image* img = loader_current_image();
+            const struct image* img = fetcher_current();
             const struct pixmap* pm = &img->frames[ctx.frame].pm;
             const float scale_w = (float)MIN_SCALE / pm->width;
             const float scale_h = (float)MIN_SCALE / pm->height;
@@ -286,6 +291,7 @@ static void zoom_image(const char* params)
         fprintf(stderr, "Invalid zoom operation: \"%s\"\n", params);
     }
 
+    info_update(info_scale, "%.0f%%", ctx.scale * 100);
     app_redraw();
 }
 
@@ -298,7 +304,7 @@ static void animation_ctl(bool enable)
     struct itimerspec ts = { 0 };
 
     if (enable) {
-        const struct image* img = loader_current_image();
+        const struct image* img = fetcher_current();
         const size_t duration = img->frames[ctx.frame].duration;
         enable = (img->num_frames > 1 && duration);
         if (enable) {
@@ -332,7 +338,7 @@ static void slideshow_ctl(bool enable)
  */
 static void reset_state(void)
 {
-    const struct image* img = loader_current_image();
+    const struct image* img = fetcher_current();
     const int timeout = info_timeout();
 
     ctx.frame = 0;
@@ -346,6 +352,10 @@ static void reset_state(void)
     ui_set_title(img->name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
+
+    info_reset(img);
+    info_update(info_index, "%zu of %zu", fetcher_index() + 1,
+                image_list_size());
 
     // Expire info block after timeout
     if (timeout != 0) {
@@ -369,9 +379,9 @@ static void reset_state(void)
  */
 static bool skip_image(void)
 {
-    size_t index = image_list_skip(loader_current_index());
+    size_t index = image_list_skip(fetcher_index());
 
-    while (index != IMGLIST_INVALID && !loader_get_image(index)) {
+    while (index != IMGLIST_INVALID && !fetcher_open(index)) {
         index = image_list_next_file(index);
     }
 
@@ -385,7 +395,7 @@ static bool skip_image(void)
  */
 static bool next_image(enum action_type direction)
 {
-    size_t index = loader_current_index();
+    size_t index = fetcher_index();
 
     do {
         switch (direction) {
@@ -410,7 +420,7 @@ static bool next_image(enum action_type direction)
             default:
                 break;
         }
-    } while (index != IMGLIST_INVALID && !loader_get_image(index));
+    } while (index != IMGLIST_INVALID && !fetcher_open(index));
 
     if (index == IMGLIST_INVALID) {
         return false;
@@ -428,7 +438,7 @@ static bool next_image(enum action_type direction)
 static void next_frame(bool forward)
 {
     size_t index = ctx.frame;
-    const struct image* img = loader_current_image();
+    const struct image* img = fetcher_current();
 
     if (forward) {
         if (++index >= img->num_frames) {
@@ -441,6 +451,9 @@ static void next_frame(bool forward)
     }
     if (index != ctx.frame) {
         ctx.frame = index;
+        info_update(info_frame, "%zu of %zu", ctx.frame + 1, img->num_frames);
+        info_update(info_image_size, "%zux%zu", img->frames[ctx.frame].pm.width,
+                    img->frames[ctx.frame].pm.height);
         app_redraw();
     }
 }
@@ -521,7 +534,7 @@ static void switch_help(void)
  */
 static void draw_image(struct pixmap* wnd)
 {
-    const struct image* img = loader_current_image();
+    const struct image* img = fetcher_current();
     const struct pixmap* img_pm = &img->frames[ctx.frame].pm;
     const size_t width = ctx.scale * img_pm->width;
     const size_t height = ctx.scale * img_pm->height;
@@ -558,8 +571,14 @@ static void draw_image(struct pixmap* wnd)
  */
 static void reload(void)
 {
-    if (loader_reset(loader_current_index(), false) == ldr_success) {
-        app_status("Image reloaded");
+    const size_t index = fetcher_index();
+
+    if (fetcher_reset(index, false)) {
+        if (index == fetcher_index()) {
+            info_update(info_status, "Image reloaded");
+        } else {
+            info_update(info_status, "Unable to update, open next file");
+        }
         reset_state();
     } else {
         printf("No more images to view, exit\n");
@@ -577,7 +596,6 @@ static void redraw(void)
         return;
     }
 
-    info_update(ctx.frame, ctx.scale);
     draw_image(window);
 
     // put text info blocks on window surface
@@ -602,7 +620,7 @@ static void redraw(void)
     }
 
     // reset one-time rendered notification message
-    app_status(NULL);
+    info_update(info_status, NULL);
 
     ui_draw_commit();
 }
@@ -628,7 +646,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
     if (!kb) {
         char* name = keybind_name(key, mods);
         if (name) {
-            app_status("Key %s is not bound", name);
+            info_update(info_status, "Key %s is not bound", name);
             free(name);
             app_redraw();
         }
@@ -676,7 +694,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 ui_toggle_fullscreen();
                 break;
             case action_mode:
-                app_switch_mode();
+                app_switch_mode(fetcher_index());
                 break;
             case action_step_left:
                 move_image(true, true, action->params);
@@ -700,16 +718,17 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 rotate_image(true);
                 break;
             case action_flip_vertical:
-                image_flip_vertical(loader_current_image());
+                image_flip_vertical(fetcher_current());
                 app_redraw();
                 break;
             case action_flip_horizontal:
-                image_flip_horizontal(loader_current_image());
+                image_flip_horizontal(fetcher_current());
                 app_redraw();
                 break;
             case action_antialiasing:
                 ctx.antialiasing = !ctx.antialiasing;
-                app_status("Anti-aliasing %s", ctx.antialiasing ? "on" : "off");
+                info_update(info_status, "Anti-aliasing %s",
+                            ctx.antialiasing ? "on" : "off");
                 app_redraw();
                 break;
             case action_reload:
@@ -720,10 +739,10 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 app_redraw();
                 break;
             case action_exec:
-                app_execute(action->params, loader_current_image()->source);
+                app_execute(action->params, fetcher_current()->source);
                 break;
             case action_status:
-                app_status("%s", action->params);
+                info_update(info_status, "%s", action->params);
                 app_redraw();
                 break;
             case action_exit:
@@ -760,7 +779,8 @@ static void on_drag(int dx, int dy)
 /**
  * Custom section loader, see `config_loader` for details.
  */
-static enum config_status load_config(const char* key, const char* value)
+static enum config_status load_config_general(const char* key,
+                                              const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
@@ -806,6 +826,33 @@ static enum config_status load_config(const char* key, const char* value)
     return status;
 }
 
+/**
+ * Custom section loader, see `config_loader` for details.
+ */
+static enum config_status load_config_imglist(const char* key,
+                                              const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, IMGLIST_CFG_CACHE) == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
+            ctx.history = num;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, IMGLIST_CFG_PRELOAD) == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
+            ctx.preload = num;
+            status = cfgst_ok;
+        }
+    } else {
+        status = cfgst_invalid_key;
+    }
+
+    return status;
+}
+
 void viewer_create(void)
 {
     // set default configuration
@@ -818,12 +865,15 @@ void viewer_create(void)
     ctx.slideshow_time = 3;
     ctx.info_timedout = false;
     ctx.info_timeout_fd = -1;
+    ctx.history = 1;
+    ctx.preload = 1;
 
     // register configuration loader
-    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
+    config_add_loader(GENERAL_CONFIG_SECTION, load_config_general);
+    config_add_loader(IMGLIST_CFG_SECTION, load_config_imglist);
 }
 
-void viewer_init(void)
+void viewer_init(struct image* image, size_t index)
 {
     // setup animation timer
     ctx.animation_fd =
@@ -847,10 +897,14 @@ void viewer_init(void)
             app_watch(ctx.info_timeout_fd, on_info_block_timeout);
         }
     }
+
+    fetcher_init(image, index, ctx.history, ctx.preload);
 }
 
 void viewer_destroy(void)
 {
+    fetcher_destroy();
+
     for (size_t i = 0; i < ctx.help_sz; i++) {
         free(ctx.help[i].data);
     }
@@ -884,8 +938,11 @@ void viewer_handle(const struct event* event)
             on_drag(event->param.drag.dx, event->param.drag.dy);
             break;
         case event_activate:
-            reset_state();
-            app_redraw();
+            if (fetcher_reset(event->param.activate.index, false)) {
+                reset_state();
+            } else {
+                app_exit(0);
+            }
             break;
     }
 }

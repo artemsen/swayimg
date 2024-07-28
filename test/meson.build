@@ -2,7 +2,6 @@
 
 sources = [
   'action_test.cpp',
-  'cache_test.cpp',
   'config_test.cpp',
   'imagelist_test.cpp',
   'keybind_test.cpp',
@@ -10,7 +9,6 @@ sources = [
   'pixmap_test.cpp',
   'str_test.cpp',
   '../src/action.c',
-  '../src/cache.c',
   '../src/config.c',
   '../src/image.c',
   '../src/imagelist.c',

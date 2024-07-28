@@ -5,7 +5,6 @@
 #pragma once
 
 #include "keybind.h"
-#include "pixmap.h"
 
 // Configuration parameters
 #define APP_CFG_APP_ID  "app_id"
@@ -53,8 +52,9 @@ void app_exit(int rc);
 
 /**
  * Switch mode (viewer/gallery).
+ * @param index index of the current image
  */
-void app_switch_mode(void);
+void app_switch_mode(size_t index);
 
 /**
  * Handler of external event: reload image / reset state.
@@ -83,12 +83,6 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
  * @param dx,dy delta between old and new position
  */
 void app_on_drag(int dx, int dy);
-
-/**
- * Set status message.
- * @param fmt message format description, NULL to remove
- */
-void app_status(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 /**
  * Execute system command for the specified image.

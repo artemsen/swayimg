@@ -28,10 +28,8 @@ protected:
 
     void Load(const char* file)
     {
-        enum loader_status status;
-        image = loader_load_image(file, &status);
+        EXPECT_EQ(load_image(file, &image), ldr_success);
         ASSERT_NE(image, nullptr);
-        EXPECT_EQ(status, ldr_success);
         EXPECT_NE(image->frames[0].pm.width, static_cast<size_t>(0));
         EXPECT_NE(image->frames[0].pm.height, static_cast<size_t>(0));
         EXPECT_NE(image->frames[0].pm.data[0], static_cast<argb_t>(0));
@@ -41,8 +39,9 @@ protected:
 
 TEST_F(Loader, External)
 {
-    image =
-        loader_load_image(LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", NULL);
+    const enum loader_status status =
+        load_image(LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", &image);
+    EXPECT_EQ(status, ldr_success);
     ASSERT_NE(image, nullptr);
 }
 

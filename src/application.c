@@ -20,7 +20,6 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <poll.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -165,6 +164,62 @@ static void append_event(const struct event* event)
 }
 
 /**
+ * Load first (initial) image.
+ * @param index initial index of image in the image list, real index on exit
+ * @param force mandatory image index flag
+ * @return image instance or NULL on errors
+ */
+static struct image* load_first_file(size_t* index, bool force)
+{
+    struct image* img = NULL;
+    enum loader_status status = ldr_ioerror;
+    size_t idx = *index;
+
+    if (force && idx != IMGLIST_INVALID) {
+        status = load_image(image_list_get(idx), &img);
+    } else {
+        if (idx == IMGLIST_INVALID) {
+            idx = image_list_first();
+        }
+        while (idx != IMGLIST_INVALID) {
+            status = load_image(image_list_get(idx), &img);
+            if (status == ldr_success) {
+                break;
+            } else {
+                idx = image_list_skip(idx);
+            }
+        }
+    }
+
+    if (status == ldr_success) {
+        *index = idx;
+    } else {
+        // print error message
+        if (!force) {
+            fprintf(stderr, "No image files was loaded, exit\n");
+        } else {
+            const char* reason = "Unknown error";
+            switch (status) {
+                case ldr_success:
+                    break;
+                case ldr_unsupported:
+                    reason = "Unsupported format";
+                    break;
+                case ldr_fmterror:
+                    reason = "Invalid format";
+                    break;
+                case ldr_ioerror:
+                    reason = "I/O error";
+                    break;
+            }
+            fprintf(stderr, "%s: %s\n", image_list_get(*index), reason);
+        }
+    }
+
+    return img;
+}
+
+/**
  * Custom section loader, see `config_loader` for details.
  */
 static enum config_status load_config(const char* key, const char* value)
@@ -191,7 +246,6 @@ void app_create(void)
     image_list_create();
     info_create();
     keybind_create();
-    loader_create();
     text_create();
     ui_create();
     viewer_create();
@@ -205,7 +259,6 @@ void app_destroy(void)
 {
     gallery_destroy();
     viewer_destroy();
-    loader_destroy();
     ui_destroy();
     image_list_destroy();
     info_destroy();
@@ -230,7 +283,8 @@ void app_destroy(void)
 bool app_init(const char** sources, size_t num)
 {
     bool force_load = false;
-    const struct image* first_image = NULL;
+    struct image* first_image;
+    size_t first_index;
 
     // compose image list
     if (num == 0) {
@@ -255,36 +309,11 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
-    // initialize loader
-    loader_init();
-    if (!ctx.mode_gallery) {
-        // load first image
-        const size_t index = image_list_find(sources[0]);
-        const enum loader_status status = loader_reset(index, force_load);
-        if (status == ldr_success) {
-            first_image = loader_current_image();
-        } else {
-            if (!force_load) {
-                fprintf(stderr, "No image files was loaded, exit\n");
-            } else {
-                const char* reason = "Unknown error";
-                switch (status) {
-                    case ldr_success:
-                        break;
-                    case ldr_unsupported:
-                        reason = "Unsupported format";
-                        break;
-                    case ldr_fmterror:
-                        reason = "Invalid format";
-                        break;
-                    case ldr_ioerror:
-                        reason = "I/O error";
-                        break;
-                }
-                fprintf(stderr, "%s: %s\n", image_list_get(index), reason);
-            }
-            return false;
-        }
+    // load the first image
+    first_index = image_list_find(sources[0]);
+    first_image = load_first_file(&first_index, force_load);
+    if (!first_image) {
+        return false;
     }
 
     // setup window position and size if Sway available
@@ -310,7 +339,8 @@ bool app_init(const char** sources, size_t num)
     // initialize other subsystems
     font_init();
     info_init();
-    viewer_init();
+    viewer_init(ctx.mode_gallery ? NULL : first_image, first_index);
+    gallery_init(ctx.mode_gallery ? first_image : NULL, first_index);
 
     // event queue notification
     ctx.event_fd = notification_create();
@@ -389,12 +419,13 @@ void app_exit(int rc)
     ctx.state = rc ? loop_error : loop_stop;
 }
 
-void app_switch_mode(void)
+void app_switch_mode(size_t index)
 {
     ctx.mode_gallery = !ctx.mode_gallery;
 
     const struct event event = {
         .type = event_activate,
+        .param.activate.index = index,
     };
 
     if (ctx.mode_gallery) {
@@ -479,39 +510,6 @@ void app_on_drag(int dx, int dy)
     append_event(&event);
 }
 
-void app_status(const char* fmt, ...)
-{
-    va_list args;
-    int len;
-    char* text;
-
-    info_set_status(NULL);
-
-    if (!fmt) {
-        return;
-    }
-
-    va_start(args, fmt);
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
-    }
-    text = malloc(len + 1 /* last null */);
-    if (!text) {
-        return;
-    }
-    va_start(args, fmt);
-    vsprintf(text, fmt, args);
-    va_end(args);
-
-    info_set_status(text);
-
-    free(text);
-
-    app_redraw();
-}
-
 void app_execute(const char* expr, const char* path)
 {
     char* cmd = NULL;
@@ -541,15 +539,15 @@ void app_execute(const char* expr, const char* path)
 
     // show execution status
     if (!cmd) {
-        app_status("Error: no command to execute");
+        info_update(info_status, "Error: no command to execute");
     } else {
         if (strlen(cmd) > 30) { // trim long command
             strcpy(&cmd[27], "...");
         }
         if (rc) {
-            app_status("Error %d: %s", rc, cmd);
+            info_update(info_status, "Error %d: %s", rc, cmd);
         } else {
-            app_status("OK: %s", cmd);
+            info_update(info_status, "OK: %s", cmd);
         }
     }
 

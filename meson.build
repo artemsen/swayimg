@@ -153,9 +153,9 @@ endif
 sources = [
   'src/action.c',
   'src/application.c',
-  'src/cache.c',
   'src/config.c',
   'src/event.c',
+  'src/fetcher.c',
   'src/font.c',
   'src/gallery.c',
   'src/image.c',

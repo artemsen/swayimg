@@ -33,6 +33,10 @@ struct event {
             int dy;
         } drag;
 
+        struct activate {
+            size_t index;
+        } activate;
+
     } param;
 };
 

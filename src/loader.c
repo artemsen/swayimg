@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
-// Image loader and cache.
+// Image loader.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #include "loader.h"
 
-#include "application.h"
 #include "buildcfg.h"
-#include "cache.h"
-#include "config.h"
 #include "exif.h"
 #include "imagelist.h"
 #include "str.h"
-#include "ui.h"
-#include "viewer.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -24,10 +19,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-#ifdef HAVE_INOTIFY
-#include <sys/inotify.h>
-#endif
 
 // Construct function name of loader
 #define LOADER_FUNCTION(name) decode_##name
@@ -145,197 +136,43 @@ static const image_decoder decoders[] = {
 
 /** Loader context. */
 struct loader {
-    struct image* cur_img;       ///< Current image handle
-    size_t cur_idx;              ///< Index of the current image in image list
-    struct cache_queue previous; ///< Cache of previously viewed images
-    size_t previous_num;         ///< Max number of cached images
-    struct cache_queue preload;  ///< Queue of preloaded images
-    size_t preload_num;          ///< Max number of images to preload
-    pthread_t preloader;         ///< Preload thread
-#ifdef HAVE_INOTIFY
-    int notify; ///< inotify file handler
-    int watch;  ///< Current file watcher
-#endif
-};
-static struct loader ctx = {
-    .cur_idx = IMGLIST_INVALID,
-    .previous_num = 1,
-    .preload_num = 1,
-#ifdef HAVE_INOTIFY
-    .notify = -1,
-    .watch = -1,
-#endif
+    pthread_t thread_id;          ///< Background loader thread
+    size_t index;                 ///< Index of the image to load
+    load_prepare_fn on_prepare;   ///< Loader callback
+    load_complete_fn on_complete; ///< Loader callback
 };
 
-/** Preload operation. */
-enum preloader_op {
-    preloader_stop,
-    preloader_start,
-};
+/** Global loader context instance. */
+static struct loader ctx;
 
-/** Image preloader executed in background thread. */
-static void* preloader_thread(__attribute__((unused)) void* data)
+/** Image loader executed in background thread. */
+static void* load_in_background(__attribute__((unused)) void* data)
 {
-    size_t index = image_list_next_file(ctx.cur_idx);
-    const char* source;
-    struct image* img;
+    size_t index = ctx.index;
 
     while (index != IMGLIST_INVALID) {
-        if (index == ctx.cur_idx) {
-            break;
-        }
-        // check previously viewed cache
-        img = cache_get(&ctx.previous, index);
-        if (!img) {
-            // check preload cache
-            img = cache_get(&ctx.preload, index);
-        }
-        if (img) {
-            cache_put(&ctx.preload, img, index);
-            index = image_list_next_file(index);
-        } else {
-            // get next source
-            source = image_list_get(index);
-            while (index != IMGLIST_INVALID && !source) {
-                index = image_list_next_file(index);
-                source = image_list_get(index);
-            }
-            if (!source) {
+        struct image* img = NULL;
+        const char* source;
+
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
+        if (ctx.on_prepare) {
+            index = ctx.on_prepare(index);
+            if (index == IMGLIST_INVALID) {
                 break;
             }
-
-            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
-            // load image
-            img = loader_load_image(source, NULL);
-            if (!img) {
-                index = image_list_skip(index);
-            } else {
-                cache_put(&ctx.preload, img, index);
-                index = image_list_next_file(index);
-            }
-
-            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         }
-        if (cache_full(&ctx.preload)) {
-            break;
+        source = image_list_get(index);
+        if (source) {
+            load_image(source, &img);
         }
+        index = ctx.on_complete(img, index);
+
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
     return NULL;
 }
-
-/**
- * Stop or restart background thread to preload adjacent images.
- * @param op preloader operation
- */
-static void preloader_ctl(enum preloader_op op)
-{
-    if (ctx.preload_num == 0) {
-        return; // preload disabled
-    }
-
-    if (ctx.preloader) {
-        pthread_cancel(ctx.preloader);
-        pthread_join(ctx.preloader, NULL);
-        ctx.preloader = 0;
-    }
-
-    if (op == preloader_start) {
-        pthread_create(&ctx.preloader, NULL, preloader_thread, NULL);
-    }
-}
-
-/**
- * Load first (initial) image.
- * @param index initial index of image in the image list
- * @param force mandatory image index flag
- * @return loader status
- */
-static enum loader_status load_first(size_t index, bool force)
-{
-    enum loader_status status = ldr_ioerror;
-
-    if (force && index != IMGLIST_INVALID) {
-        const char* source = image_list_get(index);
-        if (source) {
-            struct image* img = loader_load_image(source, &status);
-            if (img) {
-                ctx.cur_img = img;
-                ctx.cur_idx = index;
-            }
-        }
-    } else {
-        if (index == IMGLIST_INVALID) {
-            index = image_list_first();
-        }
-        while (index != IMGLIST_INVALID) {
-            const char* source = image_list_get(index);
-            if (source) {
-                struct image* img = loader_load_image(source, &status);
-                if (img) {
-                    ctx.cur_img = img;
-                    ctx.cur_idx = index;
-                    break;
-                }
-            }
-            index = image_list_skip(index);
-        }
-    }
-
-    return status;
-}
-
-#ifdef HAVE_INOTIFY
-/**
- * Register watcher for current file.
- */
-static void watch_current(void)
-{
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-            ctx.watch = -1;
-        }
-        ctx.watch = inotify_add_watch(ctx.notify, ctx.cur_img->source,
-                                      IN_CLOSE_WRITE | IN_MOVE_SELF);
-    }
-}
-
-/**
- * Notify handler.
- */
-static void on_notify(void)
-{
-    while (true) {
-        bool updated = false;
-        uint8_t buffer[1024];
-        ssize_t pos = 0;
-        const ssize_t len = read(ctx.notify, buffer, sizeof(buffer));
-
-        if (len < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return; // something went wrong
-        }
-
-        while (pos + sizeof(struct inotify_event) <= (size_t)len) {
-            const struct inotify_event* event =
-                (struct inotify_event*)&buffer[pos];
-            if (event->mask & IN_IGNORED) {
-                ctx.watch = -1;
-            } else {
-                updated = true;
-            }
-            pos += sizeof(struct inotify_event) + event->len;
-        }
-        if (updated) {
-            app_reload();
-        }
-    }
-}
-#endif // HAVE_INOTIFY
 
 /**
  * Load image from memory buffer.
@@ -484,17 +321,16 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
     return status;
 }
 
-struct image* loader_load_image(const char* source, enum loader_status* status)
+enum loader_status load_image(const char* source, struct image** image)
 {
-    struct image* img = NULL;
-    enum loader_status rc = ldr_ioerror;
+    enum loader_status status;
+    struct image* img;
 
+    // create image instance
     img = image_create();
     if (!img) {
-        return NULL;
+        return ldr_ioerror;
     }
-
-    // save image source info
     img->source = str_dup(source, NULL);
     img->name = strrchr(img->source, '/');
     if (!img->name || strcmp(img->name, "/") == 0) {
@@ -505,157 +341,43 @@ struct image* loader_load_image(const char* source, enum loader_status* status)
 
     // decode image
     if (strcmp(source, LDRSRC_STDIN) == 0) {
-        rc = image_from_stream(img, STDIN_FILENO);
+        status = image_from_stream(img, STDIN_FILENO);
     } else if (strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        rc = image_from_exec(img, source + LDRSRC_EXEC_LEN);
+        status = image_from_exec(img, source + LDRSRC_EXEC_LEN);
     } else {
-        rc = image_from_file(img, source);
-    }
-
-    if (rc != ldr_success) {
-        image_free(img);
-        img = NULL;
-    }
-
-    if (status) {
-        *status = rc;
-    }
-
-    return img;
-}
-
-struct image* loader_get_image(size_t index)
-{
-    struct image* img = NULL;
-
-    if (ctx.cur_img && ctx.cur_idx == index) {
-        return ctx.cur_img;
-    }
-
-    // search in cache
-    img = cache_get(&ctx.previous, index);
-
-    // search in preload
-    if (!img) {
-        img = cache_get(&ctx.preload, index);
-    }
-
-    // load
-    if (!img) {
-        const char* source = image_list_get(index);
-        if (source) {
-            img = loader_load_image(source, NULL);
-        }
-    }
-
-    if (img) {
-        // don't cache skipped images
-        if (image_list_get(ctx.cur_idx)) {
-            cache_put(&ctx.previous, ctx.cur_img, ctx.cur_idx);
-        } else {
-            image_free(ctx.cur_img);
-        }
-
-        ctx.cur_img = img;
-        ctx.cur_idx = index;
-
-        preloader_ctl(preloader_start);
-
-#ifdef HAVE_INOTIFY
-        watch_current();
-#endif
-    }
-
-    return img;
-}
-
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config(const char* key, const char* value)
-{
-    enum config_status status = cfgst_invalid_value;
-
-    if (strcmp(key, IMGLIST_CFG_CACHE) == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.previous_num = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, IMGLIST_CFG_PRELOAD) == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.preload_num = num;
-            status = cfgst_ok;
-        }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
-}
-
-void loader_create(void)
-{
-    // register configuration loader
-    config_add_loader(IMGLIST_CFG_SECTION, load_config);
-}
-
-void loader_init(void)
-{
-    cache_init(&ctx.previous, ctx.previous_num);
-    cache_init(&ctx.preload, ctx.preload_num);
-
-#ifdef HAVE_INOTIFY
-    ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
-    if (ctx.notify >= 0) {
-        app_watch(ctx.notify, on_notify);
-    }
-#endif
-}
-
-void loader_destroy(void)
-{
-    preloader_ctl(preloader_stop);
-    cache_free(&ctx.previous);
-    cache_free(&ctx.preload);
-    image_free(ctx.cur_img);
-}
-
-enum loader_status loader_reset(size_t start, bool force)
-{
-    enum loader_status status = ldr_ioerror;
-
-    // reset
-    preloader_ctl(preloader_stop);
-    cache_reset(&ctx.previous);
-    cache_reset(&ctx.preload);
-    image_free(ctx.cur_img);
-    ctx.cur_img = NULL;
-
-    // load image
-    if (ctx.cur_img) {
-        status = load_first(ctx.cur_idx, true);
-    } else {
-        status = load_first(start, force);
+        status = image_from_file(img, source);
     }
 
     if (status == ldr_success) {
-        preloader_ctl(preloader_start);
-#ifdef HAVE_INOTIFY
-        watch_current();
-#endif
+        *image = img;
+    } else {
+        image_free(img);
     }
 
     return status;
 }
 
-struct image* loader_current_image(void)
+void load_image_start(size_t index, load_prepare_fn on_prepare,
+                      load_complete_fn on_complete)
 {
-    return ctx.cur_img;
+    load_image_stop();
+
+    if (index == IMGLIST_INVALID) {
+        ctx.index = image_list_first();
+    } else {
+        ctx.index = index;
+    }
+    ctx.on_prepare = on_prepare;
+    ctx.on_complete = on_complete;
+
+    pthread_create(&ctx.thread_id, NULL, load_in_background, NULL);
 }
 
-size_t loader_current_index(void)
+void load_image_stop(void)
 {
-    return ctx.cur_idx;
+    if (ctx.thread_id) {
+        pthread_cancel(ctx.thread_id);
+        pthread_join(ctx.thread_id, NULL);
+        ctx.thread_id = 0;
+    }
 }

@@ -81,7 +81,7 @@ void text_create(void)
 void text_print(struct pixmap* wnd, enum text_position pos,
                 const struct text_surface* text)
 {
-    size_t x, y;
+    size_t x = 0, y = 0;
 
     // calculate line position
     switch (pos) {

@@ -12,7 +12,6 @@
 #include "text.h"
 #include "ui.h"
 
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -37,7 +36,7 @@ struct gallery {
     pthread_t loader;  ///< Thumbnail loader thread
 
     size_t top;      ///< Index of the first displayed image
-    size_t selected; ///< Index of the selected displayed image
+    size_t selected; ///< Index of the selected image
 
     struct text_surface path; ///< File path text surface
 };
@@ -46,88 +45,54 @@ struct gallery {
 static struct gallery ctx;
 
 /**
- * Create preview from full sized image.
- * @param full image origin
- * @param preview destination preview pixmap
+ * Add new thumbnail from existing image.
+ * @param image original image
+ * @param index index of the image in the image list
  */
-static void create_preview(const struct pixmap* full, struct pixmap* preview)
+static void add_thumbnail(struct image* image, size_t index)
 {
-    const float scale_width = 1.0 / ((float)full->width / preview->width);
-    const float scale_height = 1.0 / ((float)full->height / preview->height);
+    struct thumbnail* entry;
+
+    const struct pixmap* full = &image->frames[0].pm;
+
+    const float scale_width = 1.0 / ((float)full->width / ctx.thumb_size);
+    const float scale_height = 1.0 / ((float)full->height / ctx.thumb_size);
     const float scale = min(scale_width, scale_height);
     const ssize_t thumb_width = scale * full->width;
     const ssize_t thumb_height = scale * full->height;
-    const ssize_t thumb_x = preview->width / 2 - thumb_width / 2;
-    const ssize_t thumb_y = preview->height / 2 - thumb_height / 2;
+    const ssize_t thumb_x = ctx.thumb_size / 2 - thumb_width / 2;
+    const ssize_t thumb_y = ctx.thumb_size / 2 - thumb_height / 2;
 
-    if (ctx.thumb_aa) {
-        pixmap_scale_bicubic(full, preview, thumb_x, thumb_y, scale, true);
-    } else {
-        pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
-    }
-}
-
-/**
- * Create thumbnail entry.
- * @param index image list index of the loaded image
- * @return new thumbnail instance or NULL if loading error
- */
-static struct thumbnail* create_thumbnail(size_t index)
-{
-    struct thumbnail* entry;
-    const char* source;
-    struct image* image;
-
-    // load full image
-    source = image_list_get(index);
-    if (!source) {
-        return NULL;
-    }
-    image = loader_load_image(source, NULL);
-    if (!image) {
-        return NULL;
-    }
-
-    // create new entry
-    entry = malloc(sizeof(*entry));
-    if (!entry) {
-        image_free(image);
-        return NULL;
-    }
-    entry->index = index;
-    entry->next = NULL;
-
-    // create thumbnail from image
-    pixmap_create(&entry->preview, ctx.thumb_size, ctx.thumb_size);
-    create_preview(&image->frames[0].pm, &entry->preview);
-
-    image_free(image);
-
-    return entry;
-}
-
-/** Load thumbnail in background thread. */
-static void* thumbnail_loader(void* data)
-{
-    const size_t start = (size_t)data;
-    struct thumbnail* entry = NULL;
-    size_t index = start;
-
-    do {
-        entry = create_thumbnail(index);
-        if (!entry) {
-            index = image_list_skip(index);
-        }
-    } while (!entry && index != IMGLIST_INVALID && index > start);
-
+    entry = malloc(sizeof(struct thumbnail));
     if (entry) {
-        // add to list and notify
+        // create thumbnail from image
+        pixmap_create(&entry->preview, ctx.thumb_size, ctx.thumb_size);
+        if (ctx.thumb_aa) {
+            pixmap_scale_bicubic(full, &entry->preview, thumb_x, thumb_y, scale,
+                                 true);
+        } else {
+            pixmap_scale_nearest(full, &entry->preview, thumb_x, thumb_y, scale,
+                                 true);
+        }
+
+        // add to the list
+        entry->index = index;
         entry->next = ctx.thumbs;
         ctx.thumbs = entry;
-        notification_raise(ctx.load_complete);
     }
+}
 
-    return NULL;
+/** Background loader thread callback. */
+static size_t on_image_loaded(struct image* image, size_t index)
+{
+    if (image) {
+        add_thumbnail(image, index);
+        image_free(image);
+        notification_raise(ctx.load_complete);
+    } else {
+        return image_list_skip(index);
+    }
+    return IMGLIST_INVALID;
 }
 
 /**
@@ -161,12 +126,7 @@ static struct thumbnail* get_thumbnail(size_t index)
         it = it->next;
     }
 
-    // restart loader thread
-    if (ctx.loader) {
-        pthread_join(ctx.loader, NULL);
-        ctx.loader = 0;
-    }
-    pthread_create(&ctx.loader, NULL, thumbnail_loader, (void*)index);
+    load_image_start(index, NULL, on_image_loaded);
 
     return NULL;
 }
@@ -330,7 +290,7 @@ static void redraw(void)
     status = info_get_status();
     if (status) {
         text_print(wnd, text_bottom_right, status);
-        app_status(NULL);
+        info_update(info_status, NULL);
     } else {
         text_print(wnd, text_bottom_right, &ctx.path);
     }
@@ -479,13 +439,11 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 app_execute(action->params, image_list_get(ctx.selected));
                 break;
             case action_status:
-                app_status("%s", action->params);
+                info_update(info_status, "%s", action->params);
                 app_redraw();
                 break;
             case action_mode:
-                if (loader_reset(ctx.selected, false) == ldr_success) {
-                    app_switch_mode();
-                }
+                app_switch_mode(ctx.selected);
                 break;
             case action_exit:
                 app_exit(0);
@@ -562,14 +520,20 @@ void gallery_create(void)
     config_add_loader("gallery", load_config);
 }
 
+void gallery_init(struct image* image, size_t index)
+{
+    if (image) {
+        add_thumbnail(image, index);
+        image_free(image);
+    }
+}
+
 void gallery_destroy(void)
 {
+    load_image_stop();
     reset_thumbnails();
     if (ctx.load_complete != -1) {
         notification_free(ctx.load_complete);
-    }
-    if (ctx.loader) {
-        pthread_join(ctx.loader, NULL);
     }
     free(ctx.path.data);
 }

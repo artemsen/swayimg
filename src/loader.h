@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Image loader and cache.
+// Image loader.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -27,60 +27,45 @@ extern const char* supported_formats;
 
 /**
  * Image loader function prototype, implemented by decoders.
- * @param ctx image context
+ * @param image target image instance
  * @param data raw image data
  * @param size size of image data in bytes
  * @return loader status
  */
-typedef enum loader_status (*image_decoder)(struct image* ctx,
+typedef enum loader_status (*image_decoder)(struct image* image,
                                             const uint8_t* data, size_t size);
 
 /**
- * Create loader global instance.
+ * Callback for image loader prepare (background thread loader).
+ * @param index index of the image to load
+ * @return next image index or IMGLIST_INVALID to stop loader
  */
-void loader_create(void);
+typedef size_t (*load_prepare_fn)(size_t index);
 
 /**
- * Initialize global loader.
+ * Callback for image loader completion (background thread loader).
+ * @param image loaded image instance, NULL if no more files to load
+ * @param index index of the image in the image list
+ * @return next image index or IMGLIST_INVALID to stop loader
  */
-void loader_init(void);
-
-/**
- * Destroy global loader resources: destroy caches etc.
- */
-void loader_destroy(void);
-
-/**
- * Reset cache and reload current image.
- * @param start prefered initial index of image in the image list
- * @param force mandatory image index flag
- * @return reloading status
- */
-enum loader_status loader_reset(size_t start, bool force);
+typedef size_t (*load_complete_fn)(struct image* image, size_t index);
 
 /**
  * Load image from specified source.
- * @param source image data source: path the file, stdio, etc
- * @param status fail reason, can be NULL
- * @return image context or NULL on errors
+ * @param source image data source: path to the file, exec command, etc
+ * @param image pointer to output image instance
+ * @return loading status
  */
-struct image* loader_load_image(const char* source, enum loader_status* status);
+enum loader_status load_image(const char* source, struct image** image);
 
 /**
- * Get (may be load) image for specified index
+ * Load image in background thread.
  * @param index index of the image in the image list
- * @return image context or NULL on errors
+ * @param on_prepare,on_complete callback functions
  */
-struct image* loader_get_image(size_t index);
-
+void load_image_start(size_t index, load_prepare_fn on_prepare,
+                      load_complete_fn on_complete);
 /**
- * Get current image (last requested by `loader_get_image`).
- * @return current image or NULL if no image loaded
+ * Stop loader thread.
  */
-struct image* loader_current_image(void);
-
-/**
- * Get current image index (last requested by `loader_get_image`).
- * @return current image index
- */
-size_t loader_current_index(void);
+void load_image_stop(void);

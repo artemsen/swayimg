@@ -4,7 +4,22 @@
 
 #pragma once
 
+#include "image.h"
 #include "text.h"
+
+/** Available info fields. */
+enum info_field {
+    info_file_name,
+    info_file_path,
+    info_file_size,
+    info_image_format,
+    info_image_size,
+    info_exif,
+    info_frame,
+    info_index,
+    info_scale,
+    info_status,
+};
 
 /**
  * Create global info context.
@@ -28,17 +43,18 @@ void info_destroy(void);
 void info_set_mode(const char* mode);
 
 /**
- * Refresh info data.
- * @param frame_idx index of the current frame
- * @param scale current scale factor
+ * Compose info data from image.
+ * @param image image instance
  */
-void info_update(size_t frame_idx, float scale);
+void info_reset(const struct image* image);
 
 /**
- * Set status text.
- * @param text status line, NULL to reset
+ * Update info text.
+ * @param field info field id
+ * @param fmt text string to set, NULL to clear
  */
-void info_set_status(const char* text);
+void info_update(enum info_field field, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 
 /**
  * Get status text surface.

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "event.h"
+#include "image.h"
 
 // Configuration parameters
 #define VIEWER_CFG_SCALE          "scale"
@@ -22,8 +23,10 @@ void viewer_create(void);
 
 /**
  * Initialize global viewer context.
+ * @param image initial image to open
+ * @param index index of the image in the image list
  */
-void viewer_init(void);
+void viewer_init(struct image* image, size_t index);
 
 /**
  * Destroy global viewer context.
