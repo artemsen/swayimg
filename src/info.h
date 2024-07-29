@@ -57,12 +57,6 @@ void info_update(enum info_field field, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 
 /**
- * Get status text surface.
- * @return text surface or NULL it status was reset
- */
-struct text_surface* info_get_status(void);
-
-/**
  * Get number of lines in the specified block.
  * @param pos block position
  * @return number of lines

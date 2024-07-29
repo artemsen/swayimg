@@ -357,12 +357,6 @@ void info_update(enum info_field field, const char* fmt, ...)
     free(text);
 }
 
-struct text_surface* info_get_status(void)
-{
-    struct text_surface* surface = &ctx.fields[info_status].value;
-    return surface->width != 0 ? surface : NULL;
-}
-
 size_t info_height(enum text_position pos)
 {
     const struct info_block* block;

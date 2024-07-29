@@ -15,10 +15,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Scale for selected thumbnail
+#define THUMB_SELECTED_SCALE 1.15f
+
 /** List of thumbnails. */
 struct thumbnail {
-    struct pixmap preview;  ///< Preview image
-    size_t index;           ///< Index of the image in the image list
+    struct image* image;    ///< Preview image
+    size_t width, height;   ///< Real image size
     struct thumbnail* next; ///< Next entry
 };
 
@@ -52,7 +55,7 @@ static void reset_thumbnails(void)
     while (ctx.thumbs) {
         struct thumbnail* entry = ctx.thumbs;
         ctx.thumbs = ctx.thumbs->next;
-        pixmap_free(&entry->preview);
+        image_free(entry->image);
         free(entry);
     }
     app_redraw();
@@ -64,31 +67,16 @@ static void reset_thumbnails(void)
  */
 static void add_thumbnail(struct image* image)
 {
-    struct thumbnail* entry;
-
-    const struct pixmap* full = &image->frames[0].pm;
-
-    const float scale_width = 1.0 / ((float)full->width / ctx.thumb_size);
-    const float scale_height = 1.0 / ((float)full->height / ctx.thumb_size);
-    const float scale = min(scale_width, scale_height);
-    const ssize_t thumb_width = scale * full->width;
-    const ssize_t thumb_height = scale * full->height;
-    const ssize_t thumb_x = ctx.thumb_size / 2 - thumb_width / 2;
-    const ssize_t thumb_y = ctx.thumb_size / 2 - thumb_height / 2;
-
-    entry = malloc(sizeof(*entry));
+    struct thumbnail* entry = malloc(sizeof(*entry));
     if (entry) {
+        entry->width = image->frames[0].pm.width;
+        entry->height = image->frames[0].pm.height;
+        entry->image = image;
+
         // create thumbnail from image
-        struct pixmap* preview = &entry->preview;
-        pixmap_create(preview, ctx.thumb_size, ctx.thumb_size);
-        if (ctx.thumb_aa) {
-            pixmap_scale_bicubic(full, preview, thumb_x, thumb_y, scale, true);
-        } else {
-            pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
-        }
+        image_thumbnail(image, ctx.thumb_size, ctx.thumb_aa);
 
         // add to the list
-        entry->index = image->index;
         entry->next = ctx.thumbs;
         ctx.thumbs = entry;
     }
@@ -99,10 +87,12 @@ static size_t on_image_loaded(struct image* image, size_t index)
 {
     if (image) {
         add_thumbnail(image);
-        image_free(image);
         notification_raise(ctx.load_complete);
     } else {
-        return image_list_skip(index);
+        const size_t next = image_list_skip(index);
+        if (next > index) {
+            return next;
+        }
     }
     return IMGLIST_INVALID;
 }
@@ -132,7 +122,7 @@ static struct thumbnail* get_thumbnail(size_t index)
     // search for already loaded thumbnail
     it = ctx.thumbs;
     while (it) {
-        if (it->index == index) {
+        if (it->image->index == index) {
             return it;
         }
         it = it->next;
@@ -162,68 +152,34 @@ static void get_layout(size_t* cols, size_t* rows, size_t* margin)
 }
 
 /**
- * Draw selected thumbnail.
+ * Draw frame with shadow for selected thumbnail.
  * @param window destination window
- * @param thumb selected item thumbnail
- * @param col,row position of the selected item
+ * @param x,y top left coordinate
+ * @param size size of the frame
  */
-static void draw_selected(struct pixmap* window, const struct thumbnail* thumb,
-                          size_t col, size_t row)
+static void draw_frame(struct pixmap* window, size_t x, size_t y, size_t size)
 {
     const size_t shadow_width = max(1, ctx.thumb_size / 15);
-    const size_t alpha_step = 255 / shadow_width;
-
-    const float thumb_scale = 1.15f;
-    const size_t thumb_size = thumb_scale * ctx.thumb_size;
-    const size_t offset = (thumb_size - ctx.thumb_size) / 2;
-
-    size_t cols, rows, margin;
-    ssize_t thumb_x, thumb_y;
-
-    // convert index coordinates to pixels
-    get_layout(&cols, &rows, &margin);
-    thumb_x = col * ctx.thumb_size + margin * (col + 1) - offset;
-    thumb_y = row * ctx.thumb_size + margin * (row + 1) - offset;
-    if (thumb_y < 0) {
-        thumb_y = 0;
-    }
-    if (thumb_x < 0) {
-        thumb_x = 0;
-    }
-    if (thumb_x + thumb_size >= window->width) {
-        thumb_x = window->width - thumb_size;
-    }
+    const size_t alpha_step = 0xff / shadow_width;
 
     // shadow
     for (size_t i = 0; i < shadow_width; ++i) {
-        const ssize_t x = i + thumb_x + thumb_size;
-        const ssize_t y = thumb_y + shadow_width;
-        const ssize_t h = thumb_size - (shadow_width - i);
+        const ssize_t lx = i + x + size;
+        const ssize_t ly = y + shadow_width;
+        const ssize_t lh = size - (shadow_width - i);
         const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-        pixmap_vline(window, x, y, h, color);
+        pixmap_vline(window, lx, ly, lh, color);
     }
     for (size_t i = 0; i < shadow_width; ++i) {
-        const ssize_t x = thumb_x + shadow_width;
-        const ssize_t y = thumb_y + thumb_size + i;
-        const ssize_t w = thumb_size - (shadow_width - i) + 1;
+        const ssize_t lx = x + shadow_width;
+        const ssize_t ly = y + size + i;
+        const ssize_t lw = size - (shadow_width - i) + 1;
         const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-        pixmap_hline(window, x, y, w, color);
-    }
-
-    // slightly zoomed thumbnail
-    pixmap_fill(window, thumb_x, thumb_y, thumb_size, thumb_size,
-                ctx.clr_select);
-    if (ctx.thumb_aa) {
-        pixmap_scale_bicubic(&thumb->preview, window, thumb_x, thumb_y,
-                             thumb_scale, true);
-    } else {
-        pixmap_scale_nearest(&thumb->preview, window, thumb_x, thumb_y,
-                             thumb_scale, true);
+        pixmap_hline(window, lx, ly, lw, color);
     }
 
     // border
-    pixmap_rect(window, thumb_x, thumb_y, thumb_size + 1, thumb_size + 1,
-                ARGB_SET_A(0xff));
+    pixmap_rect(window, x, y, size, size, ARGB_SET_A(0xff));
 }
 
 /**
@@ -234,38 +190,78 @@ static void draw_thumbnails(struct pixmap* window)
 {
     size_t index = ctx.top;
     size_t cols, rows, margin;
-    size_t sel_col, sel_row;
-    const struct thumbnail* sel_th = NULL;
+    ssize_t sel_x, sel_y;
+    const struct image* sel_th = NULL;
 
     get_layout(&cols, &rows, &margin);
 
     for (size_t row = 0; row < rows; ++row) {
         const ssize_t y = row * ctx.thumb_size + margin * (row + 1);
         for (size_t col = 0; col < cols; ++col) {
+            const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
             const struct thumbnail* th = get_thumbnail(index);
             if (!th) {
-                goto done; // no more files
+                row = rows; // break parent loop
+                break;
             }
 
             // draw preview, but postpone the selected item
-            if (th->index == ctx.selected) {
-                sel_col = col;
-                sel_row = row;
-                sel_th = th;
+            if (th->image->index == ctx.selected) {
+                sel_x = x;
+                sel_y = y;
+                sel_th = th->image;
             } else {
-                const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
+                const struct pixmap* img = &th->image->frames[0].pm;
+                const ssize_t tx = x + ctx.thumb_size / 2 - img->width / 2;
+                const ssize_t ty = y + ctx.thumb_size / 2 - img->height / 2;
                 pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
                             ctx.clr_background);
-                pixmap_copy(&th->preview, window, x, y, true);
+                pixmap_copy(img, window, tx, ty, th->image->alpha);
             }
 
-            index = image_list_next_file(th->index);
+            index = image_list_next_file(th->image->index);
+            if (index <= ctx.top) {
+                row = rows; // break parent loop
+                break;
+            }
         }
     }
 
-done:
+    // draw selected thumbnail
     if (sel_th) {
-        draw_selected(window, sel_th, sel_col, sel_row);
+        const struct pixmap* img = &sel_th->frames[0].pm;
+        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.thumb_size;
+        const size_t offset = (thumb_size - ctx.thumb_size) / 2;
+        size_t tx, ty;
+
+        sel_x -= offset;
+        sel_y -= offset;
+
+        if (sel_y < 0) {
+            sel_y = 0;
+        }
+        if (sel_x < 0) {
+            sel_x = 0;
+        }
+        if (sel_x + thumb_size >= window->width) {
+            sel_x = window->width - thumb_size;
+        }
+
+        tx = sel_x + ctx.thumb_size / 2 - img->width / 2;
+        ty = sel_y + ctx.thumb_size / 2 - img->height / 2;
+
+        pixmap_fill(window, sel_x, sel_y, thumb_size, thumb_size,
+                    ctx.clr_select);
+
+        if (ctx.thumb_aa) {
+            pixmap_scale_bicubic(img, window, tx, ty, THUMB_SELECTED_SCALE,
+                                 sel_th->alpha);
+        } else {
+            pixmap_scale_nearest(img, window, tx, ty, THUMB_SELECTED_SCALE,
+                                 sel_th->alpha);
+        }
+
+        draw_frame(window, sel_x, sel_y, thumb_size);
     }
 }
 
@@ -274,9 +270,7 @@ done:
  */
 static void redraw(void)
 {
-    struct text_surface* status;
     struct pixmap* wnd = ui_draw_begin();
-
     if (!wnd) {
         return;
     }
@@ -284,16 +278,78 @@ static void redraw(void)
     pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
     draw_thumbnails(wnd);
 
-    // print status or file path
-    status = info_get_status();
-    if (status) {
-        text_print(wnd, text_bottom_right, status);
-        info_update(info_status, NULL);
-    } else {
-        text_print(wnd, text_bottom_right, &ctx.path);
+    // todo: timeout
+    const enum text_position pos[] = {
+        text_top_left,
+        text_top_right,
+        text_bottom_left,
+        text_bottom_right,
+    };
+    for (size_t i = 0; i < ARRAY_SIZE(pos); ++i) {
+        const size_t lines_num = info_height(pos[i]);
+        if (lines_num) {
+            const struct text_keyval* lines = info_lines(pos[i]);
+            text_print_keyval(wnd, pos[i], lines, lines_num);
+        }
     }
+    info_update(info_status, NULL);
 
     ui_draw_commit();
+}
+
+/**
+ * Set current selection.
+ * @param index image index to set as selected one
+ */
+static void set_selection(size_t index)
+{
+    size_t cols, rows, margin;
+    struct thumbnail* th = get_thumbnail(index);
+
+    ctx.selected = index;
+
+    if (th) {
+        info_reset(th->image);
+        info_update(info_image_size, "%zux%zu", th->width, th->height);
+        info_update(info_index, "%zu of %zu", th->image->index + 1,
+                    image_list_size());
+    }
+
+    get_layout(&cols, &rows, &margin);
+
+    // rewind thumbnail list down
+    if (ctx.selected > ctx.top + cols) {
+        size_t pos = 0;
+        size_t distance = 0;
+        size_t second_line = 0;
+        size_t index = ctx.top;
+        for (size_t row = 0; row < rows; ++row) {
+            for (size_t col = 0; col < cols; ++col) {
+                if (index == ctx.selected) {
+                    distance = pos;
+                    break;
+                }
+                if (row == 1 && col == 0) {
+                    second_line = index;
+                }
+                index = image_list_next_file(index);
+                ++pos;
+            }
+        }
+        if (distance >= cols * (rows - 1)) {
+            ctx.top = second_line;
+        }
+    }
+
+    // rewind thumbnail list up
+    if (ctx.selected < ctx.top) {
+        size_t index = ctx.top;
+        size_t i = cols;
+        while (i-- && index != IMGLIST_INVALID) {
+            index = image_list_prev_file(index);
+        }
+        ctx.top = index;
+    }
 }
 
 /**
@@ -312,6 +368,10 @@ static void move_selection(enum action_type direction)
             index = image_list_first();
             ctx.top = index;
             break;
+        // case action_last_file:
+        //     index = image_list_last();
+        //     ctx.top = index; // todo
+        //     break;
         case action_prev_file:
         case action_step_left:
             if (index != image_list_first()) {
@@ -350,54 +410,10 @@ static void move_selection(enum action_type direction)
     }
 
     if (index != IMGLIST_INVALID && index != ctx.selected) {
-        ctx.selected = index;
-
-        // create text layer with file name
-        if (!font_render(image_list_get(ctx.selected), &ctx.path)) {
-            free(ctx.path.data);
-            ctx.path.data = NULL;
-            ctx.path.width = 0;
-            ctx.path.height = 0;
-        }
-
-        // rewind thumbnail list down
-        if (ctx.selected > ctx.top + cols) {
-            size_t pos = 0;
-            size_t distance = 0;
-            size_t second_line = 0;
-            size_t index = ctx.top;
-            for (size_t row = 0; row < rows; ++row) {
-                for (size_t col = 0; col < cols; ++col) {
-                    if (index == ctx.selected) {
-                        distance = pos;
-                        break;
-                    }
-                    if (row == 1 && col == 0) {
-                        second_line = index;
-                    }
-                    index = image_list_next_file(index);
-                    ++pos;
-                }
-            }
-            if (distance >= cols * (rows - 1)) {
-                ctx.top = second_line;
-            }
-        }
-
-        // rewind thumbnail list up
-        if (ctx.selected < ctx.top) {
-            size_t index = ctx.top;
-            size_t i = cols;
-            while (i-- && index != IMGLIST_INVALID) {
-                index = image_list_prev_file(index);
-            }
-            ctx.top = index;
-        }
-
+        set_selection(index);
         app_redraw();
     }
 }
-// static void make_visible(enum action_type direction)
 
 /**
  * Key press handler.
@@ -422,7 +438,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 reset_thumbnails();
                 break;
             case action_first_file:
-            // case action_last_file:
+            case action_last_file:
             case action_prev_file:
             case action_next_file:
             case action_step_left:
@@ -444,6 +460,10 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_mode:
                 app_switch_mode(ctx.selected);
                 break;
+            case action_info:
+                info_set_mode(action->params);
+                app_redraw();
+                break;
             case action_exit:
                 app_exit(0);
                 break;
@@ -458,11 +478,6 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
 static void on_load_complete(void)
 {
     notification_reset(ctx.load_complete);
-
-    if (ctx.selected == IMGLIST_INVALID) {
-        move_selection(action_first_file);
-    }
-
     app_redraw();
 }
 
@@ -522,9 +537,12 @@ void gallery_create(void)
 void gallery_init(struct image* image)
 {
     if (image) {
-        ctx.selected = image->index;
         add_thumbnail(image);
-        image_free(image);
+        set_selection(image->index);
+        ctx.top = image->index;
+    } else {
+        set_selection(image_list_first());
+        ctx.top = ctx.selected;
     }
 }
 
@@ -558,5 +576,3 @@ void gallery_handle(const struct event* event)
             break; // unused in gallery mode
     }
 }
-
-
