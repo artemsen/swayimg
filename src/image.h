@@ -11,6 +11,7 @@ struct image_info;
 
 /** Image context. */
 struct image {
+    size_t index;               ///< Index of the entry in the image list
     char* source;               ///< Image source (e.g. path to the image file)
     const char* name;           ///< Name of the image file
     size_t file_size;           ///< Size of image file

@@ -9,12 +9,10 @@
 /**
  * Initialize global fetch context.
  * @param image initial image
- * @param index index of the image in the image list
  * @param history max number of images in history
  * @param preload max number of preloaded images
  */
-void fetcher_init(struct image* image, size_t index, size_t history,
-                  size_t preload);
+void fetcher_init(struct image* image, size_t history, size_t preload);
 
 /**
  * Destroy global fetch context.
@@ -41,9 +39,3 @@ bool fetcher_open(size_t index);
  * @return current image or NULL if no image loaded yet
  */
 struct image* fetcher_current(void);
-
-/**
- * Get current image index.
- * @return current image index
- */
-size_t fetcher_index(void);

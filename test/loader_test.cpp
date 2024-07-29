@@ -28,7 +28,7 @@ protected:
 
     void Load(const char* file)
     {
-        EXPECT_EQ(load_image(file, &image), ldr_success);
+        EXPECT_EQ(load_image_source(file, &image), ldr_success);
         ASSERT_NE(image, nullptr);
         EXPECT_NE(image->frames[0].pm.width, static_cast<size_t>(0));
         EXPECT_NE(image->frames[0].pm.height, static_cast<size_t>(0));
@@ -39,8 +39,8 @@ protected:
 
 TEST_F(Loader, External)
 {
-    const enum loader_status status =
-        load_image(LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", &image);
+    const enum loader_status status = load_image_source(
+        LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", &image);
     EXPECT_EQ(status, ldr_success);
     ASSERT_NE(image, nullptr);
 }

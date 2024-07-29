@@ -56,7 +56,15 @@ typedef size_t (*load_complete_fn)(struct image* image, size_t index);
  * @param image pointer to output image instance
  * @return loading status
  */
-enum loader_status load_image(const char* source, struct image** image);
+enum loader_status load_image_source(const char* source, struct image** image);
+
+/**
+ * Load image with specified index in the image list.
+ * @param index index of the entry in the image list
+ * @param image pointer to output image instance
+ * @return loading status
+ */
+enum loader_status load_image(size_t index, struct image** image);
 
 /**
  * Load image in background thread.

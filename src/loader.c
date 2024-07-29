@@ -152,7 +152,6 @@ static void* load_in_background(__attribute__((unused)) void* data)
 
     while (index != IMGLIST_INVALID) {
         struct image* img = NULL;
-        const char* source;
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
@@ -162,10 +161,7 @@ static void* load_in_background(__attribute__((unused)) void* data)
                 break;
             }
         }
-        source = image_list_get(index);
-        if (source) {
-            load_image(source, &img);
-        }
+        load_image(index, &img);
         index = ctx.on_complete(img, index);
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -321,7 +317,7 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
     return status;
 }
 
-enum loader_status load_image(const char* source, struct image** image)
+enum loader_status load_image_source(const char* source, struct image** image)
 {
     enum loader_status status;
     struct image* img;
@@ -352,6 +348,21 @@ enum loader_status load_image(const char* source, struct image** image)
         *image = img;
     } else {
         image_free(img);
+    }
+
+    return status;
+}
+
+enum loader_status load_image(size_t index, struct image** image)
+{
+    enum loader_status status = ldr_ioerror;
+    const char* source = image_list_get(index);
+
+    if (source) {
+        status = load_image_source(source, image);
+        if (status == ldr_success) {
+            (*image)->index = index;
+        }
     }
 
     return status;

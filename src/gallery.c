@@ -45,11 +45,24 @@ struct gallery {
 static struct gallery ctx;
 
 /**
+ * Reset thumbnail list and free its resources.
+ */
+static void reset_thumbnails(void)
+{
+    while (ctx.thumbs) {
+        struct thumbnail* entry = ctx.thumbs;
+        ctx.thumbs = ctx.thumbs->next;
+        pixmap_free(&entry->preview);
+        free(entry);
+    }
+    app_redraw();
+}
+
+/**
  * Add new thumbnail from existing image.
  * @param image original image
- * @param index index of the image in the image list
  */
-static void add_thumbnail(struct image* image, size_t index)
+static void add_thumbnail(struct image* image)
 {
     struct thumbnail* entry;
 
@@ -63,20 +76,19 @@ static void add_thumbnail(struct image* image, size_t index)
     const ssize_t thumb_x = ctx.thumb_size / 2 - thumb_width / 2;
     const ssize_t thumb_y = ctx.thumb_size / 2 - thumb_height / 2;
 
-    entry = malloc(sizeof(struct thumbnail));
+    entry = malloc(sizeof(*entry));
     if (entry) {
         // create thumbnail from image
-        pixmap_create(&entry->preview, ctx.thumb_size, ctx.thumb_size);
+        struct pixmap* preview = &entry->preview;
+        pixmap_create(preview, ctx.thumb_size, ctx.thumb_size);
         if (ctx.thumb_aa) {
-            pixmap_scale_bicubic(full, &entry->preview, thumb_x, thumb_y, scale,
-                                 true);
+            pixmap_scale_bicubic(full, preview, thumb_x, thumb_y, scale, true);
         } else {
-            pixmap_scale_nearest(full, &entry->preview, thumb_x, thumb_y, scale,
-                                 true);
+            pixmap_scale_nearest(full, preview, thumb_x, thumb_y, scale, true);
         }
 
         // add to the list
-        entry->index = index;
+        entry->index = image->index;
         entry->next = ctx.thumbs;
         ctx.thumbs = entry;
     }
@@ -86,7 +98,7 @@ static void add_thumbnail(struct image* image, size_t index)
 static size_t on_image_loaded(struct image* image, size_t index)
 {
     if (image) {
-        add_thumbnail(image, index);
+        add_thumbnail(image);
         image_free(image);
         notification_raise(ctx.load_complete);
     } else {
@@ -222,7 +234,7 @@ static void draw_thumbnails(struct pixmap* window)
 {
     size_t index = ctx.top;
     size_t cols, rows, margin;
-    size_t sel_x, sel_y;
+    size_t sel_col, sel_row;
     const struct thumbnail* sel_th = NULL;
 
     get_layout(&cols, &rows, &margin);
@@ -237,8 +249,8 @@ static void draw_thumbnails(struct pixmap* window)
 
             // draw preview, but postpone the selected item
             if (th->index == ctx.selected) {
-                sel_x = col;
-                sel_y = row;
+                sel_col = col;
+                sel_row = row;
                 sel_th = th;
             } else {
                 const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
@@ -247,28 +259,14 @@ static void draw_thumbnails(struct pixmap* window)
                 pixmap_copy(&th->preview, window, x, y, true);
             }
 
-            index = th->index + 1;
+            index = image_list_next_file(th->index);
         }
     }
 
 done:
     if (sel_th) {
-        draw_selected(window, sel_th, sel_x, sel_y);
+        draw_selected(window, sel_th, sel_col, sel_row);
     }
-}
-
-/**
- * Reset thumbnail list and free its resources.
- */
-static void reset_thumbnails(void)
-{
-    while (ctx.thumbs) {
-        struct thumbnail* entry = ctx.thumbs;
-        ctx.thumbs = ctx.thumbs->next;
-        pixmap_free(&entry->preview);
-        free(entry);
-    }
-    app_redraw();
 }
 
 /**
@@ -399,6 +397,7 @@ static void move_selection(enum action_type direction)
         app_redraw();
     }
 }
+// static void make_visible(enum action_type direction)
 
 /**
  * Key press handler.
@@ -520,10 +519,11 @@ void gallery_create(void)
     config_add_loader("gallery", load_config);
 }
 
-void gallery_init(struct image* image, size_t index)
+void gallery_init(struct image* image)
 {
     if (image) {
-        add_thumbnail(image, index);
+        ctx.selected = image->index;
+        add_thumbnail(image);
         image_free(image);
     }
 }
@@ -550,9 +550,13 @@ void gallery_handle(const struct event* event)
         case event_keypress:
             on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
+        case event_activate:
+            ctx.selected = event->param.activate.index;
+            break;
         case event_drag:
         case event_resize:
-        case event_activate:
-            break; // not supported
+            break; // unused in gallery mode
     }
 }
+
+

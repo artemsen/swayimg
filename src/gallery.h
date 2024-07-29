@@ -15,9 +15,8 @@ void gallery_create(void);
 /**
  * Initialize global gallery context.
  * @param image initial image to open
- * @param index index of the image in the image list
  */
-void gallery_init(struct image* image, size_t index);
+void gallery_init(struct image* image);
 
 /**
  * Destroy global gallery context.

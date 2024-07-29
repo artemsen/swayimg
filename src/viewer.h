@@ -24,9 +24,8 @@ void viewer_create(void);
 /**
  * Initialize global viewer context.
  * @param image initial image to open
- * @param index index of the image in the image list
  */
-void viewer_init(struct image* image, size_t index);
+void viewer_init(struct image* image);
 
 /**
  * Destroy global viewer context.

@@ -165,35 +165,32 @@ static void append_event(const struct event* event)
 
 /**
  * Load first (initial) image.
- * @param index initial index of image in the image list, real index on exit
+ * @param index initial index of image in the image list
  * @param force mandatory image index flag
  * @return image instance or NULL on errors
  */
-static struct image* load_first_file(size_t* index, bool force)
+static struct image* load_first_file(size_t index, bool force)
 {
     struct image* img = NULL;
     enum loader_status status = ldr_ioerror;
-    size_t idx = *index;
 
-    if (force && idx != IMGLIST_INVALID) {
-        status = load_image(image_list_get(idx), &img);
+    if (force && index != IMGLIST_INVALID) {
+        status = load_image(index, &img);
     } else {
-        if (idx == IMGLIST_INVALID) {
-            idx = image_list_first();
+        if (index == IMGLIST_INVALID) {
+            index = image_list_first();
         }
-        while (idx != IMGLIST_INVALID) {
-            status = load_image(image_list_get(idx), &img);
+        while (index != IMGLIST_INVALID) {
+            status = load_image(index, &img);
             if (status == ldr_success) {
                 break;
             } else {
-                idx = image_list_skip(idx);
+                index = image_list_skip(index);
             }
         }
     }
 
-    if (status == ldr_success) {
-        *index = idx;
-    } else {
+    if (status != ldr_success) {
         // print error message
         if (!force) {
             fprintf(stderr, "No image files was loaded, exit\n");
@@ -212,7 +209,7 @@ static struct image* load_first_file(size_t* index, bool force)
                     reason = "I/O error";
                     break;
             }
-            fprintf(stderr, "%s: %s\n", image_list_get(*index), reason);
+            fprintf(stderr, "%s: %s\n", image_list_get(index), reason);
         }
     }
 
@@ -284,7 +281,6 @@ bool app_init(const char** sources, size_t num)
 {
     bool force_load = false;
     struct image* first_image;
-    size_t first_index;
 
     // compose image list
     if (num == 0) {
@@ -310,8 +306,7 @@ bool app_init(const char** sources, size_t num)
     }
 
     // load the first image
-    first_index = image_list_find(sources[0]);
-    first_image = load_first_file(&first_index, force_load);
+    first_image = load_first_file(image_list_find(sources[0]), force_load);
     if (!first_image) {
         return false;
     }
@@ -339,8 +334,8 @@ bool app_init(const char** sources, size_t num)
     // initialize other subsystems
     font_init();
     info_init();
-    viewer_init(ctx.mode_gallery ? NULL : first_image, first_index);
-    gallery_init(ctx.mode_gallery ? first_image : NULL, first_index);
+    viewer_init(ctx.mode_gallery ? NULL : first_image);
+    gallery_init(ctx.mode_gallery ? first_image : NULL);
 
     // event queue notification
     ctx.event_fd = notification_create();

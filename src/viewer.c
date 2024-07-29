@@ -354,8 +354,7 @@ static void reset_state(void)
     slideshow_ctl(ctx.slideshow_enable);
 
     info_reset(img);
-    info_update(info_index, "%zu of %zu", fetcher_index() + 1,
-                image_list_size());
+    info_update(info_index, "%zu of %zu", img->index + 1, image_list_size());
 
     // Expire info block after timeout
     if (timeout != 0) {
@@ -379,7 +378,7 @@ static void reset_state(void)
  */
 static bool skip_image(void)
 {
-    size_t index = image_list_skip(fetcher_index());
+    size_t index = image_list_skip(fetcher_current()->index);
 
     while (index != IMGLIST_INVALID && !fetcher_open(index)) {
         index = image_list_next_file(index);
@@ -395,7 +394,7 @@ static bool skip_image(void)
  */
 static bool next_image(enum action_type direction)
 {
-    size_t index = fetcher_index();
+    size_t index = fetcher_current()->index;
 
     do {
         switch (direction) {
@@ -571,10 +570,10 @@ static void draw_image(struct pixmap* wnd)
  */
 static void reload(void)
 {
-    const size_t index = fetcher_index();
+    const size_t index = fetcher_current()->index;
 
     if (fetcher_reset(index, false)) {
-        if (index == fetcher_index()) {
+        if (index == fetcher_current()->index) {
             info_update(info_status, "Image reloaded");
         } else {
             info_update(info_status, "Unable to update, open next file");
@@ -694,7 +693,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 ui_toggle_fullscreen();
                 break;
             case action_mode:
-                app_switch_mode(fetcher_index());
+                app_switch_mode(fetcher_current()->index);
                 break;
             case action_step_left:
                 move_image(true, true, action->params);
@@ -873,7 +872,7 @@ void viewer_create(void)
     config_add_loader(IMGLIST_CFG_SECTION, load_config_imglist);
 }
 
-void viewer_init(struct image* image, size_t index)
+void viewer_init(struct image* image)
 {
     // setup animation timer
     ctx.animation_fd =
@@ -898,7 +897,7 @@ void viewer_init(struct image* image, size_t index)
         }
     }
 
-    fetcher_init(image, index, ctx.history, ctx.preload);
+    fetcher_init(image, ctx.history, ctx.preload);
 }
 
 void viewer_destroy(void)
