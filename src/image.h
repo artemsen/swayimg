@@ -74,6 +74,14 @@ void image_flip_horizontal(struct image* ctx);
 void image_rotate(struct image* ctx, size_t angle);
 
 /**
+ * Create thumbnail from full size image.
+ * @param image original image
+ * @param size thumbnail size in pixels
+ * @param antialias use antialiasing
+ */
+void image_thumbnail(struct image* image, size_t size, bool antialias);
+
+/**
  * Set image format description.
  * @param ctx image context
  * @param fmt format description

@@ -51,6 +51,35 @@ void image_rotate(struct image* ctx, size_t angle)
     }
 }
 
+void image_thumbnail(struct image* image, size_t size, bool antialias)
+{
+    struct pixmap thumb;
+    struct image_frame* frame;
+    const struct pixmap* full = &image->frames[0].pm;
+
+    const float scale_width = 1.0 / ((float)full->width / size);
+    const float scale_height = 1.0 / ((float)full->height / size);
+    const float scale = min(scale_width, scale_height);
+    const size_t thumb_width = scale * full->width;
+    const size_t thumb_height = scale * full->height;
+
+    // create thumbnail
+    if (!pixmap_create(&thumb, thumb_width, thumb_height)) {
+        return;
+    }
+    if (antialias) {
+        pixmap_scale_bicubic(full, &thumb, 0, 0, scale, image->alpha);
+    } else {
+        pixmap_scale_nearest(full, &thumb, 0, 0, scale, image->alpha);
+    }
+
+    image_free_frames(image);
+    frame = image_create_frames(image, 1);
+    if (frame) {
+        frame->pm = thumb;
+    }
+}
+
 void image_set_format(struct image* ctx, const char* fmt, ...)
 {
     va_list args;
