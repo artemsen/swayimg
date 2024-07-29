@@ -277,22 +277,7 @@ static void redraw(void)
 
     pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
     draw_thumbnails(wnd);
-
-    // todo: timeout
-    const enum text_position pos[] = {
-        text_top_left,
-        text_top_right,
-        text_bottom_left,
-        text_bottom_right,
-    };
-    for (size_t i = 0; i < ARRAY_SIZE(pos); ++i) {
-        const size_t lines_num = info_height(pos[i]);
-        if (lines_num) {
-            const struct text_keyval* lines = info_lines(pos[i]);
-            text_print_keyval(wnd, pos[i], lines, lines_num);
-        }
-    }
-    info_update(info_status, NULL);
+    info_print(wnd);
 
     ui_draw_commit();
 }

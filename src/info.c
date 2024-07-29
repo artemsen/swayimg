@@ -19,8 +19,6 @@
 // Section name in the config file
 #define CONFIG_SECTION "info"
 
-#define INFO_FIELDS_NUM 10
-
 /** Display modes. */
 enum info_mode {
     info_mode_full,
@@ -33,6 +31,9 @@ static const char* mode_names[] = {
     [info_mode_off] = "off",
 };
 #define MODES_NUM 2
+
+// number of types in `enum info_field`
+#define INFO_FIELDS_NUM 10
 
 /** Field names. */
 static const char* field_names[] = {
@@ -96,11 +97,13 @@ struct info_block {
 
 /** Info data context. */
 struct info_context {
-    enum info_mode mode;
-    int timeout;
-    struct text_keyval* exif_lines;
-    size_t exif_num;
-    struct text_keyval fields[INFO_FIELDS_NUM];
+    enum info_mode mode; ///< Currently active mode
+    int timeout;         ///< Info block timeout
+
+    struct text_keyval* exif_lines; ///< EXIF data lines
+    size_t exif_num;                ///< Number of lines in EXIF data
+
+    struct text_keyval fields[INFO_FIELDS_NUM]; // all possible fields
     struct info_block blocks[MODES_NUM][INFO_POSITION_NUM];
 };
 
@@ -323,6 +326,7 @@ void info_reset(const struct image* image)
     import_exif(image);
 
     info_update(info_frame, NULL);
+    info_update(info_scale, NULL);
 }
 
 void info_update(enum info_field field, const char* fmt, ...)
@@ -357,98 +361,46 @@ void info_update(enum info_field field, const char* fmt, ...)
     free(text);
 }
 
-size_t info_height(enum text_position pos)
+void info_print(struct pixmap* window)
 {
-    const struct info_block* block;
-    size_t lines_num;
-
-    if (ctx.mode == info_mode_off || pos == text_center) {
-        return 0;
-    }
-
-    block = &ctx.blocks[ctx.mode][pos];
-    lines_num = block->scheme_sz;
-
-    for (size_t i = 0; i < block->scheme_sz; ++i) {
-        switch (block->scheme[i]) {
-            case info_exif:
-                --lines_num;
-                lines_num += ctx.exif_num;
-                break;
-            case info_frame:
-                if (!ctx.fields[info_frame].value.data) {
-                    --lines_num;
-                }
-                break;
-            case info_status:
-                if (!ctx.fields[info_status].value.data) {
-                    --lines_num;
-                }
-                break;
-            case info_index:
-                if (image_list_size() == 1) {
-                    --lines_num;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-    return lines_num;
-}
-
-const struct text_keyval* info_lines(enum text_position pos)
-{
-    const size_t lines_num = info_height(pos);
-    struct info_block* block;
-    struct text_keyval* line;
-
     if (ctx.mode == info_mode_off) {
-        return 0;
+        return;
     }
 
-    block = &ctx.blocks[ctx.mode][pos];
+    for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+        struct text_keyval lines[INFO_FIELDS_NUM + 7 /* max exif */];
+        const struct info_block* block = &ctx.blocks[ctx.mode][i];
+        size_t lnum = 0;
 
-    line = realloc(block->lines, lines_num * sizeof(*line));
-    if (!line) {
-        return NULL;
-    }
+        for (size_t j = 0; j < block->scheme_sz; ++j) {
+            const enum info_field field = block->scheme[j];
+            switch (field) {
+                case info_exif:
+                    for (size_t n = 0; n < ctx.exif_num; ++n) {
+                        if (lnum < ARRAY_SIZE(lines)) {
+                            lines[lnum++] = ctx.exif_lines[n];
+                        }
+                    }
+                    break;
+                case info_frame:
+                case info_status:
+                    if (ctx.fields[field].value.width) {
+                        lines[lnum++] = ctx.fields[field];
+                    }
+                    break;
+                default:
+                    lines[lnum++] = ctx.fields[field];
+                    break;
+            }
+            if (lnum >= ARRAY_SIZE(lines)) {
+                break;
+            }
+        }
 
-    block->lines = line;
-
-    for (size_t i = 0; i < block->scheme_sz; ++i) {
-        switch (block->scheme[i]) {
-            case info_exif:
-                memcpy(line, ctx.exif_lines, ctx.exif_num * sizeof(*line));
-                line += ctx.exif_num;
-                break;
-            case info_frame:
-                if (ctx.fields[info_frame].value.data) {
-                    memcpy(line, &ctx.fields[block->scheme[i]], sizeof(*line));
-                    ++line;
-                }
-                break;
-            case info_status:
-                if (ctx.fields[info_status].value.data) {
-                    memcpy(line, &ctx.fields[block->scheme[i]], sizeof(*line));
-                    ++line;
-                }
-                break;
-            case info_index:
-                if (image_list_size() > 1) {
-                    memcpy(line, &ctx.fields[block->scheme[i]], sizeof(*line));
-                    ++line;
-                }
-                break;
-            default:
-                memcpy(line, &ctx.fields[block->scheme[i]], sizeof(*line));
-                ++line;
-                break;
+        if (lnum) {
+            text_print_keyval(window, i, lines, lnum);
         }
     }
-
-    return block->lines;
 }
 
 int info_timeout(void)

@@ -57,18 +57,10 @@ void info_update(enum info_field field, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 
 /**
- * Get number of lines in the specified block.
- * @param pos block position
- * @return number of lines
+ * Print info text.
+ * @param window target window surface
  */
-size_t info_height(enum text_position pos);
-
-/**
- * Get list of key/value lines for specified text block.
- * @param pos block position
- * @return pointer to the lines array
- */
-const struct text_keyval* info_lines(enum text_position pos);
+void info_print(struct pixmap* window);
 
 /**
  * Get info display timeout.

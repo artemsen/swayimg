@@ -599,19 +599,7 @@ static void redraw(void)
 
     // put text info blocks on window surface
     if (!ctx.info_timedout) {
-        const enum text_position pos[] = {
-            text_top_left,
-            text_top_right,
-            text_bottom_left,
-            text_bottom_right,
-        };
-        for (size_t i = 0; i < ARRAY_SIZE(pos); ++i) {
-            const size_t lines_num = info_height(pos[i]);
-            if (lines_num) {
-                const struct text_keyval* lines = info_lines(pos[i]);
-                text_print_keyval(window, pos[i], lines, lines_num);
-            }
-        }
+        info_print(window);
     }
 
     if (ctx.help) {
