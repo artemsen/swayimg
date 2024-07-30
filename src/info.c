@@ -279,7 +279,7 @@ static bool parse_scheme(const char* config, struct block_scheme* scheme)
 /** Custom section loader, see `config_loader` for details. */
 static enum config_status load_config_viewer(const char* key, const char* value)
 {
-    const size_t pos = str_index(position_names, key, 0);
+    const ssize_t pos = str_index(position_names, key, 0);
     if (pos < 0) {
         return cfgst_invalid_key;
     }
@@ -293,7 +293,7 @@ static enum config_status load_config_viewer(const char* key, const char* value)
 static enum config_status load_config_gallery(const char* key,
                                               const char* value)
 {
-    const size_t pos = str_index(position_names, key, 0);
+    const ssize_t pos = str_index(position_names, key, 0);
     if (pos < 0) {
         return cfgst_invalid_key;
     }
