@@ -572,7 +572,7 @@ static const struct wl_registry_listener registry_listener = {
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
 // Key repeat handler
-static void on_key_repeat(void)
+static void on_key_repeat(__attribute__((unused)) void* data)
 {
     uint64_t repeats;
     const ssize_t sz = sizeof(repeats);
@@ -582,7 +582,7 @@ static void on_key_repeat(void)
 }
 
 // Wayland event handler
-static void on_wayland_event(void)
+static void on_wayland_event(__attribute__((unused)) void* data)
 {
     wl_display_read_events(ctx.wl.display);
     wl_display_dispatch_pending(ctx.wl.display);
@@ -636,10 +636,10 @@ bool ui_init(const char* app_id)
 
     wl_surface_commit(ctx.wl.surface);
 
-    app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event);
+    app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event, NULL);
 
     ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    app_watch(ctx.repeat.fd, on_key_repeat);
+    app_watch(ctx.repeat.fd, on_key_repeat, NULL);
 
     return true;
 }

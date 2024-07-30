@@ -460,7 +460,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
 }
 
 /** Notification callback: next thumbnail is loaded. */
-static void on_load_complete(void)
+static void on_load_complete(__attribute__((unused)) void* data)
 {
     notification_reset(ctx.load_complete);
     app_redraw();
@@ -512,7 +512,7 @@ void gallery_create(void)
 
     ctx.load_complete = notification_create();
     if (ctx.load_complete != -1) {
-        app_watch(ctx.load_complete, on_load_complete);
+        app_watch(ctx.load_complete, on_load_complete, NULL);
     }
 
     // register configuration loader

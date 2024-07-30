@@ -13,7 +13,7 @@ extern "C" {
 
 // stubs for linker (application and ui are not included to tests)
 extern "C" {
-void app_watch(int, fd_callback) { }
+void app_watch(int, fd_callback, void*) { }
 void app_reload() { }
 void app_redraw() { }
 void app_on_resize() { }

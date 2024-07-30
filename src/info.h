@@ -61,10 +61,3 @@ void info_update(enum info_field field, const char* fmt, ...)
  * @param window target window surface
  */
 void info_print(struct pixmap* window);
-
-/**
- * Get info display timeout.
- * @return 0 if timeout disabled, positive number for absolute time in second,
- * or negative number for slideshow relative percents.
- */
-int info_timeout(void);

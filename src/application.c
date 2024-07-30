@@ -36,6 +36,7 @@ enum loop_state {
 /** File descriptor and its handler. */
 struct watchfd {
     int fd;
+    void* data;
     fd_callback callback;
 };
 
@@ -121,7 +122,7 @@ static void sway_setup(void)
 }
 
 /** Notification callback: handle event queue. */
-static void handle_event_queue(void)
+static void handle_event_queue(__attribute__((unused)) void* data)
 {
     notification_reset(ctx.event_fd);
 
@@ -340,7 +341,7 @@ bool app_init(const char** sources, size_t num)
     // event queue notification
     ctx.event_fd = notification_create();
     if (ctx.event_fd != -1) {
-        app_watch(ctx.event_fd, handle_event_queue);
+        app_watch(ctx.event_fd, handle_event_queue, NULL);
     } else {
         perror("Unable to create eventfd");
         return false;
@@ -355,13 +356,14 @@ bool app_init(const char** sources, size_t num)
     return true;
 }
 
-void app_watch(int fd, fd_callback cb)
+void app_watch(int fd, fd_callback cb, void* data)
 {
     const size_t sz = (ctx.wfds_num + 1) * sizeof(*ctx.wfds);
     struct watchfd* handlers = realloc(ctx.wfds, sz);
     if (handlers) {
         ctx.wfds = handlers;
         ctx.wfds[ctx.wfds_num].fd = fd;
+        ctx.wfds[ctx.wfds_num].data = data;
         ctx.wfds[ctx.wfds_num].callback = cb;
         ++ctx.wfds_num;
     }
@@ -397,7 +399,7 @@ bool app_run(void)
         // call handlers for each active event
         for (size_t i = 0; i < ctx.wfds_num; ++i) {
             if (fds[i].revents & POLLIN) {
-                ctx.wfds[i].callback();
+                ctx.wfds[i].callback(ctx.wfds[i].data);
             }
         }
 

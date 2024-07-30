@@ -129,7 +129,7 @@ static void cache_put(struct image_cache* cache, struct image* image)
 
 #ifdef HAVE_INOTIFY
 /** inotify handler. */
-static void on_inotify(void)
+static void on_inotify(__attribute__((unused)) void* data)
 {
     while (true) {
         bool updated = false;
@@ -288,7 +288,7 @@ void fetcher_init(struct image* image, size_t history, size_t preload)
 #ifdef HAVE_INOTIFY
     ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
     if (ctx.notify >= 0) {
-        app_watch(ctx.notify, on_inotify);
+        app_watch(ctx.notify, on_inotify, NULL);
         ctx.watch = -1;
     }
 #endif // HAVE_INOTIFY

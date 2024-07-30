@@ -75,9 +75,6 @@ struct viewer {
     int slideshow_fd;      ///< Slideshow timer
     size_t slideshow_time; ///< Slideshow image display time (seconds)
 
-    bool info_timedout; ///< Indicates info block shouldn't be displayed anymore
-    int info_timeout_fd; ///< Info timer
-
     size_t history; ///< Max number of cached images
     size_t preload; ///< Max number of images to preload
 };
@@ -339,13 +336,12 @@ static void slideshow_ctl(bool enable)
 static void reset_state(void)
 {
     const struct image* img = fetcher_current();
-    const int timeout = info_timeout();
+    const size_t total_img = image_list_size();
 
     ctx.frame = 0;
     ctx.img_x = 0;
     ctx.img_y = 0;
     ctx.scale = 0;
-    ctx.info_timedout = false;
     scale_image(ctx.scale_init);
     fixup_position(true);
 
@@ -354,19 +350,8 @@ static void reset_state(void)
     slideshow_ctl(ctx.slideshow_enable);
 
     info_reset(img);
-    info_update(info_index, "%zu of %zu", img->index + 1, image_list_size());
-
-    // Expire info block after timeout
-    if (timeout != 0) {
-        struct itimerspec info_ts = { 0 };
-        if (timeout > 0) {
-            // absolute time in sec
-            info_ts.it_value.tv_sec = timeout;
-        } else if (ctx.slideshow_enable) {
-            // slideshow relative in %
-            info_ts.it_value.tv_sec = ctx.slideshow_time * -timeout / 100;
-        }
-        timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
+    if (total_img) {
+        info_update(info_index, "%zu of %zu", img->index + 1, total_img);
     }
 
     app_redraw();
@@ -460,7 +445,7 @@ static void next_frame(bool forward)
 /**
  * Animation timer event handler.
  */
-static void on_animation_timer(void)
+static void on_animation_timer(__attribute__((unused)) void* data)
 {
     next_frame(true);
     animation_ctl(true);
@@ -469,21 +454,9 @@ static void on_animation_timer(void)
 /**
  * Slideshow timer event handler.
  */
-static void on_slideshow_timer(void)
+static void on_slideshow_timer(__attribute__((unused)) void* data)
 {
     slideshow_ctl(next_image(action_next_file));
-}
-
-/**
- * Info block timer event handler.
- */
-static void on_info_block_timeout(void)
-{
-    // Reset timer to 0, so it won't fire again
-    struct itimerspec info_ts = { 0 };
-    timerfd_settime(ctx.info_timeout_fd, 0, &info_ts, NULL);
-    ctx.info_timedout = true;
-    app_redraw();
 }
 
 /**
@@ -596,18 +569,11 @@ static void redraw(void)
     }
 
     draw_image(window);
-
-    // put text info blocks on window surface
-    if (!ctx.info_timedout) {
-        info_print(window);
-    }
+    info_print(window);
 
     if (ctx.help) {
         text_print_lines(window, text_center, ctx.help, ctx.help_sz);
     }
-
-    // reset one-time rendered notification message
-    info_update(info_status, NULL);
 
     ui_draw_commit();
 }
@@ -850,8 +816,6 @@ void viewer_create(void)
     ctx.slideshow_enable = false;
     ctx.slideshow_fd = -1;
     ctx.slideshow_time = 3;
-    ctx.info_timedout = false;
-    ctx.info_timeout_fd = -1;
     ctx.history = 1;
     ctx.preload = 1;
 
@@ -866,23 +830,14 @@ void viewer_init(struct image* image)
     ctx.animation_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.animation_fd != -1) {
-        app_watch(ctx.animation_fd, on_animation_timer);
+        app_watch(ctx.animation_fd, on_animation_timer, NULL);
     }
 
     // setup slideshow timer
     ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow_fd != -1) {
-        app_watch(ctx.slideshow_fd, on_slideshow_timer);
-    }
-
-    // setup info block timer
-    if (info_timeout() != 0) {
-        ctx.info_timeout_fd =
-            timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-        if (ctx.info_timeout_fd != -1) {
-            app_watch(ctx.info_timeout_fd, on_info_block_timeout);
-        }
+        app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
 
     fetcher_init(image, ctx.history, ctx.preload);
@@ -900,9 +855,6 @@ void viewer_destroy(void)
     }
     if (ctx.slideshow_fd != -1) {
         close(ctx.slideshow_fd);
-    }
-    if (ctx.info_timeout_fd != -1) {
-        close(ctx.info_timeout_fd);
     }
 }
 

@@ -4,6 +4,7 @@
 
 #include "info.h"
 
+#include "application.h"
 #include "config.h"
 #include "imagelist.h"
 #include "loader.h"
@@ -13,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/timerfd.h>
+#include <unistd.h>
 
 // clang-format off
 
@@ -83,32 +86,92 @@ static const enum info_field default_brief_top_left[] = {
 
 // clang-format on
 
-#define SET_DEFAULT(m, p, d)                               \
-    ctx.blocks[m][p].scheme_sz = sizeof(d) / sizeof(d[0]); \
-    ctx.blocks[m][p].scheme = malloc(sizeof(d));           \
-    memcpy(ctx.blocks[m][p].scheme, d, sizeof(d))
+#define SET_DEFAULT(m, p, d)                                \
+    ctx.scheme[m][p].fields_num = sizeof(d) / sizeof(d[0]); \
+    ctx.scheme[m][p].fields = malloc(sizeof(d));            \
+    memcpy(ctx.scheme[m][p].fields, d, sizeof(d))
 
-/** Single info block. */
-struct info_block {
-    struct text_keyval* lines;
-    enum info_field* scheme;
-    size_t scheme_sz;
+/** Info scheme: set of fields in one position. */
+struct info_scheme {
+    enum info_field* fields;
+    size_t fields_num;
+};
+
+/** Info timeout description. */
+struct info_timeout {
+    int fd;          ///< Timer FD
+    size_t duration; ///< Timeout duration in seconds
+    bool active;     ///< Current state
 };
 
 /** Info data context. */
 struct info_context {
     enum info_mode mode; ///< Currently active mode
-    int timeout;         ///< Info block timeout
+
+    struct info_timeout info;   ///< Text info timeout
+    struct info_timeout status; ///< Status message timeout
 
     struct text_keyval* exif_lines; ///< EXIF data lines
     size_t exif_num;                ///< Number of lines in EXIF data
 
-    struct text_keyval fields[INFO_FIELDS_NUM]; // all possible fields
-    struct info_block blocks[MODES_NUM][INFO_POSITION_NUM];
+    struct text_keyval fields[INFO_FIELDS_NUM];              ///< Info data
+    struct info_scheme scheme[MODES_NUM][INFO_POSITION_NUM]; ///< Info scheme
 };
 
 /** Global info context. */
 static struct info_context ctx;
+
+/** Notification callback: handle timer event. */
+static void on_timeout(void* data)
+{
+    struct info_timeout* timeout = data;
+    struct itimerspec ts = { 0 };
+
+    timeout->active = false;
+    timerfd_settime(timeout->fd, 0, &ts, NULL);
+    app_redraw();
+}
+
+/**
+ * Initialize timer.
+ * @param timeout timer instance
+ */
+static void timeout_init(struct info_timeout* timeout)
+{
+    timeout->fd = -1;
+    timeout->active = true;
+    if (timeout->duration != 0) {
+        timeout->fd =
+            timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+        if (timeout->fd != -1) {
+            app_watch(timeout->fd, on_timeout, timeout);
+        }
+    }
+}
+
+/**
+ * Reset/restart timer.
+ * @param timeout timer instance
+ */
+static void timeout_reset(struct info_timeout* timeout)
+{
+    if (timeout->fd != -1) {
+        struct itimerspec ts = { .it_value.tv_sec = timeout->duration };
+        timeout->active = true;
+        timerfd_settime(timeout->fd, 0, &ts, NULL);
+    }
+}
+
+/**
+ * Close timer FD.
+ * @param timeout timer instance
+ */
+static void timeout_close(struct info_timeout* timeout)
+{
+    if (timeout->fd != -1) {
+        close(timeout->fd);
+    }
+}
 
 /**
  * Import meta data from image.
@@ -155,31 +218,28 @@ static void import_exif(const struct image* image)
 static enum config_status load_config(const char* key, const char* value)
 {
     enum info_mode mode;
-    struct info_block* block = NULL;
+    struct info_scheme* block = NULL;
     struct str_slice slices[INFO_FIELDS_NUM];
     size_t num_slices;
     enum info_field scheme[INFO_FIELDS_NUM];
     size_t scheme_sz = 0;
     ssize_t index;
 
-    if (strcmp(key, "timeout") == 0) {
-        ssize_t num, num_max;
-        bool is_percent;
-        size_t len = strlen(value);
-
-        if (len == 0) {
-            return cfgst_invalid_value;
+    if (strcmp(key, "info_timeout") == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
+            ctx.info.duration = num;
+            return cfgst_ok;
         }
-        is_percent = (value[len - 1] == '%');
-        if (is_percent) {
-            --len;
+        return cfgst_invalid_value;
+    }
+    if (strcmp(key, "status_timeout") == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
+            ctx.status.duration = num;
+            return cfgst_ok;
         }
-        num_max = is_percent ? 100 : 86400;
-        if (!str_to_num(value, len, &num, 0) && num >= 0 && num <= num_max) {
-            return cfgst_invalid_value;
-        }
-        ctx.timeout = num * (is_percent ? -1 : 1);
-        return cfgst_ok;
+        return cfgst_invalid_value;
     }
 
     if (strcmp(key, "mode") == 0) {
@@ -209,7 +269,7 @@ static enum config_status load_config(const char* key, const char* value)
     if (index < 0) {
         return cfgst_invalid_value;
     }
-    block = &ctx.blocks[mode][index];
+    block = &ctx.scheme[mode][index];
 
     // split into list fileds
     num_slices =
@@ -233,14 +293,14 @@ static enum config_status load_config(const char* key, const char* value)
 
     // set new scheme
     if (scheme_sz) {
-        block->scheme =
-            realloc(block->scheme, scheme_sz * sizeof(enum info_field));
-        memcpy(block->scheme, scheme, scheme_sz * sizeof(enum info_field));
+        block->fields =
+            realloc(block->fields, scheme_sz * sizeof(enum info_field));
+        memcpy(block->fields, scheme, scheme_sz * sizeof(enum info_field));
     } else {
-        free(block->scheme);
-        block->scheme = NULL;
+        free(block->fields);
+        block->fields = NULL;
     }
-    block->scheme_sz = scheme_sz;
+    block->fields_num = scheme_sz;
 
     return cfgst_ok;
 }
@@ -248,8 +308,9 @@ static enum config_status load_config(const char* key, const char* value)
 void info_create(void)
 {
     // set defaults
+    ctx.info.duration = 5;
+    ctx.status.duration = 3;
     ctx.mode = info_mode_full;
-    ctx.timeout = 0;
     SET_DEFAULT(info_mode_full, text_top_left, default_full_top_left);
     SET_DEFAULT(info_mode_full, text_top_right, default_full_top_right);
     SET_DEFAULT(info_mode_full, text_bottom_left, default_full_bottom_left);
@@ -268,10 +329,16 @@ void info_init(void)
     font_render("File size:", &ctx.fields[info_file_size].key);
     font_render("Image format:", &ctx.fields[info_image_format].key);
     font_render("Image size:", &ctx.fields[info_image_size].key);
+
+    timeout_init(&ctx.info);
+    timeout_init(&ctx.status);
 }
 
 void info_destroy(void)
 {
+    timeout_close(&ctx.info);
+    timeout_close(&ctx.status);
+
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         free(ctx.exif_lines[i].key.data);
         free(ctx.exif_lines[i].value.data);
@@ -279,8 +346,7 @@ void info_destroy(void)
 
     for (size_t i = 0; i < MODES_NUM; ++i) {
         for (size_t j = 0; j < INFO_POSITION_NUM; ++j) {
-            free(ctx.blocks[i][j].lines);
-            free(ctx.blocks[i][j].scheme);
+            free(ctx.scheme[i][j].fields);
         }
     }
 
@@ -327,6 +393,8 @@ void info_reset(const struct image* image)
 
     info_update(info_frame, NULL);
     info_update(info_scale, NULL);
+
+    timeout_reset(&ctx.info);
 }
 
 void info_update(enum info_field field, const char* fmt, ...)
@@ -359,21 +427,38 @@ void info_update(enum info_field field, const char* fmt, ...)
     font_render(text, surface);
 
     free(text);
+
+    if (field == info_status) {
+        timeout_reset(&ctx.status);
+    }
 }
 
 void info_print(struct pixmap* window)
 {
-    if (ctx.mode == info_mode_off) {
+    if (ctx.mode == info_mode_off || !ctx.info.active) {
+        // print only status
+        const struct text_keyval* status = &ctx.fields[info_status];
+        if (status->value.width && ctx.status.active) {
+            for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+                const struct info_scheme* block = &ctx.scheme[ctx.mode][i];
+                for (size_t j = 0; j < block->fields_num; ++j) {
+                    if (block->fields[j] == info_status) {
+                        text_print_keyval(window, i, status, 1);
+                        break;
+                    }
+                }
+            }
+        }
         return;
     }
 
     for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
         struct text_keyval lines[INFO_FIELDS_NUM + 7 /* max exif */];
-        const struct info_block* block = &ctx.blocks[ctx.mode][i];
+        const struct info_scheme* block = &ctx.scheme[ctx.mode][i];
         size_t lnum = 0;
 
-        for (size_t j = 0; j < block->scheme_sz; ++j) {
-            const enum info_field field = block->scheme[j];
+        for (size_t j = 0; j < block->fields_num; ++j) {
+            const enum info_field field = block->fields[j];
             switch (field) {
                 case info_exif:
                     for (size_t n = 0; n < ctx.exif_num; ++n) {
@@ -382,14 +467,15 @@ void info_print(struct pixmap* window)
                         }
                     }
                     break;
-                case info_frame:
                 case info_status:
-                    if (ctx.fields[field].value.width) {
+                    if (ctx.fields[field].value.width && ctx.status.active) {
                         lines[lnum++] = ctx.fields[field];
                     }
                     break;
                 default:
-                    lines[lnum++] = ctx.fields[field];
+                    if (ctx.fields[field].value.width) {
+                        lines[lnum++] = ctx.fields[field];
+                    }
                     break;
             }
             if (lnum >= ARRAY_SIZE(lines)) {
@@ -401,9 +487,4 @@ void info_print(struct pixmap* window)
             text_print_keyval(window, i, lines, lnum);
         }
     }
-}
-
-int info_timeout(void)
-{
-    return ctx.timeout;
 }

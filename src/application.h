@@ -10,8 +10,11 @@
 #define APP_CFG_APP_ID  "app_id"
 #define APP_CFG_GALLERY "gallery"
 
-/** Handler of the fd poll events. */
-typedef void (*fd_callback)(void);
+/**
+ * Handler of the fd poll events.
+ * @param data user data
+ */
+typedef void (*fd_callback)(void* data);
 
 /**
  * Create global application context.
@@ -35,8 +38,9 @@ bool app_init(const char** sources, size_t num);
  * Add file descriptor for polling in main loop.
  * @param fd file descriptor for polling
  * @param cb callback function
+ * @param data user defined data to pass to callback
  */
-void app_watch(int fd, fd_callback cb);
+void app_watch(int fd, fd_callback cb, void* data);
 
 /**
  * Run application.
