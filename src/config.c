@@ -230,11 +230,11 @@ bool config_command(const char* cmd)
     const char* value;
     const char* ptr;
     struct str_slice slices[2];
-    size_t slices_num;
+    size_t size;
 
     // split section.key and value
-    slices_num = str_split(cmd, '=', slices, ARRAY_SIZE(slices));
-    if (slices_num <= 1) {
+    size = str_split(cmd, '=', slices, ARRAY_SIZE(slices));
+    if (size <= 1) {
         return false;
     }
 
@@ -246,9 +246,23 @@ bool config_command(const char* cmd)
         }
     }
 
-    strncpy(section, slices[0].value, ptr - slices[0].value);
+    // section name
+    size = ptr - slices[0].value;
+    if (size > sizeof(section) - 1) {
+        size = sizeof(section) - 1;
+    }
+    memcpy(section, slices[0].value, size);
+    section[size] = 0;
+
+    // key name
     ++ptr; // skip dot
-    strncpy(key, ptr, slices[0].len - (ptr - slices[0].value));
+    size = slices[0].len - (ptr - slices[0].value);
+    if (size > sizeof(key) - 1) {
+        size = sizeof(key) - 1;
+    }
+    memcpy(key, ptr, size);
+    key[size] = 0;
+
     value = slices[1].value;
 
     return config_set(section, key, value) == cfgst_ok;
