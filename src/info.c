@@ -19,24 +19,24 @@
 
 // clang-format off
 
-// Section name in the config file
-#define CONFIG_SECTION "info"
-
 /** Display modes. */
 enum info_mode {
-    info_mode_full,
-    info_mode_brief,
-    info_mode_off,
+    mode_viewer,
+    mode_gallery,
+    mode_off,
 };
 static const char* mode_names[] = {
-    [info_mode_full] = "full",
-    [info_mode_brief] = "brief",
-    [info_mode_off] = "off",
+    [mode_viewer] = INFO_MODE_VIEWER,
+    [mode_gallery] = INFO_MODE_GALLERY,
+    [mode_off] = INFO_MODE_OFF,
 };
 #define MODES_NUM 2
 
 // number of types in `enum info_field`
 #define INFO_FIELDS_NUM 10
+
+// max number of lines in one positioned block
+#define MAX_LINES (INFO_FIELDS_NUM + 10 /* EXIF and duplicates */)
 
 /** Field names. */
 static const char* field_names[] = {
@@ -55,46 +55,53 @@ static const char* field_names[] = {
 /** Block position names. */
 static const char* position_names[] = {
     [text_center] = "center",
-    [text_top_left] = "topleft",
-    [text_top_right] = "topright",
-    [text_bottom_left] = "bottomleft",
-    [text_bottom_right] = "bottomright",
+    [text_top_left] = "top_left",
+    [text_top_right] = "top_right",
+    [text_bottom_left] = "bottom_left",
+    [text_bottom_right] = "bottom_right",
 };
 #define INFO_POSITION_NUM ARRAY_SIZE(position_names)
 
+/** Scheme of displayed field (line(s) of text). */
+struct field_scheme {
+    enum info_field type; ///< Field type
+    bool title;           ///< Print/hide field title
+};
+
 // Defaults
-static const enum info_field default_full_top_left[] = {
-    info_file_name,
-    info_image_format,
-    info_file_size,
-    info_image_size,
-    info_exif,
+static const struct field_scheme default_viewer_tl[] = {
+    { .type = info_file_name,    .title = true },
+    { .type = info_image_format, .title = true },
+    { .type = info_file_size,    .title = true },
+    { .type = info_image_size,   .title = true },
+    { .type = info_exif,         .title = true },
 };
-static const enum info_field default_full_top_right[] = {
-    info_index,
+static const struct field_scheme default_viewer_tr[] = {
+    { .type = info_index, .title = false },
 };
-static const enum info_field default_full_bottom_left[] = {
-    info_scale,
-    info_frame,
+static const struct field_scheme default_viewer_bl[] = {
+    { .type = info_scale, .title = false },
+    { .type = info_frame, .title = false },
 };
-static const enum info_field default_bottom_right[] = {
-    info_status,
+static const struct field_scheme default_viewer_br[] = {
+    { .type = info_status, .title = false },
 };
-static const enum info_field default_brief_top_left[] = {
-    info_index,
+static const struct field_scheme default_gallery_br[] = {
+    { .type = info_file_name, .title = false },
+    { .type = info_status,    .title = false },
 };
 
 // clang-format on
 
-#define SET_DEFAULT(m, p, d)                                \
-    ctx.scheme[m][p].fields_num = sizeof(d) / sizeof(d[0]); \
-    ctx.scheme[m][p].fields = malloc(sizeof(d));            \
+#define SET_DEFAULT(m, p, d)                     \
+    ctx.scheme[m][p].fields_num = ARRAY_SIZE(d); \
+    ctx.scheme[m][p].fields = malloc(sizeof(d)); \
     memcpy(ctx.scheme[m][p].fields, d, sizeof(d))
 
-/** Info scheme: set of fields in one position. */
-struct info_scheme {
-    enum info_field* fields;
-    size_t fields_num;
+/** Info scheme: set of fields in one of screen positions. */
+struct block_scheme {
+    struct field_scheme* fields; ///< Array of fields
+    size_t fields_num;           ///< Size of array
 };
 
 /** Info timeout description. */
@@ -114,8 +121,8 @@ struct info_context {
     struct text_keyval* exif_lines; ///< EXIF data lines
     size_t exif_num;                ///< Number of lines in EXIF data
 
-    struct text_keyval fields[INFO_FIELDS_NUM];              ///< Info data
-    struct info_scheme scheme[MODES_NUM][INFO_POSITION_NUM]; ///< Info scheme
+    struct text_keyval fields[INFO_FIELDS_NUM];               ///< Info data
+    struct block_scheme scheme[MODES_NUM][INFO_POSITION_NUM]; ///< Info scheme
 };
 
 /** Global info context. */
@@ -155,9 +162,9 @@ static void timeout_init(struct info_timeout* timeout)
  */
 static void timeout_reset(struct info_timeout* timeout)
 {
+    timeout->active = true;
     if (timeout->fd != -1) {
         struct itimerspec ts = { .it_value.tv_sec = timeout->duration };
-        timeout->active = true;
         timerfd_settime(timeout->fd, 0, &ts, NULL);
     }
 }
@@ -213,96 +220,117 @@ static void import_exif(const struct image* image)
 }
 
 /**
- * Custom section loader, see `config_loader` for details.
+ * Parse and load scheme from config line.
+ * @param config line to parse
+ * @param scheme destination scheme description
+ * @return true if config parsed successfully
  */
-static enum config_status load_config(const char* key, const char* value)
+static bool parse_scheme(const char* config, struct block_scheme* scheme)
 {
-    enum info_mode mode;
-    struct info_scheme* block = NULL;
-    struct str_slice slices[INFO_FIELDS_NUM];
-    size_t num_slices;
-    enum info_field scheme[INFO_FIELDS_NUM];
-    size_t scheme_sz = 0;
-    ssize_t index;
+    struct str_slice slices[MAX_LINES];
+    size_t slices_num;
+    struct field_scheme* fields;
 
-    if (strcmp(key, "info_timeout") == 0) {
+    // split into fields slices
+    slices_num = str_split(config, ',', slices, ARRAY_SIZE(slices));
+    if (slices_num > ARRAY_SIZE(slices)) {
+        slices_num = ARRAY_SIZE(slices);
+    }
+
+    fields = realloc(scheme->fields, slices_num * sizeof(*fields));
+    if (!fields) {
+        return false;
+    }
+    scheme->fields = fields;
+    scheme->fields_num = 0;
+
+    for (size_t i = 0; i < slices_num; ++i) {
+        struct field_scheme* field = &scheme->fields[scheme->fields_num];
+        ssize_t field_idx;
+        struct str_slice* sl = &slices[i];
+
+        // title show/hide ('+' at the beginning)
+        field->title = (sl->len > 0 && *sl->value == '+');
+        if (field->title) {
+            ++sl->value;
+            --sl->len;
+        }
+
+        // field type
+        field_idx = str_index(field_names, sl->value, sl->len);
+        if (field_idx >= 0) {
+            field->type = field_idx;
+            scheme->fields_num++;
+        } else if (sl->len == 4 && strncmp(sl->value, "none", sl->len) == 0) {
+            continue; // special value, just skip
+        } else {
+            return false; // invalid field name
+        }
+    }
+
+    if (scheme->fields_num == 0) {
+        free(scheme->fields);
+        scheme->fields = NULL;
+    }
+
+    return true;
+}
+
+/** Custom section loader, see `config_loader` for details. */
+static enum config_status load_config_viewer(const char* key, const char* value)
+{
+    const size_t pos = str_index(position_names, key, 0);
+    if (pos < 0) {
+        return cfgst_invalid_key;
+    }
+    if (!parse_scheme(value, &ctx.scheme[mode_viewer][pos])) {
+        return cfgst_invalid_value;
+    }
+    return cfgst_ok;
+}
+
+/** Custom section loader, see `config_loader` for details. */
+static enum config_status load_config_gallery(const char* key,
+                                              const char* value)
+{
+    const size_t pos = str_index(position_names, key, 0);
+    if (pos < 0) {
+        return cfgst_invalid_key;
+    }
+    if (!parse_scheme(value, &ctx.scheme[mode_gallery][pos])) {
+        return cfgst_invalid_value;
+    }
+    return cfgst_ok;
+}
+
+/** Custom section loader, see `config_loader` for details. */
+static enum config_status load_config_common(const char* key, const char* value)
+{
+    enum config_status status = cfgst_invalid_value;
+
+    if (strcmp(key, "show") == 0) {
+        bool opt;
+        if (config_to_bool(value, &opt)) {
+            ctx.mode = mode_off;
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "info_timeout") == 0) {
         ssize_t num;
         if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.info.duration = num;
-            return cfgst_ok;
+            status = cfgst_ok;
         }
-        return cfgst_invalid_value;
-    }
-    if (strcmp(key, "status_timeout") == 0) {
+    } else if (strcmp(key, "status_timeout") == 0) {
         ssize_t num;
         if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.status.duration = num;
-            return cfgst_ok;
+            status = cfgst_ok;
         }
-        return cfgst_invalid_value;
-    }
-
-    if (strcmp(key, "mode") == 0) {
-        index = str_index(mode_names, value, 0);
-        if (index < 0) {
-            return cfgst_invalid_value;
-        }
-        ctx.mode = index;
-        return cfgst_ok;
-    }
-
-    // parse key (mode.position)
-    if (str_split(key, '.', slices, 2) != 2) {
-        return cfgst_invalid_key;
-    }
-
-    // get mode
-    index =
-        str_search_index(mode_names, MODES_NUM, slices[0].value, slices[0].len);
-    if (index < 0) {
-        return cfgst_invalid_value;
-    }
-    mode = index;
-
-    // get position and its block
-    index = str_index(position_names, slices[1].value, slices[1].len);
-    if (index < 0) {
-        return cfgst_invalid_value;
-    }
-    block = &ctx.scheme[mode][index];
-
-    // split into list fileds
-    num_slices =
-        str_split(value, ',', slices, sizeof(slices) / sizeof(slices[0]));
-    if (num_slices > sizeof(slices) / sizeof(slices[0])) {
-        num_slices = sizeof(slices) / sizeof(slices[0]);
-    }
-    for (size_t i = 0; i < num_slices; ++i) {
-        index = str_index(field_names, slices[i].value, slices[i].len);
-        if (index >= 0) {
-            scheme[scheme_sz++] = index;
-        } else {
-            if (slices[i].len == 0 ||
-                (slices[i].len == 4 &&
-                 strncmp(slices[i].value, "none", 4) == 0)) {
-                continue; // skip empty fields
-            }
-            return cfgst_invalid_value;
-        }
-    }
-
-    // set new scheme
-    if (scheme_sz) {
-        block->fields =
-            realloc(block->fields, scheme_sz * sizeof(enum info_field));
-        memcpy(block->fields, scheme, scheme_sz * sizeof(enum info_field));
     } else {
-        free(block->fields);
-        block->fields = NULL;
+        status = cfgst_invalid_key;
     }
-    block->fields_num = scheme_sz;
 
-    return cfgst_ok;
+    return status;
 }
 
 void info_create(void)
@@ -310,16 +338,17 @@ void info_create(void)
     // set defaults
     ctx.info.duration = 5;
     ctx.status.duration = 3;
-    ctx.mode = info_mode_full;
-    SET_DEFAULT(info_mode_full, text_top_left, default_full_top_left);
-    SET_DEFAULT(info_mode_full, text_top_right, default_full_top_right);
-    SET_DEFAULT(info_mode_full, text_bottom_left, default_full_bottom_left);
-    SET_DEFAULT(info_mode_full, text_bottom_right, default_bottom_right);
-    SET_DEFAULT(info_mode_brief, text_top_left, default_brief_top_left);
-    SET_DEFAULT(info_mode_brief, text_bottom_right, default_bottom_right);
+    ctx.mode = mode_viewer;
+    SET_DEFAULT(mode_viewer, text_top_left, default_viewer_tl);
+    SET_DEFAULT(mode_viewer, text_top_right, default_viewer_tr);
+    SET_DEFAULT(mode_viewer, text_bottom_left, default_viewer_bl);
+    SET_DEFAULT(mode_viewer, text_bottom_right, default_viewer_br);
+    SET_DEFAULT(mode_gallery, text_bottom_right, default_gallery_br);
 
     // register configuration loader
-    config_add_loader(CONFIG_SECTION, load_config);
+    config_add_loader("info", load_config_common);
+    config_add_loader("info.viewer", load_config_viewer);
+    config_add_loader("info.gallery", load_config_gallery);
 }
 
 void info_init(void)
@@ -329,6 +358,10 @@ void info_init(void)
     font_render("File size:", &ctx.fields[info_file_size].key);
     font_render("Image format:", &ctx.fields[info_image_format].key);
     font_render("Image size:", &ctx.fields[info_image_size].key);
+    font_render("Frame:", &ctx.fields[info_frame].key);
+    font_render("Index:", &ctx.fields[info_index].key);
+    font_render("Scale:", &ctx.fields[info_scale].key);
+    font_render("Status:", &ctx.fields[info_status].key);
 
     timeout_init(&ctx.info);
     timeout_init(&ctx.status);
@@ -356,22 +389,32 @@ void info_destroy(void)
     }
 }
 
-void info_set_mode(const char* mode)
+void info_switch(const char* mode)
 {
+    if (!ctx.info.active) {
+        timeout_reset(&ctx.info);
+        return;
+    }
+
     if (mode && *mode) {
-        const size_t num_modes = sizeof(mode_names) / sizeof(mode_names[0]);
-        for (size_t i = 0; i < num_modes; ++i) {
-            if (strcmp(mode, mode_names[i]) == 0) {
-                ctx.mode = i;
-                return;
-            }
+        const ssize_t mode_num = str_index(mode_names, mode, 0);
+        if (mode_num >= 0) {
+            ctx.mode = mode_num;
+            return;
+        }
+    } else {
+        ++ctx.mode;
+        if (ctx.mode > mode_off) {
+            ctx.mode = 0;
         }
     }
 
-    ++ctx.mode;
-    if (ctx.mode > info_mode_off) {
-        ctx.mode = 0;
-    }
+    timeout_reset(&ctx.info);
+}
+
+bool info_enabled(void)
+{
+    return (ctx.mode != mode_off);
 }
 
 void info_reset(const struct image* image)
@@ -435,15 +478,19 @@ void info_update(enum info_field field, const char* fmt, ...)
 
 void info_print(struct pixmap* window)
 {
-    if (ctx.mode == info_mode_off || !ctx.info.active) {
+    if (ctx.mode == mode_off || !ctx.info.active) {
         // print only status
-        const struct text_keyval* status = &ctx.fields[info_status];
-        if (status->value.width && ctx.status.active) {
+        if (ctx.fields[info_status].value.width && ctx.status.active) {
             for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-                const struct info_scheme* block = &ctx.scheme[ctx.mode][i];
+                const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
                 for (size_t j = 0; j < block->fields_num; ++j) {
-                    if (block->fields[j] == info_status) {
-                        text_print_keyval(window, i, status, 1);
+                    const struct field_scheme* field = &block->fields[j];
+                    if (field->type == info_status) {
+                        struct text_keyval status = ctx.fields[info_status];
+                        if (!field->title) {
+                            memset(&status.key, 0, sizeof(status.key));
+                        }
+                        text_print_keyval(window, i, &status, 1);
                         break;
                     }
                 }
@@ -453,28 +500,39 @@ void info_print(struct pixmap* window)
     }
 
     for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-        struct text_keyval lines[INFO_FIELDS_NUM + 7 /* max exif */];
-        const struct info_scheme* block = &ctx.scheme[ctx.mode][i];
+        struct text_keyval lines[MAX_LINES] = { 0 };
+        const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
         size_t lnum = 0;
 
         for (size_t j = 0; j < block->fields_num; ++j) {
-            const enum info_field field = block->fields[j];
-            switch (field) {
+            const struct field_scheme* field = &block->fields[j];
+            const struct text_keyval* origin = &ctx.fields[field->type];
+
+            switch (field->type) {
                 case info_exif:
                     for (size_t n = 0; n < ctx.exif_num; ++n) {
                         if (lnum < ARRAY_SIZE(lines)) {
-                            lines[lnum++] = ctx.exif_lines[n];
+                            if (field->title) {
+                                lines[lnum].key = ctx.exif_lines[n].key;
+                            }
+                            lines[lnum++].value = ctx.exif_lines[n].value;
                         }
                     }
                     break;
                 case info_status:
-                    if (ctx.fields[field].value.width && ctx.status.active) {
-                        lines[lnum++] = ctx.fields[field];
+                    if (origin->value.width && ctx.status.active) {
+                        if (field->title) {
+                            lines[lnum].key = origin->key;
+                        }
+                        lines[lnum++].value = origin->value;
                     }
                     break;
                 default:
-                    if (ctx.fields[field].value.width) {
-                        lines[lnum++] = ctx.fields[field];
+                    if (origin->value.width) {
+                        if (field->title) {
+                            lines[lnum].key = origin->key;
+                        }
+                        lines[lnum++].value = origin->value;
                     }
                     break;
             }

@@ -7,6 +7,11 @@
 #include "image.h"
 #include "text.h"
 
+// Info mode names
+#define INFO_MODE_VIEWER  "viewer"
+#define INFO_MODE_GALLERY "gallery"
+#define INFO_MODE_OFF     "off"
+
 /** Available info fields. */
 enum info_field {
     info_file_name,
@@ -37,10 +42,16 @@ void info_init(void);
 void info_destroy(void);
 
 /**
- * Set the display mode.
+ * Switch display mode.
  * @param mode display mode name
  */
-void info_set_mode(const char* mode);
+void info_switch(const char* mode);
+
+/**
+ * Check if info enabled.
+ * @param true if info text layer is enabled
+ */
+bool info_enabled(void);
 
 /**
  * Compose info data from image.

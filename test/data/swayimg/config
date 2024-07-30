@@ -1,6 +1,6 @@
 # Swayimg test configuration file.
 
-[test_section]
+[test.section]
  spaces 	 =	s p a c e s  
 nospaces=nospaces
 empty=

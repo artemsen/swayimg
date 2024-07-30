@@ -228,40 +228,30 @@ bool config_command(const char* cmd)
     char section[32];
     char key[32];
     const char* value;
-    char* ptr;
-    const char* it = cmd;
+    const char* ptr;
+    struct str_slice slices[2];
+    size_t slices_num;
 
-    // get section name
-    ptr = section;
-    while (*it != '.') {
-        if (!*it || ptr >= section + sizeof(section) - 1) {
-            goto format_error;
-        }
-        *ptr++ = *it++;
+    // split section.key and value
+    slices_num = str_split(cmd, '=', slices, ARRAY_SIZE(slices));
+    if (slices_num <= 1) {
+        return false;
     }
-    *ptr = 0; // last null
-    ++it;     // skip delimiter
 
-    // get key
-    ptr = key;
-    while (*it != '=') {
-        if (!*it || ptr >= key + sizeof(key) - 1) {
-            goto format_error;
+    // split section and key
+    ptr = slices[0].value + slices[0].len;
+    while (*ptr != '.') {
+        if (--ptr < cmd) {
+            return false;
         }
-        *ptr++ = *it++;
     }
-    *ptr = 0; // last null
-    ++it;     // skip delimiter
 
-    // get value
-    value = it;
+    strncpy(section, slices[0].value, ptr - slices[0].value);
+    ++ptr; // skip dot
+    strncpy(key, ptr, slices[0].len - (ptr - slices[0].value));
+    value = slices[1].value;
 
-    // load setting
     return config_set(section, key, value) == cfgst_ok;
-
-format_error:
-    fprintf(stderr, "Invalid format: \"%s\"\n", cmd);
-    return false;
 }
 
 void config_add_loader(const char* section, config_loader loader)

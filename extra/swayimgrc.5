@@ -159,46 +159,61 @@ To disable shadow use fully transparent color \fI#00000000\fR.
 .\" ****************************************************************************
 .\" Text info config section
 .\" ****************************************************************************
-.SS "Text info"
+.SS "Text info: common configuration"
 The section \fB[info]\fR describes how to display image meta data (file name,
-size, EXIF etc). Two modes are supported, each of them can have their own
-display scheme.
+size, EXIF etc).
 .\" ----------------------------------------------------------------------------
-.IP "\fBmode\fR = \fIMODE\fR"
-Set startup mode:
-.nf
-\fIfull\fR: show all info (default);
-\fIbrief\fR: show brief info;
-\fIoff\fR: don't display any text.
+.IP "\fBshow\fR = \fI[yes|no]\fR"
+Enable or disable info text at startup, \fIyes\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBinfo_timeout\fR = \fISECONDS\fR"
 Timeout of image information displayed on the screen, 0 to always show, default is \fI5\fR.
+.\" ----------------------------------------------------------------------------
 .IP "\fBstatus_timeout\fR = \fISECONDS\fR"
 Timeout of the status message displayed on the screen, default is \fI3\fR.
 .\" ----------------------------------------------------------------------------
-.IP "\fBfull.topleft\fR = \fILIST\fR"
-Set display scheme for the \fIfull\fR mode, top left corner of the window.
-\fILIST\fR is a comma delimited list of the following lines:
-\fIname\fR: file name of the current image;
-\fIpath\fR: full path to the current image;
-\fIfilesize\fR: file size in human readable format;
-\fIformat\fR: image format description;
-\fIimagesize\fR: image dimensions in pixels;
-\fIexif\fR: EXIF data;
-\fIframe\fR: current/total frame index;
-\fIindex\fR: current/total file index;
-\fIscale\fR: current scale in percent;
-\fIstatus\fR: status message;
-\fInone\fR: empty field (ignored).
+.SS "Text info: viewer"
+The section \fB[info.viewer]\fR describes how to display image meta data (file
+name, size, EXIF etc) in viewer mode.
+Each key/value configures a set of fields and their format.
+.IP "\fBtop_left\fR = \fILIST\fR"
+Set the display scheme for the upper left corner of the window.
+.IP "\fBtop_right\fR = \fILIST\fR"
+Set the display scheme for the upper right corner of the window.
+.IP "\fBbottom_left\fR = \fILIST\fR"
+Set the display scheme for the lower left corner of the window.
+.IP "\fBbottom_right\fR = \fILIST\fR"
+Set the display scheme for the lower right corner of the window.
 .PP
-.nf
-\fBfull.topright\fR: \fIfull\fR mode, top right corner of the window;
-\fBfull.bottomleft\fR: \fIfull\fR mode, bottom left corner of the window;
-\fBfull.bottomright\fR: \fIfull\fR mode, bottom right corner of the window;
-\fBbrief.topleft\fR: \fIbrief\fR mode, top right corner of the window;
-\fBbrief.topright\fR: \fIbrief\fR mode, top right corner of the window;
-\fBbrief.bottomleft\fR: \fIbrief\fR mode, bottom left corner of the window;
-\fBbrief.bottomright\fR: \fIbrief\fR mode, bottom right corner of the window.
+\fILIST\fR can contain any number of fields separated by commas.
+Plus at the beginning of a field name adds the field title to the display.
+Available fields:
+.IP "\fIname\fR"
+File name of the currently viewed/selected image.
+.IP "\fIpath\fR"
+Path or special source string of the currently viewed/selected image.
+.IP "\fIfilesize\fR"
+File size in human readable format.
+.IP "\fIformat\fR"
+Brief image format description.
+.IP "\fIimagesize\fR"
+Size of the image (or its current frame) in pixels.
+.IP "\fIexif\fR"
+List of EXIF data.
+.IP "\fIframe\fR"
+Current and total number of frames.
+.IP "\fIindex\fR"
+Current and total index of image in the image list.
+.IP "\fIscale\fR"
+Current image scale in percent.
+.IP "\fIstatus\fR"
+Status message.
+.IP "\fInone\fR"
+Empty field (ignored).
+.\" ----------------------------------------------------------------------------
+.SS "Text info: gallery"
+The section \fB[info.gallery]\fR describes how to display image meta data (file
+name, size, EXIF etc) in gallery mode, same format as for viewer mode.
 .\" ****************************************************************************
 .\" Key bindings config section
 .\" ****************************************************************************
@@ -261,8 +276,6 @@ Valid keys:
 .SH EXAMPLES
 .EX
 # comment
-[general]
-window = #112233
 [list]
 order = random
 [font]

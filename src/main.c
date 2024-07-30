@@ -131,6 +131,7 @@ static int parse_cmdargs(int argc, char* argv[])
         switch (opt) {
             case 'c':
                 if (!config_command(optarg)) {
+                    fprintf(stderr, "Invalid config: \"%s\"\n", optarg);
                     return -1;
                 }
                 break;

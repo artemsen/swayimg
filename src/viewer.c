@@ -688,7 +688,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 reload();
                 break;
             case action_info:
-                info_set_mode(action->params);
+                info_switch(action->params);
                 app_redraw();
                 break;
             case action_exec:

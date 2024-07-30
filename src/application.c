@@ -418,19 +418,27 @@ void app_exit(int rc)
 
 void app_switch_mode(size_t index)
 {
-    ctx.mode_gallery = !ctx.mode_gallery;
-
+    const char* info_mode;
     const struct event event = {
         .type = event_activate,
         .param.activate.index = index,
     };
 
+    ctx.mode_gallery = !ctx.mode_gallery;
+
     if (ctx.mode_gallery) {
+        info_mode = INFO_MODE_GALLERY;
         ctx.mode_handler = gallery_handle;
     } else {
+        info_mode = INFO_MODE_VIEWER;
         ctx.mode_handler = viewer_handle;
     }
+
     ctx.mode_handler(&event);
+
+    if (info_enabled()) {
+        info_switch(info_mode);
+    }
 
     app_redraw();
 }

@@ -95,23 +95,26 @@ shadow = #000000a0
 # Image meta info scheme (format, size, EXIF, etc)
 ################################################################################
 [info]
-# Mode on startup (off/brief/full)
-mode = full
+# Show on startup (yes/no)
+show = yes
 # Timeout to hide info (in seconds, 0 to always show)
 info_timeout = 5
 # Timeout to hide status message (in seconds)
 status_timeout = 3
 
-# Display scheme for the "full" mode: position = content
-full.topleft = name,format,filesize,imagesize,exif
-full.topright = index
-full.bottomleft = scale,frame
-full.bottomright = status
-# Display scheme for the "brief" mode: position = content
-brief.topleft = index
-brief.topright = none
-brief.bottomleft = none
-brief.bottomright = status
+# Display scheme for viewer mode (position = content)
+[info.viewer]
+top_left = +name,+format,+filesize,+imagesize,+exif
+top_right = index
+bottom_left = scale,frame
+bottom_right = status
+
+# Display scheme for gallery mode (position = content)
+[info.gallery]
+top_left = none
+top_right = none
+bottom_left = none
+bottom_right = name,status
 
 ################################################################################
 # Key binding section: key = action [parameters]
