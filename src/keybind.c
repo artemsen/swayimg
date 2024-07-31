@@ -249,7 +249,6 @@ void keybind_create(void)
 
     // register configuration loader
     config_add_loader("keys", keybind_configure);
-    config_add_loader("mouse", keybind_configure);
 }
 
 void keybind_destroy(void)

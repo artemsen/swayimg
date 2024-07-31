@@ -1,4 +1,5 @@
 # Swayimg configuration file.
+# vim: filetype=dosini
 
 # This file contains the default configuration.
 # The viewer searches for the config file in the following locations:
@@ -112,9 +113,7 @@ bottom_left = none
 bottom_right = name,status
 
 ################################################################################
-# Key binding section: key = action [parameters]
-# Key can be specified with modifiers, e.g "Ctrl+Alt+Shift+x"
-# Use the `xkbcli` tool to get key name: `xkbcli interactive-wayland`
+# Key binding configuration: key = action [parameters]
 ################################################################################
 [keys]
 F1 = help
@@ -155,11 +154,7 @@ i = info
 e = exec echo "Image: %"
 Escape = exit
 q = exit
-
-################################################################################
-# Mouse / touchpad configuration, same format as in [keys]
-################################################################################
-[mouse]
+# Mouse related
 ScrollLeft = step_right 5
 ScrollRight = step_left 5
 ScrollUp = step_up 5
@@ -170,5 +165,3 @@ Shift+ScrollUp = prev_file
 Shift+ScrollDown = next_file
 Alt+ScrollUp = prev_frame
 Alt+ScrollDown = next_frame
-
-# vim: filetype=dosini

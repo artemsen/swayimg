@@ -230,10 +230,17 @@ name, size, EXIF etc) in gallery mode, same format as for viewer mode.
 The key bindings are described in the \fB[keys]\fR section.
 Each line associates a key with a list of actions and optional parameters.
 Actions are separated by semicolons.
-The key name can be obtained with the \fIxkbcli\fR tool:
-`xkbcli interactive-wayland`.
 One or more key modifiers (\fICtrl\fR, \fIAlt\fR, \fIShift\fR) can be specified
 in the key name.
+The key name can be obtained with the \fIxkbcli\fR tool:
+`xkbcli interactive-wayland`.
+.PP
+Predefined names for mouse scroll:
+.PP
+.IP "\fIScrollUp\fR: Mouse wheel up;"
+.IP "\fIScrollDown\fR: Mouse wheel down;"
+.IP "\fIScrollLeft\fR: Mouse scroll left;"
+.IP "\fIScrollRight\fR: Mouse scroll right."
 .PP
 Valid actions:
 .IP "\fBnone\fR: can be used for removing built-in action;"
@@ -266,19 +273,6 @@ Valid actions:
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"
 .IP "\fBexit\fR: exit the application."
-.\" ****************************************************************************
-.\" Mouse / touchpad config section
-.\" ****************************************************************************
-.SS "Mouse/touchpad"
-The mouse configuration is stored in the section \fB[mouse]\fR.
-Same format as in \fB[keys]\fR.
-.PP
-Valid keys:
-.nf
-\fBScrollUp\fR: mouse wheel up or touchpad scroll up;
-\fBScrollDown\fR: mouse wheel down or touchpad scroll down;
-\fBScrollLeft\fR: touchpad scroll left;
-\fBScrollRight\fR: touchpad scroll right.
 .\" ****************************************************************************
 .\" Example
 .\" ****************************************************************************
