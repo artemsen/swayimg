@@ -183,6 +183,7 @@ void config_destroy(void)
     if (ctx.sections) {
         free(ctx.sections);
         ctx.sections = NULL;
+        ctx.num_sections = 0;
     }
 }
 

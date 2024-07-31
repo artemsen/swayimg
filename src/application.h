@@ -69,6 +69,12 @@ void app_exit(int rc);
 void app_switch_mode(size_t index);
 
 /**
+ * Get active mode.
+ * @return true if current mode is viewer, false for gallery
+ */
+bool app_is_viewer(void);
+
+/**
  * Handler of external event: reload image / reset state.
  */
 void app_reload(void);

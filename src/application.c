@@ -62,12 +62,9 @@ struct application {
     struct event_entry* events; ///< Event queue
     int event_fd;               ///< Queue change notification
 
-    bool mode_viewer;           ///< Current mode (gallery/viewer)
-    event_handler mode_handler; ///< Event handler for the current mode
-
-    struct rect window; ///< Preferable window position and size
-
-    char* app_id; ///< Application id (app_id name)
+    event_handler ehandler; ///< Event handler for the current mode
+    struct rect window;     ///< Preferable window position and size
+    char* app_id;           ///< Application id (app_id name)
 };
 
 /** Global application context. */
@@ -136,7 +133,7 @@ static void handle_event_queue(__attribute__((unused)) void* data)
     while (ctx.events && ctx.state == loop_run) {
         struct event_entry* entry = ctx.events;
         ctx.events = ctx.events->next;
-        ctx.mode_handler(&entry->event);
+        ctx.ehandler(&entry->event);
         free(entry);
     }
 }
@@ -233,10 +230,10 @@ static enum config_status load_config(const char* key, const char* value)
 
     if (strcmp(key, APP_CFG_MODE) == 0) {
         if (strcmp(value, APP_MODE_VIEWER) == 0) {
-            ctx.mode_viewer = true;
+            ctx.ehandler = viewer_handle;
             status = cfgst_ok;
         } else if (strcmp(value, APP_MODE_GALLERY) == 0) {
-            ctx.mode_viewer = false;
+            ctx.ehandler = gallery_handle;
             status = cfgst_ok;
         }
     } else if (strcmp(key, APP_CFG_POSITION) == 0) {
@@ -292,11 +289,11 @@ static enum config_status load_config(const char* key, const char* value)
 
 void app_create(void)
 {
-    ctx.mode_viewer = true;
     ctx.window.x = POS_FROM_PARENT;
     ctx.window.y = POS_FROM_PARENT;
     ctx.window.width = SIZE_FROM_PARENT;
     ctx.window.height = SIZE_FROM_PARENT;
+    ctx.ehandler = viewer_handle;
 
     font_create();
     image_list_create();
@@ -395,8 +392,8 @@ bool app_init(const char** sources, size_t num)
     // initialize other subsystems
     font_init();
     info_init();
-    viewer_init(ctx.mode_viewer ? first_image : NULL);
-    gallery_init(ctx.mode_viewer ? NULL : first_image);
+    viewer_init(ctx.ehandler == viewer_handle ? first_image : NULL);
+    gallery_init(ctx.ehandler == gallery_handle ? first_image : NULL);
 
     // event queue notification
     ctx.event_fd = notification_create();
@@ -405,12 +402,6 @@ bool app_init(const char** sources, size_t num)
     } else {
         perror("Unable to create eventfd");
         return false;
-    }
-
-    if (ctx.mode_viewer) {
-        ctx.mode_handler = viewer_handle;
-    } else {
-        ctx.mode_handler = gallery_handle;
     }
 
     return true;
@@ -484,23 +475,26 @@ void app_switch_mode(size_t index)
         .param.activate.index = index,
     };
 
-    ctx.mode_viewer = !ctx.mode_viewer;
-
-    if (ctx.mode_viewer) {
-        info_mode = APP_MODE_VIEWER;
-        ctx.mode_handler = viewer_handle;
-    } else {
+    if (ctx.ehandler == viewer_handle) {
+        ctx.ehandler = gallery_handle;
         info_mode = APP_MODE_GALLERY;
-        ctx.mode_handler = gallery_handle;
+    } else {
+        ctx.ehandler = viewer_handle;
+        info_mode = APP_MODE_VIEWER;
     }
 
-    ctx.mode_handler(&event);
+    ctx.ehandler(&event);
 
     if (info_enabled()) {
         info_switch(info_mode);
     }
 
     app_redraw();
+}
+
+bool app_is_viewer(void)
+{
+    return ctx.ehandler == viewer_handle;
 }
 
 void app_reload(void)

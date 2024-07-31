@@ -113,9 +113,9 @@ bottom_left = none
 bottom_right = name,status
 
 ################################################################################
-# Key binding configuration: key = action [parameters]
+# Viewer mode key binding configuration: key = action [parameters]
 ################################################################################
-[keys]
+[keys.viewer]
 F1 = help
 Home = first_file
 End = last_file
@@ -165,3 +165,27 @@ Shift+ScrollUp = prev_file
 Shift+ScrollDown = next_file
 Alt+ScrollUp = prev_frame
 Alt+ScrollDown = next_frame
+
+################################################################################
+# Gallery mode key binding configuration: key = action [parameters]
+################################################################################
+[keys.gallery]
+Home = first_file
+End = last_file
+Left = step_left
+Right = step_right
+Up = step_up
+Down = step_down
+f = fullscreen
+Return = mode
+a = antialiasing
+r = reload
+i = info
+e = exec echo "Image: %"
+Escape = exit
+q = exit
+# Mouse related
+ScrollLeft = step_right
+ScrollRight = step_left
+ScrollUp = step_up
+ScrollDown = step_down

@@ -480,7 +480,7 @@ static void switch_help(void)
 
     // get number of bindings
     ctx.help_sz = 0;
-    kb = keybind_all();
+    kb = keybind_get();
     while (kb) {
         if (kb->help) {
             ++ctx.help_sz;
@@ -490,7 +490,7 @@ static void switch_help(void)
     ctx.help = calloc(1, ctx.help_sz * sizeof(*ctx.help));
     if (ctx.help) {
         size_t i = ctx.help_sz - 1;
-        kb = keybind_all();
+        kb = keybind_get();
         while (kb) {
             if (kb->help) {
                 font_render(kb->help, &ctx.help[i--]);
@@ -594,7 +594,7 @@ static void on_resize(void)
  */
 static void on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
-    const struct keybind* kb = keybind_get(key, mods);
+    const struct keybind* kb = keybind_find(key, mods);
 
     if (!kb) {
         char* name = keybind_name(key, mods);

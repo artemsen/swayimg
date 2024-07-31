@@ -227,7 +227,7 @@ name, size, EXIF etc) in gallery mode, same format as for viewer mode.
 .\" Key bindings config section
 .\" ****************************************************************************
 .SS "Key bindings"
-The key bindings are described in the \fB[keys]\fR section.
+The key bindings are described in sections \fB[keys.viewer]\fR and \fB[keys.gallery]\fR.
 Each line associates a key with a list of actions and optional parameters.
 Actions are separated by semicolons.
 One or more key modifiers (\fICtrl\fR, \fIAlt\fR, \fIShift\fR) can be specified
@@ -242,7 +242,8 @@ Predefined names for mouse scroll:
 .IP "\fIScrollLeft\fR: Mouse scroll left;"
 .IP "\fIScrollRight\fR: Mouse scroll right."
 .PP
-Valid actions:
+.\" ----------------------------------------------------------------------------
+.SS "Viewer mode actions"
 .IP "\fBnone\fR: can be used for removing built-in action;"
 .IP "\fBhelp\fR: show/hide help;"
 .IP "\fBfirst_file\fR: jump to the first file;"
@@ -267,6 +268,24 @@ Valid actions:
 .IP "\fBrotate_right\fR: rotate image clockwise;"
 .IP "\fBflip_vertical\fR: flip image vertically;"
 .IP "\fBflip_horizontal\fR: flip image horizontally;"
+.IP "\fBreload\fR: reset cache and reload current image;"
+.IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
+.IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
+.IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
+.IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"
+.IP "\fBexit\fR: exit the application."
+.\" ----------------------------------------------------------------------------
+.SS "Gallery mode actions"
+.IP "\fBnone\fR: can be used for removing built-in action;"
+.IP "\fBhelp\fR: show/hide help;"
+.IP "\fBfirst_file\fR: jump to the first file;"
+.IP "\fBlast_file\fR: jump to the last file;"
+.IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
+.IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
+.IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"
+.IP "\fBstep_down\fR \fI[PERCENT]\fR: move viewport down, default is 10%;"
+.IP "\fBfullscreen\fR: switch full screen mode;"
+.IP "\fBmode \fI[MODE]\fR\fR: switch between viewer and gallery;"
 .IP "\fBreload\fR: reset cache and reload current image;"
 .IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
 .IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"

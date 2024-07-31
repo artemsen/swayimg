@@ -4,11 +4,11 @@
 
 #include "keybind.h"
 
+#include "application.h"
 #include "config.h"
 #include "str.h"
 
 #include <ctype.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,8 +18,11 @@ struct keybind_default {
     uint8_t mods;         ///< Key modifiers
     struct action action; ///< Action
 };
+
 // clang-format off
-static const struct keybind_default default_bindings[] = {
+
+/** Default key bindings for viewer mode. */
+static const struct keybind_default default_viewer[] = {
     { .key = XKB_KEY_F1,          .action = { action_help, NULL } },
     { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
     { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
@@ -69,6 +72,28 @@ static const struct keybind_default default_bindings[] = {
     { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT,   .action = { action_prev_frame, NULL } },
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT,   .action = { action_next_frame, NULL } },
 };
+
+/** Default key bindings for gallery mode. */
+static const struct keybind_default default_gallery[] = {
+    { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
+    { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
+    { .key = XKB_KEY_f,           .action = { action_fullscreen, NULL } },
+    { .key = XKB_KEY_Left,        .action = { action_step_left, NULL } },
+    { .key = XKB_KEY_Right,       .action = { action_step_right, NULL } },
+    { .key = XKB_KEY_Up,          .action = { action_step_up, NULL } },
+    { .key = XKB_KEY_Down,        .action = { action_step_down, NULL } },
+    { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
+    { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
+    { .key = XKB_KEY_i,           .action = { action_info, NULL } },
+    { .key = XKB_KEY_e,           .action = { action_exec, "echo \"Image: %\"" } },
+    { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
+    { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
+    { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
+    { .key = VKEY_SCROLL_LEFT,    .action = { action_step_right, NULL } },
+    { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  NULL } },
+    { .key = VKEY_SCROLL_UP,      .action = { action_step_up,    NULL } },
+    { .key = VKEY_SCROLL_DOWN,    .action = { action_step_down,  NULL } },
+};
 // clang-format on
 
 // Names of virtual keys
@@ -84,16 +109,17 @@ static const struct virtual_keys virtual_keys[] = {
 };
 
 /** Head of global key binding list. */
-static struct keybind* binding_list;
+static struct keybind* kb_viewer;
+static struct keybind* kb_gallery;
 
 /**
- * Convert text name to key code.
+ * Convert text name to key code with modifiers.
  * @param name key text name
  * @param key output keyboard key
  * @param mods output key modifiers (ctrl/alt/shift)
  * @return false if name is invalid
  */
-static bool parse_key(const char* name, xkb_keysym_t* key, uint8_t* mods)
+static bool parse_keymod(const char* name, xkb_keysym_t* key, uint8_t* mods)
 {
     struct str_slice slices[4]; // mod[alt+ctrl+shift]+key
     const size_t snum = str_split(name, '+', slices, ARRAY_SIZE(slices));
@@ -142,8 +168,8 @@ static bool parse_key(const char* name, xkb_keysym_t* key, uint8_t* mods)
  * @param action list of actions to add
  * @param sz number of actions in list
  */
-static struct keybind* keybind_alloc(xkb_keysym_t key, uint8_t mods,
-                                     const struct action* action, size_t sz)
+static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
+                                      const struct action* action, size_t sz)
 {
     struct keybind* kb;
 
@@ -192,7 +218,7 @@ static struct keybind* keybind_alloc(xkb_keysym_t key, uint8_t mods,
  * Free key binding.
  * @param kb key binding
  */
-static void keybind_free(struct keybind* kb)
+static void free_binding(struct keybind* kb)
 {
     if (kb) {
         for (size_t i = 0; i < kb->num_actions; ++i) {
@@ -205,28 +231,29 @@ static void keybind_free(struct keybind* kb)
 
 /**
  * Put key binding to the global scheme.
+ * @param kb head of binding list
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
  * @param action list of actions to add
  * @param sz number of actions in list
  */
-static void keybind_put(xkb_keysym_t key, uint8_t mods,
+static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
                         const struct action* action, size_t sz)
 {
     struct keybind* kb;
     struct keybind* prev;
 
     // remove existing binding
-    kb = binding_list;
+    kb = *head;
     prev = NULL;
     while (kb) {
         if (kb->key == key && kb->mods == mods) {
             if (prev) {
                 prev->next = kb->next;
             } else {
-                binding_list = kb->next;
+                *head = kb->next;
             }
-            keybind_free(kb);
+            free_binding(kb);
             break;
         }
         prev = kb;
@@ -234,40 +261,22 @@ static void keybind_put(xkb_keysym_t key, uint8_t mods,
     }
 
     // add to head
-    kb = keybind_alloc(key, mods, action, sz);
-    kb->next = binding_list;
-    binding_list = kb;
-}
-
-void keybind_create(void)
-{
-    // set defaults
-    for (size_t i = 0; i < ARRAY_SIZE(default_bindings); ++i) {
-        const struct keybind_default* kb = &default_bindings[i];
-        keybind_put(kb->key, kb->mods, &kb->action, 1);
+    kb = create_binding(key, mods, action, sz);
+    if (kb) {
+        kb->next = *head;
+        *head = kb;
     }
-
-    // register configuration loader
-    config_add_loader("keys", keybind_configure);
 }
 
-void keybind_destroy(void)
-{
-    struct keybind* it = binding_list;
-    while (it) {
-        struct keybind* next = it->next;
-        keybind_free(it);
-        it = next;
-    }
-    binding_list = NULL;
-}
-
-struct keybind* keybind_all(void)
-{
-    return binding_list;
-}
-
-enum config_status keybind_configure(const char* key, const char* value)
+/**
+ * Load binding from config parameters.
+ * @param kb head of binding list
+ * @param key text name of key with modifiers
+ * @param value actions
+ * @return load status
+ */
+static enum config_status load_binding(struct keybind** head, const char* key,
+                                       const char* value)
 {
     xkb_keysym_t keysym;
     uint8_t mods;
@@ -276,7 +285,7 @@ enum config_status keybind_configure(const char* key, const char* value)
     size_t action_num;
 
     // parse keyboard shortcut
-    if (!parse_key(key, &keysym, &mods)) {
+    if (!parse_keymod(key, &keysym, &mods)) {
         return cfgst_invalid_key;
     }
 
@@ -292,7 +301,7 @@ enum config_status keybind_configure(const char* key, const char* value)
         }
     }
 
-    keybind_put(keysym, mods, action, action_num);
+    set_binding(head, keysym, mods, action, action_num);
 
     for (size_t i = 0; i < action_num; ++i) {
         free(action[i].params);
@@ -301,9 +310,57 @@ enum config_status keybind_configure(const char* key, const char* value)
     return cfgst_ok;
 }
 
-struct keybind* keybind_get(xkb_keysym_t key, uint8_t mods)
+/** Configure global key bindings, see `config_loader` for details. */
+static enum config_status config_viewer(const char* key, const char* value)
 {
-    struct keybind* it = binding_list;
+    return load_binding(&kb_viewer, key, value);
+}
+
+/** Configure global key bindings, see `config_loader` for details. */
+static enum config_status config_gallery(const char* key, const char* value)
+{
+    return load_binding(&kb_gallery, key, value);
+}
+
+void keybind_create(void)
+{
+    // create default bindings
+    for (size_t i = 0; i < ARRAY_SIZE(default_viewer); ++i) {
+        const struct keybind_default* kb = &default_viewer[i];
+        set_binding(&kb_viewer, kb->key, kb->mods, &kb->action, 1);
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(default_gallery); ++i) {
+        const struct keybind_default* kb = &default_gallery[i];
+        set_binding(&kb_gallery, kb->key, kb->mods, &kb->action, 1);
+    }
+
+    // register configuration loaders
+    config_add_loader("keys.viewer", config_viewer);
+    config_add_loader("keys.gallery", config_gallery);
+}
+
+void keybind_destroy(void)
+{
+    for (size_t i = 0; i < 2; ++i) {
+        struct keybind* it = i ? kb_viewer : kb_gallery;
+        while (it) {
+            struct keybind* next = it->next;
+            free_binding(it);
+            it = next;
+        }
+    }
+    kb_viewer = NULL;
+    kb_gallery = NULL;
+}
+
+struct keybind* keybind_get(void)
+{
+    return app_is_viewer() ? kb_viewer : kb_gallery;
+}
+
+struct keybind* keybind_find(xkb_keysym_t key, uint8_t mods)
+{
+    struct keybind* it = keybind_get();
 
     // we always use lowercase + Shift modifier
     key = xkb_keysym_to_lower(key);

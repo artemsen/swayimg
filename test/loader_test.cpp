@@ -20,6 +20,10 @@ void app_on_resize() { }
 void app_on_keyboard(xkb_keysym_t, uint8_t) { }
 void app_on_drag(int, int) { }
 void app_exit(int) { }
+bool app_is_viewer()
+{
+    return true;
+}
 }
 
 class Loader : public ::testing::Test {

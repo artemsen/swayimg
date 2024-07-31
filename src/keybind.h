@@ -25,8 +25,8 @@ struct keybind {
     xkb_keysym_t key;       ///< Keyboard key
     uint8_t mods;           ///< Key modifiers
     struct action* actions; ///< Array of action
-    size_t num_actions;     ///< Number of action in array
-    char* help;             ///< Binding description
+    size_t num_actions;     ///< Number of actions in array
+    char* help;             ///< Help line with binding description
     struct keybind* next;   ///< Next entry in list
 };
 
@@ -44,20 +44,15 @@ void keybind_destroy(void);
  * Get head of the global binding list.
  * @return pointer to the list head
  */
-struct keybind* keybind_all(void);
+struct keybind* keybind_get(void);
 
 /**
- * Configure global key bindings, see `config_loader` for details.
- */
-enum config_status keybind_configure(const char* key, const char* value);
-
-/**
- * Get list of action for specified key.
+ * Find binding for the key.
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
- * @return list of actions, last is action_none, NULL if not found
+ * @return pointer to key binding or NULL if not found
  */
-struct keybind* keybind_get(xkb_keysym_t key, uint8_t mods);
+struct keybind* keybind_find(xkb_keysym_t key, uint8_t mods);
 
 /**
  * Get key name.

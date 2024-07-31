@@ -407,7 +407,7 @@ static void move_selection(enum action_type direction)
  */
 static void on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
-    const struct keybind* kb = keybind_get(key, mods);
+    const struct keybind* kb = keybind_find(key, mods);
     if (!kb) {
         return;
     }
@@ -424,8 +424,6 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_first_file:
             case action_last_file:
-            case action_prev_file:
-            case action_next_file:
             case action_step_left:
             case action_step_right:
             case action_step_up:
