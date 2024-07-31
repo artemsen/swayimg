@@ -7,8 +7,16 @@
 #include "keybind.h"
 
 // Configuration parameters
-#define APP_CFG_APP_ID  "app_id"
-#define APP_CFG_GALLERY "gallery"
+#define APP_CFG_SECTION  "general"
+#define APP_CFG_MODE     "mode"
+#define APP_CFG_POSITION "position"
+#define APP_CFG_SIZE     "size"
+#define APP_CFG_APP_ID   "app_id"
+#define APP_MODE_VIEWER  "viewer"
+#define APP_MODE_GALLERY "gallery"
+#define APP_FROM_PARENT  "parent"
+#define APP_FROM_IMAGE   "image"
+#define APP_FULLSCREEN   "fullscreen"
 
 /**
  * Handler of the fd poll events.

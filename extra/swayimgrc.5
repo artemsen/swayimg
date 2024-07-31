@@ -37,7 +37,7 @@ The number sign (#) at the beginning of the line indicates a comment.
 Empty lines and comments are ignored.
 .PP
 Any option can be overridden using the \fI--config\fR argument in the command
-line, for instance: `swayimg --config="general.scale=real"`.
+line, for instance: `swayimg --config="general.mode=gallery"`.
 .\" ****************************************************************************
 .\" General config section
 .\" ****************************************************************************
@@ -45,8 +45,42 @@ line, for instance: `swayimg --config="general.scale=real"`.
 .SS "General"
 The general configuration is stored in the section \fB[general]\fR.
 .\" ----------------------------------------------------------------------------
+.IP "\fBmode\fR = \fI[viewer|gallery]\fR"
+Mode used at startup, \fIviewer\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBposition\fR = \fI[parent|X,Y]\fR"
+Set initial position of the window (Sway only):
+.nf
+\fIparent\fR: set position from parent (currently active) window (default);
+\fIX,Y\fR: absolute coordinates of the top left corner, e.g. 100,200.
+.\" ----------------------------------------------------------------------------
+.IP "\fBsize\fR = \fI[fullscreen|parent|image|W,H]\fR"
+Set initial size of the window:
+.nf
+\fIfullscreen\fR: use fullscreen mode;
+\fIparent\fR: set size from parent (currently active) window (Sway only, default);
+\fIimage\fR: set size from the first loaded image;
+\fIW,H\fR: absolute size of the window in pixels.
+.\" ----------------------------------------------------------------------------
+.IP "\fBapp_id\fR = \fINAME\fR"
+Set a constant window class/app_id. Setting this may break the window positioning.
+.\" ****************************************************************************
+.\" Viewer config section
+.\" ****************************************************************************
+.SS "Viewer"
+Configuration is defined in the \fB[viewer]\fR section.
+.\" ----------------------------------------------------------------------------
+.IP "\fBwindow\fR = \fI#COLOR\fR"
+Window background color in RGB or RGBA format, default is \fI#00000000\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBtransparency\fR = \fI[grid|#COLOR]\fR"
+Background for transparent images:
+.nf
+\fIgrid\fR: draw chessboard (default);
+\fI#COLOR\fR: solid color in RGB or RGBA, e.g "#10ff4280".
+.\" ----------------------------------------------------------------------------
 .IP "\fBscale\fR = \fIMODE\fR"
-Set the initial image scale, valid modes are:
+Default image scale, valid modes are:
 .nf
 \fIoptimal\fR: 100% or less to fit to window (default);
 \fIwidth\fR: fit image width to window width;
@@ -55,37 +89,11 @@ Set the initial image scale, valid modes are:
 \fIfill\fR: crop image to fill the window;
 \fIreal\fR: real size (100%).
 .\" ----------------------------------------------------------------------------
-.IP "\fBfullscreen\fR = \fI[yes|no]\fR"
-Start in full screen mode, \fIno\fR by default.
-.\" ----------------------------------------------------------------------------
-.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
-Enable or disable antialising (better quality, but slow rendering), \fIno\fR by default.
-.\" ----------------------------------------------------------------------------
 .IP "\fBfixed\fR = \fI[yes|no]\fR"
 Fix position of the image on the window surface, \fIyes\fR by default.
 .\" ----------------------------------------------------------------------------
-.IP "\fBtransparency\fR = \fI[MODE|#COLOR]\fR"
-Set background for transparent images:
-.nf
-\fIgrid\fR: draw chessboard (default);
-\fI#COLOR\fR: solid RGB or RGBA color in hex format, e.g "#10ff4280".
-For RGB color, the default alpha channel is \fIFF\fR.
-.\" ----------------------------------------------------------------------------
-.IP "\fBposition\fR = \fI[MODE|COORDINATES]\fR"
-Set initial position of the window (Sway only):
-.nf
-\fIparent\fR: set position from parent (currently active) window (default);
-\fIX,Y\fR: absolute coordinates of the top left corner.
-.\" ----------------------------------------------------------------------------
-.IP "\fBsize\fR = \fI[MODE|SIZE]\fR"
-Set initial size of the window:
-.nf
-\fIparent\fR: set size from parent (currently active) window (Sway only, default);
-\fIimage\fR: set size from the first loaded image;
-\fIWIDTH,HEIGHT\fR: absolute size of the window in pixels.
-.\" ----------------------------------------------------------------------------
-.IP "\fBbackground\fR = \fI#COLOR\fR"
-Set window background color in RGBA format, default is \fI#00000000\fR.
+.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
+Enable or disable antialising (better quality, but slow rendering), \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBslideshow\fR = \fI[yes|no]\fR"
 Run slideshow at startup, \fIno\fR by default.
@@ -93,24 +101,29 @@ Run slideshow at startup, \fIno\fR by default.
 .IP "\fBslideshow_time\fR = \fISECONDS\fR"
 Set slideshow image duration in seconds, default is \fI3\fR.
 .\" ----------------------------------------------------------------------------
-.IP "\fBgallery\fR = \fI[yes|no]\fR"
-Start in gallery mode, \fIno\fR by default.
+.IP "\fBhistory\fR = \fISIZE\fR"
+Number of previously viewed images to store in cache, \fI1\fR by default.
 .\" ----------------------------------------------------------------------------
-.IP "\fBapp_id\fR = \fINAME\fR"
-Set a constant window class/app_id. Setting this may break the window layout.
+.IP "\fBpreload\fR = \fISIZE\fR"
+Number of images to preload in a separate thread, \fI1\fR by default.
 .\" ****************************************************************************
 .\" Gallery config section
 .\" ****************************************************************************
 .SS "Gallery"
 Configuration is defined in the \fB[gallery]\fR section.
+.\" ----------------------------------------------------------------------------
 .IP "\fBsize\fR = \fIPIXELS\fR"
 Max size of the thumbnail in pixels, \fI200\fR by default.
+.\" ----------------------------------------------------------------------------
 .IP "\fBantialiasing\fR = \fI[yes|no]\fR"
 Use anti-aliasing for thumbnails, \fIno\fR by default.
+.\" ----------------------------------------------------------------------------
 .IP "\fBwindow\fR = \fI#COLOR\fR"
 Background color of the window, default is \fI#00000000\fR.
+.\" ----------------------------------------------------------------------------
 .IP "\fBbackground\fR = \fI#COLOR\fR"
 Background color of the tile, default is \fI#202020ff\fR.
+.\" ----------------------------------------------------------------------------
 .IP "\fBselect\fR = \fI#COLOR\fR"
 Set window background of the selected tile, default is \fI#404040ff\fR.
 .\" ****************************************************************************
@@ -134,10 +147,6 @@ Read directories recursively, \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBall\fR = \fI[yes|no]\fR"
 Open all files in the same directory, \fIyes\fR by default.
-.IP "\fBcache\fR = \fISIZE\fR"
-Number of previously viewed images to store in cache, \fI1\fR by default.
-.IP "\fBpreload\fR = \fISIZE\fR"
-Number of images to preload in a separate thread, \fI1\fR by default.
 .\" ****************************************************************************
 .\" Font config section
 .\" ****************************************************************************
@@ -241,7 +250,7 @@ Valid actions:
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
 .IP "\fBfullscreen\fR: switch full screen mode;"
-.IP "\fBmode\fR: switch between viewer and gallery;"
+.IP "\fBmode \fI[MODE]\fR\fR: switch between viewer and gallery;"
 .IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
 .IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
 .IP "\fBstep_up\fR \fI[PERCENT]\fR: move viewport up, default is 10%;"

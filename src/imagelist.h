@@ -12,8 +12,6 @@
 #define IMGLIST_CFG_LOOP      "loop"
 #define IMGLIST_CFG_RECURSIVE "recursive"
 #define IMGLIST_CFG_ALL       "all"
-#define IMGLIST_CFG_CACHE     "cache"
-#define IMGLIST_CFG_PRELOAD   "preload"
 
 // Invalid index of the entry
 #define IMGLIST_INVALID SIZE_MAX

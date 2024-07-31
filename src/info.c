@@ -26,9 +26,9 @@ enum info_mode {
     mode_off,
 };
 static const char* mode_names[] = {
-    [mode_viewer] = INFO_MODE_VIEWER,
-    [mode_gallery] = INFO_MODE_GALLERY,
-    [mode_off] = INFO_MODE_OFF,
+    [mode_viewer] = APP_MODE_VIEWER,
+    [mode_gallery] = APP_MODE_GALLERY,
+    [mode_off] = "off",
 };
 #define MODES_NUM 2
 

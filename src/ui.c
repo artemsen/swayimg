@@ -21,6 +21,12 @@
 // Max number of output displays
 #define MAX_OUTPUTS 4
 
+// Window size
+#define WINDOW_MIN            10
+#define WINDOW_MAX            100000
+#define WINDOW_DEFAULT_WIDTH  800
+#define WINDOW_DEFAULT_HEIGHT 600
+
 // Mouse button
 #ifndef BTN_LEFT
 #define BTN_LEFT 0x110 // from <linux/input-event-codes.h>
@@ -53,8 +59,6 @@ struct ui {
         struct wl_buffer* buffer1;
         struct wl_buffer* current;
         struct pixmap pm;
-        ssize_t x;
-        ssize_t y;
         size_t width;
         size_t height;
         int32_t scale;
@@ -97,12 +101,9 @@ struct ui {
     bool event_handled;
 };
 
+/** Global UI context instance. */
 static struct ui ctx = {
     .wnd.scale = 1,
-    .wnd.x = POS_FROM_PARENT,
-    .wnd.y = POS_FROM_PARENT,
-    .wnd.width = SIZE_FROM_PARENT,
-    .wnd.height = SIZE_FROM_PARENT,
     .repeat.fd = -1,
 };
 
@@ -589,12 +590,14 @@ static void on_wayland_event(__attribute__((unused)) void* data)
     ctx.event_handled = true;
 }
 
-bool ui_init(const char* app_id)
+bool ui_init(const char* app_id, size_t width, size_t height)
 {
-    if (ctx.wnd.width < 10 || ctx.wnd.height < 10) {
-        // fixup window size
-        ctx.wnd.width = 800;
-        ctx.wnd.height = 600;
+    ctx.wnd.width = width;
+    ctx.wnd.height = height;
+    if (ctx.wnd.width < WINDOW_MIN || ctx.wnd.height < WINDOW_MIN ||
+        ctx.wnd.width > WINDOW_MAX || ctx.wnd.height > WINDOW_MAX) {
+        ctx.wnd.width = WINDOW_DEFAULT_WIDTH;
+        ctx.wnd.height = WINDOW_DEFAULT_HEIGHT;
     }
 
     ctx.wl.display = wl_display_connect(NULL);
@@ -642,67 +645,6 @@ bool ui_init(const char* app_id)
     app_watch(ctx.repeat.fd, on_key_repeat, NULL);
 
     return true;
-}
-
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config(const char* key, const char* value)
-{
-    enum config_status status = cfgst_invalid_value;
-
-    if (strcmp(key, UI_CFG_FULLSCREEN) == 0) {
-        if (config_to_bool(value, &ctx.fullscreen)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, UI_CFG_SIZE) == 0) {
-        ssize_t width, height;
-        if (strcmp(value, "parent") == 0) {
-            ctx.wnd.width = SIZE_FROM_PARENT;
-            ctx.wnd.height = SIZE_FROM_PARENT;
-            status = cfgst_ok;
-        } else if (strcmp(value, "image") == 0) {
-            ctx.wnd.width = SIZE_FROM_IMAGE;
-            ctx.wnd.height = SIZE_FROM_IMAGE;
-            status = cfgst_ok;
-        } else {
-            struct str_slice slices[2];
-            if (str_split(value, ',', slices, 2) == 2 &&
-                str_to_num(slices[0].value, slices[0].len, &width, 0) &&
-                str_to_num(slices[1].value, slices[1].len, &height, 0) &&
-                width > 0 && width < 100000 && height > 0 && height < 100000) {
-                ctx.wnd.width = width;
-                ctx.wnd.height = height;
-                status = cfgst_ok;
-            }
-        }
-    } else if (strcmp(key, UI_CFG_POSITION) == 0) {
-        if (strcmp(value, "parent") == 0) {
-            ctx.wnd.x = POS_FROM_PARENT;
-            ctx.wnd.y = POS_FROM_PARENT;
-            status = cfgst_ok;
-        } else {
-            struct str_slice slices[2];
-            ssize_t x, y;
-            if (str_split(value, ',', slices, 2) == 2 &&
-                str_to_num(slices[0].value, slices[0].len, &x, 0) &&
-                str_to_num(slices[1].value, slices[1].len, &y, 0)) {
-                ctx.wnd.x = (ssize_t)x;
-                ctx.wnd.y = (ssize_t)y;
-                status = cfgst_ok;
-            }
-        }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
-}
-
-void ui_create(void)
-{
-    // register configuration loader
-    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
 }
 
 void ui_destroy(void)
@@ -816,22 +758,6 @@ void ui_set_title(const char* name)
     }
 }
 
-void ui_set_position(ssize_t x, ssize_t y)
-{
-    ctx.wnd.x = x;
-    ctx.wnd.y = y;
-}
-
-ssize_t ui_get_x(void)
-{
-    return ctx.wnd.x;
-}
-
-ssize_t ui_get_y(void)
-{
-    return ctx.wnd.y;
-}
-
 void ui_set_size(size_t width, size_t height)
 {
     ctx.wnd.width = width;
@@ -864,9 +790,4 @@ void ui_toggle_fullscreen(void)
             xdg_toplevel_unset_fullscreen(ctx.xdg.toplevel);
         }
     }
-}
-
-bool ui_get_fullscreen(void)
-{
-    return ctx.fullscreen;
 }

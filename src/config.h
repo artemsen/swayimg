@@ -6,9 +6,6 @@
 
 #include "pixmap.h"
 
-// Name of the general configuration section
-#define GENERAL_CONFIG_SECTION "general"
-
 /** Load status. */
 enum config_status {
     cfgst_ok,

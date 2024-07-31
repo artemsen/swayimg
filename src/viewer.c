@@ -732,19 +732,12 @@ static void on_drag(int dx, int dy)
 /**
  * Custom section loader, see `config_loader` for details.
  */
-static enum config_status load_config_general(const char* key,
-                                              const char* value)
+static enum config_status load_config(const char* key, const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
-    if (strcmp(key, VIEWER_CFG_ANTIALIASING) == 0) {
-        if (config_to_bool(value, &ctx.antialiasing)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_SCALE) == 0) {
-        const ssize_t index = str_index(scale_names, value, 0);
-        if (index >= 0) {
-            ctx.scale_init = index;
+    if (strcmp(key, VIEWER_CFG_WINDOW) == 0) {
+        if (config_to_color(value, &ctx.window_bkg)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, VIEWER_CFG_TRANSPARENCY) == 0) {
@@ -754,12 +747,18 @@ static enum config_status load_config_general(const char* key,
         } else if (config_to_color(value, &ctx.image_bkg)) {
             status = cfgst_ok;
         }
-    } else if (strcmp(key, VIEWER_CFG_BACKGROUND) == 0) {
-        if (config_to_color(value, &ctx.window_bkg)) {
+    } else if (strcmp(key, VIEWER_CFG_SCALE) == 0) {
+        const ssize_t index = str_index(scale_names, value, 0);
+        if (index >= 0) {
+            ctx.scale_init = index;
             status = cfgst_ok;
         }
     } else if (strcmp(key, VIEWER_CFG_FIXED) == 0) {
         if (config_to_bool(value, &ctx.fixed)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, VIEWER_CFG_ANTIALIASING) == 0) {
+        if (config_to_bool(value, &ctx.antialiasing)) {
             status = cfgst_ok;
         }
     } else if (strcmp(key, VIEWER_CFG_SLIDESHOW) == 0) {
@@ -772,28 +771,13 @@ static enum config_status load_config_general(const char* key,
             ctx.slideshow_time = num;
             status = cfgst_ok;
         }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
-}
-
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config_imglist(const char* key,
-                                              const char* value)
-{
-    enum config_status status = cfgst_invalid_value;
-
-    if (strcmp(key, IMGLIST_CFG_CACHE) == 0) {
+    } else if (strcmp(key, VIEWER_CFG_HISTORY) == 0) {
         ssize_t num;
         if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.history = num;
             status = cfgst_ok;
         }
-    } else if (strcmp(key, IMGLIST_CFG_PRELOAD) == 0) {
+    } else if (strcmp(key, VIEWER_CFG_PRELOAD) == 0) {
         ssize_t num;
         if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
             ctx.preload = num;
@@ -820,8 +804,7 @@ void viewer_create(void)
     ctx.preload = 1;
 
     // register configuration loader
-    config_add_loader(GENERAL_CONFIG_SECTION, load_config_general);
-    config_add_loader(IMGLIST_CFG_SECTION, load_config_imglist);
+    config_add_loader(VIEWER_CFG_SECTION, load_config);
 }
 
 void viewer_init(struct image* image)

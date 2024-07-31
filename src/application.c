@@ -5,7 +5,6 @@
 #include "application.h"
 
 #include "buildcfg.h"
-#include "config.h"
 #include "font.h"
 #include "gallery.h"
 #include "imagelist.h"
@@ -19,12 +18,19 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+// Special ids for windows size and position
+#define SIZE_FULLSCREEN  SIZE_MAX
+#define SIZE_FROM_IMAGE  (SIZE_MAX - 1)
+#define SIZE_FROM_PARENT (SIZE_MAX - 2)
+#define POS_FROM_PARENT  SSIZE_MAX
 
 /** Main loop state */
 enum loop_state {
@@ -56,8 +62,10 @@ struct application {
     struct event_entry* events; ///< Event queue
     int event_fd;               ///< Queue change notification
 
-    bool mode_gallery;          ///< Current mode (gallery/viewer)
+    bool mode_viewer;           ///< Current mode (gallery/viewer)
     event_handler mode_handler; ///< Event handler for the current mode
+
+    struct rect window; ///< Preferable window position and size
 
     char* app_id; ///< Application id (app_id name)
 };
@@ -72,51 +80,50 @@ static void sway_setup(void)
 {
     struct rect parent;
     bool fullscreen;
-    bool absolute;
+    bool absolute = false;
     int ipc;
-
-    if (ui_get_fullscreen()) {
-        return; // integration not needed
-    }
 
     ipc = sway_connect();
     if (ipc == INVALID_SWAY_IPC) {
         return; // sway not available
     }
+    if (!sway_current(ipc, &parent, &fullscreen)) {
+        sway_disconnect(ipc);
+        return;
+    }
 
-    absolute = ui_get_x() != POS_FROM_PARENT && ui_get_y() != POS_FROM_PARENT;
+    if (fullscreen) {
+        ctx.window.width = SIZE_FULLSCREEN;
+        ctx.window.height = SIZE_FULLSCREEN;
+        sway_disconnect(ipc);
+        return;
+    }
 
-    if (sway_current(ipc, &parent, &fullscreen)) {
-        if (fullscreen && !ui_get_fullscreen()) {
-            // force set full screen mode if current window in it
-            ui_toggle_fullscreen();
-        }
+    if (ctx.window.width == SIZE_FROM_PARENT) {
+        ctx.window.width = parent.width;
+        ctx.window.height = parent.height;
+    }
+    if (ctx.window.x == POS_FROM_PARENT) {
+        absolute = false;
+        ctx.window.x = parent.x;
+        ctx.window.y = parent.y;
+    }
 
-        // set window position and size from the parent one
-        if (!absolute) {
-            ui_set_position(parent.x, parent.y);
-        }
-        if (ui_get_width() == SIZE_FROM_PARENT ||
-            ui_get_height() == SIZE_FROM_PARENT) {
-            ui_set_size(parent.width, parent.height);
+    if (!ctx.app_id) {
+        // create unique application id
+        struct timespec ts;
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+            char app_id[64];
+            const uint64_t uid = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
+            snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, uid);
+            str_dup(app_id, &ctx.app_id);
+        } else {
+            str_dup(APP_NAME, &ctx.app_id);
         }
     }
 
-    if (!ui_get_fullscreen()) {
-        if (!ctx.app_id) {
-            // create unique application id
-            struct timespec ts;
-            if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-                char app_id[64];
-                const uint64_t uid = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
-                snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, uid);
-                str_dup(app_id, &ctx.app_id);
-            } else {
-                str_dup(APP_NAME, &ctx.app_id);
-            }
-        }
-        sway_add_rules(ipc, ctx.app_id, ui_get_x(), ui_get_y(), absolute);
-    }
+    // set window position via sway rules
+    sway_add_rules(ipc, ctx.app_id, ctx.window.x, ctx.window.y, absolute);
 
     sway_disconnect(ipc);
 }
@@ -224,13 +231,58 @@ static enum config_status load_config(const char* key, const char* value)
 {
     enum config_status status = cfgst_invalid_value;
 
-    if (strcmp(key, APP_CFG_APP_ID) == 0) {
-        str_dup(value, &ctx.app_id);
-        status = cfgst_ok;
-    } else if (strcmp(key, APP_CFG_GALLERY) == 0) {
-        if (config_to_bool(value, &ctx.mode_gallery)) {
+    if (strcmp(key, APP_CFG_MODE) == 0) {
+        if (strcmp(value, APP_MODE_VIEWER) == 0) {
+            ctx.mode_viewer = true;
+            status = cfgst_ok;
+        } else if (strcmp(value, APP_MODE_GALLERY) == 0) {
+            ctx.mode_viewer = false;
             status = cfgst_ok;
         }
+    } else if (strcmp(key, APP_CFG_POSITION) == 0) {
+        if (strcmp(value, APP_FROM_PARENT) == 0) {
+            ctx.window.x = POS_FROM_PARENT;
+            ctx.window.y = POS_FROM_PARENT;
+            status = cfgst_ok;
+        } else {
+            struct str_slice slices[2];
+            ssize_t x, y;
+            if (str_split(value, ',', slices, 2) == 2 &&
+                str_to_num(slices[0].value, slices[0].len, &x, 0) &&
+                str_to_num(slices[1].value, slices[1].len, &y, 0)) {
+                ctx.window.x = (ssize_t)x;
+                ctx.window.y = (ssize_t)y;
+                status = cfgst_ok;
+            }
+        }
+    } else if (strcmp(key, APP_CFG_SIZE) == 0) {
+        ssize_t width, height;
+        if (strcmp(value, APP_FROM_PARENT) == 0) {
+            ctx.window.width = SIZE_FROM_PARENT;
+            ctx.window.height = SIZE_FROM_PARENT;
+            status = cfgst_ok;
+        } else if (strcmp(value, APP_FROM_IMAGE) == 0) {
+            ctx.window.width = SIZE_FROM_IMAGE;
+            ctx.window.height = SIZE_FROM_IMAGE;
+            status = cfgst_ok;
+        } else if (strcmp(value, APP_FULLSCREEN) == 0) {
+            ctx.window.width = SIZE_FULLSCREEN;
+            ctx.window.height = SIZE_FULLSCREEN;
+            status = cfgst_ok;
+        } else {
+            struct str_slice slices[2];
+            if (str_split(value, ',', slices, 2) == 2 &&
+                str_to_num(slices[0].value, slices[0].len, &width, 0) &&
+                str_to_num(slices[1].value, slices[1].len, &height, 0) &&
+                width > 0 && width < 100000 && height > 0 && height < 100000) {
+                ctx.window.width = width;
+                ctx.window.height = height;
+                status = cfgst_ok;
+            }
+        }
+    } else if (strcmp(key, APP_CFG_APP_ID) == 0) {
+        str_dup(value, &ctx.app_id);
+        status = cfgst_ok;
     } else {
         status = cfgst_invalid_key;
     }
@@ -240,17 +292,22 @@ static enum config_status load_config(const char* key, const char* value)
 
 void app_create(void)
 {
+    ctx.mode_viewer = true;
+    ctx.window.x = POS_FROM_PARENT;
+    ctx.window.y = POS_FROM_PARENT;
+    ctx.window.width = SIZE_FROM_PARENT;
+    ctx.window.height = SIZE_FROM_PARENT;
+
     font_create();
     image_list_create();
     info_create();
     keybind_create();
     text_create();
-    ui_create();
     viewer_create();
     gallery_create();
 
     // register configuration loader
-    config_add_loader(GENERAL_CONFIG_SECTION, load_config);
+    config_add_loader(APP_CFG_SECTION, load_config);
 }
 
 void app_destroy(void)
@@ -312,31 +369,34 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
-    // setup window position and size if Sway available
-    sway_setup();
-
-    // fixup window size form the first image
-    if (first_image &&
-        (ui_get_width() == SIZE_FROM_IMAGE ||
-         ui_get_height() == SIZE_FROM_IMAGE ||
-         ui_get_width() == SIZE_FROM_PARENT ||
-         ui_get_height() == SIZE_FROM_PARENT)) {
+    // setup window position and size
+    if (ctx.window.width != SIZE_FULLSCREEN) {
+        sway_setup(); // try Sway integration
+    }
+    if (ctx.window.width == SIZE_FULLSCREEN) {
+        ui_toggle_fullscreen();
+    } else if (first_image &&
+               (ctx.window.width == SIZE_FROM_IMAGE ||
+                ctx.window.width == SIZE_FROM_PARENT)) {
+        // fixup window size form the first image
         const struct pixmap* pm = &first_image->frames[0].pm;
-        ui_set_size(pm->width, pm->height);
+        ctx.window.width = pm->width;
+        ctx.window.height = pm->height;
     }
 
     if (!ctx.app_id) {
         str_dup(APP_NAME, &ctx.app_id);
     }
-    if (!ui_init(ctx.app_id)) {
+
+    if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height)) {
         return false;
     }
 
     // initialize other subsystems
     font_init();
     info_init();
-    viewer_init(ctx.mode_gallery ? NULL : first_image);
-    gallery_init(ctx.mode_gallery ? first_image : NULL);
+    viewer_init(ctx.mode_viewer ? first_image : NULL);
+    gallery_init(ctx.mode_viewer ? NULL : first_image);
 
     // event queue notification
     ctx.event_fd = notification_create();
@@ -347,10 +407,10 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
-    if (ctx.mode_gallery) {
-        ctx.mode_handler = gallery_handle;
-    } else {
+    if (ctx.mode_viewer) {
         ctx.mode_handler = viewer_handle;
+    } else {
+        ctx.mode_handler = gallery_handle;
     }
 
     return true;
@@ -424,14 +484,14 @@ void app_switch_mode(size_t index)
         .param.activate.index = index,
     };
 
-    ctx.mode_gallery = !ctx.mode_gallery;
+    ctx.mode_viewer = !ctx.mode_viewer;
 
-    if (ctx.mode_gallery) {
-        info_mode = INFO_MODE_GALLERY;
-        ctx.mode_handler = gallery_handle;
-    } else {
-        info_mode = INFO_MODE_VIEWER;
+    if (ctx.mode_viewer) {
+        info_mode = APP_MODE_VIEWER;
         ctx.mode_handler = viewer_handle;
+    } else {
+        info_mode = APP_MODE_GALLERY;
+        ctx.mode_handler = gallery_handle;
     }
 
     ctx.mode_handler(&event);

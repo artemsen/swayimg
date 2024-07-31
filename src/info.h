@@ -7,11 +7,6 @@
 #include "image.h"
 #include "text.h"
 
-// Info mode names
-#define INFO_MODE_VIEWER  "viewer"
-#define INFO_MODE_GALLERY "gallery"
-#define INFO_MODE_OFF     "off"
-
 /** Available info fields. */
 enum info_field {
     info_file_name,

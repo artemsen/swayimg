@@ -6,18 +6,6 @@
 
 #include "pixmap.h"
 
-#include <limits.h>
-
-// Configuration parameters
-#define UI_CFG_FULLSCREEN "fullscreen"
-#define UI_CFG_SIZE       "size"
-#define UI_CFG_POSITION   "position"
-
-// Special ids for windows size and position
-#define SIZE_FROM_IMAGE  0
-#define SIZE_FROM_PARENT 1
-#define POS_FROM_PARENT  SSIZE_MAX
-
 /**
  * Create global UI context.
  */
@@ -26,9 +14,10 @@ void ui_create(void);
 /**
  * Initialize global UI context: create window, register handlers etc.
  * @param app_id application id, used as window class
+ * @param width,height initial window size in pixels
  * @return true if window created
  */
-bool ui_init(const char* app_id);
+bool ui_init(const char* app_id, size_t width, size_t height);
 
 /**
  * Destroy global UI context.
@@ -63,30 +52,6 @@ void ui_draw_commit(void);
 void ui_set_title(const char* name);
 
 /**
- * Set window position.
- * @param x,y new window coordinates
- */
-void ui_set_position(ssize_t x, ssize_t y);
-
-/**
- * Get window x position.
- * @return window x position
- */
-ssize_t ui_get_x(void);
-
-/**
- * Get window y position.
- * @return window y position
- */
-ssize_t ui_get_y(void);
-
-/**
- * Set window size.
- * @param width,height window size in pixels
- */
-void ui_set_size(size_t width, size_t height);
-
-/**
  * Get window width.
  * @return window width in pixels
  */
@@ -108,9 +73,3 @@ size_t ui_get_scale(void);
  * Toggle full screen mode.
  */
 void ui_toggle_fullscreen(void);
-
-/**
- * Check if full screen mode is active.
- * @return current mode
- */
-bool ui_get_fullscreen(void);
