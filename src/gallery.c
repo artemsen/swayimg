@@ -40,6 +40,8 @@ struct gallery {
 
     size_t top;      ///< Index of the first displayed image
     size_t selected; ///< Index of the selected image
+    size_t skipped;  ///< Index of the last skipped image
+    size_t added;    ///< Index of the last added image
 
     struct text_surface path; ///< File path text surface
 };
@@ -82,55 +84,37 @@ static void add_thumbnail(struct image* image)
     }
 }
 
-/** Background loader thread callback. */
-static size_t on_image_loaded(struct image* image, size_t index)
-{
-    if (image) {
-        add_thumbnail(image);
-        notification_raise(ctx.load_complete);
-    } else {
-        const size_t next = image_list_skip(index);
-        if (next > index) {
-            return next;
-        }
-    }
-    return IMGLIST_INVALID;
-}
-
 /**
  * Get thumbnail.
- * @param index preferable position in the image list
- * @return thumbnail instance or NULL if no more files in the list
+ * @param index image position in the image list
+ * @return thumbnail instance or NULL if not found
  */
 static struct thumbnail* get_thumbnail(size_t index)
 {
-    struct thumbnail* it;
-
-    if (index == IMGLIST_INVALID) {
-        index = image_list_first();
-    }
-
-    // check if next file entry available
-    if (!image_list_get(index)) {
-        const size_t next = image_list_next_file(index);
-        if (next == IMGLIST_INVALID || next < index) {
-            return NULL; // no more files
-        }
-        index = next;
-    }
-
-    // search for already loaded thumbnail
-    it = ctx.thumbs;
+    struct thumbnail* it = ctx.thumbs;
     while (it) {
         if (it->image->index == index) {
             return it;
         }
         it = it->next;
     }
-
-    load_image_start(index, NULL, on_image_loaded);
-
     return NULL;
+}
+
+/** Background loader thread callback. */
+static size_t on_image_loaded(struct image* image, size_t index)
+{
+    if (image) {
+        add_thumbnail(image);
+        ctx.skipped = IMGLIST_INVALID;
+        ctx.added = index;
+    } else {
+        image_list_skip(index);
+        ctx.skipped = index;
+        ctx.added = IMGLIST_INVALID;
+    }
+    notification_raise(ctx.load_complete);
+    return IMGLIST_INVALID;
 }
 
 /**
@@ -152,34 +136,71 @@ static void get_layout(size_t* cols, size_t* rows, size_t* margin)
 }
 
 /**
- * Draw frame with shadow for selected thumbnail.
+ * Draw thumbnail.
  * @param window destination window
  * @param x,y top left coordinate
- * @param size size of the frame
+ * @param image thumbnail image
+ * @param selected flag to highlight current thumbnail
  */
-static void draw_frame(struct pixmap* window, size_t x, size_t y, size_t size)
+static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
+                           const struct image* image, bool selected)
 {
-    const size_t shadow_width = max(1, ctx.thumb_size / 15);
-    const size_t alpha_step = 0xff / shadow_width;
+    const struct pixmap* thumb = image ? &image->frames[0].pm : NULL;
 
-    // shadow
-    for (size_t i = 0; i < shadow_width; ++i) {
-        const ssize_t lx = i + x + size;
-        const ssize_t ly = y + shadow_width;
-        const ssize_t lh = size - (shadow_width - i);
-        const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-        pixmap_vline(window, lx, ly, lh, color);
-    }
-    for (size_t i = 0; i < shadow_width; ++i) {
-        const ssize_t lx = x + shadow_width;
-        const ssize_t ly = y + size + i;
-        const ssize_t lw = size - (shadow_width - i) + 1;
-        const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-        pixmap_hline(window, lx, ly, lw, color);
-    }
+    if (!selected) {
+        pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
+                    ctx.clr_background);
+        if (thumb) {
+            x += ctx.thumb_size / 2 - thumb->width / 2;
+            y += ctx.thumb_size / 2 - thumb->height / 2;
+            pixmap_copy(thumb, window, x, y, image->alpha);
+        }
+    } else {
+        // currently selected item
+        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.thumb_size;
+        const size_t thumb_offset = (thumb_size - ctx.thumb_size) / 2;
+        const size_t shadow_width = max(1, thumb_size / 15);
+        const size_t alpha_step = 0xff / shadow_width;
 
-    // border
-    pixmap_rect(window, x, y, size, size, ARGB_SET_A(0xff));
+        x = max(0, x - thumb_offset);
+        y = max(0, y - thumb_offset);
+        if (x + thumb_size >= window->width) {
+            x = window->width - thumb_size;
+        }
+
+        pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
+
+        if (thumb) {
+            const ssize_t tx = x + ctx.thumb_size / 2 - thumb->width / 2;
+            const ssize_t ty = y + ctx.thumb_size / 2 - thumb->height / 2;
+            if (ctx.thumb_aa) {
+                pixmap_scale_bicubic(thumb, window, tx, ty,
+                                     THUMB_SELECTED_SCALE, image->alpha);
+            } else {
+                pixmap_scale_nearest(thumb, window, tx, ty,
+                                     THUMB_SELECTED_SCALE, image->alpha);
+            }
+        }
+
+        // shadow
+        for (size_t i = 0; i < shadow_width; ++i) {
+            const ssize_t lx = i + x + thumb_size;
+            const ssize_t ly = y + shadow_width;
+            const ssize_t lh = thumb_size - (shadow_width - i);
+            const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
+            pixmap_vline(window, lx, ly, lh, color);
+        }
+        for (size_t i = 0; i < shadow_width; ++i) {
+            const ssize_t lx = x + shadow_width;
+            const ssize_t ly = y + thumb_size + i;
+            const ssize_t lw = thumb_size - (shadow_width - i) + 1;
+            const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
+            pixmap_hline(window, lx, ly, lw, color);
+        }
+
+        // frame
+        pixmap_rect(window, x, y, thumb_size, thumb_size, ARGB_SET_A(0xff));
+    }
 }
 
 /**
@@ -189,9 +210,11 @@ static void draw_frame(struct pixmap* window, size_t x, size_t y, size_t size)
 static void draw_thumbnails(struct pixmap* window)
 {
     size_t index = ctx.top;
+    size_t next_load = IMGLIST_INVALID;
     size_t cols, rows, margin;
-    ssize_t sel_x, sel_y;
-    const struct image* sel_th = NULL;
+
+    ssize_t sel_x = 0, sel_y = 0;
+    const struct thumbnail* sel_th = NULL;
 
     get_layout(&cols, &rows, &margin);
 
@@ -200,27 +223,26 @@ static void draw_thumbnails(struct pixmap* window)
         for (size_t col = 0; col < cols; ++col) {
             const ssize_t x = col * ctx.thumb_size + margin * (col + 1);
             const struct thumbnail* th = get_thumbnail(index);
-            if (!th) {
-                row = rows; // break parent loop
-                break;
+
+            if (!th && next_load == IMGLIST_INVALID) {
+                next_load = index;
             }
 
             // draw preview, but postpone the selected item
-            if (th->image->index == ctx.selected) {
+            if (index == ctx.selected) {
                 sel_x = x;
                 sel_y = y;
-                sel_th = th->image;
+                if (th) {
+                    sel_th = th;
+                } else {
+                    next_load = index; // force load as next
+                }
             } else {
-                const struct pixmap* img = &th->image->frames[0].pm;
-                const ssize_t tx = x + ctx.thumb_size / 2 - img->width / 2;
-                const ssize_t ty = y + ctx.thumb_size / 2 - img->height / 2;
-                pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
-                            ctx.clr_background);
-                pixmap_copy(img, window, tx, ty, th->image->alpha);
+                draw_thumbnail(window, x, y, th ? th->image : NULL, false);
             }
 
-            index = image_list_next_file(th->image->index);
-            if (index <= ctx.top) {
+            index = image_list_next_file(index);
+            if (index == IMGLIST_INVALID || index <= ctx.top) {
                 row = rows; // break parent loop
                 break;
             }
@@ -229,39 +251,12 @@ static void draw_thumbnails(struct pixmap* window)
 
     // draw selected thumbnail
     if (sel_th) {
-        const struct pixmap* img = &sel_th->frames[0].pm;
-        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.thumb_size;
-        const size_t offset = (thumb_size - ctx.thumb_size) / 2;
-        size_t tx, ty;
+        draw_thumbnail(window, sel_x, sel_y, sel_th->image, true);
+    }
 
-        sel_x -= offset;
-        sel_y -= offset;
-
-        if (sel_y < 0) {
-            sel_y = 0;
-        }
-        if (sel_x < 0) {
-            sel_x = 0;
-        }
-        if (sel_x + thumb_size >= window->width) {
-            sel_x = window->width - thumb_size;
-        }
-
-        tx = sel_x + ctx.thumb_size / 2 - img->width / 2;
-        ty = sel_y + ctx.thumb_size / 2 - img->height / 2;
-
-        pixmap_fill(window, sel_x, sel_y, thumb_size, thumb_size,
-                    ctx.clr_select);
-
-        if (ctx.thumb_aa) {
-            pixmap_scale_bicubic(img, window, tx, ty, THUMB_SELECTED_SCALE,
-                                 sel_th->alpha);
-        } else {
-            pixmap_scale_nearest(img, window, tx, ty, THUMB_SELECTED_SCALE,
-                                 sel_th->alpha);
-        }
-
-        draw_frame(window, sel_x, sel_y, thumb_size);
+    // load next image
+    if (next_load != IMGLIST_INVALID) {
+        load_image_start(next_load, NULL, on_image_loaded);
     }
 }
 
@@ -282,14 +277,35 @@ static void redraw(void)
     ui_draw_commit();
 }
 
+/** Fix up top position. */
+static void fixup_position(void)
+{
+    const size_t cols = ui_get_width() / ctx.thumb_size;
+    const size_t rows = ui_get_height() / ctx.thumb_size;
+    size_t distance;
+
+    // if selection is not visible, put it on the center
+    distance = image_list_distance(ctx.top, ctx.selected);
+    if (distance == IMGLIST_INVALID || distance > cols * rows) {
+        const size_t center_x = cols / 2;
+        const size_t center_y = rows / 2;
+        ctx.top = image_list_back(ctx.selected, center_y * cols + center_x);
+    }
+
+    // remove gap at the bottom of the screen
+    distance = image_list_distance(ctx.top, image_list_last());
+    if (distance < cols * (rows - 1)) {
+        ctx.top = image_list_back(image_list_last(), cols * rows - 1);
+    }
+}
+
 /**
  * Set current selection.
  * @param index image index to set as selected one
  */
-static void set_selection(size_t index)
+static void select_thumbnail(size_t index)
 {
-    size_t cols, rows, margin;
-    struct thumbnail* th = get_thumbnail(index);
+    const struct thumbnail* th = get_thumbnail(index);
 
     ctx.selected = index;
 
@@ -300,41 +316,8 @@ static void set_selection(size_t index)
                     image_list_size());
     }
 
-    get_layout(&cols, &rows, &margin);
-
-    // rewind thumbnail list down
-    if (ctx.selected > ctx.top + cols) {
-        size_t pos = 0;
-        size_t distance = 0;
-        size_t second_line = 0;
-        size_t index = ctx.top;
-        for (size_t row = 0; row < rows; ++row) {
-            for (size_t col = 0; col < cols; ++col) {
-                if (index == ctx.selected) {
-                    distance = pos;
-                    break;
-                }
-                if (row == 1 && col == 0) {
-                    second_line = index;
-                }
-                index = image_list_next_file(index);
-                ++pos;
-            }
-        }
-        if (distance >= cols * (rows - 1)) {
-            ctx.top = second_line;
-        }
-    }
-
-    // rewind thumbnail list up
-    if (ctx.selected < ctx.top) {
-        size_t index = ctx.top;
-        size_t i = cols;
-        while (i-- && index != IMGLIST_INVALID) {
-            index = image_list_prev_file(index);
-        }
-        ctx.top = index;
-    }
+    fixup_position();
+    app_redraw();
 }
 
 /**
@@ -343,60 +326,48 @@ static void set_selection(size_t index)
  */
 static void move_selection(enum action_type direction)
 {
-    size_t cols, rows, margin;
+    const size_t cols = ui_get_width() / ctx.thumb_size;
+    const size_t rows = ui_get_height() / ctx.thumb_size;
     size_t index = ctx.selected;
-
-    get_layout(&cols, &rows, &margin);
 
     switch (direction) {
         case action_first_file:
             index = image_list_first();
             ctx.top = index;
             break;
-        // case action_last_file:
-        //     index = image_list_last();
-        //     ctx.top = index; // todo
-        //     break;
-        case action_prev_file:
+        case action_last_file:
+            index = image_list_last();
+            ctx.top = image_list_back(index, cols * rows - 1);
+            break;
         case action_step_left:
             if (index != image_list_first()) {
                 index = image_list_prev_file(index);
             }
             break;
-        case action_next_file:
         case action_step_right:
             if (index != image_list_last()) {
                 index = image_list_next_file(index);
             }
             break;
         case action_step_up:
-            if (index >= cols) {
-                size_t i = cols;
-                while (i-- && index != IMGLIST_INVALID) {
-                    const size_t next = image_list_prev_file(index);
-                    if (next > index) {
-                        index = IMGLIST_INVALID;
-                    } else {
-                        index = next;
-                    }
-                }
-            }
+            index = image_list_back(index, cols);
             break;
         case action_step_down:
-            if (index + cols <= image_list_last()) {
-                size_t i = cols;
-                while (i-- && index != IMGLIST_INVALID) {
-                    index = image_list_next_file(index);
-                }
-            }
+            index = image_list_forward(index, cols);
             break;
         default:
             break;
     }
 
     if (index != IMGLIST_INVALID && index != ctx.selected) {
-        set_selection(index);
-        app_redraw();
+        // fix up top by one line
+        const size_t distance = image_list_distance(ctx.top, index);
+        if (distance == IMGLIST_INVALID) {
+            ctx.top = image_list_back(ctx.top, cols);
+        } else if (distance >= rows * cols) {
+            ctx.top = image_list_forward(ctx.top, cols);
+        }
+        select_thumbnail(index);
     }
 }
 
@@ -461,6 +432,27 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
 static void on_load_complete(__attribute__((unused)) void* data)
 {
     notification_reset(ctx.load_complete);
+
+    if (ctx.skipped != IMGLIST_INVALID) {
+        // slected item might be broken
+        if (ctx.skipped == ctx.selected) {
+            size_t next = image_list_next_file(ctx.selected);
+            if (next != IMGLIST_INVALID && next > ctx.selected) {
+                move_selection(action_step_right);
+            } else {
+                next = image_list_prev_file(ctx.selected);
+                if (next != IMGLIST_INVALID && next < ctx.selected) {
+                    move_selection(action_step_left);
+                }
+            }
+        }
+        fixup_position();
+    }
+
+    if (ctx.added == ctx.selected) {
+        select_thumbnail(ctx.selected); // update meta info
+    }
+
     app_redraw();
 }
 
@@ -519,14 +511,15 @@ void gallery_create(void)
 
 void gallery_init(struct image* image)
 {
+    size_t index;
     if (image) {
         add_thumbnail(image);
-        set_selection(image->index);
-        ctx.top = image->index;
+        index = image->index;
     } else {
-        set_selection(image_list_first());
-        ctx.top = ctx.selected;
+        index = image_list_first();
     }
+    ctx.top = image_list_first();
+    select_thumbnail(index);
 }
 
 void gallery_destroy(void)
@@ -552,7 +545,7 @@ void gallery_handle(const struct event* event)
             on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
         case event_activate:
-            ctx.selected = event->param.activate.index;
+            select_thumbnail(event->param.activate.index);
             break;
         case event_drag:
         case event_resize:
