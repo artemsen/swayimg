@@ -404,6 +404,12 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
+    // set mode for info
+    if (info_enabled()) {
+        info_switch(ctx.ehandler == viewer_handle ? APP_MODE_VIEWER
+                                                  : APP_MODE_GALLERY);
+    }
+
     return true;
 }
 
