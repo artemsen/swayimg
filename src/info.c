@@ -30,7 +30,7 @@ static const char* mode_names[] = {
     [mode_gallery] = APP_MODE_GALLERY,
     [mode_off] = "off",
 };
-#define MODES_NUM 2
+#define MODES_NUM 3
 
 // number of types in `enum info_field`
 #define INFO_FIELDS_NUM 10
@@ -311,7 +311,7 @@ static enum config_status load_config_common(const char* key, const char* value)
     if (strcmp(key, "show") == 0) {
         bool opt;
         if (config_to_bool(value, &opt)) {
-            ctx.mode = mode_off;
+            ctx.info.active = opt;
             status = cfgst_ok;
         }
     } else if (strcmp(key, "info_timeout") == 0) {
@@ -344,6 +344,7 @@ void info_create(void)
     SET_DEFAULT(mode_viewer, text_bottom_left, default_viewer_bl);
     SET_DEFAULT(mode_viewer, text_bottom_right, default_viewer_br);
     SET_DEFAULT(mode_gallery, text_bottom_right, default_gallery_br);
+    SET_DEFAULT(mode_off, text_bottom_right, default_gallery_br);
 
     // register configuration loader
     config_add_loader("info", load_config_common);
