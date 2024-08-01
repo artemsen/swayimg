@@ -481,8 +481,9 @@ void info_print(struct pixmap* window)
     if (ctx.mode == mode_off || !ctx.info.active) {
         // print only status
         if (ctx.fields[info_status].value.width && ctx.status.active) {
+            const size_t btype = app_is_viewer() ? mode_viewer : mode_gallery;
             for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-                const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
+                const struct block_scheme* block = &ctx.scheme[btype][i];
                 for (size_t j = 0; j < block->fields_num; ++j) {
                     const struct field_scheme* field = &block->fields[j];
                     if (field->type == info_status) {
