@@ -369,6 +369,49 @@ size_t image_list_find(const char* source)
     return IMGLIST_INVALID;
 }
 
+size_t image_list_distance(size_t start, size_t end)
+{
+    size_t index = start;
+    size_t step = 0;
+
+    if (start > end) {
+        return IMGLIST_INVALID;
+    }
+
+    while (index != IMGLIST_INVALID && index < end) {
+        ++step;
+        index = next_entry(index, true);
+    }
+
+    return step;
+}
+
+size_t image_list_back(size_t start, size_t distance)
+{
+    size_t index = start;
+    while (distance--) {
+        const size_t next = next_entry(index, false);
+        if (next == IMGLIST_INVALID || next >= start) {
+            break;
+        }
+        index = next;
+    }
+    return index;
+}
+
+size_t image_list_forward(size_t start, size_t distance)
+{
+    size_t index = start;
+    while (distance--) {
+        const size_t next = next_entry(index, true);
+        if (next == IMGLIST_INVALID || next <= start) {
+            break;
+        }
+        index = next;
+    }
+    return index;
+}
+
 size_t image_list_next_file(size_t start)
 {
     return next_entry(start, true);

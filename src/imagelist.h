@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "image.h"
+#include <stddef.h>
 
 // Configuration parameters
 #define IMGLIST_CFG_SECTION   "list"
@@ -60,6 +60,29 @@ const char* image_list_get(size_t index);
  * @return index of the entry or IMGLIST_INVALID if not found
  */
 size_t image_list_find(const char* source);
+
+/**
+ * Get distance between two indexes.
+ * @param start,end entry indexes
+ * @return number of image entries between indexes
+ */
+size_t image_list_distance(size_t start, size_t end);
+
+/**
+ * Move backward through the list.
+ * @param start start position
+ * @param distance number of valid entries to skip
+ * @return index of the end entry
+ */
+size_t image_list_back(size_t start, size_t distance);
+
+/**
+ * Move forward through the list.
+ * @param start start position
+ * @param distance number of valid entries to skip
+ * @return index of the end entry
+ */
+size_t image_list_forward(size_t start, size_t distance);
 
 /**
  * Get next entry index.
