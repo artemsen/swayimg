@@ -163,31 +163,30 @@ void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     }
 }
 
-void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
+void pixmap_apply_mask(struct pixmap* dst, ssize_t x, ssize_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color)
 {
-    size_t mask_width;
-    size_t mask_height;
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, x + (ssize_t)width);
+    const ssize_t bottom = min((ssize_t)dst->height, y + (ssize_t)height);
+    const ssize_t dst_width = right - left;
+    const ssize_t delta_x = left - x;
+    const ssize_t delta_y = top - y;
 
-    if (width == 0 || x >= dst->width || height == 0 || y >= dst->height) {
-        return;
-    }
+    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
+        const size_t src_y = dst_y - top + delta_y;
+        const uint8_t* mask_line = &mask[src_y * width + delta_x];
+        argb_t* dst_line = &dst->data[dst_y * dst->width + left];
 
-    mask_width = min(width, dst->width - x);
-    mask_height = min(height, dst->height - y);
-
-    for (size_t mask_y = 0; mask_y < mask_height; ++mask_y) {
-        argb_t* dst_line = &dst->data[(y + mask_y) * dst->width + x];
-        const uint8_t* mask_line = &mask[mask_y * width];
-
-        for (size_t mask_x = 0; mask_x < mask_width; ++mask_x) {
-            const uint8_t alpha_mask = mask_line[mask_x];
+        for (x = 0; x < dst_width; ++x) {
+            const uint8_t alpha_mask = mask_line[x];
             if (alpha_mask != 0) {
                 const uint8_t alpha_color = ARGB_GET_A(color);
                 const uint8_t alpha = (alpha_mask * alpha_color) / 255;
                 const argb_t clr = ARGB_SET_A(alpha) | (color & 0x00ffffff);
-                alpha_blend(clr, &dst_line[mask_x]);
+                alpha_blend(clr, &dst_line[x]);
             }
         }
     }

@@ -142,7 +142,7 @@ void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
  * @param width,height mask size
  * @param color color to set
  */
-void pixmap_apply_mask(struct pixmap* dst, size_t x, size_t y,
+void pixmap_apply_mask(struct pixmap* dst, ssize_t x, ssize_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color);
 

@@ -237,6 +237,66 @@ TEST_F(Pixmap, Mask)
     Compare(pm, expect);
 }
 
+TEST_F(Pixmap, MaskOutsideTL)
+{
+    const argb_t clr = 0xffaaaaaa;
+
+    // clang-format off
+    argb_t src[] = {
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+    };
+    const uint8_t mask[] = {
+        0xff, 0xff, 0xff, 0xff,
+        0xff, 0x00, 0x00, 0xff,
+        0xff, 0x00, 0x00, 0xff,
+        0xff, 0xff, 0xff, 0xff,
+    };
+    const argb_t expect[] = {
+        0xff000000, 0xffaaaaaa, 0xff000000, 0xff000000,
+        0xffaaaaaa, 0xffaaaaaa, 0x00000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+    };
+    // clang-format on
+
+    struct pixmap pm = { 4, 4, src };
+    pixmap_apply_mask(&pm, -2, -2, mask, 4, 4, clr);
+    Compare(pm, expect);
+}
+
+TEST_F(Pixmap, MaskOutsideBR)
+{
+    const argb_t clr = 0xffaaaaaa;
+
+    // clang-format off
+    argb_t src[] = {
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+    };
+    const uint8_t mask[] = {
+        0xff, 0xff, 0xff, 0xff,
+        0xff, 0x00, 0x00, 0xff,
+        0xff, 0x00, 0x00, 0xff,
+        0xff, 0xff, 0xff, 0xff,
+    };
+    const argb_t expect[] = {
+        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+        0xff000000, 0x00000000, 0x00000000, 0xff000000,
+        0xff000000, 0x00000000, 0xffaaaaaa, 0xffaaaaaa,
+        0xff000000, 0xff000000, 0xffaaaaaa, 0xff000000,
+    };
+    // clang-format on
+
+    struct pixmap pm = { 4, 4, src };
+    pixmap_apply_mask(&pm, 2, 2, mask, 4, 4, clr);
+    Compare(pm, expect);
+}
+
 TEST_F(Pixmap, Copy)
 {
     // clang-format off
