@@ -82,6 +82,7 @@ static const struct keybind_default default_gallery[] = {
     { .key = XKB_KEY_Right,       .action = { action_step_right, NULL } },
     { .key = XKB_KEY_Up,          .action = { action_step_up, NULL } },
     { .key = XKB_KEY_Down,        .action = { action_step_down, NULL } },
+    { .key = XKB_KEY_c,           .action = { action_skip_file, NULL } },
     { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
     { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
     { .key = XKB_KEY_i,           .action = { action_info, NULL } },

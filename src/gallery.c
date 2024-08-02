@@ -100,6 +100,30 @@ static struct thumbnail* get_thumbnail(size_t index)
     return NULL;
 }
 
+/**
+ * Remove thumbnail.
+ * @param index image position in the image list
+ */
+static void remove_thumbnail(size_t index)
+{
+    struct thumbnail* it = ctx.thumbs;
+    struct thumbnail* prev = NULL;
+    while (it) {
+        if (it->image->index == index) {
+            if (prev) {
+                prev->next = it->next;
+            } else {
+                ctx.thumbs = it->next;
+            }
+            image_free(it->image);
+            free(it);
+            return;
+        }
+        prev = it;
+        it = it->next;
+    }
+}
+
 /** Background loader thread callback. */
 static size_t on_image_loaded(struct image* image, size_t index)
 {
@@ -362,6 +386,32 @@ static void select_thumbnail(size_t index)
 }
 
 /**
+ * Skip current image.
+ * @return true if next image was loaded
+ */
+static bool skip_image(void)
+{
+    size_t index = image_list_skip(ctx.selected);
+
+    if (index == IMGLIST_INVALID || index < ctx.selected) {
+        index = image_list_prev_file(ctx.selected);
+    }
+
+    if (index != IMGLIST_INVALID) {
+        remove_thumbnail(ctx.selected);
+        if (ctx.top == ctx.selected) {
+            ctx.top = index;
+        }
+        ctx.selected = index;
+        fixup_position();
+        app_redraw();
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Select next item.
  * @param direction next image position in list
  */
@@ -442,6 +492,12 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_step_down:
                 move_selection(action->type);
                 break;
+            case action_skip_file:
+                if (!skip_image()) {
+                    printf("No more images, exit\n");
+                    app_exit(0);
+                    return;
+                }
             case action_reload:
                 reset_thumbnails();
                 break;

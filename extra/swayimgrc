@@ -176,6 +176,7 @@ Left = step_left
 Right = step_right
 Up = step_up
 Down = step_down
+c = skip_file
 f = fullscreen
 Return = mode
 a = antialiasing
