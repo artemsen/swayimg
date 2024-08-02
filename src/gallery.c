@@ -506,6 +506,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                     app_exit(0);
                     return;
                 }
+                break;
             case action_reload:
                 reset_thumbnails();
                 break;
