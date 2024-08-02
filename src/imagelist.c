@@ -148,6 +148,10 @@ static size_t next_entry(size_t start, bool forward)
 {
     size_t index = start;
 
+    if (start == IMGLIST_INVALID) {
+        return image_list_first();
+    }
+
     while (true) {
         if (forward) {
             if (++index >= ctx.size) {
@@ -188,6 +192,10 @@ static size_t next_dir(size_t start, bool forward)
     const char* cur_path = ctx.sources[start];
     size_t cur_len;
     size_t index = start;
+
+    if (start == IMGLIST_INVALID) {
+        return image_list_first();
+    }
 
     // directory part of the current file path
     cur_len = strlen(cur_path) - 1;

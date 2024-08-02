@@ -330,7 +330,15 @@ static void draw_thumbnails(struct pixmap* window)
  */
 static void redraw(void)
 {
-    struct pixmap* wnd = ui_draw_begin();
+    struct pixmap* wnd;
+
+    if (image_list_first() == IMGLIST_INVALID) {
+        printf("No more images, exit\n");
+        app_exit(0);
+        return;
+    }
+
+    wnd = ui_draw_begin();
     if (!wnd) {
         return;
     }
