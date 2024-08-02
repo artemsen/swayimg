@@ -311,7 +311,7 @@ static enum config_status load_config_common(const char* key, const char* value)
     if (strcmp(key, "show") == 0) {
         bool opt;
         if (config_to_bool(value, &opt)) {
-            ctx.mode = mode_off;
+            ctx.mode = opt ? mode_gallery : mode_off;
             status = cfgst_ok;
         }
     } else if (strcmp(key, "info_timeout") == 0) {
