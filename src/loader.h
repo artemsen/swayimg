@@ -36,13 +36,6 @@ typedef enum loader_status (*image_decoder)(struct image* image,
                                             const uint8_t* data, size_t size);
 
 /**
- * Callback for image loader prepare (background thread loader).
- * @param index index of the image to load
- * @return next image index or IMGLIST_INVALID to stop loader
- */
-typedef size_t (*load_prepare_fn)(size_t index);
-
-/**
  * Callback for image loader completion (background thread loader).
  * @param image loaded image instance, NULL if no more files to load
  * @param index index of the image in the image list
@@ -69,10 +62,10 @@ enum loader_status load_image(size_t index, struct image** image);
 /**
  * Load image in background thread.
  * @param index index of the image in the image list
- * @param on_prepare,on_complete callback functions
+ * @param on_complete callback function
  */
-void load_image_start(size_t index, load_prepare_fn on_prepare,
-                      load_complete_fn on_complete);
+void load_image_start(size_t index, load_complete_fn on_complete);
+
 /**
  * Stop loader thread.
  */

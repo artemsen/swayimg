@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #ifdef HAVE_INOTIFY
@@ -127,6 +128,58 @@ static void cache_put(struct image_cache* cache, struct image* image)
     cache->queue[cache->capacity - 1] = image;
 }
 
+/**
+ * Take out image handle from cache queue.
+ * @param cache context
+ * @param index index of the image in the image list
+ * @return image instance or NULL if image not in cache
+ */
+static struct image* cache_take(struct image_cache* cache, size_t index)
+{
+    struct image* img = NULL;
+
+    for (size_t i = 0; i < cache->capacity; ++i) {
+        struct image* entry = cache->queue[i];
+        if (!entry) {
+            break; // last entry
+        }
+        if (entry->index == index) {
+            img = entry;
+
+            // move remaining entries
+            for (; i < cache->capacity - 1; ++i) {
+                cache->queue[i] = cache->queue[i + 1];
+            }
+            // remove last entry from queue
+            cache->queue[cache->capacity - 1] = NULL;
+
+            break;
+        }
+    }
+
+    return img;
+}
+
+/**
+ * Remove oldest entries from cache.
+ * @param cache context
+ * @param size number of entries to preserve
+ */
+static void cache_trim(struct image_cache* cache, size_t size)
+{
+    if (size == 0) {
+        cache_reset(cache);
+    } else if (size < cache->capacity) {
+        const size_t remove = cache->capacity - size;
+        for (size_t i = 0; i < remove; ++i) {
+            image_free(cache->queue[i]);
+        }
+        memmove(&cache->queue[0], &cache->queue[remove],
+                size * sizeof(*cache->queue));
+        memset(&cache->queue[size], 0, remove * sizeof(*cache->queue));
+    }
+}
+
 #ifdef HAVE_INOTIFY
 /** inotify handler. */
 static void on_inotify(__attribute__((unused)) void* data)
@@ -161,73 +214,6 @@ static void on_inotify(__attribute__((unused)) void* data)
 }
 #endif // HAVE_INOTIFY
 
-/**
- * Take out image handle from cache queue.
- * @param cache context
- * @param index index of the image in the image list
- * @return image instance or NULL if image not in cache
- */
-static struct image* cache_take(struct image_cache* cache, size_t index)
-{
-    struct image* img = NULL;
-
-    for (size_t i = 0; i < cache->capacity; ++i) {
-        struct image* entry = cache->queue[i];
-        if (!entry) {
-            break; // last entry
-        }
-        if (entry->index == index) {
-            img = entry;
-
-            // move remaining entries
-            for (; i < cache->capacity - 1; ++i) {
-                cache->queue[i] = cache->queue[i + 1];
-            }
-            // remove last entry from queue
-            cache->queue[cache->capacity - 1] = NULL;
-
-            break;
-        }
-    }
-
-    return img;
-}
-
-/** Background loader thread callback. */
-static size_t on_image_prepare(size_t index)
-{
-    struct image* img;
-
-    pthread_mutex_lock(&ctx.cache_lock);
-
-    // check history
-    img = cache_take(&ctx.history, index);
-    if (img) {
-        // move cached image to preload
-        cache_put(&ctx.preload, img);
-    } else {
-        // check preload cache
-        img = cache_take(&ctx.preload, index);
-        if (img) {
-            // put it back to change priority
-            cache_put(&ctx.preload, img);
-        }
-    }
-
-    if (img) {
-        // set next image to load
-        if (cache_full(&ctx.preload)) {
-            index = IMGLIST_INVALID;
-        } else {
-            index = image_list_next_file(index);
-        }
-    }
-
-    pthread_mutex_unlock(&ctx.cache_lock);
-
-    return index;
-}
-
 /** Background loader thread callback. */
 static size_t on_image_loaded(struct image* image, size_t index)
 {
@@ -249,6 +235,7 @@ static size_t on_image_loaded(struct image* image, size_t index)
  */
 static void set_current(struct image* image)
 {
+    // put current image to history cache
     if (ctx.current) {
         if (ctx.history.capacity) {
             pthread_mutex_lock(&ctx.cache_lock);
@@ -263,8 +250,40 @@ static void set_current(struct image* image)
 
     // start preloader
     if (ctx.preload.capacity) {
-        load_image_start(image_list_next_file(ctx.current->index),
-                         on_image_prepare, on_image_loaded);
+        size_t next = IMGLIST_INVALID;
+        size_t cache_sz = 0;
+        size_t index = ctx.current->index;
+
+        pthread_mutex_lock(&ctx.cache_lock);
+
+        // reorder preloads and remove images that don't fit into cache size
+        for (size_t i = 0; i < ctx.preload.capacity; ++i) {
+            struct image* img;
+
+            index = image_list_next_file(index);
+            if (index == IMGLIST_INVALID) {
+                break;
+            }
+
+            img = cache_take(&ctx.history, index);
+            if (!img) {
+                img = cache_take(&ctx.preload, index);
+            }
+            if (img) {
+                cache_put(&ctx.preload, img);
+                ++cache_sz;
+            } else if (next == IMGLIST_INVALID) {
+                next = index;
+            }
+        }
+        cache_trim(&ctx.preload, cache_sz);
+
+        pthread_mutex_unlock(&ctx.cache_lock);
+
+        if (next != IMGLIST_INVALID) {
+            // start preloader thread
+            load_image_start(next, on_image_loaded);
+        }
     }
 
 #ifdef HAVE_INOTIFY

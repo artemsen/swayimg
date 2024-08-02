@@ -138,7 +138,6 @@ static const image_decoder decoders[] = {
 struct loader {
     pthread_t thread_id;          ///< Background loader thread
     size_t index;                 ///< Index of the image to load
-    load_prepare_fn on_prepare;   ///< Loader callback
     load_complete_fn on_complete; ///< Loader callback
 };
 
@@ -155,12 +154,6 @@ static void* load_in_background(__attribute__((unused)) void* data)
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-        if (ctx.on_prepare) {
-            index = ctx.on_prepare(index);
-            if (index == IMGLIST_INVALID) {
-                break;
-            }
-        }
         load_image(index, &img);
         index = ctx.on_complete(img, index);
 
@@ -368,8 +361,7 @@ enum loader_status load_image(size_t index, struct image** image)
     return status;
 }
 
-void load_image_start(size_t index, load_prepare_fn on_prepare,
-                      load_complete_fn on_complete)
+void load_image_start(size_t index, load_complete_fn on_complete)
 {
     load_image_stop();
 
@@ -378,7 +370,6 @@ void load_image_start(size_t index, load_prepare_fn on_prepare,
     } else {
         ctx.index = index;
     }
-    ctx.on_prepare = on_prepare;
     ctx.on_complete = on_complete;
 
     pthread_create(&ctx.thread_id, NULL, load_in_background, NULL);

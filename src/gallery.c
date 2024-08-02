@@ -172,7 +172,7 @@ static void load_next(void)
 
     if (next != IMGLIST_INVALID) {
         ctx.next = next;
-        load_image_start(next, NULL, on_image_loaded);
+        load_image_start(next, on_image_loaded);
     }
 }
 
@@ -292,9 +292,8 @@ static void draw_thumbnails(struct pixmap* window)
     }
 
     // draw selected thumbnail
-    if (select_th) {
-        draw_thumbnail(window, select_x, select_y, select_th->image, true);
-    }
+    draw_thumbnail(window, select_x, select_y,
+                   select_th ? select_th->image : NULL, true);
 
     // load next image
     if (need_load) {
