@@ -203,8 +203,8 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
         const size_t shadow_width = max(1, thumb_size / 15);
         const size_t alpha_step = 0xff / shadow_width;
 
-        x = max(0, x - thumb_offset);
-        y = max(0, y - thumb_offset);
+        x = max(0, x - (ssize_t)thumb_offset);
+        y = max(0, y - (ssize_t)thumb_offset);
         if (x + thumb_size >= window->width) {
             x = window->width - thumb_size;
         }
