@@ -531,6 +531,7 @@ void app_redraw(void)
             free(it);
             break;
         }
+        prev = it;
         it = next;
     }
 
