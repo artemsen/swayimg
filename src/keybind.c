@@ -297,6 +297,9 @@ static enum config_status load_binding(struct keybind** head, const char* key,
     for (size_t i = 0; i < action_num; ++i) {
         struct str_slice* s = &action_sl[i];
         if (!action_load(&action[i], s->value, s->len)) {
+            while (i--) {
+                free(action[i].params);
+            }
             return cfgst_invalid_value;
         }
     }
