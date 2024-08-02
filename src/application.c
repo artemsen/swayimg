@@ -179,20 +179,17 @@ static struct image* load_first_file(size_t index, bool force)
     struct image* img = NULL;
     enum loader_status status = ldr_ioerror;
 
-    if (force && index != IMGLIST_INVALID) {
+    if (index == IMGLIST_INVALID) {
+        index = image_list_first();
+        force = false;
+    }
+
+    while (index != IMGLIST_INVALID) {
         status = load_image(index, &img);
-    } else {
-        if (index == IMGLIST_INVALID) {
-            index = image_list_first();
+        if (force || status == ldr_success) {
+            break;
         }
-        while (index != IMGLIST_INVALID) {
-            status = load_image(index, &img);
-            if (status == ldr_success) {
-                break;
-            } else {
-                index = image_list_skip(index);
-            }
-        }
+        index = image_list_skip(index);
     }
 
     if (status != ldr_success) {
