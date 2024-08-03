@@ -20,6 +20,7 @@ void app_on_resize() { }
 void app_on_keyboard(xkb_keysym_t, uint8_t) { }
 void app_on_drag(int, int) { }
 void app_exit(int) { }
+void app_on_load(struct image*, size_t) { }
 bool app_is_viewer()
 {
     return true;
@@ -32,7 +33,7 @@ protected:
 
     void Load(const char* file)
     {
-        EXPECT_EQ(load_image_source(file, &image), ldr_success);
+        EXPECT_EQ(loader_from_source(file, &image), ldr_success);
         ASSERT_NE(image, nullptr);
         EXPECT_NE(image->frames[0].pm.width, static_cast<size_t>(0));
         EXPECT_NE(image->frames[0].pm.height, static_cast<size_t>(0));
@@ -43,7 +44,7 @@ protected:
 
 TEST_F(Loader, External)
 {
-    const enum loader_status status = load_image_source(
+    const enum loader_status status = loader_from_source(
         LDRSRC_EXEC "cat " TEST_DATA_DIR "/image.bmp", &image);
     EXPECT_EQ(status, ldr_success);
     ASSERT_NE(image, nullptr);

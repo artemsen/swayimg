@@ -758,12 +758,6 @@ void ui_set_title(const char* name)
     }
 }
 
-void ui_set_size(size_t width, size_t height)
-{
-    ctx.wnd.width = width;
-    ctx.wnd.height = height;
-}
-
 size_t ui_get_width(void)
 {
     return ctx.wnd.width;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "keybind.h"
+#include "image.h"
 
 // Configuration parameters
 #define APP_CFG_SECTION  "general"
@@ -101,6 +102,13 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
  * @param dx,dy delta between old and new position
  */
 void app_on_drag(int dx, int dy);
+
+/**
+ * Handler of image loading completion (background thread loader).
+ * @param image loaded image instance, NULL if load error
+ * @param index index of the image in the image list
+ */
+void app_on_load(struct image* image, size_t index);
 
 /**
  * Execute system command for the specified image.

@@ -36,12 +36,14 @@ typedef enum loader_status (*image_decoder)(struct image* image,
                                             const uint8_t* data, size_t size);
 
 /**
- * Callback for image loader completion (background thread loader).
- * @param image loaded image instance, NULL if no more files to load
- * @param index index of the image in the image list
- * @return next image index or IMGLIST_INVALID to stop loader
+ * Initialize background thread loader.
  */
-typedef size_t (*load_complete_fn)(struct image* image, size_t index);
+void loader_init(void);
+
+/**
+ * Destroy background thread loader.
+ */
+void loader_destroy(void);
 
 /**
  * Load image from specified source.
@@ -49,7 +51,7 @@ typedef size_t (*load_complete_fn)(struct image* image, size_t index);
  * @param image pointer to output image instance
  * @return loading status
  */
-enum loader_status load_image_source(const char* source, struct image** image);
+enum loader_status loader_from_source(const char* source, struct image** image);
 
 /**
  * Load image with specified index in the image list.
@@ -57,16 +59,15 @@ enum loader_status load_image_source(const char* source, struct image** image);
  * @param image pointer to output image instance
  * @return loading status
  */
-enum loader_status load_image(size_t index, struct image** image);
+enum loader_status loader_from_index(size_t index, struct image** image);
 
 /**
- * Load image in background thread.
+ * Append image to background loader queue.
  * @param index index of the image in the image list
- * @param on_complete callback function
  */
-void load_image_start(size_t index, load_complete_fn on_complete);
+void loader_queue_append(size_t index);
 
 /**
- * Stop loader thread.
+ * Reset background loader queue.
  */
-void load_image_stop(void);
+void loader_queue_reset(void);

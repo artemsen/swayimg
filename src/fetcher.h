@@ -35,6 +35,13 @@ bool fetcher_reset(size_t index, bool force);
 bool fetcher_open(size_t index);
 
 /**
+ * Attach image to preload cache.
+ * @param image loaded image instance, NULL if load error
+ * @param index index of the image in the image list
+ */
+void fetcher_attach(struct image* image, size_t index);
+
+/**
  * Get current image.
  * @return current image or NULL if no image loaded yet
  */

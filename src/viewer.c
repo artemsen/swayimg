@@ -866,5 +866,8 @@ void viewer_handle(const struct event* event)
                 app_exit(0);
             }
             break;
+        case event_load:
+            fetcher_attach(event->param.load.image, event->param.load.index);
+            break;
     }
 }

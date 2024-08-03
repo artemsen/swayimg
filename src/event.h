@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include "image.h"
 #include "keybind.h"
-#include "pixmap.h"
 
 /** Event types. */
 enum event_type {
@@ -14,6 +14,7 @@ enum event_type {
     event_resize,   ///< Window resize notification
     event_keypress, ///< Key or mouse button press events
     event_drag,     ///< Mouse or touch drag operation
+    event_load,     ///< Image loaded
     event_activate, ///< The mode is activating (viewer/gallery switch)
 };
 
@@ -36,6 +37,11 @@ struct event {
         struct activate {
             size_t index;
         } activate;
+
+        struct load {
+            struct image* image;
+            size_t index;
+        } load;
 
     } param;
 };

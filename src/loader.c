@@ -4,13 +4,16 @@
 
 #include "loader.h"
 
+#include "application.h"
 #include "buildcfg.h"
+#include "event.h"
 #include "exif.h"
 #include "imagelist.h"
 #include "str.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,34 +137,23 @@ static const image_decoder decoders[] = {
     &LOADER_FUNCTION(tga),
 };
 
+/** Background thread loader queue. */
+struct loader_queue {
+    size_t index;              ///< Index of the image to load
+    struct loader_queue* next; ///< Pointer to the next list entry
+};
+
 /** Loader context. */
 struct loader {
-    pthread_t thread_id;          ///< Background loader thread
-    size_t index;                 ///< Index of the image to load
-    load_complete_fn on_complete; ///< Loader callback
+    pthread_t tid;              ///< Background loader thread id
+    struct loader_queue* queue; ///< Background thread loader queue
+    pthread_mutex_t lock;       ///< Queue access lock
+    pthread_cond_t signal;      ///< Queue notification
+    pthread_cond_t ready;       ///< Thread ready signal
 };
 
 /** Global loader context instance. */
 static struct loader ctx;
-
-/** Image loader executed in background thread. */
-static void* load_in_background(__attribute__((unused)) void* data)
-{
-    size_t index = ctx.index;
-
-    while (index != IMGLIST_INVALID) {
-        struct image* img = NULL;
-
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
-        load_image(index, &img);
-        index = ctx.on_complete(img, index);
-
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    }
-
-    return NULL;
-}
 
 /**
  * Load image from memory buffer.
@@ -310,7 +302,7 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
     return status;
 }
 
-enum loader_status load_image_source(const char* source, struct image** image)
+enum loader_status loader_from_source(const char* source, struct image** image)
 {
     enum loader_status status;
     struct image* img;
@@ -346,13 +338,13 @@ enum loader_status load_image_source(const char* source, struct image** image)
     return status;
 }
 
-enum loader_status load_image(size_t index, struct image** image)
+enum loader_status loader_from_index(size_t index, struct image** image)
 {
     enum loader_status status = ldr_ioerror;
     const char* source = image_list_get(index);
 
     if (source) {
-        status = load_image_source(source, image);
+        status = loader_from_source(source, image);
         if (status == ldr_success) {
             (*image)->index = index;
         }
@@ -361,25 +353,100 @@ enum loader_status load_image(size_t index, struct image** image)
     return status;
 }
 
-void load_image_start(size_t index, load_complete_fn on_complete)
+/** Image loader executed in background thread. */
+static void* loading_thread(__attribute__((unused)) void* data)
 {
-    load_image_stop();
+    struct loader_queue* entry;
+    struct image* image;
 
-    if (index == IMGLIST_INVALID) {
-        ctx.index = image_list_first();
-    } else {
-        ctx.index = index;
-    }
-    ctx.on_complete = on_complete;
+    do {
+        pthread_mutex_lock(&ctx.lock);
+        pthread_cond_signal(&ctx.ready);
+        while (!ctx.queue) {
+            pthread_cond_wait(&ctx.signal, &ctx.lock);
+            if (!ctx.queue) {
+                pthread_cond_signal(&ctx.ready);
+            }
+        }
+        entry = ctx.queue;
+        ctx.queue = ctx.queue->next;
+        pthread_mutex_unlock(&ctx.lock);
 
-    pthread_create(&ctx.thread_id, NULL, load_in_background, NULL);
+        if (entry->index == IMGLIST_INVALID) {
+            free(entry);
+            return NULL;
+        }
+
+        image = NULL;
+        loader_from_index(entry->index, &image);
+        app_on_load(image, entry->index);
+        free(entry);
+    } while (true);
+
+    return NULL;
 }
 
-void load_image_stop(void)
+void loader_init(void)
 {
-    if (ctx.thread_id) {
-        pthread_cancel(ctx.thread_id);
-        pthread_join(ctx.thread_id, NULL);
-        ctx.thread_id = 0;
+    pthread_cond_init(&ctx.signal, NULL);
+    pthread_cond_init(&ctx.ready, NULL);
+    pthread_mutex_init(&ctx.lock, NULL);
+    pthread_create(&ctx.tid, NULL, loading_thread, NULL);
+
+    pthread_mutex_lock(&ctx.lock);
+    pthread_cond_wait(&ctx.ready, &ctx.lock);
+    pthread_mutex_unlock(&ctx.lock);
+}
+
+void loader_destroy(void)
+{
+    loader_queue_reset();
+    loader_queue_append(IMGLIST_INVALID); // send stop signal
+    pthread_join(ctx.tid, NULL);
+
+    pthread_mutex_destroy(&ctx.lock);
+    pthread_cond_destroy(&ctx.signal);
+    pthread_cond_destroy(&ctx.ready);
+}
+
+void loader_queue_append(size_t index)
+{
+    struct loader_queue* last;
+    struct loader_queue* request = malloc(sizeof(*request));
+
+    if (!request) {
+        return;
     }
+    request->index = index;
+    request->next = NULL;
+
+    // add to queue tail
+    pthread_mutex_lock(&ctx.lock);
+    last = ctx.queue;
+    while (last && last->next) {
+        last = last->next;
+    }
+    if (last) {
+        last->next = request;
+    } else {
+        ctx.queue = request;
+    }
+    pthread_cond_signal(&ctx.signal);
+    pthread_mutex_unlock(&ctx.lock);
+}
+
+void loader_queue_reset(void)
+{
+    pthread_mutex_lock(&ctx.lock);
+
+    while (ctx.queue) {
+        struct loader_queue* next = ctx.queue->next;
+        free(ctx.queue);
+        ctx.queue = next;
+    }
+
+    pthread_cond_signal(&ctx.signal);
+    pthread_cond_wait(&ctx.ready, &ctx.lock);
+
+    pthread_mutex_unlock(&ctx.lock);
 }

@@ -20,6 +20,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -59,8 +60,9 @@ struct application {
     struct watchfd* wfds; ///< FD polling descriptors
     size_t wfds_num;      ///< Number of polling FD
 
-    struct event_entry* events; ///< Event queue
-    int event_fd;               ///< Queue change notification
+    struct event_entry* events;  ///< Event queue
+    pthread_mutex_t events_lock; ///< Event queue lock
+    int event_signal;            ///< Queue change notification
 
     event_handler ehandler; ///< Event handler for the current mode
     struct rect window;     ///< Preferable window position and size
@@ -128,11 +130,16 @@ static void sway_setup(void)
 /** Notification callback: handle event queue. */
 static void handle_event_queue(__attribute__((unused)) void* data)
 {
-    notification_reset(ctx.event_fd);
+    notification_reset(ctx.event_signal);
 
     while (ctx.events && ctx.state == loop_run) {
-        struct event_entry* entry = ctx.events;
-        ctx.events = ctx.events->next;
+        struct event_entry* entry;
+        pthread_mutex_lock(&ctx.events_lock);
+        entry = ctx.events;
+        if (ctx.events) {
+            ctx.events = ctx.events->next;
+        }
+        pthread_mutex_unlock(&ctx.events_lock);
         ctx.ehandler(&entry->event);
         free(entry);
     }
@@ -155,6 +162,7 @@ static void append_event(const struct event* event)
     entry->next = NULL;
 
     // add to queue tail
+    pthread_mutex_lock(&ctx.events_lock);
     if (ctx.events) {
         struct event_entry* last = ctx.events;
         while (last->next) {
@@ -164,8 +172,9 @@ static void append_event(const struct event* event)
     } else {
         ctx.events = entry;
     }
+    pthread_mutex_unlock(&ctx.events_lock);
 
-    notification_raise(ctx.event_fd);
+    notification_raise(ctx.event_signal);
 }
 
 /**
@@ -185,7 +194,7 @@ static struct image* load_first_file(size_t index, bool force)
     }
 
     while (index != IMGLIST_INVALID) {
-        status = load_image(index, &img);
+        status = loader_from_index(index, &img);
         if (force || status == ldr_success) {
             break;
         }
@@ -308,6 +317,7 @@ void app_destroy(void)
 {
     gallery_destroy();
     viewer_destroy();
+    loader_destroy();
     ui_destroy();
     image_list_destroy();
     info_destroy();
@@ -324,9 +334,10 @@ void app_destroy(void)
         ctx.events = ctx.events->next;
         free(entry);
     }
-    if (ctx.event_fd != -1) {
-        notification_free(ctx.event_fd);
+    if (ctx.event_signal != -1) {
+        notification_free(ctx.event_signal);
     }
+    pthread_mutex_destroy(&ctx.events_lock);
 }
 
 bool app_init(const char** sources, size_t num)
@@ -386,20 +397,22 @@ bool app_init(const char** sources, size_t num)
         return false;
     }
 
-    // initialize other subsystems
-    font_init();
-    info_init();
-    viewer_init(ctx.ehandler == viewer_handle ? first_image : NULL);
-    gallery_init(ctx.ehandler == gallery_handle ? first_image : NULL);
-
     // event queue notification
-    ctx.event_fd = notification_create();
-    if (ctx.event_fd != -1) {
-        app_watch(ctx.event_fd, handle_event_queue, NULL);
+    ctx.event_signal = notification_create();
+    if (ctx.event_signal != -1) {
+        app_watch(ctx.event_signal, handle_event_queue, NULL);
     } else {
         perror("Unable to create eventfd");
         return false;
     }
+    pthread_mutex_init(&ctx.events_lock, NULL);
+
+    // initialize other subsystems
+    font_init();
+    info_init();
+    loader_init();
+    viewer_init(ctx.ehandler == viewer_handle ? first_image : NULL);
+    gallery_init(ctx.ehandler == gallery_handle ? first_image : NULL);
 
     // set mode for info
     if (info_enabled()) {
@@ -570,6 +583,16 @@ void app_on_drag(int dx, int dy)
         it = it->next;
     }
 
+    append_event(&event);
+}
+
+void app_on_load(struct image* image, size_t index)
+{
+    const struct event event = {
+        .type = event_load,
+        .param.load.image = image,
+        .param.load.index = index,
+    };
     append_event(&event);
 }
 

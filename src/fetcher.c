@@ -10,9 +10,7 @@
 #include "loader.h"
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #ifdef HAVE_INOTIFY
@@ -27,12 +25,9 @@ struct image_cache {
 
 /** Image fetch context. */
 struct fetch {
-    struct image* current; ///< Current image
-
-    pthread_mutex_t cache_lock; ///< Cache queues access lock
+    struct image* current;      ///< Current image
     struct image_cache history; ///< Least recently viewed images
     struct image_cache preload; ///< Preloaded images
-
 #ifdef HAVE_INOTIFY
     int notify; ///< inotify file handler
     int watch;  ///< Current file watcher
@@ -83,21 +78,6 @@ static void cache_free(struct image_cache* cache)
 {
     cache_reset(cache);
     free(cache->queue);
-}
-
-/**
- * Check if queue is full.
- * @param cache context
- * @return true if cache queue is full
- */
-static bool cache_full(const struct image_cache* cache)
-{
-    for (size_t i = 0; i < cache->capacity; ++i) {
-        if (!cache->queue[i]) {
-            return false;
-        }
-    }
-    return true;
 }
 
 /**
@@ -169,14 +149,11 @@ static void cache_trim(struct image_cache* cache, size_t size)
 {
     if (size == 0) {
         cache_reset(cache);
-    } else if (size < cache->capacity) {
-        const size_t remove = cache->capacity - size;
-        for (size_t i = 0; i < remove; ++i) {
+    } else {
+        for (size_t i = cache->capacity - 1; i > size; ++i) {
             image_free(cache->queue[i]);
+            cache->queue[i] = NULL;
         }
-        memmove(&cache->queue[0], &cache->queue[remove],
-                size * sizeof(*cache->queue));
-        memset(&cache->queue[size], 0, remove * sizeof(*cache->queue));
     }
 }
 
@@ -214,19 +191,53 @@ static void on_inotify(__attribute__((unused)) void* data)
 }
 #endif // HAVE_INOTIFY
 
-/** Background loader thread callback. */
-static size_t on_image_loaded(struct image* image, size_t index)
+/** Reset preloader queue. */
+static void reset_preloader(void)
 {
-    if (image) {
-        pthread_mutex_lock(&ctx.cache_lock);
-        cache_put(&ctx.preload, image);
-        pthread_mutex_unlock(&ctx.cache_lock);
-        index = image_list_next_file(index);
-    } else {
-        index = image_list_skip(index);
+    size_t* preload;
+    size_t preload_num = 0;
+    size_t found = 0;
+    size_t next;
+
+    if (ctx.preload.capacity == 0) {
+        return;
     }
 
-    return cache_full(&ctx.preload) ? IMGLIST_INVALID : index;
+    loader_queue_reset();
+
+    preload = malloc(ctx.preload.capacity * sizeof(*preload));
+    if (!preload) {
+        return;
+    }
+
+    // reorder preloads and create list of preloads
+    next = ctx.current->index;
+    for (size_t i = 0; i < ctx.preload.capacity; ++i) {
+        struct image* img;
+
+        next = image_list_next_file(next);
+        if (next == IMGLIST_INVALID) {
+            break;
+        }
+
+        img = cache_take(&ctx.preload, next);
+        if (img) {
+            cache_put(&ctx.preload, img);
+            ++found;
+        } else {
+            preload[preload_num++] = next;
+        }
+    }
+
+    // remove images that don't fit into cache size
+    cache_trim(&ctx.preload, found);
+
+    // add preloads to queue
+    for (size_t i = 0; i < preload_num; ++i) {
+        loader_queue_append(preload[i]);
+    }
+
+    free(preload);
 }
 
 /**
@@ -238,53 +249,14 @@ static void set_current(struct image* image)
     // put current image to history cache
     if (ctx.current) {
         if (ctx.history.capacity) {
-            pthread_mutex_lock(&ctx.cache_lock);
             cache_put(&ctx.history, ctx.current);
-            pthread_mutex_unlock(&ctx.cache_lock);
         } else {
             image_free(ctx.current);
         }
     }
 
     ctx.current = image;
-
-    // start preloader
-    if (ctx.preload.capacity) {
-        size_t next = IMGLIST_INVALID;
-        size_t cache_sz = 0;
-        size_t index = ctx.current->index;
-
-        pthread_mutex_lock(&ctx.cache_lock);
-
-        // reorder preloads and remove images that don't fit into cache size
-        for (size_t i = 0; i < ctx.preload.capacity; ++i) {
-            struct image* img;
-
-            index = image_list_next_file(index);
-            if (index == IMGLIST_INVALID) {
-                break;
-            }
-
-            img = cache_take(&ctx.history, index);
-            if (!img) {
-                img = cache_take(&ctx.preload, index);
-            }
-            if (img) {
-                cache_put(&ctx.preload, img);
-                ++cache_sz;
-            } else if (next == IMGLIST_INVALID) {
-                next = index;
-            }
-        }
-        cache_trim(&ctx.preload, cache_sz);
-
-        pthread_mutex_unlock(&ctx.cache_lock);
-
-        if (next != IMGLIST_INVALID) {
-            // start preloader thread
-            load_image_start(next, on_image_loaded);
-        }
-    }
+    reset_preloader();
 
 #ifdef HAVE_INOTIFY
     // register inotify watcher
@@ -300,7 +272,6 @@ static void set_current(struct image* image)
 
 void fetcher_init(struct image* image, size_t history, size_t preload)
 {
-    pthread_mutex_init(&ctx.cache_lock, NULL);
     cache_init(&ctx.history, history);
     cache_init(&ctx.preload, preload);
 
@@ -319,16 +290,14 @@ void fetcher_init(struct image* image, size_t history, size_t preload)
 
 void fetcher_destroy(void)
 {
-    load_image_stop();
     cache_free(&ctx.history);
     cache_free(&ctx.preload);
     image_free(ctx.current);
-    pthread_mutex_destroy(&ctx.cache_lock);
 }
 
 bool fetcher_reset(size_t index, bool force)
 {
-    load_image_stop();
+    loader_queue_reset();
     cache_reset(&ctx.history);
     cache_reset(&ctx.preload);
     image_free(ctx.current);
@@ -353,27 +322,34 @@ bool fetcher_open(size_t index)
     struct image* img;
 
     if (ctx.current && ctx.current->index == index) {
-        return ctx.current;
+        return true;
     }
 
-    // check history/preload
-    pthread_mutex_lock(&ctx.cache_lock);
+    // check history and preload
     img = cache_take(&ctx.history, index);
     if (!img) {
         img = cache_take(&ctx.preload, index);
     }
-    pthread_mutex_unlock(&ctx.cache_lock);
 
     if (!img) {
-        // not in cache, load image
-        load_image(index, &img);
+        loader_from_index(index, &img);
     }
-
     if (img) {
         set_current(img);
     }
 
     return !!img;
+}
+
+void fetcher_attach(struct image* image, size_t index)
+{
+    if (image) {
+        cache_put(&ctx.preload, image);
+    } else {
+        loader_queue_reset();
+        image_list_skip(index);
+        reset_preloader();
+    }
 }
 
 struct image* fetcher_current(void)

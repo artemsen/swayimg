@@ -10,6 +10,7 @@ sources = [
   'str_test.cpp',
   '../src/action.c',
   '../src/config.c',
+  '../src/event.c',
   '../src/image.c',
   '../src/imagelist.c',
   '../src/keybind.c',
