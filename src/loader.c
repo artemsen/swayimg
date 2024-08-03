@@ -400,13 +400,15 @@ void loader_init(void)
 
 void loader_destroy(void)
 {
-    loader_queue_reset();
-    loader_queue_append(IMGLIST_INVALID); // send stop signal
-    pthread_join(ctx.tid, NULL);
+    if (ctx.tid) {
+        loader_queue_reset();
+        loader_queue_append(IMGLIST_INVALID); // send stop signal
+        pthread_join(ctx.tid, NULL);
 
-    pthread_mutex_destroy(&ctx.lock);
-    pthread_cond_destroy(&ctx.signal);
-    pthread_cond_destroy(&ctx.ready);
+        pthread_mutex_destroy(&ctx.lock);
+        pthread_cond_destroy(&ctx.signal);
+        pthread_cond_destroy(&ctx.ready);
+    }
 }
 
 void loader_queue_append(size_t index)
