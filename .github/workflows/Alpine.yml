@@ -1,4 +1,4 @@
-name: Linux/x86_64
+name: Linux/i386
 on: [push, pull_request]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
       id: version
 
     - name: Build docker image
-      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Alpine .
 
     - name: Run docker container
       run: docker run --tty --detach --name=swayimg --volume=$PWD:$PWD:ro --workdir=$PWD swayimg
@@ -30,8 +30,16 @@ jobs:
         docker exec swayimg
         meson setup
         -D version=${{steps.version.outputs.VERSION}}
-        -D tests=enabled
-        --auto-features=enabled
+        -D heif=enabled
+        -D bash=enabled
+        -D exif=enabled
+        -D gif=enabled
+        -D jpeg=enabled
+        -D jxl=auto
+        -D svg=enabled
+        -D webp=enabled
+        -D man=true
+        -D desktop=true
         --prefix=/usr
         --werror
         ${{ env.BUILD_PATH }}
@@ -47,9 +55,3 @@ jobs:
 
     - name: Run installed
       run: docker exec swayimg ${{ env.INSTALL_PATH }}/usr/bin/swayimg --version
-
-    - name: Run unit tests
-      run: docker exec swayimg meson test --verbose -C ${{ env.BUILD_PATH }}
-
-    - name: Run clang tidy
-      run: docker exec swayimg ninja -C ${{ env.BUILD_PATH }} clang-tidy

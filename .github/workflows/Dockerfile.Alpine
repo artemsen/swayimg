@@ -1,0 +1,17 @@
+FROM i386/alpine:latest
+
+RUN apk add \
+    build-base \
+    bash-completion-dev \
+    giflib-dev \
+    json-c-dev \
+    libexif-dev \
+    libheif-dev \
+    libjpeg-turbo-dev \
+    libjxl-dev \
+    librsvg-dev \
+    libwebp-dev \
+    libxkbcommon-dev \
+    meson \
+    wayland-dev \
+    wayland-protocols

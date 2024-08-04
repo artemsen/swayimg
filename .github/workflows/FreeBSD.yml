@@ -1,4 +1,4 @@
-name: FreeBSD
+name: FreeBSD/x86_64
 on: [push, pull_request]
 
 jobs:
