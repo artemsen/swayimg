@@ -96,6 +96,7 @@ static const struct field_scheme default_gallery_br[] = {
 #define SET_DEFAULT(m, p, d)                     \
     ctx.scheme[m][p].fields_num = ARRAY_SIZE(d); \
     ctx.scheme[m][p].fields = malloc(sizeof(d)); \
+    if (ctx.scheme[m][p].fields)                 \
     memcpy(ctx.scheme[m][p].fields, d, sizeof(d))
 
 /** Info scheme: set of fields in one of screen positions. */
