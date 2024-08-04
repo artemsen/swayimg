@@ -52,6 +52,10 @@ bool str_to_num(const char* text, size_t len, ssize_t* value, int base)
     char buffer[32];
     const char* ptr;
 
+    if (!text) {
+        return false;
+    }
+
     if (!*text) {
         return false;
     }
