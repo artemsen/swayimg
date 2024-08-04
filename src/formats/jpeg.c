@@ -76,7 +76,8 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t src = *(line + x);
-                pixel[x] = (0xff << 24) | src << 16 | src << 8 | src;
+                pixel[x] = ((argb_t)0xff << 24) | (argb_t)src << 16 |
+                    (argb_t)src << 8 | src;
             }
         }
 
@@ -86,7 +87,8 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t* src = line + x * 3;
-                pixel[x] = (0xff << 24) | src[0] << 16 | src[1] << 8 | src[2];
+                pixel[x] = ((argb_t)0xff << 24) | (argb_t)src[0] << 16 |
+                    (argb_t)src[1] << 8 | src[2];
             }
         }
 #endif // LIBJPEG_TURBO_VERSION
