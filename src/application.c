@@ -627,8 +627,11 @@ void app_execute(const char* expr, const char* path)
     if (!cmd) {
         info_update(info_status, "Error: no command to execute");
     } else {
-        if (strlen(cmd) > 30) { // trim long command
-            strcpy(&cmd[27], "...");
+        size_t max_len = 30; // trim long command text
+        if (strlen(cmd) > max_len) {
+            const char* ellipsis = "...";
+            const size_t ellipsis_len = strlen(ellipsis);
+            memcpy(&cmd[max_len - ellipsis_len], ellipsis, ellipsis_len + 1);
         }
         if (rc) {
             info_update(info_status, "Error %d: %s", rc, cmd);

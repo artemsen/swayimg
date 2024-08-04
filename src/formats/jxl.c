@@ -12,7 +12,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                               size_t size)
 {
     JxlDecoder* jxl;
-    JxlBasicInfo info;
+    JxlBasicInfo info = { 0 };
     JxlDecoderStatus status;
     size_t buffer_sz;
     size_t frame_num = 0;

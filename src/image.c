@@ -87,6 +87,7 @@ void image_set_format(struct image* ctx, const char* fmt, ...)
     char* buffer;
 
     va_start(args, fmt);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     len = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     if (len <= 0) {
@@ -118,6 +119,7 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
 
     // construct value string
     va_start(args, fmt);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     len = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     if (len <= 0) {

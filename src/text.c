@@ -234,7 +234,6 @@ void text_print_keyval(struct pixmap* wnd, enum text_position pos,
 
         if (key->data) {
             put_text(wnd, x_key, y, key);
-            x_key += key->width;
         }
         put_text(wnd, x_val, y, value);
     }

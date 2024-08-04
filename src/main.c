@@ -59,8 +59,6 @@ static const struct cmdarg arguments[] = {
  */
 static void print_help(void)
 {
-    char buf_lopt[32];
-
     puts("Usage: " APP_NAME " [OPTION]... [FILE]...");
     puts("Show images from FILE(s).");
     puts("If FILE is -, read standard input.");
@@ -70,12 +68,13 @@ static void print_help(void)
 
     for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
         const struct cmdarg* arg = &arguments[i];
-        strcpy(buf_lopt, arg->long_opt);
+        char lopt[32];
         if (arg->format) {
-            strcat(buf_lopt, "=");
-            strcat(buf_lopt, arg->format);
+            snprintf(lopt, sizeof(lopt), "%s=%s", arg->long_opt, arg->format);
+        } else {
+            strncpy(lopt, arg->long_opt, sizeof(lopt));
         }
-        printf("  -%c, --%-14s %s\n", arg->short_opt, buf_lopt, arg->help);
+        printf("  -%c, --%-14s %s\n", arg->short_opt, lopt, arg->help);
     }
 }
 

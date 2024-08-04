@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "keybind.h"
 #include "image.h"
+#include "keybind.h"
 
 // Configuration parameters
 #define APP_CFG_SECTION  "general"

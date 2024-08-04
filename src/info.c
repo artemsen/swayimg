@@ -454,6 +454,7 @@ void info_update(enum info_field field, const char* fmt, ...)
     }
 
     va_start(args, fmt);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     len = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     if (len <= 0) {

@@ -102,20 +102,28 @@ static argb_t decode_pixel(const exr_decode_pipeline_t* decoder,
         switch (channel->data_type) {
             case EXR_PIXEL_UINT:
                 break; // not supported
-            case EXR_PIXEL_HALF: {
-                // convert half to float
-                const uint16_t half = *(const uint16_t*)unpacked;
-                union {
-                    uint32_t i;
-                    float f;
-                } hf;
-                hf.i = (half & 0x8000) << 16;
-                hf.i |= ((half & 0x7c00) + 0x1c000) << 13;
-                hf.i |= (half & 0x03ff) << 13;
-                intensity = hf.f;
-            } break;
+            case EXR_PIXEL_HALF:
+                if (size >= sizeof(uint16_t)) {
+                    // convert half to float
+                    // todo
+                    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Assign)
+                    const uint16_t half = *(const uint16_t*)unpacked;
+                    union {
+                        uint32_t i;
+                        float f;
+                    } hf;
+                    hf.i = (half & 0x8000) << 16;
+                    hf.i |= ((half & 0x7c00) + 0x1c000) << 13;
+                    hf.i |= (half & 0x03ff) << 13;
+                    intensity = hf.f;
+                }
+                break;
             case EXR_PIXEL_FLOAT:
-                intensity = *(const float*)unpacked;
+                if (size >= sizeof(float)) {
+                    // todo
+                    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Assign)
+                    intensity = *(const float*)unpacked;
+                }
                 break;
             default:
                 break; // not supported
@@ -181,11 +189,11 @@ static exr_result_t load_scanlined(const exr_context_t ectx, struct pixmap* pm)
     // get image properties
     rc = exr_get_data_window(ectx, 0, &dwnd);
     if (rc != EXR_ERR_SUCCESS) {
-        return rc;
+        goto done;
     }
     rc = exr_get_scanlines_per_chunk(ectx, 0, &scanlines);
     if (rc != EXR_ERR_SUCCESS) {
-        return rc;
+        goto done;
     }
 
     // decode chunks
@@ -208,13 +216,14 @@ static exr_result_t load_scanlined(const exr_context_t ectx, struct pixmap* pm)
         }
         for (size_t i = 0; i < chunk_size; i += bpp) {
             if (dst >= pm->data + (pm->width * pm->height)) {
-                break;
+                goto done;
             }
             *dst = decode_pixel(&decoder, buffer + i, chunk_size - i);
             ++dst;
         }
     }
 
+done:
     exr_decoding_destroy(ectx, &decoder);
     free(buffer);
     return rc;
@@ -246,7 +255,7 @@ static exr_result_t load_tailed(const exr_context_t ectx, struct pixmap* pm)
 
     rc = exr_get_tile_levels(ectx, 0, &levels_x, &levels_y);
     if (rc != EXR_ERR_SUCCESS) {
-        return rc;
+        goto done;
     }
 
     for (int32_t lvl_y = 0; lvl_y < levels_y; ++lvl_y) {

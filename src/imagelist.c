@@ -118,9 +118,11 @@ static void add_dir(const char* dir, bool recursive)
         len += strlen(dir_entry->d_name) + 1 /*last null*/;
         path = malloc(len);
         if (path) {
+            // NOLINTBEGIN(clang-analyzer-security.insecureAPI.strcpy)
             strcpy(path, dir);
             strcat(path, "/");
             strcat(path, dir_entry->d_name);
+            // NOLINTEND(clang-analyzer-security.insecureAPI.strcpy)
 
             if (stat(path, &file_stat) == 0) {
                 if (S_ISDIR(file_stat.st_mode)) {

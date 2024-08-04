@@ -145,21 +145,17 @@ static size_t read_coordinate(ExifData* exif, ExifTag tag, ExifTag ref,
  */
 static void read_location(struct image* img, ExifData* exif)
 {
-    size_t pos;
-    char location[64];
+    char latitude[32], longitude[32];
 
-    pos =
-        read_coordinate(exif, EXIF_TAG_GPS_LATITUDE, EXIF_TAG_GPS_LATITUDE_REF,
-                        location, sizeof(location));
-    if (pos) {
-        strcat(location, ", ");
-        pos = strlen(location);
-        if (read_coordinate(exif, EXIF_TAG_GPS_LONGITUDE,
-                            EXIF_TAG_GPS_LONGITUDE_REF, location + pos,
-                            sizeof(location) - pos)) {
-            image_add_meta(img, "Location", "%s", location);
-        }
+    // NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange)
+    if (read_coordinate(exif, EXIF_TAG_GPS_LATITUDE, EXIF_TAG_GPS_LATITUDE_REF,
+                        latitude, sizeof(latitude)) &&
+        read_coordinate(exif, EXIF_TAG_GPS_LONGITUDE,
+                        EXIF_TAG_GPS_LONGITUDE_REF, longitude,
+                        sizeof(longitude))) {
+        image_add_meta(img, "Location", "%s, %s", latitude, longitude);
     }
+    // NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
 
 void process_exif(struct image* img, const uint8_t* data, size_t size)

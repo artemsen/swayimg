@@ -32,7 +32,7 @@ static int decode_frame(struct image* ctx, avifDecoder* decoder)
 #if AVIF_VERSION_MAJOR > 0
     rc =
 #endif
-    avifRGBImageAllocatePixels(&rgb);
+        avifRGBImageAllocatePixels(&rgb);
 #if AVIF_VERSION_MAJOR > 0
     if (rc != AVIF_RESULT_OK) {
         goto decode_fail;

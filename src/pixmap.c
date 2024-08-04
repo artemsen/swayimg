@@ -261,7 +261,7 @@ void pixmap_scale_bicubic(const struct pixmap* src, struct pixmap* dst,
 
     size_t state_zero_x = 1;
     size_t state_zero_y = 1;
-    float state[4][4][4]; // color channel, y, x
+    float state[4][4][4] = { 0 }; // color channel, y, x
 
     for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
         argb_t* dst_line = &dst->data[dst_y * dst->width];

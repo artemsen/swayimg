@@ -83,7 +83,7 @@ static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
     const size_t space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
     const size_t height = ctx.face->size->metrics.height / POINT_FACTOR;
     size_t width = 0;
-    uint8_t* data;
+    uint8_t* data = NULL;
     size_t data_size;
 
     // get total width
@@ -98,12 +98,14 @@ static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
 
     // allocate surface buffer
     data_size = width * height;
-    data = realloc(surface->data, data_size);
-    if (data) {
-        surface->width = width;
-        surface->height = height;
-        surface->data = data;
-        memset(surface->data, 0, data_size);
+    if (data_size) {
+        data = realloc(surface->data, data_size);
+        if (data) {
+            surface->width = width;
+            surface->height = height;
+            surface->data = data;
+            memset(surface->data, 0, data_size);
+        }
     }
 
     return !!data;

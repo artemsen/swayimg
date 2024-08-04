@@ -9,7 +9,7 @@
 // Divide a by b, rounding to the nearest integer; evaluates b twice
 #define div_near(a, b) (((a) + (b) / 2) / (b))
 // Divide a by b, rounding up; evaluates b twice
-#define div_ceil(a, b) (((a) + (b)-1) / (b))
+#define div_ceil(a, b) (((a) + (b) - 1) / (b))
 
 // PNM file types
 enum pnm_type {
