@@ -33,6 +33,7 @@ jobs:
         -D tests=enabled
         --auto-features=enabled
         --prefix=/usr
+        --werror
         ${{ env.BUILD_PATH }}
 
     - name: Compile and link
@@ -49,3 +50,6 @@ jobs:
 
     - name: Run unit tests
       run: docker exec swayimg meson test --verbose -C ${{ env.BUILD_PATH }}
+
+    - name: Run clang tidy
+      run: docker exec swayimg ninja -C ${{ env.BUILD_PATH }} clang-tidy
