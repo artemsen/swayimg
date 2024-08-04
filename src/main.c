@@ -72,7 +72,7 @@ static void print_help(void)
         if (arg->format) {
             snprintf(lopt, sizeof(lopt), "%s=%s", arg->long_opt, arg->format);
         } else {
-            strncpy(lopt, arg->long_opt, sizeof(lopt));
+            strncpy(lopt, arg->long_opt, sizeof(lopt) - 1);
         }
         printf("  -%c, --%-14s %s\n", arg->short_opt, lopt, arg->help);
     }
