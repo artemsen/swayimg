@@ -117,7 +117,12 @@ endif
 # desktop file + icon
 if get_option('desktop')
   install_data('extra/swayimg.desktop', install_dir: get_option('datadir') / 'applications')
-  install_data('extra/swayimg.png', install_dir: get_option('datadir') / 'icons/hicolor/64x64/apps')
+  install_data('extra/icon_64.png', rename: 'swayimg.png',
+               install_dir: get_option('datadir') / 'icons/hicolor/64x64/apps')
+  install_data('extra/icon_128.png', rename: 'swayimg.png',
+               install_dir: get_option('datadir') / 'icons/hicolor/128x128/apps')
+  install_data('extra/icon_256.png', rename: 'swayimg.png',
+               install_dir: get_option('datadir') / 'icons/hicolor/256x256/apps')
 endif
 
 # zsh completion
