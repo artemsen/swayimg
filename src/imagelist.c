@@ -345,11 +345,13 @@ size_t image_list_init(const char** sources, size_t num)
         }
     }
 
-    // sort or shuffle
-    if (ctx.order == order_alpha) {
-        qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_sources);
-    } else if (ctx.order == order_random) {
-        shuffle_list();
+    if (ctx.size != 0) {
+        // sort or shuffle
+        if (ctx.order == order_alpha) {
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_sources);
+        } else if (ctx.order == order_random) {
+            shuffle_list();
+        }
     }
 
     return ctx.size;
