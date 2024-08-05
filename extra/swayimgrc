@@ -27,9 +27,9 @@ size = parent
 # Viewer mode configuration
 ################################################################################
 [viewer]
-# Window background color (RGB/RGBA)
+# Window background color (RGBA)
 window = #00000000
-# Background for transparent images (grid/RGB/RGBA)
+# Background for transparent images (grid/RGBA)
 transparency = grid
 # Default image scale (optimal/fit/width/height/fill/real)
 scale = optimal
@@ -54,12 +54,16 @@ preload = 1
 size = 200
 # Use anti-aliasing for thumbnails (yes/no)
 antialiasing = no
-# Background color of the window (RGB/RGBA)
+# Background color of the window (RGBA)
 window = #00000000
-# Background color of the tile (RGB/RGBA)
-background = #202020
-# Background color of the selected tile (RGB/RGBA)
-select = #404040
+# Background color of the tile (RGBA)
+background = #202020ff
+# Background color of the selected tile (RGBA)
+select = #404040ff
+# Border color of the selected tile (RGBA)
+border = #000000ff
+# Shadow color of the selected tile (RGBA)
+shadow = #000000ff
 
 ################################################################################
 # Image list configuration
@@ -82,9 +86,9 @@ all = yes
 name = monospace
 # Font size (pt)
 size = 14
-# Font color (RGB/RGBA)
-color = #cccccc
-# Shadow color (RGB/RGBA)
+# Font color (RGBA)
+color = #ccccccff
+# Shadow color (RGBA)
 shadow = #000000a0
 
 ################################################################################

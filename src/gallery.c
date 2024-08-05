@@ -34,6 +34,8 @@ struct gallery {
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
     argb_t clr_select;     ///< Selected tile background
+    argb_t clr_border;     ///< Selected tile border
+    argb_t clr_shadow;     ///< Selected tile shadow
 
     size_t top;      ///< Index of the first displayed image
     size_t selected; ///< Index of the selected image
@@ -142,8 +144,6 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
         // currently selected item
         const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.thumb_size;
         const size_t thumb_offset = (thumb_size - ctx.thumb_size) / 2;
-        const size_t shadow_width = max(1, thumb_size / 15);
-        const size_t alpha_step = 0xff / shadow_width;
 
         x = max(0, x - (ssize_t)thumb_offset);
         y = max(0, y - (ssize_t)thumb_offset);
@@ -166,23 +166,33 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
         }
 
         // shadow
-        for (size_t i = 0; i < shadow_width; ++i) {
-            const ssize_t lx = i + x + thumb_size;
-            const ssize_t ly = y + shadow_width;
-            const ssize_t lh = thumb_size - (shadow_width - i);
-            const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-            pixmap_vline(window, lx, ly, lh, color);
-        }
-        for (size_t i = 0; i < shadow_width; ++i) {
-            const ssize_t lx = x + shadow_width;
-            const ssize_t ly = y + thumb_size + i;
-            const ssize_t lw = thumb_size - (shadow_width - i) + 1;
-            const argb_t color = ARGB_SET_A(0xff - i * alpha_step);
-            pixmap_hline(window, lx, ly, lw, color);
+        if (ARGB_GET_A(ctx.clr_shadow)) {
+            const argb_t base = ctx.clr_shadow & 0x00ffffff;
+            const uint8_t alpha = ARGB_GET_A(ctx.clr_shadow);
+            const size_t width =
+                max(1, (double)thumb_size / 15.0 * ((double)alpha / 255.0));
+            const size_t alpha_step = alpha / width;
+
+            for (size_t i = 0; i < width; ++i) {
+                const ssize_t lx = i + x + thumb_size;
+                const ssize_t ly = y + width;
+                const ssize_t lh = thumb_size - (width - i);
+                const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
+                pixmap_vline(window, lx, ly, lh, color);
+            }
+            for (size_t i = 0; i < width; ++i) {
+                const ssize_t lx = x + width;
+                const ssize_t ly = y + thumb_size + i;
+                const ssize_t lw = thumb_size - (width - i) + 1;
+                const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
+                pixmap_hline(window, lx, ly, lw, color);
+            }
         }
 
-        // frame
-        pixmap_rect(window, x, y, thumb_size, thumb_size, ARGB_SET_A(0xff));
+        // border
+        if (ARGB_GET_A(ctx.clr_border)) {
+            pixmap_rect(window, x, y, thumb_size, thumb_size, ctx.clr_border);
+        }
     }
 }
 
@@ -534,6 +544,14 @@ static enum config_status load_config(const char* key, const char* value)
         if (config_to_color(value, &ctx.clr_select)) {
             status = cfgst_ok;
         }
+    } else if (strcmp(key, "border") == 0) {
+        if (config_to_color(value, &ctx.clr_border)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "shadow") == 0) {
+        if (config_to_color(value, &ctx.clr_shadow)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "antialiasing") == 0) {
         if (config_to_bool(value, &ctx.thumb_aa)) {
             status = cfgst_ok;
@@ -552,6 +570,8 @@ void gallery_create(void)
     ctx.selected = IMGLIST_INVALID;
     ctx.clr_background = 0xff202020;
     ctx.clr_select = 0xff404040;
+    ctx.clr_border = 0xff000000;
+    ctx.clr_shadow = 0xff000000;
 
     // register configuration loader
     config_add_loader("gallery", load_config);
