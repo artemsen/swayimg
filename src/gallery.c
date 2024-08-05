@@ -454,6 +454,7 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 break;
             case action_reload:
                 reset_thumbnails();
+                fixup_position();
                 break;
             case action_exec:
                 app_execute(action->params, image_list_get(ctx.selected));
@@ -575,6 +576,7 @@ void gallery_handle(const struct event* event)
     switch (event->type) {
         case event_reload:
             reset_thumbnails();
+            fixup_position();
             break;
         case event_redraw:
             redraw();
