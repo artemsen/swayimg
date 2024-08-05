@@ -57,7 +57,6 @@ static const struct keybind_default default_viewer[] = {
     { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
     { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
     { .key = XKB_KEY_i,           .action = { action_info, NULL } },
-    { .key = XKB_KEY_e,           .action = { action_exec, "echo \"Image: %\"" } },
     { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
     { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
     { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
@@ -71,6 +70,7 @@ static const struct keybind_default default_viewer[] = {
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = { action_next_file, NULL } },
     { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT,   .action = { action_prev_frame, NULL } },
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT,   .action = { action_next_frame, NULL } },
+    // multiaction { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT },
 };
 
 /** Default key bindings for gallery mode. */
@@ -86,7 +86,6 @@ static const struct keybind_default default_gallery[] = {
     { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
     { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
     { .key = XKB_KEY_i,           .action = { action_info, NULL } },
-    { .key = XKB_KEY_e,           .action = { action_exec, "echo \"Image: %\"" } },
     { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
     { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
     { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
@@ -94,6 +93,7 @@ static const struct keybind_default default_gallery[] = {
     { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  NULL } },
     { .key = VKEY_SCROLL_UP,      .action = { action_step_up,    NULL } },
     { .key = VKEY_SCROLL_DOWN,    .action = { action_step_down,  NULL } },
+    // multiaction { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT },
 };
 // clang-format on
 
@@ -329,6 +329,10 @@ static enum config_status config_gallery(const char* key, const char* value)
 void keybind_create(void)
 {
     // create default bindings
+    const struct action del_file[] = {
+        { action_exec, "rm \"%\"" },
+        { action_skip_file, NULL },
+    };
     for (size_t i = 0; i < ARRAY_SIZE(default_viewer); ++i) {
         const struct keybind_default* kb = &default_viewer[i];
         set_binding(&kb_viewer, kb->key, kb->mods, &kb->action, 1);
@@ -337,6 +341,10 @@ void keybind_create(void)
         const struct keybind_default* kb = &default_gallery[i];
         set_binding(&kb_gallery, kb->key, kb->mods, &kb->action, 1);
     }
+    set_binding(&kb_viewer, XKB_KEY_Delete, KEYMOD_SHIFT, del_file,
+                ARRAY_SIZE(del_file));
+    set_binding(&kb_gallery, XKB_KEY_Delete, KEYMOD_SHIFT, del_file,
+                ARRAY_SIZE(del_file));
 
     // register configuration loaders
     config_add_loader("keys.viewer", config_viewer);

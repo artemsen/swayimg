@@ -286,7 +286,7 @@ Predefined names for mouse scroll:
 .IP "\fBstep_down\fR \fI[PERCENT]\fR: move viewport down, default is 10%;"
 .IP "\fBskip_file\fR: skip the current file (remove from the image list);"
 .IP "\fBfullscreen\fR: switch full screen mode;"
-.IP "\fBmode \fI[MODE]\fR\fR: switch between viewer and gallery;"
+.IP "\fBmode\fR: switch between viewer and gallery;"
 .IP "\fBreload\fR: reset cache and reload current image;"
 .IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
 .IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
@@ -304,7 +304,6 @@ order = random
 [font]
 size = 16
 [keys]
-Delete = exec rm "%"; reload
 Ctrl+Alt+e = exec echo "%" > mylist.txt
 .EE
 .PP
