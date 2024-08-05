@@ -380,9 +380,8 @@ bool app_init(const char** sources, size_t num)
     }
     if (ctx.window.width == SIZE_FULLSCREEN) {
         ui_toggle_fullscreen();
-    } else if (first_image &&
-               (ctx.window.width == SIZE_FROM_IMAGE ||
-                ctx.window.width == SIZE_FROM_PARENT)) {
+    } else if (ctx.window.width == SIZE_FROM_IMAGE ||
+               ctx.window.width == SIZE_FROM_PARENT) {
         // fixup window size form the first image
         const struct pixmap* pm = &first_image->frames[0].pm;
         ctx.window.width = pm->width;

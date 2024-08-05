@@ -116,6 +116,7 @@ static bool load_config(const char* path)
         // check for section beginning
         if (*line == '[') {
             ssize_t len;
+            char* new_section;
             ++line;
             delim = strchr(line, ']');
             if (!delim || line + 1 == delim) {
@@ -125,8 +126,11 @@ static bool load_config(const char* path)
             }
             *delim = 0;
             len = delim - line + 1;
-            section = realloc(section, len);
-            memcpy(section, line, len);
+            new_section = realloc(section, len);
+            if (new_section) {
+                section = new_section;
+                memcpy(section, line, len);
+            }
             continue;
         }
 

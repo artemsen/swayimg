@@ -25,10 +25,10 @@ typedef uint32_t argb_t;
 #define ARGB_GET_B(c) (((c) >> ARGB_B_SHIFT) & 0xff)
 
 // create argb_t from channel value
-#define ARGB_SET_A(a) (((a) & 0xff) << ARGB_A_SHIFT)
-#define ARGB_SET_R(r) (((r) & 0xff) << ARGB_R_SHIFT)
-#define ARGB_SET_G(g) (((g) & 0xff) << ARGB_G_SHIFT)
-#define ARGB_SET_B(b) (((b) & 0xff) << ARGB_B_SHIFT)
+#define ARGB_SET_A(a) (((argb_t)(a) & 0xff) << ARGB_A_SHIFT)
+#define ARGB_SET_R(r) (((argb_t)(r) & 0xff) << ARGB_R_SHIFT)
+#define ARGB_SET_G(g) (((argb_t)(g) & 0xff) << ARGB_G_SHIFT)
+#define ARGB_SET_B(b) (((argb_t)(b) & 0xff) << ARGB_B_SHIFT)
 
 // convert ABGR to ARGB
 #define ABGR_TO_ARGB(c) \

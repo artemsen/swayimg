@@ -279,6 +279,8 @@ static enum loader_status image_from_exec(struct image* img, const char* cmd)
 
     pid = fork();
     if (pid == -1) {
+        close(pfd[1]);
+        close(pfd[0]);
         return ldr_ioerror;
     }
 

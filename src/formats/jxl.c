@@ -15,6 +15,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
     JxlBasicInfo info = { 0 };
     JxlDecoderStatus status;
     size_t buffer_sz;
+    struct image_frame* frames;
     size_t frame_num = 0;
 
     const JxlPixelFormat jxl_format = { .num_channels = 4, // ARBG
@@ -72,11 +73,12 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 frame_num = ctx->num_frames;
                 break;
             case JXL_DEC_FRAME:
-                ctx->frames = realloc(
-                    ctx->frames, sizeof(*ctx->frames) * (ctx->num_frames + 1));
-                if (!ctx->frames) {
+                frames = realloc(ctx->frames,
+                                 sizeof(*ctx->frames) * (ctx->num_frames + 1));
+                if (!frames) {
                     goto fail;
                 }
+                ctx->frames = frames;
                 if (!pixmap_create(&ctx->frames[frame_num].pm, info.xsize,
                                    info.ysize)) {
                     goto fail;

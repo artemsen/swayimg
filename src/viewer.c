@@ -257,8 +257,8 @@ static void zoom_image(const char* params)
     } else if (str_to_num(params, 0, &percent, 0) && percent != 0 &&
                percent > -1000 && percent < 1000) {
         // zoom in %
-        const double wnd_half_w = ui_get_width() / 2;
-        const double wnd_half_h = ui_get_height() / 2;
+        const double wnd_half_w = (double)ui_get_width() / 2;
+        const double wnd_half_h = (double)ui_get_height() / 2;
         const float step = (ctx.scale / 100) * percent;
         const double center_x = wnd_half_w / ctx.scale - ctx.img_x / ctx.scale;
         const double center_y = wnd_half_h / ctx.scale - ctx.img_y / ctx.scale;
