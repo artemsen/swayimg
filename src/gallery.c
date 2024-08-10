@@ -425,77 +425,46 @@ static void select_nearest(enum action_type direction)
 }
 
 /**
- * Key press handler.
- * @param key code of key pressed
- * @param mods key modifiers (ctrl/alt/shift)
+ * Apply action.
+ * @param action pointer to the action being performed
  */
-static void on_keyboard(xkb_keysym_t key, uint8_t mods)
+static void apply_action(const struct action* action)
 {
-    const struct keybind* kb = keybind_find(key, mods);
-    if (!kb) {
-        return;
-    }
-
-    for (size_t i = 0; i < kb->num_actions; ++i) {
-        const struct action* action = &kb->actions[i];
-        switch (action->type) {
-            case action_help:
-                info_switch_help();
-                app_redraw();
-                break;
-            case action_fullscreen:
-                ui_toggle_fullscreen();
-                break;
-            case action_antialiasing:
-                ctx.thumb_aa = !ctx.thumb_aa;
-                reset_thumbnails();
-                break;
-            case action_first_file:
-            case action_last_file:
-            case action_step_left:
-            case action_step_right:
-            case action_step_up:
-            case action_step_down:
-                select_nearest(action->type);
-                break;
-            case action_skip_file:
-                if (!skip_current()) {
-                    printf("No more images, exit\n");
-                    app_exit(0);
-                    return;
-                }
-                break;
-            case action_reload:
-                reset_thumbnails();
-                fixup_position();
-                break;
-            case action_exec:
-                app_execute(action->params, image_list_get(ctx.selected));
-                break;
-            case action_status:
-                info_update(info_status, "%s", action->params);
-                app_redraw();
-                break;
-            case action_mode:
-                app_switch_mode(ctx.selected);
-                break;
-            case action_info:
-                info_switch(action->params);
-                app_redraw();
-                break;
-            case action_exit:
-                if (info_help_active()) {
-                    info_switch_help(); // remove help overlay
-                    app_redraw();
-                } else {
-                    app_exit(0);
-                    return;
-                }
-                break;
-            default:
-                break;
-        }
-        ++action;
+    switch (action->type) {
+        case action_antialiasing:
+            ctx.thumb_aa = !ctx.thumb_aa;
+            reset_thumbnails();
+            break;
+        case action_first_file:
+        case action_last_file:
+        case action_step_left:
+        case action_step_right:
+        case action_step_up:
+        case action_step_down:
+            select_nearest(action->type);
+            break;
+        case action_skip_file:
+            if (!skip_current()) {
+                printf("No more images, exit\n");
+                app_exit(0);
+            }
+            break;
+        case action_reload:
+            reset_thumbnails();
+            fixup_position();
+            break;
+        case action_exec:
+            app_execute(action->params, image_list_get(ctx.selected));
+            break;
+        case action_status:
+            info_update(info_status, "%s", action->params);
+            app_redraw();
+            break;
+        case action_mode:
+            app_switch_mode(ctx.selected);
+            break;
+        default:
+            break;
     }
 }
 
@@ -603,15 +572,11 @@ void gallery_destroy(void)
 void gallery_handle(const struct event* event)
 {
     switch (event->type) {
-        case event_reload:
-            reset_thumbnails();
-            fixup_position();
+        case event_action:
+            apply_action(event->param.action);
             break;
         case event_redraw:
             redraw();
-            break;
-        case event_keypress:
-            on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
         case event_activate:
             select_thumbnail(event->param.activate.index);

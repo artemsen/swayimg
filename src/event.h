@@ -9,12 +9,11 @@
 
 /** Event types. */
 enum event_type {
-    event_reload,   ///< Reload and reset state
-    event_redraw,   ///< Redraw window
+    event_action,   ///< Apply action
+    event_redraw,   ///< Redraw window request
     event_resize,   ///< Window resize notification
-    event_keypress, ///< Key or mouse button press events
     event_drag,     ///< Mouse or touch drag operation
-    event_load,     ///< Image loaded
+    event_load,     ///< Image loaded (preload thread notification)
     event_activate, ///< The mode is activating (viewer/gallery switch)
 };
 
@@ -24,10 +23,7 @@ struct event {
 
     union event_params {
 
-        struct keypress {
-            xkb_keysym_t key;
-            uint8_t mods;
-        } keypress;
+        const struct action* action;
 
         struct drag {
             int dx;

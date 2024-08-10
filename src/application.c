@@ -177,6 +177,43 @@ static void append_event(const struct event* event)
 }
 
 /**
+ * Apply a general action regardless of the current mode.
+ * @param action pointer to the action being performed
+ * @return true if action was handled
+ */
+static bool apply_action(const struct action* action)
+{
+    switch (action->type) {
+        case action_info:
+            info_switch(action->params);
+            app_redraw();
+            break;
+        case action_status:
+            info_update(info_status, "%s", action->params);
+            app_redraw();
+            break;
+        case action_fullscreen:
+            ui_toggle_fullscreen();
+            break;
+        case action_help:
+            info_switch_help();
+            app_redraw();
+            break;
+        case action_exit:
+            if (info_help_active()) {
+                info_switch_help(); // remove help overlay
+                app_redraw();
+            } else {
+                app_exit(0);
+            }
+            break;
+        default:
+            return false;
+    }
+    return true;
+}
+
+/**
  * Load first (initial) image.
  * @param index initial index of image in the image list
  * @param force mandatory image index flag
@@ -313,9 +350,9 @@ void app_create(void)
 
 void app_destroy(void)
 {
+    loader_destroy();
     gallery_destroy();
     viewer_destroy();
-    loader_destroy();
     ui_destroy();
     image_list_destroy();
     info_destroy();
@@ -330,6 +367,9 @@ void app_destroy(void)
     while (ctx.events) {
         struct event_entry* entry = ctx.events;
         ctx.events = ctx.events->next;
+        if (entry->event.type == event_load) {
+            image_free(entry->event.param.load.image);
+        }
         free(entry);
     }
     if (ctx.event_signal != -1) {
@@ -454,10 +494,12 @@ bool app_run(void)
         ui_event_prepare();
 
         // poll events
-        if (poll(fds, ctx.wfds_num, -1) <= 0) {
-            perror("Error polling events");
-            ctx.state = loop_error;
-            break;
+        if (poll(fds, ctx.wfds_num, -1) < 0) {
+            if (errno != EINTR) {
+                perror("Error polling events");
+                ctx.state = loop_error;
+                break;
+            }
         }
 
         // call handlers for each active event
@@ -515,8 +557,10 @@ bool app_is_viewer(void)
 
 void app_reload(void)
 {
+    static const struct action action = { .type = action_reload };
     const struct event event = {
-        .type = event_reload,
+        .type = event_action,
+        .param.action = &action,
     };
     append_event(&event);
 }
@@ -558,12 +602,28 @@ void app_on_resize(void)
 
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
-    const struct event event = {
-        .type = event_keypress,
-        .param.keypress.key = key,
-        .param.keypress.mods = mods,
-    };
-    append_event(&event);
+    const struct keybind* kb = keybind_find(key, mods);
+
+    if (kb) {
+        for (size_t i = 0; i < kb->num_actions; ++i) {
+            const struct action* action = &kb->actions[i];
+            if (!apply_action(action)) {
+                const struct event event = {
+                    .type = event_action,
+                    .param.action = action,
+                };
+                append_event(&event);
+            }
+        }
+    } else {
+        char* name = keybind_name(key, mods);
+        if (name) {
+            info_update(info_status, "Key %s is not bound", name);
+            free(name);
+            app_redraw();
+        }
+        return;
+    }
 }
 
 void app_on_drag(int dx, int dy)

@@ -536,128 +536,86 @@ static void on_resize(void)
 }
 
 /**
- * Key press handler.
- * @param key code of key pressed
- * @param mods key modifiers (ctrl/alt/shift)
+ * Apply action.
+ * @param action pointer to the action being performed
  */
-static void on_keyboard(xkb_keysym_t key, uint8_t mods)
+static void apply_action(const struct action* action)
 {
-    const struct keybind* kb = keybind_find(key, mods);
-
-    if (!kb) {
-        char* name = keybind_name(key, mods);
-        if (name) {
-            info_update(info_status, "Key %s is not bound", name);
-            free(name);
-            app_redraw();
-        }
-        return;
-    }
-
-    // handle actions
-    for (size_t i = 0; i < kb->num_actions; ++i) {
-        const struct action* action = &kb->actions[i];
-        switch (action->type) {
-            case action_none:
-                break;
-            case action_help:
-                info_switch_help();
-                app_redraw();
-                break;
-            case action_first_file:
-            case action_last_file:
-            case action_prev_dir:
-            case action_next_dir:
-            case action_prev_file:
-            case action_next_file:
-                next_image(action->type);
-                break;
-            case action_skip_file:
-                if (!skip_image()) {
-                    printf("No more images, exit\n");
-                    app_exit(0);
-                    return;
-                }
+    switch (action->type) {
+        case action_first_file:
+        case action_last_file:
+        case action_prev_dir:
+        case action_next_dir:
+        case action_prev_file:
+        case action_next_file:
+            next_image(action->type);
+            break;
+        case action_skip_file:
+            if (skip_image()) {
                 reset_state();
-                break;
-            case action_prev_frame:
-            case action_next_frame:
-                animation_ctl(false);
-                next_frame(action->type == action_next_frame);
-                break;
-            case action_animation:
-                animation_ctl(!ctx.animation_enable);
-                break;
-            case action_slideshow:
-                slideshow_ctl(!ctx.slideshow_enable &&
-                              next_image(action_next_file));
-                break;
-            case action_fullscreen:
-                ui_toggle_fullscreen();
-                break;
-            case action_mode:
-                app_switch_mode(fetcher_current()->index);
-                break;
-            case action_step_left:
-                move_image(true, true, action->params);
-                break;
-            case action_step_right:
-                move_image(true, false, action->params);
-                break;
-            case action_step_up:
-                move_image(false, true, action->params);
-                break;
-            case action_step_down:
-                move_image(false, false, action->params);
-                break;
-            case action_zoom:
-                zoom_image(action->params);
-                break;
-            case action_rotate_left:
-                rotate_image(false);
-                break;
-            case action_rotate_right:
-                rotate_image(true);
-                break;
-            case action_flip_vertical:
-                image_flip_vertical(fetcher_current());
-                app_redraw();
-                break;
-            case action_flip_horizontal:
-                image_flip_horizontal(fetcher_current());
-                app_redraw();
-                break;
-            case action_antialiasing:
-                ctx.antialiasing = !ctx.antialiasing;
-                info_update(info_status, "Anti-aliasing %s",
-                            ctx.antialiasing ? "on" : "off");
-                app_redraw();
-                break;
-            case action_reload:
-                reload();
-                break;
-            case action_info:
-                info_switch(action->params);
-                app_redraw();
-                break;
-            case action_exec:
-                app_execute(action->params, fetcher_current()->source);
-                break;
-            case action_status:
-                info_update(info_status, "%s", action->params);
-                app_redraw();
-                break;
-            case action_exit:
-                if (info_help_active()) {
-                    info_switch_help(); // remove help overlay
-                    app_redraw();
-                } else {
-                    app_exit(0);
-                    return;
-                }
-                break;
-        }
-        ++action;
+            } else {
+                printf("No more images, exit\n");
+                app_exit(0);
+            }
+            break;
+        case action_prev_frame:
+        case action_next_frame:
+            animation_ctl(false);
+            next_frame(action->type == action_next_frame);
+            break;
+        case action_animation:
+            animation_ctl(!ctx.animation_enable);
+            break;
+        case action_slideshow:
+            slideshow_ctl(!ctx.slideshow_enable &&
+                          next_image(action_next_file));
+            break;
+        case action_mode:
+            app_switch_mode(fetcher_current()->index);
+            break;
+        case action_step_left:
+            move_image(true, true, action->params);
+            break;
+        case action_step_right:
+            move_image(true, false, action->params);
+            break;
+        case action_step_up:
+            move_image(false, true, action->params);
+            break;
+        case action_step_down:
+            move_image(false, false, action->params);
+            break;
+        case action_zoom:
+            zoom_image(action->params);
+            break;
+        case action_rotate_left:
+            rotate_image(false);
+            break;
+        case action_rotate_right:
+            rotate_image(true);
+            break;
+        case action_flip_vertical:
+            image_flip_vertical(fetcher_current());
+            app_redraw();
+            break;
+        case action_flip_horizontal:
+            image_flip_horizontal(fetcher_current());
+            app_redraw();
+            break;
+        case action_antialiasing:
+            ctx.antialiasing = !ctx.antialiasing;
+            info_update(info_status, "Anti-aliasing %s",
+                        ctx.antialiasing ? "on" : "off");
+            app_redraw();
+            break;
+        case action_reload:
+            reload();
+            break;
+        case action_exec:
+            app_execute(action->params, fetcher_current()->source);
+            break;
+        default:
+            break;
     }
 }
 
@@ -791,17 +749,14 @@ void viewer_destroy(void)
 void viewer_handle(const struct event* event)
 {
     switch (event->type) {
-        case event_reload:
-            reload();
+        case event_action:
+            apply_action(event->param.action);
             break;
         case event_redraw:
             redraw();
             break;
         case event_resize:
             on_resize();
-            break;
-        case event_keypress:
-            on_keyboard(event->param.keypress.key, event->param.keypress.mods);
             break;
         case event_drag:
             on_drag(event->param.drag.dx, event->param.drag.dy);
