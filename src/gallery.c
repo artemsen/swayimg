@@ -392,11 +392,13 @@ static void select_nearest(enum action_type direction)
             index = image_list_last();
             ctx.top = image_list_back(index, cols * rows - 1);
             break;
+        case action_prev_file:
         case action_step_left:
             if (index != image_list_first()) {
                 index = image_list_prev_file(index);
             }
             break;
+        case action_next_file:
         case action_step_right:
             if (index != image_list_last()) {
                 index = image_list_next_file(index);
@@ -437,6 +439,8 @@ static void apply_action(const struct action* action)
             break;
         case action_first_file:
         case action_last_file:
+        case action_prev_file:
+        case action_next_file:
         case action_step_left:
         case action_step_right:
         case action_step_up:
