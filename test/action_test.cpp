@@ -17,7 +17,7 @@ protected:
 TEST_F(Action, Create)
 {
     ASSERT_EQ(action_create("info", &sequence), static_cast<size_t>(1));
-    EXPECT_EQ(sequence.num, 1);
+    EXPECT_EQ(sequence.num, static_cast<size_t>(1));
     EXPECT_NE(sequence.sequence, nullptr);
     EXPECT_EQ(sequence.sequence[0].type, action_info);
     EXPECT_EQ(sequence.sequence[0].params, nullptr);
@@ -27,7 +27,7 @@ TEST_F(Action, Create)
 TEST_F(Action, Fail)
 {
     ASSERT_EQ(action_create("", &sequence), static_cast<size_t>(0));
-    EXPECT_EQ(sequence.num, 3);
+    EXPECT_EQ(sequence.num, static_cast<size_t>(3));
     ASSERT_EQ(action_create("invalid", &sequence), static_cast<size_t>(0));
     sequence.num = 0;
 }
@@ -36,7 +36,7 @@ TEST_F(Action, Params)
 {
     ASSERT_EQ(action_create("exec \t  param 123 ", &sequence),
               static_cast<size_t>(1));
-    EXPECT_EQ(sequence.num, 1);
+    EXPECT_EQ(sequence.num, static_cast<size_t>(1));
     EXPECT_NE(sequence.sequence, nullptr);
     EXPECT_EQ(sequence.sequence[0].type, action_exec);
     EXPECT_STREQ(sequence.sequence[0].params, "param 123");
@@ -46,7 +46,7 @@ TEST_F(Action, Sequence)
 {
     ASSERT_EQ(action_create("exec cmd;\nreload;\t exit;status ok", &sequence),
               static_cast<size_t>(3));
-    EXPECT_EQ(sequence.num, 3);
+    EXPECT_EQ(sequence.num, static_cast<size_t>(3));
     EXPECT_EQ(sequence.sequence[0].type, action_exec);
     EXPECT_STREQ(sequence.sequence[0].params, "cmd");
     EXPECT_EQ(sequence.sequence[1].type, action_reload);
