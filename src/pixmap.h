@@ -29,6 +29,8 @@ typedef uint32_t argb_t;
 #define ARGB_SET_R(r) (((argb_t)(r) & 0xff) << ARGB_R_SHIFT)
 #define ARGB_SET_G(g) (((argb_t)(g) & 0xff) << ARGB_G_SHIFT)
 #define ARGB_SET_B(b) (((argb_t)(b) & 0xff) << ARGB_B_SHIFT)
+#define ARGB(a, r, g, b) \
+    (ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b))
 
 // convert ABGR to ARGB
 #define ABGR_TO_ARGB(c) \

@@ -5,7 +5,6 @@
 #pragma once
 
 #include "image.h"
-#include "text.h"
 
 /** Available info fields. */
 enum info_field {
@@ -41,6 +40,17 @@ void info_destroy(void);
  * @param mode display mode name
  */
 void info_switch(const char* mode);
+
+/**
+ * Enable/disable help layer.
+ */
+void info_switch_help(void);
+
+/**
+ * Check if help layer is enabled.
+ * @return true if help layer is visible
+ */
+bool info_help_active(void);
 
 /**
  * Check if info enabled.

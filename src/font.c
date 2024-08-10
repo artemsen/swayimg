@@ -16,17 +16,17 @@
 #define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2.0
 
-// Defaults
-#define DEFALT_FONT "monospace"
-#define DEFALT_SIZE 14
-
 /** Font context. */
 struct font {
     FT_Library lib; ///< Font lib instance
     FT_Face face;   ///< Font face instance
     char* name;     ///< Font face name
     size_t size;    ///< Font size (pt)
+    argb_t color;   ///< Font color
+    argb_t shadow;  ///< Font shadow color
 };
+
+/** Global font context instance. */
 static struct font ctx;
 
 /**
@@ -127,6 +127,17 @@ static enum config_status load_config(const char* key, const char* value)
             ctx.size = num;
             status = cfgst_ok;
         }
+    } else if (strcmp(key, "color") == 0) {
+        if (config_to_color(value, &ctx.color)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, "shadow") == 0) {
+        if (strcmp(value, "none") == 0) {
+            ctx.shadow = 0;
+            status = cfgst_ok;
+        } else if (config_to_color(value, &ctx.shadow)) {
+            status = cfgst_ok;
+        }
     } else {
         status = cfgst_invalid_key;
     }
@@ -137,11 +148,13 @@ static enum config_status load_config(const char* key, const char* value)
 void font_create(void)
 {
     // set defaults
-    str_dup(DEFALT_FONT, &ctx.name);
-    ctx.size = DEFALT_SIZE;
+    str_dup("monospace", &ctx.name);
+    ctx.size = 14;
+    ctx.color = ARGB(0xff, 0xcc, 0xcc, 0xcc);
+    ctx.shadow = ARGB(0x80, 0, 0, 0);
 
     // register configuration loader
-    config_add_loader(FONT_CONFIG_SECTION, load_config);
+    config_add_loader("font", load_config);
 }
 
 void font_init(void)
@@ -229,4 +242,20 @@ bool font_render(const char* text, struct text_surface* surface)
     free(wide);
 
     return true;
+}
+
+void font_print(struct pixmap* wnd, ssize_t x, ssize_t y,
+                const struct text_surface* text)
+{
+    if (ARGB_GET_A(ctx.shadow)) {
+        ssize_t shadow_offset = text->height / 16;
+        if (shadow_offset < 1) {
+            shadow_offset = 1;
+        }
+        pixmap_apply_mask(wnd, x + shadow_offset, y + shadow_offset, text->data,
+                          text->width, text->height, ctx.shadow);
+    }
+
+    pixmap_apply_mask(wnd, x, y, text->data, text->width, text->height,
+                      ctx.color);
 }

@@ -6,9 +6,12 @@
 
 #include "application.h"
 #include "config.h"
+#include "font.h"
 #include "imagelist.h"
+#include "keybind.h"
 #include "loader.h"
 #include "str.h"
+#include "ui.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -32,12 +35,6 @@ static const char* mode_names[] = {
 };
 #define MODES_NUM 2
 
-// number of types in `enum info_field`
-#define INFO_FIELDS_NUM 10
-
-// max number of lines in one positioned block
-#define MAX_LINES (INFO_FIELDS_NUM + 10 /* EXIF and duplicates */)
-
 /** Field names. */
 static const char* field_names[] = {
     [info_file_name] = "name",
@@ -51,16 +48,28 @@ static const char* field_names[] = {
     [info_scale] = "scale",
     [info_status] = "status",
 };
+#define INFO_FIELDS_NUM ARRAY_SIZE(field_names)
 
+/** Positions of text info block. */
+enum block_position {
+    pos_center,
+    pos_top_left,
+    pos_top_right,
+    pos_bottom_left,
+    pos_bottom_right,
+};
 /** Block position names. */
 static const char* position_names[] = {
-    [text_center] = "center",
-    [text_top_left] = "top_left",
-    [text_top_right] = "top_right",
-    [text_bottom_left] = "bottom_left",
-    [text_bottom_right] = "bottom_right",
+    [pos_center] = "center",
+    [pos_top_left] = "top_left",
+    [pos_top_right] = "top_right",
+    [pos_bottom_left] = "bottom_left",
+    [pos_bottom_right] = "bottom_right",
 };
 #define INFO_POSITION_NUM ARRAY_SIZE(position_names)
+
+// max number of lines in one positioned block
+#define MAX_LINES (INFO_FIELDS_NUM + 10 /* EXIF and duplicates */)
 
 /** Scheme of displayed field (line(s) of text). */
 struct field_scheme {
@@ -93,11 +102,20 @@ static const struct field_scheme default_gallery_br[] = {
 
 // clang-format on
 
+// Space between text layout and window edge
+#define TEXT_PADDING 10
+
 #define SET_DEFAULT(m, p, d)                     \
     ctx.scheme[m][p].fields_num = ARRAY_SIZE(d); \
     ctx.scheme[m][p].fields = malloc(sizeof(d)); \
     if (ctx.scheme[m][p].fields)                 \
     memcpy(ctx.scheme[m][p].fields, d, sizeof(d))
+
+/** Key/value text surface. */
+struct keyval {
+    struct text_surface key;
+    struct text_surface value;
+};
 
 /** Info scheme: set of fields in one of screen positions. */
 struct block_scheme {
@@ -119,10 +137,13 @@ struct info_context {
     struct info_timeout info;   ///< Text info timeout
     struct info_timeout status; ///< Status message timeout
 
-    struct text_keyval* exif_lines; ///< EXIF data lines
-    size_t exif_num;                ///< Number of lines in EXIF data
+    struct text_surface* help; ///< Help layer lines
+    size_t help_num;           ///< Number of lines in help
 
-    struct text_keyval fields[INFO_FIELDS_NUM];               ///< Info data
+    struct keyval* exif_lines; ///< EXIF data lines
+    size_t exif_num;           ///< Number of lines in EXIF data
+
+    struct keyval fields[INFO_FIELDS_NUM];                    ///< Info data
     struct block_scheme scheme[MODES_NUM][INFO_POSITION_NUM]; ///< Info scheme
 };
 
@@ -182,12 +203,148 @@ static void timeout_close(struct info_timeout* timeout)
 }
 
 /**
+ * Print centered text block.
+ * @param wnd destination window
+ */
+static void print_help(struct pixmap* window)
+{
+    const size_t line_height = ctx.help[0].height;
+    const size_t row_max = (window->height - TEXT_PADDING * 2) / line_height;
+    const size_t columns =
+        (ctx.help_num / row_max) + (ctx.help_num % row_max ? 1 : 0);
+    const size_t rows =
+        (ctx.help_num / columns) + (ctx.help_num % columns ? 1 : 0);
+    const size_t col_space = line_height;
+    size_t total_width = 0;
+    size_t top = 0;
+    size_t left = 0;
+
+    // calculate total width
+    for (size_t col = 0; col < columns; ++col) {
+        size_t max_width = 0;
+        for (size_t row = 0; row < rows; ++row) {
+            const size_t index = row + col * rows;
+            if (index >= ctx.help_num) {
+                break;
+            }
+            if (max_width < ctx.help[index].width) {
+                max_width = ctx.help[index].width;
+            }
+        }
+        total_width += max_width;
+    }
+    total_width += col_space * (columns - 1);
+
+    // top left corner of the centered text block
+    if (total_width < ui_get_width()) {
+        left = window->width / 2 - total_width / 2;
+    }
+    if (rows * line_height < ui_get_height()) {
+        top = window->height / 2 - (rows * line_height) / 2;
+    }
+
+    // put text on window
+    for (size_t col = 0; col < columns; ++col) {
+        size_t y = top;
+        size_t col_width = 0;
+        for (size_t row = 0; row < rows; ++row) {
+            const size_t index = row + col * rows;
+            if (index >= ctx.help_num) {
+                break;
+            }
+            font_print(window, left, y, &ctx.help[index]);
+            if (col_width < ctx.help[index].width) {
+                col_width = ctx.help[index].width;
+            }
+            y += line_height;
+        }
+        left += col_width + col_space;
+    }
+}
+
+/**
+ * Print info block with key/value text.
+ * @param wnd destination window
+ * @param pos block position
+ * @param lines array of key/value lines to print
+ * @param lines_num total number of lines
+ */
+static void print_keyval(struct pixmap* wnd, enum block_position pos,
+                         const struct keyval* lines, size_t lines_num)
+{
+    size_t max_key_width = 0;
+    const size_t height = lines[0].value.height;
+
+    // calc max width of keys, used if block on the left side
+    for (size_t i = 0; i < lines_num; ++i) {
+        if (lines[i].key.width > max_key_width) {
+            max_key_width = lines[i].key.width;
+        }
+    }
+    max_key_width += height / 2;
+
+    // draw info block
+    for (size_t i = 0; i < lines_num; ++i) {
+        const struct text_surface* key = &lines[i].key;
+        const struct text_surface* value = &lines[i].value;
+        size_t y = 0;
+        size_t x_key = 0;
+        size_t x_val = 0;
+
+        // calculate line position
+        switch (pos) {
+            case pos_center:
+                return; // not supported (not used anywhere)
+            case pos_top_left:
+                y = TEXT_PADDING + i * height;
+                if (key->data) {
+                    x_key = TEXT_PADDING;
+                    x_val = TEXT_PADDING + max_key_width;
+                } else {
+                    x_val = TEXT_PADDING;
+                }
+                break;
+            case pos_top_right:
+                y = TEXT_PADDING + i * height;
+                x_val = wnd->width - TEXT_PADDING - value->width;
+                if (key->data) {
+                    x_key = x_val - key->width - TEXT_PADDING;
+                }
+                break;
+            case pos_bottom_left:
+                y = wnd->height - TEXT_PADDING - height * lines_num +
+                    i * height;
+                if (key->data) {
+                    x_key = TEXT_PADDING;
+                    x_val = TEXT_PADDING + max_key_width;
+                } else {
+                    x_val = TEXT_PADDING;
+                }
+                break;
+            case pos_bottom_right:
+                y = wnd->height - TEXT_PADDING - height * lines_num +
+                    i * height;
+                x_val = wnd->width - TEXT_PADDING - value->width;
+                if (key->data) {
+                    x_key = x_val - key->width - TEXT_PADDING;
+                }
+                break;
+        }
+
+        if (key->data) {
+            font_print(wnd, x_key, y, key);
+        }
+        font_print(wnd, x_val, y, value);
+    }
+}
+
+/**
  * Import meta data from image.
  * @param image source image
  */
 static void import_exif(const struct image* image)
 {
-    struct text_keyval* line;
+    struct keyval* line;
     const size_t buf_size = image->num_info * sizeof(*line);
 
     // free previuos lines
@@ -340,11 +497,11 @@ void info_create(void)
     ctx.info.duration = 5;
     ctx.status.duration = 3;
     ctx.mode = mode_viewer;
-    SET_DEFAULT(mode_viewer, text_top_left, default_viewer_tl);
-    SET_DEFAULT(mode_viewer, text_top_right, default_viewer_tr);
-    SET_DEFAULT(mode_viewer, text_bottom_left, default_viewer_bl);
-    SET_DEFAULT(mode_viewer, text_bottom_right, default_viewer_br);
-    SET_DEFAULT(mode_gallery, text_bottom_right, default_gallery_br);
+    SET_DEFAULT(mode_viewer, pos_top_left, default_viewer_tl);
+    SET_DEFAULT(mode_viewer, pos_top_right, default_viewer_tr);
+    SET_DEFAULT(mode_viewer, pos_bottom_left, default_viewer_bl);
+    SET_DEFAULT(mode_viewer, pos_bottom_right, default_viewer_br);
+    SET_DEFAULT(mode_gallery, pos_bottom_right, default_gallery_br);
 
     // register configuration loader
     config_add_loader("info", load_config_common);
@@ -388,6 +545,11 @@ void info_destroy(void)
         free(ctx.fields[i].key.data);
         free(ctx.fields[i].value.data);
     }
+
+    for (size_t i = 0; i < ctx.help_num; i++) {
+        free(ctx.help[i].data);
+    }
+    free(ctx.help);
 }
 
 void info_switch(const char* mode)
@@ -411,6 +573,50 @@ void info_switch(const char* mode)
     }
 
     timeout_reset(&ctx.info);
+}
+
+void info_switch_help(void)
+{
+
+    if (ctx.help) {
+        for (size_t i = 0; i < ctx.help_num; i++) {
+            free(ctx.help[i].data);
+        }
+        free(ctx.help);
+        ctx.help = NULL;
+        ctx.help_num = 0;
+    } else {
+        const struct keybind* kb = keybind_get();
+        size_t num = 0;
+
+        // get number of bindings
+        while (kb) {
+            if (kb->help) {
+                ++num;
+            }
+            kb = kb->next;
+        }
+
+        // create help layer
+        ctx.help = calloc(1, num * sizeof(*ctx.help));
+        if (!ctx.help) {
+            return;
+        }
+        ctx.help_num = num;
+        // fill keybinds help (they are stored in reverse order)
+        kb = keybind_get();
+        while (kb) {
+            if (kb->help) {
+                font_render(kb->help, &ctx.help[--num]);
+            }
+            kb = kb->next;
+        }
+    }
+}
+
+bool info_help_active(void)
+{
+    return !!ctx.help_num;
 }
 
 bool info_enabled(void)
@@ -480,6 +686,10 @@ void info_update(enum info_field field, const char* fmt, ...)
 
 void info_print(struct pixmap* window)
 {
+    if (info_help_active()) {
+        print_help(window);
+    }
+
     if (ctx.mode == mode_off || !ctx.info.active) {
         // print only status
         if (ctx.fields[info_status].value.width && ctx.status.active) {
@@ -489,11 +699,11 @@ void info_print(struct pixmap* window)
                 for (size_t j = 0; j < block->fields_num; ++j) {
                     const struct field_scheme* field = &block->fields[j];
                     if (field->type == info_status) {
-                        struct text_keyval status = ctx.fields[info_status];
+                        struct keyval status = ctx.fields[info_status];
                         if (!field->title) {
                             memset(&status.key, 0, sizeof(status.key));
                         }
-                        text_print_keyval(window, i, &status, 1);
+                        print_keyval(window, i, &status, 1);
                         break;
                     }
                 }
@@ -503,13 +713,13 @@ void info_print(struct pixmap* window)
     }
 
     for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
-        struct text_keyval lines[MAX_LINES] = { 0 };
+        struct keyval lines[MAX_LINES] = { 0 };
         const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
         size_t lnum = 0;
 
         for (size_t j = 0; j < block->fields_num; ++j) {
             const struct field_scheme* field = &block->fields[j];
-            const struct text_keyval* origin = &ctx.fields[field->type];
+            const struct keyval* origin = &ctx.fields[field->type];
 
             switch (field->type) {
                 case info_exif:
@@ -545,7 +755,7 @@ void info_print(struct pixmap* window)
         }
 
         if (lnum) {
-            text_print_keyval(window, i, lines, lnum);
+            print_keyval(window, i, lines, lnum);
         }
     }
 }

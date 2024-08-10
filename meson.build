@@ -172,7 +172,6 @@ sources = [
   'src/pixmap.c',
   'src/str.c',
   'src/sway.c',
-  'src/text.c',
   'src/ui.c',
   'src/viewer.c',
   'src/formats/bmp.c',

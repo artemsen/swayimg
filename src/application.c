@@ -12,7 +12,6 @@
 #include "loader.h"
 #include "str.h"
 #include "sway.h"
-#include "text.h"
 #include "ui.h"
 #include "viewer.h"
 
@@ -305,7 +304,6 @@ void app_create(void)
     image_list_create();
     info_create();
     keybind_create();
-    text_create();
     viewer_create();
     gallery_create();
 
@@ -502,6 +500,9 @@ void app_switch_mode(size_t index)
 
     if (info_enabled()) {
         info_switch(info_mode);
+    }
+    if (info_help_active()) {
+        info_switch_help();
     }
 
     app_redraw();

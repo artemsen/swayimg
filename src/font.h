@@ -4,12 +4,7 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
-// Configuration section
-#define FONT_CONFIG_SECTION "font"
+#include "pixmap.h"
 
 /** Text surface: array of alpha pixels. */
 struct text_surface {
@@ -40,3 +35,12 @@ void font_destroy(void);
  * @return true if operation completed successfully
  */
 bool font_render(const char* text, struct text_surface* surface);
+
+/**
+ * Print surface line on the window.
+ * @param wnd destination window
+ * @param x,y text position
+ * @param text text surface to draw
+ */
+void font_print(struct pixmap* wnd, ssize_t x, ssize_t y,
+                const struct text_surface* text);

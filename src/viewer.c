@@ -13,7 +13,6 @@
 #include "keybind.h"
 #include "loader.h"
 #include "str.h"
-#include "text.h"
 #include "ui.h"
 
 #include <stdio.h>
@@ -64,9 +63,6 @@ struct viewer {
 
     enum fixed_scale scale_init; ///< Initial scale
     float scale;                 ///< Current scale factor of the image
-
-    struct text_surface* help; ///< Help lines
-    size_t help_sz;            ///< Number of lines in help
 
     bool animation_enable; ///< Animation enable/disable
     int animation_fd;      ///< Animation timer
@@ -460,47 +456,6 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
 }
 
 /**
- * Show/hide help layer.
- */
-static void switch_help(void)
-{
-    const struct keybind* kb;
-
-    app_redraw();
-
-    if (ctx.help) {
-        for (size_t i = 0; i < ctx.help_sz; i++) {
-            free(ctx.help[i].data);
-        }
-        free(ctx.help);
-        ctx.help = NULL;
-        ctx.help_sz = 0;
-        return;
-    }
-
-    // get number of bindings
-    ctx.help_sz = 0;
-    kb = keybind_get();
-    while (kb) {
-        if (kb->help) {
-            ++ctx.help_sz;
-        }
-        kb = kb->next;
-    }
-    ctx.help = calloc(1, ctx.help_sz * sizeof(*ctx.help));
-    if (ctx.help) {
-        size_t i = ctx.help_sz - 1;
-        kb = keybind_get();
-        while (kb) {
-            if (kb->help) {
-                font_render(kb->help, &ctx.help[i--]);
-            }
-            kb = kb->next;
-        }
-    }
-}
-
-/**
  * Draw image.
  * @param wnd pixel map of target window
  */
@@ -564,18 +519,11 @@ static void reload(void)
 static void redraw(void)
 {
     struct pixmap* window = ui_draw_begin();
-    if (!window) {
-        return;
+    if (window) {
+        draw_image(window);
+        info_print(window);
+        ui_draw_commit();
     }
-
-    draw_image(window);
-    info_print(window);
-
-    if (ctx.help) {
-        text_print_lines(window, text_center, ctx.help, ctx.help_sz);
-    }
-
-    ui_draw_commit();
 }
 
 /**
@@ -613,7 +561,8 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
             case action_none:
                 break;
             case action_help:
-                switch_help();
+                info_switch_help();
+                app_redraw();
                 break;
             case action_first_file:
             case action_last_file:
@@ -699,8 +648,9 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 app_redraw();
                 break;
             case action_exit:
-                if (ctx.help) {
-                    switch_help(); // remove help overlay
+                if (info_help_active()) {
+                    info_switch_help(); // remove help overlay
+                    app_redraw();
                 } else {
                     app_exit(0);
                     return;
@@ -830,9 +780,6 @@ void viewer_destroy(void)
 {
     fetcher_destroy();
 
-    for (size_t i = 0; i < ctx.help_sz; i++) {
-        free(ctx.help[i].data);
-    }
     if (ctx.animation_fd != -1) {
         close(ctx.animation_fd);
     }

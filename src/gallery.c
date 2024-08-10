@@ -9,7 +9,6 @@
 #include "info.h"
 #include "loader.h"
 #include "str.h"
-#include "text.h"
 #include "ui.h"
 
 #include <stdlib.h>
@@ -440,6 +439,10 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
     for (size_t i = 0; i < kb->num_actions; ++i) {
         const struct action* action = &kb->actions[i];
         switch (action->type) {
+            case action_help:
+                info_switch_help();
+                app_redraw();
+                break;
             case action_fullscreen:
                 ui_toggle_fullscreen();
                 break;
@@ -481,7 +484,13 @@ static void on_keyboard(xkb_keysym_t key, uint8_t mods)
                 app_redraw();
                 break;
             case action_exit:
-                app_exit(0);
+                if (info_help_active()) {
+                    info_switch_help(); // remove help overlay
+                    app_redraw();
+                } else {
+                    app_exit(0);
+                    return;
+                }
                 break;
             default:
                 break;

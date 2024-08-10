@@ -75,6 +75,7 @@ static const struct keybind_default default_viewer[] = {
 
 /** Default key bindings for gallery mode. */
 static const struct keybind_default default_gallery[] = {
+    { .key = XKB_KEY_F1,          .action = { action_help, NULL } },
     { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
     { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
     { .key = XKB_KEY_f,           .action = { action_fullscreen, NULL } },
