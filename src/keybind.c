@@ -70,7 +70,7 @@ static const struct keybind_default default_viewer[] = {
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = { action_next_file, NULL } },
     { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT,   .action = { action_prev_frame, NULL } },
     { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT,   .action = { action_next_frame, NULL } },
-    // multiaction { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT },
+    { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT, .action = { action_none, NULL } },
 };
 
 /** Default key bindings for gallery mode. */
@@ -94,7 +94,7 @@ static const struct keybind_default default_gallery[] = {
     { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  NULL } },
     { .key = VKEY_SCROLL_UP,      .action = { action_step_up,    NULL } },
     { .key = VKEY_SCROLL_DOWN,    .action = { action_step_down,  NULL } },
-    // multiaction { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT },
+    { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT, .action = { action_none, NULL } },
 };
 // clang-format on
 
@@ -167,47 +167,41 @@ static bool parse_keymod(const char* name, xkb_keysym_t* key, uint8_t* mods)
  * Allocate new key binding.
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
- * @param action list of actions to add
- * @param sz number of actions in list
+ * @param actions sequence of actions
  */
 static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
-                                      const struct action* action, size_t sz)
+                                      const struct action_seq* actions)
 {
     struct keybind* kb;
+    const size_t seq_bytes = actions->num * sizeof(struct action);
 
-    if (!action || sz == 0) {
-        return NULL;
-    }
-
-    kb = calloc(1, sizeof(struct keybind) + sizeof(struct action) * sz);
+    kb = calloc(1, sizeof(struct keybind) + seq_bytes);
     if (!kb) {
         return NULL;
     }
 
     kb->key = key;
     kb->mods = mods;
-
-    // construct actions
-    kb->actions = (struct action*)((uint8_t*)kb + sizeof(struct keybind));
-    kb->num_actions = sz;
-    for (size_t i = 0; i < sz; ++i) {
-        kb->actions[i].type = action[i].type;
-        if (action[i].params) {
-            kb->actions[i].params = str_dup(action[i].params, NULL);
-        }
-    }
+    kb->actions.num = actions->num;
+    kb->actions.sequence =
+        (struct action*)((uint8_t*)kb + sizeof(struct keybind));
+    memcpy(kb->actions.sequence, actions->sequence, seq_bytes);
 
     // construct help description
-    if (sz != 1 || kb->actions[0].type != action_none) {
-        char* key_name = keybind_name(key, mods);
+    if (kb->actions.sequence[0].type != action_none) {
+        char* key_name = keybind_name(kb->key, kb->mods);
         if (key_name) {
-            const struct action* action = &kb->actions[0]; // first only
+            const struct action* action =
+                &kb->actions.sequence[0]; // first only
             str_append(key_name, 0, &kb->help);
-            str_append(": ", 2, &kb->help);
+            str_append(": ", 0, &kb->help);
             str_append(action_typename(action), 0, &kb->help);
             if (action->params) {
-                str_append(" ", 1, &kb->help);
+                str_append(" ", 0, &kb->help);
                 str_append(action->params, 0, &kb->help);
+            }
+            if (kb->actions.num > 1) {
+                str_append("; ...", 0, &kb->help);
             }
             free(key_name);
         }
@@ -223,9 +217,7 @@ static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
 static void free_binding(struct keybind* kb)
 {
     if (kb) {
-        for (size_t i = 0; i < kb->num_actions; ++i) {
-            free(kb->actions[i].params);
-        }
+        action_free(&kb->actions);
         free(kb->help);
         free(kb);
     }
@@ -236,11 +228,10 @@ static void free_binding(struct keybind* kb)
  * @param kb head of binding list
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
- * @param action list of actions to add
- * @param sz number of actions in list
+ * @param actions sequence of actions
  */
 static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
-                        const struct action* action, size_t sz)
+                        const struct action_seq* actions)
 {
     struct keybind* kb;
     struct keybind* prev;
@@ -263,11 +254,43 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
     }
 
     // add to head
-    kb = create_binding(key, mods, action, sz);
+    kb = create_binding(key, mods, actions);
     if (kb) {
         kb->next = *head;
         *head = kb;
     }
+}
+
+/**
+ * Create default binding.
+ * @param head head of binding list
+ * @param kb default key binding description
+ */
+static void set_default(struct keybind** head, const struct keybind_default* kb)
+{
+    struct action actions[2];
+    struct action_seq seq = {
+        .sequence = actions,
+    };
+
+    if (kb->action.type == action_none && kb->key == XKB_KEY_Delete &&
+        kb->mods == KEYMOD_SHIFT) {
+        seq.num = 2;
+        actions[0].type = action_exec;
+        actions[0].params = str_dup("rm \"%\"", NULL);
+        actions[1].type = action_skip_file;
+        actions[1].params = NULL;
+    } else {
+        seq.num = 1;
+        actions[0].type = kb->action.type;
+        if (kb->action.params) {
+            actions[0].params = str_dup(kb->action.params, NULL);
+        } else {
+            actions[0].params = NULL;
+        }
+    }
+
+    set_binding(head, kb->key, kb->mods, &seq);
 }
 
 /**
@@ -280,11 +303,10 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
 static enum config_status load_binding(struct keybind** head, const char* key,
                                        const char* value)
 {
+    struct action actions[ACTION_SEQ_MAX];
+    struct action_seq seq;
     xkb_keysym_t keysym;
     uint8_t mods;
-    struct action action[32];
-    struct str_slice action_sl[ARRAY_SIZE(action)];
-    size_t action_num;
 
     // parse keyboard shortcut
     if (!parse_keymod(key, &keysym, &mods)) {
@@ -292,25 +314,13 @@ static enum config_status load_binding(struct keybind** head, const char* key,
     }
 
     // parse actions
-    action_num = str_split(value, ';', action_sl, ARRAY_SIZE(action_sl));
-    if (action_num == 0) {
+    seq.sequence = actions;
+    seq.num = ARRAY_SIZE(actions);
+    if (action_create(value, &seq) == 0) {
         return cfgst_invalid_value;
     }
-    for (size_t i = 0; i < action_num; ++i) {
-        struct str_slice* s = &action_sl[i];
-        if (!action_load(&action[i], s->value, s->len)) {
-            while (i--) {
-                free(action[i].params);
-            }
-            return cfgst_invalid_value;
-        }
-    }
 
-    set_binding(head, keysym, mods, action, action_num);
-
-    for (size_t i = 0; i < action_num; ++i) {
-        free(action[i].params);
-    }
+    set_binding(head, keysym, mods, &seq);
 
     return cfgst_ok;
 }
@@ -330,22 +340,12 @@ static enum config_status config_gallery(const char* key, const char* value)
 void keybind_create(void)
 {
     // create default bindings
-    const struct action del_file[] = {
-        { action_exec, "rm \"%\"" },
-        { action_skip_file, NULL },
-    };
     for (size_t i = 0; i < ARRAY_SIZE(default_viewer); ++i) {
-        const struct keybind_default* kb = &default_viewer[i];
-        set_binding(&kb_viewer, kb->key, kb->mods, &kb->action, 1);
+        set_default(&kb_viewer, &default_viewer[i]);
     }
     for (size_t i = 0; i < ARRAY_SIZE(default_gallery); ++i) {
-        const struct keybind_default* kb = &default_gallery[i];
-        set_binding(&kb_gallery, kb->key, kb->mods, &kb->action, 1);
+        set_default(&kb_gallery, &default_gallery[i]);
     }
-    set_binding(&kb_viewer, XKB_KEY_Delete, KEYMOD_SHIFT, del_file,
-                ARRAY_SIZE(del_file));
-    set_binding(&kb_gallery, XKB_KEY_Delete, KEYMOD_SHIFT, del_file,
-                ARRAY_SIZE(del_file));
 
     // register configuration loaders
     config_add_loader("keys.viewer", config_viewer);

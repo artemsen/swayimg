@@ -22,12 +22,11 @@
 
 /** Key binding list entry. */
 struct keybind {
-    xkb_keysym_t key;       ///< Keyboard key
-    uint8_t mods;           ///< Key modifiers
-    struct action* actions; ///< Array of action
-    size_t num_actions;     ///< Number of actions in array
-    char* help;             ///< Help line with binding description
-    struct keybind* next;   ///< Next entry in list
+    xkb_keysym_t key;          ///< Keyboard key
+    uint8_t mods;              ///< Key modifiers
+    struct action_seq actions; ///< Sequence of action
+    char* help;                ///< Help line with binding description
+    struct keybind* next;      ///< Next entry in list
 };
 
 /**

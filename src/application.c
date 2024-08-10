@@ -177,12 +177,13 @@ static void append_event(const struct event* event)
 }
 
 /**
- * Apply a general action regardless of the current mode.
+ * Apply action.
  * @param action pointer to the action being performed
- * @return true if action was handled
  */
-static bool apply_action(const struct action* action)
+static void apply_action(const struct action* action)
 {
+    struct event event;
+
     switch (action->type) {
         case action_info:
             info_switch(action->params);
@@ -208,9 +209,12 @@ static bool apply_action(const struct action* action)
             }
             break;
         default:
-            return false;
+            // not a general action, add to event queue
+            event.type = event_action;
+            event.param.action = action;
+            append_event(&event);
+            break;
     }
-    return true;
 }
 
 /**
@@ -605,15 +609,8 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
     const struct keybind* kb = keybind_find(key, mods);
 
     if (kb) {
-        for (size_t i = 0; i < kb->num_actions; ++i) {
-            const struct action* action = &kb->actions[i];
-            if (!apply_action(action)) {
-                const struct event event = {
-                    .type = event_action,
-                    .param.action = action,
-                };
-                append_event(&event);
-            }
+        for (size_t i = 0; i < kb->actions.num; ++i) {
+            apply_action(&kb->actions.sequence[i]);
         }
     } else {
         char* name = keybind_name(key, mods);
@@ -622,7 +619,6 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
             free(name);
             app_redraw();
         }
-        return;
     }
 }
 

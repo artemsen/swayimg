@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <stddef.h>
 
 /** Supported actions. */
@@ -41,20 +40,34 @@ enum action_type {
     action_exit,
 };
 
-/** Action instance. */
+// Max number of actions in sequence
+#define ACTION_SEQ_MAX 32
+
+/** Single action. */
 struct action {
     enum action_type type; ///< Action type
     char* params;          ///< Custom parameters for the action
 };
 
+/** Action sequence. */
+struct action_seq {
+    struct action* sequence; ///< Array of actions
+    size_t num;              ///< Number of actions in array
+};
+
 /**
- * Load action from config string.
- * @param action target instance, caller should free resources
- * @param source action command with parameters as text string
- * @param len length of the source string
- * @return true if action loaded
+ * Create sequence of actions from config string.
+ * @param text source config text
+ * @param actions destination sequence of actions
+ * @return num number of actions in the list, 0 if format error
  */
-bool action_load(struct action* action, const char* source, size_t len);
+size_t action_create(const char* text, struct action_seq* actions);
+
+/**
+ * Free actions.
+ * @param actions sequence of actions to free
+ */
+void action_free(struct action_seq* actions);
 
 /**
  * Get action's type name.

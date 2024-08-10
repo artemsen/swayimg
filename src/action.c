@@ -43,7 +43,14 @@ static const char* action_names[] = {
     [action_exit] = "exit",
 };
 
-bool action_load(struct action* action, const char* source, size_t len)
+/**
+ * Load action from config string.
+ * @param action target instance, caller should free resources
+ * @param source action command with parameters as text string
+ * @param len length of the source string
+ * @return true if action loaded
+ */
+static bool action_load(struct action* action, const char* source, size_t len)
 {
     ssize_t action_type;
     const char* action_name;
@@ -89,6 +96,44 @@ bool action_load(struct action* action, const char* source, size_t len)
     }
 
     return true;
+}
+
+size_t action_create(const char* text, struct action_seq* actions)
+{
+    struct str_slice slices[ACTION_SEQ_MAX];
+    size_t num;
+
+    num = str_split(text, ';', slices, ARRAY_SIZE(slices));
+    if (num == 0) {
+        return 0;
+    }
+    if (num > actions->num) {
+        num = actions->num;
+    }
+
+    for (size_t i = 0; i < num; ++i) {
+        struct action* action = &actions->sequence[i];
+        struct str_slice* s = &slices[i];
+        if (!action_load(action, s->value, s->len)) {
+            const size_t origin_num = actions->num;
+            actions->num = i;
+            action_free(actions);
+            actions->num = origin_num;
+            return 0;
+        }
+    }
+
+    actions->num = num;
+    return num;
+}
+
+void action_free(struct action_seq* actions)
+{
+    if (actions) {
+        for (size_t i = 0; i < actions->num; ++i) {
+            free(actions->sequence[i].params);
+        }
+    }
 }
 
 const char* action_typename(const struct action* action)

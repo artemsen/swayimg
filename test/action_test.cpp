@@ -9,28 +9,55 @@ extern "C" {
 
 class Action : public ::testing::Test {
 protected:
-    void TearDown() override { free(action.params); }
-    struct action action = { action_none, nullptr };
+    void TearDown() override { action_free(&sequence); }
+    struct action actions[3];
+    struct action_seq sequence = { actions, 3 };
 };
 
 TEST_F(Action, Create)
 {
-    ASSERT_TRUE(action_load(&action, "info", 4));
-    EXPECT_STREQ(action_typename(&action), "info");
-    EXPECT_EQ(action.params, nullptr);
-}
-
-TEST_F(Action, Params)
-{
-    const char* text = "exec \t  param 123";
-
-    ASSERT_TRUE(action_load(&action, text, strlen(text)));
-    EXPECT_STREQ(action.params, "param 123");
-    EXPECT_STREQ(action_typename(&action), "exec");
+    ASSERT_EQ(action_create("info", &sequence), static_cast<size_t>(1));
+    EXPECT_EQ(sequence.num, 1);
+    EXPECT_NE(sequence.sequence, nullptr);
+    EXPECT_EQ(sequence.sequence[0].type, action_info);
+    EXPECT_EQ(sequence.sequence[0].params, nullptr);
+    EXPECT_STREQ(action_typename(sequence.sequence), "info");
 }
 
 TEST_F(Action, Fail)
 {
-    EXPECT_FALSE(action_load(&action, "", 0));
-    EXPECT_FALSE(action_load(&action, "invalid", 7));
+    ASSERT_EQ(action_create("", &sequence), static_cast<size_t>(0));
+    EXPECT_EQ(sequence.num, 3);
+    ASSERT_EQ(action_create("invalid", &sequence), static_cast<size_t>(0));
+    sequence.num = 0;
+}
+
+TEST_F(Action, Params)
+{
+    ASSERT_EQ(action_create("exec \t  param 123 ", &sequence),
+              static_cast<size_t>(1));
+    EXPECT_EQ(sequence.num, 1);
+    EXPECT_NE(sequence.sequence, nullptr);
+    EXPECT_EQ(sequence.sequence[0].type, action_exec);
+    EXPECT_STREQ(sequence.sequence[0].params, "param 123");
+}
+
+TEST_F(Action, Sequence)
+{
+    ASSERT_EQ(action_create("exec cmd;\nreload;\t exit;status ok", &sequence),
+              static_cast<size_t>(3));
+    EXPECT_EQ(sequence.num, 3);
+    EXPECT_EQ(sequence.sequence[0].type, action_exec);
+    EXPECT_STREQ(sequence.sequence[0].params, "cmd");
+    EXPECT_EQ(sequence.sequence[1].type, action_reload);
+    EXPECT_EQ(sequence.sequence[1].params, nullptr);
+    EXPECT_EQ(sequence.sequence[2].type, action_exit);
+    EXPECT_EQ(sequence.sequence[2].params, nullptr);
+}
+
+TEST_F(Action, FailSequence)
+{
+    ASSERT_EQ(action_create("exec cmd;\nreload;invalid", &sequence),
+              static_cast<size_t>(0));
+    sequence.num = 0;
 }
