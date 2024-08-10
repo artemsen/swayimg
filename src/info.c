@@ -596,6 +596,9 @@ void info_switch_help(void)
             }
             kb = kb->next;
         }
+        if (num == 0) {
+            return;
+        }
 
         // create help layer
         ctx.help = calloc(1, num * sizeof(*ctx.help));
