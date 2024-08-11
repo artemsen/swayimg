@@ -28,6 +28,8 @@ enum action_type {
     action_step_right,
     action_step_up,
     action_step_down,
+    action_page_up,
+    action_page_down,
     action_zoom,
     action_rotate_left,
     action_rotate_right,

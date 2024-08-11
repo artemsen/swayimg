@@ -376,7 +376,7 @@ static bool skip_current(void)
 }
 
 /**
- * Select next item.
+ * Select closest item.
  * @param direction next image position in list
  */
 static void select_nearest(enum action_type direction)
@@ -429,6 +429,31 @@ static void select_nearest(enum action_type direction)
 }
 
 /**
+ * Scroll one page.
+ * @param forward scroll direction
+ */
+static void scroll_page(bool forward)
+{
+    const size_t distance =
+        ui_get_width() / ctx.thumb_size + ui_get_height() / ctx.thumb_size;
+    size_t top = ctx.top;
+    size_t index = ctx.selected;
+
+    if (forward) {
+        top = image_list_forward(top, distance);
+        index = image_list_forward(index, distance);
+    } else {
+        top = image_list_back(top, distance);
+        index = image_list_back(index, distance);
+    }
+
+    if (index != IMGLIST_INVALID && index != ctx.selected) {
+        ctx.top = top;
+        select_thumbnail(index);
+    }
+}
+
+/**
  * Apply action.
  * @param action pointer to the action being performed
  */
@@ -448,6 +473,10 @@ static void apply_action(const struct action* action)
         case action_step_up:
         case action_step_down:
             select_nearest(action->type);
+            break;
+        case action_page_up:
+        case action_page_down:
+            scroll_page(action->type == action_page_down);
             break;
         case action_skip_file:
             if (!skip_current()) {
