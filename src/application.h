@@ -12,6 +12,8 @@
 #define APP_CFG_MODE     "mode"
 #define APP_CFG_POSITION "position"
 #define APP_CFG_SIZE     "size"
+#define APP_CFG_SIGUSR1  "sigusr1"
+#define APP_CFG_SIGUSR2  "sigusr2"
 #define APP_CFG_APP_ID   "app_id"
 #define APP_MODE_VIEWER  "viewer"
 #define APP_MODE_GALLERY "gallery"

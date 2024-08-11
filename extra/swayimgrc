@@ -22,6 +22,10 @@ mode = viewer
 position = parent
 # Window size (fullscreen/parent/image, or absolute size, e.g. 800,600)
 size = parent
+# Action performed by SIGUSR1 signal (same format as for key bindings)
+sigusr1 = reload
+# Action performed by SIGUSR2 signal (same format as for key bindings)
+sigusr2 = next_file
 
 ################################################################################
 # Viewer mode configuration

@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -62,6 +63,9 @@ struct application {
     struct event_entry* events;  ///< Event queue
     pthread_mutex_t events_lock; ///< Event queue lock
     int event_signal;            ///< Queue change notification
+
+    struct action_seq sigusr1; ///< Actions applied by USR1 signal
+    struct action_seq sigusr2; ///< Actions applied by USR2 signal
 
     event_handler ehandler; ///< Event handler for the current mode
     struct rect window;     ///< Preferable window position and size
@@ -218,6 +222,30 @@ static void apply_action(const struct action* action)
 }
 
 /**
+ * POSIX Signal handler.
+ * @param signum signal number
+ */
+static void on_signal(int signum)
+{
+    const struct action_seq* sigact;
+
+    switch (signum) {
+        case SIGUSR1:
+            sigact = &ctx.sigusr1;
+            break;
+        case SIGUSR2:
+            sigact = &ctx.sigusr2;
+            break;
+        default:
+            return;
+    }
+
+    for (size_t i = 0; i < sigact->num; ++i) {
+        apply_action(&sigact->sequence[i]);
+    }
+}
+
+/**
  * Load first (initial) image.
  * @param index initial index of image in the image list
  * @param force mandatory image index flag
@@ -323,6 +351,14 @@ static enum config_status load_config(const char* key, const char* value)
                 status = cfgst_ok;
             }
         }
+    } else if (strcmp(key, APP_CFG_SIGUSR1) == 0) {
+        if (action_create(value, &ctx.sigusr1)) {
+            status = cfgst_ok;
+        }
+    } else if (strcmp(key, APP_CFG_SIGUSR2) == 0) {
+        if (action_create(value, &ctx.sigusr2)) {
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, APP_CFG_APP_ID) == 0) {
         str_dup(value, &ctx.app_id);
         status = cfgst_ok;
@@ -340,6 +376,9 @@ void app_create(void)
     ctx.window.width = SIZE_FROM_PARENT;
     ctx.window.height = SIZE_FROM_PARENT;
     ctx.ehandler = viewer_handle;
+
+    action_create("reload", &ctx.sigusr1);
+    action_create("next_file", &ctx.sigusr2);
 
     font_create();
     image_list_create();
@@ -380,12 +419,16 @@ void app_destroy(void)
         notification_free(ctx.event_signal);
     }
     pthread_mutex_destroy(&ctx.events_lock);
+
+    action_free(&ctx.sigusr1);
+    action_free(&ctx.sigusr2);
 }
 
 bool app_init(const char** sources, size_t num)
 {
     bool force_load = false;
     struct image* first_image;
+    struct sigaction sigact;
 
     // compose image list
     if (num == 0) {
@@ -460,6 +503,13 @@ bool app_init(const char** sources, size_t num)
         info_switch(ctx.ehandler == viewer_handle ? APP_MODE_VIEWER
                                                   : APP_MODE_GALLERY);
     }
+
+    // set signal handler
+    sigact.sa_handler = on_signal;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigaction(SIGUSR1, &sigact, NULL);
+    sigaction(SIGUSR2, &sigact, NULL);
 
     return true;
 }
