@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /** Supported actions. */
@@ -40,9 +41,6 @@ enum action_type {
     action_exit,
 };
 
-// Max number of actions in sequence
-#define ACTION_SEQ_MAX 32
-
 /** Single action. */
 struct action {
     enum action_type type; ///< Action type
@@ -56,16 +54,16 @@ struct action_seq {
 };
 
 /**
- * Create sequence of actions from config string.
+ * Create action sequence from config string.
  * @param text source config text
  * @param actions destination sequence of actions
- * @return num number of actions in the list, 0 if format error
+ * @return false if format error
  */
-size_t action_create(const char* text, struct action_seq* actions);
+bool action_create(const char* text, struct action_seq* actions);
 
 /**
- * Free actions.
- * @param actions sequence of actions to free
+ * Free actions sequence.
+ * @param actions sequence to free
  */
 void action_free(struct action_seq* actions);
 

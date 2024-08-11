@@ -8,6 +8,10 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
+
+// Max number of actions in sequence
+#define ACTION_SEQ_MAX 32
 
 /** Action names. */
 static const char* action_names[] = {
@@ -44,13 +48,13 @@ static const char* action_names[] = {
 };
 
 /**
- * Load action from config string.
- * @param action target instance, caller should free resources
+ * Parse config line and fill the action.
+ * @param action target action instance
  * @param source action command with parameters as text string
  * @param len length of the source string
  * @return true if action loaded
  */
-static bool action_load(struct action* action, const char* source, size_t len)
+static bool parse(struct action* action, const char* source, size_t len)
 {
     ssize_t action_type;
     const char* action_name;
@@ -98,33 +102,48 @@ static bool action_load(struct action* action, const char* source, size_t len)
     return true;
 }
 
-size_t action_create(const char* text, struct action_seq* actions)
+bool action_create(const char* text, struct action_seq* actions)
 {
-    struct str_slice slices[ACTION_SEQ_MAX];
-    size_t num;
+    struct action load[ACTION_SEQ_MAX] = { 0 };
+    struct str_slice slices[ARRAY_SIZE(load)];
+    size_t seq_len;
+    struct action* buf;
+    size_t buf_sz;
 
-    num = str_split(text, ';', slices, ARRAY_SIZE(slices));
-    if (num == 0) {
-        return 0;
+    // split line, one slice per action
+    seq_len = str_split(text, ';', slices, ARRAY_SIZE(slices));
+    if (seq_len == 0) {
+        return false;
     }
-    if (num > actions->num) {
-        num = actions->num;
+    if (seq_len > ARRAY_SIZE(slices)) {
+        seq_len = ARRAY_SIZE(slices);
     }
 
-    for (size_t i = 0; i < num; ++i) {
-        struct action* action = &actions->sequence[i];
-        struct str_slice* s = &slices[i];
-        if (!action_load(action, s->value, s->len)) {
-            const size_t origin_num = actions->num;
-            actions->num = i;
-            action_free(actions);
-            actions->num = origin_num;
+    // load actions
+    for (size_t i = 0; i < seq_len; ++i) {
+        const struct str_slice* s = &slices[i];
+        if (!parse(&load[i], s->value, s->len)) {
+            while (i) {
+                free(load[--i].params);
+            }
             return 0;
         }
     }
 
-    actions->num = num;
-    return num;
+    // put loaded action to output sequence
+    buf_sz = seq_len * sizeof(struct action);
+    buf = realloc(actions->sequence, buf_sz);
+    if (!buf) {
+        for (size_t i = 0; i < ARRAY_SIZE(load); ++i) {
+            free(load[i].params);
+        }
+        return 0;
+    }
+    memcpy(buf, load, buf_sz);
+    actions->num = seq_len;
+    actions->sequence = buf;
+
+    return seq_len;
 }
 
 void action_free(struct action_seq* actions)
@@ -133,6 +152,7 @@ void action_free(struct action_seq* actions)
         for (size_t i = 0; i < actions->num; ++i) {
             free(actions->sequence[i].params);
         }
+        free(actions->sequence);
     }
 }
 

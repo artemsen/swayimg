@@ -170,25 +170,20 @@ static bool parse_keymod(const char* name, xkb_keysym_t* key, uint8_t* mods)
  * @param actions sequence of actions
  */
 static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
-                                      const struct action_seq* actions)
+                                      struct action_seq* actions)
 {
-    struct keybind* kb;
-    const size_t seq_bytes = actions->num * sizeof(struct action);
-
-    kb = calloc(1, sizeof(struct keybind) + seq_bytes);
+    struct keybind* kb = calloc(1, sizeof(struct keybind));
     if (!kb) {
         return NULL;
     }
 
     kb->key = key;
     kb->mods = mods;
-    kb->actions.num = actions->num;
-    kb->actions.sequence =
-        (struct action*)((uint8_t*)kb + sizeof(struct keybind));
-    memcpy(kb->actions.sequence, actions->sequence, seq_bytes);
+    kb->actions = *actions;
 
     // construct help description
     if (kb->actions.sequence[0].type != action_none) {
+        size_t max_len = 30;
         char* key_name = keybind_name(kb->key, kb->mods);
         if (key_name) {
             const struct action* action =
@@ -202,6 +197,12 @@ static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
             }
             if (kb->actions.num > 1) {
                 str_append("; ...", 0, &kb->help);
+            }
+            if (strlen(kb->help) > max_len) {
+                const char* ellipsis = "...";
+                const size_t ellipsis_len = strlen(ellipsis);
+                memcpy(&kb->help[max_len - ellipsis_len], ellipsis,
+                       ellipsis_len + 1);
             }
             free(key_name);
         }
@@ -231,7 +232,7 @@ static void free_binding(struct keybind* kb)
  * @param actions sequence of actions
  */
 static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
-                        const struct action_seq* actions)
+                        struct action_seq* actions)
 {
     struct keybind* kb;
     struct keybind* prev;
@@ -255,7 +256,9 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
 
     // add to head
     kb = create_binding(key, mods, actions);
-    if (kb) {
+    if (!kb) {
+        action_free(actions);
+    } else {
         kb->next = *head;
         *head = kb;
     }
@@ -268,29 +271,35 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
  */
 static void set_default(struct keybind** head, const struct keybind_default* kb)
 {
-    struct action actions[2];
-    struct action_seq seq = {
-        .sequence = actions,
-    };
+    struct action_seq actions;
 
     if (kb->action.type == action_none && kb->key == XKB_KEY_Delete &&
         kb->mods == KEYMOD_SHIFT) {
-        seq.num = 2;
-        actions[0].type = action_exec;
-        actions[0].params = str_dup("rm \"%\"", NULL);
-        actions[1].type = action_skip_file;
-        actions[1].params = NULL;
+        // special action: Shift+Del
+        actions.num = 2;
+        actions.sequence = malloc(actions.num * sizeof(struct action));
+        if (actions.sequence) {
+            actions.sequence[0].type = action_exec;
+            actions.sequence[0].params = str_dup("rm \"%\"", NULL);
+            actions.sequence[1].type = action_skip_file;
+            actions.sequence[1].params = NULL;
+        }
     } else {
-        seq.num = 1;
-        actions[0].type = kb->action.type;
-        if (kb->action.params) {
-            actions[0].params = str_dup(kb->action.params, NULL);
-        } else {
-            actions[0].params = NULL;
+        actions.num = 1;
+        actions.sequence = malloc(actions.num * sizeof(struct action));
+        if (actions.sequence) {
+            actions.sequence[0].type = kb->action.type;
+            if (kb->action.params) {
+                actions.sequence[0].params = str_dup(kb->action.params, NULL);
+            } else {
+                actions.sequence[0].params = NULL;
+            }
         }
     }
 
-    set_binding(head, kb->key, kb->mods, &seq);
+    if (actions.sequence) {
+        set_binding(head, kb->key, kb->mods, &actions);
+    }
 }
 
 /**
@@ -303,8 +312,7 @@ static void set_default(struct keybind** head, const struct keybind_default* kb)
 static enum config_status load_binding(struct keybind** head, const char* key,
                                        const char* value)
 {
-    struct action actions[ACTION_SEQ_MAX];
-    struct action_seq seq;
+    struct action_seq actions = { 0 };
     xkb_keysym_t keysym;
     uint8_t mods;
 
@@ -314,13 +322,11 @@ static enum config_status load_binding(struct keybind** head, const char* key,
     }
 
     // parse actions
-    seq.sequence = actions;
-    seq.num = ARRAY_SIZE(actions);
-    if (action_create(value, &seq) == 0) {
+    if (!action_create(value, &actions)) {
         return cfgst_invalid_value;
     }
 
-    set_binding(head, keysym, mods, &seq);
+    set_binding(head, keysym, mods, &actions);
 
     return cfgst_ok;
 }
