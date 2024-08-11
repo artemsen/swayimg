@@ -153,8 +153,10 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
         pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
 
         if (thumb) {
-            const ssize_t tx = x + ctx.thumb_size / 2 - thumb->width / 2;
-            const ssize_t ty = y + ctx.thumb_size / 2 - thumb->height / 2;
+            const ssize_t thumb_w = thumb->width * THUMB_SELECTED_SCALE;
+            const ssize_t thumb_h = thumb->height * THUMB_SELECTED_SCALE;
+            const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
+            const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
             if (ctx.thumb_aa) {
                 pixmap_scale_bicubic(thumb, window, tx, ty,
                                      THUMB_SELECTED_SCALE, image->alpha);
