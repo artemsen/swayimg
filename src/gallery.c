@@ -233,12 +233,12 @@ static void draw_thumbnails(struct pixmap* window)
             // get next thumbnail index
             index = image_list_next_file(index);
             if (index == IMGLIST_INVALID || index <= ctx.top) {
-                row = rows; // break parent loop
-                break;
+                goto done;
             }
         }
     }
 
+done:
     // draw selected thumbnail
     draw_thumbnail(window, select_x, select_y,
                    select_th ? select_th->image : NULL, true);
@@ -330,16 +330,12 @@ static void fixup_position(void)
 }
 
 /**
- * Set current selection.
- * @param index image index to set as selected one
+ * Update info text container for currently selected image.
  */
-static void select_thumbnail(size_t index)
+static void update_info(void)
 {
-    const struct thumbnail* th;
+    const struct thumbnail* th = get_thumbnail(ctx.selected);
 
-    ctx.selected = index;
-
-    th = get_thumbnail(index);
     if (th) {
         info_reset(th->image);
         info_update(info_image_size, "%zux%zu", th->width, th->height);
@@ -347,8 +343,18 @@ static void select_thumbnail(size_t index)
                     image_list_size());
     }
 
-    fixup_position();
     app_redraw();
+}
+
+/**
+ * Set current selection.
+ * @param index image index to set as selected one
+ */
+static void select_thumbnail(size_t index)
+{
+    ctx.selected = index;
+    fixup_position();
+    update_info();
 }
 
 /**
@@ -516,7 +522,7 @@ static void on_image_load(struct image* image, size_t index)
         } else {
             add_thumbnail(image);
             if (index == ctx.selected) {
-                select_thumbnail(ctx.selected); // update meta info
+                update_info();
             }
         }
     } else {
@@ -524,7 +530,13 @@ static void on_image_load(struct image* image, size_t index)
         if (index == ctx.selected) {
             skip_current();
         } else {
-            image_list_skip(index);
+            const size_t next = image_list_skip(index);
+            if (index == ctx.top) {
+                ctx.top = image_list_prev_file(index);
+                if (ctx.top > index) {
+                    ctx.top = next;
+                }
+            }
             fixup_position();
         }
     }
