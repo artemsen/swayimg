@@ -39,20 +39,6 @@ typedef uint32_t argb_t;
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-/** Size description. */
-struct size {
-    size_t width;
-    size_t height;
-};
-
-/** Rectangle description. */
-struct rect {
-    ssize_t x;
-    ssize_t y;
-    size_t width;
-    size_t height;
-};
-
 /** Pixel map. */
 struct pixmap {
     size_t width;  ///< Width (px)

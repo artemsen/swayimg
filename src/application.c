@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
-#include <time.h>
 #include <unistd.h>
 
 // Special ids for windows size and position
@@ -68,7 +67,7 @@ struct application {
     struct action_seq sigusr2; ///< Actions applied by USR2 signal
 
     event_handler ehandler; ///< Event handler for the current mode
-    struct rect window;     ///< Preferable window position and size
+    struct wndrect window;  ///< Preferable window position and size
     char* app_id;           ///< Application id (app_id name)
 };
 
@@ -80,7 +79,7 @@ static struct application ctx;
  */
 static void sway_setup(void)
 {
-    struct rect parent;
+    struct wndrect parent;
     bool fullscreen;
     bool absolute = false;
     int ipc;
@@ -111,21 +110,8 @@ static void sway_setup(void)
         ctx.window.y = parent.y;
     }
 
-    if (!ctx.app_id) {
-        // create unique application id
-        struct timespec ts;
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-            char app_id[64];
-            const uint64_t uid = ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec;
-            snprintf(app_id, sizeof(app_id), APP_NAME "_%" PRIx64, uid);
-            str_dup(app_id, &ctx.app_id);
-        } else {
-            str_dup(APP_NAME, &ctx.app_id);
-        }
-    }
-
     // set window position via sway rules
-    sway_add_rules(ipc, ctx.app_id, ctx.window.x, ctx.window.y, absolute);
+    sway_add_rules(ipc, ctx.window.x, ctx.window.y, absolute);
 
     sway_disconnect(ipc);
 }
@@ -376,6 +362,7 @@ void app_create(void)
     ctx.window.width = SIZE_FROM_PARENT;
     ctx.window.height = SIZE_FROM_PARENT;
     ctx.ehandler = viewer_handle;
+    str_dup(APP_NAME, &ctx.app_id);
 
     action_create("reload", &ctx.sigusr1);
     action_create("next_file", &ctx.sigusr2);
@@ -473,15 +460,12 @@ bool app_init(const char** sources, size_t num)
         ctx.window.height = pm->height;
     }
 
-    if (!ctx.app_id) {
-        str_dup(APP_NAME, &ctx.app_id);
-    }
-
+    // connect to wayland
     if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height)) {
         return false;
     }
 
-    // event queue notification
+    // create event queue notification
     ctx.event_signal = notification_create();
     if (ctx.event_signal != -1) {
         app_watch(ctx.event_signal, handle_event_queue, NULL);
