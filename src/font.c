@@ -76,12 +76,16 @@ static bool search_font_file(const char* name, char* font_file, size_t len)
  * Calc size of the surface and allocate memory for the mask.
  * @param text string to print
  * @param surface text surface
- * @return true if operation completed successfully
+ * @return base line offset or SIZE_MAX on errors
  */
-static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
+static size_t allocate_surface(const wchar_t* text,
+                               struct text_surface* surface)
 {
-    const size_t space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
-    const size_t height = ctx.face->size->metrics.height / POINT_FACTOR;
+    const FT_Size_Metrics* metrics = &ctx.face->size->metrics;
+    const size_t space_size = metrics->x_ppem / SPACE_WH_REL;
+    const size_t height = metrics->height / POINT_FACTOR;
+    size_t base_offset =
+        (ctx.face->ascender * (metrics->y_scale / 65536.0)) / POINT_FACTOR;
     size_t width = 0;
     uint8_t* data = NULL;
     size_t data_size;
@@ -91,7 +95,11 @@ static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
         if (*text == L' ') {
             width += space_size;
         } else if (FT_Load_Char(ctx.face, *text, FT_LOAD_RENDER) == 0) {
-            width += ctx.face->glyph->advance.x / POINT_FACTOR;
+            const FT_GlyphSlot glyph = ctx.face->glyph;
+            width += glyph->advance.x / POINT_FACTOR;
+            if ((FT_Int)base_offset < glyph->bitmap_top) {
+                base_offset = glyph->bitmap_top;
+            }
         }
         ++text;
     }
@@ -100,15 +108,16 @@ static bool allocate_surface(const wchar_t* text, struct text_surface* surface)
     data_size = width * height;
     if (data_size) {
         data = realloc(surface->data, data_size);
-        if (data) {
-            surface->width = width;
-            surface->height = height;
-            surface->data = data;
-            memset(surface->data, 0, data_size);
+        if (!data) {
+            return SIZE_MAX;
         }
+        surface->width = width;
+        surface->height = height;
+        surface->data = data;
+        memset(surface->data, 0, data_size);
     }
 
-    return !!data;
+    return base_offset;
 }
 
 /**
@@ -186,7 +195,7 @@ void font_destroy(void)
 bool font_render(const char* text, struct text_surface* surface)
 {
     size_t space_size;
-    ssize_t base_offset;
+    size_t base_offset;
     wchar_t* wide;
     wchar_t* it;
     size_t x = 0;
@@ -196,15 +205,14 @@ bool font_render(const char* text, struct text_surface* surface)
     }
 
     space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
-    base_offset =
-        (ctx.face->ascender * (ctx.face->size->metrics.y_scale / 65536.0)) /
-        POINT_FACTOR;
 
     wide = str_to_wide(text, NULL);
     if (!wide) {
         return false;
     }
-    if (!allocate_surface(wide, surface)) {
+
+    base_offset = allocate_surface(wide, surface);
+    if (base_offset == SIZE_MAX) {
         free(wide);
         return false;
     }
@@ -217,7 +225,7 @@ bool font_render(const char* text, struct text_surface* surface)
         } else if (FT_Load_Char(ctx.face, *it, FT_LOAD_RENDER) == 0) {
             const FT_GlyphSlot glyph = ctx.face->glyph;
             const FT_Bitmap* bmp = &glyph->bitmap;
-            const ssize_t off_y = base_offset - glyph->bitmap_top;
+            const size_t off_y = base_offset - glyph->bitmap_top;
             size_t size;
 
             // calc line width, floating point math doesn't match bmp width
