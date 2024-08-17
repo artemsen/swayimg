@@ -1,16 +1,27 @@
 ---
 Language: Cpp
 BasedOnStyle: WebKit
+ColumnLimit: 80
+
 AlignAfterOpenBracket: Align
-AlignEscapedNewlines: Left
+AlignArrayOfStructures: Left
 AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
 AlignTrailingComments: true
+
 AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortLambdasOnASingleLine: Empty
+
+ForEachMacros: [list_for_each]
+SpaceBeforeParens: ControlStatementsExceptForEachMacros
+
 BreakBeforeBinaryOperators: None
-ColumnLimit: 80
+IndentCaseLabels: true
+InsertBraces: true
+
+SortIncludes: true
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex:    '^".*\.h"'
@@ -21,5 +32,3 @@ IncludeCategories:
     Priority: 3
   - Regex:    '.*'
     Priority: 4
-IndentCaseLabels: true
-SortIncludes: true

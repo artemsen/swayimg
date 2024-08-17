@@ -31,10 +31,10 @@ struct config_context {
 static struct config_context ctx;
 
 static const struct location config_locations[] = {
-    { "XDG_CONFIG_HOME", "/swayimg/config" },
-    { "HOME", "/.config/swayimg/config" },
-    { "XDG_CONFIG_DIRS", "/swayimg/config" },
-    { NULL, "/etc/xdg/swayimg/config" }
+    { "XDG_CONFIG_HOME", "/swayimg/config"         },
+    { "HOME",            "/.config/swayimg/config" },
+    { "XDG_CONFIG_DIRS", "/swayimg/config"         },
+    { NULL,              "/etc/xdg/swayimg/config" }
 };
 
 /**

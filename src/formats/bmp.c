@@ -83,18 +83,24 @@ static inline size_t right_zeros(uint32_t val)
 {
     size_t count = sizeof(uint32_t) * BITS_PER_BYTE;
     val &= -(int32_t)val;
-    if (val)
+    if (val) {
         --count;
-    if (val & 0x0000ffff)
+    }
+    if (val & 0x0000ffff) {
         count -= 16;
-    if (val & 0x00ff00ff)
+    }
+    if (val & 0x00ff00ff) {
         count -= 8;
-    if (val & 0x0f0f0f0f)
+    }
+    if (val & 0x0f0f0f0f) {
         count -= 4;
-    if (val & 0x33333333)
+    }
+    if (val & 0x33333333) {
         count -= 2;
-    if (val & 0x55555555)
+    }
+    if (val & 0x55555555) {
         count -= 1;
+    }
     return count;
 }
 

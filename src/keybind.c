@@ -106,9 +106,9 @@ struct virtual_keys {
     const char* name;
 };
 static const struct virtual_keys virtual_keys[] = {
-    { VKEY_SCROLL_UP, "ScrollUp" },
-    { VKEY_SCROLL_DOWN, "ScrollDown" },
-    { VKEY_SCROLL_LEFT, "ScrollLeft" },
+    { VKEY_SCROLL_UP,    "ScrollUp"    },
+    { VKEY_SCROLL_DOWN,  "ScrollDown"  },
+    { VKEY_SCROLL_LEFT,  "ScrollLeft"  },
     { VKEY_SCROLL_RIGHT, "ScrollRight" },
 };
 

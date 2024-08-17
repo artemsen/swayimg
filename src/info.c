@@ -20,8 +20,6 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-// clang-format off
-
 /** Display modes. */
 enum info_mode {
     mode_viewer,
@@ -35,6 +33,7 @@ static const char* mode_names[] = {
 };
 #define MODES_NUM 2
 
+// clang-format off
 /** Field names. */
 static const char* field_names[] = {
     [info_file_name] = "name",
@@ -49,6 +48,7 @@ static const char* field_names[] = {
     [info_status] = "status",
 };
 #define INFO_FIELDS_NUM ARRAY_SIZE(field_names)
+// clang-format on
 
 /** Positions of text info block. */
 enum block_position {
@@ -99,8 +99,6 @@ static const struct field_scheme default_gallery_br[] = {
     { .type = info_file_name, .title = false },
     { .type = info_status,    .title = false },
 };
-
-// clang-format on
 
 // Space between text layout and window edge
 #define TEXT_PADDING 10
