@@ -26,7 +26,8 @@ struct thumbnail {
 
 /** Gallery context. */
 struct gallery {
-    size_t thumb_size;        ///< Max size of thumbnail
+    size_t thumb_size;        ///< Size of thumbnail
+    size_t thumb_max;         ///< Max number of thumbnails in cache
     struct thumbnail* thumbs; ///< List of preview images
     bool thumb_aa;            ///< Use anti-aliasing for thumbnail
 
@@ -257,22 +258,23 @@ static void redraw(void)
 /** Reset loader queue. */
 static void reset_loader(void)
 {
-    loader_queue_reset();
-    if (!get_thumbnail(ctx.selected)) {
-        loader_queue_append(ctx.selected);
-    }
-
     // get number of thumbnails on the screen
     const size_t cols = ui_get_width() / ctx.thumb_size;
     const size_t rows = ui_get_height() / ctx.thumb_size + 1;
+    const size_t total = cols * rows;
 
     // search for nearest to selected
-    const size_t last = image_list_forward(ctx.top, cols * rows);
+    const size_t last = image_list_forward(ctx.top, total);
     const size_t max_f = image_list_distance(ctx.selected, last);
     const size_t max_b = image_list_distance(ctx.top, ctx.selected);
 
     size_t next_f = ctx.selected;
     size_t next_b = ctx.selected;
+
+    loader_queue_reset();
+    if (!get_thumbnail(ctx.selected)) {
+        loader_queue_append(ctx.selected);
+    }
 
     for (size_t i = 0; i < max(max_f, max_b); ++i) {
         if (i < max_f) {
@@ -285,6 +287,21 @@ static void reset_loader(void)
             next_b = image_list_prev_file(next_b);
             if (!get_thumbnail(next_b)) {
                 loader_queue_append(next_b);
+            }
+        }
+    }
+
+    // remove the furthest thumnails from the cache
+    if (ctx.thumb_max != 0 && total < ctx.thumb_max) {
+        const size_t half = (ctx.thumb_max - total) / 2;
+        const size_t min_id = image_list_back(ctx.top, half);
+        const size_t max_id = image_list_forward(last, half);
+        list_for_each(ctx.thumbs, struct thumbnail, it) {
+            if ((min_id != IMGLIST_INVALID && it->image->index < min_id) ||
+                (max_id != IMGLIST_INVALID && it->image->index > max_id)) {
+                ctx.thumbs = list_remove(it);
+                image_free(it->image);
+                free(it);
             }
         }
     }
@@ -542,6 +559,12 @@ static enum config_status load_config(const char* key, const char* value)
             ctx.thumb_size = num;
             status = cfgst_ok;
         }
+    } else if (strcmp(key, "cache") == 0) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= 0) {
+            ctx.thumb_max = num;
+            status = cfgst_ok;
+        }
     } else if (strcmp(key, "window") == 0) {
         if (config_to_color(value, &ctx.clr_window)) {
             status = cfgst_ok;
@@ -576,6 +599,7 @@ static enum config_status load_config(const char* key, const char* value)
 void gallery_create(void)
 {
     ctx.thumb_size = 200;
+    ctx.thumb_max = 100;
     ctx.top = IMGLIST_INVALID;
     ctx.selected = IMGLIST_INVALID;
     ctx.clr_background = 0xff202020;

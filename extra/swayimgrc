@@ -58,6 +58,8 @@ preload = 1
 [gallery]
 # Max size of the thumbnail (pixels)
 size = 200
+# Max number of thumbnails in cache, 0 to unlimit
+cache = 100
 # Use anti-aliasing for thumbnails (yes/no)
 antialiasing = no
 # Background color of the window (RGBA)
