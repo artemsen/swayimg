@@ -6,7 +6,6 @@
 
 #include "application.h"
 #include "config.h"
-#include "str.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -237,32 +236,22 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
                         struct action_seq* actions)
 {
     struct keybind* kb;
-    struct keybind* prev;
 
     // remove existing binding
-    kb = *head;
-    prev = NULL;
-    while (kb) {
-        if (kb->key == key && kb->mods == mods) {
-            if (prev) {
-                prev->next = kb->next;
-            } else {
-                *head = kb->next;
-            }
-            free_binding(kb);
+    list_for_each(*head, struct keybind, it) {
+        if (it->key == key && it->mods == mods) {
+            *head = list_remove(&it->list);
+            free_binding(it);
             break;
         }
-        prev = kb;
-        kb = kb->next;
     }
 
-    // add to head
+    // create new binding
     kb = create_binding(key, mods, actions);
-    if (!kb) {
-        action_free(actions);
+    if (kb) {
+        *head = list_add(*head, kb);
     } else {
-        kb->next = *head;
-        *head = kb;
+        action_free(actions);
     }
 }
 
@@ -362,15 +351,13 @@ void keybind_create(void)
 
 void keybind_destroy(void)
 {
-    for (size_t i = 0; i < 2; ++i) {
-        struct keybind* it = i ? kb_viewer : kb_gallery;
-        while (it) {
-            struct keybind* next = it->next;
-            free_binding(it);
-            it = next;
-        }
+    list_for_each(kb_viewer, struct keybind, it) {
+        free_binding(it);
     }
     kb_viewer = NULL;
+    list_for_each(kb_gallery, struct keybind, it) {
+        free_binding(it);
+    }
     kb_gallery = NULL;
 }
 
@@ -381,16 +368,13 @@ struct keybind* keybind_get(void)
 
 struct keybind* keybind_find(xkb_keysym_t key, uint8_t mods)
 {
-    struct keybind* it = keybind_get();
-
     // we always use lowercase + Shift modifier
     key = xkb_keysym_to_lower(key);
 
-    while (it) {
+    list_for_each(keybind_get(), struct keybind, it) {
         if (it->key == key && it->mods == mods) {
             return it;
         }
-        it = it->next;
     }
 
     return NULL;

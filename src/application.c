@@ -5,12 +5,12 @@
 #include "application.h"
 
 #include "buildcfg.h"
+#include "config.h"
 #include "font.h"
 #include "gallery.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
-#include "str.h"
 #include "sway.h"
 #include "ui.h"
 #include "viewer.h"
@@ -47,9 +47,9 @@ struct watchfd {
 };
 
 /* Application event queue (list). */
-struct event_entry {
+struct event_queue {
+    struct list list;
     struct event event;
-    struct event_entry* next;
 };
 
 /** Application context */
@@ -59,7 +59,7 @@ struct application {
     struct watchfd* wfds; ///< FD polling descriptors
     size_t wfds_num;      ///< Number of polling FD
 
-    struct event_entry* events;  ///< Event queue
+    struct event_queue* events;  ///< Event queue
     pthread_mutex_t events_lock; ///< Event queue lock
     int event_signal;            ///< Queue change notification
 
@@ -122,15 +122,17 @@ static void handle_event_queue(__attribute__((unused)) void* data)
     notification_reset(ctx.event_signal);
 
     while (ctx.events && ctx.state == loop_run) {
-        struct event_entry* entry;
+        struct event_queue* entry = NULL;
         pthread_mutex_lock(&ctx.events_lock);
-        entry = ctx.events;
         if (ctx.events) {
-            ctx.events = ctx.events->next;
+            entry = ctx.events;
+            ctx.events = list_remove(entry);
         }
         pthread_mutex_unlock(&ctx.events_lock);
-        ctx.ehandler(&entry->event);
-        free(entry);
+        if (entry) {
+            ctx.ehandler(&entry->event);
+            free(entry);
+        }
     }
 }
 
@@ -140,7 +142,7 @@ static void handle_event_queue(__attribute__((unused)) void* data)
  */
 static void append_event(const struct event* event)
 {
-    struct event_entry* entry;
+    struct event_queue* entry;
 
     // create new entry
     entry = malloc(sizeof(*entry));
@@ -148,19 +150,10 @@ static void append_event(const struct event* event)
         return;
     }
     memcpy(&entry->event, event, sizeof(entry->event));
-    entry->next = NULL;
 
     // add to queue tail
     pthread_mutex_lock(&ctx.events_lock);
-    if (ctx.events) {
-        struct event_entry* last = ctx.events;
-        while (last->next) {
-            last = last->next;
-        }
-        last->next = entry;
-    } else {
-        ctx.events = entry;
-    }
+    ctx.events = list_append(ctx.events, entry);
     pthread_mutex_unlock(&ctx.events_lock);
 
     notification_raise(ctx.event_signal);
@@ -394,13 +387,11 @@ void app_destroy(void)
     }
     free(ctx.wfds);
 
-    while (ctx.events) {
-        struct event_entry* entry = ctx.events;
-        ctx.events = ctx.events->next;
-        if (entry->event.type == event_load) {
-            image_free(entry->event.param.load.image);
+    list_for_each(ctx.events, struct event_queue, it) {
+        if (it->event.type == event_load) {
+            image_free(it->event.param.load.image);
         }
-        free(entry);
+        free(it);
     }
     if (ctx.event_signal != -1) {
         notification_free(ctx.event_signal);
@@ -608,24 +599,17 @@ void app_redraw(void)
     const struct event event = {
         .type = event_redraw,
     };
-    struct event_entry* prev = NULL;
-    struct event_entry* it = ctx.events;
 
-    // remove the same event to append the new one to tail
-    while (it) {
-        struct event_entry* next = it->next;
+    // remove the same event to append new one to tail
+    pthread_mutex_lock(&ctx.events_lock);
+    list_for_each(ctx.events, struct event_queue, it) {
         if (it->event.type == event_redraw) {
-            if (prev) {
-                prev->next = next;
-            } else {
-                ctx.events = next;
-            }
+            ctx.events = list_remove(it);
             free(it);
             break;
         }
-        prev = it;
-        it = next;
     }
+    pthread_mutex_unlock(&ctx.events_lock);
 
     append_event(&event);
 }
@@ -661,17 +645,18 @@ void app_on_drag(int dx, int dy)
     const struct event event = { .type = event_drag,
                                  .param.drag.dx = dx,
                                  .param.drag.dy = dy };
-    struct event_entry* it = ctx.events;
 
     // merge with existing event
-    while (it) {
+    pthread_mutex_lock(&ctx.events_lock);
+    list_for_each(ctx.events, struct event_queue, it) {
         if (it->event.type == event_drag) {
             it->event.param.drag.dx += dx;
             it->event.param.drag.dy += dy;
+            pthread_mutex_unlock(&ctx.events_lock);
             return;
         }
-        it = it->next;
     }
+    pthread_mutex_unlock(&ctx.events_lock);
 
     append_event(&event);
 }

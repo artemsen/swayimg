@@ -9,7 +9,6 @@
 #include "event.h"
 #include "exif.h"
 #include "imagelist.h"
-#include "str.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -139,8 +138,8 @@ static const image_decoder decoders[] = {
 
 /** Background thread loader queue. */
 struct loader_queue {
-    size_t index;              ///< Index of the image to load
-    struct loader_queue* next; ///< Pointer to the next list entry
+    struct list list; ///< Links to prev/next entry
+    size_t index;     ///< Index of the image to load
 };
 
 /** Loader context. */
@@ -371,7 +370,7 @@ static void* loading_thread(__attribute__((unused)) void* data)
             }
         }
         entry = ctx.queue;
-        ctx.queue = ctx.queue->next;
+        ctx.queue = list_remove(entry);
         pthread_mutex_unlock(&ctx.lock);
 
         if (entry->index == IMGLIST_INVALID) {
@@ -415,42 +414,24 @@ void loader_destroy(void)
 
 void loader_queue_append(size_t index)
 {
-    struct loader_queue* last;
-    struct loader_queue* request = malloc(sizeof(*request));
-
-    if (!request) {
-        return;
+    struct loader_queue* entry = malloc(sizeof(*entry));
+    if (entry) {
+        entry->index = index;
+        pthread_mutex_lock(&ctx.lock);
+        ctx.queue = list_append(ctx.queue, entry);
+        pthread_cond_signal(&ctx.signal);
+        pthread_mutex_unlock(&ctx.lock);
     }
-    request->index = index;
-    request->next = NULL;
-
-    // add to queue tail
-    pthread_mutex_lock(&ctx.lock);
-    last = ctx.queue;
-    while (last && last->next) {
-        last = last->next;
-    }
-    if (last) {
-        last->next = request;
-    } else {
-        ctx.queue = request;
-    }
-    pthread_cond_signal(&ctx.signal);
-    pthread_mutex_unlock(&ctx.lock);
 }
 
 void loader_queue_reset(void)
 {
     pthread_mutex_lock(&ctx.lock);
-
-    while (ctx.queue) {
-        struct loader_queue* next = ctx.queue->next;
-        free(ctx.queue);
-        ctx.queue = next;
+    list_for_each(ctx.queue, struct loader_queue, it) {
+        free(it);
     }
-
+    ctx.queue = NULL;
     pthread_cond_signal(&ctx.signal);
     pthread_cond_wait(&ctx.ready, &ctx.lock);
-
     pthread_mutex_unlock(&ctx.lock);
 }

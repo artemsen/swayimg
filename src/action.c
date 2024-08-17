@@ -4,7 +4,7 @@
 
 #include "action.h"
 
-#include "str.h"
+#include "memdata.h"
 
 #include <ctype.h>
 #include <stdlib.h>

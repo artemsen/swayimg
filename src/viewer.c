@@ -12,7 +12,6 @@
 #include "info.h"
 #include "keybind.h"
 #include "loader.h"
-#include "str.h"
 #include "ui.h"
 
 #include <stdio.h>

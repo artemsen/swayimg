@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-#include "str.h"
+#include "memdata.h"
 
 #include <ctype.h>
 #include <stdio.h>

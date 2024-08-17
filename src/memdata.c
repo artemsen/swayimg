@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// String operations.
+// Manipulating data structures: arrays, strings and lists.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "str.h"
+#include "memdata.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -11,6 +11,54 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+
+struct list* list_add_head(struct list* head, struct list* entry)
+{
+    entry->next = head;
+    entry->prev = NULL;
+    if (head) {
+        head->prev = entry;
+    }
+    return entry;
+}
+
+struct list* list_append_tail(struct list* head, struct list* entry)
+{
+    struct list* last = NULL;
+
+    if (!head) {
+        head = entry;
+    } else {
+        last = head;
+        while (last && last->next) {
+            last = last->next;
+        }
+        last->next = entry;
+    }
+
+    entry->prev = last;
+    entry->next = NULL;
+
+    return head;
+}
+
+struct list* list_remove_entry(struct list* entry)
+{
+    struct list* prev = entry->prev;
+    struct list* next = entry->next;
+    struct list* head = prev ? prev : next;
+
+    if (prev) {
+        prev->next = next;
+    }
+    if (next) {
+        next->prev = prev;
+    }
+    while (head && head->prev) {
+        head = head->prev;
+    }
+    return head;
+}
 
 char* str_dup(const char* src, char** dst)
 {

@@ -5,10 +5,10 @@
 #include "gallery.h"
 
 #include "application.h"
+#include "config.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
-#include "str.h"
 #include "ui.h"
 
 #include <stdlib.h>
@@ -19,9 +19,9 @@
 
 /** List of thumbnails. */
 struct thumbnail {
-    struct image* image;    ///< Preview image
-    size_t width, height;   ///< Real image size
-    struct thumbnail* next; ///< Next entry
+    struct list list;     ///< Links to prev/next entry
+    struct image* image;  ///< Preview image
+    size_t width, height; ///< Real image size
 };
 
 /** Gallery context. */
@@ -48,12 +48,11 @@ static struct gallery ctx;
  */
 static void reset_thumbnails(void)
 {
-    while (ctx.thumbs) {
-        struct thumbnail* entry = ctx.thumbs;
-        ctx.thumbs = ctx.thumbs->next;
-        image_free(entry->image);
-        free(entry);
+    list_for_each(ctx.thumbs, struct thumbnail, it) {
+        image_free(it->image);
+        free(it);
     }
+    ctx.thumbs = NULL;
     app_redraw();
 }
 
@@ -64,17 +63,14 @@ static void reset_thumbnails(void)
 static void add_thumbnail(struct image* image)
 {
     struct thumbnail* entry = malloc(sizeof(*entry));
-    if (entry) {
+    if (!entry) {
+        image_free(image);
+    } else {
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-
-        // create thumbnail from image
         image_thumbnail(image, ctx.thumb_size, ctx.thumb_aa);
-
-        // add to the list
-        entry->next = ctx.thumbs;
-        ctx.thumbs = entry;
+        ctx.thumbs = list_append(ctx.thumbs, entry);
     }
 }
 
@@ -85,12 +81,10 @@ static void add_thumbnail(struct image* image)
  */
 static struct thumbnail* get_thumbnail(size_t index)
 {
-    struct thumbnail* it = ctx.thumbs;
-    while (it) {
+    list_for_each(ctx.thumbs, struct thumbnail, it) {
         if (it->image->index == index) {
             return it;
         }
-        it = it->next;
     }
     return NULL;
 }
@@ -101,21 +95,12 @@ static struct thumbnail* get_thumbnail(size_t index)
  */
 static void remove_thumbnail(size_t index)
 {
-    struct thumbnail* it = ctx.thumbs;
-    struct thumbnail* prev = NULL;
-    while (it) {
+    list_for_each(ctx.thumbs, struct thumbnail, it) {
         if (it->image->index == index) {
-            if (prev) {
-                prev->next = it->next;
-            } else {
-                ctx.thumbs = it->next;
-            }
+            ctx.thumbs = list_remove(it);
             image_free(it->image);
             free(it);
-            return;
         }
-        prev = it;
-        it = it->next;
     }
 }
 

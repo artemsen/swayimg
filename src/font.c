@@ -5,7 +5,7 @@
 #include "font.h"
 
 #include "config.h"
-#include "str.h"
+#include "memdata.h"
 
 // font realted
 #include <fontconfig/fontconfig.h>

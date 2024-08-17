@@ -5,7 +5,7 @@
 #pragma once
 
 #include "action.h"
-#include "config.h"
+#include "memdata.h"
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -22,11 +22,11 @@
 
 /** Key binding list entry. */
 struct keybind {
+    struct list list;          ///< Links to prev/next entry
     xkb_keysym_t key;          ///< Keyboard key
     uint8_t mods;              ///< Key modifiers
     struct action_seq actions; ///< Sequence of action
     char* help;                ///< Help line with binding description
-    struct keybind* next;      ///< Next entry in list
 };
 
 /**

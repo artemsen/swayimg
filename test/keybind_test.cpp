@@ -38,7 +38,7 @@ TEST_F(Keybind, AddOne)
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions.sequence[0].type, action_exit);
     ASSERT_STREQ(kb->help, "a: exit");
-    ASSERT_EQ(kb->next, nullptr);
+    ASSERT_EQ(kb->list.next, nullptr);
 }
 
 TEST_F(Keybind, Replace)
@@ -51,9 +51,12 @@ TEST_F(Keybind, Replace)
     ASSERT_NE(kb, nullptr);
     ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('b'));
     ASSERT_EQ(kb->actions.sequence[0].type, action_reload);
-    ASSERT_EQ(kb->next->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->next->actions.sequence[0].type, action_exit);
-    ASSERT_EQ(kb->next->next, nullptr);
+
+    const struct keybind* next =
+        reinterpret_cast<const struct keybind*>(kb->list.next);
+    ASSERT_EQ(next->key, static_cast<xkb_keysym_t>('a'));
+    ASSERT_EQ(next->actions.sequence[0].type, action_exit);
+    ASSERT_EQ(next->list.next, nullptr);
 }
 
 TEST_F(Keybind, Find)
@@ -108,7 +111,7 @@ TEST_F(Keybind, ActionParams)
     ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions.sequence[0].type, action_exit);
-    ASSERT_EQ(kb->next, nullptr);
+    ASSERT_EQ(kb->list.next, nullptr);
 
     ASSERT_EQ(config_set(section, "a", "status  \t params 1 2 3\t"), cfgst_ok);
     kb = keybind_get();
@@ -118,7 +121,7 @@ TEST_F(Keybind, ActionParams)
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
     ASSERT_EQ(kb->actions.sequence[0].type, action_status);
     ASSERT_STREQ(kb->actions.sequence[0].params, "params 1 2 3");
-    ASSERT_EQ(kb->next, nullptr);
+    ASSERT_EQ(kb->list.next, nullptr);
 }
 
 TEST_F(Keybind, Multiaction)
@@ -134,5 +137,5 @@ TEST_F(Keybind, Multiaction)
     ASSERT_EQ(kb->actions.sequence[1].type, action_reload);
     ASSERT_EQ(kb->actions.sequence[2].type, action_exit);
     ASSERT_STREQ(kb->actions.sequence[0].params, "cmd");
-    ASSERT_EQ(kb->next, nullptr);
+    ASSERT_EQ(kb->list.next, nullptr);
 }

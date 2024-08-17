@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// String operations.
+// Manipulating data structures: arrays, strings and lists.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -17,6 +17,52 @@ struct str_slice {
     const char* value;
     size_t len;
 };
+
+/** Double linked list. */
+struct list {
+    struct list* next;
+    struct list* prev;
+};
+
+/**
+ * Add new entry to the head.
+ * @param head pointer to the list head
+ * @param entry pointer to entry
+ * @return new head pointer
+ */
+struct list* list_add_head(struct list* head, struct list* entry);
+#define list_add(head, entry) \
+    (void*)list_add_head((struct list*)head, (struct list*)entry)
+
+/**
+ * Append new entry to the tail.
+ * @param head pointer to the list head
+ * @param entry pointer to entry
+ * @return new head pointer
+ */
+struct list* list_append_tail(struct list* head, struct list* entry);
+#define list_append(head, entry) \
+    (void*)list_append_tail((struct list*)head, (struct list*)entry)
+
+/**
+ * Remove entry from the list.
+ * @param entry pointer to entry
+ * @return new head pointer
+ */
+struct list* list_remove_entry(struct list* entry);
+#define list_remove(entry) (void*)list_remove_entry((struct list*)entry)
+
+/**
+ * List iterator.
+ * @param head pointer to the list head
+ * @param type iterator type name
+ * @param it iterator variable name
+ */
+#define list_for_each(head, type, it)                                      \
+    for (type* it = head,                                                  \
+               *it_next = head ? (type*)((struct list*)head)->next : NULL; \
+         it;                                                               \
+         it = it_next, it_next = it ? (type*)((struct list*)it)->next : NULL)
 
 /**
  * Duplicate string.

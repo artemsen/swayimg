@@ -6,7 +6,7 @@
 
 #include "config.h"
 #include "loader.h"
-#include "str.h"
+#include "memdata.h"
 #include "ui.h"
 #include "viewer.h"
 

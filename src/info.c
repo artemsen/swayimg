@@ -10,7 +10,6 @@
 #include "imagelist.h"
 #include "keybind.h"
 #include "loader.h"
-#include "str.h"
 #include "ui.h"
 
 #include <stdarg.h>
@@ -575,7 +574,6 @@ void info_switch(const char* mode)
 
 void info_switch_help(void)
 {
-
     if (ctx.help) {
         for (size_t i = 0; i < ctx.help_num; i++) {
             free(ctx.help[i].data);
@@ -584,33 +582,27 @@ void info_switch_help(void)
         ctx.help = NULL;
         ctx.help_num = 0;
     } else {
-        const struct keybind* kb = keybind_get();
-        size_t num = 0;
-
         // get number of bindings
-        while (kb) {
-            if (kb->help) {
+        size_t num = 0;
+        list_for_each(keybind_get(), struct keybind, it) {
+            if (it->help) {
                 ++num;
             }
-            kb = kb->next;
         }
         if (num == 0) {
             return;
         }
 
-        // create help layer
+        // create help layer in reverse order
         ctx.help = calloc(1, num * sizeof(*ctx.help));
         if (!ctx.help) {
             return;
         }
         ctx.help_num = num;
-        // fill keybinds help (they are stored in reverse order)
-        kb = keybind_get();
-        while (kb) {
-            if (kb->help) {
-                font_render(kb->help, &ctx.help[--num]);
+        list_for_each(keybind_get(), struct keybind, it) {
+            if (it->help) {
+                font_render(it->help, &ctx.help[--num]);
             }
-            kb = kb->next;
         }
     }
 }

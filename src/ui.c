@@ -7,7 +7,6 @@
 #include "application.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "str.h"
 #include "xdg-shell-protocol.h"
 
 #include <errno.h>
