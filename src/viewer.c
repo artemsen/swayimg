@@ -358,10 +358,20 @@ static void reset_state(void)
  */
 static bool skip_image(void)
 {
-    size_t index = image_list_skip(fetcher_current()->index);
+    size_t index;
+    const size_t current = fetcher_current()->index;
 
+    index = image_list_skip(current);
     while (index != IMGLIST_INVALID && !fetcher_open(index)) {
         index = image_list_next_file(index);
+    }
+
+    if (index == IMGLIST_INVALID) {
+        index = image_list_prev_file(current);
+        while (index != IMGLIST_INVALID && !fetcher_open(index)) {
+            image_list_skip(index);
+            index = image_list_prev_file(index);
+        }
     }
 
     return (index != IMGLIST_INVALID);
