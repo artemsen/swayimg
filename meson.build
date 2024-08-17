@@ -42,6 +42,7 @@ fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 threads = dependency('threads')
 rt = cc.find_library('rt')
+
 # optional dependencies: file formats support
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
 heif = dependency('libheif', required: get_option('heif'))
@@ -53,11 +54,24 @@ rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
+
 # hack to build "pkgconfigless" gif in FreeBSD
-gif = cc.find_library('gif', dirs: wlcln.get_variable(pkgconfig: 'libdir'), required: get_option('gif'))
+gif_opt = get_option('gif')
+if gif_opt.disabled()
+  gif = cc.find_library('gif', required: gif_opt)
+else
+  gif = cc.find_library('gif', required: false)
+  if not gif.found() and gif_opt.allowed()
+    gif = cc.find_library('gif',
+                          dirs: wlcln.get_variable(pkgconfig: 'libdir'),
+                          required: gif_opt)
+  endif
+endif
+
 # optional dependencies: other features
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
+
 # non-Linux (BSD specific)
 epoll = dependency('epoll-shim', required: false)
 inotify = dependency('libinotify', required: false)
