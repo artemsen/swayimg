@@ -1,29 +1,32 @@
 # Swayimg: image viewer for Wayland
 
-Lightweight image viewer for Wayland display servers.
-
-In a [Sway](https://swaywm.org) compatible mode, the viewer creates an "overlay"
-above the currently active window, which gives the illusion that you are opening
-the image directly in a terminal window.
+Fully customizable and lightweight image viewer for Wayland based display servers.
 
 ![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
 ![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)
 
-## Supported image formats
-
-- JPEG (via [libjpeg](http://libjpeg.sourceforge.net));
-- JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
-- PNG (via [libpng](http://www.libpng.org));
-- GIF (via [giflib](http://giflib.sourceforge.net));
-- SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
-- WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
-- HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
-- AV1F/AVIFS (via [libavif](https://github.com/AOMediaCodec/libavif));
-- TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
-- EXR (via [OpenEXR](https://openexr.com));
-- BMP (built-in);
-- PNM (built-in);
-- TGA (built-in).
+- Support for the most popular image formats:
+  - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
+  - JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
+  - PNG (via [libpng](http://www.libpng.org));
+  - GIF (via [giflib](http://giflib.sourceforge.net));
+  - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
+  - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
+  - HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
+  - AV1F/AVIFS (via [libavif](https://github.com/AOMediaCodec/libavif));
+  - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
+  - EXR (via [OpenEXR](https://openexr.com));
+  - BMP (built-in);
+  - PNM (built-in);
+  - TGA (built-in).
+- Fully customizable keyboard bindings, colors, and [many other](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) parameters;
+- Loading images from files and pipes;
+- Gallery and viewer modes with slideshow and animation support;
+- Preload images in a separate thread;
+- Cache memory, no data is written to permanent storage (HDD/SSD);
+- [Sway](https://swaywm.org) integration mode: the application creates an "overlay"
+above the currently active window, which gives the illusion that you are opening
+the image directly in a terminal window.
 
 ## Usage
 
