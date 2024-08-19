@@ -414,14 +414,23 @@ size_t image_list_jump(size_t start, size_t distance, bool forward)
 
 size_t image_list_distance(size_t start, size_t end)
 {
-    size_t index = start;
     size_t distance = 0;
+    size_t index;
 
-    if (start == IMGLIST_INVALID || end == IMGLIST_INVALID || start > end) {
-        return IMGLIST_INVALID;
+    if (start == IMGLIST_INVALID) {
+        start = image_list_first();
+    }
+    if (end == IMGLIST_INVALID) {
+        end = image_list_last();
+    }
+    if (start <= end) {
+        index = start;
+    } else {
+        index = end;
+        end = start;
     }
 
-    while (index != IMGLIST_INVALID && index < end) {
+    while (index != IMGLIST_INVALID && index != end) {
         ++distance;
         index = image_list_nearest(index, true, false);
     }

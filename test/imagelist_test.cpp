@@ -142,12 +142,19 @@ TEST_F(ImageList, Distance)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
+    ASSERT_EQ(image_list_distance(IMGLIST_INVALID, IMGLIST_INVALID),
+              static_cast<size_t>(2));
+    ASSERT_EQ(image_list_distance(0, IMGLIST_INVALID), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_distance(IMGLIST_INVALID, 2), static_cast<size_t>(2));
     ASSERT_EQ(image_list_distance(0, 0), static_cast<size_t>(0));
     ASSERT_EQ(image_list_distance(0, 1), static_cast<size_t>(1));
     ASSERT_EQ(image_list_distance(0, 2), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_distance(2, 1), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_distance(2, 0), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_distance(2, 2), static_cast<size_t>(0));
     image_list_skip(1);
     ASSERT_EQ(image_list_distance(0, 2), static_cast<size_t>(1));
-    ASSERT_EQ(image_list_distance(2, 0), static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_distance(2, 0), static_cast<size_t>(1));
 }
 
 TEST_F(ImageList, Get)

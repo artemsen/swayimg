@@ -113,13 +113,13 @@ static void reset_loader(void)
 
     for (size_t i = 0; i < max(max_f, max_b); ++i) {
         if (i < max_f) {
-            next_f = image_list_next_file(next_f);
+            next_f = image_list_nearest(next_f, true, false);
             if (!get_thumbnail(next_f)) {
                 loader_queue_append(next_f);
             }
         }
         if (i < max_b) {
-            next_b = image_list_prev_file(next_b);
+            next_b = image_list_nearest(next_b, false, false);
             if (!get_thumbnail(next_b)) {
                 loader_queue_append(next_b);
             }
@@ -254,13 +254,13 @@ static void select_nearest(enum action_type direction)
         case action_prev_file:
         case action_step_left:
             if (index != image_list_first()) {
-                index = image_list_prev_file(index);
+                index = image_list_nearest(index, false, false);
             }
             break;
         case action_next_file:
         case action_step_right:
             if (index != image_list_last()) {
-                index = image_list_next_file(index);
+                index = image_list_nearest(index, true, false);
             }
             break;
         case action_step_up:
@@ -416,8 +416,8 @@ static void draw_thumbnails(struct pixmap* window)
             }
 
             // get next thumbnail index
-            index = image_list_next_file(index);
-            if (index == IMGLIST_INVALID || index <= ctx.top) {
+            index = image_list_nearest(index, true, false);
+            if (index == IMGLIST_INVALID) {
                 goto done;
             }
         }
