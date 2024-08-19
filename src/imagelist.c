@@ -7,8 +7,6 @@
 #include "config.h"
 #include "loader.h"
 #include "memdata.h"
-#include "ui.h"
-#include "viewer.h"
 
 #include <dirent.h>
 #include <stdlib.h>
@@ -141,49 +139,6 @@ static void add_dir(const char* dir, bool recursive)
 }
 
 /**
- * Get next source entry.
- * @param start index of the start position
- * @param forward step direction
- * @return index of the next entry or IMGLIST_INVALID if not found
- */
-static size_t next_entry(size_t start, bool forward)
-{
-    size_t index = start;
-
-    if (start == IMGLIST_INVALID) {
-        return image_list_first();
-    }
-
-    while (true) {
-        if (forward) {
-            if (++index >= ctx.size) {
-                if (!ctx.loop) {
-                    break;
-                }
-                index = 0;
-            }
-        } else {
-            if (index-- == 0) {
-                if (!ctx.loop) {
-                    break;
-                }
-                index = ctx.size - 1;
-            }
-        }
-
-        if (index == start) {
-            break;
-        }
-
-        if (ctx.sources[index]) {
-            return index;
-        }
-    }
-
-    return IMGLIST_INVALID;
-}
-
-/**
  * Get next directory entry index (works only for paths as source).
  * @param start index of the start position
  * @param forward step direction
@@ -210,7 +165,7 @@ static size_t next_dir(size_t start, bool forward)
         const char* next_path;
         size_t next_len;
 
-        index = next_entry(index, forward);
+        index = image_list_nearest(index, forward, ctx.loop);
         if (index == IMGLIST_INVALID || index == start) {
             break; // not found
         }
@@ -381,57 +336,107 @@ size_t image_list_find(const char* source)
     return IMGLIST_INVALID;
 }
 
+size_t image_list_nearest(size_t start, bool forward, bool loop)
+{
+    size_t index = start;
+
+    if (index == IMGLIST_INVALID) {
+        if (forward) {
+            return image_list_first();
+        }
+        if (loop && !forward) {
+            return image_list_last();
+        }
+        return IMGLIST_INVALID;
+    }
+    if (index >= ctx.size) {
+        if (!forward) {
+            return image_list_last();
+        }
+        if (loop && forward) {
+            return image_list_first();
+        }
+        return IMGLIST_INVALID;
+    }
+
+    while (true) {
+        if (forward) {
+            if (index + 1 < ctx.size) {
+                ++index;
+            } else if (!loop) {
+                index = IMGLIST_INVALID; // already at last entry
+                break;
+            } else {
+                index = 0;
+            }
+        } else {
+            if (index > 0) {
+                --index;
+            } else if (!loop) {
+                index = IMGLIST_INVALID; // already at first entry
+                break;
+            } else {
+                index = ctx.size - 1;
+            }
+        }
+
+        if (index == start) {
+            index = IMGLIST_INVALID; // only one valid entry in the list
+            break;
+        }
+
+        if (ctx.sources[index]) {
+            break;
+        }
+    }
+
+    return index;
+}
+
+size_t image_list_jump(size_t start, size_t distance, bool forward)
+{
+    size_t index = start;
+    if (index == IMGLIST_INVALID || index >= ctx.size) {
+        return IMGLIST_INVALID;
+    }
+
+    while (distance) {
+        const size_t next = image_list_nearest(index, forward, false);
+        if (next == IMGLIST_INVALID) {
+            break;
+        }
+        index = next;
+        --distance;
+    }
+
+    return index;
+}
+
 size_t image_list_distance(size_t start, size_t end)
 {
     size_t index = start;
-    size_t step = 0;
+    size_t distance = 0;
 
-    if (start > end) {
+    if (start == IMGLIST_INVALID || end == IMGLIST_INVALID || start > end) {
         return IMGLIST_INVALID;
     }
 
     while (index != IMGLIST_INVALID && index < end) {
-        ++step;
-        index = next_entry(index, true);
+        ++distance;
+        index = image_list_nearest(index, true, false);
     }
 
-    return step;
-}
-
-size_t image_list_back(size_t start, size_t distance)
-{
-    size_t index = start;
-    while (distance--) {
-        const size_t next = next_entry(index, false);
-        if (next == IMGLIST_INVALID || next >= start) {
-            break;
-        }
-        index = next;
-    }
-    return index;
-}
-
-size_t image_list_forward(size_t start, size_t distance)
-{
-    size_t index = start;
-    while (distance--) {
-        const size_t next = next_entry(index, true);
-        if (next == IMGLIST_INVALID || next <= start) {
-            break;
-        }
-        index = next;
-    }
-    return index;
+    return distance;
 }
 
 size_t image_list_next_file(size_t start)
 {
-    return next_entry(start, true);
+    return image_list_nearest(start, true, ctx.loop);
 }
 
 size_t image_list_prev_file(size_t start)
 {
-    return next_entry(start, false);
+    return image_list_nearest(start, false, ctx.loop);
 }
 
 size_t image_list_next_dir(size_t start)
@@ -449,7 +454,7 @@ size_t image_list_first(void)
     if (ctx.size == 0) {
         return IMGLIST_INVALID;
     }
-    return ctx.sources[0] ? 0 : next_entry(0, true);
+    return ctx.sources[0] ? 0 : image_list_nearest(0, true, false);
 }
 
 size_t image_list_last(void)
@@ -458,15 +463,24 @@ size_t image_list_last(void)
     if (ctx.size == 0) {
         return IMGLIST_INVALID;
     }
-    return ctx.sources[index] ? index : next_entry(index, false);
+    return ctx.sources[index] ? index : image_list_nearest(index, false, false);
 }
 
 size_t image_list_skip(size_t index)
 {
+    size_t next;
+
+    // remove current entry from list
     if (index < ctx.size && ctx.sources[index]) {
-        // remove current entry from list
         free(ctx.sources[index]);
         ctx.sources[index] = NULL;
     }
-    return next_entry(index, true);
+
+    // get next entry
+    next = image_list_nearest(index, true, false);
+    if (next == IMGLIST_INVALID) {
+        next = image_list_nearest(index, false, false);
+    }
+
+    return next;
 }

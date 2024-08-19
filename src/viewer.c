@@ -363,15 +363,7 @@ static bool skip_image(void)
 
     index = image_list_skip(current);
     while (index != IMGLIST_INVALID && !fetcher_open(index)) {
-        index = image_list_next_file(index);
-    }
-
-    if (index == IMGLIST_INVALID) {
-        index = image_list_prev_file(current);
-        while (index != IMGLIST_INVALID && !fetcher_open(index)) {
-            image_list_skip(index);
-            index = image_list_prev_file(index);
-        }
+        index = image_list_skip(index);
     }
 
     return (index != IMGLIST_INVALID);

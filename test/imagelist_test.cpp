@@ -32,8 +32,110 @@ TEST_F(ImageList, Skip)
 {
     const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
     image_list_init(sources, 3);
-    const size_t idx = image_list_skip(1);
-    ASSERT_EQ(idx, static_cast<size_t>(2));
+    ASSERT_EQ(image_list_skip(2), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_skip(0), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_skip(1), static_cast<size_t>(IMGLIST_INVALID));
+}
+
+TEST_F(ImageList, NearestFwdNoLoop)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+    ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, true, false),
+              static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(0, true, false), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_nearest(1, true, false), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_nearest(2, true, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_nearest(42, true, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    image_list_skip(1);
+    ASSERT_EQ(image_list_nearest(0, true, false), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_nearest(1, true, false), static_cast<size_t>(2));
+}
+
+TEST_F(ImageList, NearestFwdLoop)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+    ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, true, true),
+              static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(0, true, true), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_nearest(1, true, true), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_nearest(2, true, true), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(42, true, true), static_cast<size_t>(0));
+    image_list_skip(0);
+    ASSERT_EQ(image_list_nearest(0, true, true), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_nearest(2, true, true), static_cast<size_t>(1));
+}
+
+TEST_F(ImageList, NearestBackNoLoop)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+    ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, false, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_nearest(0, false, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_nearest(1, false, false), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(2, false, false), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_nearest(42, false, false), static_cast<size_t>(2));
+    image_list_skip(1);
+    ASSERT_EQ(image_list_nearest(2, false, false), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(1, false, false), static_cast<size_t>(0));
+}
+
+TEST_F(ImageList, NearestBackLoop)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+    ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, false, true),
+              static_cast<size_t>(2));
+    ASSERT_EQ(image_list_nearest(0, false, true), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_nearest(1, false, true), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(2, false, true), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_nearest(42, false, true), static_cast<size_t>(2));
+    image_list_skip(1);
+    ASSERT_EQ(image_list_nearest(2, false, true), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_nearest(1, false, true), static_cast<size_t>(0));
+}
+
+TEST_F(ImageList, JumpFwd)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+
+    ASSERT_EQ(image_list_jump(IMGLIST_INVALID, 1, true),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_jump(42, 1, true),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_jump(0, 42, true), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_jump(0, 0, true), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_jump(0, 1, true), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_jump(0, 2, true), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_jump(0, 42, true), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_jump(2, 1, true), static_cast<size_t>(2));
+    image_list_skip(1);
+    ASSERT_EQ(image_list_jump(0, 1, true), static_cast<size_t>(2));
+}
+
+TEST_F(ImageList, JumpBack)
+{
+    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(sources, 3);
+
+    ASSERT_EQ(image_list_jump(IMGLIST_INVALID, 1, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_jump(42, 1, false),
+              static_cast<size_t>(IMGLIST_INVALID));
+    ASSERT_EQ(image_list_jump(2, 42, false), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_jump(2, 0, false), static_cast<size_t>(2));
+    ASSERT_EQ(image_list_jump(2, 1, false), static_cast<size_t>(1));
+    ASSERT_EQ(image_list_jump(2, 2, false), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_jump(2, 42, false), static_cast<size_t>(0));
+    ASSERT_EQ(image_list_jump(0, 1, false), static_cast<size_t>(0));
+    image_list_skip(1);
+    ASSERT_EQ(image_list_jump(2, 1, false), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, Distance)
@@ -46,32 +148,6 @@ TEST_F(ImageList, Distance)
     image_list_skip(1);
     ASSERT_EQ(image_list_distance(0, 2), static_cast<size_t>(1));
     ASSERT_EQ(image_list_distance(2, 0), static_cast<size_t>(IMGLIST_INVALID));
-}
-
-TEST_F(ImageList, Back)
-{
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(sources, 3);
-    ASSERT_EQ(image_list_back(0, 42), static_cast<size_t>(0));
-    ASSERT_EQ(image_list_back(2, 0), static_cast<size_t>(2));
-    ASSERT_EQ(image_list_back(2, 1), static_cast<size_t>(1));
-    ASSERT_EQ(image_list_back(2, 2), static_cast<size_t>(0));
-    ASSERT_EQ(image_list_back(2, 42), static_cast<size_t>(0));
-    image_list_skip(1);
-    ASSERT_EQ(image_list_back(2, 1), static_cast<size_t>(0));
-}
-
-TEST_F(ImageList, Forward)
-{
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(sources, 3);
-    ASSERT_EQ(image_list_forward(0, 42), static_cast<size_t>(2));
-    ASSERT_EQ(image_list_forward(0, 0), static_cast<size_t>(0));
-    ASSERT_EQ(image_list_forward(0, 1), static_cast<size_t>(1));
-    ASSERT_EQ(image_list_forward(0, 2), static_cast<size_t>(2));
-    ASSERT_EQ(image_list_forward(0, 42), static_cast<size_t>(2));
-    image_list_skip(1);
-    ASSERT_EQ(image_list_forward(0, 1), static_cast<size_t>(2));
 }
 
 TEST_F(ImageList, Get)

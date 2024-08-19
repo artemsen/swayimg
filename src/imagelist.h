@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 // Configuration parameters
@@ -62,6 +63,15 @@ const char* image_list_get(size_t index);
 size_t image_list_find(const char* source);
 
 /**
+ * Get index of nearest entry in the list.
+ * @param start start position
+ * @param forward direction(forward/backward)
+ * @param loop enable/disable loop mode
+ * @return index of the entry or IMGLIST_INVALID
+ */
+size_t image_list_nearest(size_t start, bool forward, bool loop);
+
+/**
  * Get distance between two indexes.
  * @param start,end entry indexes
  * @return number of image entries between indexes
@@ -69,20 +79,13 @@ size_t image_list_find(const char* source);
 size_t image_list_distance(size_t start, size_t end);
 
 /**
- * Move backward through the list.
+ * Get index of the entry in specified distance from start.
  * @param start start position
- * @param distance number of valid entries to skip
- * @return index of the end entry
+ * @param distance number entries to skip
+ * @param forward direction(forward/backward)
+ * @return index of the entry or IMGLIST_INVALID
  */
-size_t image_list_back(size_t start, size_t distance);
-
-/**
- * Move forward through the list.
- * @param start start position
- * @param distance number of valid entries to skip
- * @return index of the end entry
- */
-size_t image_list_forward(size_t start, size_t distance);
+size_t image_list_jump(size_t start, size_t distance, bool forward);
 
 /**
  * Get next entry index.
