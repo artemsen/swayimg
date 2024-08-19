@@ -292,21 +292,15 @@ static void select_nearest(enum action_type direction)
 static void scroll_page(bool forward)
 {
     const size_t distance =
-        ui_get_width() / ctx.thumb_size + ui_get_height() / ctx.thumb_size;
-    size_t top = ctx.top;
-    size_t index = ctx.selected;
+        ui_get_width() / ctx.thumb_size * ui_get_height() / ctx.thumb_size - 1;
+    const size_t selected = image_list_jump(ctx.selected, distance, forward);
 
-    if (forward) {
-        top = image_list_jump(top, distance, true);
-        index = image_list_jump(index, distance, true);
-    } else {
-        top = image_list_jump(top, distance, false);
-        index = image_list_jump(index, distance, false);
-    }
-
-    if (index != IMGLIST_INVALID && index != ctx.selected) {
-        ctx.top = top;
-        select_thumbnail(index);
+    if (selected != IMGLIST_INVALID && selected != ctx.selected) {
+        const size_t top = image_list_jump(ctx.top, distance, forward);
+        if (top != image_list_last()) {
+            ctx.top = top;
+        }
+        select_thumbnail(selected);
     }
 }
 
