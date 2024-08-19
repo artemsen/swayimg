@@ -151,7 +151,7 @@ static void update_layout(void)
 
     // if selection is not visible, put it on the center
     distance = image_list_distance(ctx.top, ctx.selected);
-    if (distance == IMGLIST_INVALID || distance > cols * rows) {
+    if (distance > cols * rows) {
         const size_t center_x = cols / 2;
         const size_t center_y = rows / 2;
         ctx.top =
@@ -275,11 +275,13 @@ static void select_nearest(enum action_type direction)
 
     if (index != IMGLIST_INVALID && index != ctx.selected) {
         // fix up top by one line
-        const size_t distance = image_list_distance(ctx.top, index);
-        if (distance == IMGLIST_INVALID) {
+        if (ctx.top > index) {
             ctx.top = image_list_jump(ctx.top, cols, false);
-        } else if (distance >= rows * cols) {
-            ctx.top = image_list_jump(ctx.top, cols, true);
+        } else {
+            const size_t distance = image_list_distance(ctx.top, index);
+            if (distance >= cols * rows) {
+                ctx.top = image_list_jump(ctx.top, cols, true);
+            }
         }
         select_thumbnail(index);
     }
