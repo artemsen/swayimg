@@ -20,11 +20,13 @@ TEST(List, Add)
     ASSERT_EQ(head, &entry[0]);
     ASSERT_EQ(head->next, nullptr);
     ASSERT_EQ(head->prev, nullptr);
+    ASSERT_TRUE(list_is_last(head));
 
     head = list_add_head(head, &entry[1]);
     ASSERT_EQ(head, &entry[1]);
     ASSERT_EQ(head->next, &entry[0]);
     ASSERT_EQ(head->prev, nullptr);
+    ASSERT_FALSE(list_is_last(head));
     ASSERT_EQ(entry[0].next, nullptr);
     ASSERT_EQ(entry[0].prev, &entry[1]);
 }

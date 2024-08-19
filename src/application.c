@@ -604,6 +604,10 @@ void app_redraw(void)
     pthread_mutex_lock(&ctx.events_lock);
     list_for_each(ctx.events, struct event_queue, it) {
         if (it->event.type == event_redraw) {
+            if (list_is_last(it)) {
+                pthread_mutex_unlock(&ctx.events_lock);
+                return;
+            }
             ctx.events = list_remove(it);
             free(it);
             break;

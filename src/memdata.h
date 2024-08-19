@@ -53,6 +53,13 @@ struct list* list_remove_entry(struct list* entry);
 #define list_remove(entry) (void*)list_remove_entry((struct list*)entry)
 
 /**
+ * Check if entry is the last one.
+ * @param entry pointer to entry
+ * @return true if this is the last entry in list
+ */
+#define list_is_last(entry) (((struct list*)entry)->next == NULL)
+
+/**
  * List iterator.
  * @param head pointer to the list head
  * @param type iterator type name
