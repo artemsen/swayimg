@@ -2,9 +2,6 @@
 
 Fully customizable and lightweight image viewer for Wayland based display servers.
 
-![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
-![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)
-
 - Support for the most popular image formats:
   - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
   - JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
@@ -23,10 +20,13 @@ Fully customizable and lightweight image viewer for Wayland based display server
 - Loading images from files and pipes;
 - Gallery and viewer modes with slideshow and animation support;
 - Preload images in a separate thread;
-- Cache memory, no data is written to permanent storage (HDD/SSD);
+- Cache in memory, no data is written to permanent storage (HDD/SSD);
 - [Sway](https://swaywm.org) integration mode: the application creates an "overlay"
 above the currently active window, which gives the illusion that you are opening
 the image directly in a terminal window.
+
+![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
+![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)
 
 ## Usage
 

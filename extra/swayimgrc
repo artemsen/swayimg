@@ -10,7 +10,7 @@
 
 # Any of these options can be overridden using the --config argument
 # on the command line, for instance:
-# $ swayimg --config="general.scale=real"
+# $ swayimg --config="general.mode=gallery"
 
 ################################################################################
 # General configuration
