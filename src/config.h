@@ -4,67 +4,113 @@
 
 #pragma once
 
+#include "memdata.h"
 #include "pixmap.h"
 
-/** Load status. */
-enum config_status {
-    cfgst_ok,
-    cfgst_invalid_section,
-    cfgst_invalid_key,
-    cfgst_invalid_value,
+/* Key/value config option. */
+struct config_keyval {
+    struct list list; ///< Links to prev/next entry
+    char* key;        ///< Key
+    char* value;      ///< Value
+    bool used;        ///< Sanity checker
+};
+
+/** Config instance: list of sections with key/values */
+struct config {
+    struct list list;             ///< Links to prev/next entry
+    char* name;                   ///< Section name
+    struct config_keyval* params; ///< List of key/value for this section
 };
 
 /**
- * Custom section loader.
- * @param key,value configuration parameters
- * @return load status
- */
-typedef enum config_status (*config_loader)(const char* key, const char* value);
-
-/**
  * Load configuration from file.
+ * @return loaded config instance or NULL if no config file found
  */
-void config_load(void);
+struct config* config_load(void);
 
 /**
- * Destroy global configuration instance.
+ * Free configuration instance.
+ * @param cfg config instance
  */
-void config_destroy(void);
+void config_free(struct config* cfg);
 
 /**
- * Set option.
+ * Check if all configuration parameters were read.
+ * @param cfg config instance
+ */
+void config_check(struct config* cfg);
+
+/**
+ * Set config option.
+ * @param cfg config instance
  * @param section section name
  * @param key,value configuration parameters
- * @return load status
  */
-enum config_status config_set(const char* section, const char* key,
-                              const char* value);
+void config_set(struct config** cfg, const char* section, const char* key,
+                const char* value);
 /**
- * Execute config command to set option.
- * @param cmd command in format: "section.key=value"
- * @return false if error
+ * Set config option from command line argument.
+ * @param cfg config instance
+ * @param arg command in format: "section.key=value"
+ * @return false on invalid format
  */
-bool config_command(const char* cmd);
+bool config_set_arg(struct config** cfg, const char* arg);
 
 /**
- * Register custom section loader.
- * @param name statically allocated name of the section
- * @param loader section data handler
+ * Get config option.
+ * @param cfg config instance
+ * @param section section name
+ * @param key,value configuration parameters
+ * @return value or NULL if section or key not found
  */
-void config_add_loader(const char* section, config_loader loader);
+const char* config_get(struct config* cfg, const char* section,
+                       const char* key);
+/**
+ * Get config parameter as string value.
+ * @param cfg config instance
+ * @param section,key section name and key
+ * @param fallback default value used if parameter not found
+ * @return value or fallback value if section or key not found
+ */
+const char* config_get_string(struct config* cfg, const char* section,
+                              const char* key, const char* fallback);
+/**
+ * Get config parameter as boolean value.
+ * @param cfg config instance
+ * @param section,key section name and key
+ * @param fallback default value used if parameter not found or invalid
+ * @return value or fallback value if section or key not found or invalid
+ */
+bool config_get_bool(struct config* cfg, const char* section, const char* key,
+                     bool fallback);
+/**
+ * Get config parameter as integer value.
+ * @param cfg config instance
+ * @param section,key section name and key
+ * @param fallback default value used if parameter not found or invalid
+ * @return value or fallback value if section or key not found or invalid
+ */
+ssize_t config_get_num(struct config* cfg, const char* section, const char* key,
+                       ssize_t min_val, ssize_t max_val, ssize_t fallback);
+/**
+ * Get config parameter as ARGB color value.
+ * @param cfg config instance
+ * @param section,key section name and key
+ * @param fallback default value used if parameter not found or invalid
+ * @return value or fallback value if section or key not found or invalid
+ */
+argb_t config_get_color(struct config* cfg, const char* section,
+                        const char* key, argb_t fallback);
+/**
+ * Print error about invalid key format.
+ * @param section section name
+ * @param key configuration parameters
+ */
+void config_error_key(const char* section, const char* key);
 
 /**
- * Convert text value to boolean.
- * @param text text to convert
- * @param flag target variable
- * @return false if text has invalid format
+ * Print error about invalid value format.
+ * @param section section name
+ * @param value configuration parameters
  */
-bool config_to_bool(const char* text, bool* flag);
-
-/**
- * Convert text value to ARGB color.
- * @param text text to convert
- * @param color output variable
- * @return false if text has invalid format
- */
-bool config_to_color(const char* text, argb_t* color);
+void config_error_val(const char* section, const char* value);

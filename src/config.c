@@ -7,6 +7,7 @@
 #include "memdata.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,25 +18,50 @@ struct location {
     const char* postfix; ///< Constant postfix
 };
 
-/** Section loader. */
-struct section {
-    const char* name;
-    config_loader loader;
-};
-
-/** Config context. */
-struct config_context {
-    struct section* sections;
-    size_t num_sections;
-};
-static struct config_context ctx;
-
 static const struct location config_locations[] = {
     { "XDG_CONFIG_HOME", "/swayimg/config"         },
     { "HOME",            "/.config/swayimg/config" },
     { "XDG_CONFIG_DIRS", "/swayimg/config"         },
     { NULL,              "/etc/xdg/swayimg/config" }
 };
+
+/**
+ * Create key/value entry.
+ * @param key,value config param
+ * @return key/value entry
+ */
+static struct config_keyval* create_keyval(const char* key, const char* value)
+{
+    const size_t key_sz = strlen(key) + 1 /*last null*/;
+    const size_t value_sz = strlen(value) + 1 /*last null*/;
+
+    struct config_keyval* kv =
+        calloc(1, sizeof(struct config_keyval) + key_sz + value_sz);
+    if (kv) {
+        kv->key = (char*)kv + sizeof(struct config_keyval);
+        memcpy(kv->key, key, key_sz);
+        kv->value = (char*)kv + sizeof(struct config_keyval) + key_sz;
+        memcpy(kv->value, value, value_sz);
+    }
+
+    return kv;
+}
+
+/**
+ * Get section entry.
+ * @param cfg config instance
+ * @param name section name
+ * @return pointer to section entry or NULL if not found
+ */
+static struct config* get_section(struct config* cfg, const char* name)
+{
+    list_for_each(cfg, struct config, it) {
+        if (strcmp(name, it->name) == 0) {
+            return it;
+        }
+    }
+    return NULL;
+}
 
 /**
  * Expand path from environment variable.
@@ -76,10 +102,11 @@ static char* expand_path(const char* prefix_env, const char* postfix)
 /**
  * Load configuration from a file.
  * @param path full path to the file
- * @return operation complete status, false on error
+ * @return loaded config instance or NULL on errors
  */
-static bool load_config(const char* path)
+static struct config* load(const char* path)
 {
+    struct config* cfg = NULL;
     FILE* fd = NULL;
     char* buff = NULL;
     size_t buff_sz = 0;
@@ -89,14 +116,13 @@ static bool load_config(const char* path)
 
     fd = fopen(path, "r");
     if (!fd) {
-        return false;
+        return NULL;
     }
 
     while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
         char* delim;
         const char* value;
         char* line = buff;
-        enum config_status status;
 
         ++line_num;
 
@@ -120,8 +146,8 @@ static bool load_config(const char* path)
             ++line;
             delim = strchr(line, ']');
             if (!delim || line + 1 == delim) {
-                fprintf(stderr, "Invalid section define in %s:%zu\n", path,
-                        line_num);
+                fprintf(stderr, "WARNING: Invalid config line in %s:%zu\n",
+                        path, line_num);
                 continue;
             }
             *delim = 0;
@@ -134,9 +160,16 @@ static bool load_config(const char* path)
             continue;
         }
 
+        if (!section) {
+            fprintf(stderr,
+                    "WARNING: Config parameter without section in %s:%zu\n",
+                    path, line_num);
+            continue;
+        }
+
         delim = strchr(line, '=');
         if (!delim) {
-            fprintf(stderr, "Invalid key=value format in %s:%zu\n", path,
+            fprintf(stderr, "WARNING: Invalid config line in %s:%zu\n", path,
                     line_num);
             continue;
         }
@@ -152,93 +185,99 @@ static bool load_config(const char* path)
             *delim = 0;
         }
 
-        // load configuration parameter from key/value pair
-        status = config_set(section, line, value);
-        if (status != cfgst_ok) {
-            fprintf(stderr, "Invalid configuration in %s:%zu\n", path,
-                    line_num);
-        }
+        // save configuration parameter
+        config_set(&cfg, section, line, value);
     }
 
     free(buff);
     free(section);
     fclose(fd);
 
-    return true;
+    return cfg;
 }
 
-void config_load(void)
+struct config* config_load(void)
 {
+    struct config* cfg = NULL;
+
     // find and load first available config file
-    for (size_t i = 0;
-         i < sizeof(config_locations) / sizeof(config_locations[0]); ++i) {
+    for (size_t i = 0; i < ARRAY_SIZE(config_locations); ++i) {
         const struct location* cl = &config_locations[i];
         char* path = expand_path(cl->prefix, cl->postfix);
-        if (path && load_config(path)) {
-            free(path);
-            break;
-        }
-        free(path);
-    }
-}
-
-void config_destroy(void)
-{
-    if (ctx.sections) {
-        free(ctx.sections);
-        ctx.sections = NULL;
-        ctx.num_sections = 0;
-    }
-}
-
-enum config_status config_set(const char* section, const char* key,
-                              const char* value)
-{
-    enum config_status status = cfgst_invalid_section;
-
-    if (!section || !*section) {
-        fprintf(stderr, "Empty section name\n");
-        return cfgst_invalid_section;
-    }
-
-    for (size_t i = 0; i < ctx.num_sections; ++i) {
-        const struct section* sl = &ctx.sections[i];
-        if (strcmp(sl->name, section) == 0) {
-            status = sl->loader(key, value);
-            if (status != cfgst_invalid_key) {
+        if (path) {
+            cfg = load(path);
+            if (cfg) {
+                free(path);
                 break;
             }
         }
+        free(path);
     }
 
-    switch (status) {
-        case cfgst_ok:
-            break;
-        case cfgst_invalid_section:
-            fprintf(stderr, "Invalid section \"%s\"\n", section);
-            break;
-        case cfgst_invalid_key:
-            fprintf(stderr, "Invalid key \"%s\"\n", key);
-            break;
-        case cfgst_invalid_value:
-            fprintf(stderr, "Invalid value \"%s\"\n", value);
-            break;
-    }
-
-    return status;
+    return cfg;
 }
 
-bool config_command(const char* cmd)
+void config_free(struct config* cfg)
+{
+    // free resources
+    list_for_each(cfg, struct config, section) {
+        list_for_each(section->params, struct config_keyval, kv) {
+            free(kv);
+        }
+        free(section);
+    }
+}
+
+void config_check(struct config* cfg)
+{
+    // sanity checker: all config parameters should be read
+    list_for_each(cfg, struct config, section) {
+        list_for_each(section->params, struct config_keyval, kv) {
+            if (!kv->used) {
+                fprintf(stderr,
+                        "WARNING: Unknown config parameter \"%s = %s\" in "
+                        "section \"%s\"\n",
+                        kv->key, kv->value, section->name);
+            }
+        }
+    }
+}
+
+void config_set(struct config** cfg, const char* section, const char* key,
+                const char* value)
+{
+    struct config_keyval* kv;
+    struct config* cs;
+
+    cs = get_section(*cfg, section);
+    if (!cs) {
+        // add new section
+        const size_t sz = strlen(section) + 1 /*last null*/;
+        cs = calloc(1, sizeof(struct config) + sz);
+        if (!cs) {
+            return;
+        }
+        cs->name = (char*)cs + sizeof(struct config);
+        memcpy(cs->name, section, sz);
+        *cfg = list_add(*cfg, cs);
+    }
+
+    kv = create_keyval(key, value);
+    if (kv) {
+        cs->params = list_add(cs->params, kv);
+    }
+}
+
+bool config_set_arg(struct config** cfg, const char* arg)
 {
     char section[32];
     char key[32];
-    const char* value;
     const char* ptr;
     struct str_slice slices[2];
     size_t size;
 
     // split section.key and value
-    size = str_split(cmd, '=', slices, ARRAY_SIZE(slices));
+    size = str_split(arg, '=', slices, ARRAY_SIZE(slices));
     if (size <= 1) {
         return false;
     }
@@ -246,7 +285,7 @@ bool config_command(const char* cmd)
     // split section and key
     ptr = slices[0].value + slices[0].len;
     while (*ptr != '.') {
-        if (--ptr < cmd) {
+        if (--ptr < arg) {
             return false;
         }
     }
@@ -268,56 +307,117 @@ bool config_command(const char* cmd)
     memcpy(key, ptr, size);
     key[size] = 0;
 
-    value = slices[1].value;
-
-    return config_set(section, key, value) == cfgst_ok;
-}
-
-void config_add_loader(const char* section, config_loader loader)
-{
-    const size_t new_sz = (ctx.num_sections + 1) * sizeof(struct section);
-    struct section* sections = realloc(ctx.sections, new_sz);
-    if (sections) {
-        ctx.sections = sections;
-        ctx.sections[ctx.num_sections].name = section;
-        ctx.sections[ctx.num_sections].loader = loader;
-        ++ctx.num_sections;
-    }
-}
-
-bool config_to_bool(const char* text, bool* flag)
-{
-    bool rc = false;
-
-    if (strcmp(text, "yes") == 0 || strcmp(text, "true") == 0) {
-        *flag = true;
-        rc = true;
-    } else if (strcmp(text, "no") == 0 || strcmp(text, "false") == 0) {
-        *flag = false;
-        rc = true;
-    }
-
-    return rc;
-}
-
-bool config_to_color(const char* text, argb_t* color)
-{
-    ssize_t num;
-
-    if (*text == '#' || isspace(*text)) {
-        ++text;
-    }
-
-    if (!str_to_num(text, 0, &num, 16) || num < 0 ||
-        (uint64_t)num > (uint64_t)0xffffffff) {
-        return false;
-    }
-
-    if (strlen(text) > 6) { // value with alpha (RRGGBBAA)
-        *color = (num >> 8) | ARGB_SET_A(num);
-    } else {
-        *color = num | ARGB_SET_A(0xff);
-    }
+    config_set(cfg, section, key, slices[1].value);
 
     return true;
+}
+
+const char* config_get(struct config* cfg, const char* section, const char* key)
+{
+    struct config* cs = get_section(cfg, section);
+
+    if (cs) {
+        list_for_each(cs->params, struct config_keyval, it) {
+            if (strcmp(key, it->key) == 0) {
+                it->used = true;
+                return it->value;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+const char* config_get_string(struct config* cfg, const char* section,
+                              const char* key, const char* fallback)
+{
+    const char* value = config_get(cfg, section, key);
+    return value ? value : fallback;
+}
+
+bool config_get_bool(struct config* cfg, const char* section, const char* key,
+                     bool fallback)
+{
+    const char* value = config_get(cfg, section, key);
+
+    if (value) {
+        if (strcmp(value, "yes") == 0 || strcmp(value, "true") == 0) {
+            return true;
+        } else if (strcmp(value, "no") == 0 || strcmp(value, "false") == 0) {
+            return false;
+        } else {
+            fprintf(stderr,
+                    "WARNING: "
+                    "Invalid config value \"%s = %s\" in section \"%s\": "
+                    "expected \"yes\" or \"no\"\n",
+                    key, value, section);
+        }
+    }
+
+    return fallback;
+}
+
+ssize_t config_get_num(struct config* cfg, const char* section, const char* key,
+                       ssize_t min_val, ssize_t max_val, ssize_t fallback)
+{
+    const char* value = config_get(cfg, section, key);
+
+    if (value) {
+        ssize_t num;
+        if (str_to_num(value, 0, &num, 0) && num >= min_val && num <= max_val) {
+            return num;
+        } else {
+            fprintf(stderr,
+                    "WARNING: "
+                    "Invalid config value \"%s = %s\" in section \"%s\": "
+                    "expected integer in range %zd-%zd\n",
+                    key, value, section, min_val, max_val);
+        }
+    }
+
+    return fallback;
+}
+
+argb_t config_get_color(struct config* cfg, const char* section,
+                        const char* key, argb_t fallback)
+{
+    const char* value = config_get(cfg, section, key);
+
+    if (value) {
+        char* endptr;
+        argb_t color;
+        while (*value == '#' || isspace(*value)) {
+            ++value;
+        }
+        errno = 0;
+        color = strtoull(value, &endptr, 16);
+        if (endptr && !*endptr && errno == 0) {
+            if (strlen(value) > 6) { // value with alpha (RRGGBBAA)
+                color = (color >> 8) | ARGB_SET_A(color);
+            } else {
+                color |= ARGB_SET_A(0xff);
+            }
+            return color;
+        } else {
+            fprintf(stderr,
+                    "WARNING: "
+                    "Invalid color value \"%s = %s\" in section \"%s\": "
+                    "expected RGB(A) format, e.g. #11223344\n",
+                    key, value, section);
+        }
+    }
+
+    return fallback;
+}
+
+void config_error_key(const char* section, const char* key)
+{
+    fprintf(stderr, "WARNING: Invalid config key \"%s\" in section \"%s\"\n",
+            key, section);
+}
+
+void config_error_val(const char* section, const char* value)
+{
+    fprintf(stderr, "WARNING: Invalid config value \"%s\" in section \"%s\"\n",
+            value, section);
 }

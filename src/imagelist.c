@@ -4,15 +4,19 @@
 
 #include "imagelist.h"
 
-#include "config.h"
 #include "loader.h"
-#include "memdata.h"
 
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+
+// Default configuration parameters
+#define CFG_ORDER_DEF     "alpha"
+#define CFG_LOOP_DEF      true
+#define CFG_RECURSIVE_DEF false
+#define CFG_ALL_DEF       true
 
 /** Context of the image list (which is actually an array). */
 struct image_list {
@@ -24,12 +28,9 @@ struct image_list {
     bool recursive;        ///< Read directories recursively
     bool all_files;        ///< Open all files from the same directory
 };
-static struct image_list ctx = {
-    .order = order_alpha,
-    .loop = true,
-    .recursive = false,
-    .all_files = true,
-};
+
+/** Global image list instance. */
+static struct image_list ctx;
 
 /** Order names. */
 static const char* order_names[] = {
@@ -213,57 +214,39 @@ static void shuffle_list(void)
 }
 
 /**
- * Custom section loader, see `config_loader` for details.
+ * Load config.
+ * @param cfg config instance
  */
-static enum config_status load_config(const char* key, const char* value)
+static void load_config(struct config* cfg)
 {
-    enum config_status status = cfgst_invalid_value;
+    ssize_t index;
+    const char* order;
 
-    if (strcmp(key, IMGLIST_CFG_ORDER) == 0) {
-        const ssize_t index = str_index(order_names, value, 0);
-        if (index >= 0) {
-            ctx.order = index;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, IMGLIST_CFG_LOOP) == 0) {
-        if (config_to_bool(value, &ctx.loop)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, IMGLIST_CFG_RECURSIVE) == 0) {
-        if (config_to_bool(value, &ctx.recursive)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, IMGLIST_CFG_ALL) == 0) {
-        if (config_to_bool(value, &ctx.all_files)) {
-            status = cfgst_ok;
-        }
+    // list order
+    ctx.order = order_alpha;
+    order =
+        config_get_string(cfg, IMGLIST_SECTION, IMGLIST_ORDER, CFG_ORDER_DEF);
+    index = str_index(order_names, order, 0);
+    if (index >= 0) {
+        ctx.order = index;
     } else {
-        status = cfgst_invalid_key;
+        config_error_val(IMGLIST_SECTION, IMGLIST_ORDER);
     }
 
-    return status;
+    // list modes
+    ctx.loop =
+        config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_LOOP, CFG_LOOP_DEF);
+    ctx.recursive = config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_RECURSIVE,
+                                    CFG_RECURSIVE_DEF);
+    ctx.all_files =
+        config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_ALL, CFG_ALL_DEF);
 }
 
-void image_list_create(void)
-{
-    // register configuration loader
-    config_add_loader(IMGLIST_CFG_SECTION, load_config);
-}
-
-void image_list_destroy(void)
-{
-    for (size_t i = 0; i < ctx.size; ++i) {
-        free(ctx.sources[i]);
-    }
-    free(ctx.sources);
-    ctx.sources = NULL;
-    ctx.capacity = 0;
-    ctx.size = 0;
-}
-
-size_t image_list_init(const char** sources, size_t num)
+size_t image_list_init(struct config* cfg, const char** sources, size_t num)
 {
     struct stat file_stat;
+
+    load_config(cfg);
 
     for (size_t i = 0; i < num; ++i) {
         // special files
@@ -310,6 +293,17 @@ size_t image_list_init(const char** sources, size_t num)
     }
 
     return ctx.size;
+}
+
+void image_list_destroy(void)
+{
+    for (size_t i = 0; i < ctx.size; ++i) {
+        free(ctx.sources[i]);
+    }
+    free(ctx.sources);
+    ctx.sources = NULL;
+    ctx.capacity = 0;
+    ctx.size = 0;
 }
 
 size_t image_list_size(void)

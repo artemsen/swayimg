@@ -10,132 +10,100 @@ extern "C" {
 
 class Keybind : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        keybind_create();  // register config callback
-        keybind_destroy(); // clear default bindings
-    }
-
     void TearDown() override
     {
         keybind_destroy();
-        config_destroy();
+        config_free(config);
     }
 
     static constexpr const char* section = "keys.viewer";
+    struct config* config = nullptr;
 };
 
-TEST_F(Keybind, AddOne)
+TEST_F(Keybind, Default)
 {
-    ASSERT_EQ(keybind_get(), nullptr);
+    keybind_init(NULL);
+    ASSERT_NE(keybind_get(), nullptr);
 
-    ASSERT_EQ(config_set(section, "a", "exit"), cfgst_ok);
-
-    const struct keybind* kb = keybind_get();
+    const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
     ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
+    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>(XKB_KEY_Escape));
+    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_exit);
-    ASSERT_STREQ(kb->help, "a: exit");
-    ASSERT_EQ(kb->list.next, nullptr);
+    EXPECT_EQ(kb->actions.sequence[0].type, action_exit);
+}
+
+TEST_F(Keybind, Add)
+{
+    config_set(&config, section, "a", "exit");
+    keybind_init(config);
+
+    const struct keybind* kb = keybind_find('a', 0);
+    ASSERT_NE(kb, nullptr);
+    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
+    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
+    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
+    EXPECT_EQ(kb->actions.sequence[0].type, action_exit);
+    EXPECT_STREQ(kb->help, "a: exit");
 }
 
 TEST_F(Keybind, Replace)
 {
-    ASSERT_EQ(config_set(section, "a", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "b", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "b", "reload"), cfgst_ok);
+    config_set(&config, section, "Escape", "info");
+    keybind_init(config);
 
-    const struct keybind* kb = keybind_get();
+    const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
     ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('b'));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_reload);
-
-    const struct keybind* next =
-        reinterpret_cast<const struct keybind*>(kb->list.next);
-    ASSERT_EQ(next->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(next->actions.sequence[0].type, action_exit);
-    ASSERT_EQ(next->list.next, nullptr);
-}
-
-TEST_F(Keybind, Find)
-{
-    const struct keybind* kb;
-
-    ASSERT_EQ(config_set(section, "a", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "Ctrl+Alt+Shift+b", "reload"), cfgst_ok);
-
-    kb = keybind_find('a', 0);
-    ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_exit);
-
-    kb = keybind_find('b', KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT);
-    ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('b'));
-    ASSERT_EQ(kb->mods,
-              static_cast<uint8_t>(KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_reload);
-
-    ASSERT_EQ(keybind_find('a', KEYMOD_CTRL), nullptr);
-    ASSERT_EQ(keybind_find('c', 0), nullptr);
+    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>(XKB_KEY_Escape));
+    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
+    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
+    EXPECT_EQ(kb->actions.sequence[0].type, action_info);
 }
 
 TEST_F(Keybind, Mods)
 {
-    ASSERT_EQ(config_set(section, "Ctrl+a", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "Alt+b", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "Shift+c", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "Alt+Ctrl+d", "exit"), cfgst_ok);
-    ASSERT_EQ(config_set(section, "Ctrl+Shift+Alt+e", "exit"), cfgst_ok);
+    config_set(&config, section, "Ctrl+a", "exit");
+    config_set(&config, section, "Alt+b", "exit");
+    config_set(&config, section, "Shift+c", "exit");
+    config_set(&config, section, "Alt+Ctrl+d", "exit");
+    config_set(&config, section, "Ctrl+Shift+Alt+e", "exit");
+    keybind_init(config);
 
-    ASSERT_NE(keybind_find('a', KEYMOD_CTRL), nullptr);
-    ASSERT_NE(keybind_find('b', KEYMOD_ALT), nullptr);
-    ASSERT_NE(keybind_find('c', KEYMOD_SHIFT), nullptr);
-    ASSERT_NE(keybind_find('d', KEYMOD_CTRL | KEYMOD_ALT), nullptr);
-    ASSERT_NE(keybind_find('e', KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT),
+    EXPECT_NE(keybind_find('a', KEYMOD_CTRL), nullptr);
+    EXPECT_NE(keybind_find('b', KEYMOD_ALT), nullptr);
+    EXPECT_NE(keybind_find('c', KEYMOD_SHIFT), nullptr);
+    EXPECT_NE(keybind_find('d', KEYMOD_CTRL | KEYMOD_ALT), nullptr);
+    EXPECT_NE(keybind_find('e', KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT),
               nullptr);
 }
 
 TEST_F(Keybind, ActionParams)
 {
-    const struct keybind* kb;
+    config_set(&config, section, "a", "status  \t params 1 2 3\t");
+    keybind_init(config);
 
-    ASSERT_EQ(config_set(section, "a", "exit"), cfgst_ok);
-
-    kb = keybind_get();
+    const struct keybind* kb = keybind_find('a', 0);
     ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
+    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
+    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_exit);
-    ASSERT_EQ(kb->list.next, nullptr);
-
-    ASSERT_EQ(config_set(section, "a", "status  \t params 1 2 3\t"), cfgst_ok);
-    kb = keybind_get();
-    ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_status);
-    ASSERT_STREQ(kb->actions.sequence[0].params, "params 1 2 3");
-    ASSERT_EQ(kb->list.next, nullptr);
+    EXPECT_EQ(kb->actions.sequence[0].type, action_status);
+    EXPECT_STREQ(kb->actions.sequence[0].params, "params 1 2 3");
+    EXPECT_STREQ(kb->help, "a: status params 1 2 3");
 }
 
 TEST_F(Keybind, Multiaction)
 {
-    ASSERT_EQ(config_set(section, "a", "exec cmd;reload;exit"), cfgst_ok);
+    config_set(&config, section, "a", "exec cmd;reload;exit");
+    keybind_init(config);
 
-    const struct keybind* kb = keybind_get();
+    const struct keybind* kb = keybind_find('a', 0);
     ASSERT_NE(kb, nullptr);
-    ASSERT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
-    ASSERT_EQ(kb->mods, static_cast<uint8_t>(0));
+    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
+    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
     ASSERT_EQ(kb->actions.num, static_cast<size_t>(3));
-    ASSERT_EQ(kb->actions.sequence[0].type, action_exec);
-    ASSERT_EQ(kb->actions.sequence[1].type, action_reload);
-    ASSERT_EQ(kb->actions.sequence[2].type, action_exit);
-    ASSERT_STREQ(kb->actions.sequence[0].params, "cmd");
-    ASSERT_EQ(kb->list.next, nullptr);
+    EXPECT_EQ(kb->actions.sequence[0].type, action_exec);
+    EXPECT_EQ(kb->actions.sequence[1].type, action_reload);
+    EXPECT_EQ(kb->actions.sequence[2].type, action_exit);
+    EXPECT_STREQ(kb->help, "a: exec cmd; ...");
 }

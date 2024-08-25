@@ -5,7 +5,6 @@
 #include "info.h"
 
 #include "application.h"
-#include "config.h"
 #include "font.h"
 #include "imagelist.h"
 #include "keybind.h"
@@ -18,6 +17,16 @@
 #include <string.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
+
+// Configuration parameters
+#define CFG_CSECTION     "info"
+#define CFG_VSECTION     "info.viewer"
+#define CFG_GSECTION     "info.gallery"
+#define CFG_SHOW         "show"
+#define CFG_ITIMEOUT     "info_timeout"
+#define CFG_ITIMEOUT_DEF 5
+#define CFG_STIMEOUT     "status_timeout"
+#define CFG_STIMEOUT_DEF 3
 
 /** Display modes. */
 enum info_mode {
@@ -46,7 +55,7 @@ static const char* field_names[] = {
     [info_scale] = "scale",
     [info_status] = "status",
 };
-#define INFO_FIELDS_NUM ARRAY_SIZE(field_names)
+#define FIELDS_NUM ARRAY_SIZE(field_names)
 // clang-format on
 
 /** Positions of text info block. */
@@ -65,48 +74,35 @@ static const char* position_names[] = {
     [pos_bottom_left] = "bottom_left",
     [pos_bottom_right] = "bottom_right",
 };
-#define INFO_POSITION_NUM ARRAY_SIZE(position_names)
+#define POSITION_NUM ARRAY_SIZE(position_names)
 
-// max number of lines in one positioned block
-#define MAX_LINES (INFO_FIELDS_NUM + 10 /* EXIF and duplicates */)
+// Default configuration
+static const char* default_viewer[] = {
+    [pos_center] = "none",
+    [pos_top_left] = "+name,+format,+filesize,+imagesize,+exif",
+    [pos_top_right] = "index",
+    [pos_bottom_left] = "scale,frame",
+    [pos_bottom_right] = "status",
+};
+static const char* default_gallery[] = {
+    [pos_center] = "none",
+    [pos_top_left] = "none",
+    [pos_top_right] = "none",
+    [pos_bottom_left] = "none",
+    [pos_bottom_right] = "name,status",
+};
+
+// Max number of lines in one positioned block
+#define MAX_LINES (FIELDS_NUM + 10 /* EXIF and duplicates */)
+
+// Space between text layout and window edge
+#define TEXT_PADDING 10
 
 /** Scheme of displayed field (line(s) of text). */
 struct field_scheme {
     enum info_field type; ///< Field type
     bool title;           ///< Print/hide field title
 };
-
-// Defaults
-static const struct field_scheme default_viewer_tl[] = {
-    { .type = info_file_name,    .title = true },
-    { .type = info_image_format, .title = true },
-    { .type = info_file_size,    .title = true },
-    { .type = info_image_size,   .title = true },
-    { .type = info_exif,         .title = true },
-};
-static const struct field_scheme default_viewer_tr[] = {
-    { .type = info_index, .title = false },
-};
-static const struct field_scheme default_viewer_bl[] = {
-    { .type = info_scale, .title = false },
-    { .type = info_frame, .title = false },
-};
-static const struct field_scheme default_viewer_br[] = {
-    { .type = info_status, .title = false },
-};
-static const struct field_scheme default_gallery_br[] = {
-    { .type = info_file_name, .title = false },
-    { .type = info_status,    .title = false },
-};
-
-// Space between text layout and window edge
-#define TEXT_PADDING 10
-
-#define SET_DEFAULT(m, p, d)                     \
-    ctx.scheme[m][p].fields_num = ARRAY_SIZE(d); \
-    ctx.scheme[m][p].fields = malloc(sizeof(d)); \
-    if (ctx.scheme[m][p].fields)                 \
-    memcpy(ctx.scheme[m][p].fields, d, sizeof(d))
 
 /** Key/value text surface. */
 struct keyval {
@@ -122,9 +118,9 @@ struct block_scheme {
 
 /** Info timeout description. */
 struct info_timeout {
-    int fd;          ///< Timer FD
-    size_t duration; ///< Timeout duration in seconds
-    bool active;     ///< Current state
+    int fd;         ///< Timer FD
+    size_t timeout; ///< Timeout duration in seconds
+    bool active;    ///< Current state
 };
 
 /** Info data context. */
@@ -140,8 +136,8 @@ struct info_context {
     struct keyval* exif_lines; ///< EXIF data lines
     size_t exif_num;           ///< Number of lines in EXIF data
 
-    struct keyval fields[INFO_FIELDS_NUM];                    ///< Info data
-    struct block_scheme scheme[MODES_NUM][INFO_POSITION_NUM]; ///< Info scheme
+    struct keyval fields[FIELDS_NUM];                    ///< Info data
+    struct block_scheme scheme[MODES_NUM][POSITION_NUM]; ///< Info scheme
 };
 
 /** Global info context. */
@@ -166,7 +162,7 @@ static void timeout_init(struct info_timeout* timeout)
 {
     timeout->fd = -1;
     timeout->active = true;
-    if (timeout->duration != 0) {
+    if (timeout->timeout != 0) {
         timeout->fd =
             timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
         if (timeout->fd != -1) {
@@ -183,7 +179,7 @@ static void timeout_reset(struct info_timeout* timeout)
 {
     timeout->active = true;
     if (timeout->fd != -1) {
-        struct itimerspec ts = { .it_value.tv_sec = timeout->duration };
+        struct itimerspec ts = { .it_value.tv_sec = timeout->timeout };
         timerfd_settime(timeout->fd, 0, &ts, NULL);
     }
 }
@@ -431,83 +427,36 @@ static bool parse_scheme(const char* config, struct block_scheme* scheme)
     return true;
 }
 
-/** Custom section loader, see `config_loader` for details. */
-static enum config_status load_config_viewer(const char* key, const char* value)
+void info_init(struct config* cfg)
 {
-    const ssize_t pos = str_index(position_names, key, 0);
-    if (pos < 0) {
-        return cfgst_invalid_key;
-    }
-    if (!parse_scheme(value, &ctx.scheme[mode_viewer][pos])) {
-        return cfgst_invalid_value;
-    }
-    return cfgst_ok;
-}
+    const char** defaults;
+    const char* section;
+    const char* position;
+    const char* format;
 
-/** Custom section loader, see `config_loader` for details. */
-static enum config_status load_config_gallery(const char* key,
-                                              const char* value)
-{
-    const ssize_t pos = str_index(position_names, key, 0);
-    if (pos < 0) {
-        return cfgst_invalid_key;
-    }
-    if (!parse_scheme(value, &ctx.scheme[mode_gallery][pos])) {
-        return cfgst_invalid_value;
-    }
-    return cfgst_ok;
-}
-
-/** Custom section loader, see `config_loader` for details. */
-static enum config_status load_config_common(const char* key, const char* value)
-{
-    enum config_status status = cfgst_invalid_value;
-
-    if (strcmp(key, "show") == 0) {
-        bool opt;
-        if (config_to_bool(value, &opt)) {
-            ctx.mode = opt ? mode_gallery : mode_off;
-            status = cfgst_ok;
+    for (size_t i = 0; i < MODES_NUM; ++i) {
+        defaults = (i == mode_viewer ? default_viewer : default_gallery);
+        section = (i == mode_viewer ? CFG_VSECTION : CFG_GSECTION);
+        for (size_t j = 0; j < POSITION_NUM; ++j) {
+            position = position_names[j];
+            format = config_get_string(cfg, section, position, defaults[j]);
+            if (!parse_scheme(format, &ctx.scheme[i][j])) {
+                config_error_val(section, format);
+                parse_scheme(defaults[j], &ctx.scheme[i][j]);
+            }
         }
-    } else if (strcmp(key, "info_timeout") == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.info.duration = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "status_timeout") == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.status.duration = num;
-            status = cfgst_ok;
-        }
-    } else {
-        status = cfgst_invalid_key;
     }
 
-    return status;
-}
+    ctx.mode = config_get_bool(cfg, CFG_CSECTION, CFG_SHOW, true) ? mode_viewer
+                                                                  : mode_off;
+    ctx.info.timeout = config_get_num(cfg, CFG_CSECTION, CFG_ITIMEOUT, 0, 1024,
+                                      CFG_ITIMEOUT_DEF);
+    timeout_init(&ctx.info);
 
-void info_create(void)
-{
-    // set defaults
-    ctx.info.duration = 5;
-    ctx.status.duration = 3;
-    ctx.mode = mode_viewer;
-    SET_DEFAULT(mode_viewer, pos_top_left, default_viewer_tl);
-    SET_DEFAULT(mode_viewer, pos_top_right, default_viewer_tr);
-    SET_DEFAULT(mode_viewer, pos_bottom_left, default_viewer_bl);
-    SET_DEFAULT(mode_viewer, pos_bottom_right, default_viewer_br);
-    SET_DEFAULT(mode_gallery, pos_bottom_right, default_gallery_br);
+    ctx.status.timeout = config_get_num(cfg, CFG_CSECTION, CFG_STIMEOUT, 0,
+                                        1024, CFG_STIMEOUT_DEF);
+    timeout_init(&ctx.status);
 
-    // register configuration loader
-    config_add_loader("info", load_config_common);
-    config_add_loader("info.viewer", load_config_viewer);
-    config_add_loader("info.gallery", load_config_gallery);
-}
-
-void info_init(void)
-{
     font_render("File name:", &ctx.fields[info_file_name].key);
     font_render("File path:", &ctx.fields[info_file_path].key);
     font_render("File size:", &ctx.fields[info_file_size].key);
@@ -517,9 +466,6 @@ void info_init(void)
     font_render("Index:", &ctx.fields[info_index].key);
     font_render("Scale:", &ctx.fields[info_scale].key);
     font_render("Status:", &ctx.fields[info_status].key);
-
-    timeout_init(&ctx.info);
-    timeout_init(&ctx.status);
 }
 
 void info_destroy(void)
@@ -533,12 +479,12 @@ void info_destroy(void)
     }
 
     for (size_t i = 0; i < MODES_NUM; ++i) {
-        for (size_t j = 0; j < INFO_POSITION_NUM; ++j) {
+        for (size_t j = 0; j < POSITION_NUM; ++j) {
             free(ctx.scheme[i][j].fields);
         }
     }
 
-    for (size_t i = 0; i < INFO_FIELDS_NUM; ++i) {
+    for (size_t i = 0; i < FIELDS_NUM; ++i) {
         free(ctx.fields[i].key.data);
         free(ctx.fields[i].value.data);
     }
@@ -551,25 +497,22 @@ void info_destroy(void)
 
 void info_switch(const char* mode)
 {
+    timeout_reset(&ctx.info);
+
     if (!ctx.info.active) {
-        timeout_reset(&ctx.info);
         return;
     }
-
     if (mode && *mode) {
         const ssize_t mode_num = str_index(mode_names, mode, 0);
         if (mode_num >= 0) {
             ctx.mode = mode_num;
-            return;
         }
     } else {
         ++ctx.mode;
         if (ctx.mode > mode_off) {
-            ctx.mode = 0;
+            ctx.mode = mode_viewer;
         }
     }
-
-    timeout_reset(&ctx.info);
 }
 
 void info_switch_help(void)
@@ -687,7 +630,7 @@ void info_print(struct pixmap* window)
         // print only status
         if (ctx.fields[info_status].value.width && ctx.status.active) {
             const size_t btype = app_is_viewer() ? mode_viewer : mode_gallery;
-            for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+            for (size_t i = 0; i < POSITION_NUM; ++i) {
                 const struct block_scheme* block = &ctx.scheme[btype][i];
                 for (size_t j = 0; j < block->fields_num; ++j) {
                     const struct field_scheme* field = &block->fields[j];
@@ -705,7 +648,7 @@ void info_print(struct pixmap* window)
         return;
     }
 
-    for (size_t i = 0; i < INFO_POSITION_NUM; ++i) {
+    for (size_t i = 0; i < POSITION_NUM; ++i) {
         struct keyval lines[MAX_LINES] = { 0 };
         const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
         size_t lnum = 0;

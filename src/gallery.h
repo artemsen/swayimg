@@ -4,19 +4,15 @@
 
 #pragma once
 
+#include "config.h"
 #include "event.h"
-#include "image.h"
-
-/**
- * Create global gallery context.
- */
-void gallery_create(void);
 
 /**
  * Initialize global gallery context.
+ * @param cfg config instance
  * @param image initial image to open
  */
-void gallery_init(struct image* image);
+void gallery_init(struct config* cfg, struct image* image);
 
 /**
  * Destroy global gallery context.

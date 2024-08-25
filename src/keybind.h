@@ -5,7 +5,7 @@
 #pragma once
 
 #include "action.h"
-#include "memdata.h"
+#include "config.h"
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -30,9 +30,10 @@ struct keybind {
 };
 
 /**
- * Create global default key binding scheme.
+ * Initialize global default key binding scheme.
+ * @param cfg config instance
  */
-void keybind_create(void);
+void keybind_init(struct config* cfg);
 
 /**
  * Destroy global key binding scheme.

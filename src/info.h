@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "config.h"
 #include "image.h"
 
 /** Available info fields. */
@@ -21,14 +22,10 @@ enum info_field {
 };
 
 /**
- * Create global info context.
- */
-void info_create(void);
-
-/**
  * Initialize global info context.
+ * @param cfg config instance
  */
-void info_init(void);
+void info_init(struct config* cfg);
 
 /**
  * Destroy global info context.

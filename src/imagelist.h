@@ -4,15 +4,14 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
+#include "config.h"
 
 // Configuration parameters
-#define IMGLIST_CFG_SECTION   "list"
-#define IMGLIST_CFG_ORDER     "order"
-#define IMGLIST_CFG_LOOP      "loop"
-#define IMGLIST_CFG_RECURSIVE "recursive"
-#define IMGLIST_CFG_ALL       "all"
+#define IMGLIST_SECTION   "list"
+#define IMGLIST_ORDER     "order"
+#define IMGLIST_LOOP      "loop"
+#define IMGLIST_RECURSIVE "recursive"
+#define IMGLIST_ALL       "all"
 
 // Invalid index of the entry
 #define IMGLIST_INVALID SIZE_MAX
@@ -25,22 +24,18 @@ enum list_order {
 };
 
 /**
- * Create global image list context.
+ * Initialize the image list: scan directories and fill the image list.
+ * @param cfg config instance
+ * @param sources list of sources
+ * @param num number of sources in the list
+ * @return size of the image list
  */
-void image_list_create(void);
+size_t image_list_init(struct config* cfg, const char** sources, size_t num);
 
 /**
  * Destroy global image list context.
  */
 void image_list_destroy(void);
-
-/**
- * Initialize the image list: scan directories and fill the image list.
- * @param sources list of sources
- * @param num number of sources in the list
- * @return size of the image list
- */
-size_t image_list_init(const char** sources, size_t num);
 
 /**
  * Get image list size.

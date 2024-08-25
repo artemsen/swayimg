@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "pixmap.h"
+#include "config.h"
 
 /** Text surface: array of alpha pixels. */
 struct text_surface {
@@ -14,17 +14,13 @@ struct text_surface {
 };
 
 /**
- * Create font renderer.
+ * Initialize global font context.
+ * @param cfg config instance
  */
-void font_create(void);
+void font_init(struct config* cfg);
 
 /**
- * Initialize (load font).
- */
-void font_init(void);
-
-/**
- * Free font resources.
+ * Destroy global font context.
  */
 void font_destroy(void);
 

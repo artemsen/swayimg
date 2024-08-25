@@ -32,13 +32,13 @@ static const struct cmdarg arguments[] = {
     { 'g', "gallery",    NULL,    "start in gallery mode",
                                   APP_CFG_SECTION, APP_CFG_MODE, APP_MODE_GALLERY },
     { 'r', "recursive",  NULL,    "read directories recursively",
-                                  IMGLIST_CFG_SECTION, IMGLIST_CFG_RECURSIVE, "yes" },
+                                  IMGLIST_SECTION, IMGLIST_RECURSIVE, "yes" },
     { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
-                                  IMGLIST_CFG_SECTION, IMGLIST_CFG_ORDER, NULL },
+                                  IMGLIST_SECTION, IMGLIST_ORDER, NULL },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
-                                  VIEWER_CFG_SECTION, VIEWER_CFG_SCALE, NULL },
+                                  VIEWER_SECTION, VIEWER_SCALE, NULL },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
-                                  VIEWER_CFG_SECTION, VIEWER_CFG_SLIDESHOW, "yes" },
+                                  VIEWER_SECTION, VIEWER_SLIDESHOW, "yes" },
     { 'p', "position",   "POS",   "set window position [parent]/X,Y",
                                   APP_CFG_SECTION, APP_CFG_POSITION, NULL },
     { 'w', "size",       "SIZE",  "set window size: fullscreen/[parent]/image/W,H",
@@ -80,11 +80,12 @@ static void print_help(void)
 
 /**
  * Parse command line arguments into configuration instance.
+ * @param cfg config instance
  * @param argc number of arguments to parse
  * @param argv arguments array
  * @return index of the first non option argument, or -1 if error, or 0 to exit
  */
-static int parse_cmdargs(int argc, char* argv[])
+static int parse_cmdargs(struct config** cfg, int argc, char* argv[])
 {
     struct option options[1 + (sizeof(arguments) / sizeof(arguments[0]))];
     char short_opts[(sizeof(arguments) / sizeof(arguments[0])) * 2];
@@ -121,15 +122,13 @@ static int parse_cmdargs(int argc, char* argv[])
             ++arg;
         }
         if (arg->section) {
-            if (config_set(arg->section, arg->key,
-                           arg->value ? arg->value : optarg) != cfgst_ok) {
-                return -1;
-            }
+            config_set(cfg, arg->section, arg->key,
+                       arg->value ? arg->value : optarg);
             continue;
         }
         switch (opt) {
             case 'c':
-                if (!config_command(optarg)) {
+                if (!config_set_arg(cfg, optarg)) {
                     fprintf(stderr, "Invalid config: \"%s\"\n", optarg);
                     return -1;
                 }
@@ -156,27 +155,26 @@ static int parse_cmdargs(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
     bool rc = false;
+    struct config* cfg;
     int argn;
 
     setlocale(LC_ALL, "");
 
-    app_create();
+    cfg = config_load();
+    argn = parse_cmdargs(&cfg, argc, argv);
 
-    config_load();
-
-    argn = parse_cmdargs(argc, argv);
-
-    config_destroy();
-
-    if (argn <= 0) {
-        // args error or requested version/help
-        rc = (argn == 0);
-    } else {
-        // initialize and run main event loop handler
-        rc = app_init((const char**)&argv[argn], argc - argn) && app_run();
+    if (argn <= 0) { // invalid args or version/help print
+        config_free(cfg);
+        return (argn == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
     }
 
-    app_destroy();
+    rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
+    config_check(cfg);
+    config_free(cfg);
+    if (rc) {
+        rc = app_run();
+        app_destroy();
+    }
 
     return rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }

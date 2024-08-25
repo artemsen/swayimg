@@ -6,7 +6,6 @@
 
 #include "application.h"
 #include "buildcfg.h"
-#include "config.h"
 #include "fetcher.h"
 #include "imagelist.h"
 #include "info.h"
@@ -21,10 +20,22 @@
 #include <unistd.h>
 
 // Background grid parameters
+#define GRID_NAME   "grid"
 #define GRID_BKGID  0x00f1f2f3
 #define GRID_STEP   10
 #define GRID_COLOR1 0xff333333
 #define GRID_COLOR2 0xff4c4c4c
+
+// Default configuration parameters
+#define CFG_WINDOW_DEF         ARGB(0, 0, 0, 0)
+#define CFG_TRANSPARENCY_DEF   GRID_NAME
+#define CFG_SCALE_DEF          "optimal"
+#define CFG_FIXED_DEF          true
+#define CFG_ANTIALIASING_DEF   false
+#define CFG_SLIDESHOW_DEF      false
+#define CFG_SLIDESHOW_TIME_DEF 3
+#define CFG_HISTORY_DEF        1
+#define CFG_PRELOAD_DEF        1
 
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
@@ -69,9 +80,6 @@ struct viewer {
     bool slideshow_enable; ///< Slideshow enable/disable
     int slideshow_fd;      ///< Slideshow timer
     size_t slideshow_time; ///< Slideshow image display time (seconds)
-
-    size_t history; ///< Max number of cached images
-    size_t preload; ///< Max number of images to preload
 };
 
 /** Global viewer context. */
@@ -638,87 +646,48 @@ static void on_drag(int dx, int dy)
     }
 }
 
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config(const char* key, const char* value)
+void viewer_init(struct config* cfg, struct image* image)
 {
-    enum config_status status = cfgst_invalid_value;
+    size_t history;
+    size_t preload;
+    const char* value;
+    ssize_t index;
 
-    if (strcmp(key, VIEWER_CFG_WINDOW) == 0) {
-        if (config_to_color(value, &ctx.window_bkg)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_TRANSPARENCY) == 0) {
-        if (strcmp(value, "grid") == 0) {
-            ctx.image_bkg = GRID_BKGID;
-            status = cfgst_ok;
-        } else if (config_to_color(value, &ctx.image_bkg)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_SCALE) == 0) {
-        const ssize_t index = str_index(scale_names, value, 0);
-        if (index >= 0) {
-            ctx.scale_init = index;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_FIXED) == 0) {
-        if (config_to_bool(value, &ctx.fixed)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_ANTIALIASING) == 0) {
-        if (config_to_bool(value, &ctx.antialiasing)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_SLIDESHOW) == 0) {
-        if (config_to_bool(value, &ctx.slideshow_enable)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_SLIDESHOW_TIME) == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num != 0 && num <= 86400) {
-            ctx.slideshow_time = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_HISTORY) == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.history = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, VIEWER_CFG_PRELOAD) == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0 && num < 1024) {
-            ctx.preload = num;
-            status = cfgst_ok;
-        }
+    ctx.fixed =
+        config_get_bool(cfg, VIEWER_SECTION, VIEWER_FIXED, CFG_FIXED_DEF);
+    ctx.antialiasing = config_get_bool(cfg, VIEWER_SECTION, VIEWER_ANTIALIASING,
+                                       CFG_ANTIALIASING_DEF);
+    ctx.window_bkg =
+        config_get_color(cfg, VIEWER_SECTION, VIEWER_WINDOW, CFG_WINDOW_DEF);
+
+    // background for transparent images
+    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_TRANSPARENCY,
+                              CFG_TRANSPARENCY_DEF);
+    if (strcmp(value, GRID_NAME) == 0) {
+        ctx.image_bkg = GRID_BKGID;
     } else {
-        status = cfgst_invalid_key;
+        ctx.image_bkg = config_get_color(cfg, VIEWER_SECTION,
+                                         VIEWER_TRANSPARENCY, GRID_BKGID);
     }
 
-    return status;
-}
+    // initial scale
+    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_SCALE, CFG_SCALE_DEF);
+    index = str_index(scale_names, value, 0);
+    if (index >= 0) {
+        ctx.scale_init = index;
+    } else {
+        ctx.scale_init = scale_fit_optimal;
+        config_error_val(VIEWER_SECTION, value);
+    }
 
-void viewer_create(void)
-{
-    // set default configuration
-    ctx.image_bkg = GRID_BKGID;
-    ctx.fixed = true;
-    ctx.animation_enable = true;
-    ctx.animation_fd = -1;
-    ctx.slideshow_enable = false;
-    ctx.slideshow_fd = -1;
-    ctx.slideshow_time = 3;
-    ctx.history = 1;
-    ctx.preload = 1;
+    // cache and preloads
+    history = config_get_num(cfg, VIEWER_SECTION, VIEWER_HISTORY, 0, 1024,
+                             CFG_HISTORY_DEF);
+    preload = config_get_num(cfg, VIEWER_SECTION, VIEWER_PRELOAD, 0, 1024,
+                             CFG_PRELOAD_DEF);
 
-    // register configuration loader
-    config_add_loader(VIEWER_CFG_SECTION, load_config);
-}
-
-void viewer_init(struct image* image)
-{
     // setup animation timer
+    ctx.animation_enable = true;
     ctx.animation_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.animation_fd != -1) {
@@ -726,13 +695,18 @@ void viewer_init(struct image* image)
     }
 
     // setup slideshow timer
+    ctx.slideshow_enable = config_get_bool(cfg, VIEWER_SECTION,
+                                           VIEWER_SLIDESHOW, CFG_SLIDESHOW_DEF);
+    ctx.slideshow_time =
+        config_get_num(cfg, VIEWER_SECTION, VIEWER_SLIDESHOW_TIME, 1, 86400,
+                       CFG_SLIDESHOW_TIME_DEF);
     ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow_fd != -1) {
         app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
 
-    fetcher_init(image, ctx.history, ctx.preload);
+    fetcher_init(image, history, preload);
 }
 
 void viewer_destroy(void)

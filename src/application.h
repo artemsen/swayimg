@@ -28,22 +28,18 @@
 typedef void (*fd_callback)(void* data);
 
 /**
- * Create global application context.
+ * Initialize global application context.
+ * @param cfg config instance
+ * @param sources list of sources
+ * @param num number of sources in the list
+ * @return true if application initialized successfully
  */
-void app_create(void);
+bool app_init(struct config* cfg, const char** sources, size_t num);
 
 /**
  * Destroy global application context.
  */
 void app_destroy(void);
-
-/**
- * Initialize global application context.
- * @param sources list of sources
- * @param num number of sources in the list
- * @return true if application initialized successfully
- */
-bool app_init(const char** sources, size_t num);
 
 /**
  * Add file descriptor for polling in main loop.

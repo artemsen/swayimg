@@ -4,7 +4,6 @@
 
 #include "font.h"
 
-#include "config.h"
 #include "memdata.h"
 
 // font realted
@@ -13,6 +12,17 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
+// Configuration
+#define CFG_SECTION    "font"
+#define CFG_NAME       "name"
+#define CFG_NAME_DEF   "monospace"
+#define CFG_SIZE       "size"
+#define CFG_SIZE_DEF   14
+#define CFG_COLOR      "color"
+#define CFG_COLOR_DEF  ARGB(0xff, 0xcc, 0xcc, 0xcc)
+#define CFG_SHADOW     "shadow"
+#define CFG_SHADOW_DEF ARGB(0x80, 0, 0, 0)
+
 #define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2.0
 
@@ -20,8 +30,6 @@
 struct font {
     FT_Library lib; ///< Font lib instance
     FT_Face face;   ///< Font face instance
-    char* name;     ///< Font face name
-    size_t size;    ///< Font size (pt)
     argb_t color;   ///< Font color
     argb_t shadow;  ///< Font shadow color
 };
@@ -120,65 +128,29 @@ static size_t allocate_surface(const wchar_t* text,
     return base_offset;
 }
 
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config(const char* key, const char* value)
+void font_init(struct config* cfg)
 {
-    enum config_status status = cfgst_invalid_value;
+    char font_file[256];
+    const char* font_name;
+    size_t font_size;
 
-    if (strcmp(key, "name") == 0) {
-        str_dup(value, &ctx.name);
-        status = cfgst_ok;
-    } else if (strcmp(key, "size") == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num > 0 && num < 1024) {
-            ctx.size = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "color") == 0) {
-        if (config_to_color(value, &ctx.color)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "shadow") == 0) {
-        if (strcmp(value, "none") == 0) {
-            ctx.shadow = 0;
-            status = cfgst_ok;
-        } else if (config_to_color(value, &ctx.shadow)) {
-            status = cfgst_ok;
-        }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
-}
-
-void font_create(void)
-{
-    // set defaults
-    str_dup("monospace", &ctx.name);
-    ctx.size = 14;
-    ctx.color = ARGB(0xff, 0xcc, 0xcc, 0xcc);
-    ctx.shadow = ARGB(0x80, 0, 0, 0);
-
-    // register configuration loader
-    config_add_loader("font", load_config);
-}
-
-void font_init(void)
-{
-    char file[256];
-    const FT_F26Dot6 size = ctx.size * POINT_FACTOR;
-
-    if (!search_font_file(ctx.name, file, sizeof(file)) ||
+    // load font
+    font_name = config_get_string(cfg, CFG_SECTION, CFG_NAME, CFG_NAME_DEF);
+    if (!search_font_file(font_name, font_file, sizeof(font_file)) ||
         FT_Init_FreeType(&ctx.lib) != 0 ||
-        FT_New_Face(ctx.lib, file, 0, &ctx.face) != 0) {
-        fprintf(stderr, "Unable to load font %s\n", ctx.name);
+        FT_New_Face(ctx.lib, font_file, 0, &ctx.face) != 0) {
+        fprintf(stderr, "WARNING: Unable to load font %s\n", font_name);
         return;
     }
 
-    FT_Set_Char_Size(ctx.face, size, 0, 96, 0);
+    // set font size
+    font_size =
+        config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 256, CFG_SIZE_DEF);
+    FT_Set_Char_Size(ctx.face, font_size * POINT_FACTOR, 0, 96, 0);
+
+    // color and shdow parameters
+    ctx.color = config_get_color(cfg, CFG_SECTION, CFG_COLOR, CFG_COLOR_DEF);
+    ctx.shadow = config_get_color(cfg, CFG_SECTION, CFG_SHADOW, CFG_SHADOW_DEF);
 }
 
 void font_destroy(void)
@@ -189,7 +161,6 @@ void font_destroy(void)
     if (ctx.lib) {
         FT_Done_FreeType(ctx.lib);
     }
-    free(ctx.name);
 }
 
 bool font_render(const char* text, struct text_surface* surface)

@@ -5,7 +5,6 @@
 #include "keybind.h"
 
 #include "application.h"
-#include "config.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -296,45 +295,41 @@ static void set_default(struct keybind** head, const struct keybind_default* kb)
 /**
  * Load binding from config parameters.
  * @param kb head of binding list
- * @param key text name of key with modifiers
+ * @param cfg config instance
+ * @param section name of the section
  * @param value actions
- * @return load status
  */
-static enum config_status load_binding(struct keybind** head, const char* key,
-                                       const char* value)
+static void load_binding(struct keybind** head, struct config* cfg,
+                         const char* section)
 {
-    struct action_seq actions = { 0 };
-    xkb_keysym_t keysym;
-    uint8_t mods;
+    list_for_each(cfg, struct config, cs) {
+        if (strcmp(section, cs->name) == 0) {
+            list_for_each(cs->params, struct config_keyval, kv) {
+                struct action_seq actions = { 0 };
+                xkb_keysym_t keysym;
+                uint8_t mods;
 
-    // parse keyboard shortcut
-    if (!parse_keymod(key, &keysym, &mods)) {
-        return cfgst_invalid_key;
+                kv->used = true;
+
+                // parse keyboard shortcut
+                if (!parse_keymod(kv->key, &keysym, &mods)) {
+                    config_error_key(section, kv->key);
+                    continue;
+                }
+                // parse actions
+                if (!action_create(kv->value, &actions)) {
+                    config_error_val(section, kv->value);
+                    continue;
+                }
+
+                set_binding(head, keysym, mods, &actions);
+            }
+            break;
+        }
     }
-
-    // parse actions
-    if (!action_create(value, &actions)) {
-        return cfgst_invalid_value;
-    }
-
-    set_binding(head, keysym, mods, &actions);
-
-    return cfgst_ok;
 }
 
-/** Configure global key bindings, see `config_loader` for details. */
-static enum config_status config_viewer(const char* key, const char* value)
-{
-    return load_binding(&kb_viewer, key, value);
-}
-
-/** Configure global key bindings, see `config_loader` for details. */
-static enum config_status config_gallery(const char* key, const char* value)
-{
-    return load_binding(&kb_gallery, key, value);
-}
-
-void keybind_create(void)
+void keybind_init(struct config* cfg)
 {
     // create default bindings
     for (size_t i = 0; i < ARRAY_SIZE(default_viewer); ++i) {
@@ -344,9 +339,9 @@ void keybind_create(void)
         set_default(&kb_gallery, &default_gallery[i]);
     }
 
-    // register configuration loaders
-    config_add_loader("keys.viewer", config_viewer);
-    config_add_loader("keys.gallery", config_gallery);
+    // load bindings from config
+    load_binding(&kb_viewer, cfg, "keys.viewer");
+    load_binding(&kb_gallery, cfg, "keys.gallery");
 }
 
 void keybind_destroy(void)

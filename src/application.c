@@ -5,7 +5,6 @@
 #include "application.h"
 
 #include "buildcfg.h"
-#include "config.h"
 #include "font.h"
 #include "gallery.h"
 #include "imagelist.h"
@@ -275,138 +274,97 @@ static struct image* load_first_file(size_t index, bool force)
 }
 
 /**
- * Custom section loader, see `config_loader` for details.
+ * Load config.
+ * @param cfg config instance
  */
-static enum config_status load_config(const char* key, const char* value)
+static void load_config(struct config* cfg)
 {
-    enum config_status status = cfgst_invalid_value;
+    const char* value;
 
-    if (strcmp(key, APP_CFG_MODE) == 0) {
-        if (strcmp(value, APP_MODE_VIEWER) == 0) {
-            ctx.ehandler = viewer_handle;
-            status = cfgst_ok;
-        } else if (strcmp(value, APP_MODE_GALLERY) == 0) {
-            ctx.ehandler = gallery_handle;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, APP_CFG_POSITION) == 0) {
-        if (strcmp(value, APP_FROM_PARENT) == 0) {
-            ctx.window.x = POS_FROM_PARENT;
-            ctx.window.y = POS_FROM_PARENT;
-            status = cfgst_ok;
-        } else {
-            struct str_slice slices[2];
-            ssize_t x, y;
-            if (str_split(value, ',', slices, 2) == 2 &&
-                str_to_num(slices[0].value, slices[0].len, &x, 0) &&
-                str_to_num(slices[1].value, slices[1].len, &y, 0)) {
-                ctx.window.x = (ssize_t)x;
-                ctx.window.y = (ssize_t)y;
-                status = cfgst_ok;
-            }
-        }
-    } else if (strcmp(key, APP_CFG_SIZE) == 0) {
-        ssize_t width, height;
-        if (strcmp(value, APP_FROM_PARENT) == 0) {
-            ctx.window.width = SIZE_FROM_PARENT;
-            ctx.window.height = SIZE_FROM_PARENT;
-            status = cfgst_ok;
-        } else if (strcmp(value, APP_FROM_IMAGE) == 0) {
-            ctx.window.width = SIZE_FROM_IMAGE;
-            ctx.window.height = SIZE_FROM_IMAGE;
-            status = cfgst_ok;
-        } else if (strcmp(value, APP_FULLSCREEN) == 0) {
-            ctx.window.width = SIZE_FULLSCREEN;
-            ctx.window.height = SIZE_FULLSCREEN;
-            status = cfgst_ok;
-        } else {
-            struct str_slice slices[2];
-            if (str_split(value, ',', slices, 2) == 2 &&
-                str_to_num(slices[0].value, slices[0].len, &width, 0) &&
-                str_to_num(slices[1].value, slices[1].len, &height, 0) &&
-                width > 0 && width < 100000 && height > 0 && height < 100000) {
-                ctx.window.width = width;
-                ctx.window.height = height;
-                status = cfgst_ok;
-            }
-        }
-    } else if (strcmp(key, APP_CFG_SIGUSR1) == 0) {
-        if (action_create(value, &ctx.sigusr1)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, APP_CFG_SIGUSR2) == 0) {
-        if (action_create(value, &ctx.sigusr2)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, APP_CFG_APP_ID) == 0) {
-        str_dup(value, &ctx.app_id);
-        status = cfgst_ok;
+    // startup mode
+    value =
+        config_get_string(cfg, APP_CFG_SECTION, APP_CFG_MODE, APP_MODE_VIEWER);
+    if (strcmp(value, APP_MODE_VIEWER) == 0) {
+        ctx.ehandler = viewer_handle;
+    } else if (strcmp(value, APP_MODE_GALLERY) == 0) {
+        ctx.ehandler = gallery_handle;
     } else {
-        status = cfgst_invalid_key;
+        ctx.ehandler = viewer_handle;
+        config_error_val(APP_CFG_SECTION, APP_CFG_MODE);
     }
 
-    return status;
-}
-
-void app_create(void)
-{
+    // initial window position
     ctx.window.x = POS_FROM_PARENT;
     ctx.window.y = POS_FROM_PARENT;
-    ctx.window.width = SIZE_FROM_PARENT;
-    ctx.window.height = SIZE_FROM_PARENT;
-    ctx.ehandler = viewer_handle;
-    str_dup(APP_NAME, &ctx.app_id);
-
-    action_create("reload", &ctx.sigusr1);
-    action_create("next_file", &ctx.sigusr2);
-
-    font_create();
-    image_list_create();
-    info_create();
-    keybind_create();
-    viewer_create();
-    gallery_create();
-
-    // register configuration loader
-    config_add_loader(APP_CFG_SECTION, load_config);
-}
-
-void app_destroy(void)
-{
-    loader_destroy();
-    gallery_destroy();
-    viewer_destroy();
-    ui_destroy();
-    image_list_destroy();
-    info_destroy();
-    font_destroy();
-    keybind_destroy();
-
-    for (size_t i = 0; i < ctx.wfds_num; ++i) {
-        close(ctx.wfds[i].fd);
-    }
-    free(ctx.wfds);
-
-    list_for_each(ctx.events, struct event_queue, it) {
-        if (it->event.type == event_load) {
-            image_free(it->event.param.load.image);
+    value = config_get_string(cfg, APP_CFG_SECTION, APP_CFG_POSITION,
+                              APP_FROM_PARENT);
+    if (strcmp(value, APP_FROM_PARENT) != 0) {
+        struct str_slice slices[2];
+        ssize_t x, y;
+        if (str_split(value, ',', slices, 2) == 2 &&
+            str_to_num(slices[0].value, slices[0].len, &x, 0) &&
+            str_to_num(slices[1].value, slices[1].len, &y, 0)) {
+            ctx.window.x = (ssize_t)x;
+            ctx.window.y = (ssize_t)y;
+        } else {
+            config_error_val(APP_CFG_SECTION, APP_CFG_POSITION);
         }
-        free(it);
     }
-    if (ctx.event_signal != -1) {
-        notification_free(ctx.event_signal);
-    }
-    pthread_mutex_destroy(&ctx.events_lock);
 
-    action_free(&ctx.sigusr1);
-    action_free(&ctx.sigusr2);
+    // initial window size
+    value =
+        config_get_string(cfg, APP_CFG_SECTION, APP_CFG_SIZE, APP_FROM_PARENT);
+    if (strcmp(value, APP_FROM_PARENT) == 0) {
+        ctx.window.width = SIZE_FROM_PARENT;
+        ctx.window.height = SIZE_FROM_PARENT;
+    } else if (strcmp(value, APP_FROM_IMAGE) == 0) {
+        ctx.window.width = SIZE_FROM_IMAGE;
+        ctx.window.height = SIZE_FROM_IMAGE;
+    } else if (strcmp(value, APP_FULLSCREEN) == 0) {
+        ctx.window.width = SIZE_FULLSCREEN;
+        ctx.window.height = SIZE_FULLSCREEN;
+    } else {
+        ssize_t width, height;
+        struct str_slice slices[2];
+        if (str_split(value, ',', slices, 2) == 2 &&
+            str_to_num(slices[0].value, slices[0].len, &width, 0) &&
+            str_to_num(slices[1].value, slices[1].len, &height, 0) &&
+            width > 0 && width < 100000 && height > 0 && height < 100000) {
+            ctx.window.width = width;
+            ctx.window.height = height;
+        } else {
+            ctx.window.width = SIZE_FROM_PARENT;
+            ctx.window.height = SIZE_FROM_PARENT;
+            config_error_val(APP_CFG_SECTION, APP_CFG_SIZE);
+        }
+    }
+
+    // signal actions
+    value = config_get(cfg, APP_CFG_SECTION, APP_CFG_SIGUSR1);
+    if (value && !action_create(value, &ctx.sigusr1)) {
+        config_error_val(APP_CFG_SECTION, APP_CFG_SIGUSR1);
+    } else {
+        action_create("reload", &ctx.sigusr1);
+    }
+    value = config_get(cfg, APP_CFG_SECTION, APP_CFG_SIGUSR2);
+    if (value && !action_create(value, &ctx.sigusr2)) {
+        config_error_val(APP_CFG_SECTION, APP_CFG_SIGUSR2);
+    } else {
+        action_create("next_file", &ctx.sigusr2);
+    }
+
+    // app id
+    value = config_get_string(cfg, APP_CFG_SECTION, APP_CFG_APP_ID, APP_NAME);
+    str_dup(value, &ctx.app_id);
 }
 
-bool app_init(const char** sources, size_t num)
+bool app_init(struct config* cfg, const char** sources, size_t num)
 {
     bool force_load = false;
     struct image* first_image;
     struct sigaction sigact;
+
+    load_config(cfg);
 
     // compose image list
     if (num == 0) {
@@ -422,7 +380,7 @@ bool app_init(const char** sources, size_t num)
             sources = &stdin_name;
         }
     }
-    if (image_list_init(sources, num) == 0) {
+    if (image_list_init(cfg, sources, num) == 0) {
         if (force_load) {
             fprintf(stderr, "%s: Unable to open\n", sources[0]);
         } else {
@@ -467,11 +425,12 @@ bool app_init(const char** sources, size_t num)
     pthread_mutex_init(&ctx.events_lock, NULL);
 
     // initialize other subsystems
-    font_init();
-    info_init();
+    font_init(cfg);
+    info_init(cfg);
+    keybind_init(cfg);
     loader_init();
-    viewer_init(ctx.ehandler == viewer_handle ? first_image : NULL);
-    gallery_init(ctx.ehandler == gallery_handle ? first_image : NULL);
+    viewer_init(cfg, ctx.ehandler == viewer_handle ? first_image : NULL);
+    gallery_init(cfg, ctx.ehandler == gallery_handle ? first_image : NULL);
 
     // set mode for info
     if (info_enabled()) {
@@ -487,6 +446,37 @@ bool app_init(const char** sources, size_t num)
     sigaction(SIGUSR2, &sigact, NULL);
 
     return true;
+}
+
+void app_destroy(void)
+{
+    loader_destroy();
+    gallery_destroy();
+    viewer_destroy();
+    ui_destroy();
+    image_list_destroy();
+    keybind_destroy();
+    info_destroy();
+    font_destroy();
+
+    for (size_t i = 0; i < ctx.wfds_num; ++i) {
+        close(ctx.wfds[i].fd);
+    }
+    free(ctx.wfds);
+
+    list_for_each(ctx.events, struct event_queue, it) {
+        if (it->event.type == event_load) {
+            image_free(it->event.param.load.image);
+        }
+        free(it);
+    }
+    if (ctx.event_signal != -1) {
+        notification_free(ctx.event_signal);
+    }
+    pthread_mutex_destroy(&ctx.events_lock);
+
+    action_free(&ctx.sigusr1);
+    action_free(&ctx.sigusr2);
 }
 
 void app_watch(int fd, fd_callback cb, void* data)

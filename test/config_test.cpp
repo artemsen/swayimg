@@ -7,75 +7,100 @@ extern "C" {
 
 #include <gtest/gtest.h>
 
-static std::map<std::string, std::string> config;
+class Config : public ::testing::Test {
+protected:
+    void TearDown() override { config_free(config); }
+    struct config* config = nullptr;
+};
 
-static enum config_status on_load(const char* key, const char* value)
+TEST_F(Config, Set)
 {
-    config.insert(std::make_pair(key, value));
-    return cfgst_ok;
+    config_set(&config, "section123", "key1", "value1");
+    EXPECT_STREQ(config_get(config, "section123", "key1"), "value1");
+    config_set(&config, "section123", "key1", "value2");
+    EXPECT_STREQ(config_get(config, "section123", "key1"), "value2");
+
+    config_set(&config, "section321", "key2", "");
+    EXPECT_STREQ(config_get(config, "section321", "key2"), "");
+    config_set(&config, "section321", "key3", "123");
+    EXPECT_STREQ(config_get(config, "section321", "key3"), "123");
 }
 
-#define EXPECT_CONFIG(k, v)                                                  \
-    {                                                                        \
-        const auto& it = config.find(k);                                     \
-        const char* val = (it == config.end() ? "N/A" : it->second.c_str()); \
-        EXPECT_STREQ(val, v);                                                \
-    }
+TEST_F(Config, SetArg)
+{
+    EXPECT_TRUE(config_set_arg(&config, "section123.key1=value1"));
+    EXPECT_STREQ(config_get(config, "section123", "key1"), "value1");
 
-TEST(Config, Load)
+    EXPECT_TRUE(config_set_arg(&config, "\t\nsub.section.command  = \t42"));
+    EXPECT_STREQ(config_get(config, "sub.section", "command"), "42");
+
+    EXPECT_FALSE(config_set_arg(&config, ""));
+    EXPECT_FALSE(config_set_arg(&config, "abc=1"));
+    EXPECT_FALSE(config_set_arg(&config, "abc.def"));
+    EXPECT_FALSE(config_set_arg(&config, "abc.def="));
+}
+
+TEST_F(Config, Load)
 {
     setenv("XDG_CONFIG_HOME", TEST_DATA_DIR, 1);
+    config = config_load();
 
-    config_add_loader("test.section", on_load);
-    config_load();
-
-    EXPECT_EQ(config.size(), static_cast<size_t>(3));
-
-    auto check = [](const char* key, const char* val) {
-        const auto& it = config.find(key);
-        const char* real = (it == config.end() ? "N/A" : it->second.c_str());
-        EXPECT_STREQ(real, val);
-    };
-    check("spaces", "s p a c e s");
-    check("nospaces", "nospaces");
-    check("empty", "");
-
-    config_command("\t\ntest.section.command = 42");
-    check("command", "42");
-
-    config_destroy();
+    ASSERT_NE(config, nullptr);
+    EXPECT_STREQ(config_get(config, "test.section", "spaces"), "s p a c e s");
+    EXPECT_STREQ(config_get(config, "test.section", "nospaces"), "nospaces");
+    EXPECT_STREQ(config_get(config, "test.section", "empty"), "");
 }
 
-TEST(Config, ToBool)
+TEST_F(Config, GetString)
 {
-    bool rc;
-
-    EXPECT_TRUE(config_to_bool("true", &rc));
-    EXPECT_TRUE(rc);
-    EXPECT_TRUE(config_to_bool("false", &rc));
-    EXPECT_FALSE(rc);
-    EXPECT_TRUE(config_to_bool("yes", &rc));
-    EXPECT_TRUE(rc);
-    EXPECT_TRUE(config_to_bool("no", &rc));
-    EXPECT_FALSE(rc);
-
-    EXPECT_FALSE(config_to_bool("", &rc));
-    EXPECT_FALSE(config_to_bool("abc", &rc));
+    config_set(&config, "section", "key", "value");
+    EXPECT_STREQ(config_get_string(config, "section", "key", ""), "value");
+    EXPECT_STREQ(config_get_string(config, "section", "key1", "def"), "def");
+    EXPECT_STREQ(config_get_string(config, "section1", "key", "def"), "def");
 }
 
-TEST(Config, ToColor)
+TEST_F(Config, GetBool)
 {
-    argb_t argb;
+    config_set(&config, "section", "key", "yes");
+    EXPECT_TRUE(config_get_bool(config, "section", "key", true));
+    EXPECT_TRUE(config_get_bool(config, "section", "key", false));
 
-    EXPECT_TRUE(config_to_color("#010203", &argb));
-    EXPECT_EQ(argb, 0xff010203);
-    EXPECT_TRUE(config_to_color("#010203aa", &argb));
-    EXPECT_EQ(argb, 0xaa010203);
-    EXPECT_TRUE(config_to_color("010203aa", &argb));
-    EXPECT_EQ(argb, 0xaa010203);
-    EXPECT_TRUE(config_to_color("# 010203aa", &argb));
-    EXPECT_EQ(argb, 0xaa010203);
-    EXPECT_FALSE(config_to_color("", &argb));
+    config_set(&config, "section", "key", "no");
+    EXPECT_FALSE(config_get_bool(config, "section", "key", true));
+    EXPECT_FALSE(config_get_bool(config, "section", "key", false));
 
-    EXPECT_FALSE(config_to_color("invalid value", &argb));
+    config_set(&config, "section", "key", "invalid");
+    EXPECT_TRUE(config_get_bool(config, "section", "key", true));
+
+    EXPECT_TRUE(config_get_bool(config, "section", "key1", true));
+    EXPECT_FALSE(config_get_bool(config, "section", "key1", false));
+    EXPECT_TRUE(config_get_bool(config, "section1", "key", true));
+    EXPECT_FALSE(config_get_bool(config, "section1", "key", false));
+}
+
+TEST_F(Config, ToColor)
+{
+    config_set(&config, "section", "key", "#010203");
+    EXPECT_EQ(config_get_color(config, "section", "key", 0xbaaaaaad),
+              static_cast<argb_t>(0xff010203));
+
+    config_set(&config, "section", "key", "#010203aa");
+    EXPECT_EQ(config_get_color(config, "section", "key", 0xbaaaaaad),
+              static_cast<argb_t>(0xaa010203));
+
+    config_set(&config, "section", "key", "010203aa");
+    EXPECT_EQ(config_get_color(config, "section", "key", 0xbaaaaaad),
+              static_cast<argb_t>(0xaa010203));
+
+    config_set(&config, "section", "key", "# 010203aa");
+    EXPECT_EQ(config_get_color(config, "section", "key", 0xbaaaaaad),
+              static_cast<argb_t>(0xaa010203));
+
+    config_set(&config, "section", "key", "invalid");
+    EXPECT_EQ(config_get_color(config, "section", "key", 0x11223344),
+              static_cast<argb_t>(0x11223344));
+    EXPECT_EQ(config_get_color(config, "section", "key1", 0x11223344),
+              static_cast<argb_t>(0x11223344));
+    EXPECT_EQ(config_get_color(config, "section1", "key", 0x11223344),
+              static_cast<argb_t>(0x11223344));
 }

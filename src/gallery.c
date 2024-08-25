@@ -5,7 +5,6 @@
 #include "gallery.h"
 
 #include "application.h"
-#include "config.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
@@ -13,6 +12,27 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+// Configuration parameters
+#define CFG_SECTION    "gallery"
+#define CFG_SIZE       "size"
+#define CFG_SIZE_DEF   200
+#define CFG_CACHE      "cache"
+#define CFG_CACHE_DEF  100
+#define CFG_FILL       "fill"
+#define CFG_FILL_DEF   true
+#define CFG_WINDOW     "window"
+#define CFG_WINDOW_DEF ARGB(0, 0, 0, 0)
+#define CFG_BACKGR     "background"
+#define CFG_BACKGR_DEF ARGB(0xff, 0x20, 0x20, 0x20)
+#define CFG_SELECT     "select"
+#define CFG_SELECT_DEF ARGB(0xff, 0x40, 0x40, 0x40)
+#define CFG_BORDER     "border"
+#define CFG_BORDER_DEF ARGB(0xff, 0, 0, 0)
+#define CFG_SHADOW     "shadow"
+#define CFG_SHADOW_DEF ARGB(0xff, 0, 0, 0)
+#define CFG_AA         "antialiasing"
+#define CFG_AA_DEF     false
 
 // Scale for selected thumbnail
 #define THUMB_SELECTED_SCALE 1.15f
@@ -529,79 +549,27 @@ static void on_image_load(struct image* image, size_t index)
     app_redraw();
 }
 
-/**
- * Custom section loader, see `config_loader` for details.
- */
-static enum config_status load_config(const char* key, const char* value)
+void gallery_init(struct config* cfg, struct image* image)
 {
-    enum config_status status = cfgst_invalid_value;
+    ctx.thumb_size =
+        config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 1024, CFG_SIZE_DEF);
+    ctx.thumb_max =
+        config_get_num(cfg, CFG_SECTION, CFG_CACHE, 0, 1024, CFG_CACHE_DEF);
+    ctx.thumb_fill = config_get_bool(cfg, CFG_SECTION, CFG_FILL, CFG_FILL_DEF);
+    ctx.thumb_aa = config_get_bool(cfg, CFG_SECTION, CFG_AA, CFG_AA_DEF);
+    ctx.clr_window =
+        config_get_color(cfg, CFG_SECTION, CFG_WINDOW, CFG_WINDOW_DEF);
+    ctx.clr_background =
+        config_get_color(cfg, CFG_SECTION, CFG_BACKGR, CFG_BACKGR_DEF);
+    ctx.clr_select =
+        config_get_color(cfg, CFG_SECTION, CFG_SELECT, CFG_SELECT_DEF);
+    ctx.clr_border =
+        config_get_color(cfg, CFG_SECTION, CFG_BORDER, CFG_BORDER_DEF);
+    ctx.clr_shadow =
+        config_get_color(cfg, CFG_SECTION, CFG_SHADOW, CFG_SHADOW_DEF);
 
-    if (strcmp(key, "size") == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 10 && num <= 1024) {
-            ctx.thumb_size = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "cache") == 0) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= 0) {
-            ctx.thumb_max = num;
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "fill") == 0) {
-        if (config_to_bool(value, &ctx.thumb_fill)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "window") == 0) {
-        if (config_to_color(value, &ctx.clr_window)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "background") == 0) {
-        if (config_to_color(value, &ctx.clr_background)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "select") == 0) {
-        if (config_to_color(value, &ctx.clr_select)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "border") == 0) {
-        if (config_to_color(value, &ctx.clr_border)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "shadow") == 0) {
-        if (config_to_color(value, &ctx.clr_shadow)) {
-            status = cfgst_ok;
-        }
-    } else if (strcmp(key, "antialiasing") == 0) {
-        if (config_to_bool(value, &ctx.thumb_aa)) {
-            status = cfgst_ok;
-        }
-    } else {
-        status = cfgst_invalid_key;
-    }
-
-    return status;
-}
-
-void gallery_create(void)
-{
-    ctx.thumb_size = 200;
-    ctx.thumb_max = 100;
-    ctx.thumb_fill = true;
-    ctx.top = IMGLIST_INVALID;
-    ctx.selected = IMGLIST_INVALID;
-    ctx.clr_background = 0xff202020;
-    ctx.clr_select = 0xff404040;
-    ctx.clr_border = 0xff000000;
-    ctx.clr_shadow = 0xff000000;
-
-    // register configuration loader
-    config_add_loader("gallery", load_config);
-}
-
-void gallery_init(struct image* image)
-{
     ctx.top = image_list_first();
+    ctx.selected = ctx.top;
     if (image) {
         add_thumbnail(image);
         select_thumbnail(image->index);
