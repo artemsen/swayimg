@@ -390,9 +390,13 @@ static bool next_image(enum action_type direction)
         switch (direction) {
             case action_first_file:
                 index = image_list_first();
+                // look forward in case the first file fails to load
+                direction = action_next_file;
                 break;
             case action_last_file:
                 index = image_list_last();
+                // look backward in case the last file fails to load
+                direction = action_prev_file;
                 break;
             case action_prev_dir:
                 index = image_list_prev_dir(index);
