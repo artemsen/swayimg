@@ -33,7 +33,7 @@ static const struct cmdarg arguments[] = {
                                   APP_CFG_SECTION, APP_CFG_MODE, APP_MODE_GALLERY },
     { 'r', "recursive",  NULL,    "read directories recursively",
                                   IMGLIST_SECTION, IMGLIST_RECURSIVE, "yes" },
-    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/random",
+    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/reverse/random",
                                   IMGLIST_SECTION, IMGLIST_ORDER, NULL },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
                                   VIEWER_SECTION, VIEWER_SCALE, NULL },

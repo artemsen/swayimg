@@ -79,7 +79,7 @@ shadow = #000000ff
 # Image list configuration
 ################################################################################
 [list]
-# Default order (none/alpha/random)
+# Default order (none/alpha/reverse/random)
 order = alpha
 # Looping list of images (yes/no)
 loop = yes

@@ -36,6 +36,7 @@ static struct image_list ctx;
 static const char* order_names[] = {
     [order_none] = "none",
     [order_alpha] = "alpha",
+    [order_reverse] = "reverse",
     [order_random] = "random",
 };
 
@@ -188,9 +189,18 @@ static size_t next_dir(size_t start, bool forward)
  * Compare sources callback for `qsort`.
  * @return negative if a < b, positive if a > b, 0 otherwise
  */
-static int compare_sources(const void* a, const void* b)
+static int compare_alpha(const void* a, const void* b)
 {
     return strcoll(*(const char**)a, *(const char**)b);
+}
+
+/**
+ * Compare sources callback for `qsort`.
+ * @return negative if a > b, positive if a < b, 0 otherwise
+ */
+static int compare_reverse(const void* a, const void* b)
+{
+    return -strcoll(*(const char**)a, *(const char**)b);
 }
 
 /**
@@ -284,11 +294,21 @@ size_t image_list_init(struct config* cfg, const char** sources, size_t num)
     }
 
     if (ctx.size != 0) {
-        // sort or shuffle
-        if (ctx.order == order_alpha) {
-            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_sources);
-        } else if (ctx.order == order_random) {
-            shuffle_list();
+        // sort list
+        switch (ctx.order) {
+            case order_none:
+                break;
+            case order_alpha:
+                qsort(ctx.sources, ctx.size, sizeof(*ctx.sources),
+                      compare_alpha);
+                break;
+            case order_reverse:
+                qsort(ctx.sources, ctx.size, sizeof(*ctx.sources),
+                      compare_reverse);
+                break;
+            case order_random:
+                shuffle_list();
+                break;
         }
     }
 
