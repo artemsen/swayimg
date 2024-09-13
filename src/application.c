@@ -426,8 +426,8 @@ bool app_init(struct config* cfg, const char** sources, size_t num)
 
     // initialize other subsystems
     font_init(cfg);
-    info_init(cfg);
     keybind_init(cfg);
+    info_init(cfg);
     loader_init();
     viewer_init(cfg, ctx.ehandler == viewer_handle ? first_image : NULL);
     gallery_init(cfg, ctx.ehandler == gallery_handle ? first_image : NULL);
@@ -455,8 +455,8 @@ void app_destroy(void)
     viewer_destroy();
     ui_destroy();
     image_list_destroy();
-    keybind_destroy();
     info_destroy();
+    keybind_destroy();
     font_destroy();
 
     for (size_t i = 0; i < ctx.wfds_num; ++i) {

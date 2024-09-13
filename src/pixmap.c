@@ -94,6 +94,22 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     }
 }
 
+void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                  size_t height, argb_t color)
+{
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)pm->width, x + (ssize_t)width);
+    const ssize_t bottom = min((ssize_t)pm->height, y + (ssize_t)height);
+
+    for (y = top; y < bottom; ++y) {
+        argb_t* line = &pm->data[y * pm->width];
+        for (x = left; x < right; ++x) {
+            alpha_blend(color, &line[x]);
+        }
+    }
+}
+
 void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                   argb_t color)
 {
@@ -163,14 +179,14 @@ void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     }
 }
 
-void pixmap_apply_mask(struct pixmap* dst, ssize_t x, ssize_t y,
+void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color)
 {
     const ssize_t left = max(0, x);
     const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, x + (ssize_t)width);
-    const ssize_t bottom = min((ssize_t)dst->height, y + (ssize_t)height);
+    const ssize_t right = min((ssize_t)pm->width, x + (ssize_t)width);
+    const ssize_t bottom = min((ssize_t)pm->height, y + (ssize_t)height);
     const ssize_t dst_width = right - left;
     const ssize_t delta_x = left - x;
     const ssize_t delta_y = top - y;
@@ -178,7 +194,7 @@ void pixmap_apply_mask(struct pixmap* dst, ssize_t x, ssize_t y,
     for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
         const size_t src_y = dst_y - top + delta_y;
         const uint8_t* mask_line = &mask[src_y * width + delta_x];
-        argb_t* dst_line = &dst->data[dst_y * dst->width + left];
+        argb_t* dst_line = &pm->data[dst_y * pm->width + left];
 
         for (x = 0; x < dst_width; ++x) {
             const uint8_t alpha_mask = mask_line[x];

@@ -81,6 +81,16 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                          size_t height, argb_t color);
 
 /**
+ * Blend area with specified color.
+ * @param pm pixmap context
+ * @param x,y start coordinates, left top point
+ * @param width,height region size
+ * @param color color to set
+ */
+void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                  size_t height, argb_t color);
+
+/**
  * Draw horizontal line.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
@@ -124,13 +134,13 @@ void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
 
 /**
  * Apply mask to pixmap: change color according alpha channel.
- * @param dst destination pixmap
+ * @param pm destination pixmap
  * @param x,y destination left top point
  * @param mask array with alpha channel mask
  * @param width,height mask size
  * @param color color to set
  */
-void pixmap_apply_mask(struct pixmap* dst, ssize_t x, ssize_t y,
+void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
                        const uint8_t* mask, size_t width, size_t height,
                        argb_t color);
 
