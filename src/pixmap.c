@@ -4,13 +4,54 @@
 
 #include "pixmap.h"
 
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif
+
+/** Scale filter parameters. */
+struct scale_param {
+    const struct pixmap* src; ///< Source pixmap
+    struct pixmap* dst;       ///< Destination pixmap
+    ssize_t x;                ///< Left offset on destination pixmap
+    ssize_t y;                ///< Top offset on destination pixmap
+    float scale;              ///< Scale factor
+    bool alpha;               ///< Flag to use alpha blending
+};
+
+/**
+ * Scale handler.
+ * @param sp pointer to scaling params
+ * @param start index of the first line to draw
+ * @param step number of lines to skip on each iteration
+ */
+typedef void (*scale_fn)(struct scale_param* sp, size_t start, size_t step);
+
+/** Scale filter thread task. */
+struct scale_task {
+    pthread_t tid;          ///< Thread id
+    struct scale_param* sp; ///< Scaling parameters
+    size_t start;           ///< Index of the first line to draw
+    size_t step;            ///< Number of lines to skip on each iteration
+    scale_fn fn;            ///< Scale function
+};
+
+/** Background thread scaler handler. */
+static void* scale_thread(void* data)
+{
+    const struct scale_task* task = data;
+    task->fn(task->sp, task->start, task->step);
+    return NULL;
+}
 
 /**
  * Alpha blending.
  * @param img color of image's pixel
- * @param wnd pointer to window buffer to put puxel
+ * @param wnd pointer to window buffer to put pixel
  */
 static inline void alpha_blend(argb_t src, argb_t* dst)
 {
@@ -28,6 +69,162 @@ static inline void alpha_blend(argb_t src, argb_t* dst)
     }
 
     *dst = src;
+}
+
+/** Nearest scale filter, see `scale_fn` for details. */
+static void scale_nearest(struct scale_param* sp, size_t start, size_t step)
+{
+    const ssize_t left = max(0, sp->x);
+    const ssize_t top = max(0, sp->y);
+    const ssize_t right =
+        min((ssize_t)sp->dst->width, sp->x + sp->scale * sp->src->width);
+    const ssize_t bottom =
+        min((ssize_t)sp->dst->height, sp->y + sp->scale * sp->src->height);
+
+    const ssize_t delta_x = left - sp->x;
+    const ssize_t delta_y = top - sp->y;
+
+    for (ssize_t dst_y = top + start; dst_y < bottom; dst_y += step) {
+        const size_t src_y = (float)(dst_y - top + delta_y) / sp->scale;
+        const argb_t* src_line = &sp->src->data[src_y * sp->src->width];
+        argb_t* dst_line = &sp->dst->data[dst_y * sp->dst->width];
+
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const size_t src_x = (float)(dst_x - left + delta_x) / sp->scale;
+            const argb_t color = src_line[src_x];
+
+            if (sp->alpha) {
+                alpha_blend(color, &dst_line[dst_x]);
+            } else {
+                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
+            }
+        }
+    }
+}
+
+/** Bicubic scale filter, see `scale_fn` for details. */
+static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
+{
+    const ssize_t left = max(0, sp->x);
+    const ssize_t top = max(0, sp->y);
+    const ssize_t right =
+        min((ssize_t)sp->dst->width, sp->x + sp->scale * sp->src->width);
+    const ssize_t bottom =
+        min((ssize_t)sp->dst->height, sp->y + sp->scale * sp->src->height);
+
+    const ssize_t delta_x = left - sp->x;
+    const ssize_t delta_y = top - sp->y;
+
+    size_t state_zero_x = 1;
+    size_t state_zero_y = 1;
+    float state[4][4][4] = { 0 }; // color channel, y, x
+
+    for (ssize_t dst_y = top + start; dst_y < bottom; dst_y += step) {
+        argb_t* dst_line = &sp->dst->data[dst_y * sp->dst->width];
+        const double scaled_y = (double)(dst_y - top + delta_y) / sp->scale;
+        const size_t fixed_y = (size_t)scaled_y;
+        const float diff_y = scaled_y - fixed_y;
+        const float diff_y2 = diff_y * diff_y;
+        const float diff_y3 = diff_y * diff_y2;
+
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            const double scaled_x =
+                (double)(dst_x - left + delta_x) / sp->scale;
+            const size_t fixed_x = (size_t)scaled_x;
+            const float diff_x = scaled_x - fixed_x;
+            const float diff_x2 = diff_x * diff_x;
+            const float diff_x3 = diff_x * diff_x2;
+            argb_t fg = 0;
+
+            // update cached state
+            if (state_zero_x != fixed_x || state_zero_y != fixed_y) {
+                float pixels[4][4][4]; // color channel, y, x
+                state_zero_x = fixed_x;
+                state_zero_y = fixed_y;
+                for (size_t pc = 0; pc < 4; ++pc) {
+                    // get colors for the current area
+                    for (size_t py = 0; py < 4; ++py) {
+                        size_t iy = fixed_y + py;
+                        if (iy > 0) {
+                            --iy;
+                            if (iy >= sp->src->height) {
+                                iy = sp->src->height - 1;
+                            }
+                        }
+                        for (size_t px = 0; px < 4; ++px) {
+                            size_t ix = fixed_x + px;
+                            if (ix > 0) {
+                                --ix;
+                                if (ix >= sp->src->width) {
+                                    ix = sp->src->width - 1;
+                                }
+                            }
+                            const argb_t pixel =
+                                sp->src->data[iy * sp->src->width + ix];
+                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
+                        }
+                    }
+                    // recalc state cache for the current area
+                    // clang-format off
+                    state[pc][0][0] = pixels[pc][1][1];
+                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
+                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
+                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
+                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
+                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
+                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
+                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
+                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
+                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
+                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
+                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
+                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
+                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
+                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
+                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
+                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
+                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
+                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
+                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
+                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
+                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
+                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
+                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
+                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
+                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
+                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
+                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
+                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
+                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
+                    // clang-format on
+                }
+            }
+
+            // set pixel
+            for (size_t pc = 0; pc < 4; ++pc) {
+                // clang-format off
+                const float inter =
+                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
+                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
+                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
+                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
+                // clang-format on
+                const uint8_t color = max(min(inter, 255), 0);
+                fg |= (color << (pc * 8));
+            }
+
+            if (sp->alpha) {
+                alpha_blend(fg, &dst_line[dst_x]);
+            } else {
+                dst_line[dst_x] = ARGB_SET_A(0xff) | fg;
+            }
+        }
+    }
 }
 
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
@@ -235,155 +432,45 @@ void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
     }
 }
 
-void pixmap_scale_nearest(const struct pixmap* src, struct pixmap* dst,
-                          ssize_t x, ssize_t y, float scale, bool alpha)
+void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
+                  struct pixmap* dst, ssize_t x, ssize_t y, float scale,
+                  bool alpha)
 {
-    const ssize_t left = max(0, x);
-    const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
-    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
+    // get numper of active CPUs
+#ifdef __FreeBSD__
+    uint32_t cpus = 0;
+    size_t cpus_len = sizeof(cpus);
+    sysctlbyname("hw.ncpu", &cpus, &cpus_len, 0, 0);
+#else
+    const long cpus = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
 
-    const ssize_t delta_x = left - x;
-    const ssize_t delta_y = top - y;
+    const size_t threads_num = cpus > 0 ? min(16, cpus) : 1;
+    struct scale_task* tasks = malloc(threads_num * sizeof(struct scale_task));
+    scale_fn fn = scaler == pixmap_nearest ? scale_nearest : scale_bicubic;
+    struct scale_param sp = {
+        .src = src,
+        .dst = dst,
+        .x = x,
+        .y = y,
+        .scale = scale,
+        .alpha = alpha,
+    };
 
-    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
-        const size_t src_y = (float)(dst_y - top + delta_y) / scale;
-        const argb_t* src_line = &src->data[src_y * src->width];
-        argb_t* dst_line = &dst->data[dst_y * dst->width];
-
-        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
-            const size_t src_x = (float)(dst_x - left + delta_x) / scale;
-            const argb_t color = src_line[src_x];
-
-            if (alpha) {
-                alpha_blend(color, &dst_line[dst_x]);
-            } else {
-                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
-            }
-        }
+    for (size_t i = 0; i < threads_num; ++i) {
+        struct scale_task* task = &tasks[i];
+        task->sp = &sp;
+        task->start = i;
+        task->step = threads_num;
+        task->fn = fn;
+        pthread_create(&task->tid, NULL, scale_thread, task);
     }
-}
 
-void pixmap_scale_bicubic(const struct pixmap* src, struct pixmap* dst,
-                          ssize_t x, ssize_t y, float scale, bool alpha)
-{
-    const ssize_t left = max(0, x);
-    const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, x + scale * src->width);
-    const ssize_t bottom = min((ssize_t)dst->height, y + scale * src->height);
-
-    const ssize_t delta_x = left - x;
-    const ssize_t delta_y = top - y;
-
-    size_t state_zero_x = 1;
-    size_t state_zero_y = 1;
-    float state[4][4][4] = { 0 }; // color channel, y, x
-
-    for (ssize_t dst_y = top; dst_y < bottom; ++dst_y) {
-        argb_t* dst_line = &dst->data[dst_y * dst->width];
-        const double scaled_y = (double)(dst_y - top + delta_y) / scale;
-        const size_t fixed_y = (size_t)scaled_y;
-        const float diff_y = scaled_y - fixed_y;
-        const float diff_y2 = diff_y * diff_y;
-        const float diff_y3 = diff_y * diff_y2;
-
-        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
-            const double scaled_x = (double)(dst_x - left + delta_x) / scale;
-            const size_t fixed_x = (size_t)scaled_x;
-            const float diff_x = scaled_x - fixed_x;
-            const float diff_x2 = diff_x * diff_x;
-            const float diff_x3 = diff_x * diff_x2;
-            argb_t fg = 0;
-
-            // update cached state
-            if (state_zero_x != fixed_x || state_zero_y != fixed_y) {
-                float pixels[4][4][4]; // color channel, y, x
-                state_zero_x = fixed_x;
-                state_zero_y = fixed_y;
-                for (size_t pc = 0; pc < 4; ++pc) {
-                    // get colors for the current area
-                    for (size_t py = 0; py < 4; ++py) {
-                        size_t iy = fixed_y + py;
-                        if (iy > 0) {
-                            --iy;
-                            if (iy >= src->height) {
-                                iy = src->height - 1;
-                            }
-                        }
-                        for (size_t px = 0; px < 4; ++px) {
-                            size_t ix = fixed_x + px;
-                            if (ix > 0) {
-                                --ix;
-                                if (ix >= src->width) {
-                                    ix = src->width - 1;
-                                }
-                            }
-                            const argb_t pixel =
-                                src->data[iy * src->width + ix];
-                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
-                        }
-                    }
-                    // recalc state cache for the current area
-                    // clang-format off
-                    state[pc][0][0] = pixels[pc][1][1];
-                    state[pc][0][1] = -0.5 * pixels[pc][1][0] + 0.5  * pixels[pc][1][2];
-                    state[pc][0][2] =        pixels[pc][1][0] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][1][2] - 0.5  * pixels[pc][1][3];
-                    state[pc][0][3] = -0.5 * pixels[pc][1][0] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][1][2] + 0.5  * pixels[pc][1][3];
-                    state[pc][1][0] = -0.5 * pixels[pc][0][1] + 0.5  * pixels[pc][2][1];
-                    state[pc][1][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.25 * pixels[pc][2][0] + 0.25 * pixels[pc][2][2];
-                    state[pc][1][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       0.5 * pixels[pc][2][0] - 1.25 * pixels[pc][2][1] +        pixels[pc][2][2] - 0.25 * pixels[pc][2][3];
-                    state[pc][1][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.25 * pixels[pc][2][0] + 0.75 * pixels[pc][2][1] - 0.75 * pixels[pc][2][2] + 0.25 * pixels[pc][2][3];
-                    state[pc][2][0] =        pixels[pc][0][1] - 2.5  * pixels[pc][1][1] + 2.0  * pixels[pc][2][1] - 0.5  * pixels[pc][3][1];
-                    state[pc][2][1] = -0.5 * pixels[pc][0][0] + 0.5  * pixels[pc][0][2] + 1.25 * pixels[pc][1][0] - 1.25 * pixels[pc][1][2] -
-                                             pixels[pc][2][0] +        pixels[pc][2][2] + 0.25 * pixels[pc][3][0] - 0.25 * pixels[pc][3][2];
-                    state[pc][2][2] =        pixels[pc][0][0] - 2.5  * pixels[pc][0][1] + 2.0  * pixels[pc][0][2] - 0.5  * pixels[pc][0][3] -
-                                       2.5 * pixels[pc][1][0] + 6.25 * pixels[pc][1][1] - 5.0  * pixels[pc][1][2] + 1.25 * pixels[pc][1][3] +
-                                       2.0 * pixels[pc][2][0] - 5.0  * pixels[pc][2][1] + 4.0  * pixels[pc][2][2] -        pixels[pc][2][3] -
-                                       0.5 * pixels[pc][3][0] + 1.25 * pixels[pc][3][1] -        pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    state[pc][2][3] = -0.5 * pixels[pc][0][0] + 1.5  * pixels[pc][0][1] - 1.5  * pixels[pc][0][2] + 0.5  * pixels[pc][0][3] +
-                                      1.25 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.75 * pixels[pc][1][2] - 1.25 * pixels[pc][1][3] -
-                                             pixels[pc][2][0] + 3.0  * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] +        pixels[pc][2][3] +
-                                      0.25 * pixels[pc][3][0] - 0.75 * pixels[pc][3][1] + 0.75 * pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][0] = -0.5 * pixels[pc][0][1] + 1.5  * pixels[pc][1][1] - 1.5  * pixels[pc][2][1] + 0.5  * pixels[pc][3][1];
-                    state[pc][3][1] = 0.25 * pixels[pc][0][0] - 0.25 * pixels[pc][0][2] -
-                                      0.75 * pixels[pc][1][0] + 0.75 * pixels[pc][1][2] +
-                                      0.75 * pixels[pc][2][0] - 0.75 * pixels[pc][2][2] -
-                                      0.25 * pixels[pc][3][0] + 0.25 * pixels[pc][3][2];
-                    state[pc][3][2] = -0.5 * pixels[pc][0][0] + 1.25 * pixels[pc][0][1] -        pixels[pc][0][2] + 0.25 * pixels[pc][0][3] +
-                                       1.5 * pixels[pc][1][0] - 3.75 * pixels[pc][1][1] + 3.0  * pixels[pc][1][2] - 0.75 * pixels[pc][1][3] -
-                                       1.5 * pixels[pc][2][0] + 3.75 * pixels[pc][2][1] - 3.0  * pixels[pc][2][2] + 0.75 * pixels[pc][2][3] +
-                                       0.5 * pixels[pc][3][0] - 1.25 * pixels[pc][3][1] +        pixels[pc][3][2] - 0.25 * pixels[pc][3][3];
-                    state[pc][3][3] = 0.25 * pixels[pc][0][0] - 0.75 * pixels[pc][0][1] + 0.75 * pixels[pc][0][2] - 0.25 * pixels[pc][0][3] -
-                                      0.75 * pixels[pc][1][0] + 2.25 * pixels[pc][1][1] - 2.25 * pixels[pc][1][2] + 0.75 * pixels[pc][1][3] +
-                                      0.75 * pixels[pc][2][0] - 2.25 * pixels[pc][2][1] + 2.25 * pixels[pc][2][2] - 0.75 * pixels[pc][2][3] -
-                                      0.25 * pixels[pc][3][0] + 0.75 * pixels[pc][3][1] - 0.75 * pixels[pc][3][2] + 0.25 * pixels[pc][3][3];
-                    // clang-format on
-                }
-            }
-
-            // set pixel
-            for (size_t pc = 0; pc < 4; ++pc) {
-                // clang-format off
-                const float inter =
-                    (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
-                    (state[pc][1][0] + state[pc][1][1] * diff_x + state[pc][1][2] * diff_x2 + state[pc][1][3] * diff_x3) * diff_y +
-                    (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
-                    (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
-                // clang-format on
-                const uint8_t color = max(min(inter, 255), 0);
-                fg |= (color << (pc * 8));
-            }
-
-            if (alpha) {
-                alpha_blend(fg, &dst_line[dst_x]);
-            } else {
-                dst_line[dst_x] = ARGB_SET_A(0xff) | fg;
-            }
-        }
+    for (size_t i = 0; i < threads_num; ++i) {
+        pthread_join(tasks[i].tid, NULL);
     }
+
+    free(tasks);
 }
 
 void pixmap_flip_vertical(struct pixmap* pm)

@@ -46,6 +46,12 @@ struct pixmap {
     argb_t* data;  ///< Pixel data
 };
 
+/** Scale filters. */
+enum pixmap_scale {
+    pixmap_nearest, ///< Nearest filter, poor quality but fast
+    pixmap_bicubic, ///< Bicubic filter, good quality but slow
+};
+
 /**
  * Allocate/reallocate pixel map.
  * @param pm pixmap context to create
@@ -155,27 +161,17 @@ void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
                  ssize_t y, bool alpha);
 
 /**
- * Draw scaled pixmap: nearest filter, poor quality but fast.
+ * Draw scaled pixmap.
+ * @param scaler scale filter to use
  * @param src source pixmap
  * @param dst destination pixmap
  * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
  * @param alpha flag to use alpha blending
  */
-void pixmap_scale_nearest(const struct pixmap* src, struct pixmap* dst,
-                          ssize_t x, ssize_t y, float scale, bool alpha);
-
-/**
- * Draw scaled pixmap: bicubic filter, good quality but slow.
- * @param src source pixmap
- * @param dst destination pixmap
- * @param x,y destination left top coordinates
- * @param scale scale of source pixmap
- * @param alpha flag to use alpha blending
- */
-void pixmap_scale_bicubic(const struct pixmap* src, struct pixmap* dst,
-                          ssize_t x, ssize_t y, float scale, bool alpha);
-
+void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
+                  struct pixmap* dst, ssize_t x, ssize_t y, float scale,
+                  bool alpha);
 /**
  * Flip pixel map vertically.
  * @param pm pixmap context

@@ -64,6 +64,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     size_t thumb_width = scale * full->width;
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
+    const enum pixmap_scale sf = antialias ? pixmap_bicubic : pixmap_nearest;
 
     if (fill) {
         offset_x = size / 2 - thumb_width / 2;
@@ -79,13 +80,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     if (!pixmap_create(&thumb, thumb_width, thumb_height)) {
         return;
     }
-    if (antialias) {
-        pixmap_scale_bicubic(full, &thumb, offset_x, offset_y, scale,
-                             image->alpha);
-    } else {
-        pixmap_scale_nearest(full, &thumb, offset_x, offset_y, scale,
-                             image->alpha);
-    }
+    pixmap_scale(sf, full, &thumb, offset_x, offset_y, scale, image->alpha);
 
     image_free_frames(image);
     frame = image_create_frames(image, 1);
