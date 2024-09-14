@@ -31,6 +31,9 @@
 #define BTN_LEFT 0x110 // from <linux/input-event-codes.h>
 #endif
 
+// Uncomment the following line to enable printing draw time
+// #define TRACE_DRAW_TIME
+
 /** UI context */
 struct ui {
     // wayland specific
@@ -61,6 +64,9 @@ struct ui {
         size_t width;
         size_t height;
         int32_t scale;
+#ifdef TRACE_DRAW_TIME
+        struct timespec draw_time;
+#endif
     } wnd;
 
     // cross-desktop
@@ -733,11 +739,24 @@ struct pixmap* ui_draw_begin(void)
 
     ctx.wnd.pm.data = wl_buffer_get_user_data(ctx.wnd.current);
 
+#ifdef TRACE_DRAW_TIME
+    clock_gettime(CLOCK_MONOTONIC, &ctx.wnd.draw_time);
+#endif
+
     return &ctx.wnd.pm;
 }
 
 void ui_draw_commit(void)
 {
+#ifdef TRACE_DRAW_TIME
+    struct timespec curr;
+    clock_gettime(CLOCK_MONOTONIC, &curr);
+    printf("%ld ms\n",
+           (curr.tv_sec * 1000 + curr.tv_nsec / 1000000) -
+               (ctx.wnd.draw_time.tv_sec * 1000 +
+                ctx.wnd.draw_time.tv_nsec / 1000000));
+#endif
+
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
     wl_surface_damage(ctx.wl.surface, 0, 0, ctx.wnd.width, ctx.wnd.height);
     wl_surface_set_buffer_scale(ctx.wl.surface, ctx.wnd.scale);
