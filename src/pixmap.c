@@ -445,9 +445,13 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
     const long cpus = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
 
-    const size_t threads_num = cpus > 0 ? min(16, cpus) : 1;
-    struct scale_task* tasks = malloc(threads_num * sizeof(struct scale_task));
-    scale_fn fn = scaler == pixmap_nearest ? scale_nearest : scale_bicubic;
+    // background threads
+    const size_t threads_num = min(16, max(cpus, 1)) - 1;
+    struct scale_task* tasks = NULL;
+
+    const scale_fn scaler_fn =
+        scaler == pixmap_nearest ? scale_nearest : scale_bicubic;
+
     struct scale_param sp = {
         .src = src,
         .dst = dst,
@@ -457,15 +461,29 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
         .alpha = alpha,
     };
 
+    // create task for each CPU core
+    if (threads_num) {
+        tasks = malloc(threads_num * sizeof(struct scale_task));
+        if (!tasks) {
+            return;
+        }
+    }
+
+    // start background threads
     for (size_t i = 0; i < threads_num; ++i) {
         struct scale_task* task = &tasks[i];
+        task->tid = 0;
         task->sp = &sp;
-        task->start = i;
-        task->step = threads_num;
-        task->fn = fn;
+        task->start = i + 1; // skip first line
+        task->step = threads_num + 1;
+        task->fn = scaler_fn;
         pthread_create(&task->tid, NULL, scale_thread, task);
     }
 
+    // execute the first task in the current thread
+    scaler_fn(&sp, 0, threads_num + 1);
+
+    // wait for all threads to complete
     for (size_t i = 0; i < threads_num; ++i) {
         pthread_join(tasks[i].tid, NULL);
     }

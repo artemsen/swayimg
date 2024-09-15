@@ -751,10 +751,9 @@ void ui_draw_commit(void)
 #ifdef TRACE_DRAW_TIME
     struct timespec curr;
     clock_gettime(CLOCK_MONOTONIC, &curr);
-    printf("%ld ms\n",
-           (curr.tv_sec * 1000 + curr.tv_nsec / 1000000) -
-               (ctx.wnd.draw_time.tv_sec * 1000 +
-                ctx.wnd.draw_time.tv_nsec / 1000000));
+    const double ns = (curr.tv_sec * 1000000000 + curr.tv_nsec) -
+        (ctx.wnd.draw_time.tv_sec * 1000000000 + ctx.wnd.draw_time.tv_nsec);
+    printf("Rendered in %.6f sec\n", ns / 1000000000);
 #endif
 
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
