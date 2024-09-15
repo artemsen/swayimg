@@ -498,8 +498,14 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(img_pm, wnd, ctx.img_x, ctx.img_y, img->alpha);
     } else {
-        pixmap_scale(ctx.antialiasing ? pixmap_bicubic : pixmap_nearest, img_pm,
-                     wnd, ctx.img_x, ctx.img_y, ctx.scale, img->alpha);
+        enum pixmap_scale scaler;
+        if (ctx.antialiasing) {
+            scaler = (ctx.scale > 1.0) ? pixmap_bicubic : pixmap_average;
+        } else {
+            scaler = pixmap_nearest;
+        }
+        pixmap_scale(scaler, img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                     img->alpha);
     }
 }
 

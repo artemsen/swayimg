@@ -102,6 +102,63 @@ static void scale_nearest(struct scale_param* sp, size_t start, size_t step)
     }
 }
 
+/** Average scale filter, see `scale_fn` for details. */
+static void scale_average(struct scale_param* sp, size_t start, size_t step)
+{
+    const ssize_t left = max(0, sp->x);
+    const ssize_t top = max(0, sp->y);
+    const ssize_t right =
+        min((ssize_t)sp->dst->width, sp->x + sp->scale * sp->src->width);
+    const ssize_t bottom =
+        min((ssize_t)sp->dst->height, sp->y + sp->scale * sp->src->height);
+
+    const ssize_t iscale = (1.0 / sp->scale) / 2;
+    const ssize_t delta_x = left - sp->x;
+    const ssize_t delta_y = top - sp->y;
+
+    for (ssize_t dst_y = top + start; dst_y < bottom; dst_y += step) {
+        ssize_t src_y = (double)(dst_y - top + delta_y) / sp->scale;
+        const ssize_t src_y0 = max(0, src_y - iscale);
+        const ssize_t src_y1 = min((ssize_t)sp->src->height, src_y + iscale);
+        argb_t* dst_line = &sp->dst->data[dst_y * sp->dst->width];
+
+        for (ssize_t dst_x = left; dst_x < right; ++dst_x) {
+            ssize_t src_x = (double)(dst_x - left + delta_x) / sp->scale;
+            const ssize_t src_x0 = max(0, src_x - iscale);
+            const ssize_t src_x1 = min((ssize_t)sp->src->width, src_x + iscale);
+
+            size_t a = 0, r = 0, g = 0, b = 0;
+            size_t count = 0;
+
+            for (src_y = src_y0; src_y <= src_y1; ++src_y) {
+                for (src_x = src_x0; src_x <= src_x1; ++src_x) {
+                    const argb_t color =
+                        sp->src->data[src_y * sp->src->width + src_x];
+                    a += ARGB_GET_A(color);
+                    r += ARGB_GET_R(color);
+                    g += ARGB_GET_G(color);
+                    b += ARGB_GET_B(color);
+                    ++count;
+                }
+            }
+            if (count) {
+                a /= count;
+                r /= count;
+                g /= count;
+                b /= count;
+            }
+
+            const argb_t color = ARGB(a, r, g, b);
+
+            if (sp->alpha) {
+                alpha_blend(color, &dst_line[dst_x]);
+            } else {
+                dst_line[dst_x] = ARGB_SET_A(0xff) | color;
+            }
+        }
+    }
+}
+
 /** Bicubic scale filter, see `scale_fn` for details. */
 static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
 {
@@ -449,9 +506,7 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
     const size_t threads_num = min(16, max(cpus, 1)) - 1;
     struct scale_task* tasks = NULL;
 
-    const scale_fn scaler_fn =
-        scaler == pixmap_nearest ? scale_nearest : scale_bicubic;
-
+    // scaling parameters
     struct scale_param sp = {
         .src = src,
         .dst = dst,
@@ -460,6 +515,21 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
         .scale = scale,
         .alpha = alpha,
     };
+    scale_fn scaler_fn;
+
+    switch (scaler) {
+        case pixmap_nearest:
+            scaler_fn = scale_nearest;
+            break;
+        case pixmap_bicubic:
+            scaler_fn = scale_bicubic;
+            break;
+        case pixmap_average:
+            scaler_fn = scale_average;
+            break;
+        default:
+            return;
+    }
 
     // create task for each CPU core
     if (threads_num) {

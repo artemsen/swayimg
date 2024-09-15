@@ -50,6 +50,7 @@ struct pixmap {
 enum pixmap_scale {
     pixmap_nearest, ///< Nearest filter, poor quality but fast
     pixmap_bicubic, ///< Bicubic filter, good quality but slow
+    pixmap_average, ///< Average color, downsampling image
 };
 
 /**
