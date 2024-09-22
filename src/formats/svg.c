@@ -5,8 +5,12 @@
 #include "../loader.h"
 
 #include <ctype.h>
-#include <librsvg/rsvg.h>
 #include <string.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <librsvg/rsvg.h>
+#pragma GCC diagnostic pop
 
 // SVG uses physical units to store size,
 // these macro defines default viewbox dimension in pixels
