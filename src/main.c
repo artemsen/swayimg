@@ -169,7 +169,9 @@ int main(int argc, char* argv[])
     }
 
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
-    config_check(cfg);
+    if (rc) {
+        config_check(cfg);
+    }
     config_free(cfg);
     if (rc) {
         rc = app_run();
