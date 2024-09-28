@@ -8,7 +8,7 @@
 #include <string.h>
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wexpansion-to-defined"
 #include <librsvg/rsvg.h>
 #pragma GCC diagnostic pop
 
