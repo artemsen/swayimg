@@ -14,6 +14,7 @@
 #define VIEWER_TRANSPARENCY   "transparency"
 #define VIEWER_SCALE          "scale"
 #define VIEWER_FIXED          "fixed"
+#define VIEWER_RESETRSZ       "resize_reset"
 #define VIEWER_ANTIALIASING   "antialiasing"
 #define VIEWER_SLIDESHOW      "slideshow"
 #define VIEWER_SLIDESHOW_TIME "slideshow_time"

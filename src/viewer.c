@@ -31,6 +31,7 @@
 #define CFG_TRANSPARENCY_DEF   GRID_NAME
 #define CFG_SCALE_DEF          "optimal"
 #define CFG_FIXED_DEF          true
+#define CFG_RESETRSZ_DEF       true
 #define CFG_ANTIALIASING_DEF   false
 #define CFG_SLIDESHOW_DEF      false
 #define CFG_SLIDESHOW_TIME_DEF 3
@@ -70,6 +71,7 @@ struct viewer {
     argb_t window_bkg;    ///< Window background mode/color
     bool antialiasing;    ///< Anti-aliasing mode on/off
     bool fixed;           ///< Fix image position
+    bool resize_reset;    ///< Reset position and scale in window resize
 
     enum fixed_scale scale_init; ///< Initial scale
     float scale;                 ///< Current scale factor of the image
@@ -548,7 +550,9 @@ static void redraw(void)
 static void on_resize(void)
 {
     fixup_position(false);
-    reset_state();
+    if (ctx.resize_reset || ctx.scale == 0) {
+        reset_state();
+    }
 }
 
 /**
@@ -662,6 +666,8 @@ void viewer_init(struct config* cfg, struct image* image)
 
     ctx.fixed =
         config_get_bool(cfg, VIEWER_SECTION, VIEWER_FIXED, CFG_FIXED_DEF);
+    ctx.resize_reset =
+        config_get_bool(cfg, VIEWER_SECTION, VIEWER_RESETRSZ, CFG_RESETRSZ_DEF);
     ctx.antialiasing = config_get_bool(cfg, VIEWER_SECTION, VIEWER_ANTIALIASING,
                                        CFG_ANTIALIASING_DEF);
     ctx.window_bkg =
