@@ -18,9 +18,10 @@ jobs:
           sudo apt install --no-install-recommends --yes
           build-essential meson pkg-config wayland-protocols
           libwayland-dev libjson-c-dev libxkbcommon-dev
-          libfreetype-dev libfontconfig-dev
+          libfreetype-dev libfontconfig-dev libexif-dev
           libopenexr-dev libgif-dev libheif-dev libavif-dev
           libjpeg-dev librsvg2-dev libtiff-dev libwebp-dev
+          libopenexr-dev libjxl-dev
           libgtest-dev cmake
 
     - name: Install gtest
@@ -43,18 +44,7 @@ jobs:
         meson setup
         -D version=${{steps.version.outputs.VERSION}}
         -D tests=enabled
-        -D heif=enabled
-        -D bash=enabled
-        -D exif=enabled
-        -D exr=auto
-        -D gif=enabled
-        -D jpeg=enabled
-        -D jxl=auto
-        -D svg=enabled
-        -D tiff=enabled
-        -D webp=enabled
-        -D man=true
-        -D desktop=true
+        --auto-features=enabled
         --prefix=/usr
         --werror
         ${{ env.BUILD_PATH }}
