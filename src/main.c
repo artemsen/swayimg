@@ -16,43 +16,47 @@
 #include <stdlib.h>
 #include <string.h>
 
-/** Command line options. */
+/** Command line arguments. */
 struct cmdarg {
     const char short_opt; ///< Short option character
     const char* long_opt; ///< Long option name
     const char* format;   ///< Format description
     const char* help;     ///< Help string
-    const char* section;  ///< Section name of the param
-    const char* key;      ///< Key of the param
-    const char* value;    ///< Static value to set
+    const char* value;    ///< Argument value
 };
 
 // clang-format off
-static const struct cmdarg arguments[] = {
-    { 'g', "gallery",    NULL,    "start in gallery mode",
-                                  APP_CFG_SECTION, APP_CFG_MODE, APP_MODE_GALLERY },
-    { 'r', "recursive",  NULL,    "read directories recursively",
-                                  IMGLIST_SECTION, IMGLIST_RECURSIVE, "yes" },
-    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/reverse/random",
-                                  IMGLIST_SECTION, IMGLIST_ORDER, NULL },
-    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real",
-                                  VIEWER_SECTION, VIEWER_SCALE, NULL },
-    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup",
-                                  VIEWER_SECTION, VIEWER_SLIDESHOW, "yes" },
-    { 'p', "position",   "POS",   "set window position [parent]/X,Y",
-                                  APP_CFG_SECTION, APP_CFG_POSITION, NULL },
-    { 'w', "size",       "SIZE",  "set window size: fullscreen/[parent]/image/W,H",
-                                  APP_CFG_SECTION, APP_CFG_SIZE, NULL },
-    { 'f', "fullscreen", NULL,    "show image in full screen mode",
-                                  APP_CFG_SECTION, APP_CFG_SIZE, APP_FULLSCREEN },
-    { 'a', "class",      "NAME",  "set window class/app_id",
-                                  APP_CFG_SECTION, APP_CFG_APP_ID, NULL },
-    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value",
-                                  NULL, NULL, NULL },
-    { 'v', "version",    NULL,    "print version info and exit", NULL, NULL, NULL },
-    { 'h', "help",       NULL,    "print this help and exit", NULL, NULL, NULL }
+static struct cmdarg arguments[] = {
+    { 'g', "gallery",    NULL,    "start in gallery mode", NULL },
+    { 'r', "recursive",  NULL,    "read directories recursively", NULL },
+    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/reverse/random", NULL },
+    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real", NULL },
+    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup", NULL },
+    { 'p', "position",   "POS",   "set window position [parent]/X,Y", NULL },
+    { 'w', "size",       "SIZE",  "set window size: fullscreen/[parent]/image/W,H", NULL },
+    { 'f', "fullscreen", NULL,    "show image in full screen mode", NULL },
+    { 'a', "class",      "NAME",  "set window class/app_id", NULL },
+    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value", NULL },
+    { 'v', "version",    NULL,    "print version info and exit", NULL },
+    { 'h', "help",       NULL,    "print this help and exit", NULL },
 };
 // clang-format on
+
+/**
+ * Get argument description by it short opt.
+ * @param short_opt short opt to find
+ * @return pointer to the argument description or NULL if not found
+ */
+static struct cmdarg* get_arg(char short_opt)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
+        struct cmdarg* arg = &arguments[i];
+        if (arg->short_opt == short_opt) {
+            return arg;
+        }
+    }
+    return NULL;
+}
 
 /**
  * Print usage info.
@@ -66,7 +70,7 @@ static void print_help(void)
     puts("Mandatory arguments to long options are mandatory for short options "
          "too.");
 
-    for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
+    for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
         const struct cmdarg* arg = &arguments[i];
         char lopt[32];
         if (arg->format) {
@@ -79,22 +83,31 @@ static void print_help(void)
 }
 
 /**
- * Parse command line arguments into configuration instance.
- * @param cfg config instance
+ * Print version info.
+ */
+static void print_version(void)
+{
+    puts(APP_NAME " version " APP_VERSION ".");
+    puts("https://github.com/artemsen/swayimg");
+    printf("Supported formats: %s.\n", supported_formats);
+}
+
+/**
+ * Parse command line arguments.
  * @param argc number of arguments to parse
  * @param argv arguments array
- * @return index of the first non option argument, or -1 if error, or 0 to exit
+ * @return index of the first non option argument, or -1 if error
  */
-static int parse_cmdargs(struct config** cfg, int argc, char* argv[])
+static int parse_cmdargs(int argc, char* argv[])
 {
-    struct option options[1 + (sizeof(arguments) / sizeof(arguments[0]))];
-    char short_opts[(sizeof(arguments) / sizeof(arguments[0])) * 2];
+    struct option options[1 + ARRAY_SIZE(arguments)];
+    char short_opts[ARRAY_SIZE(arguments) * 2];
     char* short_opts_ptr = short_opts;
     int opt;
 
-    for (size_t i = 0; i < sizeof(arguments) / sizeof(arguments[0]); ++i) {
+    // compose array of option structs
+    for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
         const struct cmdarg* arg = &arguments[i];
-        // compose array of option structs
         options[i].name = arg->long_opt;
         options[i].has_arg = arg->format ? required_argument : no_argument;
         options[i].flag = NULL;
@@ -107,46 +120,79 @@ static int parse_cmdargs(struct config** cfg, int argc, char* argv[])
     }
     // add terminations
     *short_opts_ptr = 0;
-    memset(&options[(sizeof(arguments) / sizeof(arguments[0]))], 0,
-           sizeof(struct option));
+    memset(&options[ARRAY_SIZE(arguments)], 0, sizeof(struct option));
 
     // parse arguments
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
-        const struct cmdarg* arg;
+        struct cmdarg* arg;
+
         if (opt == '?') {
             return -1;
         }
-        // get argument description
-        arg = arguments;
-        while (arg->short_opt != opt) {
-            ++arg;
+        arg = get_arg(opt);
+        if (!arg) {
+            return -1;
         }
-        if (arg->section) {
-            config_set(cfg, arg->section, arg->key,
-                       arg->value ? arg->value : optarg);
-            continue;
-        }
-        switch (opt) {
-            case 'c':
-                if (!config_set_arg(cfg, optarg)) {
-                    fprintf(stderr, "Invalid config: \"%s\"\n", optarg);
-                    return -1;
-                }
-                break;
-            case 'v':
-                puts(APP_NAME " version " APP_VERSION ".");
-                puts("https://github.com/artemsen/swayimg");
-                printf("Supported formats: %s.\n", supported_formats);
-                return 0;
-            case 'h':
-                print_help();
-                return 0;
-            default:
-                return -1;
-        }
+
+        arg->value = arg->format ? optarg : arg->long_opt;
     }
 
     return optind;
+}
+
+/**
+ * Load configuration.
+ * @return pointer to config instnce or NULL on error
+ */
+static struct config* load_config(void)
+{
+    struct config* cfg = config_load();
+
+    for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
+        const struct cmdarg* arg = &arguments[i];
+        if (!arg->value) {
+            continue;
+        }
+        switch (arg->short_opt) {
+            case 'g':
+                config_set(&cfg, APP_CFG_SECTION, APP_CFG_MODE,
+                           APP_MODE_GALLERY);
+                break;
+            case 'r':
+                config_set(&cfg, IMGLIST_SECTION, IMGLIST_RECURSIVE, "yes");
+                break;
+            case 'o':
+                config_set(&cfg, IMGLIST_SECTION, IMGLIST_ORDER, arg->value);
+                break;
+            case 's':
+                config_set(&cfg, VIEWER_SECTION, VIEWER_SCALE, arg->value);
+                break;
+            case 'l':
+                config_set(&cfg, VIEWER_SECTION, VIEWER_SLIDESHOW, "yes");
+                break;
+            case 'p':
+                config_set(&cfg, APP_CFG_SECTION, APP_CFG_POSITION, arg->value);
+                break;
+            case 'w':
+                config_set(&cfg, APP_CFG_SECTION, APP_CFG_SIZE, arg->value);
+                break;
+            case 'f':
+                config_set(&cfg, APP_CFG_SECTION, APP_CFG_SIZE, APP_FULLSCREEN);
+                break;
+            case 'a':
+                config_set(&cfg, APP_CFG_SECTION, APP_CFG_APP_ID, arg->value);
+                break;
+            case 'c':
+                if (!config_set_arg(&cfg, arg->value)) {
+                    fprintf(stderr, "Invalid config: \"%s\"\n", arg->value);
+                    config_free(cfg);
+                    return NULL;
+                }
+                break;
+        }
+    }
+
+    return cfg;
 }
 
 /**
@@ -160,12 +206,24 @@ int main(int argc, char* argv[])
 
     setlocale(LC_ALL, "");
 
-    cfg = config_load();
-    argn = parse_cmdargs(&cfg, argc, argv);
+    // parse command line arguments
+    argn = parse_cmdargs(argc, argv);
+    if (argn < 0) {
+        return EXIT_FAILURE;
+    }
+    if (get_arg('v')->value) {
+        print_version();
+        return EXIT_SUCCESS;
+    }
+    if (get_arg('h')->value) {
+        print_help();
+        return EXIT_SUCCESS;
+    }
 
-    if (argn <= 0) { // invalid args or version/help print
-        config_free(cfg);
-        return (argn == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
+    // load configuration
+    cfg = load_config();
+    if (!cfg) {
+        return EXIT_FAILURE;
     }
 
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
