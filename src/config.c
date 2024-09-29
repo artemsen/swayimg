@@ -260,6 +260,15 @@ void config_set(struct config** cfg, const char* section, const char* key,
         cs->name = (char*)cs + sizeof(struct config);
         memcpy(cs->name, section, sz);
         *cfg = list_add(*cfg, cs);
+    } else {
+        // remove existing entry
+        list_for_each(cs->params, struct config_keyval, it) {
+            if (strcmp(key, it->key) == 0) {
+                cs->params = list_remove(it);
+                free(it);
+                break;
+            }
+        }
     }
 
     kv = create_keyval(key, value);
