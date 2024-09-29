@@ -41,8 +41,6 @@ transparency = grid
 scale = optimal
 # Fix position of the image on the window surface (yes/no)
 fixed = yes
-# Reset position and scale on window resize
-resize_reset = yes
 # Anti-aliasing (yes/no)
 antialiasing = no
 # Run slideshow at startup (yes/no)
