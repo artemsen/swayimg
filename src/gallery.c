@@ -110,12 +110,27 @@ static void clear_thumbnails(void)
     ctx.thumbs = NULL;
 }
 
+static size_t calculate_cols(void)
+{
+    return ui_get_width() / ctx.thumb_size;
+}
+
+static size_t calculate_margin(size_t cols)
+{
+    return (ui_get_width() - cols * ctx.thumb_size) / (cols + 1);
+}
+
+static size_t calculate_rows(size_t margin)
+{
+    return (ui_get_height() - margin) / (ctx.thumb_size + margin);
+}
+
 /** Reset loader queue. */
 static void reset_loader(void)
 {
     // get number of thumbnails on the screen
-    const size_t cols = ui_get_width() / ctx.thumb_size;
-    const size_t rows = ui_get_height() / ctx.thumb_size + 1;
+    const size_t cols = calculate_cols();
+    const size_t rows = calculate_rows(calculate_margin(cols)) + 1;
     const size_t total = cols * rows;
 
     // search for nearest to selected
@@ -165,8 +180,8 @@ static void reset_loader(void)
 /** Update thumnails layout. */
 static void update_layout(void)
 {
-    const size_t cols = ui_get_width() / ctx.thumb_size;
-    const size_t rows = ui_get_height() / ctx.thumb_size;
+    const size_t cols = calculate_cols();
+    const size_t rows = calculate_rows(calculate_margin(cols));
     size_t distance;
 
     // if selection is not visible, put it on the center
@@ -258,8 +273,8 @@ static bool skip_thumbnail(size_t index)
  */
 static void select_nearest(enum action_type direction)
 {
-    const size_t cols = ui_get_width() / ctx.thumb_size;
-    const size_t rows = ui_get_height() / ctx.thumb_size;
+    const size_t cols = calculate_cols();
+    const size_t rows = calculate_rows(calculate_margin(cols));
     size_t index = ctx.selected;
 
     switch (direction) {
@@ -313,8 +328,9 @@ static void select_nearest(enum action_type direction)
  */
 static void scroll_page(bool forward)
 {
-    const size_t distance =
-        ui_get_width() / ctx.thumb_size * ui_get_height() / ctx.thumb_size - 1;
+    size_t cols = calculate_cols();
+    size_t rows = calculate_rows(calculate_margin(cols));
+    const size_t distance = cols * rows - 1;
     const size_t selected = image_list_jump(ctx.selected, distance, forward);
 
     if (selected != IMGLIST_INVALID && selected != ctx.selected) {
@@ -411,10 +427,9 @@ static void draw_thumbnails(struct pixmap* window)
     const struct thumbnail* select_th = NULL;
 
     // thumbnails layout
-    const size_t cols = ui_get_width() / ctx.thumb_size;
-    const size_t rows = ui_get_height() / ctx.thumb_size + 1;
-    const size_t margin =
-        (ui_get_width() - (cols * ctx.thumb_size)) / (cols + 1);
+    const size_t cols = calculate_cols();
+    const size_t margin = calculate_margin(cols);
+    const size_t rows = calculate_rows(margin) + 1;
 
     // draw
     for (size_t row = 0; row < rows; ++row) {
