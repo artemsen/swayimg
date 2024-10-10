@@ -58,6 +58,7 @@ TEST_F(Loader, External)
 
 TEST_LOADER(bmp);
 TEST_LOADER(pnm);
+TEST_LOADER(qoi);
 TEST_LOADER(tga);
 #ifdef HAVE_LIBEXR
 // TEST_LOADER(exr);

@@ -68,6 +68,7 @@ const char* supported_formats = "bmp, pnm, tga"
 // declaration of loaders
 LOADER_DECLARE(bmp);
 LOADER_DECLARE(pnm);
+LOADER_DECLARE(qoi);
 LOADER_DECLARE(tga);
 #ifdef HAVE_LIBEXR
 LOADER_DECLARE(exr);
@@ -133,6 +134,7 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),
 #endif
+    &LOADER_FUNCTION(qoi),
     &LOADER_FUNCTION(tga),
 };
 
