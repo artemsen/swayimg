@@ -20,6 +20,7 @@ sources = [
   '../src/formats/bmp.c',
   '../src/formats/pnm.c',
   '../src/formats/tga.c',
+  '../src/formats/qoi.c',
 ]
 if exif.found()
   sources += ['exif_test.cpp', '../src/exif.c']
