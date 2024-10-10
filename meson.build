@@ -191,6 +191,7 @@ sources = [
   'src/formats/bmp.c',
   'src/formats/pnm.c',
   'src/formats/tga.c',
+  'src/formats/qoi.c',
   xdg_shell_h,
   xdg_shell_c,
 ]
