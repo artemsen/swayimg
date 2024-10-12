@@ -19,6 +19,7 @@ sources = [
   '../src/pixmap.c',
   '../src/formats/bmp.c',
   '../src/formats/pnm.c',
+  '../src/formats/qoi.c',
   '../src/formats/tga.c',
 ]
 if exif.found()

@@ -190,6 +190,7 @@ sources = [
   'src/viewer.c',
   'src/formats/bmp.c',
   'src/formats/pnm.c',
+  'src/formats/qoi.c',
   'src/formats/tga.c',
   xdg_shell_h,
   xdg_shell_c,
