@@ -26,9 +26,13 @@
 #define WINDOW_DEFAULT_WIDTH  800
 #define WINDOW_DEFAULT_HEIGHT 600
 
-// Mouse button
+// Mouse buttons, from <linux/input-event-codes.h>
 #ifndef BTN_LEFT
-#define BTN_LEFT 0x110 // from <linux/input-event-codes.h>
+#define BTN_LEFT   0x110
+#define BTN_RIGHT  0x111
+#define BTN_MIDDLE 0x112
+#define BTN_SIDE   0x113
+#define BTN_EXTRA  0x114
 #endif
 
 // Uncomment the following line to enable printing draw time
@@ -338,8 +342,37 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
                               uint32_t serial, uint32_t time, uint32_t button,
                               uint32_t state)
 {
+    const bool pressed = (state == WL_POINTER_BUTTON_STATE_PRESSED);
+
     if (button == BTN_LEFT) {
-        ctx.mouse.active = (state == WL_POINTER_BUTTON_STATE_PRESSED);
+        ctx.mouse.active = pressed;
+    }
+
+    if (pressed) {
+        xkb_keysym_t key;
+        switch (button) {
+            case BTN_LEFT:
+                key = VKEY_MOUSE_LEFT;
+                break;
+            case BTN_RIGHT:
+                key = VKEY_MOUSE_RIGHT;
+                break;
+            case BTN_MIDDLE:
+                key = VKEY_MOUSE_MIDDLE;
+                break;
+            case BTN_SIDE:
+                key = VKEY_MOUSE_SIDE;
+                break;
+            case BTN_EXTRA:
+                key = VKEY_MOUSE_EXTRA;
+                break;
+            default:
+                key = XKB_KEY_NoSymbol;
+                break;
+        }
+        if (key != XKB_KEY_NoSymbol) {
+            app_on_keyboard(key, keybind_mods(ctx.xkb.state));
+        }
     }
 }
 

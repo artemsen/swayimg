@@ -108,6 +108,11 @@ static const struct virtual_keys virtual_keys[] = {
     { VKEY_SCROLL_DOWN,  "ScrollDown"  },
     { VKEY_SCROLL_LEFT,  "ScrollLeft"  },
     { VKEY_SCROLL_RIGHT, "ScrollRight" },
+    { VKEY_MOUSE_LEFT,   "MouseLeft"   },
+    { VKEY_MOUSE_RIGHT,  "MouseRight"  },
+    { VKEY_MOUSE_MIDDLE, "MouseMiddle" },
+    { VKEY_MOUSE_SIDE,   "MouseSide"   },
+    { VKEY_MOUSE_EXTRA,  "MouseExtra"  },
 };
 
 /** Head of global key binding list. */
@@ -395,17 +400,32 @@ char* keybind_name(xkb_keysym_t key, uint8_t mods)
             return NULL;
     }
 
+    // modifiers
+    if (mods & KEYMOD_CTRL) {
+        str_append("Ctrl+", 0, &name);
+    }
+    if (mods & KEYMOD_ALT) {
+        str_append("Alt+", 0, &name);
+    }
+    if (mods & KEYMOD_SHIFT) {
+        str_append("Shift+", 0, &name);
+    }
+
+    // key name
     if (xkb_keysym_get_name(key, key_name, sizeof(key_name)) > 0) {
-        if (mods & KEYMOD_CTRL) {
-            str_append("Ctrl+", 0, &name);
-        }
-        if (mods & KEYMOD_ALT) {
-            str_append("Alt+", 0, &name);
-        }
-        if (mods & KEYMOD_SHIFT) {
-            str_append("Shift+", 0, &name);
-        }
         str_append(key_name, 0, &name);
+    } else {
+        // search in virtual keys
+        bool found = false;
+        for (size_t i = 0; !found && i < ARRAY_SIZE(virtual_keys); ++i) {
+            found = (virtual_keys[i].key == key);
+            if (found) {
+                str_append(virtual_keys[i].name, 0, &name);
+            }
+        }
+        if (!found) {
+            str_append("<UNKNOWN>", 0, &name);
+        }
     }
 
     return name;
