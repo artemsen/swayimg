@@ -224,7 +224,7 @@ static void reset_preloader(void)
         if (img) {
             cache_put(&ctx.preload, img);
             ++found;
-        } else {
+        } else if (next != ctx.current->index) {
             preload[preload_num++] = next;
         }
     }
