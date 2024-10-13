@@ -351,9 +351,10 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
     if (pressed) {
         xkb_keysym_t key;
         switch (button) {
-            case BTN_LEFT:
-                key = VKEY_MOUSE_LEFT;
-                break;
+            // TODO: Configurable drag
+            // case BTN_LEFT:
+            //     key = VKEY_MOUSE_LEFT;
+            //     break;
             case BTN_RIGHT:
                 key = VKEY_MOUSE_RIGHT;
                 break;
