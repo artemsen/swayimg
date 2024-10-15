@@ -184,9 +184,9 @@ static struct config* load_config(void)
                 break;
             case 'c':
                 if (!config_set_arg(&cfg, arg->value)) {
-                    fprintf(stderr, "Invalid config: \"%s\"\n", arg->value);
-                    config_free(cfg);
-                    return NULL;
+                    fprintf(stderr,
+                            "WARNING: Invalid config agrument: \"%s\"\n",
+                            arg->value);
                 }
                 break;
         }
@@ -220,17 +220,14 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
 
-    // load configuration
     cfg = load_config();
-    if (!cfg) {
-        return EXIT_FAILURE;
-    }
-
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
+
     if (rc) {
         config_check(cfg);
     }
     config_free(cfg);
+
     if (rc) {
         rc = app_run();
         app_destroy();
