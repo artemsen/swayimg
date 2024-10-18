@@ -68,6 +68,22 @@ bool pixmap_create(struct pixmap* pm, size_t width, size_t height);
 void pixmap_free(struct pixmap* pm);
 
 /**
+ * Allocate/reallocate pixel map.
+ * @param pm pixmap context
+ * @param path path to save to
+ * @return true pixmap was saved
+ */
+bool pixmap_save(struct pixmap* pm, const char* path);
+
+/**
+ * Allocate/reallocate pixel map.
+ * @param pm pixmap context
+ * @param path path to load from
+ * @return true pixmap was loaded
+ */
+bool pixmap_load(struct pixmap* pm, const char* path);
+
+/**
  * Fill area with specified color.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point

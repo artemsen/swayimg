@@ -5,6 +5,7 @@
 #include "pixmap.h"
 
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -298,6 +299,70 @@ bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
 void pixmap_free(struct pixmap* pm)
 {
     free(pm->data);
+}
+
+bool pixmap_save(struct pixmap* pm, const char* path)
+{
+    FILE* fp;
+    unsigned i;
+
+    if (!(fp = fopen(path, "wb"))) {
+        return false;
+    }
+
+    // TODO: add alpha channel
+    fprintf(fp, "P6\n%zu %zu\n255\n", pm->width, pm->height);
+    for (i = 0; i < pm->width * pm->height; ++i) {
+        uint8_t color[4] = { (((pm->data[i] >> (8 * 2)) & 0xff)),
+                             (((pm->data[i] >> (8 * 1)) & 0xff)),
+                             (((pm->data[i] >> (8 * 0)) & 0xff)) };
+        fwrite(color, 3, 1, fp);
+    }
+
+    fclose(fp);
+    return true;
+}
+
+bool pixmap_load(struct pixmap* pm, const char* path)
+{
+    FILE* fp;
+    unsigned i;
+
+    if (!(fp = fopen(path, "rb"))) {
+        return false;
+    }
+
+    char header[3];
+    if (fscanf(fp, "%2s\n%zu %zu\n255\n", header, &pm->width, &pm->height) !=
+        3) {
+        goto fail;
+    }
+
+    if (strcmp(header, "P6")) {
+        goto fail;
+    }
+
+    /* NOTE: It might be that we want the pixmap to have exact width and height
+     * and return false if it doesn't match */
+    if (!pixmap_create(pm, pm->width, pm->height)) {
+        goto fail;
+    }
+
+    for (i = 0; i < pm->width * pm->height; ++i) {
+        uint8_t color[3];
+        if (fread(color, 3, 1, fp) != 1) {
+            pixmap_free(pm);
+            goto fail;
+        }
+        pm->data[i] = ARGB(0xff, color[0], color[1], color[2]);
+    }
+
+    fclose(fp);
+    return true;
+
+fail:
+    fclose(fp);
+    return false;
 }
 
 void pixmap_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
