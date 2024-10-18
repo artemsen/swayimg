@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct image* image_create(void)
 {
@@ -65,6 +66,10 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
+    static char* cache_dir = NULL;
+    char thumb_path[4096] = { 0 }; /* PATH_MAX */
+    char cmd[4096 + 10] = { 0 };   /* PATH_MAX + strlen("mkdir -p ") */
+    char* last_slash;
 
     if (antialias) {
         scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
@@ -82,12 +87,53 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
         offset_y = 0;
     }
 
+    // TODO: probably should be moved outside of this function
+    if (!cache_dir) {
+        cache_dir = getenv("XDG_CACHE_HOME");
+        if (cache_dir) {
+            cache_dir = strcat(cache_dir, "/swayimg");
+        } else {
+            cache_dir = getenv("HOME");
+            if (!cache_dir) {
+                goto thumb_create;
+            }
+            cache_dir = strcat(cache_dir, "/.swayimg");
+        }
+    }
+    sprintf(thumb_path, "%s%s", cache_dir, image->source);
+
+    if (!pixmap_load(&thumb, thumb_path)) {
+        goto thumb_create;
+    }
+
+    if (!(thumb.width == thumb_width && thumb.height == thumb_height)) {
+        goto thumb_create;
+    }
+
+    goto thumb_done;
+thumb_create:
     // create thumbnail
     if (!pixmap_create(&thumb, thumb_width, thumb_height)) {
         return;
     }
     pixmap_scale(scaler, full, &thumb, offset_x, offset_y, scale, image->alpha);
 
+    // save thumbnail to disk
+
+    // TODO: probably should be moved outside of this function
+    // TODO: do not use system() here
+    if (thumb_path[0]) {
+        last_slash = strrchr(thumb_path, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+            sprintf(cmd, "mkdir -p %s", thumb_path);
+            *last_slash = '/';
+            system(cmd);
+        }
+        pixmap_save(&thumb, thumb_path);
+    }
+
+thumb_done:
     image_free_frames(image);
     frame = image_create_frames(image, 1);
     if (frame) {
