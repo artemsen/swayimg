@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
 
 #if defined(__linux__)
 #include <linux/limits.h>
@@ -133,6 +135,15 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
     char thumb_path[PATH_MAX] = { 0 };
+    struct stat attr_img, attr_thumb;
+
+    // get thumbnail from cache
+    if (get_image_thumb_path(image, thumb_path) &&
+        !stat(image->source, &attr_img) && !stat(thumb_path, &attr_thumb) &&
+        difftime(attr_img.st_ctime, attr_thumb.st_ctime) <= 0 &&
+        pixmap_load(&thumb, thumb_path)) {
+        goto thumb_done;
+    }
 
     if (antialias) {
         scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
@@ -148,13 +159,6 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     } else {
         offset_x = 0;
         offset_y = 0;
-    }
-
-    // get thumbnail from cache
-    if (get_image_thumb_path(image, thumb_path) &&
-        pixmap_load(&thumb, thumb_path) &&
-        (thumb.width == thumb_width && thumb.height == thumb_height)) {
-        goto thumb_done;
     }
 
     // create thumbnail
