@@ -4,11 +4,13 @@
 
 #include "image.h"
 
+#include <errno.h>
 #include <linux/limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 struct image* image_create(void)
 {
@@ -74,6 +76,30 @@ bool image_thumb_path(struct image* image, char* path)
     return r >= 0 && r < PATH_MAX;
 }
 
+bool make_directories(char* path)
+{
+    char* slash;
+
+    if (!*path) {
+        return true;
+    }
+
+    slash = path;
+
+    slash = strchr(slash + 1, '/');
+    while (slash) {
+        *slash = '\0';
+        if (mkdir(path, 0755) && errno != EEXIST) {
+            // TODO: do we want to print error message?
+            return false;
+        }
+        *slash = '/';
+        slash = strchr(slash + 1, '/');
+    }
+
+    return true;
+}
+
 void image_thumbnail(struct image* image, size_t size, bool fill,
                      bool antialias)
 {
@@ -88,9 +114,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
-    char thumb_path[PATH_MAX] = { 0 }; /* PATH_MAX */
-    char cmd[PATH_MAX + 10] = { 0 };   /* PATH_MAX + strlen("mkdir -p ") */
-    char* last_slash;
+    char thumb_path[PATH_MAX] = { 0 };
 
     if (antialias) {
         scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
@@ -108,14 +132,13 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
         offset_y = 0;
     }
 
-    if (!image_thumb_path(image, thumb_path) ||
-        !pixmap_load(&thumb, thumb_path) ||
-        !(thumb.width == thumb_width && thumb.height == thumb_height)) {
-        goto thumb_create;
+    // get thumbnail from cache
+    if (image_thumb_path(image, thumb_path) &&
+        pixmap_load(&thumb, thumb_path) &&
+        (thumb.width == thumb_width && thumb.height == thumb_height)) {
+        goto thumb_done;
     }
 
-    goto thumb_done;
-thumb_create:
     // create thumbnail
     if (!pixmap_create(&thumb, thumb_width, thumb_height)) {
         return;
@@ -123,17 +146,7 @@ thumb_create:
     pixmap_scale(scaler, full, &thumb, offset_x, offset_y, scale, image->alpha);
 
     // save thumbnail to disk
-
-    // TODO: probably should be moved outside of this function
-    // TODO: do not use system() here
-    if (thumb_path[0]) {
-        last_slash = strrchr(thumb_path, '/');
-        if (last_slash) {
-            *last_slash = '\0';
-            sprintf(cmd, "mkdir -p %s", thumb_path);
-            *last_slash = '/';
-            system(cmd);
-        }
+    if (make_directories(thumb_path)) {
         pixmap_save(&thumb, thumb_path);
     }
 
