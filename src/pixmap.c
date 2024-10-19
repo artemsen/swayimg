@@ -304,7 +304,7 @@ void pixmap_free(struct pixmap* pm)
 bool pixmap_save(struct pixmap* pm, const char* path)
 {
     FILE* fp;
-    unsigned i;
+    uint32_t i;
 
     if (!(fp = fopen(path, "wb"))) {
         return false;
@@ -326,7 +326,7 @@ bool pixmap_save(struct pixmap* pm, const char* path)
 bool pixmap_load(struct pixmap* pm, const char* path)
 {
     FILE* fp;
-    unsigned i;
+    uint32_t i;
 
     if (!(fp = fopen(path, "rb"))) {
         return false;
