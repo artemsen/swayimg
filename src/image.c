@@ -55,8 +55,14 @@ void image_rotate(struct image* ctx, size_t angle)
     }
 }
 
-/* TODO: probably should be moved to config, to make use of expand_path() */
-bool image_thumb_path(struct image* image, char* path)
+// TODO: probably should be moved to config, to make use of expand_path()
+/**
+ * Get path to cached image thumbnail.
+ * @param image image
+ * @param path array in which the path should be stored
+ * @return true if successful
+ */
+static bool get_image_thumb_path(struct image* image, char* path)
 {
     static char* cache_dir = NULL;
     int r;
@@ -76,7 +82,13 @@ bool image_thumb_path(struct image* image, char* path)
     return r >= 0 && r < PATH_MAX;
 }
 
-bool make_directories(char* path)
+// TODO: where should this function be?
+/**
+ * Makes directories like `mkdir -p`.
+ * @param path absolute path to the directory to be created
+ * @return true if successful
+ */
+static bool make_directories(char* path)
 {
     char* slash;
 
@@ -133,7 +145,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     }
 
     // get thumbnail from cache
-    if (image_thumb_path(image, thumb_path) &&
+    if (get_image_thumb_path(image, thumb_path) &&
         pixmap_load(&thumb, thumb_path) &&
         (thumb.width == thumb_width && thumb.height == thumb_height)) {
         goto thumb_done;
