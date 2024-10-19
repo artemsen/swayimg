@@ -83,8 +83,8 @@ static bool get_image_thumb_path(struct image* image, char* path)
             cache_dir = strcat(cache_dir, "/.swayimg");
         }
     }
-    r = snprintf(path, (size_t)sizeof(path), "%s%s", cache_dir, image->source);
-    return r >= 0 && r < (int)sizeof(path);
+    r = snprintf(path, PATH_MAX, "%s%s", cache_dir, image->source);
+    return r >= 0 && r < PATH_MAX;
 }
 
 // TODO: where should this function be?
