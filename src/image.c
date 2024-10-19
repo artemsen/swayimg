@@ -19,6 +19,9 @@
 #define PATH_MAX 4096
 #endif
 
+/* TODO: move to config */
+static bool thumbnails_disk_cache = true;
+
 struct image* image_create(void)
 {
     return calloc(1, sizeof(struct image));
@@ -138,7 +141,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     struct stat attr_img, attr_thumb;
 
     // get thumbnail from cache
-    if (get_image_thumb_path(image, thumb_path) &&
+    if (thumbnails_disk_cache && get_image_thumb_path(image, thumb_path) &&
         !stat(image->source, &attr_img) && !stat(thumb_path, &attr_thumb) &&
         difftime(attr_img.st_ctime, attr_thumb.st_ctime) <= 0 &&
         pixmap_load(&thumb, thumb_path)) {
@@ -168,7 +171,7 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     pixmap_scale(scaler, full, &thumb, offset_x, offset_y, scale, image->alpha);
 
     // save thumbnail to disk
-    if (make_directories(thumb_path)) {
+    if (thumbnails_disk_cache && make_directories(thumb_path)) {
         pixmap_save(&thumb, thumb_path);
     }
 
