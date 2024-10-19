@@ -4,6 +4,7 @@
 
 #include "image.h"
 
+#include <linux/limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +53,27 @@ void image_rotate(struct image* ctx, size_t angle)
     }
 }
 
+/* TODO: probably should be moved to config, to make use of expand_path() */
+bool image_thumb_path(struct image* image, char* path)
+{
+    static char* cache_dir = NULL;
+    int r;
+    if (!cache_dir) {
+        cache_dir = getenv("XDG_CACHE_HOME");
+        if (cache_dir) {
+            cache_dir = strcat(cache_dir, "/swayimg");
+        } else {
+            cache_dir = getenv("HOME");
+            if (!cache_dir) {
+                return false;
+            }
+            cache_dir = strcat(cache_dir, "/.swayimg");
+        }
+    }
+    r = snprintf(path, PATH_MAX, "%s%s", cache_dir, image->source);
+    return r >= 0 && r < PATH_MAX;
+}
+
 void image_thumbnail(struct image* image, size_t size, bool fill,
                      bool antialias)
 {
@@ -66,9 +88,8 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
-    static char* cache_dir = NULL;
-    char thumb_path[4096] = { 0 }; /* PATH_MAX */
-    char cmd[4096 + 10] = { 0 };   /* PATH_MAX + strlen("mkdir -p ") */
+    char thumb_path[PATH_MAX] = { 0 }; /* PATH_MAX */
+    char cmd[PATH_MAX + 10] = { 0 };   /* PATH_MAX + strlen("mkdir -p ") */
     char* last_slash;
 
     if (antialias) {
@@ -87,26 +108,9 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
         offset_y = 0;
     }
 
-    // TODO: probably should be moved outside of this function
-    if (!cache_dir) {
-        cache_dir = getenv("XDG_CACHE_HOME");
-        if (cache_dir) {
-            cache_dir = strcat(cache_dir, "/swayimg");
-        } else {
-            cache_dir = getenv("HOME");
-            if (!cache_dir) {
-                goto thumb_create;
-            }
-            cache_dir = strcat(cache_dir, "/.swayimg");
-        }
-    }
-    sprintf(thumb_path, "%s%s", cache_dir, image->source);
-
-    if (!pixmap_load(&thumb, thumb_path)) {
-        goto thumb_create;
-    }
-
-    if (!(thumb.width == thumb_width && thumb.height == thumb_height)) {
+    if (!image_thumb_path(image, thumb_path) ||
+        !pixmap_load(&thumb, thumb_path) ||
+        !(thumb.width == thumb_width && thumb.height == thumb_height)) {
         goto thumb_create;
     }
 
