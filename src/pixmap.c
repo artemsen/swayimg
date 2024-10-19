@@ -313,9 +313,9 @@ bool pixmap_save(struct pixmap* pm, const char* path)
     // TODO: add alpha channel
     fprintf(fp, "P6\n%zu %zu\n255\n", pm->width, pm->height);
     for (i = 0; i < pm->width * pm->height; ++i) {
-        uint8_t color[4] = { (((pm->data[i] >> (8 * 2)) & 0xff)),
-                             (((pm->data[i] >> (8 * 1)) & 0xff)),
-                             (((pm->data[i] >> (8 * 0)) & 0xff)) };
+        uint8_t color[] = { (((pm->data[i] >> (8 * 2)) & 0xff)),
+                            (((pm->data[i] >> (8 * 1)) & 0xff)),
+                            (((pm->data[i] >> (8 * 0)) & 0xff)) };
         fwrite(color, 3, 1, fp);
     }
 
