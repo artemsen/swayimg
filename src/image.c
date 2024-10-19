@@ -5,12 +5,17 @@
 #include "image.h"
 
 #include <errno.h>
-#include <linux/limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+
+#if defined(__linux__)
+#include <linux/limits.h>
+#elif defined(__OpenBSD__) || defined(__FreeBSD__)
+#define PATH_MAX 4096
+#endif
 
 struct image* image_create(void)
 {
@@ -98,15 +103,16 @@ static bool make_directories(char* path)
 
     slash = path;
     while (true) {
-	    slash = strchr(slash + 1, '/');
-	    if (!slash)
-		    break;
-	    *slash = '\0';
-	    if (mkdir(path, 0755) && errno != EEXIST) {
-		    // TODO: do we want to print error message?
-		    return false;
-	    }
-	    *slash = '/';
+        slash = strchr(slash + 1, '/');
+        if (!slash) {
+            break;
+        }
+        *slash = '\0';
+        if (mkdir(path, 0755) && errno != EEXIST) {
+            // TODO: do we want to print error message?
+            return false;
+        }
+        *slash = '/';
     }
 
     return true;
