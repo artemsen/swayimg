@@ -92,21 +92,21 @@ static bool make_directories(char* path)
 {
     char* slash;
 
-    if (!*path) {
-        return true;
+    if (!path || !*path) {
+        return false;
     }
 
     slash = path;
-
-    slash = strchr(slash + 1, '/');
-    while (slash) {
-        *slash = '\0';
-        if (mkdir(path, 0755) && errno != EEXIST) {
-            // TODO: do we want to print error message?
-            return false;
-        }
-        *slash = '/';
-        slash = strchr(slash + 1, '/');
+    while (true) {
+	    slash = strchr(slash + 1, '/');
+	    if (!slash)
+		    break;
+	    *slash = '\0';
+	    if (mkdir(path, 0755) && errno != EEXIST) {
+		    // TODO: do we want to print error message?
+		    return false;
+	    }
+	    *slash = '/';
     }
 
     return true;
