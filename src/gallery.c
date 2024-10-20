@@ -8,6 +8,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#include "thumbnail.h"
 #include "ui.h"
 
 #include <stdlib.h>
@@ -72,13 +73,16 @@ static struct gallery ctx;
 static void add_thumbnail(struct image* image)
 {
     struct thumbnail* entry = malloc(sizeof(*entry));
+    struct pixmap thumb;
     if (!entry) {
         image_free(image);
     } else {
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill, ctx.thumb_aa);
+        thumbnail_create(&thumb, image, ctx.thumb_size, ctx.thumb_fill,
+                         ctx.thumb_aa);
+        image_thumbnail(image, &thumb);
         ctx.thumbs = list_append(ctx.thumbs, entry);
     }
 }

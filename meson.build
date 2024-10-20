@@ -186,6 +186,7 @@ sources = [
   'src/memdata.c',
   'src/pixmap.c',
   'src/sway.c',
+  'src/thumbnail.c',
   'src/ui.c',
   'src/viewer.c',
   'src/formats/bmp.c',
