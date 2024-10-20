@@ -181,7 +181,7 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
         goto fail;
     }
 
-    /* comment to store params */
+    /* comment with stored params */
     fread(header, 1, 1, fp); // '#'
     fread(&saved_params, sizeof(struct thumbnail_params), 1, fp);
     fread(header, 1, 1, fp); // '\n'
