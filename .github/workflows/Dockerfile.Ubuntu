@@ -1,0 +1,36 @@
+FROM ubuntu:24.10
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes \
+    bash-completion \
+    build-essential \
+    cmake \
+    libavif-dev \
+    libexif-dev \
+    libfontconfig-dev \
+    libfreetype-dev \
+    libgif-dev \
+    libgtest-dev \
+    libheif-dev \
+    libjpeg-dev \
+    libjson-c-dev \
+    libjxl-dev \
+    libopenexr-dev \
+    libopenexr-dev \
+    librsvg2-dev \
+    libtiff-dev \
+    libwayland-dev \
+    libwebp-dev \
+    libxkbcommon-dev \
+    meson \
+    pkg-config \
+    wayland-protocols
+
+# install gtest
+RUN mkdir /tmp/gtest && \
+    cd /tmp/gtest && \
+    cmake /usr/src/gtest && \
+    make -j8 && \
+    cp /tmp/gtest/lib/* /usr/lib/
+
+USER ubuntu
