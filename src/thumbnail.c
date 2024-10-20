@@ -3,6 +3,8 @@
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 // Copyright (C) 2024 Rentib <sbitner420@tutanota.com>
 
+#include "thumbnail.h"
+
 #include "image.h"
 #include "pixmap.h"
 
@@ -50,7 +52,7 @@ static bool make_directories(char* path)
     return true;
 }
 
-bool get_thumb_path(char* path, const char* source)
+static bool get_thumb_path(char* path, const char* source)
 {
     static char* cache_dir = NULL;
     int r;
@@ -70,11 +72,48 @@ bool get_thumb_path(char* path, const char* source)
     return r >= 0 && r < PATH_MAX;
 }
 
-bool thumbnail_save(struct pixmap* thumb, const char* source)
+void thumbnail_params(struct thumbnail_params* params,
+                      const struct image* image, size_t size, bool fill,
+                      bool antialias)
+{
+    const struct pixmap* full = &image->frames[0].pm;
+    const float scale_width = 1.0 / ((float)full->width / size);
+    const float scale_height = 1.0 / ((float)full->height / size);
+    const float scale =
+        fill ? max(scale_width, scale_height) : min(scale_width, scale_height);
+    size_t thumb_width = scale * full->width;
+    size_t thumb_height = scale * full->height;
+    ssize_t offset_x, offset_y;
+
+    if (fill) {
+        offset_x = size / 2 - thumb_width / 2;
+        offset_y = size / 2 - thumb_height / 2;
+        thumb_width = size;
+        thumb_height = size;
+    } else {
+        offset_x = 0;
+        offset_y = 0;
+    }
+
+    *params = (struct thumbnail_params) {
+        .thumb_width = thumb_width,
+        .thumb_height = thumb_height,
+        .offset_x = offset_x,
+        .offset_y = offset_y,
+        .fill = fill,
+        .antialias = antialias,
+        .scale = scale,
+    };
+}
+
+bool thumbnail_save(const struct pixmap* thumb, const char* source,
+                    const struct thumbnail_params* params)
 {
     FILE* fp;
     uint32_t i;
     char path[PATH_MAX] = { 0 };
+
+    (void)params;
 
     if (!get_thumb_path(path, source)) {
         return false;
@@ -107,12 +146,15 @@ bool thumbnail_save(struct pixmap* thumb, const char* source)
  * @param path path to load from
  * @return true pixmap was loaded
  */
-bool thumbnail_load(struct pixmap* thumb, const char* source)
+bool thumbnail_load(struct pixmap* thumb, const char* source,
+                    const struct thumbnail_params* params)
 {
     FILE* fp;
     uint32_t i;
     char path[PATH_MAX] = { 0 };
     struct stat attr_img, attr_thumb;
+
+    (void)params;
 
     if (!get_thumb_path(path, source) || stat(source, &attr_img) ||
         stat(path, &attr_thumb) ||
@@ -162,39 +204,23 @@ fail:
 }
 
 bool thumbnail_create(struct pixmap* thumb, const struct image* image,
-                      size_t size, bool fill, bool antialias)
+                      const struct thumbnail_params* params)
 {
     const struct pixmap* full = &image->frames[0].pm;
-    const float scale_width = 1.0 / ((float)full->width / size);
-    const float scale_height = 1.0 / ((float)full->height / size);
-    const float scale =
-        fill ? max(scale_width, scale_height) : min(scale_width, scale_height);
-    size_t thumb_width = scale * full->width;
-    size_t thumb_height = scale * full->height;
-    ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
 
-    if (antialias) {
-        scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
+    if (params->antialias) {
+        scaler = (params->scale > 1.0) ? pixmap_bicubic : pixmap_average;
     } else {
         scaler = pixmap_nearest;
     }
 
-    if (fill) {
-        offset_x = size / 2 - thumb_width / 2;
-        offset_y = size / 2 - thumb_height / 2;
-        thumb_width = size;
-        thumb_height = size;
-    } else {
-        offset_x = 0;
-        offset_y = 0;
-    }
-
     // create thumbnail
-    if (!pixmap_create(thumb, thumb_width, thumb_height)) {
+    if (!pixmap_create(thumb, params->thumb_width, params->thumb_height)) {
         return false;
     }
-    pixmap_scale(scaler, full, thumb, offset_x, offset_y, scale, image->alpha);
+    pixmap_scale(scaler, full, thumb, params->offset_x, params->offset_y,
+                 params->scale, image->alpha);
 
     return true;
 }

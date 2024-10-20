@@ -74,6 +74,7 @@ static void add_thumbnail(struct image* image)
 {
     struct thumbnail* entry = malloc(sizeof(*entry));
     struct pixmap thumb;
+    struct thumbnail_params params;
 
     /* TODO: move to config */
     bool thumbnails_disk_cache = true;
@@ -84,11 +85,13 @@ static void add_thumbnail(struct image* image)
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-        if (!thumbnails_disk_cache || !thumbnail_load(&thumb, image->source)) {
-            thumbnail_create(&thumb, image, ctx.thumb_size, ctx.thumb_fill,
-                             ctx.thumb_aa);
+        thumbnail_params(&params, image, ctx.thumb_size, ctx.thumb_fill,
+                         ctx.thumb_aa);
+        if (!thumbnails_disk_cache ||
+            !thumbnail_load(&thumb, image->source, &params)) {
+            thumbnail_create(&thumb, image, &params);
             if (thumbnails_disk_cache) {
-                thumbnail_save(&thumb, image->source);
+                thumbnail_save(&thumb, image->source, &params);
             }
         }
         image_thumbnail(image, &thumb);
