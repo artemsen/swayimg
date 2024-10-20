@@ -20,19 +20,69 @@
 #define PATH_MAX 4096
 #endif
 
-/* TODO: move to config */
-static bool thumbnails_disk_cache = true;
-
 /**
- * Write thumbnail to path.
- * @param thumb pixmap context
- * @param path path to save to
- * @return true pixmap was saved
+ * Makes directories like `mkdir -p`.
+ * @param path absolute path to the directory to be created
+ * @return true if successful
  */
-bool thumbnail_save(struct pixmap* thumb, const char* path)
+static bool make_directories(char* path)
+{
+    char* slash;
+
+    if (!path || !*path) {
+        return false;
+    }
+
+    slash = path;
+    while (true) {
+        slash = strchr(slash + 1, '/');
+        if (!slash) {
+            break;
+        }
+        *slash = '\0';
+        if (mkdir(path, 0755) && errno != EEXIST) {
+            // TODO: do we want to print error message?
+            return false;
+        }
+        *slash = '/';
+    }
+
+    return true;
+}
+
+bool get_thumb_path(char* path, const char* source)
+{
+    static char* cache_dir = NULL;
+    int r;
+    if (!cache_dir) {
+        cache_dir = getenv("XDG_CACHE_HOME");
+        if (cache_dir) {
+            cache_dir = strcat(cache_dir, "/swayimg");
+        } else {
+            cache_dir = getenv("HOME");
+            if (!cache_dir) {
+                return false;
+            }
+            cache_dir = strcat(cache_dir, "/.swayimg");
+        }
+    }
+    r = snprintf(path, PATH_MAX, "%s%s", cache_dir, source);
+    return r >= 0 && r < PATH_MAX;
+}
+
+bool thumbnail_save(struct pixmap* thumb, const char* source)
 {
     FILE* fp;
     uint32_t i;
+    char path[PATH_MAX] = { 0 };
+
+    if (!get_thumb_path(path, source)) {
+        return false;
+    }
+
+    if (!make_directories(path)) {
+        return false;
+    }
 
     if (!(fp = fopen(path, "wb"))) {
         return false;
@@ -57,10 +107,22 @@ bool thumbnail_save(struct pixmap* thumb, const char* path)
  * @param path path to load from
  * @return true pixmap was loaded
  */
-bool thumbnail_load(struct pixmap* thumb, const char* path)
+bool thumbnail_load(struct pixmap* thumb, const char* source)
 {
     FILE* fp;
     uint32_t i;
+    char path[PATH_MAX] = { 0 };
+    struct stat attr_img, attr_thumb;
+
+    if (!get_thumb_path(path, source) || stat(source, &attr_img) ||
+        stat(path, &attr_thumb) ||
+        difftime(attr_img.st_ctime, attr_thumb.st_ctime) > 0) {
+        return false;
+    }
+
+    if (!get_thumb_path(path, source)) {
+        return false;
+    }
 
     if (!(fp = fopen(path, "rb"))) {
         return false;
@@ -99,64 +161,6 @@ fail:
     return false;
 }
 
-// TODO: probably should be moved to config, to make use of expand_path()
-/**
- * Get path to cached image thumbnail.
- * @param image image
- * @param path array in which the path should be stored
- * @return true if successful
- */
-static bool get_image_thumb_path(const struct image* image, char* path)
-{
-    static char* cache_dir = NULL;
-    int r;
-    if (!cache_dir) {
-        cache_dir = getenv("XDG_CACHE_HOME");
-        if (cache_dir) {
-            cache_dir = strcat(cache_dir, "/swayimg");
-        } else {
-            cache_dir = getenv("HOME");
-            if (!cache_dir) {
-                return false;
-            }
-            cache_dir = strcat(cache_dir, "/.swayimg");
-        }
-    }
-    r = snprintf(path, PATH_MAX, "%s%s", cache_dir, image->source);
-    return r >= 0 && r < PATH_MAX;
-}
-
-// TODO: where should this function be?
-/**
- * Makes directories like `mkdir -p`.
- * @param path absolute path to the directory to be created
- * @return true if successful
- */
-static bool make_directories(char* path)
-{
-    char* slash;
-
-    if (!path || !*path) {
-        return false;
-    }
-
-    slash = path;
-    while (true) {
-        slash = strchr(slash + 1, '/');
-        if (!slash) {
-            break;
-        }
-        *slash = '\0';
-        if (mkdir(path, 0755) && errno != EEXIST) {
-            // TODO: do we want to print error message?
-            return false;
-        }
-        *slash = '/';
-    }
-
-    return true;
-}
-
 bool thumbnail_create(struct pixmap* thumb, const struct image* image,
                       size_t size, bool fill, bool antialias)
 {
@@ -169,16 +173,6 @@ bool thumbnail_create(struct pixmap* thumb, const struct image* image,
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
     enum pixmap_scale scaler;
-    char thumb_path[PATH_MAX] = { 0 };
-    struct stat attr_img, attr_thumb;
-
-    // get thumbnail from cache
-    if (thumbnails_disk_cache && get_image_thumb_path(image, thumb_path) &&
-        !stat(image->source, &attr_img) && !stat(thumb_path, &attr_thumb) &&
-        difftime(attr_img.st_ctime, attr_thumb.st_ctime) <= 0 &&
-        thumbnail_load(thumb, thumb_path)) {
-        return true;
-    }
 
     if (antialias) {
         scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
@@ -201,11 +195,6 @@ bool thumbnail_create(struct pixmap* thumb, const struct image* image,
         return false;
     }
     pixmap_scale(scaler, full, thumb, offset_x, offset_y, scale, image->alpha);
-
-    // save thumbnail to disk
-    if (thumbnails_disk_cache && make_directories(thumb_path)) {
-        thumbnail_save(thumb, thumb_path);
-    }
 
     return true;
 }
