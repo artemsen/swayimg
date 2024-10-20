@@ -12,6 +12,137 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** Default configuration. */
+struct config_default {
+    const char* section;
+    const char* key;
+    const char* value;
+};
+static const struct config_default defaults[] = {
+    { "general",      "mode",             "viewer"                                   },
+    { "general",      "position",         "parent"                                   },
+    { "general",      "size",             "parent"                                   },
+    { "general",      "sigusr1",          "reload"                                   },
+    { "general",      "sigusr2",          "next_file"                                },
+    { "general",      "app_id",           "swayimg"                                  },
+
+    { "viewer",       "window",           "#00000000"                                },
+    { "viewer",       "transparency",     "grid"                                     },
+    { "viewer",       "scale",            "optimal"                                  },
+    { "viewer",       "fixed",            "yes"                                      },
+    { "viewer",       "antialiasing",     "no"                                       },
+    { "viewer",       "slideshow",        "no"                                       },
+    { "viewer",       "slideshow_time",   "3"                                        },
+    { "viewer",       "history",          "1"                                        },
+    { "viewer",       "preload",          "1"                                        },
+
+    { "gallery",      "size",             "200"                                      },
+    { "gallery",      "cache",            "100"                                      },
+    { "gallery",      "fill",             "yes"                                      },
+    { "gallery",      "antialiasing",     "no"                                       },
+    { "gallery",      "window",           "#00000000"                                },
+    { "gallery",      "background",       "#202020ff"                                },
+    { "gallery",      "select",           "#404040ff"                                },
+    { "gallery",      "border",           "#000000ff"                                },
+    { "gallery",      "shadow",           "#000000ff"                                },
+
+    { "list",         "order",            "alpha"                                    },
+    { "list",         "loop",             "yes"                                      },
+    { "list",         "recursive",        "no"                                       },
+    { "list",         "all",              "yes"                                      },
+
+    { "font",         "name",             "monospace"                                },
+    { "font",         "size",             "14"                                       },
+    { "font",         "color",            "#ccccccff"                                },
+    { "font",         "shadow",           "#000000a0"                                },
+
+    { "info",         "show",             "yes"                                      },
+    { "info",         "info_timeout",     "5"                                        },
+    { "info",         "status_timeout",   "3"                                        },
+
+    { "info.viewer",  "top_left",         "+name,+format,+filesize,+imagesize,+exif" },
+    { "info.viewer",  "top_right",        "index"                                    },
+    { "info.viewer",  "bottom_left",      "scale,frame"                              },
+    { "info.viewer",  "bottom_right",     "status"                                   },
+
+    { "info.gallery", "top_left",         "none"                                     },
+    { "info.gallery", "top_right",        "none"                                     },
+    { "info.gallery", "bottom_left",      "none"                                     },
+    { "info.gallery", "bottom_right",     "name,status"                              },
+
+    { "keys.viewer",  "F1",               "help"                                     },
+    { "keys.viewer",  "Home",             "first_file"                               },
+    { "keys.viewer",  "End",              "last_file"                                },
+    { "keys.viewer",  "Prior",            "prev_file"                                },
+    { "keys.viewer",  "Next",             "next_file"                                },
+    { "keys.viewer",  "Space",            "next_file"                                },
+    { "keys.viewer",  "Shift+d",          "prev_dir"                                 },
+    { "keys.viewer",  "d",                "next_dir"                                 },
+    { "keys.viewer",  "Shift+o",          "prev_frame"                               },
+    { "keys.viewer",  "o",                "next_frame"                               },
+    { "keys.viewer",  "c",                "skip_file"                                },
+    { "keys.viewer",  "Shift+s",          "slideshow"                                },
+    { "keys.viewer",  "s",                "animation"                                },
+    { "keys.viewer",  "f",                "fullscreen"                               },
+    { "keys.viewer",  "Return",           "mode"                                     },
+    { "keys.viewer",  "Left",             "step_left 10"                             },
+    { "keys.viewer",  "Right",            "step_right 10"                            },
+    { "keys.viewer",  "Up",               "step_up 10"                               },
+    { "keys.viewer",  "Down",             "step_down 10"                             },
+    { "keys.viewer",  "Equal",            "zoom +10"                                 },
+    { "keys.viewer",  "Plus",             "zoom +10"                                 },
+    { "keys.viewer",  "Minus",            "zoom -10"                                 },
+    { "keys.viewer",  "w",                "zoom width"                               },
+    { "keys.viewer",  "Shift+w",          "zoom height"                              },
+    { "keys.viewer",  "z",                "zoom fit"                                 },
+    { "keys.viewer",  "Shift+z",          "zoom fill"                                },
+    { "keys.viewer",  "0",                "zoom real"                                },
+    { "keys.viewer",  "BackSpace",        "zoom optimal"                             },
+    { "keys.viewer",  "bracketleft",      "rotate_left"                              },
+    { "keys.viewer",  "bracketright",     "rotate_right"                             },
+    { "keys.viewer",  "m",                "flip_vertical"                            },
+    { "keys.viewer",  "Shift+m",          "flip_horizontal"                          },
+    { "keys.viewer",  "a",                "antialiasing"                             },
+    { "keys.viewer",  "r",                "reload"                                   },
+    { "keys.viewer",  "i",                "info"                                     },
+    { "keys.viewer",  "Shift+Delete",     "exec rm '%'; skip_file"                   },
+    { "keys.viewer",  "Escape",           "exit"                                     },
+    { "keys.viewer",  "q",                "exit"                                     },
+    { "keys.viewer",  "ScrollLeft",       "step_right 5"                             },
+    { "keys.viewer",  "ScrollRight",      "step_left 5"                              },
+    { "keys.viewer",  "ScrollUp",         "step_up 5"                                },
+    { "keys.viewer",  "ScrollDown",       "step_down 5"                              },
+    { "keys.viewer",  "Ctrl+ScrollUp",    "zoom +10"                                 },
+    { "keys.viewer",  "Ctrl+ScrollDown",  "zoom -10"                                 },
+    { "keys.viewer",  "Shift+ScrollUp",   "prev_file"                                },
+    { "keys.viewer",  "Shift+ScrollDown", "next_file"                                },
+    { "keys.viewer",  "Alt+ScrollUp",     "prev_frame"                               },
+    { "keys.viewer",  "Alt+ScrollDown",   "next_frame"                               },
+
+    { "keys.gallery", "F1",               "help"                                     },
+    { "keys.gallery", "Home",             "first_file"                               },
+    { "keys.gallery", "End",              "last_file"                                },
+    { "keys.gallery", "Left",             "step_left"                                },
+    { "keys.gallery", "Right",            "step_right"                               },
+    { "keys.gallery", "Up",               "step_up"                                  },
+    { "keys.gallery", "Down",             "step_down"                                },
+    { "keys.gallery", "Prior",            "page_up"                                  },
+    { "keys.gallery", "Next",             "page_down"                                },
+    { "keys.gallery", "c",                "skip_file"                                },
+    { "keys.gallery", "f",                "fullscreen"                               },
+    { "keys.gallery", "Return",           "mode"                                     },
+    { "keys.gallery", "a",                "antialiasing"                             },
+    { "keys.gallery", "r",                "reload"                                   },
+    { "keys.gallery", "i",                "info"                                     },
+    { "keys.gallery", "Shift+Delete",     "exec rm '%'; skip_file"                   },
+    { "keys.gallery", "Escape",           "exit"                                     },
+    { "keys.gallery", "q",                "exit"                                     },
+    { "keys.gallery", "ScrollLeft",       "step_right"                               },
+    { "keys.gallery", "ScrollRight",      "step_left"                                },
+    { "keys.gallery", "ScrollUp",         "step_up"                                  },
+    { "keys.gallery", "ScrollDown",       "step_down"                                },
+};
+
 /** Config file location. */
 struct location {
     const char* prefix;  ///< Environment variable name
@@ -104,9 +235,8 @@ static char* expand_path(const char* prefix_env, const char* postfix)
  * @param path full path to the file
  * @return loaded config instance or NULL on errors
  */
-static struct config* load(const char* path)
+static bool load(const char* path, struct config** cfg)
 {
-    struct config* cfg = NULL;
     FILE* fd = NULL;
     char* buff = NULL;
     size_t buff_sz = 0;
@@ -116,7 +246,7 @@ static struct config* load(const char* path)
 
     fd = fopen(path, "r");
     if (!fd) {
-        return NULL;
+        return false;
     }
 
     while ((nread = getline(&buff, &buff_sz, fd)) != -1) {
@@ -186,32 +316,35 @@ static struct config* load(const char* path)
         }
 
         // save configuration parameter
-        config_set(&cfg, section, line, value);
+        config_set(cfg, section, line, value);
     }
 
     free(buff);
     free(section);
     fclose(fd);
 
-    return cfg;
+    return true;
 }
 
 struct config* config_load(void)
 {
     struct config* cfg = NULL;
 
+    // set defaults
+    for (size_t i = 0; i < ARRAY_SIZE(defaults); ++i) {
+        const struct config_default* def = &defaults[i];
+        config_set(&cfg, def->section, def->key, def->value);
+    }
+
     // find and load first available config file
     for (size_t i = 0; i < ARRAY_SIZE(config_locations); ++i) {
         const struct location* cl = &config_locations[i];
         char* path = expand_path(cl->prefix, cl->postfix);
-        if (path) {
-            cfg = load(path);
-            if (cfg) {
-                free(path);
-                break;
-            }
-        }
+        const bool loaded = path && load(path, &cfg);
         free(path);
+        if (loaded) {
+            break;
+        }
     }
 
     return cfg;

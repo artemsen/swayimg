@@ -20,19 +20,6 @@ protected:
     struct config* config = nullptr;
 };
 
-TEST_F(Keybind, Default)
-{
-    keybind_init(NULL);
-    ASSERT_NE(keybind_get(), nullptr);
-
-    const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
-    ASSERT_NE(kb, nullptr);
-    EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>(XKB_KEY_Escape));
-    EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    EXPECT_EQ(kb->actions.sequence[0].type, action_exit);
-}
-
 TEST_F(Keybind, Add)
 {
     config_set(&config, section, "a", "exit");

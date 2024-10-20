@@ -10,94 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Default key bindings
-struct keybind_default {
-    xkb_keysym_t key;     ///< Keyboard key
-    uint8_t mods;         ///< Key modifiers
-    struct action action; ///< Action
-};
-
-// clang-format off
-
-/** Default key bindings for viewer mode. */
-static const struct keybind_default default_viewer[] = {
-    { .key = XKB_KEY_F1,          .action = { action_help, NULL } },
-    { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
-    { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
-    { .key = XKB_KEY_space,       .action = { action_next_file, NULL } },
-    { .key = XKB_KEY_SunPageDown, .action = { action_next_file, NULL } },
-    { .key = XKB_KEY_SunPageUp,   .action = { action_prev_file, NULL } },
-    { .key = XKB_KEY_c,           .action = { action_skip_file, NULL } },
-    { .key = XKB_KEY_d,           .action = { action_next_dir, NULL } },
-    { .key = XKB_KEY_d, .mods = KEYMOD_SHIFT, .action = { action_prev_dir, NULL } },
-    { .key = XKB_KEY_o,                       .action = { action_next_frame, NULL } },
-    { .key = XKB_KEY_o, .mods = KEYMOD_SHIFT, .action = { action_prev_frame, NULL } },
-    { .key = XKB_KEY_s,                       .action = { action_animation, NULL } },
-    { .key = XKB_KEY_s, .mods = KEYMOD_SHIFT, .action = { action_slideshow, NULL } },
-    { .key = XKB_KEY_f,           .action = { action_fullscreen, NULL } },
-    { .key = XKB_KEY_Left,        .action = { action_step_left, NULL } },
-    { .key = XKB_KEY_Right,       .action = { action_step_right, NULL } },
-    { .key = XKB_KEY_Up,          .action = { action_step_up, NULL } },
-    { .key = XKB_KEY_Down,        .action = { action_step_down, NULL } },
-    { .key = XKB_KEY_equal,       .action = { action_zoom, "+10" } },
-    { .key = XKB_KEY_plus,        .action = { action_zoom, "+10" } },
-    { .key = XKB_KEY_minus,       .action = { action_zoom, "-10" } },
-    { .key = XKB_KEY_w,           .action = { action_zoom, "width" } },
-    { .key = XKB_KEY_w, .mods = KEYMOD_SHIFT, .action = { action_zoom, "height" } },
-    { .key = XKB_KEY_z,                       .action = { action_zoom, "fit" } },
-    { .key = XKB_KEY_z, .mods = KEYMOD_SHIFT, .action = { action_zoom, "fill" } },
-    { .key = XKB_KEY_0,                       .action = { action_zoom, "real" } },
-    { .key = XKB_KEY_BackSpace,               .action = { action_zoom, "optimal" } },
-    { .key = XKB_KEY_bracketleft,             .action = { action_rotate_left, NULL } },
-    { .key = XKB_KEY_bracketright,            .action = { action_rotate_right, NULL } },
-    { .key = XKB_KEY_m,                       .action = { action_flip_vertical, NULL } },
-    { .key = XKB_KEY_m, .mods = KEYMOD_SHIFT, .action = { action_flip_horizontal, NULL } },
-    { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
-    { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
-    { .key = XKB_KEY_i,           .action = { action_info, NULL } },
-    { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
-    { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
-    { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
-    { .key = VKEY_SCROLL_LEFT,    .action = { action_step_right, "5" } },
-    { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  "5" } },
-    { .key = VKEY_SCROLL_UP,      .action = { action_step_up,    "5" } },
-    { .key = VKEY_SCROLL_DOWN,    .action = { action_step_down,  "5" } },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_CTRL,  .action = { action_zoom, "+10" } },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_CTRL,  .action = { action_zoom, "-10" } },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_SHIFT, .action = { action_prev_file, NULL } },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_SHIFT, .action = { action_next_file, NULL } },
-    { .key = VKEY_SCROLL_UP,   .mods = KEYMOD_ALT,   .action = { action_prev_frame, NULL } },
-    { .key = VKEY_SCROLL_DOWN, .mods = KEYMOD_ALT,   .action = { action_next_frame, NULL } },
-    { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT, .action = { action_none, NULL } },
-};
-
-/** Default key bindings for gallery mode. */
-static const struct keybind_default default_gallery[] = {
-    { .key = XKB_KEY_F1,          .action = { action_help, NULL } },
-    { .key = XKB_KEY_Home,        .action = { action_first_file, NULL } },
-    { .key = XKB_KEY_End,         .action = { action_last_file, NULL } },
-    { .key = XKB_KEY_f,           .action = { action_fullscreen, NULL } },
-    { .key = XKB_KEY_Left,        .action = { action_step_left, NULL } },
-    { .key = XKB_KEY_Right,       .action = { action_step_right, NULL } },
-    { .key = XKB_KEY_Up,          .action = { action_step_up, NULL } },
-    { .key = XKB_KEY_Down,        .action = { action_step_down, NULL } },
-    { .key = XKB_KEY_Prior,       .action = { action_page_up, NULL } },
-    { .key = XKB_KEY_Next,        .action = { action_page_down, NULL } },
-    { .key = XKB_KEY_c,           .action = { action_skip_file, NULL } },
-    { .key = XKB_KEY_a,           .action = { action_antialiasing, NULL } },
-    { .key = XKB_KEY_r,           .action = { action_reload, NULL } },
-    { .key = XKB_KEY_i,           .action = { action_info, NULL } },
-    { .key = XKB_KEY_Return,      .action = { action_mode, NULL } },
-    { .key = XKB_KEY_Escape,      .action = { action_exit, NULL } },
-    { .key = XKB_KEY_q,           .action = { action_exit, NULL } },
-    { .key = VKEY_SCROLL_LEFT,    .action = { action_step_right, NULL } },
-    { .key = VKEY_SCROLL_RIGHT,   .action = { action_step_left,  NULL } },
-    { .key = VKEY_SCROLL_UP,      .action = { action_step_up,    NULL } },
-    { .key = VKEY_SCROLL_DOWN,    .action = { action_step_down,  NULL } },
-    { .key = XKB_KEY_Delete, .mods = KEYMOD_SHIFT, .action = { action_none, NULL } },
-};
-// clang-format on
-
 // Names of virtual keys
 struct virtual_keys {
     xkb_keysym_t key;
@@ -260,44 +172,6 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
 }
 
 /**
- * Create default binding.
- * @param head head of binding list
- * @param kb default key binding description
- */
-static void set_default(struct keybind** head, const struct keybind_default* kb)
-{
-    struct action_seq actions;
-
-    if (kb->action.type == action_none && kb->key == XKB_KEY_Delete &&
-        kb->mods == KEYMOD_SHIFT) {
-        // special action: Shift+Del
-        actions.num = 2;
-        actions.sequence = malloc(actions.num * sizeof(struct action));
-        if (actions.sequence) {
-            actions.sequence[0].type = action_exec;
-            actions.sequence[0].params = str_dup("rm \"%\"", NULL);
-            actions.sequence[1].type = action_skip_file;
-            actions.sequence[1].params = NULL;
-        }
-    } else {
-        actions.num = 1;
-        actions.sequence = malloc(actions.num * sizeof(struct action));
-        if (actions.sequence) {
-            actions.sequence[0].type = kb->action.type;
-            if (kb->action.params) {
-                actions.sequence[0].params = str_dup(kb->action.params, NULL);
-            } else {
-                actions.sequence[0].params = NULL;
-            }
-        }
-    }
-
-    if (actions.sequence) {
-        set_binding(head, kb->key, kb->mods, &actions);
-    }
-}
-
-/**
  * Load binding from config parameters.
  * @param kb head of binding list
  * @param cfg config instance
@@ -336,15 +210,6 @@ static void load_binding(struct keybind** head, struct config* cfg,
 
 void keybind_init(struct config* cfg)
 {
-    // create default bindings
-    for (size_t i = 0; i < ARRAY_SIZE(default_viewer); ++i) {
-        set_default(&kb_viewer, &default_viewer[i]);
-    }
-    for (size_t i = 0; i < ARRAY_SIZE(default_gallery); ++i) {
-        set_default(&kb_gallery, &default_gallery[i]);
-    }
-
-    // load bindings from config
     load_binding(&kb_viewer, cfg, "keys.viewer");
     load_binding(&kb_gallery, cfg, "keys.gallery");
 }
