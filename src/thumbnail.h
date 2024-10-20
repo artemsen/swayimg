@@ -6,12 +6,15 @@
 #include "image.h"
 #include "pixmap.h"
 
-struct thumbnail_params {
-    size_t thumb_width, thumb_height;
-    ssize_t offset_x, offset_y;
-    bool fill;
-    bool antialias;
-    float scale;
+/** Thumbnail parameters.
+ * It is packed because we write it and we don't want any padding.
+ */
+struct __attribute__((packed)) thumbnail_params {
+    size_t thumb_width, thumb_height; ///< Thumbnail size
+    ssize_t offset_x, offset_y;       ///< Offset to center thumbnail
+    bool fill;                        ///< Scale mode (fill/fit)
+    bool antialias;                   ///< Use antialiasing
+    float scale;                      ///< Scale factor
 };
 
 /**

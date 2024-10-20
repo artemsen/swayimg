@@ -113,8 +113,6 @@ bool thumbnail_save(const struct pixmap* thumb, const char* source,
     uint32_t i;
     char path[PATH_MAX] = { 0 };
 
-    (void)params;
-
     if (!get_thumb_path(path, source)) {
         return false;
     }
@@ -127,8 +125,12 @@ bool thumbnail_save(const struct pixmap* thumb, const char* source,
         return false;
     }
 
-    // TODO: add alpha channel
     fprintf(fp, "P6\n%zu %zu\n255\n", thumb->width, thumb->height);
+    /* comment to store params */
+    fwrite("#", 1, 1, fp);
+    fwrite(params, sizeof(struct thumbnail_params), 1, fp);
+    fwrite("\n", 1, 1, fp);
+    // TODO: add alpha channel
     for (i = 0; i < thumb->width * thumb->height; ++i) {
         uint8_t color[] = { (((thumb->data[i] >> (8 * 2)) & 0xff)),
                             (((thumb->data[i] >> (8 * 1)) & 0xff)),
@@ -153,8 +155,7 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
     uint32_t i;
     char path[PATH_MAX] = { 0 };
     struct stat attr_img, attr_thumb;
-
-    (void)params;
+    struct thumbnail_params saved_params;
 
     if (!get_thumb_path(path, source) || stat(source, &attr_img) ||
         stat(path, &attr_thumb) ||
@@ -177,6 +178,15 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
     }
 
     if (strcmp(header, "P6")) {
+        goto fail;
+    }
+
+    /* comment to store params */
+    fread(header, 1, 1, fp); // '#'
+    fread(&saved_params, sizeof(struct thumbnail_params), 1, fp);
+    fread(header, 1, 1, fp); // '\n'
+
+    if (memcmp(params, &saved_params, sizeof(struct thumbnail_params))) {
         goto fail;
     }
 
