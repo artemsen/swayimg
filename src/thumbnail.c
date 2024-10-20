@@ -190,8 +190,6 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
         goto fail;
     }
 
-    /* NOTE: It might be that we want the pixmap to have exact width and height
-     * and return false if it doesn't match */
     if (!pixmap_create(thumb, thumb->width, thumb->height)) {
         goto fail;
     }
