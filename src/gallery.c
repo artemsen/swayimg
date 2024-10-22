@@ -77,7 +77,7 @@ static void add_thumbnail(struct image* image)
     struct thumbnail_params params;
 
     /* TODO: move to config */
-    bool thumbnails_disk_cache = true;
+    bool thumbnails_disk_cache = false;
 
     if (!entry) {
         image_free(image);
