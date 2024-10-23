@@ -7,6 +7,7 @@
 
 #include "image.h"
 #include "pixmap.h"
+#include "src/memdata.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -52,24 +53,52 @@ static bool make_directories(char* path)
     return true;
 }
 
-static bool get_thumb_path(char* path, const char* source)
+// NOTE: this is a copy from config.h
+/**
+ * Expand path from environment variable.
+ * @param prefix_env path prefix (var name)
+ * @param postfix constant postfix
+ * @return allocated buffer with path, caller should free it after use
+ */
+static char* expand_path(const char* prefix_env, const char* postfix)
 {
-    static char* cache_dir = NULL;
-    int r;
-    if (!cache_dir) {
-        cache_dir = getenv("XDG_CACHE_HOME");
-        if (cache_dir) {
-            cache_dir = strcat(cache_dir, "/swayimg");
-        } else {
-            cache_dir = getenv("HOME");
-            if (!cache_dir) {
-                return false;
-            }
-            cache_dir = strcat(cache_dir, "/.swayimg");
+    char* path;
+    const char* prefix;
+    size_t prefix_len = 0;
+    size_t postfix_len = strlen(postfix);
+
+    if (prefix_env) {
+        const char* delim;
+        prefix = getenv(prefix_env);
+        if (!prefix || !*prefix) {
+            return NULL;
         }
+        // use only the first directory if prefix is a list
+        delim = strchr(prefix, ':');
+        prefix_len = delim ? (size_t)(delim - prefix) : strlen(prefix);
     }
-    r = snprintf(path, PATH_MAX, "%s%s", cache_dir, source);
-    return r >= 0 && r < PATH_MAX;
+
+    // compose path
+    path = malloc(prefix_len + postfix_len + 1 /* last null*/);
+    if (path) {
+        if (prefix_len) {
+            memcpy(path, prefix, prefix_len);
+        }
+        memcpy(path + prefix_len, postfix, postfix_len + 1 /*last null*/);
+    }
+
+    return path;
+}
+
+static bool get_thumb_path(char** path, const char* source)
+{
+    const char* prefix = "XDG_CACHE_HOME";
+    const char* postfix = "/swayimg";
+    if (!(*path = expand_path(prefix, postfix)) ||
+        !(*path = str_append(source, 0, path))) {
+        return false;
+    }
+    return true;
 }
 
 void thumbnail_params(struct thumbnail_params* params,
@@ -109,22 +138,23 @@ void thumbnail_params(struct thumbnail_params* params,
 bool thumbnail_save(const struct pixmap* thumb, const char* source,
                     const struct thumbnail_params* params)
 {
-    FILE* fp;
+    FILE* fp = NULL;
     uint32_t i;
-    char path[PATH_MAX] = { 0 };
+    char* path = NULL;
 
-    if (!get_thumb_path(path, source)) {
-        return false;
+    if (!get_thumb_path(&path, source)) {
+        goto fail;
     }
 
     if (!make_directories(path)) {
-        return false;
+        goto fail;
     }
 
     if (!(fp = fopen(path, "wb"))) {
-        return false;
+        goto fail;
     }
 
+    // TODO: handle errors
     fprintf(fp, "P6\n%zu %zu\n255\n", thumb->width, thumb->height);
     /* comment to store params */
     fwrite("#", 1, 1, fp);
@@ -138,8 +168,16 @@ bool thumbnail_save(const struct pixmap* thumb, const char* source,
         fwrite(color, 3, 1, fp);
     }
 
+    free(path);
     fclose(fp);
     return true;
+
+fail:
+    free(path);
+    if (fp) {
+        fclose(fp);
+    }
+    return false;
 }
 
 /**
@@ -151,24 +189,20 @@ bool thumbnail_save(const struct pixmap* thumb, const char* source,
 bool thumbnail_load(struct pixmap* thumb, const char* source,
                     const struct thumbnail_params* params)
 {
-    FILE* fp;
+    FILE* fp = NULL;
+    char* path = NULL;
     uint32_t i;
-    char path[PATH_MAX] = { 0 };
     struct stat attr_img, attr_thumb;
     struct thumbnail_params saved_params;
 
-    if (!get_thumb_path(path, source) || stat(source, &attr_img) ||
+    if (!get_thumb_path(&path, source) || stat(source, &attr_img) ||
         stat(path, &attr_thumb) ||
         difftime(attr_img.st_ctime, attr_thumb.st_ctime) > 0) {
-        return false;
-    }
-
-    if (!get_thumb_path(path, source)) {
-        return false;
+        goto fail;
     }
 
     if (!(fp = fopen(path, "rb"))) {
-        return false;
+        goto fail;
     }
 
     char header[3];
@@ -181,6 +215,7 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
         goto fail;
     }
 
+    // TODO: handle errors
     /* comment with stored params */
     fread(header, 1, 1, fp); // '#'
     fread(&saved_params, sizeof(struct thumbnail_params), 1, fp);
@@ -203,11 +238,15 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
         thumb->data[i] = ARGB(0xff, color[0], color[1], color[2]);
     }
 
+    free(path);
     fclose(fp);
     return true;
 
 fail:
-    fclose(fp);
+    free(path);
+    if (fp) {
+        fclose(fp);
+    }
     return false;
 }
 
