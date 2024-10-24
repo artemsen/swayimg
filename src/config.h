@@ -114,3 +114,11 @@ void config_error_key(const char* section, const char* key);
  * @param value configuration parameters
  */
 void config_error_val(const char* section, const char* value);
+
+/**
+ * Expand path from environment variable.
+ * @param prefix_env path prefix (var name)
+ * @param postfix constant postfix
+ * @return allocated buffer with path, caller should free it after use
+ */
+char* expand_path(const char* prefix_env, const char* postfix);

@@ -5,9 +5,10 @@
 
 #include "thumbnail.h"
 
+#include "config.h"
 #include "image.h"
+#include "memdata.h"
 #include "pixmap.h"
-#include "src/memdata.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -50,43 +51,6 @@ static bool make_directories(char* path)
     }
 
     return true;
-}
-
-// NOTE: this is a copy from config.h
-/**
- * Expand path from environment variable.
- * @param prefix_env path prefix (var name)
- * @param postfix constant postfix
- * @return allocated buffer with path, caller should free it after use
- */
-static char* expand_path(const char* prefix_env, const char* postfix)
-{
-    char* path;
-    const char* prefix;
-    size_t prefix_len = 0;
-    size_t postfix_len = strlen(postfix);
-
-    if (prefix_env) {
-        const char* delim;
-        prefix = getenv(prefix_env);
-        if (!prefix || !*prefix) {
-            return NULL;
-        }
-        // use only the first directory if prefix is a list
-        delim = strchr(prefix, ':');
-        prefix_len = delim ? (size_t)(delim - prefix) : strlen(prefix);
-    }
-
-    // compose path
-    path = malloc(prefix_len + postfix_len + 1 /* last null*/);
-    if (path) {
-        if (prefix_len) {
-            memcpy(path, prefix, prefix_len);
-        }
-        memcpy(path + prefix_len, postfix, postfix_len + 1 /*last null*/);
-    }
-
-    return path;
 }
 
 static bool get_thumb_path(char** path, const char* source)

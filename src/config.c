@@ -194,13 +194,7 @@ static struct config* get_section(struct config* cfg, const char* name)
     return NULL;
 }
 
-/**
- * Expand path from environment variable.
- * @param prefix_env path prefix (var name)
- * @param postfix constant postfix
- * @return allocated buffer with path, caller should free it after use
- */
-static char* expand_path(const char* prefix_env, const char* postfix)
+char* expand_path(const char* prefix_env, const char* postfix)
 {
     char* path;
     const char* prefix;
