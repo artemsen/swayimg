@@ -44,7 +44,6 @@ static bool make_directories(char* path)
         }
         *slash = '\0';
         if (mkdir(path, 0755) && errno != EEXIST) {
-            // TODO: do we want to print error message?
             return false;
         }
         *slash = '/';
@@ -154,12 +153,17 @@ bool thumbnail_save(const struct pixmap* thumb, const char* source,
         goto fail;
     }
 
-    // TODO: handle errors
-    fprintf(fp, "P6\n%zu %zu\n255\n", thumb->width, thumb->height);
+    if (fprintf(fp, "P6\n%zu %zu\n255\n", thumb->width, thumb->height) < 0) {
+        goto fail;
+    }
+
     /* comment to store params */
-    fwrite("#", 1, 1, fp);
-    fwrite(params, sizeof(struct thumbnail_params), 1, fp);
-    fwrite("\n", 1, 1, fp);
+    if (fputc('#', fp) == EOF ||
+        fwrite(params, sizeof(struct thumbnail_params), 1, fp) != 1 ||
+        fputc('\n', fp) == EOF) {
+        goto fail;
+    }
+
     // TODO: add alpha channel
     for (i = 0; i < thumb->width * thumb->height; ++i) {
         uint8_t color[] = { (((thumb->data[i] >> (8 * 2)) & 0xff)),
@@ -215,11 +219,12 @@ bool thumbnail_load(struct pixmap* thumb, const char* source,
         goto fail;
     }
 
-    // TODO: handle errors
     /* comment with stored params */
-    fread(header, 1, 1, fp); // '#'
-    fread(&saved_params, sizeof(struct thumbnail_params), 1, fp);
-    fread(header, 1, 1, fp); // '\n'
+    if (fgetc(fp) != '#' ||
+        fread(&saved_params, sizeof(struct thumbnail_params), 1, fp) != 1 ||
+        fgetc(fp) != '\n') {
+        goto fail;
+    }
 
     if (memcmp(params, &saved_params, sizeof(struct thumbnail_params))) {
         goto fail;
