@@ -231,6 +231,8 @@ static void scale_image(enum fixed_scale sc)
             break;
     }
 
+    ctx.scale_init = sc;
+
     // center viewport
     ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
     ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
