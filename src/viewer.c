@@ -231,8 +231,6 @@ static void scale_image(enum fixed_scale sc)
             break;
     }
 
-    ctx.scale_init = sc;
-
     // center viewport
     ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
     ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
@@ -295,6 +293,33 @@ static void zoom_image(const char* params)
 
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
     app_redraw();
+}
+
+/**
+ * Set default scale to a fixed scale value and apply it.
+ * @param params fixed scale to set
+ */
+static void scale_global(const char* params)
+{
+    if (params && *params) {
+        ssize_t fixed_scale = str_index(scale_names, params, 0);
+
+        if (fixed_scale >= 0) {
+            ctx.scale_init = fixed_scale;
+        } else {   
+            fprintf(stderr, "Invalid scale operation: \"%s\"\n", params);
+            return;
+        }
+    } else {
+        // toggle to the next scale
+        ctx.scale_init++;
+        if (ctx.scale_init >= ARRAY_SIZE(scale_names)) {
+            ctx.scale_init = 0;
+        }
+    }
+
+    info_update(info_status, "Scale %s", scale_names[ctx.scale_init]);
+    scale_image(ctx.scale_init);
 }
 
 /**
@@ -605,6 +630,9 @@ static void apply_action(const struct action* action)
             break;
         case action_zoom:
             zoom_image(action->params);
+            break;
+        case action_scale:
+            scale_global(action->params);
             break;
         case action_rotate_left:
             rotate_image(false);
