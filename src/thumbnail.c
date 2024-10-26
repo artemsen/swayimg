@@ -51,7 +51,10 @@ static bool get_thumb_path(char** path, const char* source)
 {
     const char* prefix = "XDG_CACHE_HOME";
     const char* postfix = "/swayimg";
-    if (!(*path = expand_path(prefix, postfix)) ||
+    const char* prefix_fallback = "HOME";
+    const char* postfix_fallback = "/.cache/swayimg";
+    if ((!(*path = expand_path(prefix, postfix)) &&
+         !(*path = expand_path(prefix_fallback, postfix_fallback))) ||
         !(*path = str_append(source, 0, path))) {
         return false;
     }
