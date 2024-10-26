@@ -18,12 +18,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined(__linux__)
-#include <linux/limits.h>
-#elif defined(__OpenBSD__) || defined(__FreeBSD__)
-#define PATH_MAX 4096
-#endif
-
 /**
  * Makes directories like `mkdir -p`.
  * @param path absolute path to the directory to be created
