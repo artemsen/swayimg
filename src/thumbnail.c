@@ -20,30 +20,29 @@
 
 /**
  * Makes directories like `mkdir -p`.
- * @param path absolute path to the directory to be created
+ * @param path absolute path to the directory to be created, should not be null
+ * or empty
  * @return true if successful
  */
-static bool make_directories(char* path)
+static bool make_directories(const char* path)
 {
-    char* slash;
+    char* path_copy = str_dup(path, NULL); // maybe use [PATH_MAX] buffer
+    char* slash = path_copy;
 
-    if (!path || !*path) {
-        return false;
-    }
-
-    slash = path;
     while (true) {
         slash = strchr(slash + 1, '/');
         if (!slash) {
             break;
         }
         *slash = '\0';
-        if (mkdir(path, 0755) && errno != EEXIST) {
+        if (mkdir(path_copy, 0755) && errno != EEXIST) {
+            free(path_copy);
             return false;
         }
         *slash = '/';
     }
 
+    free(path_copy);
     return true;
 }
 
