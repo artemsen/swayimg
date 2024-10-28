@@ -243,6 +243,9 @@ static void on_keyboard_enter(void* data, struct wl_keyboard* wl_keyboard,
 static void on_keyboard_leave(void* data, struct wl_keyboard* wl_keyboard,
                               uint32_t serial, struct wl_surface* surface)
 {
+    // reset keyboard repeat timer
+    struct itimerspec ts = { 0 };
+    timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
 }
 
 static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
