@@ -8,6 +8,7 @@
 #include "buildcfg.h"
 #include "config.h"
 #include "xdg-shell-protocol.h"
+#include "wp-content-type-v1-protocol.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -50,6 +51,7 @@ struct ui {
         struct wl_keyboard* keyboard;
         struct wl_pointer* pointer;
         struct wl_surface* surface;
+        struct wp_content_type_manager_v1* content_type_manager;
         struct wl_output* output;
     } wl;
 
@@ -600,6 +602,8 @@ static void on_registry_global(void* data, struct wl_registry* registry,
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface, 4);
         wl_seat_add_listener(ctx.wl.seat, &seat_listener, data);
+    } else if (strcmp(interface, wp_content_type_manager_v1_interface.name) == 0) {
+        ctx.wl.content_type_manager = wl_registry_bind(registry, name, &wp_content_type_manager_v1_interface, 1);
     }
 }
 
@@ -679,6 +683,12 @@ bool ui_init(const char* app_id, size_t width, size_t height)
         xdg_toplevel_set_fullscreen(ctx.xdg.toplevel, NULL);
     }
 
+    if (ctx.wl.content_type_manager) {
+        struct wp_content_type_v1* content_type;
+        content_type = wp_content_type_manager_v1_get_surface_content_type(ctx.wl.content_type_manager, ctx.wl.surface);
+        wp_content_type_v1_set_content_type(content_type, WP_CONTENT_TYPE_V1_TYPE_PHOTO);
+    }
+
     wl_surface_commit(ctx.wl.surface);
 
     app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event, NULL);
@@ -734,6 +744,9 @@ void ui_destroy(void)
     }
     if (ctx.wl.compositor) {
         wl_compositor_destroy(ctx.wl.compositor);
+    }
+    if (ctx.wl.content_type_manager) {
+        wp_content_type_manager_v1_destroy(ctx.wl.content_type_manager);
     }
     if (ctx.wl.registry) {
         wl_registry_destroy(ctx.wl.registry);
