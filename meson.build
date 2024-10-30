@@ -119,6 +119,21 @@ xdg_shell_h = custom_target(
   command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
 )
 
+# wp_content_type_v1 Wayland protocol
+wp_content_type_v1_xml = wlproto_dir / 'staging/content-type/content-type-v1.xml'
+wp_content_type_v1_c = custom_target(
+  'wp-content-type-v1-protocol.c',
+  output: 'wp-content-type-v1-protocol.c',
+  input: wp_content_type_v1_xml,
+  command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@']
+)
+wp_content_type_v1_h = custom_target(
+  'wp-content-type-v1-protocol.h',
+  output: 'wp-content-type-v1-protocol.h',
+  input: wp_content_type_v1_xml,
+  command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@']
+)
+
 # install sample config
 install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
 
@@ -194,6 +209,8 @@ sources = [
   'src/formats/tga.c',
   xdg_shell_h,
   xdg_shell_c,
+  wp_content_type_v1_h,
+  wp_content_type_v1_c,
 ]
 if exif.found()
   sources += 'src/exif.c'
