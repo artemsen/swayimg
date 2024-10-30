@@ -7,8 +7,8 @@
 #include "application.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "xdg-shell-protocol.h"
 #include "wp-content-type-v1-protocol.h"
+#include "xdg-shell-protocol.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -602,8 +602,10 @@ static void on_registry_global(void* data, struct wl_registry* registry,
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface, 4);
         wl_seat_add_listener(ctx.wl.seat, &seat_listener, data);
-    } else if (strcmp(interface, wp_content_type_manager_v1_interface.name) == 0) {
-        ctx.wl.content_type_manager = wl_registry_bind(registry, name, &wp_content_type_manager_v1_interface, 1);
+    } else if (strcmp(interface, wp_content_type_manager_v1_interface.name) ==
+               0) {
+        ctx.wl.content_type_manager = wl_registry_bind(
+            registry, name, &wp_content_type_manager_v1_interface, 1);
     }
 }
 
@@ -684,9 +686,11 @@ bool ui_init(const char* app_id, size_t width, size_t height)
     }
 
     if (ctx.wl.content_type_manager) {
-        struct wp_content_type_v1* content_type;
-        content_type = wp_content_type_manager_v1_get_surface_content_type(ctx.wl.content_type_manager, ctx.wl.surface);
-        wp_content_type_v1_set_content_type(content_type, WP_CONTENT_TYPE_V1_TYPE_PHOTO);
+        struct wp_content_type_v1* content_type =
+            wp_content_type_manager_v1_get_surface_content_type(
+                ctx.wl.content_type_manager, ctx.wl.surface);
+        wp_content_type_v1_set_content_type(content_type,
+                                            WP_CONTENT_TYPE_V1_TYPE_PHOTO);
     }
 
     wl_surface_commit(ctx.wl.surface);
