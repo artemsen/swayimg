@@ -52,6 +52,7 @@ struct ui {
         struct wl_pointer* pointer;
         struct wl_surface* surface;
         struct wp_content_type_manager_v1* content_type_manager;
+        struct wp_content_type_v1* content_type;
         struct wl_output* output;
     } wl;
 
@@ -686,10 +687,10 @@ bool ui_init(const char* app_id, size_t width, size_t height)
     }
 
     if (ctx.wl.content_type_manager) {
-        struct wp_content_type_v1* content_type =
+        ctx.wl.content_type =
             wp_content_type_manager_v1_get_surface_content_type(
                 ctx.wl.content_type_manager, ctx.wl.surface);
-        wp_content_type_v1_set_content_type(content_type,
+        wp_content_type_v1_set_content_type(ctx.wl.content_type,
                                             WP_CONTENT_TYPE_V1_TYPE_PHOTO);
     }
 
@@ -748,6 +749,9 @@ void ui_destroy(void)
     }
     if (ctx.wl.compositor) {
         wl_compositor_destroy(ctx.wl.compositor);
+    }
+    if (ctx.wl.content_type) {
+        wp_content_type_v1_destroy(ctx.wl.content_type);
     }
     if (ctx.wl.content_type_manager) {
         wp_content_type_manager_v1_destroy(ctx.wl.content_type_manager);
