@@ -52,6 +52,11 @@ void ui_draw_commit(void);
 void ui_set_title(const char* name);
 
 /**
+ * Change surface content type to photo or animation
+ */
+void ui_set_content_type_animated(bool animated);
+
+/**
  * Get window width.
  * @return window width in pixels
  */

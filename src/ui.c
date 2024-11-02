@@ -833,6 +833,19 @@ void ui_set_title(const char* name)
     }
 }
 
+void ui_set_content_type_animated(bool animated)
+{
+    if (ctx.wl.content_type) {
+        if (animated) {
+            wp_content_type_v1_set_content_type(ctx.wl.content_type,
+                                                WP_CONTENT_TYPE_V1_TYPE_VIDEO);
+        } else {
+            wp_content_type_v1_set_content_type(ctx.wl.content_type,
+                                                WP_CONTENT_TYPE_V1_TYPE_PHOTO);
+        }
+    }
+}
+
 size_t ui_get_width(void)
 {
     return ctx.wnd.width;
