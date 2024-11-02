@@ -306,7 +306,7 @@ static void scale_global(const char* params)
 
         if (fixed_scale >= 0) {
             ctx.scale_init = fixed_scale;
-        } else {   
+        } else {
             fprintf(stderr, "Invalid scale operation: \"%s\"\n", params);
             return;
         }
@@ -383,6 +383,8 @@ static void reset_state(void)
     if (total_img) {
         info_update(info_index, "%zu of %zu", img->index + 1, total_img);
     }
+
+    ui_set_content_type_animated(ctx.animation_enable);
 
     app_redraw();
 }
