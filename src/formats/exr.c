@@ -11,6 +11,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <openexr.h>
 #pragma GCC diagnostic pop
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 // EXR signature
 static const uint8_t signature[] = { 0x76, 0x2f, 0x31, 0x01 };
