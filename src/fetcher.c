@@ -150,7 +150,7 @@ static void cache_trim(struct image_cache* cache, size_t size)
     if (size == 0) {
         cache_reset(cache);
     } else {
-        for (size_t i = cache->capacity - 1; i > size; ++i) {
+        for (size_t i = cache->capacity - 1; i > size; --i) {
             image_free(cache->queue[i]);
             cache->queue[i] = NULL;
         }
