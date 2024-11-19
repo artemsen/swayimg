@@ -55,6 +55,9 @@ tiff = dependency('libtiff-4', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 
+# optional dependencies: compression formats support
+bzip2 = dependency('bzip2', required: get_option('bzip2'))
+
 # hack to build "pkgconfigless" gif in FreeBSD
 gif_opt = get_option('gif')
 if gif_opt.disabled()
@@ -90,6 +93,7 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
+conf.set('HAVE_LIBBZ2', bzip2.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -245,6 +249,9 @@ endif
 if webp.found() and webp_demux.found()
   sources += 'src/formats/webp.c'
 endif
+if bzip2.found()
+  sources += 'src/formats/bzip2.c'
+endif
 
 executable(
   'swayimg',
@@ -272,6 +279,8 @@ executable(
     rsvg,
     tiff,
     webp, webp_demux,
+    # compression support
+    bzip2,
   ],
   install: true
 )

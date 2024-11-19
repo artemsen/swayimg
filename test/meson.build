@@ -55,6 +55,9 @@ endif
 if webp.found() and webp_demux.found()
   sources += '../src/formats/webp.c'
 endif
+if bzip2.found()
+  sources += '../src/formats/bzip2.c'
+endif
 
 test(
   'swayimg',
@@ -75,7 +78,7 @@ test(
       png,
       rsvg,
       tiff,
-      webp, webp_demux,
+      webp, webp_demux, bzip2
     ],
     include_directories: '../src',
     cpp_args : '-DTEST_DATA_DIR="' + meson.current_source_dir() + '/data"',

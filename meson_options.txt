@@ -40,6 +40,12 @@ option('webp',
        value: 'auto',
        description: 'Enable WebP format support')
 
+# compression support
+option('bzip2',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable Bzip2 compression support')
+
 # EXIF support
 option('exif',
        type: 'feature',

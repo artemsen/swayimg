@@ -100,6 +100,9 @@ LOADER_DECLARE(tiff);
 #ifdef HAVE_LIBWEBP
 LOADER_DECLARE(webp);
 #endif
+#ifdef HAVE_LIBBZ2
+LOADER_DECLARE(bz2);
+#endif
 
 // list of available decoders
 static const image_decoder decoders[] = {
@@ -133,6 +136,9 @@ static const image_decoder decoders[] = {
 #endif
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),
+#endif
+#ifdef HAVE_LIBBZ2
+    &LOADER_FUNCTION(bz2),
 #endif
     &LOADER_FUNCTION(qoi),  &LOADER_FUNCTION(tga),
 };
@@ -435,4 +441,8 @@ void loader_queue_reset(void)
     pthread_cond_signal(&ctx.signal);
     pthread_cond_wait(&ctx.ready, &ctx.lock);
     pthread_mutex_unlock(&ctx.lock);
+}
+
+enum loader_status recur_loader (struct image* ctx, const uint8_t* data, size_t size){
+	return image_from_memory(ctx, data, size);
 }

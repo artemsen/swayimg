@@ -5,6 +5,8 @@
 #pragma once
 
 #include "image.h"
+#include <stdint.h>
+#include <tiff.h>
 
 // File name used for image, that is read from stdin through pipe
 #define LDRSRC_STDIN     "stdin://"
@@ -71,3 +73,10 @@ void loader_queue_append(size_t index);
  * Reset background loader queue.
  */
 void loader_queue_reset(void);
+
+/**
+ * Recur the image loader
+ * Only to be used for decompression
+ */
+
+enum loader_status recur_loader (struct image*, const uint8_t* data, size_t size);
