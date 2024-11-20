@@ -8,10 +8,12 @@
 
 // Configuration parameters
 #define IMGLIST_SECTION   "list"
+#define IMGLIST_AUTOEXEC  "list.autoexec"
 #define IMGLIST_ORDER     "order"
 #define IMGLIST_LOOP      "loop"
 #define IMGLIST_RECURSIVE "recursive"
 #define IMGLIST_ALL       "all"
+#define AUTOEXEC_FORMATS  "formats"
 
 // Invalid index of the entry
 #define IMGLIST_INVALID SIZE_MAX

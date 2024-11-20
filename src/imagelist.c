@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <stdio.h>
 
 // Default configuration parameters
 #define CFG_ORDER_DEF     "alpha"
@@ -31,6 +32,19 @@ struct image_list {
 
 /** Global image list instance. */
 static struct image_list ctx;
+
+struct autoexec {
+	const char* format;
+	const char* command;
+};
+
+struct autoexecs_array {
+	struct autoexec* entries;
+	size_t capacity;
+	size_t size;
+};
+
+struct autoexecs_array autoexecs = {NULL, 0, 0};
 
 /** Order names. */
 static const char* order_names[] = {
@@ -80,6 +94,21 @@ static void add_file(const char* file)
     // remove "./" from file path
     if (file[0] == '.' && file[1] == '/') {
         file += 2;
+    }
+
+    // check for autoexec
+    for (size_t i = 0; i < autoexecs.size; i++) {
+	    const char* ext = strrchr(file, '.');
+	    if ( ext != NULL && strcmp(ext+1, autoexecs.entries[i].format) == 0){
+		    char* execFile = (char*) malloc(sizeof(char)*(LDRSRC_EXEC_LEN+strlen(autoexecs.entries[i].command)+strlen(file)+3));
+		    char* execTail = strchr((const char*) autoexecs.entries[i].command, (int) '%');
+		    char* execHead = strncpy((char*)malloc(sizeof(char)*(strlen(autoexecs.entries[i].command)-strlen(execTail)+1)), 
+			autoexecs.entries[i].command, strlen(autoexecs.entries[i].command)-strlen(execTail));
+		    sprintf(execFile, "%s%s%s%s", LDRSRC_EXEC, execHead, file, execTail+1);
+		    add_entry(execFile);
+		    free(execHead);
+		    return;
+	    }
     }
 
     add_entry(file);
@@ -250,6 +279,39 @@ static void load_config(struct config* cfg)
                                     CFG_RECURSIVE_DEF);
     ctx.all_files =
         config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_ALL, CFG_ALL_DEF);
+
+    // autoexec
+
+    const char* autoexec_formats = config_get_string(cfg, IMGLIST_AUTOEXEC, AUTOEXEC_FORMATS, NULL);
+    if ( autoexec_formats == NULL ) return;
+    char* autoexec_iterator = malloc(sizeof(char)*(strlen(autoexec_formats)+1));
+    strcpy(autoexec_iterator, autoexec_formats);
+    char* autoexec_format_entry = strtok(autoexec_iterator, ",");
+    autoexecs.entries = (struct autoexec*) malloc(sizeof(struct autoexec));
+    autoexecs.capacity = 1;
+    while ( autoexec_format_entry != NULL ) {
+
+	    struct autoexec entry;
+	    entry.format = autoexec_format_entry;
+
+	    entry.command = config_get_string(cfg, IMGLIST_AUTOEXEC, entry.format, NULL);
+
+	    if ( entry.command == NULL ) fprintf(stderr ,"WARNING: No corresponding command for %s autoexec format", entry.format);
+
+	    else {
+		if (autoexecs.size >= autoexecs.capacity){
+			struct autoexec* entries_new = (struct autoexec*) malloc(sizeof(struct autoexec)*autoexecs.capacity*2);
+			memcpy(entries_new, autoexecs.entries, sizeof(struct autoexec)*autoexecs.size);
+			free(autoexecs.entries);
+			autoexecs.entries = entries_new;
+			autoexecs.capacity *= 2;
+		}
+
+		autoexecs.entries[autoexecs.size] = entry;
+		autoexecs.size++; 
+	    }
+	    autoexec_format_entry = strtok(NULL, ",");
+    }
 }
 
 size_t image_list_init(struct config* cfg, const char** sources, size_t num)
