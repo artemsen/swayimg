@@ -237,7 +237,6 @@ static void scale_image(enum fixed_scale sc)
 
     fixup_position(true);
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
-    app_redraw();
 }
 
 /**
@@ -320,6 +319,7 @@ static void scale_global(const char* params)
 
     info_update(info_status, "Scale %s", scale_names[ctx.scale_init]);
     scale_image(ctx.scale_init);
+    app_redraw();
 }
 
 /**
@@ -373,7 +373,6 @@ static void reset_state(void)
     ctx.img_y = 0;
     ctx.scale = 0;
     scale_image(ctx.scale_init);
-    fixup_position(true);
 
     ui_set_title(img->name);
     animation_ctl(true);
