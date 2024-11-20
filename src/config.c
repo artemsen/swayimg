@@ -29,6 +29,7 @@ static const struct config_default defaults[] = {
     { "viewer",       "window",           "#00000000"                                },
     { "viewer",       "transparency",     "grid"                                     },
     { "viewer",       "scale",            "optimal"                                  },
+    { "viewer",       "position",         "center"                                   },
     { "viewer",       "fixed",            "yes"                                      },
     { "viewer",       "antialiasing",     "no"                                       },
     { "viewer",       "slideshow",        "no"                                       },

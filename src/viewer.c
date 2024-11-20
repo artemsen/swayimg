@@ -30,6 +30,7 @@
 #define CFG_WINDOW_DEF         ARGB(0, 0, 0, 0)
 #define CFG_TRANSPARENCY_DEF   GRID_NAME
 #define CFG_SCALE_DEF          "optimal"
+#define CFG_POSITION_DEF       "center"
 #define CFG_FIXED_DEF          true
 #define CFG_ANTIALIASING_DEF   false
 #define CFG_SLIDESHOW_DEF      false
@@ -62,6 +63,32 @@ static const char* scale_names[] = {
 };
 // clang-format on
 
+enum position {
+    position_top,
+    position_center,
+    position_bottom,
+    position_left,
+    position_right,
+    position_top_left,
+    position_top_right,
+    position_bottom_left,
+    position_bottom_right,
+};
+
+// clang-format off
+static const char* position_names[] = {
+    [position_top] = "top",
+    [position_center] = "center",
+    [position_bottom] = "bottom",
+    [position_left] = "left",
+    [position_right] = "right",
+    [position_top_left] = "topleft",
+    [position_top_right] = "topright",
+    [position_bottom_left] = "bottomleft",
+    [position_bottom_right] = "bottomright",
+};
+// clang-format on
+
 /** Viewer context. */
 struct viewer {
     ssize_t img_x, img_y; ///< Top left corner of the image
@@ -72,6 +99,7 @@ struct viewer {
     bool fixed;           ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
+    enum position position;      ///< Initial position
     float scale;                 ///< Current scale factor of the image
 
     bool animation_enable; ///< Animation enable/disable
@@ -231,9 +259,44 @@ static void scale_image(enum fixed_scale sc)
             break;
     }
 
-    // center viewport
-    ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-    ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+    switch (ctx.position) {
+        case position_top:
+            ctx.img_y = 0;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_center:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_bottom:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_left:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = 0;
+            break;
+        case position_right:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+        case position_top_left:
+            ctx.img_y = 0;
+            ctx.img_x = 0;
+            break;
+        case position_top_right:
+            ctx.img_y = 0;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+        case position_bottom_left:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = 0;
+            break;
+        case position_bottom_right:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+    }
 
     fixup_position(true);
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
@@ -716,6 +779,15 @@ void viewer_init(struct config* cfg, struct image* image)
     } else {
         ctx.scale_init = scale_fit_optimal;
         config_error_val(VIEWER_SECTION, value);
+    }
+
+    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_POSITION,
+                              CFG_POSITION_DEF);
+    index = str_index(position_names, value, 0);
+    if (index >= 0) {
+        ctx.position = index;
+    } else {
+        ctx.position = position_center;
     }
 
     // cache and preloads
