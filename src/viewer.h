@@ -13,6 +13,7 @@
 #define VIEWER_WINDOW         "window"
 #define VIEWER_TRANSPARENCY   "transparency"
 #define VIEWER_SCALE          "scale"
+#define VIEWER_POSITION       "position"
 #define VIEWER_FIXED          "fixed"
 #define VIEWER_ANTIALIASING   "antialiasing"
 #define VIEWER_SLIDESHOW      "slideshow"
