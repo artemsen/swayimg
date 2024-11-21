@@ -18,10 +18,10 @@ sources = [
   '../src/memdata.c',
   '../src/pixmap.c',
   '../src/formats/bmp.c',
+  '../src/formats/farbfeld.c',
   '../src/formats/pnm.c',
   '../src/formats/qoi.c',
   '../src/formats/tga.c',
-  '../src/formats/ff.c',
 ]
 if exif.found()
   sources += ['exif_test.cpp', '../src/exif.c']

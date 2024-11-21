@@ -16,7 +16,7 @@ Fully customizable and lightweight image viewer for Wayland based display server
   - BMP (built-in);
   - PNM (built-in);
   - TGA (built-in);
-  - QOI (built-in).
+  - QOI (built-in);
   - Farbfeld (built-in).
 - Fully customizable keyboard bindings, colors, and [many other](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) parameters;
 - Loading images from files and pipes;
