@@ -207,6 +207,7 @@ sources = [
   'src/formats/pnm.c',
   'src/formats/qoi.c',
   'src/formats/tga.c',
+  'src/formats/ff.c',
   xdg_shell_h,
   xdg_shell_c,
   wp_content_type_v1_h,
