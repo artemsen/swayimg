@@ -7,8 +7,8 @@
 #include "application.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "wp-content-type-v1-protocol.h"
-#include "xdg-shell-protocol.h"
+#include "content-type-v1-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
 
 #include <errno.h>
 #include <fcntl.h>

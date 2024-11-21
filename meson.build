@@ -104,35 +104,26 @@ else
   wl_scanner = find_program('wayland-scanner', native: true)
 endif
 
-# XDG shell Wayland protocol
-xdg_shell_xml = wlproto_dir / 'stable/xdg-shell/xdg-shell.xml'
-xdg_shell_c = custom_target(
-  'xdg-shell-protocol.c',
-  output: 'xdg-shell-protocol.c',
-  input: xdg_shell_xml,
-  command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-)
-xdg_shell_h = custom_target(
-  'xdg-shell-protocol.h',
-  output: 'xdg-shell-protocol.h',
-  input: xdg_shell_xml,
-  command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-)
+protocols = [
+  wlproto_dir / 'stable/xdg-shell/xdg-shell.xml',
+  wlproto_dir / 'staging/content-type/content-type-v1.xml',
+]
+wl_protos_src = []
 
-# wp_content_type_v1 Wayland protocol
-wp_content_type_v1_xml = wlproto_dir / 'staging/content-type/content-type-v1.xml'
-wp_content_type_v1_c = custom_target(
-  'wp-content-type-v1-protocol.c',
-  output: 'wp-content-type-v1-protocol.c',
-  input: wp_content_type_v1_xml,
-  command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@']
-)
-wp_content_type_v1_h = custom_target(
-  'wp-content-type-v1-protocol.h',
-  output: 'wp-content-type-v1-protocol.h',
-  input: wp_content_type_v1_xml,
-  command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@']
-)
+foreach xml : protocols
+  wl_protos_src += custom_target(
+    xml.underscorify() + '_c',
+    input: xml,
+    output: '@BASENAME@-protocol.c',
+    command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+    )
+  wl_protos_src += custom_target(
+    xml.underscorify() + '_client_h',
+    input: xml,
+    output: '@BASENAME@-client-protocol.h',
+    command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+    )
+endforeach
 
 # install sample config
 install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
@@ -208,10 +199,7 @@ sources = [
   'src/formats/pnm.c',
   'src/formats/qoi.c',
   'src/formats/tga.c',
-  xdg_shell_h,
-  xdg_shell_c,
-  wp_content_type_v1_h,
-  wp_content_type_v1_c,
+  wl_protos_src,
 ]
 if exif.found()
   sources += 'src/exif.c'
