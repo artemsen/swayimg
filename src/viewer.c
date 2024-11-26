@@ -9,12 +9,9 @@
 #include "fetcher.h"
 #include "imagelist.h"
 #include "info.h"
-#include "keybind.h"
-#include "loader.h"
 #include "ui.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
 #include <unistd.h>

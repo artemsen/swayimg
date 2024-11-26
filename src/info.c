@@ -6,7 +6,6 @@
 
 #include "application.h"
 #include "font.h"
-#include "imagelist.h"
 #include "keybind.h"
 #include "loader.h"
 #include "ui.h"

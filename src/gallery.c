@@ -11,7 +11,6 @@
 #include "ui.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 // Configuration parameters
 #define CFG_SECTION    "gallery"

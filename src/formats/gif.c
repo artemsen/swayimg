@@ -5,8 +5,6 @@
 #include "../loader.h"
 
 #include <gif_lib.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // GIF signature
