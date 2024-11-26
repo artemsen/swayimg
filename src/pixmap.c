@@ -50,25 +50,29 @@ static void* scale_thread(void* data)
 
 /**
  * Alpha blending.
- * @param img color of image's pixel
- * @param wnd pointer to window buffer to put pixel
+ * @param src top pixel
+ * @param dst bottom pixel
  */
 static inline void alpha_blend(argb_t src, argb_t* dst)
 {
-    const uint8_t ai = ARGB_GET_A(src);
-
-    if (ai != 0xff) {
-        const argb_t wp = *dst;
-        const uint8_t aw = ARGB_GET_A(wp);
-        const uint8_t target_alpha = max(ai, aw);
-        const argb_t inv = 255 - ai;
-        src = ARGB_SET_A(target_alpha) |
-            ARGB_SET_R((ai * ARGB_GET_R(src) + inv * ARGB_GET_R(wp)) / 255) |
-            ARGB_SET_G((ai * ARGB_GET_G(src) + inv * ARGB_GET_G(wp)) / 255) |
-            ARGB_SET_B((ai * ARGB_GET_B(src) + inv * ARGB_GET_B(wp)) / 255);
+    const uint8_t a1 = ARGB_GET_A(src);
+    if (a1 == 255) {
+        *dst = src;
+    } else if (a1 != 0) {
+        // if all quantities are in [0, 1] range, the formulas are:
+        // a_out = a_top + (1 - a_top) * a_bot
+        // c_out = a_top * c_top + (1 - a_top) * a_bot * c_bot
+        // this integer math does the same, avoiding some division
+        const argb_t dp = *dst;
+        const uint32_t c1 = a1 * 255;
+        const uint32_t c2 = (255 - a1) * ARGB_GET_A(dp);
+        // guaranteed to be non-zero because a1 is nonzero
+        const uint32_t alpha = c1 + c2;
+        *dst = ARGB(alpha / 255,
+                    (ARGB_GET_R(src) * c1 + ARGB_GET_R(dp) * c2) / alpha,
+                    (ARGB_GET_G(src) * c1 + ARGB_GET_G(dp) * c2) / alpha,
+                    (ARGB_GET_B(src) * c1 + ARGB_GET_B(dp) * c2) / alpha);
     }
-
-    *dst = src;
 }
 
 /** Nearest scale filter, see `scale_fn` for details. */
