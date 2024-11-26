@@ -7,7 +7,6 @@
 #include "config.h"
 #include "imagelist.h"
 #include "loader.h"
-#include "ui.h"
 #include "viewer.h"
 
 #include <getopt.h>

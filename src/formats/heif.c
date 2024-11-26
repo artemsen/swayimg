@@ -8,7 +8,6 @@
 
 #include <libheif/heif.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef HAVE_LIBEXIF
 /**

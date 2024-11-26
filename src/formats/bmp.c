@@ -4,9 +4,7 @@
 
 #include "../loader.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 // BMP type id
 #define BMP_TYPE ('B' | ('M' << 8))

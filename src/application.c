@@ -15,7 +15,6 @@
 #include "viewer.h"
 
 #include <errno.h>
-#include <inttypes.h>
 #include <limits.h>
 #include <poll.h>
 #include <pthread.h>

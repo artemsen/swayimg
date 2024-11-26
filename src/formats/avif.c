@@ -5,8 +5,6 @@
 #include "../loader.h"
 
 #include <avif/avif.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // AVI signature

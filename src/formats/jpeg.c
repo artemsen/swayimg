@@ -4,10 +4,8 @@
 
 #include "../loader.h"
 
-#include <errno.h>
 #include <setjmp.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // depends on stdio.h, uses FILE but doesn't include the header

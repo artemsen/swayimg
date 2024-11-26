@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include "action.h"
 #include "image.h"
-#include "keybind.h"
 
 /** Event types. */
 enum event_type {
