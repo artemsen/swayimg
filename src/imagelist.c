@@ -208,11 +208,6 @@ static int compare_reverse(const void* a, const void* b)
  */
 static void shuffle_list(void)
 {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    srand(ts.tv_nsec);
-
-    // swap random entries
     for (size_t i = 0; i < ctx.size; ++i) {
         const size_t j = rand() % ctx.size;
         if (i != j) {
@@ -294,6 +289,11 @@ size_t image_list_init(struct config* cfg, const char** sources, size_t num)
     }
 
     if (ctx.size != 0) {
+        // init random sequence
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        srand(ts.tv_nsec);
+
         // sort list
         switch (ctx.order) {
             case order_none:
@@ -460,6 +460,15 @@ size_t image_list_next_file(size_t start)
 size_t image_list_prev_file(size_t start)
 {
     return image_list_nearest(start, false, ctx.loop);
+}
+
+size_t image_list_rand_file(size_t exclude)
+{
+    size_t index = image_list_nearest(rand() % ctx.size, true, true);
+    if (index != IMGLIST_INVALID && index == exclude) {
+        index = image_list_nearest(exclude, true, true);
+    }
+    return index;
 }
 
 size_t image_list_next_dir(size_t start)

@@ -23,6 +23,7 @@ static const char* action_names[] = {
     [action_next_dir] = "next_dir",
     [action_prev_file] = "prev_file",
     [action_next_file] = "next_file",
+    [action_rand_file] = "rand_file",
     [action_skip_file] = "skip_file",
     [action_prev_frame] = "prev_frame",
     [action_next_frame] = "next_frame",

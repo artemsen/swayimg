@@ -498,6 +498,9 @@ static bool next_image(enum action_type direction)
             case action_next_file:
                 index = image_list_next_file(index);
                 break;
+            case action_rand_file:
+                index = image_list_rand_file(index);
+                break;
             default:
                 break;
         }
@@ -652,6 +655,7 @@ static void apply_action(const struct action* action)
         case action_next_dir:
         case action_prev_file:
         case action_next_file:
+        case action_rand_file:
             next_image(action->type);
             break;
         case action_skip_file:

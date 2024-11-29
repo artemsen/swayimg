@@ -98,6 +98,13 @@ size_t image_list_next_file(size_t start);
 size_t image_list_prev_file(size_t start);
 
 /**
+ * Get random entry index.
+ * @param exclude index of the excluded position (currently viewed image)
+ * @return index of the entry or IMGLIST_INVALID if not found
+ */
+size_t image_list_rand_file(size_t exclude);
+
+/**
  * Get next directory entry index (works only for paths as source).
  * @param start index of the start position
  * @return index of the entry or IMGLIST_INVALID if not found

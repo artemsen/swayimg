@@ -79,6 +79,7 @@ static const struct config_default defaults[] = {
     { "keys.viewer",  "Space",            "next_file"                                },
     { "keys.viewer",  "Shift+d",          "prev_dir"                                 },
     { "keys.viewer",  "d",                "next_dir"                                 },
+    { "keys.viewer",  "Shift+r",          "rand_file"                                },
     { "keys.viewer",  "Shift+o",          "prev_frame"                               },
     { "keys.viewer",  "o",                "next_frame"                               },
     { "keys.viewer",  "c",                "skip_file"                                },

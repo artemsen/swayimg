@@ -17,6 +17,7 @@ enum action_type {
     action_next_dir,
     action_prev_file,
     action_next_file,
+    action_rand_file,
     action_skip_file,
     action_prev_frame,
     action_next_frame,
