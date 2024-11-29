@@ -106,7 +106,9 @@ endif
 
 protocols = [
   wlproto_dir / 'stable/xdg-shell/xdg-shell.xml',
+  wlproto_dir / 'stable/tablet/tablet-v2.xml',
   wlproto_dir / 'staging/content-type/content-type-v1.xml',
+  wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
 ]
 wl_protos_src = []
 

@@ -8,6 +8,7 @@
 #include "buildcfg.h"
 #include "config.h"
 #include "content-type-v1-client-protocol.h"
+#include "cursor-shape-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 #include <errno.h>
@@ -51,6 +52,7 @@ struct ui {
         struct wl_keyboard* keyboard;
         struct wl_pointer* pointer;
         struct wl_surface* surface;
+        struct wp_cursor_shape_manager_v1* cursor_manager;
         struct wp_content_type_manager_v1* content_type_manager;
         struct wp_content_type_v1* content_type;
         struct wl_output* output;
@@ -318,6 +320,14 @@ static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
                              uint32_t serial, struct wl_surface* surface,
                              wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
+    if (ctx.wl.cursor_manager) {
+        struct wp_cursor_shape_device_v1* cursor_device =
+            wp_cursor_shape_manager_v1_get_pointer(ctx.wl.cursor_manager,
+                                                   wl_pointer);
+        wp_cursor_shape_device_v1_set_shape(
+            cursor_device, 0, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING);
+        wp_cursor_shape_device_v1_destroy(cursor_device);
+    }
 }
 
 static void on_pointer_leave(void* data, struct wl_pointer* wl_pointer,
@@ -607,6 +617,10 @@ static void on_registry_global(void* data, struct wl_registry* registry,
                0) {
         ctx.wl.content_type_manager = wl_registry_bind(
             registry, name, &wp_content_type_manager_v1_interface, 1);
+    } else if (strcmp(interface, wp_cursor_shape_manager_v1_interface.name) ==
+               0) {
+        ctx.wl.cursor_manager = wl_registry_bind(
+            registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     }
 }
 
@@ -755,6 +769,9 @@ void ui_destroy(void)
     }
     if (ctx.wl.content_type_manager) {
         wp_content_type_manager_v1_destroy(ctx.wl.content_type_manager);
+    }
+    if (ctx.wl.cursor_manager) {
+        wp_cursor_shape_manager_v1_destroy(ctx.wl.cursor_manager);
     }
     if (ctx.wl.registry) {
         wl_registry_destroy(ctx.wl.registry);
