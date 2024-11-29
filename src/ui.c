@@ -325,7 +325,7 @@ static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
             wp_cursor_shape_manager_v1_get_pointer(ctx.wl.cursor_manager,
                                                    wl_pointer);
         wp_cursor_shape_device_v1_set_shape(
-            cursor_device, 0, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING);
+            cursor_device, 0, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
         wp_cursor_shape_device_v1_destroy(cursor_device);
     }
 }
