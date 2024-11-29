@@ -138,10 +138,11 @@ static void scale_average(struct scale_param* sp, size_t start, size_t step)
                 for (src_x = src_x0; src_x <= src_x1; ++src_x) {
                     const argb_t color =
                         sp->src->data[src_y * sp->src->width + src_x];
-                    a += ARGB_GET_A(color);
-                    r += ARGB_GET_R(color);
-                    g += ARGB_GET_G(color);
-                    b += ARGB_GET_B(color);
+                    const uint8_t src_a = ARGB_GET_A(color);
+                    a += src_a;
+                    r += ARGB_GET_R(color) * src_a;
+                    g += ARGB_GET_G(color) * src_a;
+                    b += ARGB_GET_B(color) * src_a;
                     ++count;
                 }
             }
@@ -150,6 +151,11 @@ static void scale_average(struct scale_param* sp, size_t start, size_t step)
                 r /= count;
                 g /= count;
                 b /= count;
+                if (a) {
+                    r /= a;
+                    g /= a;
+                    b /= a;
+                }
             }
 
             const argb_t color = ARGB(a, r, g, b);
@@ -222,7 +228,10 @@ static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
                             }
                             const argb_t pixel =
                                 sp->src->data[iy * sp->src->width + ix];
-                            pixels[pc][py][px] = (pixel >> (pc * 8)) & 0xff;
+                            pixels[pc][py][px] = pc == 3
+                                ? ARGB_GET_A(pixel)
+                                : ((pixel >> (pc * 8)) & 0xff) *
+                                    ARGB_GET_A(pixel);
                         }
                     }
                     // recalc state cache for the current area
@@ -266,8 +275,8 @@ static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
                 }
             }
 
-            // set pixel
-            for (size_t pc = 0; pc < 4; ++pc) {
+            // set pixel - get alpha first, then rest
+            for (ssize_t pc = 3; pc >= 0; --pc) {
                 // clang-format off
                 const float inter =
                     (state[pc][0][0] + state[pc][0][1] * diff_x + state[pc][0][2] * diff_x2 + state[pc][0][3] * diff_x3) +
@@ -275,8 +284,15 @@ static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
                     (state[pc][2][0] + state[pc][2][1] * diff_x + state[pc][2][2] * diff_x2 + state[pc][2][3] * diff_x3) * diff_y2 +
                     (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
                 // clang-format on
-                const uint8_t color = max(min(inter, 255), 0);
-                fg |= (color << (pc * 8));
+                if (pc == 3) {
+                    const uint8_t alpha = max(min(inter, 255), 0);
+                    fg |= ARGB_SET_A(alpha);
+                } else {
+                    const uint8_t alpha = ARGB_GET_A(fg);
+                    const uint16_t mul = max(min(inter, 255 * alpha), 0);
+                    const uint8_t color = alpha ? mul / alpha : 0;
+                    fg |= (color << (pc * 8));
+                }
             }
 
             if (sp->alpha) {
