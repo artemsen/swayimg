@@ -138,6 +138,7 @@ End = last_file
 Prior = prev_file
 Next = next_file
 Space = next_file
+Shift+r = rand_file
 Shift+d = prev_dir
 d = next_dir
 Shift+o = prev_frame
