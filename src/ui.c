@@ -316,18 +316,30 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
     }
 }
 
-static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
-                             uint32_t serial, struct wl_surface* surface,
-                             wl_fixed_t surface_x, wl_fixed_t surface_y)
+/**
+ * Set mouse pointer shape.
+ * @param wl_pointer wayland pointer instance
+ * @param grabbing true to set grabbing shape, false to use default
+ */
+static void set_pointer_shape(struct wl_pointer* wl_pointer, bool grabbing)
 {
     if (ctx.wl.cursor_manager) {
         struct wp_cursor_shape_device_v1* cursor_device =
             wp_cursor_shape_manager_v1_get_pointer(ctx.wl.cursor_manager,
                                                    wl_pointer);
         wp_cursor_shape_device_v1_set_shape(
-            cursor_device, 0, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+            cursor_device, 0,
+            grabbing ? WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING
+                     : WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
         wp_cursor_shape_device_v1_destroy(cursor_device);
     }
+}
+
+static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
+                             uint32_t serial, struct wl_surface* surface,
+                             wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+    set_pointer_shape(wl_pointer, false);
 }
 
 static void on_pointer_leave(void* data, struct wl_pointer* wl_pointer,
@@ -362,6 +374,7 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
 
     if (button == BTN_LEFT) {
         ctx.mouse.active = pressed;
+        set_pointer_shape(wl_pointer, pressed);
     }
 
     if (pressed) {
