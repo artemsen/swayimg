@@ -197,6 +197,7 @@ sources = [
   'src/ui.c',
   'src/viewer.c',
   'src/formats/bmp.c',
+  'src/formats/dicom.c',
   'src/formats/farbfeld.c',
   'src/formats/pnm.c',
   'src/formats/qoi.c',

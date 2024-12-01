@@ -60,13 +60,17 @@ const char* supported_formats = "bmp, pnm, farbfeld, tga"
 #ifdef HAVE_LIBTIFF
                                 ", tiff"
 #endif
+#ifdef HAVE_LIBDICOM
+                                ", dicom"
+#endif
     ;
 
 // declaration of loaders
 LOADER_DECLARE(bmp);
+LOADER_DECLARE(dicom);
+LOADER_DECLARE(farbfeld);
 LOADER_DECLARE(pnm);
 LOADER_DECLARE(qoi);
-LOADER_DECLARE(farbfeld);
 LOADER_DECLARE(tga);
 #ifdef HAVE_LIBEXR
 LOADER_DECLARE(exr);
@@ -99,6 +103,7 @@ LOADER_DECLARE(tiff);
 LOADER_DECLARE(webp);
 #endif
 
+// clang-format off
 // list of available decoders
 static const image_decoder decoders[] = {
 #ifdef HAVE_LIBJPEG
@@ -110,7 +115,9 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBGIF
     &LOADER_FUNCTION(gif),
 #endif
-    &LOADER_FUNCTION(bmp),  &LOADER_FUNCTION(pnm),
+    &LOADER_FUNCTION(bmp),
+    &LOADER_FUNCTION(pnm),
+    &LOADER_FUNCTION(dicom),
 #ifdef HAVE_LIBWEBP
     &LOADER_FUNCTION(webp),
 #endif
@@ -132,8 +139,11 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),
 #endif
-    &LOADER_FUNCTION(qoi),  &LOADER_FUNCTION(farbfeld), &LOADER_FUNCTION(tga)
+    &LOADER_FUNCTION(qoi),
+    &LOADER_FUNCTION(farbfeld),
+    &LOADER_FUNCTION(tga) // should be the last one
 };
+// clang-format on
 
 /** Background thread loader queue. */
 struct loader_queue {
