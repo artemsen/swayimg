@@ -20,18 +20,21 @@
 #define CFG_SIZE_DEF   14
 #define CFG_COLOR      "color"
 #define CFG_COLOR_DEF  ARGB(0xff, 0xcc, 0xcc, 0xcc)
+#define CFG_BKG        "background"
+#define CFG_BKG_DEF    ARGB(0, 0, 0, 0)
 #define CFG_SHADOW     "shadow"
-#define CFG_SHADOW_DEF ARGB(0x80, 0, 0, 0)
+#define CFG_SHADOW_DEF ARGB(0xd0, 0, 0, 0)
 
 #define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2.0
 
 /** Font context. */
 struct font {
-    FT_Library lib; ///< Font lib instance
-    FT_Face face;   ///< Font face instance
-    argb_t color;   ///< Font color
-    argb_t shadow;  ///< Font shadow color
+    FT_Library lib;    ///< Font lib instance
+    FT_Face face;      ///< Font face instance
+    argb_t color;      ///< Font color
+    argb_t shadow;     ///< Font shadow color
+    argb_t background; ///< Font background
 };
 
 /** Global font context instance. */
@@ -148,8 +151,9 @@ void font_init(struct config* cfg)
         config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 256, CFG_SIZE_DEF);
     FT_Set_Char_Size(ctx.face, font_size * POINT_FACTOR, 0, 96, 0);
 
-    // color and shdow parameters
+    // color/background/shadow parameters
     ctx.color = config_get_color(cfg, CFG_SECTION, CFG_COLOR, CFG_COLOR_DEF);
+    ctx.background = config_get_color(cfg, CFG_SECTION, CFG_BKG, CFG_BKG_DEF);
     ctx.shadow = config_get_color(cfg, CFG_SECTION, CFG_SHADOW, CFG_SHADOW_DEF);
 }
 
@@ -226,6 +230,10 @@ bool font_render(const char* text, struct text_surface* surface)
 void font_print(struct pixmap* wnd, ssize_t x, ssize_t y,
                 const struct text_surface* text)
 {
+    if (ARGB_GET_A(ctx.background)) {
+        pixmap_blend(wnd, x, y, text->width, text->height, ctx.background);
+    }
+
     if (ARGB_GET_A(ctx.shadow)) {
         ssize_t shadow_offset = text->height / 16;
         if (shadow_offset < 1) {

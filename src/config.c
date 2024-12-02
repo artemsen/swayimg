@@ -55,7 +55,8 @@ static const struct config_default defaults[] = {
     { "font",         "name",             "monospace"                                },
     { "font",         "size",             "14"                                       },
     { "font",         "color",            "#ccccccff"                                },
-    { "font",         "shadow",           "#000000a0"                                },
+    { "font",         "shadow",           "#000000d0"                                },
+    { "font",         "background",       "#00000000"                                },
 
     { "info",         "show",             "yes"                                      },
     { "info",         "info_timeout",     "5"                                        },

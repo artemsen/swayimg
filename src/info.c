@@ -235,11 +235,6 @@ static void print_help(struct pixmap* window)
         top = window->height / 2 - (rows * line_height) / 2;
     }
 
-    // darken text block background
-    pixmap_blend(window, left - TEXT_PADDING, top - TEXT_PADDING,
-                 total_width + TEXT_PADDING, rows * line_height + TEXT_PADDING,
-                 ARGB(0xa0, 0, 0, 0));
-
     // put text on window
     for (size_t col = 0; col < columns; ++col) {
         size_t y = top;

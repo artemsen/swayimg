@@ -101,7 +101,9 @@ size = 14
 # Font color (RGBA)
 color = #ccccccff
 # Shadow color (RGBA)
-shadow = #000000a0
+shadow = #000000d0
+# Background color (RGBA)
+shadow = #00000000
 
 ################################################################################
 # Image meta info scheme (format, size, EXIF, etc)
