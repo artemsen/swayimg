@@ -28,6 +28,8 @@
 #define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2.0
 
+#define BACKGROUND_PADDING 5
+
 /** Font context. */
 struct font {
     FT_Library lib;    ///< Font lib instance
@@ -231,7 +233,9 @@ void font_print(struct pixmap* wnd, ssize_t x, ssize_t y,
                 const struct text_surface* text)
 {
     if (ARGB_GET_A(ctx.background)) {
-        pixmap_blend(wnd, x, y, text->width, text->height, ctx.background);
+        pixmap_blend(wnd, x - BACKGROUND_PADDING, y,
+                     text->width + BACKGROUND_PADDING * 2, text->height,
+                     ctx.background);
     }
 
     if (ARGB_GET_A(ctx.shadow)) {
