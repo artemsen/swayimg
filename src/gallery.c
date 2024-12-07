@@ -8,6 +8,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#include "thumbnail.h"
 #include "ui.h"
 
 #include <stdlib.h>
@@ -71,13 +72,28 @@ static struct gallery ctx;
 static void add_thumbnail(struct image* image)
 {
     struct thumbnail* entry = malloc(sizeof(*entry));
+    struct pixmap thumb;
+    struct thumbnail_params params;
+
+    /* TODO: move to config */
+    bool thumbnails_disk_cache = false;
+
     if (!entry) {
         image_free(image);
     } else {
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill, ctx.thumb_aa);
+        thumbnail_params(&params, image, ctx.thumb_size, ctx.thumb_fill,
+                         ctx.thumb_aa);
+        if (!thumbnails_disk_cache ||
+            !thumbnail_load(&thumb, image->source, &params)) {
+            thumbnail_create(&thumb, image, &params);
+            if (thumbnails_disk_cache) {
+                thumbnail_save(&thumb, image->source, &params);
+            }
+        }
+        image_thumbnail(image, &thumb);
         ctx.thumbs = list_append(ctx.thumbs, entry);
     }
 }
