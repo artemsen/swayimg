@@ -30,6 +30,7 @@
 #define CFG_POSITION_DEF       "center"
 #define CFG_FIXED_DEF          true
 #define CFG_ANTIALIASING_DEF   false
+#define CFG_SCALE_METHOD_DEF   "mks13"
 #define CFG_SLIDESHOW_DEF      false
 #define CFG_SLIDESHOW_TIME_DEF 3
 #define CFG_HISTORY_DEF        1
@@ -88,12 +89,13 @@ static const char* position_names[] = {
 
 /** Viewer context. */
 struct viewer {
-    ssize_t img_x, img_y; ///< Top left corner of the image
-    size_t frame;         ///< Index of the current frame
-    argb_t image_bkg;     ///< Image background mode/color
-    argb_t window_bkg;    ///< Window background mode/color
-    bool antialiasing;    ///< Anti-aliasing mode on/off
-    bool fixed;           ///< Fix image position
+    ssize_t img_x, img_y;           ///< Top left corner of the image
+    size_t frame;                   ///< Index of the current frame
+    argb_t image_bkg;               ///< Image background mode/color
+    argb_t window_bkg;              ///< Window background mode/color
+    bool antialiasing;              ///< Anti-aliasing mode on/off
+    enum pixmap_scale scale_method; ///< Scaling method
+    bool fixed;                     ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
     enum position position;      ///< Initial position
@@ -589,14 +591,8 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(img_pm, wnd, ctx.img_x, ctx.img_y, img->alpha);
     } else {
-        enum pixmap_scale scaler;
-        if (ctx.antialiasing) {
-            scaler = (ctx.scale > 1.0) ? pixmap_bicubic : pixmap_average;
-        } else {
-            scaler = pixmap_nearest;
-        }
-        pixmap_scale(scaler, img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                     img->alpha);
+        pixmap_scale(ctx.antialiasing ? ctx.scale_method : pixmap_nearest,
+                     img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale, img->alpha);
     }
 }
 
@@ -759,6 +755,15 @@ void viewer_init(struct config* cfg, struct image* image)
         config_get_bool(cfg, VIEWER_SECTION, VIEWER_FIXED, CFG_FIXED_DEF);
     ctx.antialiasing = config_get_bool(cfg, VIEWER_SECTION, VIEWER_ANTIALIASING,
                                        CFG_ANTIALIASING_DEF);
+    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_SCALE_METHOD,
+                              CFG_SCALE_METHOD_DEF);
+    index = pixmap_scale_index(value);
+    if (index >= 0) {
+        ctx.scale_method = index;
+    } else {
+        ctx.scale_method = pixmap_mks13;
+        config_error_val(VIEWER_SECTION, value);
+    }
     ctx.window_bkg =
         config_get_color(cfg, VIEWER_SECTION, VIEWER_WINDOW, CFG_WINDOW_DEF);
 

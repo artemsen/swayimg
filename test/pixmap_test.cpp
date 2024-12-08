@@ -22,6 +22,22 @@ protected:
             }
         }
     }
+
+    void ScaleCopy(enum pixmap_scale scaler, const struct pixmap& src, size_t w,
+                   size_t h, float scale, ssize_t x, ssize_t y)
+    {
+        struct pixmap full, dst1, dst2;
+        pixmap_create(&full, src.width * scale, src.height * scale);
+        pixmap_create(&dst1, w, h);
+        pixmap_create(&dst2, w, h);
+        pixmap_scale(scaler, &src, &full, 0, 0, scale, false);
+        pixmap_copy(&full, &dst1, x, y, false);
+        pixmap_scale(scaler, &src, &dst2, x, y, scale, false);
+        Compare(dst2, dst1.data);
+        pixmap_free(&full);
+        pixmap_free(&dst1);
+        pixmap_free(&dst2);
+    }
 };
 
 TEST_F(Pixmap, Create)
@@ -530,4 +546,94 @@ TEST_F(Pixmap, RectOutsideBR)
     struct pixmap pm = { 4, 4, src };
     pixmap_rect(&pm, 2, 2, 4, 4, clr);
     Compare(pm, expect);
+}
+
+TEST_F(Pixmap, ScaleCopyUp)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, 0, 0);
+}
+
+TEST_F(Pixmap, ScaleCopyUpNeg)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, -1, -1);
+}
+
+TEST_F(Pixmap, ScaleCopyUpPos)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, 1, 1);
+}
+
+TEST_F(Pixmap, ScaleCopyDown)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, 0, 0);
+}
+
+TEST_F(Pixmap, ScaleCopyDownNeg)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, -1, -1);
+}
+
+TEST_F(Pixmap, ScaleCopyDownPos)
+{
+    // clang-format off
+    argb_t src[] = {
+        0x00, 0x01, 0x02, 0x03,
+        0x10, 0x11, 0x12, 0x13,
+        0x20, 0x21, 0x22, 0x23,
+        0x30, 0x31, 0x32, 0x33,
+    };
+    // clang-format on
+
+    const struct pixmap pm = { 4, 4, src };
+    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, 1, 1);
 }

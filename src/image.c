@@ -52,7 +52,7 @@ void image_rotate(struct image* ctx, size_t angle)
 }
 
 void image_thumbnail(struct image* image, size_t size, bool fill,
-                     bool antialias)
+                     enum pixmap_scale scaler)
 {
     struct pixmap thumb;
     struct image_frame* frame;
@@ -64,13 +64,6 @@ void image_thumbnail(struct image* image, size_t size, bool fill,
     size_t thumb_width = scale * full->width;
     size_t thumb_height = scale * full->height;
     ssize_t offset_x, offset_y;
-    enum pixmap_scale scaler;
-
-    if (antialias) {
-        scaler = (scale > 1.0) ? pixmap_bicubic : pixmap_average;
-    } else {
-        scaler = pixmap_nearest;
-    }
 
     if (fill) {
         offset_x = size / 2 - thumb_width / 2;

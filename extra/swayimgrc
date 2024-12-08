@@ -45,6 +45,8 @@ position = center
 fixed = yes
 # Anti-aliasing (yes/no)
 antialiasing = no
+# Scale method for anti-aliasing (nearest/box/bilinear/bicubic/mks13)
+scale_method = mks13
 # Run slideshow at startup (yes/no)
 slideshow = no
 # Slideshow image display time (seconds)
@@ -60,12 +62,14 @@ preload = 1
 [gallery]
 # Max size of the thumbnail (pixels)
 size = 200
-# Max number of thumbnails in cache, 0 to unlimit
+# Max number of thumbnails in cache, 0 for unlimited
 cache = 100
 # Fill the entire tile with thumbnail (yes/no)
 fill = yes
 # Use anti-aliasing for thumbnails (yes/no)
 antialiasing = no
+# Scale method for anti-aliasing (nearest/box/bilinear/bicubic/mks13)
+scale_method = mks13
 # Background color of the window (RGBA)
 window = #00000000
 # Background color of the tile (RGBA)

@@ -22,6 +22,8 @@
 #define CFG_FILL_DEF         true
 #define CFG_ANTIALIASING     "antialiasing"
 #define CFG_ANTIALIASING_DEF false
+#define CFG_SCALE_METHOD     "scale_method"
+#define CFG_SCALE_METHOD_DEF "mks13"
 #define CFG_WINDOW           "window"
 #define CFG_WINDOW_DEF       ARGB(0, 0, 0, 0)
 #define CFG_BACKGROUND       "background"
@@ -45,11 +47,12 @@ struct thumbnail {
 
 /** Gallery context. */
 struct gallery {
-    size_t thumb_size;        ///< Size of thumbnail
-    size_t thumb_max;         ///< Max number of thumbnails in cache
-    struct thumbnail* thumbs; ///< List of preview images
-    bool thumb_fill;          ///< Scale mode (fill/fit)
-    bool antialiasing;        ///< Use anti-aliasing for thumbnails
+    size_t thumb_size;              ///< Size of thumbnail
+    size_t thumb_max;               ///< Max number of thumbnails in cache
+    struct thumbnail* thumbs;       ///< List of preview images
+    bool thumb_fill;                ///< Scale mode (fill/fit)
+    bool antialiasing;              ///< Use anti-aliasing for thumbnails
+    enum pixmap_scale scale_method; ///< Scale method for thumbnails
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -77,7 +80,8 @@ static void add_thumbnail(struct image* image)
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill, ctx.antialiasing);
+        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill,
+                        ctx.antialiasing ? ctx.scale_method : pixmap_nearest);
         ctx.thumbs = list_append(ctx.thumbs, entry);
     }
 }
@@ -395,8 +399,9 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
             const ssize_t thumb_h = thumb->height * THUMB_SELECTED_SCALE;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            pixmap_scale(ctx.antialiasing ? pixmap_bicubic : pixmap_nearest, thumb,
-                         window, tx, ty, THUMB_SELECTED_SCALE, image->alpha);
+            pixmap_scale(ctx.antialiasing ? ctx.scale_method : pixmap_nearest,
+                         thumb, window, tx, ty, THUMB_SELECTED_SCALE,
+                         image->alpha);
         }
 
         // shadow
@@ -576,13 +581,27 @@ static void on_image_load(struct image* image, size_t index)
 
 void gallery_init(struct config* cfg, struct image* image)
 {
+    const char* value;
+    ssize_t index;
+
     ctx.thumb_size =
         config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 1024, CFG_SIZE_DEF);
     ctx.thumb_max =
         config_get_num(cfg, CFG_SECTION, CFG_CACHE, 0, 1024, CFG_CACHE_DEF);
     ctx.thumb_fill = config_get_bool(cfg, CFG_SECTION, CFG_FILL, CFG_FILL_DEF);
+
     ctx.antialiasing = config_get_bool(cfg, CFG_SECTION, CFG_ANTIALIASING,
                                        CFG_ANTIALIASING_DEF);
+    value = config_get_string(cfg, CFG_SECTION, CFG_SCALE_METHOD,
+                              CFG_SCALE_METHOD_DEF);
+    index = pixmap_scale_index(value);
+    if (index >= 0) {
+        ctx.scale_method = index;
+    } else {
+        ctx.scale_method = pixmap_mks13;
+        config_error_val(CFG_SECTION, value);
+    }
+
     ctx.clr_window =
         config_get_color(cfg, CFG_SECTION, CFG_WINDOW, CFG_WINDOW_DEF);
     ctx.clr_background =
