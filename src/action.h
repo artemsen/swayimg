@@ -39,10 +39,13 @@ enum action_type {
     action_flip_horizontal,
     action_reload,
     action_antialiasing,
+    action_scale_method,
     action_info,
     action_exec,
     action_status,
     action_exit,
+    action_bench_pixmap_scale,
+    action_test_pixmap_scale,
 };
 
 /** Single action. */

@@ -16,6 +16,7 @@
 #define VIEWER_POSITION       "position"
 #define VIEWER_FIXED          "fixed"
 #define VIEWER_ANTIALIASING   "antialiasing"
+#define VIEWER_SCALE_METHOD   "scale_method"
 #define VIEWER_SLIDESHOW      "slideshow"
 #define VIEWER_SLIDESHOW_TIME "slideshow_time"
 #define VIEWER_HISTORY        "history"

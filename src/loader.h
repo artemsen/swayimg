@@ -62,6 +62,14 @@ enum loader_status loader_from_source(const char* source, struct image** image);
 enum loader_status loader_from_index(size_t index, struct image** image);
 
 /**
+ * Store pixmap in file.
+ * @param pm pixmap to store
+ * @param file path to store it to (created, overwritten)
+ * @return 0 on success, -1 on failure
+ */
+int pixmap_to_file(const struct pixmap* pm, const char* file);
+
+/**
  * Append image to background loader queue.
  * @param index index of the image in the image list
  */
