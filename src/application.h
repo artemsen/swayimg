@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "buildcfg.h"
 #include "image.h"
 #include "keybind.h"
 
@@ -20,6 +21,16 @@
 #define APP_FROM_PARENT  "parent"
 #define APP_FROM_IMAGE   "image"
 #define APP_FULLSCREEN   "fullscreen"
+
+/** Wayland representation window. */
+struct wndrect {
+#ifdef ENABLE_SWAYWM
+    ssize_t x;
+    ssize_t y;
+#endif
+    size_t width;
+    size_t height;
+};
 
 /**
  * Handler of the fd poll events.

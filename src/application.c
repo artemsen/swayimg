@@ -4,13 +4,14 @@
 
 #include "application.h"
 
-#include "buildcfg.h"
 #include "font.h"
 #include "gallery.h"
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#ifdef ENABLE_SWAYWM
 #include "sway.h"
+#endif
 #include "ui.h"
 #include "viewer.h"
 
@@ -72,6 +73,7 @@ struct application {
 /** Global application context. */
 static struct application ctx;
 
+#ifdef ENABLE_SWAYWM
 /**
  * Setup window position via Sway IPC.
  */
@@ -113,6 +115,7 @@ static void sway_setup(void)
 
     sway_disconnect(ipc);
 }
+#endif /* ENABLE_SWAYWM */
 
 /** Notification callback: handle event queue. */
 static void handle_event_queue(__attribute__((unused)) void* data)
@@ -292,6 +295,7 @@ static void load_config(struct config* cfg)
         config_error_val(APP_CFG_SECTION, APP_CFG_MODE);
     }
 
+#ifdef ENABLE_SWAYWM
     // initial window position
     ctx.window.x = POS_FROM_PARENT;
     ctx.window.y = POS_FROM_PARENT;
@@ -309,6 +313,7 @@ static void load_config(struct config* cfg)
             config_error_val(APP_CFG_SECTION, APP_CFG_POSITION);
         }
     }
+#endif /* ENABLE_SWAYWM */
 
     // initial window size
     value =
@@ -395,9 +400,11 @@ bool app_init(struct config* cfg, const char** sources, size_t num)
     }
 
     // setup window position and size
+#ifdef ENABLE_SWAYWM
     if (ctx.window.width != SIZE_FULLSCREEN) {
         sway_setup(); // try Sway integration
     }
+#endif /* ENABLE_SWAYWM */
     if (ctx.window.width == SIZE_FULLSCREEN) {
         ui_toggle_fullscreen();
     } else if (ctx.window.width == SIZE_FROM_IMAGE ||

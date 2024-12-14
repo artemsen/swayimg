@@ -4,19 +4,13 @@
 
 #pragma once
 
+#include "application.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
 
 #define INVALID_SWAY_IPC -1
-
-/** Position and size of a window. */
-struct wndrect {
-    ssize_t x;
-    ssize_t y;
-    size_t width;
-    size_t height;
-};
 
 /**
  * Connect to Sway.

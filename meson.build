@@ -36,14 +36,13 @@ endif
 
 # mandatory dependencies
 wlcln = dependency('wayland-client')
-json = dependency('json-c')
 xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 threads = dependency('threads')
 rt = cc.find_library('rt')
 
-# optional dependencies: file formats support
+# optional dependencies
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
 heif = dependency('libheif', required: get_option('heif'))
 avif = dependency('libavif', required: get_option('avif'))
@@ -54,6 +53,7 @@ rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
+json = dependency('json-c', required: get_option('sway'))
 
 # hack to build "pkgconfigless" gif in FreeBSD
 gif_opt = get_option('gif')
@@ -90,6 +90,7 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
+conf.set('ENABLE_SWAYWM', json.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -193,7 +194,6 @@ sources = [
   'src/main.c',
   'src/memdata.c',
   'src/pixmap.c',
-  'src/sway.c',
   'src/ui.c',
   'src/viewer.c',
   'src/formats/bmp.c',
@@ -236,6 +236,9 @@ if tiff.found()
 endif
 if webp.found() and webp_demux.found()
   sources += 'src/formats/webp.c'
+endif
+if json.found()
+  sources += 'src/sway.c'
 endif
 
 executable(
