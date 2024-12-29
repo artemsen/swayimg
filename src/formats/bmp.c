@@ -212,7 +212,7 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
     size_t buffer_pos = 0;
 
     while (buffer_pos + 2 <= buffer_sz) {
-        const uint8_t rle1 = buffer[buffer_pos++];
+        uint8_t rle1 = buffer[buffer_pos++];
         const uint8_t rle2 = buffer[buffer_pos++];
         if (rle1 == 0) {
             // escape code
@@ -270,12 +270,15 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
             }
         } else {
             // encoded mode
+            if (x + rle1 > pm->width) {
+                rle1 = pm->width - x;
+            }
+            if (y >= pm->height) {
+                return false;
+            }
             if (bmp->compression == BI_RLE8) {
                 // 8 bpp
                 if (rle2 >= palette->size) {
-                    return false;
-                }
-                if (x + rle1 > pm->width || y >= pm->height) {
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
@@ -286,9 +289,6 @@ static bool decode_rle(struct image* ctx, const struct bmp_info* bmp,
                 // 4 bpp
                 const uint8_t index[] = { rle2 >> 4, rle2 & 0x0f };
                 if (index[0] >= palette->size || index[1] >= palette->size) {
-                    return false;
-                }
-                if (x + rle1 > pm->width) {
                     return false;
                 }
                 for (size_t i = 0; i < rle1; ++i) {
