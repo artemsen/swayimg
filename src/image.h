@@ -76,12 +76,9 @@ void image_rotate(struct image* ctx, size_t angle);
 /**
  * Create thumbnail from full size image.
  * @param image original image
- * @param size thumbnail size in pixels
- * @param fill thumbnail scale mode (fill/fit)
- * @param antialias use antialiasing
+ * @param thumbnail pixmap with thumbnail of the image
  */
-void image_thumbnail(struct image* image, size_t size, bool fill,
-                     bool antialias);
+void image_thumbnail(struct image* image, struct pixmap *thumbnail);
 
 /**
  * Set image format description.
