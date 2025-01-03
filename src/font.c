@@ -6,7 +6,7 @@
 
 #include "memdata.h"
 
-// font realted
+// font related
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
