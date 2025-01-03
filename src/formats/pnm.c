@@ -5,7 +5,6 @@
 #include "../loader.h"
 
 #include <limits.h>
-#include <stdio.h>
 
 // Both assume positive arguments and evaluate b more than once
 // Divide, rounding to nearest (up on ties)
@@ -219,32 +218,6 @@ static int decode_raw(struct pixmap* pm, struct pnm_iter* it,
         }
     }
     return 0;
-}
-
-/**
- * Encode a pixmap as a raw PPM file, dropping the alpha channel
- * @param dst buffer to write data to; assumed to be large enough
- * @param pm pixmap to encode
- * @return the number of bytes written, or if dst is null, the number of bytes
- * needed to hold the whole image
- */
-size_t encode_ppm(void* dst, const struct pixmap* pm)
-{
-    size_t head_sz = snprintf(dst, dst ? 100 : 0, "P6\n%zu %zu\n255\n",
-                              pm->width, pm->height);
-    if (!dst) {
-        return head_sz + pm->width * pm->height * 3;
-    }
-    char* d = (char*)dst + head_sz;
-    for (size_t r = 0; r < pm->height; ++r) {
-        for (size_t c = 0; c < pm->width; ++c) {
-            argb_t pix = pm->data[r * pm->width + c];
-            d[(r * pm->width + c) * 3] = ARGB_GET_R(pix);
-            d[(r * pm->width + c) * 3 + 1] = ARGB_GET_G(pix);
-            d[(r * pm->width + c) * 3 + 2] = ARGB_GET_B(pix);
-        }
-    }
-    return head_sz + pm->width * pm->height * 3;
 }
 
 enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,

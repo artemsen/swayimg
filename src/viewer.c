@@ -385,33 +385,6 @@ static void scale_global(const char* params)
 }
 
 /**
- * Change the scale method
- * @param params new scale method
- */
-static void scale_method(const char* params)
-{
-    if (params && *params) {
-        ssize_t method = str_index(pixmap_scale_names, params, 0);
-
-        if (method >= 0) {
-            ctx.scale_method = method;
-        } else {
-            fprintf(stderr, "Invalid scale method: \"%s\"\n", params);
-            return;
-        }
-    } else {
-        ctx.scale_method++;
-        if (ctx.scale_method >= ARRAY_SIZE(pixmap_scale_names)) {
-            ctx.scale_method = 0;
-        }
-    }
-
-    info_update(info_status, "Scale method %s",
-                pixmap_scale_names[ctx.scale_method]);
-    app_redraw();
-}
-
-/**
  * Start/stop animation if image supports it.
  * @param enable state to set
  */
@@ -742,20 +715,11 @@ static void apply_action(const struct action* action)
                         ctx.antialiasing ? "on" : "off");
             app_redraw();
             break;
-        case action_scale_method:
-            scale_method(action->params);
-            break;
         case action_reload:
             reload();
             break;
         case action_exec:
             app_execute(action->params, fetcher_current()->source);
-            break;
-        case action_bench_pixmap_scale:
-            pixmap_scale_bench(&fetcher_current()->frames[ctx.frame].pm);
-            break;
-        case action_test_pixmap_scale:
-            pixmap_scale_test(&fetcher_current()->frames[ctx.frame].pm);
             break;
         default:
             break;

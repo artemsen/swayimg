@@ -108,7 +108,6 @@ static const struct config_default defaults[] = {
     { "keys.viewer",  "m",                "flip_vertical"                            },
     { "keys.viewer",  "Shift+m",          "flip_horizontal"                          },
     { "keys.viewer",  "a",                "antialiasing"                             },
-    { "keys.viewer",  "Shift+a",          "scale_method"                             },
     { "keys.viewer",  "r",                "reload"                                   },
     { "keys.viewer",  "i",                "info"                                     },
     { "keys.viewer",  "Shift+Delete",     "exec rm '%'; skip_file"                   },
@@ -124,8 +123,6 @@ static const struct config_default defaults[] = {
     { "keys.viewer",  "Shift+ScrollDown", "next_file"                                },
     { "keys.viewer",  "Alt+ScrollUp",     "prev_frame"                               },
     { "keys.viewer",  "Alt+ScrollDown",   "next_frame"                               },
-    { "keys.viewer",  "b",                "bench_pixmap_scale"                       },
-    { "keys.viewer",  "t",                "test_pixmap_scale"                        },
 
     { "keys.gallery", "F1",               "help"                                     },
     { "keys.gallery", "Home",             "first_file"                               },

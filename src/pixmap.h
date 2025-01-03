@@ -213,15 +213,3 @@ void pixmap_flip_horizontal(struct pixmap* pm);
  * @param angle rotation angle (only 90, 180, or 270)
  */
 void pixmap_rotate(struct pixmap* pm, size_t angle);
-
-/**
- * Test scale methods, dumping output to files.
- * @param pm pixmap to scale
- */
-void pixmap_scale_test(const struct pixmap* pm);
-
-/**
- * Benchmark scale methods.
- * @param pm pixmap to scale
- */
-void pixmap_scale_bench(const struct pixmap* pm);

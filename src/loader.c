@@ -228,45 +228,6 @@ static enum loader_status image_from_file(struct image* img, const char* file)
     return status;
 }
 
-size_t encode_ppm(void* dst, const struct pixmap* pm);
-
-/**
- * Store pixmap in file.
- * @param pm pixmap to store
- * @param file path to store it to (created, overwritten)
- * @return 0 on success, -1 on failure
- */
-int pixmap_to_file(const struct pixmap* pm, const char* file)
-{
-    void* data = NULL;
-    size_t sz;
-    int fd;
-    int r;
-
-    fd = open(file, O_RDWR | O_CREAT, 0666);
-    if (fd < 0) {
-        return -1;
-    }
-    sz = encode_ppm(data, pm);
-    if (ftruncate(fd, sz) < 0) {
-        close(fd);
-        return -1;
-    }
-    data = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (data == MAP_FAILED) {
-        close(fd);
-        return -1;
-    }
-
-    encode_ppm(data, pm);
-
-    r = msync(data, sz, MS_SYNC);
-    munmap(data, sz);
-    close(fd);
-
-    return r;
-}
-
 /**
  * Load image from stream file (stdin).
  * @param img destination image

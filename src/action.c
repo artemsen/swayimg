@@ -45,13 +45,10 @@ static const char* action_names[] = {
     [action_flip_horizontal] = "flip_horizontal",
     [action_reload] = "reload",
     [action_antialiasing] = "antialiasing",
-    [action_scale_method] = "scale_method",
     [action_info] = "info",
     [action_exec] = "exec",
     [action_status] = "status",
     [action_exit] = "exit",
-    [action_bench_pixmap_scale] = "bench_pixmap_scale",
-    [action_test_pixmap_scale] = "test_pixmap_scale",
 };
 
 /**

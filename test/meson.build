@@ -18,7 +18,6 @@ sources = [
   '../src/memdata.c',
   '../src/pixmap.c',
   '../src/pixmap_scale.c',
-  '../src/pixmap_test.c',
   '../src/formats/bmp.c',
   '../src/formats/dicom.c',
   '../src/formats/farbfeld.c',

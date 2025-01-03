@@ -195,7 +195,6 @@ sources = [
   'src/memdata.c',
   'src/pixmap.c',
   'src/pixmap_scale.c',
-  'src/pixmap_test.c',
   'src/sway.c',
   'src/ui.c',
   'src/viewer.c',
