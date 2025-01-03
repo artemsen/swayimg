@@ -98,7 +98,7 @@ char* str_append(const char* src, size_t len, char** dst);
 bool str_to_num(const char* text, size_t len, ssize_t* value, int base);
 
 /**
- * Convert ansi string to wide char format.
+ * Convert ASCII string to wide char format.
  * @param src source string to encode
  * @param dst pointer to destination buffer
  * @return pointer to wide string, caller must free it

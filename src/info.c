@@ -339,7 +339,7 @@ static void import_exif(const struct image* image)
     struct keyval* line;
     const size_t buf_size = image->num_info * sizeof(*line);
 
-    // free previuos lines
+    // free previous lines
     for (size_t i = 0; i < ctx.exif_num; ++i) {
         free(ctx.exif_lines[i].key.data);
         free(ctx.exif_lines[i].value.data);
