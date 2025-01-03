@@ -6,9 +6,10 @@
 
 #include <limits.h>
 
-// Divide a by b, rounding to the nearest integer; evaluates b twice
+// Both assume positive arguments and evaluate b more than once
+// Divide, rounding to nearest (up on ties)
 #define div_near(a, b) (((a) + (b) / 2) / (b))
-// Divide a by b, rounding up; evaluates b twice
+// Divide, rounding up
 #define div_ceil(a, b) (((a) + (b) - 1) / (b))
 
 // PNM file types

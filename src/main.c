@@ -138,7 +138,7 @@ static int parse_cmdargs(int argc, char* argv[], struct config** cfg)
             case 'c':
                 if (!config_set_arg(cfg, optarg)) {
                     fprintf(stderr,
-                            "WARNING: Invalid config agrument: \"%s\"\n",
+                            "WARNING: Invalid config argument: \"%s\"\n",
                             optarg);
                 }
                 break;

@@ -13,6 +13,8 @@
 #include <sys/sysctl.h>
 #endif
 
+#define clamp(a, low, high) (min((high), max((a), (low))))
+
 /** Scale filter parameters. */
 struct scale_param {
     const struct pixmap* src; ///< Source pixmap
@@ -285,11 +287,11 @@ static void scale_bicubic(struct scale_param* sp, size_t start, size_t step)
                     (state[pc][3][0] + state[pc][3][1] * diff_x + state[pc][3][2] * diff_x2 + state[pc][3][3] * diff_x3) * diff_y3;
                 // clang-format on
                 if (pc == 3) {
-                    const uint8_t alpha = max(min(inter, 255), 0);
+                    const uint8_t alpha = clamp(inter, 0, 255);
                     fg |= ARGB_SET_A(alpha);
                 } else {
                     const uint8_t alpha = ARGB_GET_A(fg);
-                    const uint16_t mul = max(min(inter, 255 * alpha), 0);
+                    const uint16_t mul = clamp(inter, 0, 255 * alpha);
                     const uint8_t color = alpha ? mul / alpha : 0;
                     fg |= (color << (pc * 8));
                 }
@@ -523,7 +525,7 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
 #endif
 
     // background threads
-    const size_t threads_num = min(16, max(cpus, 1)) - 1;
+    const size_t threads_num = clamp(cpus, 1, 16) - 1;
     struct scale_task* tasks = NULL;
 
     // scaling parameters
@@ -553,7 +555,7 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
 
     // create task for each CPU core
     if (threads_num) {
-        tasks = malloc(threads_num * sizeof(struct scale_task));
+        tasks = malloc(threads_num * sizeof(*tasks));
         if (!tasks) {
             return;
         }
@@ -626,7 +628,7 @@ void pixmap_rotate(struct pixmap* pm, size_t angle)
             *color2 = swap;
         }
     } else if (angle == 90 || angle == 270) {
-        argb_t* data = malloc(pm->height * pm->width * sizeof(argb_t));
+        argb_t* data = malloc(pm->height * pm->width * sizeof(*data));
         if (data) {
             const size_t width = pm->height;
             const size_t height = pm->width;
