@@ -78,10 +78,10 @@ void image_rotate(struct image* ctx, size_t angle);
  * @param image original image
  * @param size thumbnail size in pixels
  * @param fill thumbnail scale mode (fill/fit)
- * @param antialias use antialiasing
+ * @param scaler scale method to use
  */
 void image_thumbnail(struct image* image, size_t size, bool fill,
-                     bool antialias);
+                     enum pixmap_scale scaler);
 
 /**
  * Set image format description.

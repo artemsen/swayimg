@@ -42,6 +42,7 @@ fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 threads = dependency('threads')
 rt = cc.find_library('rt')
+m = cc.find_library('m')
 
 # optional dependencies: file formats support
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
@@ -193,6 +194,7 @@ sources = [
   'src/main.c',
   'src/memdata.c',
   'src/pixmap.c',
+  'src/pixmap_scale.c',
   'src/sway.c',
   'src/ui.c',
   'src/viewer.c',
@@ -243,6 +245,7 @@ executable(
   sources,
   dependencies: [
     # runtime
+    m,
     rt,
     threads,
     wlcln,
