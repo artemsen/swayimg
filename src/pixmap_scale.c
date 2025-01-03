@@ -13,6 +13,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif
+
 // ========== KERNELS ==========
 // 1D convolution kernels: each output is the weighted sum of a set of inputs.
 // The weights are stored in fixed point to limit memory consumption and improve
