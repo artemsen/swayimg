@@ -35,7 +35,7 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
  */
 static png_bytep* bind_pixmap(const struct pixmap* pm)
 {
-    png_bytep* ptr = malloc(pm->height * sizeof(png_bytep));
+    png_bytep* ptr = malloc(pm->height * sizeof(*ptr));
 
     if (ptr) {
         for (uint32_t i = 0; i < pm->height; ++i) {

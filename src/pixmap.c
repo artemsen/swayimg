@@ -553,7 +553,7 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
 
     // create task for each CPU core
     if (threads_num) {
-        tasks = malloc(threads_num * sizeof(struct scale_task));
+        tasks = malloc(threads_num * sizeof(*tasks));
         if (!tasks) {
             return;
         }
@@ -626,7 +626,7 @@ void pixmap_rotate(struct pixmap* pm, size_t angle)
             *color2 = swap;
         }
     } else if (angle == 90 || angle == 270) {
-        argb_t* data = malloc(pm->height * pm->width * sizeof(argb_t));
+        argb_t* data = malloc(pm->height * pm->width * sizeof(*data));
         if (data) {
             const size_t width = pm->height;
             const size_t height = pm->width;
