@@ -3,7 +3,6 @@
 // Copyright (C) 2024 Abe Wieland <abe.wieland@gmail.com>
 
 #include "loader.h"
-#include "pixmap.h"
 #include "pixmap_internal.h"
 
 #include <math.h>
@@ -95,7 +94,7 @@ static inline void new_kernel(struct kernel* k, size_t nin, size_t nout,
     // certainly suffices
     size_t n_per = b.last - b.first + 3;
     double* w = malloc(n_per * sizeof(*w));
-    int16_t* iw = malloc(n_per * sizeof(*w));
+    int16_t* iw = malloc(n_per * sizeof(*iw));
     // this means we do overallocate here, but kernels are only live for a short
     // time anyway
     k->weights = malloc(n_per * k->n_out * sizeof(*k->weights));
@@ -449,7 +448,10 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
             .alpha = alpha,
         };
 
-        struct nn_priv* p = malloc(bthreads * sizeof(*p));
+        struct nn_priv* p = NULL;
+        if (bthreads){
+            p = malloc(bthreads * sizeof(*p));
+        }
         const size_t len = (bottom - top) / (bthreads + 1);
         size_t row = top;
         for (size_t i = 0; i < bthreads; ++i) {
@@ -488,7 +490,10 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
         s.yoff = s.vk.start_in;
         s.xoff = s.hk.start_out;
 
-        struct sc_priv* p = malloc(bthreads * sizeof(*p));
+        struct sc_priv* p = NULL;
+        if (bthreads) {
+            p = malloc(bthreads * sizeof(*p));
+        }
         const size_t hlen = s.vk.n_in / (bthreads + 1);
         const size_t vlen = s.vk.n_out / (bthreads + 1);
         size_t hrow = 0;

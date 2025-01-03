@@ -2,8 +2,6 @@
 // Pixel map.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "pixmap.h"
-
 #include "memdata.h"
 #include "pixmap_internal.h"
 

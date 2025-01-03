@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "pixmap.h"
+
 #define clamp(a, low, high) (min((high), max((a), (low))))
 
 /**
