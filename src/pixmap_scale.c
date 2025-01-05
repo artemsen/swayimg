@@ -367,17 +367,12 @@ static inline void scale_nearest(const struct pixmap* src, struct pixmap* dst,
                                  ssize_t x, ssize_t y, bool alpha)
 {
     for (size_t dst_y = y_low; dst_y < y_high; ++dst_y) {
-        // This incantation just performs ((dst_y - y) + 0.5) / scale - 0.5, but
-        // avoiding any floating point - with optimization, it's just two
-        // shifts, an addition and a subtraction per loop iteration
-        const size_t src_y =
-            (((((dst_y - y) * 2 + 1) * num) >> den_bits) - 1) / 2;
+        const size_t src_y = ((dst_y - y) * num) >> den_bits;
         const argb_t* src_line = &src->data[src_y * src->width];
         argb_t* dst_line = &dst->data[dst_y * dst->width];
 
         for (size_t dst_x = x_low; dst_x < x_high; ++dst_x) {
-            const size_t src_x =
-                (((((dst_x - x) * 2 + 1) * num) >> den_bits) - 1) / 2;
+            const size_t src_x = ((dst_x - x) * num) >> den_bits;
             const argb_t color = src_line[src_x];
 
             if (alpha) {
