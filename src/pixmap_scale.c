@@ -367,12 +367,17 @@ static inline void scale_nearest(const struct pixmap* src, struct pixmap* dst,
                                  ssize_t x, ssize_t y, bool alpha)
 {
     for (size_t dst_y = y_low; dst_y < y_high; ++dst_y) {
-        const size_t src_y = ((dst_y - y) * num) >> den_bits;
+        // This incantation just performs ((dst_y - y) + 0.5) / scale - 0.5, but
+        // avoiding any floating point - with optimization, it's just two
+        // shifts, an addition and a subtraction per loop iteration
+        const size_t src_y =
+            (((((dst_y - y) * 2 + 1) * num) >> den_bits) - 1) / 2;
         const argb_t* src_line = &src->data[src_y * src->width];
         argb_t* dst_line = &dst->data[dst_y * dst->width];
 
         for (size_t dst_x = x_low; dst_x < x_high; ++dst_x) {
-            const size_t src_x = ((dst_x - x) * num) >> den_bits;
+            const size_t src_x =
+                (((((dst_x - x) * 2 + 1) * num) >> den_bits) - 1) / 2;
             const argb_t color = src_line[src_x];
 
             if (alpha) {
@@ -437,18 +442,17 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
     const size_t bthreads = clamp(cpus, 1, 16) - 1;
 
     if (scaler == pixmap_nearest) {
-        // TODO perhaps look into 0.5 offsets in the fixed-point representation
-        // to avoid "jitter" when switching from nearest to box and back again
         const size_t left = max(0, x);
         const size_t top = max(0, y);
         const size_t right = min(dst->width, (size_t)(x + scale * src->width));
         const size_t bottom =
             min(dst->height, (size_t)(y + scale * src->height));
-        // Ensure that regardless of scale factor, we can just do one integer
-        // multiplication and a shift, rather than a floating-point division.
-        // The choices 32 (for upscale) and 5 (for downscale) ensure we can
-        // represent a large range of scales with relatively good precision
-        const uint8_t den_bits = scale > 1.0 ? 32 : 5;
+        // Use fixed-point for efficiency (floating-point division becomes an
+        // addition and a shift, since it's used in a loop anyway). The choices
+        // (32 and 25) ensure we have as much precision as floats, but still
+        // support large downscales of large images (the largest supported image
+        // at minimum scale would need 2^48 bytes of memory)
+        const uint8_t den_bits = scale > 1.0 ? 32 : 25;
         const size_t num = (1.0 / scale) * (1UL << den_bits);
         struct nn_shared s = {
             .src = src,
