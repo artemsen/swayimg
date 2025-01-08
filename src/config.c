@@ -52,7 +52,7 @@ static const struct config_default defaults[] = {
     { "list",         "order",            "alpha"                                    },
     { "list",         "loop",             "yes"                                      },
     { "list",         "recursive",        "no"                                       },
-    { "list",         "all",              "yes"                                      },
+    { "list",         "all",              "no"                                       },
 
     { "font",         "name",             "monospace"                                },
     { "font",         "size",             "14"                                       },
