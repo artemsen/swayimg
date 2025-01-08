@@ -202,17 +202,16 @@ static enum loader_status image_from_file(struct image* img, const char* file)
     struct stat st;
     int fd;
 
-    // open file and get its size
+    // check file type
+    if (stat(file, &st) == -1 || (st.st_mode & S_IFMT) != S_IFREG) {
+        return ldr_ioerror;
+    }
+
+    // open file and map it to memory
     fd = open(file, O_RDONLY);
     if (fd == -1) {
         return ldr_ioerror;
     }
-    if (fstat(fd, &st) == -1) {
-        close(fd);
-        return ldr_ioerror;
-    }
-
-    // map file to memory
     data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
         close(fd);
