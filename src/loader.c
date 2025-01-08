@@ -203,7 +203,7 @@ static enum loader_status image_from_file(struct image* img, const char* file)
     int fd;
 
     // check file type
-    if (stat(file, &st) == -1 || (st.st_mode & S_IFMT) != S_IFREG) {
+    if (stat(file, &st) == -1 || !S_ISREG(st.st_mode)) {
         return ldr_ioerror;
     }
 
