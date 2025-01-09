@@ -5,6 +5,7 @@
 #pragma once
 
 #include "pixmap.h"
+#include "pixmap_scale.h"
 
 struct image_frame;
 struct image_info;

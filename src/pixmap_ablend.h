@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
-// Utilities used in pixmap.c and pixmap_scale.c
+// Alpha blending.
 // Copyright (C) 2024 Abe Wieland <abe.wieland@gmail.com>
 
 #pragma once
 
 #include "pixmap.h"
-
-#define clamp(a, low, high) (min((high), max((a), (low))))
 
 /**
  * Alpha blending.

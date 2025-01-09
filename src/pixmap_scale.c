@@ -2,8 +2,11 @@
 // Scaling pixmaps.
 // Copyright (C) 2024 Abe Wieland <abe.wieland@gmail.com>
 
+#include "pixmap_scale.h"
+
 #include "loader.h"
-#include "pixmap_internal.h"
+#include "memdata.h"
+#include "pixmap_ablend.h"
 
 #include <math.h>
 #include <pthread.h>
@@ -15,6 +18,8 @@
 #ifdef __FreeBSD__
 #include <sys/sysctl.h>
 #endif
+
+#define clamp(a, low, high) (min((high), max((a), (low))))
 
 // Except for nearest-neighbor, scaling is done via 1D convolution kernels, in
 // which each output is the weighted sum of a set of inputs. Weights are
@@ -56,7 +61,7 @@ struct bounds {
 };
 
 /** Values shared by all threads in a nearest-neighbor scale. */
-struct nn_shared {
+struct task_nn_shared {
     const struct pixmap* src; ///< Source pixmap
     struct pixmap* dst;       ///< Destination pixmap
     size_t x_low;             ///< x start (left)
@@ -69,15 +74,15 @@ struct nn_shared {
 };
 
 /** Per-thread information for a nearest-neighbor scale. */
-struct nn_priv {
-    struct nn_shared* s; ///< Shared information
-    size_t y_low;        ///< Start row
-    size_t y_high;       ///< One beyond end row
-    pthread_t id;        ///< Thread id
+struct task_nn_priv {
+    struct task_nn_shared* shared; ///< Shared information
+    size_t y_low;                  ///< Start row
+    size_t y_high;                 ///< One beyond end row
+    pthread_t id;                  ///< Thread id
 };
 
 /** Values shared by all threads in all other scales. */
-struct sc_shared {
+struct task_sc_shared {
     const struct pixmap* src; ///< Source pixmap
     struct pixmap in;         ///< Intermediate pixmap
     struct pixmap* dst;       ///< Destination pixmap
@@ -93,46 +98,58 @@ struct sc_shared {
 };
 
 /** Per-thread information for all other scales. */
-struct sc_priv {
-    struct sc_shared* s; ///< Shared information
-    size_t hy_low;       ///< Start row for horizontal pass
-    size_t hy_high;      ///< One beyond end row for horizontal pass
-    size_t vy_low;       ///< Start row for vertical pass
-    size_t vy_high;      ///< One beyond end row for vertical pass
-    pthread_t id;        ///< Thread id
+struct task_sc_priv {
+    struct task_sc_shared* shared; ///< Shared information
+    size_t hy_low;                 ///< Start row for horizontal pass
+    size_t hy_high;                ///< One beyond end row for horizontal pass
+    size_t vy_low;                 ///< Start row for vertical pass
+    size_t vy_high;                ///< One beyond end row for vertical pass
+    pthread_t id;                  ///< Thread id
 };
 
+// clang-format off
+static const char* pixmap_scale_names[] = {
+    [pixmap_nearest] = "nearest",
+    [pixmap_box] = "box",
+    [pixmap_bilinear] = "bilinear",
+    [pixmap_bicubic] = "bicubic",
+    [pixmap_mks13] = "mks13",
+};
+// clang-format on
+
 // Get the first and last input for a given output
-static inline struct bounds get_bounds(size_t out, double scale, double window)
+static inline void get_bounds(size_t out, double scale, double window,
+                              struct bounds* bounds)
 {
     // Adjust by 0.5 to ensure sampling from the centers of pixels,
     // not their edges
     const double c = (out + 0.5) / scale - 0.5;
     const double d = window / fmin(scale, 1.0);
-    const ssize_t f = floor(c - d);
-    const ssize_t l = ceil(c + d);
-    const struct bounds b = { f, l };
-    return b;
+    bounds->first = floor(c - d);
+    bounds->last = ceil(c + d);
 }
 
 // Get the weight for a given input/output pair
-static inline double get_weight(size_t in, size_t out, double scale,
-                                double window, window_fn f)
+static double get_weight(size_t in, size_t out, double scale, double window,
+                         window_fn wnd_fn)
 {
+    double c, x;
+
     if (scale >= 1.0) {
-        const double c = (out + 0.5) / scale - 0.5;
-        const double x = fabs(in - c);
-        return x > window ? 0.0 : f(x);
+        c = (out + 0.5) / scale - 0.5;
+        x = fabs(in - c);
     } else {
-        const double c = (in + 0.5) * scale - 0.5;
-        const double x = fabs(out - c);
-        return x > window ? 0.0 : f(x);
+        c = (in + 0.5) * scale - 0.5;
+        x = fabs(out - c);
     }
+
+    return x > window ? 0.0 : wnd_fn(x);
 }
 
 // Build a new fixed point kernel from its mathematical description
-static void new_kernel(struct kernel* k, size_t nin, size_t nout,
-                       ssize_t offset, double scale, double window, window_fn f)
+static void new_kernel(struct kernel* kernel, size_t nin, size_t nout,
+                       ssize_t offset, double scale, double window,
+                       window_fn wnd_fn)
 {
     // Store weights locally first, for normalization and zero detection
     double* weights;
@@ -141,19 +158,22 @@ static void new_kernel(struct kernel* k, size_t nin, size_t nout,
     // Output bounds
     const size_t start = max(0, offset);
     const size_t end = min(nout, (size_t)(offset + nin * scale));
-    k->start_out = start;
-    k->n_out = end - start;
+    kernel->start_out = start;
+    kernel->n_out = end - start;
 
     // Estimate space needed for weights
-    const struct bounds b = get_bounds(0, scale, window);
+    struct bounds bounds;
+    get_bounds(0, scale, window, &bounds);
+
     // Due to floor and ceil, we need at least 2 extra to be safe, so 3
     // certainly suffices
-    const size_t n_per = b.last - b.first + 3;
+    const size_t n_per = bounds.last - bounds.first + 3;
+
     // The estimation overallocates, but kernels are only live for a short time
     weights = malloc(n_per * sizeof(*weights));
     int_weights = malloc(n_per * sizeof(*int_weights));
-    k->weights = malloc(n_per * k->n_out * sizeof(*k->weights));
-    k->outputs = malloc(k->n_out * sizeof(*k->outputs));
+    kernel->weights = malloc(n_per * kernel->n_out * sizeof(*kernel->weights));
+    kernel->outputs = malloc(kernel->n_out * sizeof(*kernel->outputs));
 
     // Track min and max input across all outputs
     size_t min_in = SIZE_MAX;
@@ -164,14 +184,14 @@ static void new_kernel(struct kernel* k, size_t nin, size_t nout,
         size_t tfirst, tlast;
 
         // Input bounds for this output
-        struct output* o = &k->outputs[out - start];
-        const struct bounds b = get_bounds(out - offset, scale, window);
-        const size_t first = max(0, b.first);
-        const size_t last = min(nin - 1, (size_t)b.last);
+        struct output* output = &kernel->outputs[out - start];
+        get_bounds(out - offset, scale, window, &bounds);
+        const size_t first = max(0, bounds.first);
+        const size_t last = min(nin - 1, (size_t)bounds.last);
 
         sum = 0;
         for (size_t in = first; in <= last; ++in) {
-            double w = get_weight(in, out - offset, scale, window, f);
+            double w = get_weight(in, out - offset, scale, window, wnd_fn);
             weights[in - first] = w;
             sum += w;
         }
@@ -184,11 +204,9 @@ static void new_kernel(struct kernel* k, size_t nin, size_t nout,
 
         // Ignore leading or trailing zeros
         for (tfirst = first; tfirst < last && int_weights[tfirst - first] == 0;
-             ++tfirst)
-            ;
+             ++tfirst) { }
         for (tlast = last; tlast > tfirst && int_weights[tlast - first] == 0;
-             --tlast)
-            ;
+             --tlast) { }
 
         if (tfirst < min_in) {
             min_in = tfirst;
@@ -197,58 +215,57 @@ static void new_kernel(struct kernel* k, size_t nin, size_t nout,
             max_in = tlast;
         }
 
-        o->n = tlast - tfirst + 1;
-        o->first = tfirst;
-        o->index = index;
-        memcpy(&k->weights[index], &int_weights[tfirst - first],
-               o->n * sizeof(*k->weights));
-        index += o->n;
+        output->n = tlast - tfirst + 1;
+        output->first = tfirst;
+        output->index = index;
+        memcpy(&kernel->weights[index], &int_weights[tfirst - first],
+               output->n * sizeof(*kernel->weights));
+        index += output->n;
     }
 
-    k->start_in = min_in;
-    k->n_in = max_in - min_in + 1;
+    kernel->start_in = min_in;
+    kernel->n_in = max_in - min_in + 1;
 
     free(weights);
     free(int_weights);
 }
 
-static inline void free_kernel(struct kernel* k)
+static void free_kernel(struct kernel* kernel)
 {
-    free(k->outputs);
-    free(k->weights);
+    free(kernel->outputs);
+    free(kernel->weights);
 }
 
-static inline double box(__attribute__((unused)) double x)
+static double box(__attribute__((unused)) double x)
 {
     return 1.0;
 }
 
-static inline double lin(double x)
+static double lin(double x)
 {
     return 1.0 - x;
 }
 
-static inline double cub(double x)
+static double cub(double x)
 {
     if (x <= 1.0) {
         return 3.0 / 2.0 * x * x * x - 5.0 / 2.0 * x * x + 1.0;
-    } else {
-        return -1.0 / 2.0 * x * x * x + 5.0 / 2.0 * x * x - 4.0 * x + 2.0;
     }
+    return -1.0 / 2.0 * x * x * x + 5.0 / 2.0 * x * x - 4.0 * x + 2.0;
 }
 
-static inline double mks13(double x)
+static double mks13(double x)
 {
     if (x <= 0.5) {
         return 17.0 / 16.0 - 7.0 / 4.0 * x * x;
-    } else if (x <= 1.5) {
-        return x * x - 11.0 / 4.0 * x + 7.0 / 4.0;
-    } else {
-        return -1.0 / 8.0 * x * x + 5.0 / 8.0 * x - 25.0 / 32.0;
     }
+    if (x <= 1.5) {
+        return x * x - 11.0 / 4.0 * x + 7.0 / 4.0;
+    }
+    return -1.0 / 8.0 * x * x + 5.0 / 8.0 * x - 25.0 / 32.0;
 }
 
-static void new_named_kernel(enum pixmap_scale scaler, struct kernel* k,
+static void new_named_kernel(enum pixmap_scale scaler, struct kernel* kernel,
                              size_t in, size_t out, ssize_t offset,
                              double scale)
 {
@@ -257,16 +274,16 @@ static void new_named_kernel(enum pixmap_scale scaler, struct kernel* k,
             // We shouldn't ever get here
             break;
         case pixmap_box:
-            new_kernel(k, in, out, offset, scale, 0.5, box);
+            new_kernel(kernel, in, out, offset, scale, 0.5, box);
             break;
         case pixmap_bilinear:
-            new_kernel(k, in, out, offset, scale, 1.0, lin);
+            new_kernel(kernel, in, out, offset, scale, 1.0, lin);
             break;
         case pixmap_bicubic:
-            new_kernel(k, in, out, offset, scale, 2.0, cub);
+            new_kernel(kernel, in, out, offset, scale, 2.0, cub);
             break;
         case pixmap_mks13:
-            new_kernel(k, in, out, offset, scale, 2.5, mks13);
+            new_kernel(kernel, in, out, offset, scale, 2.5, mks13);
             break;
     }
 }
@@ -274,22 +291,22 @@ static void new_named_kernel(enum pixmap_scale scaler, struct kernel* k,
 // Apply a horizontal kernel; the output pixmap is assumed to be only as tall as
 // needed by the vertical pass - yoff indicates where it begins in the source
 static void apply_hk(const struct pixmap* src, struct pixmap* dst,
-                     const struct kernel* k, size_t y_low, size_t y_high,
+                     const struct kernel* kernel, size_t y_low, size_t y_high,
                      size_t yoff, bool alpha)
 {
     for (size_t y = y_low; y < y_high; ++y) {
         argb_t* dst_line = &dst->data[y * dst->width];
         for (size_t x = 0; x < dst->width; ++x) {
-            const struct output* o = &k->outputs[x];
+            const struct output* output = &kernel->outputs[x];
             int64_t a = 0;
             int64_t r = 0;
             int64_t g = 0;
             int64_t b = 0;
-            for (size_t i = 0; i < o->n; ++i) {
+            for (size_t i = 0; i < output->n; ++i) {
                 const argb_t c =
-                    src->data[(y + yoff) * src->width + o->first + i];
+                    src->data[(y + yoff) * src->width + output->first + i];
                 const int64_t wa =
-                    (int64_t)ARGB_GET_A(c) * k->weights[o->index + i];
+                    (int64_t)ARGB_GET_A(c) * kernel->weights[output->index + i];
                 a += wa;
                 r += ARGB_GET_R(c) * wa;
                 g += ARGB_GET_G(c) * wa;
@@ -321,22 +338,24 @@ static void apply_hk(const struct pixmap* src, struct pixmap* dst,
 // Apply a vertical kernel; the input pixmap is assumed to be only as tall as
 // needed - xoff indicates where it should go in the destination
 static void apply_vk(const struct pixmap* src, struct pixmap* dst,
-                     const struct kernel* k, size_t y_low, size_t y_high,
+                     const struct kernel* kernel, size_t y_low, size_t y_high,
                      size_t xoff, bool alpha)
 {
     for (size_t y = y_low; y < y_high; ++y) {
-        argb_t* dst_line = &dst->data[(y + k->start_out) * dst->width];
+        argb_t* dst_line = &dst->data[(y + kernel->start_out) * dst->width];
         for (size_t x = 0; x < src->width; ++x) {
-            const struct output* o = &k->outputs[y];
+            const struct output* output = &kernel->outputs[y];
             int64_t a = 0;
             int64_t r = 0;
             int64_t g = 0;
             int64_t b = 0;
-            for (size_t i = 0; i < o->n; ++i) {
+            for (size_t i = 0; i < output->n; ++i) {
                 const argb_t c =
-                    src->data[(o->first + i - k->start_in) * src->width + x];
+                    src->data[(output->first + i - kernel->start_in) *
+                                  src->width +
+                              x];
                 const int64_t wa =
-                    (int64_t)ARGB_GET_A(c) * k->weights[o->index + i];
+                    (int64_t)ARGB_GET_A(c) * kernel->weights[output->index + i];
                 a += wa;
                 r += ARGB_GET_R(c) * wa;
                 g += ARGB_GET_G(c) * wa;
@@ -361,10 +380,10 @@ static void apply_vk(const struct pixmap* src, struct pixmap* dst,
 }
 
 // See pixmap_scale for more details (also uses fixed point arithmetic)
-static inline void scale_nearest(const struct pixmap* src, struct pixmap* dst,
-                                 size_t y_low, size_t y_high, size_t x_low,
-                                 size_t x_high, size_t num, uint8_t den_bits,
-                                 ssize_t x, ssize_t y, bool alpha)
+static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
+                          size_t y_low, size_t y_high, size_t x_low,
+                          size_t x_high, size_t num, uint8_t den_bits,
+                          ssize_t x, ssize_t y, bool alpha)
 {
     for (size_t dst_y = y_low; dst_y < y_high; ++dst_y) {
         const size_t src_y = ((dst_y - y) * num) >> den_bits;
@@ -387,10 +406,11 @@ static inline void scale_nearest(const struct pixmap* src, struct pixmap* dst,
 static void* nn_task(void* arg)
 {
     // Each thread simply handles a consecutive block of rows
-    struct nn_priv* p = arg;
-    struct nn_shared* s = p->s;
-    scale_nearest(s->src, s->dst, p->y_low, p->y_high, s->x_low, s->x_high,
-                  s->num, s->den_bits, s->x, s->y, s->alpha);
+    struct task_nn_priv* priv = arg;
+    struct task_nn_shared* shared = priv->shared;
+    scale_nearest(shared->src, shared->dst, priv->y_low, priv->y_high,
+                  shared->x_low, shared->x_high, shared->num, shared->den_bits,
+                  shared->x, shared->y, shared->alpha);
     return NULL;
 }
 
@@ -399,18 +419,139 @@ static void* sc_task(void* arg)
     // Each thread first handles a consecutive block of rows for the horizontal
     // scale, synchronizes with the others, then handles a consecutive block of
     // rows for the vertical scale
-    struct sc_priv* p = arg;
-    struct sc_shared* s = p->s;
-    apply_hk(s->src, &s->in, &s->hk, p->hy_low, p->hy_high, s->yoff, false);
-    pthread_mutex_lock(&s->m);
-    ++s->sync;
-    pthread_cond_broadcast(&s->cv);
-    while (s->sync != s->threads) {
-        pthread_cond_wait(&s->cv, &s->m);
+    struct task_sc_priv* priv = arg;
+    struct task_sc_shared* shared = priv->shared;
+
+    apply_hk(shared->src, &shared->in, &shared->hk, priv->hy_low, priv->hy_high,
+             shared->yoff, false);
+
+    pthread_mutex_lock(&shared->m);
+    ++shared->sync;
+    pthread_cond_broadcast(&shared->cv);
+    while (shared->sync != shared->threads) {
+        pthread_cond_wait(&shared->cv, &shared->m);
     }
-    pthread_mutex_unlock(&s->m);
-    apply_vk(&s->in, s->dst, &s->vk, p->vy_low, p->vy_high, s->xoff, s->alpha);
+    pthread_mutex_unlock(&shared->m);
+
+    apply_vk(&shared->in, shared->dst, &shared->vk, priv->vy_low, priv->vy_high,
+             shared->xoff, shared->alpha);
+
     return NULL;
+}
+
+static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
+                            struct pixmap* dst, ssize_t x, ssize_t y,
+                            float scale, bool alpha)
+{
+    const size_t left = max(0, x);
+    const size_t top = max(0, y);
+    const size_t right = min(dst->width, (size_t)(x + scale * src->width));
+    const size_t bottom = min(dst->height, (size_t)(y + scale * src->height));
+    const size_t len = (bottom - top) / (threads + 1);
+
+    // Use fixed-point for efficiency (floating-point division becomes an
+    // addition and a shift, since it's used in a loop anyway). The choices
+    // (32 and 25) ensure we have as much precision as floats, but still
+    // support large downscales of large images (the largest supported image
+    // at minimum scale would need 2^48 bytes of memory)
+    const uint8_t den_bits = scale > 1.0 ? 32 : 25;
+    const size_t num = (1.0 / scale) * (1UL << den_bits);
+
+    struct task_nn_shared task_shared = {
+        .src = src,
+        .dst = dst,
+        .x_low = left,
+        .x_high = right,
+        .num = num,
+        .den_bits = den_bits,
+        .x = x,
+        .y = y,
+        .alpha = alpha,
+    };
+
+    struct task_nn_priv* task_priv = NULL;
+    if (threads) {
+        task_priv = malloc(threads * sizeof(*task_priv));
+    }
+    size_t row = top;
+    for (size_t i = 0; i < threads; ++i) {
+        task_priv[i].shared = &task_shared;
+        task_priv[i].y_low = row;
+        row += len;
+        task_priv[i].y_high = row;
+        pthread_create(&task_priv[i].id, NULL, nn_task, &task_priv[i]);
+    }
+    struct task_nn_priv task_first = {
+        .shared = &task_shared,
+        .y_low = row,
+        .y_high = bottom,
+    };
+
+    nn_task(&task_first);
+
+    for (size_t i = 0; i < threads; ++i) {
+        pthread_join(task_priv[i].id, NULL);
+    }
+
+    free(task_priv);
+}
+
+static void pixmap_scale_aa(enum pixmap_scale scaler, size_t threads,
+                            const struct pixmap* src, struct pixmap* dst,
+                            ssize_t x, ssize_t y, float scale, bool alpha)
+{
+    struct task_sc_shared task_shared = {
+        .src = src,
+        .dst = dst,
+        .alpha = alpha,
+        .threads = threads + 1,
+        .sync = 0,
+        .m = PTHREAD_MUTEX_INITIALIZER,
+        .cv = PTHREAD_COND_INITIALIZER,
+    };
+    new_named_kernel(scaler, &task_shared.hk, src->width, dst->width, x, scale);
+    new_named_kernel(scaler, &task_shared.vk, src->height, dst->height, y,
+                     scale);
+    pixmap_create(&task_shared.in, task_shared.hk.n_out, task_shared.vk.n_in);
+    task_shared.yoff = task_shared.vk.start_in;
+    task_shared.xoff = task_shared.hk.start_out;
+
+    struct task_sc_priv* task_priv = NULL;
+    if (threads) {
+        task_priv = malloc(threads * sizeof(*task_priv));
+    }
+    const size_t hlen = task_shared.vk.n_in / (threads + 1);
+    const size_t vlen = task_shared.vk.n_out / (threads + 1);
+    size_t hrow = 0;
+    size_t vrow = 0;
+    for (size_t i = 0; i < threads; ++i) {
+        task_priv[i].shared = &task_shared;
+        task_priv[i].hy_low = hrow;
+        task_priv[i].vy_low = vrow;
+        hrow += hlen;
+        vrow += vlen;
+        task_priv[i].hy_high = hrow;
+        task_priv[i].vy_high = vrow;
+        pthread_create(&task_priv[i].id, NULL, sc_task, &task_priv[i]);
+    }
+    struct task_sc_priv task_first = {
+        .shared = &task_shared,
+        .hy_low = hrow,
+        .vy_low = vrow,
+        .hy_high = task_shared.vk.n_in,
+        .vy_high = task_shared.vk.n_out,
+    };
+
+    sc_task(&task_first);
+
+    for (size_t i = 0; i < threads; ++i) {
+        pthread_join(task_priv[i].id, NULL);
+    }
+
+    free(task_priv);
+    free_kernel(&task_shared.hk);
+    free_kernel(&task_shared.vk);
+    pixmap_free(&task_shared.in);
 }
 
 void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
@@ -437,107 +578,13 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
     const size_t bthreads = clamp(cpus, 1, 16) - 1;
 
     if (scaler == pixmap_nearest) {
-        const size_t left = max(0, x);
-        const size_t top = max(0, y);
-        const size_t right = min(dst->width, (size_t)(x + scale * src->width));
-        const size_t bottom =
-            min(dst->height, (size_t)(y + scale * src->height));
-        // Use fixed-point for efficiency (floating-point division becomes an
-        // addition and a shift, since it's used in a loop anyway). The choices
-        // (32 and 25) ensure we have as much precision as floats, but still
-        // support large downscales of large images (the largest supported image
-        // at minimum scale would need 2^48 bytes of memory)
-        const uint8_t den_bits = scale > 1.0 ? 32 : 25;
-        const size_t num = (1.0 / scale) * (1UL << den_bits);
-        struct nn_shared s = {
-            .src = src,
-            .dst = dst,
-            .x_low = left,
-            .x_high = right,
-            .num = num,
-            .den_bits = den_bits,
-            .x = x,
-            .y = y,
-            .alpha = alpha,
-        };
-
-        struct nn_priv* p = NULL;
-        if (bthreads) {
-            p = malloc(bthreads * sizeof(*p));
-        }
-        const size_t len = (bottom - top) / (bthreads + 1);
-        size_t row = top;
-        for (size_t i = 0; i < bthreads; ++i) {
-            p[i].s = &s;
-            p[i].y_low = row;
-            row += len;
-            p[i].y_high = row;
-            pthread_create(&p[i].id, NULL, nn_task, &p[i]);
-        }
-        struct nn_priv local = {
-            .s = &s,
-            .y_low = row,
-            .y_high = bottom,
-        };
-
-        nn_task(&local);
-
-        for (size_t i = 0; i < bthreads; ++i) {
-            pthread_join(p[i].id, NULL);
-        }
-
-        free(p);
+        pixmap_scale_nn(bthreads, src, dst, x, y, scale, alpha);
     } else {
-        struct sc_shared s = {
-            .src = src,
-            .dst = dst,
-            .alpha = alpha,
-            .threads = bthreads + 1,
-            .sync = 0,
-            .m = PTHREAD_MUTEX_INITIALIZER,
-            .cv = PTHREAD_COND_INITIALIZER,
-        };
-        new_named_kernel(scaler, &s.hk, src->width, dst->width, x, scale);
-        new_named_kernel(scaler, &s.vk, src->height, dst->height, y, scale);
-        pixmap_create(&s.in, s.hk.n_out, s.vk.n_in);
-        s.yoff = s.vk.start_in;
-        s.xoff = s.hk.start_out;
-
-        struct sc_priv* p = NULL;
-        if (bthreads) {
-            p = malloc(bthreads * sizeof(*p));
-        }
-        const size_t hlen = s.vk.n_in / (bthreads + 1);
-        const size_t vlen = s.vk.n_out / (bthreads + 1);
-        size_t hrow = 0;
-        size_t vrow = 0;
-        for (size_t i = 0; i < bthreads; ++i) {
-            p[i].s = &s;
-            p[i].hy_low = hrow;
-            p[i].vy_low = vrow;
-            hrow += hlen;
-            vrow += vlen;
-            p[i].hy_high = hrow;
-            p[i].vy_high = vrow;
-            pthread_create(&p[i].id, NULL, sc_task, &p[i]);
-        }
-        struct sc_priv local = {
-            .s = &s,
-            .hy_low = hrow,
-            .vy_low = vrow,
-            .hy_high = s.vk.n_in,
-            .vy_high = s.vk.n_out,
-        };
-
-        sc_task(&local);
-
-        for (size_t i = 0; i < bthreads; ++i) {
-            pthread_join(p[i].id, NULL);
-        }
-
-        free(p);
-        free_kernel(&s.hk);
-        free_kernel(&s.vk);
-        pixmap_free(&s.in);
+        pixmap_scale_aa(scaler, bthreads, src, dst, x, y, scale, alpha);
     }
+}
+
+ssize_t pixmap_scale_index(const char* name)
+{
+    return str_index(pixmap_scale_names, name, 0);
 }

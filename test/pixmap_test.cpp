@@ -3,6 +3,7 @@
 
 extern "C" {
 #include "pixmap.h"
+#include "pixmap_scale.h"
 }
 
 #include <gtest/gtest.h>

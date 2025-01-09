@@ -2,26 +2,13 @@
 // Pixel map.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
+#include "pixmap.h"
+
 #include "memdata.h"
-#include "pixmap_internal.h"
+#include "pixmap_ablend.h"
 
 #include <stdlib.h>
 #include <string.h>
-
-// clang-format off
-static const char* pixmap_scale_names[] = {
-    [pixmap_nearest] = "nearest",
-    [pixmap_box] = "box",
-    [pixmap_bilinear] = "bilinear",
-    [pixmap_bicubic] = "bicubic",
-    [pixmap_mks13] = "mks13",
-};
-// clang-format on
-
-ssize_t pixmap_scale_index(const char* name)
-{
-    return str_index(pixmap_scale_names, name, 0);
-}
 
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
 {
