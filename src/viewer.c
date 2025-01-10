@@ -84,6 +84,7 @@ struct viewer {
     bool fixed;                  ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
+    bool keep_zoom;              ///< Keep absolute zoom across images
     enum position position;      ///< Initial position
     float scale;                 ///< Current scale factor of the image
 
@@ -148,6 +149,56 @@ static void fixup_position(bool force)
     if (ctx.img_y > wnd_height) {
         ctx.img_y = wnd_height;
     }
+}
+
+/** Set image position. */
+static void set_position(void)
+{
+    const struct image* img = fetcher_current();
+    const struct pixmap* pm = &img->frames[ctx.frame].pm;
+    const size_t wnd_width = ui_get_width();
+    const size_t wnd_height = ui_get_height();
+
+    switch (ctx.position) {
+        case position_top:
+            ctx.img_y = 0;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_center:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_bottom:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
+            break;
+        case position_left:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = 0;
+            break;
+        case position_right:
+            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+        case position_top_left:
+            ctx.img_y = 0;
+            ctx.img_x = 0;
+            break;
+        case position_top_right:
+            ctx.img_y = 0;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+        case position_bottom_left:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = 0;
+            break;
+        case position_bottom_right:
+            ctx.img_y = wnd_height - ctx.scale * pm->height;
+            ctx.img_x = wnd_width - ctx.scale * pm->width;
+            break;
+    }
+
+    fixup_position(true);
 }
 
 /**
@@ -244,46 +295,7 @@ static void scale_image(enum fixed_scale sc)
             break;
     }
 
-    switch (ctx.position) {
-        case position_top:
-            ctx.img_y = 0;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_center:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_bottom:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_left:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = 0;
-            break;
-        case position_right:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-        case position_top_left:
-            ctx.img_y = 0;
-            ctx.img_x = 0;
-            break;
-        case position_top_right:
-            ctx.img_y = 0;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-        case position_bottom_left:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = 0;
-            break;
-        case position_bottom_right:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-    }
-
-    fixup_position(true);
+    set_position();
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
 }
 
@@ -417,10 +429,10 @@ static void reset_state(void)
     const size_t total_img = image_list_size();
 
     ctx.frame = 0;
-    ctx.img_x = 0;
-    ctx.img_y = 0;
-    ctx.scale = 0;
-    scale_image(ctx.scale_init);
+    if (!ctx.keep_zoom || ctx.scale == 0) {
+        scale_image(ctx.scale_init);
+    }
+    set_position();
 
     ui_set_title(img->name);
     animation_ctl(true);
@@ -755,6 +767,7 @@ void viewer_init(const struct config* cfg, struct image* image)
     // initial scale and position
     ctx.scale_init = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_SCALE,
                                       scale_names, ARRAY_SIZE(scale_names));
+    ctx.keep_zoom = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_KEEP_ZM);
     ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
                                     position_names, ARRAY_SIZE(position_names));
 

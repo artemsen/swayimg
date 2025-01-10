@@ -39,6 +39,8 @@ window = #00000000
 transparency = grid
 # Default image scale (optimal/fit/width/height/fill/real)
 scale = optimal
+# Keep absolute zoom across images (yes/no)
+keep_zoom = no
 # Initial image position
 position = center
 # Fix position of the image on the window surface (yes/no)
