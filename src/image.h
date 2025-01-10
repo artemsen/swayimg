@@ -82,7 +82,7 @@ void image_rotate(struct image* ctx, size_t angle);
  * @param scaler scale method to use
  */
 void image_thumbnail(struct image* image, size_t size, bool fill,
-                     enum pixmap_scale scaler);
+                     enum pixmap_aa_mode scaler);
 
 /**
  * Set image format description.

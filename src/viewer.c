@@ -76,13 +76,12 @@ static const char* position_names[] = {
 
 /** Viewer context. */
 struct viewer {
-    ssize_t img_x, img_y;           ///< Top left corner of the image
-    size_t frame;                   ///< Index of the current frame
-    argb_t image_bkg;               ///< Image background mode/color
-    argb_t window_bkg;              ///< Window background mode/color
-    bool antialiasing;              ///< Anti-aliasing mode on/off
-    enum pixmap_scale scale_method; ///< Scaling method
-    bool fixed;                     ///< Fix image position
+    ssize_t img_x, img_y;        ///< Top left corner of the image
+    size_t frame;                ///< Index of the current frame
+    argb_t image_bkg;            ///< Image background mode/color
+    argb_t window_bkg;           ///< Window background mode/color
+    enum pixmap_aa_mode aa_mode; ///< Anti-aliasing mode
+    bool fixed;                  ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
     enum position position;      ///< Initial position
@@ -578,8 +577,8 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(img_pm, wnd, ctx.img_x, ctx.img_y, img->alpha);
     } else {
-        pixmap_scale(ctx.antialiasing ? ctx.scale_method : pixmap_nearest,
-                     img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale, img->alpha);
+        pixmap_scale(ctx.aa_mode, img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                     img->alpha);
     }
 }
 
@@ -697,9 +696,11 @@ static void apply_action(const struct action* action)
             app_redraw();
             break;
         case action_antialiasing:
-            ctx.antialiasing = !ctx.antialiasing;
-            info_update(info_status, "Anti-aliasing %s",
-                        ctx.antialiasing ? "on" : "off");
+            if (++ctx.aa_mode >= ARRAY_SIZE(pixmap_aa_names)) {
+                ctx.aa_mode = 0;
+            }
+            info_update(info_status, "Anti-aliasing: %s",
+                        pixmap_aa_names[ctx.aa_mode]);
             app_redraw();
             break;
         case action_reload:
@@ -736,18 +737,11 @@ void viewer_init(const struct config* cfg, struct image* image)
     size_t history;
     size_t preload;
     const char* value;
-    ssize_t index;
 
     ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
-    ctx.antialiasing = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_AA);
-    value = config_get(cfg, CFG_VIEWER, CFG_VIEW_AA_METHOD);
-    index = pixmap_scale_index(value);
-    if (index >= 0) {
-        ctx.scale_method = index;
-    } else {
-        ctx.scale_method = pixmap_mks13;
-        config_error_val(CFG_VIEWER, value);
-    }
+    ctx.aa_mode =
+        config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_AA, pixmap_aa_names,
+                         ARRAY_SIZE(pixmap_aa_names));
     ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
     // background for transparent images

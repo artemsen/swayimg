@@ -108,8 +108,9 @@ struct task_sc_priv {
 };
 
 // clang-format off
-static const char* pixmap_scale_names[] = {
-    [pixmap_nearest] = "nearest",
+/** Names of supported anti-aliasing modes. */
+const char* pixmap_aa_names[5] = {
+    [pixmap_nearest] = "none",
     [pixmap_box] = "box",
     [pixmap_bilinear] = "bilinear",
     [pixmap_bicubic] = "bicubic",
@@ -265,7 +266,7 @@ static double mks13(double x)
     return -1.0 / 8.0 * x * x + 5.0 / 8.0 * x - 25.0 / 32.0;
 }
 
-static void new_named_kernel(enum pixmap_scale scaler, struct kernel* kernel,
+static void new_named_kernel(enum pixmap_aa_mode scaler, struct kernel* kernel,
                              size_t in, size_t out, ssize_t offset,
                              double scale)
 {
@@ -496,7 +497,7 @@ static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
     free(task_priv);
 }
 
-static void pixmap_scale_aa(enum pixmap_scale scaler, size_t threads,
+static void pixmap_scale_aa(enum pixmap_aa_mode scaler, size_t threads,
                             const struct pixmap* src, struct pixmap* dst,
                             ssize_t x, ssize_t y, float scale, bool alpha)
 {
@@ -554,7 +555,7 @@ static void pixmap_scale_aa(enum pixmap_scale scaler, size_t threads,
     pixmap_free(&task_shared.in);
 }
 
-void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
+void pixmap_scale(enum pixmap_aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,
                   bool alpha)
 {
@@ -582,9 +583,4 @@ void pixmap_scale(enum pixmap_scale scaler, const struct pixmap* src,
     } else {
         pixmap_scale_aa(scaler, bthreads, src, dst, x, y, scale, alpha);
     }
-}
-
-ssize_t pixmap_scale_index(const char* name)
-{
-    return str_index(pixmap_scale_names, name, 0);
 }

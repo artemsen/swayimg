@@ -112,10 +112,7 @@ Initial image position, valid modes are:
 .IP "\fBfixed\fR = \fI[yes|no]\fR"
 Fix position of the image on the window surface, \fIyes\fR by default.
 .\" ----------------------------------------------------------------------------
-.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
-Enable or disable anti-aliasing (better quality, slower rendering), \fIno\fR by default.
-.\" ----------------------------------------------------------------------------
-.IP "\fBscale_method\fR = \fIMETHOD\fR"
+.IP "\fBantialiasing\fR = \fIMETHOD\fR"
 Scale method to use when anti-aliasing is enabled, valid choices are:
 .nf
 \fInearest\fR: nearest-neighbor, equivalent to antialiasing = no;
@@ -152,10 +149,7 @@ Fill the entire tile with thumbnail, \fIyes\fR by default.
 .IP "\fBcache\fR = \fISIZE\fR"
 Max number of thumbnails in cache, \fI0\fR for unlimited, \fI100\fR by default.
 .\" ----------------------------------------------------------------------------
-.IP "\fBantialiasing\fR = \fI[yes|no]\fR"
-Use anti-aliasing for thumbnails, \fIno\fR by default.
-.\" ----------------------------------------------------------------------------
-.IP "\fBscale_method\fR = \fIMETHOD\fR"
+.IP "\fBantialiasing\fR = \fIMETHOD\fR"
 Scale method to use when anti-aliasing is enabled, valid choices are:
 .nf
 \fInearest\fR: nearest-neighbor, equivalent to antialiasing = no;
@@ -326,7 +320,7 @@ Predefined names for mouse scroll:
 .IP "\fBflip_vertical\fR: flip image vertically;"
 .IP "\fBflip_horizontal\fR: flip image horizontally;"
 .IP "\fBreload\fR: reset cache and reload current image;"
-.IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
+.IP "\fBantialiasing\fR: switch antialiasing mode;"
 .IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"
@@ -349,7 +343,7 @@ Predefined names for mouse scroll:
 .IP "\fBfullscreen\fR: switch full screen mode;"
 .IP "\fBmode\fR: switch between viewer and gallery;"
 .IP "\fBreload\fR: reset cache and reload current image;"
-.IP "\fBantialiasing\fR: switch antialiasing (bicubic interpolation);"
+.IP "\fBantialiasing\fR: switch antialiasing mode;"
 .IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"

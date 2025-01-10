@@ -52,7 +52,7 @@ void image_rotate(struct image* ctx, size_t angle)
 }
 
 void image_thumbnail(struct image* image, size_t size, bool fill,
-                     enum pixmap_scale scaler)
+                     enum pixmap_aa_mode scaler)
 {
     struct pixmap thumb;
     struct image_frame* frame;

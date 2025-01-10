@@ -24,8 +24,8 @@ protected:
         }
     }
 
-    void ScaleCopy(enum pixmap_scale scaler, const struct pixmap& src, size_t w,
-                   size_t h, float scale, ssize_t x, ssize_t y)
+    void ScaleCopy(enum pixmap_aa_mode scaler, const struct pixmap& src,
+                   size_t w, size_t h, float scale, ssize_t x, ssize_t y)
     {
         struct pixmap full, dst1, dst2;
         pixmap_create(&full, src.width * scale, src.height * scale);

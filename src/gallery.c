@@ -24,12 +24,11 @@ struct thumbnail {
 
 /** Gallery context. */
 struct gallery {
-    size_t thumb_size;              ///< Size of thumbnail
-    size_t thumb_max;               ///< Max number of thumbnails in cache
-    struct thumbnail* thumbs;       ///< List of preview images
-    bool thumb_fill;                ///< Scale mode (fill/fit)
-    bool antialiasing;              ///< Use anti-aliasing for thumbnails
-    enum pixmap_scale scale_method; ///< Scale method for thumbnails
+    size_t thumb_size;           ///< Size of thumbnail
+    size_t thumb_max;            ///< Max number of thumbnails in cache
+    struct thumbnail* thumbs;    ///< List of preview images
+    bool thumb_fill;             ///< Scale mode (fill/fit)
+    enum pixmap_aa_mode aa_mode; ///< Anti-aliasing mode for thumbnails
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -57,8 +56,7 @@ static void add_thumbnail(struct image* image)
         entry->width = image->frames[0].pm.width;
         entry->height = image->frames[0].pm.height;
         entry->image = image;
-        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill,
-                        ctx.antialiasing ? ctx.scale_method : pixmap_nearest);
+        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill, ctx.aa_mode);
         ctx.thumbs = list_append(ctx.thumbs, entry);
     }
 }
@@ -376,9 +374,8 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
             const ssize_t thumb_h = thumb->height * THUMB_SELECTED_SCALE;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            pixmap_scale(ctx.antialiasing ? ctx.scale_method : pixmap_nearest,
-                         thumb, window, tx, ty, THUMB_SELECTED_SCALE,
-                         image->alpha);
+            pixmap_scale(ctx.aa_mode, thumb, window, tx, ty,
+                         THUMB_SELECTED_SCALE, image->alpha);
         }
 
         // shadow
@@ -491,7 +488,11 @@ static void apply_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
-            ctx.antialiasing = !ctx.antialiasing;
+            if (++ctx.aa_mode >= ARRAY_SIZE(pixmap_aa_names)) {
+                ctx.aa_mode = 0;
+            }
+            info_update(info_status, "Anti-aliasing: %s",
+                        pixmap_aa_names[ctx.aa_mode]);
             clear_thumbnails();
             reset_loader();
             app_redraw();
@@ -558,22 +559,13 @@ static void on_image_load(struct image* image, size_t index)
 
 void gallery_init(const struct config* cfg, struct image* image)
 {
-    const char* value;
-    ssize_t index;
-
     ctx.thumb_size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 1024);
     ctx.thumb_max = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 1024);
     ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
 
-    ctx.antialiasing = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_AA);
-    value = config_get(cfg, CFG_GALLERY, CFG_GLRY_AA_METHOD);
-    index = pixmap_scale_index(value);
-    if (index >= 0) {
-        ctx.scale_method = index;
-    } else {
-        ctx.scale_method = pixmap_mks13;
-        config_error_val(CFG_GALLERY, value);
-    }
+    ctx.aa_mode =
+        config_get_oneof(cfg, CFG_GALLERY, CFG_GLRY_AA, pixmap_aa_names,
+                         ARRAY_SIZE(pixmap_aa_names));
 
     ctx.clr_window = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_WINDOW);
     ctx.clr_background = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BKG);

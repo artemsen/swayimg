@@ -43,10 +43,8 @@ scale = optimal
 position = center
 # Fix position of the image on the window surface (yes/no)
 fixed = yes
-# Anti-aliasing (yes/no)
-antialiasing = no
-# Scale method for anti-aliasing (nearest/box/bilinear/bicubic/mks13)
-scale_method = mks13
+# Anti-aliasing mode (none/box/bilinear/bicubic/mks13)
+antialiasing = mks13
 # Run slideshow at startup (yes/no)
 slideshow = no
 # Slideshow image display time (seconds)
@@ -66,10 +64,8 @@ size = 200
 cache = 100
 # Fill the entire tile with thumbnail (yes/no)
 fill = yes
-# Use anti-aliasing for thumbnails (yes/no)
-antialiasing = no
-# Scale method for anti-aliasing (nearest/box/bilinear/bicubic/mks13)
-scale_method = mks13
+# Anti-aliasing mode for thumbnails (none/box/bilinear/bicubic/mks13)
+antialiasing = mks13
 # Background color of the window (RGBA)
 window = #00000000
 # Background color of the tile (RGBA)
