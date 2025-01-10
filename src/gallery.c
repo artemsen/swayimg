@@ -12,29 +12,6 @@
 
 #include <stdlib.h>
 
-// Configuration parameters
-#define CFG_SECTION          "gallery"
-#define CFG_SIZE             "size"
-#define CFG_SIZE_DEF         200
-#define CFG_CACHE            "cache"
-#define CFG_CACHE_DEF        100
-#define CFG_FILL             "fill"
-#define CFG_FILL_DEF         true
-#define CFG_ANTIALIASING     "antialiasing"
-#define CFG_ANTIALIASING_DEF false
-#define CFG_SCALE_METHOD     "scale_method"
-#define CFG_SCALE_METHOD_DEF "mks13"
-#define CFG_WINDOW           "window"
-#define CFG_WINDOW_DEF       ARGB(0, 0, 0, 0)
-#define CFG_BACKGROUND       "background"
-#define CFG_BACKGROUND_DEF   ARGB(0xff, 0x20, 0x20, 0x20)
-#define CFG_SELECT           "select"
-#define CFG_SELECT_DEF       ARGB(0xff, 0x40, 0x40, 0x40)
-#define CFG_BORDER           "border"
-#define CFG_BORDER_DEF       ARGB(0xff, 0, 0, 0)
-#define CFG_SHADOW           "shadow"
-#define CFG_SHADOW_DEF       ARGB(0xff, 0, 0, 0)
-
 // Scale for selected thumbnail
 #define THUMB_SELECTED_SCALE 1.15f
 
@@ -579,39 +556,30 @@ static void on_image_load(struct image* image, size_t index)
     app_redraw();
 }
 
-void gallery_init(struct config* cfg, struct image* image)
+void gallery_init(const struct config* cfg, struct image* image)
 {
     const char* value;
     ssize_t index;
 
-    ctx.thumb_size =
-        config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 1024, CFG_SIZE_DEF);
-    ctx.thumb_max =
-        config_get_num(cfg, CFG_SECTION, CFG_CACHE, 0, 1024, CFG_CACHE_DEF);
-    ctx.thumb_fill = config_get_bool(cfg, CFG_SECTION, CFG_FILL, CFG_FILL_DEF);
+    ctx.thumb_size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 1024);
+    ctx.thumb_max = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 1024);
+    ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
 
-    ctx.antialiasing = config_get_bool(cfg, CFG_SECTION, CFG_ANTIALIASING,
-                                       CFG_ANTIALIASING_DEF);
-    value = config_get_string(cfg, CFG_SECTION, CFG_SCALE_METHOD,
-                              CFG_SCALE_METHOD_DEF);
+    ctx.antialiasing = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_AA);
+    value = config_get(cfg, CFG_GALLERY, CFG_GLRY_AA_METHOD);
     index = pixmap_scale_index(value);
     if (index >= 0) {
         ctx.scale_method = index;
     } else {
         ctx.scale_method = pixmap_mks13;
-        config_error_val(CFG_SECTION, value);
+        config_error_val(CFG_GALLERY, value);
     }
 
-    ctx.clr_window =
-        config_get_color(cfg, CFG_SECTION, CFG_WINDOW, CFG_WINDOW_DEF);
-    ctx.clr_background =
-        config_get_color(cfg, CFG_SECTION, CFG_BACKGROUND, CFG_BACKGROUND_DEF);
-    ctx.clr_select =
-        config_get_color(cfg, CFG_SECTION, CFG_SELECT, CFG_SELECT_DEF);
-    ctx.clr_border =
-        config_get_color(cfg, CFG_SECTION, CFG_BORDER, CFG_BORDER_DEF);
-    ctx.clr_shadow =
-        config_get_color(cfg, CFG_SECTION, CFG_SHADOW, CFG_SHADOW_DEF);
+    ctx.clr_window = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_WINDOW);
+    ctx.clr_background = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BKG);
+    ctx.clr_select = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SELECT);
+    ctx.clr_border = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BORDER);
+    ctx.clr_shadow = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SHADOW);
 
     ctx.top = image_list_first();
     ctx.selected = ctx.top;

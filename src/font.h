@@ -17,7 +17,7 @@ struct text_surface {
  * Initialize global font context.
  * @param cfg config instance
  */
-void font_init(struct config* cfg);
+void font_init(const struct config* cfg);
 
 /**
  * Destroy global font context.

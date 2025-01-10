@@ -7,20 +7,6 @@
 #include "image.h"
 #include "keybind.h"
 
-// Configuration parameters
-#define APP_CFG_SECTION  "general"
-#define APP_CFG_MODE     "mode"
-#define APP_CFG_POSITION "position"
-#define APP_CFG_SIZE     "size"
-#define APP_CFG_SIGUSR1  "sigusr1"
-#define APP_CFG_SIGUSR2  "sigusr2"
-#define APP_CFG_APP_ID   "app_id"
-#define APP_MODE_VIEWER  "viewer"
-#define APP_MODE_GALLERY "gallery"
-#define APP_FROM_PARENT  "parent"
-#define APP_FROM_IMAGE   "image"
-#define APP_FULLSCREEN   "fullscreen"
-
 /**
  * Handler of the fd poll events.
  * @param data user data
@@ -34,7 +20,7 @@ typedef void (*fd_callback)(void* data);
  * @param num number of sources in the list
  * @return true if application initialized successfully
  */
-bool app_init(struct config* cfg, const char** sources, size_t num);
+bool app_init(const struct config* cfg, const char** sources, size_t num);
 
 /**
  * Destroy global application context.

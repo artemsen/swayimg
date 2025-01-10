@@ -12,12 +12,6 @@
 #include <sys/stat.h>
 #include <time.h>
 
-// Default configuration parameters
-#define CFG_ORDER_DEF     "alpha"
-#define CFG_LOOP_DEF      true
-#define CFG_RECURSIVE_DEF false
-#define CFG_ALL_DEF       true
-
 /** Context of the image list (which is actually an array). */
 struct image_list {
     char** sources;        ///< Array of entries
@@ -222,32 +216,17 @@ static void shuffle_list(void)
  * Load config.
  * @param cfg config instance
  */
-static void load_config(struct config* cfg)
+static void load_config(const struct config* cfg)
 {
-    ssize_t index;
-    const char* order;
-
-    // list order
-    ctx.order = order_alpha;
-    order =
-        config_get_string(cfg, IMGLIST_SECTION, IMGLIST_ORDER, CFG_ORDER_DEF);
-    index = str_index(order_names, order, 0);
-    if (index >= 0) {
-        ctx.order = index;
-    } else {
-        config_error_val(IMGLIST_SECTION, IMGLIST_ORDER);
-    }
-
-    // list modes
-    ctx.loop =
-        config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_LOOP, CFG_LOOP_DEF);
-    ctx.recursive = config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_RECURSIVE,
-                                    CFG_RECURSIVE_DEF);
-    ctx.all_files =
-        config_get_bool(cfg, IMGLIST_SECTION, IMGLIST_ALL, CFG_ALL_DEF);
+    ctx.order = config_get_oneof(cfg, CFG_LIST, CFG_LIST_ORDER, order_names,
+                                 ARRAY_SIZE(order_names));
+    ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
+    ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
+    ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
 }
 
-size_t image_list_init(struct config* cfg, const char** sources, size_t num)
+size_t image_list_init(const struct config* cfg, const char** sources,
+                       size_t num)
 {
     struct stat file_stat;
 

@@ -10,19 +10,26 @@ extern "C" {
 
 class Keybind : public ::testing::Test {
 protected:
+    void SetUp() override
+    {
+        unsetenv("XDG_CONFIG_HOME");
+        unsetenv("XDG_CONFIG_DIRS");
+        unsetenv("HOME");
+        config = config_load();
+    }
+
     void TearDown() override
     {
         keybind_destroy();
         config_free(config);
     }
 
-    static constexpr const char* section = "keys.viewer";
-    struct config* config = nullptr;
+    struct config* config;
 };
 
 TEST_F(Keybind, Add)
 {
-    config_set(&config, section, "a", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "a", "exit");
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);
@@ -36,7 +43,7 @@ TEST_F(Keybind, Add)
 
 TEST_F(Keybind, Replace)
 {
-    config_set(&config, section, "Escape", "info");
+    config_set(config, CFG_KEYS_VIEWER, "Escape", "info");
     keybind_init(config);
 
     const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
@@ -49,11 +56,11 @@ TEST_F(Keybind, Replace)
 
 TEST_F(Keybind, Mods)
 {
-    config_set(&config, section, "Ctrl+a", "exit");
-    config_set(&config, section, "Alt+b", "exit");
-    config_set(&config, section, "Shift+c", "exit");
-    config_set(&config, section, "Alt+Ctrl+d", "exit");
-    config_set(&config, section, "Ctrl+Shift+Alt+e", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "Ctrl+a", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "Alt+b", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "Shift+c", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "Alt+Ctrl+d", "exit");
+    config_set(config, CFG_KEYS_VIEWER, "Ctrl+Shift+Alt+e", "exit");
     keybind_init(config);
 
     EXPECT_NE(keybind_find('a', KEYMOD_CTRL), nullptr);
@@ -66,7 +73,7 @@ TEST_F(Keybind, Mods)
 
 TEST_F(Keybind, ActionParams)
 {
-    config_set(&config, section, "a", "status  \t params 1 2 3\t");
+    config_set(config, CFG_KEYS_VIEWER, "a", "status  \t params 1 2 3\t");
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);
@@ -81,7 +88,7 @@ TEST_F(Keybind, ActionParams)
 
 TEST_F(Keybind, Multiaction)
 {
-    config_set(&config, section, "a", "exec cmd;reload;exit");
+    config_set(config, CFG_KEYS_VIEWER, "a", "exec cmd;reload;exit");
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);

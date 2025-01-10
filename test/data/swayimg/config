@@ -1,8 +1,9 @@
 # Swayimg test configuration file.
 
-[test.section]
- spaces 	 =	s p a c e s  
-nospaces=nospaces
-empty=
+[general]
+ mode 	 =	s p a c e s  
+app_id=my_ap_id
+sigusr1=
 
-[empty_section]
+[unknown_section]
+some_param = 1

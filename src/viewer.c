@@ -23,19 +23,6 @@
 #define GRID_COLOR1 0xff333333
 #define GRID_COLOR2 0xff4c4c4c
 
-// Default configuration parameters
-#define CFG_WINDOW_DEF         ARGB(0, 0, 0, 0)
-#define CFG_TRANSPARENCY_DEF   GRID_NAME
-#define CFG_SCALE_DEF          "optimal"
-#define CFG_POSITION_DEF       "center"
-#define CFG_FIXED_DEF          true
-#define CFG_ANTIALIASING_DEF   false
-#define CFG_SCALE_METHOD_DEF   "mks13"
-#define CFG_SLIDESHOW_DEF      false
-#define CFG_SLIDESHOW_TIME_DEF 3
-#define CFG_HISTORY_DEF        1
-#define CFG_PRELOAD_DEF        1
-
 // Scale thresholds
 #define MIN_SCALE 10    // pixels
 #define MAX_SCALE 100.0 // factor
@@ -744,63 +731,42 @@ static void on_drag(int dx, int dy)
     }
 }
 
-void viewer_init(struct config* cfg, struct image* image)
+void viewer_init(const struct config* cfg, struct image* image)
 {
     size_t history;
     size_t preload;
     const char* value;
     ssize_t index;
 
-    ctx.fixed =
-        config_get_bool(cfg, VIEWER_SECTION, VIEWER_FIXED, CFG_FIXED_DEF);
-    ctx.antialiasing = config_get_bool(cfg, VIEWER_SECTION, VIEWER_ANTIALIASING,
-                                       CFG_ANTIALIASING_DEF);
-    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_SCALE_METHOD,
-                              CFG_SCALE_METHOD_DEF);
+    ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
+    ctx.antialiasing = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_AA);
+    value = config_get(cfg, CFG_VIEWER, CFG_VIEW_AA_METHOD);
     index = pixmap_scale_index(value);
     if (index >= 0) {
         ctx.scale_method = index;
     } else {
         ctx.scale_method = pixmap_mks13;
-        config_error_val(VIEWER_SECTION, value);
+        config_error_val(CFG_VIEWER, value);
     }
-    ctx.window_bkg =
-        config_get_color(cfg, VIEWER_SECTION, VIEWER_WINDOW, CFG_WINDOW_DEF);
+    ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
     // background for transparent images
-    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_TRANSPARENCY,
-                              CFG_TRANSPARENCY_DEF);
+    value = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
     if (strcmp(value, GRID_NAME) == 0) {
         ctx.image_bkg = GRID_BKGID;
     } else {
-        ctx.image_bkg = config_get_color(cfg, VIEWER_SECTION,
-                                         VIEWER_TRANSPARENCY, GRID_BKGID);
+        ctx.image_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
     }
 
-    // initial scale
-    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_SCALE, CFG_SCALE_DEF);
-    index = str_index(scale_names, value, 0);
-    if (index >= 0) {
-        ctx.scale_init = index;
-    } else {
-        ctx.scale_init = scale_fit_optimal;
-        config_error_val(VIEWER_SECTION, value);
-    }
-
-    value = config_get_string(cfg, VIEWER_SECTION, VIEWER_POSITION,
-                              CFG_POSITION_DEF);
-    index = str_index(position_names, value, 0);
-    if (index >= 0) {
-        ctx.position = index;
-    } else {
-        ctx.position = position_center;
-    }
+    // initial scale and position
+    ctx.scale_init = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_SCALE,
+                                      scale_names, ARRAY_SIZE(scale_names));
+    ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
+                                    position_names, ARRAY_SIZE(position_names));
 
     // cache and preloads
-    history = config_get_num(cfg, VIEWER_SECTION, VIEWER_HISTORY, 0, 1024,
-                             CFG_HISTORY_DEF);
-    preload = config_get_num(cfg, VIEWER_SECTION, VIEWER_PRELOAD, 0, 1024,
-                             CFG_PRELOAD_DEF);
+    history = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
+    preload = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
 
     // setup animation timer
     ctx.animation_enable = true;
@@ -809,13 +775,10 @@ void viewer_init(struct config* cfg, struct image* image)
     if (ctx.animation_fd != -1) {
         app_watch(ctx.animation_fd, on_animation_timer, NULL);
     }
-
     // setup slideshow timer
-    ctx.slideshow_enable = config_get_bool(cfg, VIEWER_SECTION,
-                                           VIEWER_SLIDESHOW, CFG_SLIDESHOW_DEF);
+    ctx.slideshow_enable = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_SSHOW);
     ctx.slideshow_time =
-        config_get_num(cfg, VIEWER_SECTION, VIEWER_SLIDESHOW_TIME, 1, 86400,
-                       CFG_SLIDESHOW_TIME_DEF);
+        config_get_num(cfg, CFG_VIEWER, CFG_VIEW_SSHOW_TM, 1, 86400);
     ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow_fd != -1) {

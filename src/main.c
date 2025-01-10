@@ -80,7 +80,7 @@ static void print_version(void)
  * @param argv arguments array
  * @return index of the first non option argument
  */
-static int parse_cmdargs(int argc, char* argv[], struct config** cfg)
+static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
 {
     struct option options[1 + ARRAY_SIZE(arguments)];
     char short_opts[ARRAY_SIZE(arguments) * 2];
@@ -108,38 +108,35 @@ static int parse_cmdargs(int argc, char* argv[], struct config** cfg)
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
             case 'g':
-                config_set(cfg, APP_CFG_SECTION, APP_CFG_MODE,
-                           APP_MODE_GALLERY);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_MODE, CFG_MODE_GALLERY);
                 break;
             case 'r':
-                config_set(cfg, IMGLIST_SECTION, IMGLIST_RECURSIVE, "yes");
+                config_set(cfg, CFG_LIST, CFG_LIST_RECURSIVE, CFG_YES);
                 break;
             case 'o':
-                config_set(cfg, IMGLIST_SECTION, IMGLIST_ORDER, optarg);
+                config_set(cfg, CFG_LIST, CFG_LIST_ORDER, optarg);
                 break;
             case 's':
-                config_set(cfg, VIEWER_SECTION, VIEWER_SCALE, optarg);
+                config_set(cfg, CFG_VIEWER, CFG_VIEW_SCALE, optarg);
                 break;
             case 'l':
-                config_set(cfg, VIEWER_SECTION, VIEWER_SLIDESHOW, "yes");
+                config_set(cfg, CFG_VIEWER, CFG_VIEW_SSHOW, CFG_YES);
                 break;
             case 'p':
-                config_set(cfg, APP_CFG_SECTION, APP_CFG_POSITION, optarg);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_POSITION, optarg);
                 break;
             case 'w':
-                config_set(cfg, APP_CFG_SECTION, APP_CFG_SIZE, optarg);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_SIZE, optarg);
                 break;
             case 'f':
-                config_set(cfg, APP_CFG_SECTION, APP_CFG_SIZE, APP_FULLSCREEN);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_SIZE, CFG_FULLSCREEN);
                 break;
             case 'a':
-                config_set(cfg, APP_CFG_SECTION, APP_CFG_APP_ID, optarg);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_APP_ID, optarg);
                 break;
             case 'c':
                 if (!config_set_arg(cfg, optarg)) {
-                    fprintf(stderr,
-                            "WARNING: Invalid config argument: \"%s\"\n",
-                            optarg);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'v':
@@ -170,12 +167,8 @@ int main(int argc, char* argv[])
     setlocale(LC_ALL, "");
 
     cfg = config_load();
-    argn = parse_cmdargs(argc, argv, &cfg);
+    argn = parse_cmdargs(argc, argv, cfg);
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
-
-    if (cfg && rc) {
-        config_check(cfg);
-    }
     config_free(cfg);
 
     if (rc) {

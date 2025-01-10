@@ -6,13 +6,6 @@
 
 #include "config.h"
 
-// Configuration parameters
-#define IMGLIST_SECTION   "list"
-#define IMGLIST_ORDER     "order"
-#define IMGLIST_LOOP      "loop"
-#define IMGLIST_RECURSIVE "recursive"
-#define IMGLIST_ALL       "all"
-
 // Invalid index of the entry
 #define IMGLIST_INVALID SIZE_MAX
 
@@ -31,7 +24,8 @@ enum list_order {
  * @param num number of sources in the list
  * @return size of the image list
  */
-size_t image_list_init(struct config* cfg, const char** sources, size_t num);
+size_t image_list_init(const struct config* cfg, const char** sources,
+                       size_t num);
 
 /**
  * Destroy global image list context.

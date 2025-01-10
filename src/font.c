@@ -12,19 +12,6 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
-// Configuration
-#define CFG_SECTION    "font"
-#define CFG_NAME       "name"
-#define CFG_NAME_DEF   "monospace"
-#define CFG_SIZE       "size"
-#define CFG_SIZE_DEF   14
-#define CFG_COLOR      "color"
-#define CFG_COLOR_DEF  ARGB(0xff, 0xcc, 0xcc, 0xcc)
-#define CFG_BKG        "background"
-#define CFG_BKG_DEF    ARGB(0, 0, 0, 0)
-#define CFG_SHADOW     "shadow"
-#define CFG_SHADOW_DEF ARGB(0xd0, 0, 0, 0)
-
 #define POINT_FACTOR 64.0 // default points per pixel for 26.6 format
 #define SPACE_WH_REL 2.0
 
@@ -133,14 +120,14 @@ static size_t allocate_surface(const wchar_t* text,
     return base_offset;
 }
 
-void font_init(struct config* cfg)
+void font_init(const struct config* cfg)
 {
     char font_file[256];
     const char* font_name;
     size_t font_size;
 
     // load font
-    font_name = config_get_string(cfg, CFG_SECTION, CFG_NAME, CFG_NAME_DEF);
+    font_name = config_get(cfg, CFG_FONT, CFG_FONT_NAME);
     if (!search_font_file(font_name, font_file, sizeof(font_file)) ||
         FT_Init_FreeType(&ctx.lib) != 0 ||
         FT_New_Face(ctx.lib, font_file, 0, &ctx.face) != 0) {
@@ -149,14 +136,13 @@ void font_init(struct config* cfg)
     }
 
     // set font size
-    font_size =
-        config_get_num(cfg, CFG_SECTION, CFG_SIZE, 1, 256, CFG_SIZE_DEF);
+    font_size = config_get_num(cfg, CFG_FONT, CFG_FONT_SIZE, 1, 256);
     FT_Set_Char_Size(ctx.face, font_size * POINT_FACTOR, 0, 96, 0);
 
     // color/background/shadow parameters
-    ctx.color = config_get_color(cfg, CFG_SECTION, CFG_COLOR, CFG_COLOR_DEF);
-    ctx.background = config_get_color(cfg, CFG_SECTION, CFG_BKG, CFG_BKG_DEF);
-    ctx.shadow = config_get_color(cfg, CFG_SECTION, CFG_SHADOW, CFG_SHADOW_DEF);
+    ctx.color = config_get_color(cfg, CFG_FONT, CFG_FONT_COLOR);
+    ctx.background = config_get_color(cfg, CFG_FONT, CFG_FONT_BKG);
+    ctx.shadow = config_get_color(cfg, CFG_FONT, CFG_FONT_SHADOW);
 }
 
 void font_destroy(void)

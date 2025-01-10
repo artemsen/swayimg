@@ -276,28 +276,24 @@ static struct image* load_first_file(size_t index, bool force)
  * Load config.
  * @param cfg config instance
  */
-static void load_config(struct config* cfg)
+static void load_config(const struct config* cfg)
 {
     const char* value;
 
     // startup mode
-    value =
-        config_get_string(cfg, APP_CFG_SECTION, APP_CFG_MODE, APP_MODE_VIEWER);
-    if (strcmp(value, APP_MODE_VIEWER) == 0) {
-        ctx.ehandler = viewer_handle;
-    } else if (strcmp(value, APP_MODE_GALLERY) == 0) {
+    static const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
+    if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
+                         ARRAY_SIZE(modes)) == 1) {
         ctx.ehandler = gallery_handle;
     } else {
         ctx.ehandler = viewer_handle;
-        config_error_val(APP_CFG_SECTION, APP_CFG_MODE);
     }
 
     // initial window position
     ctx.window.x = POS_FROM_PARENT;
     ctx.window.y = POS_FROM_PARENT;
-    value = config_get_string(cfg, APP_CFG_SECTION, APP_CFG_POSITION,
-                              APP_FROM_PARENT);
-    if (strcmp(value, APP_FROM_PARENT) != 0) {
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_POSITION);
+    if (strcmp(value, CFG_FROM_PARENT) != 0) {
         struct str_slice slices[2];
         ssize_t x, y;
         if (str_split(value, ',', slices, 2) == 2 &&
@@ -306,20 +302,19 @@ static void load_config(struct config* cfg)
             ctx.window.x = (ssize_t)x;
             ctx.window.y = (ssize_t)y;
         } else {
-            config_error_val(APP_CFG_SECTION, APP_CFG_POSITION);
+            config_error_val(CFG_GENERAL, CFG_GNRL_POSITION);
         }
     }
 
     // initial window size
-    value =
-        config_get_string(cfg, APP_CFG_SECTION, APP_CFG_SIZE, APP_FROM_PARENT);
-    if (strcmp(value, APP_FROM_PARENT) == 0) {
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIZE);
+    if (strcmp(value, CFG_FROM_PARENT) == 0) {
         ctx.window.width = SIZE_FROM_PARENT;
         ctx.window.height = SIZE_FROM_PARENT;
-    } else if (strcmp(value, APP_FROM_IMAGE) == 0) {
+    } else if (strcmp(value, CFG_FROM_IMAGE) == 0) {
         ctx.window.width = SIZE_FROM_IMAGE;
         ctx.window.height = SIZE_FROM_IMAGE;
-    } else if (strcmp(value, APP_FULLSCREEN) == 0) {
+    } else if (strcmp(value, CFG_FULLSCREEN) == 0) {
         ctx.window.width = SIZE_FULLSCREEN;
         ctx.window.height = SIZE_FULLSCREEN;
     } else {
@@ -334,30 +329,34 @@ static void load_config(struct config* cfg)
         } else {
             ctx.window.width = SIZE_FROM_PARENT;
             ctx.window.height = SIZE_FROM_PARENT;
-            config_error_val(APP_CFG_SECTION, APP_CFG_SIZE);
+            config_error_val(CFG_GENERAL, CFG_GNRL_SIZE);
         }
     }
 
     // signal actions
-    value = config_get(cfg, APP_CFG_SECTION, APP_CFG_SIGUSR1);
-    if (value && !action_create(value, &ctx.sigusr1)) {
-        config_error_val(APP_CFG_SECTION, APP_CFG_SIGUSR1);
-    } else {
-        action_create("reload", &ctx.sigusr1);
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
+    if (!action_create(value, &ctx.sigusr1)) {
+        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR1);
+        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR1);
+        action_create(value, &ctx.sigusr1);
     }
-    value = config_get(cfg, APP_CFG_SECTION, APP_CFG_SIGUSR2);
-    if (value && !action_create(value, &ctx.sigusr2)) {
-        config_error_val(APP_CFG_SECTION, APP_CFG_SIGUSR2);
-    } else {
-        action_create("next_file", &ctx.sigusr2);
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR2);
+    if (!action_create(value, &ctx.sigusr2)) {
+        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR2);
+        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR2);
+        action_create(value, &ctx.sigusr2);
     }
 
     // app id
-    value = config_get_string(cfg, APP_CFG_SECTION, APP_CFG_APP_ID, APP_NAME);
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_APP_ID);
+    if (!*value) {
+        config_error_val(CFG_GENERAL, CFG_GNRL_APP_ID);
+        value = config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID);
+    }
     str_dup(value, &ctx.app_id);
 }
 
-bool app_init(struct config* cfg, const char** sources, size_t num)
+bool app_init(const struct config* cfg, const char** sources, size_t num)
 {
     bool force_load = false;
     struct image* first_image;
@@ -433,8 +432,8 @@ bool app_init(struct config* cfg, const char** sources, size_t num)
 
     // set mode for info
     if (info_enabled()) {
-        info_switch(ctx.ehandler == viewer_handle ? APP_MODE_VIEWER
-                                                  : APP_MODE_GALLERY);
+        info_switch(ctx.ehandler == viewer_handle ? CFG_MODE_VIEWER
+                                                  : CFG_MODE_GALLERY);
     }
 
     // set signal handler
@@ -550,10 +549,10 @@ void app_switch_mode(size_t index)
 
     if (ctx.ehandler == viewer_handle) {
         ctx.ehandler = gallery_handle;
-        info_mode = APP_MODE_GALLERY;
+        info_mode = CFG_MODE_GALLERY;
     } else {
         ctx.ehandler = viewer_handle;
-        info_mode = APP_MODE_VIEWER;
+        info_mode = CFG_MODE_VIEWER;
     }
 
     ctx.ehandler(&event);

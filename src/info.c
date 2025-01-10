@@ -17,16 +17,6 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-// Configuration parameters
-#define CFG_CSECTION     "info"
-#define CFG_VSECTION     "info.viewer"
-#define CFG_GSECTION     "info.gallery"
-#define CFG_SHOW         "show"
-#define CFG_ITIMEOUT     "info_timeout"
-#define CFG_ITIMEOUT_DEF 5
-#define CFG_STIMEOUT     "status_timeout"
-#define CFG_STIMEOUT_DEF 3
-
 /** Display modes. */
 enum info_mode {
     mode_viewer,
@@ -34,8 +24,8 @@ enum info_mode {
     mode_off,
 };
 static const char* mode_names[] = {
-    [mode_viewer] = APP_MODE_VIEWER,
-    [mode_gallery] = APP_MODE_GALLERY,
+    [mode_viewer] = CFG_MODE_VIEWER,
+    [mode_gallery] = CFG_MODE_GALLERY,
     [mode_off] = "off",
 };
 #define MODES_NUM 2
@@ -67,29 +57,11 @@ enum block_position {
 };
 /** Block position names. */
 static const char* position_names[] = {
-    [pos_center] = "center",
-    [pos_top_left] = "top_left",
-    [pos_top_right] = "top_right",
-    [pos_bottom_left] = "bottom_left",
-    [pos_bottom_right] = "bottom_right",
+    [pos_center] = CFG_INFO_CN,       [pos_top_left] = CFG_INFO_TL,
+    [pos_top_right] = CFG_INFO_TR,    [pos_bottom_left] = CFG_INFO_BL,
+    [pos_bottom_right] = CFG_INFO_BR,
 };
 #define POSITION_NUM ARRAY_SIZE(position_names)
-
-// Default configuration
-static const char* default_viewer[] = {
-    [pos_center] = "none",
-    [pos_top_left] = "+name,+format,+filesize,+imagesize,+exif",
-    [pos_top_right] = "index",
-    [pos_bottom_left] = "scale,frame",
-    [pos_bottom_right] = "status",
-};
-static const char* default_gallery[] = {
-    [pos_center] = "none",
-    [pos_top_left] = "none",
-    [pos_top_right] = "none",
-    [pos_bottom_left] = "none",
-    [pos_bottom_right] = "name,status",
-};
 
 // Max number of lines in one positioned block
 #define MAX_LINES (FIELDS_NUM + 10 /* EXIF and duplicates */)
@@ -426,34 +398,30 @@ static bool parse_scheme(const char* config, struct block_scheme* scheme)
     return true;
 }
 
-void info_init(struct config* cfg)
+void info_init(const struct config* cfg)
 {
-    const char** defaults;
-    const char* section;
-    const char* position;
-    const char* format;
-
     for (size_t i = 0; i < MODES_NUM; ++i) {
-        defaults = (i == mode_viewer ? default_viewer : default_gallery);
-        section = (i == mode_viewer ? CFG_VSECTION : CFG_GSECTION);
+        const char* section;
+        section = (i == mode_viewer ? CFG_INFO_VIEWER : CFG_INFO_GALLERY);
         for (size_t j = 0; j < POSITION_NUM; ++j) {
-            position = position_names[j];
-            format = config_get_string(cfg, section, position, defaults[j]);
+            const char* position = position_names[j];
+            const char* format = config_get(cfg, section, position);
             if (!parse_scheme(format, &ctx.scheme[i][j])) {
                 config_error_val(section, format);
-                parse_scheme(defaults[j], &ctx.scheme[i][j]);
+                format = config_get_default(section, position);
+                parse_scheme(format, &ctx.scheme[i][j]);
             }
         }
     }
 
-    ctx.mode = config_get_bool(cfg, CFG_CSECTION, CFG_SHOW, true) ? mode_viewer
-                                                                  : mode_off;
-    ctx.info.timeout = config_get_num(cfg, CFG_CSECTION, CFG_ITIMEOUT, 0, 1024,
-                                      CFG_ITIMEOUT_DEF);
+    ctx.mode =
+        config_get_bool(cfg, CFG_INFO, CFG_INFO_SHOW) ? mode_viewer : mode_off;
+    ctx.info.timeout =
+        config_get_num(cfg, CFG_INFO, CFG_INFO_ITIMEOUT, 0, 1024);
     timeout_init(&ctx.info);
 
-    ctx.status.timeout = config_get_num(cfg, CFG_CSECTION, CFG_STIMEOUT, 0,
-                                        1024, CFG_STIMEOUT_DEF);
+    ctx.status.timeout =
+        config_get_num(cfg, CFG_INFO, CFG_INFO_STIMEOUT, 0, 1024);
     timeout_init(&ctx.status);
 
     font_render("File name:", &ctx.fields[info_file_name].key);

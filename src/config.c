@@ -18,135 +18,139 @@ struct config_default {
     const char* key;
     const char* value;
 };
+// clang-format off
 static const struct config_default defaults[] = {
-    { "general",      "mode",             "viewer"                                   },
-    { "general",      "position",         "parent"                                   },
-    { "general",      "size",             "parent"                                   },
-    { "general",      "sigusr1",          "reload"                                   },
-    { "general",      "sigusr2",          "next_file"                                },
-    { "general",      "app_id",           "swayimg"                                  },
+    { CFG_GENERAL,      CFG_GNRL_MODE,      "viewer"                 },
+    { CFG_GENERAL,      CFG_GNRL_POSITION,  "parent"                 },
+    { CFG_GENERAL,      CFG_GNRL_SIZE,      "parent"                 },
+    { CFG_GENERAL,      CFG_GNRL_SIGUSR1,   "reload"                 },
+    { CFG_GENERAL,      CFG_GNRL_SIGUSR2,   "next_file"              },
+    { CFG_GENERAL,      CFG_GNRL_APP_ID,    "swayimg"                },
 
-    { "viewer",       "window",           "#00000000"                                },
-    { "viewer",       "transparency",     "grid"                                     },
-    { "viewer",       "scale",            "optimal"                                  },
-    { "viewer",       "position",         "center"                                   },
-    { "viewer",       "fixed",            "yes"                                      },
-    { "viewer",       "antialiasing",     "no"                                       },
-    { "viewer",       "scale_method",     "mks13"                                    },
-    { "viewer",       "slideshow",        "no"                                       },
-    { "viewer",       "slideshow_time",   "3"                                        },
-    { "viewer",       "history",          "1"                                        },
-    { "viewer",       "preload",          "1"                                        },
+    { CFG_VIEWER,       CFG_VIEW_WINDOW,    "#00000000"              },
+    { CFG_VIEWER,       CFG_VIEW_TRANSP,    "grid"                   },
+    { CFG_VIEWER,       CFG_VIEW_SCALE,     "optimal"                },
+    { CFG_VIEWER,       CFG_VIEW_POSITION,  "center"                 },
+    { CFG_VIEWER,       CFG_VIEW_FIXED,     CFG_YES                  },
+    { CFG_VIEWER,       CFG_VIEW_AA,        CFG_NO                   },
+    { CFG_VIEWER,       CFG_VIEW_AA_METHOD, "mks13"                  },
+    { CFG_VIEWER,       CFG_VIEW_SSHOW,     CFG_NO                   },
+    { CFG_VIEWER,       CFG_VIEW_SSHOW_TM,  "3"                      },
+    { CFG_VIEWER,       CFG_VIEW_HISTORY,   "1"                      },
+    { CFG_VIEWER,       CFG_VIEW_PRELOAD,   "1"                      },
 
-    { "gallery",      "size",             "200"                                      },
-    { "gallery",      "cache",            "100"                                      },
-    { "gallery",      "fill",             "yes"                                      },
-    { "gallery",      "antialiasing",     "no"                                       },
-    { "gallery",      "scale_method",     "mks13"                                    },
-    { "gallery",      "window",           "#00000000"                                },
-    { "gallery",      "background",       "#202020ff"                                },
-    { "gallery",      "select",           "#404040ff"                                },
-    { "gallery",      "border",           "#000000ff"                                },
-    { "gallery",      "shadow",           "#000000ff"                                },
+    { CFG_GALLERY,      CFG_GLRY_SIZE,      "200"                    },
+    { CFG_GALLERY,      CFG_GLRY_CACHE,     "100"                    },
+    { CFG_GALLERY,      CFG_GLRY_FILL,      CFG_YES                  },
+    { CFG_GALLERY,      CFG_GLRY_AA,        CFG_NO                   },
+    { CFG_GALLERY,      CFG_GLRY_AA_METHOD, "mks13"                  },
+    { CFG_GALLERY,      CFG_GLRY_WINDOW,    "#00000000"              },
+    { CFG_GALLERY,      CFG_GLRY_BKG,       "#202020ff"              },
+    { CFG_GALLERY,      CFG_GLRY_SELECT,    "#404040ff"              },
+    { CFG_GALLERY,      CFG_GLRY_BORDER,    "#000000ff"              },
+    { CFG_GALLERY,      CFG_GLRY_SHADOW,    "#000000ff"              },
 
-    { "list",         "order",            "alpha"                                    },
-    { "list",         "loop",             "yes"                                      },
-    { "list",         "recursive",        "no"                                       },
-    { "list",         "all",              "no"                                       },
+    { CFG_LIST,         CFG_LIST_ORDER,     "alpha"                  },
+    { CFG_LIST,         CFG_LIST_LOOP,      CFG_YES                  },
+    { CFG_LIST,         CFG_LIST_RECURSIVE, CFG_NO                   },
+    { CFG_LIST,         CFG_LIST_ALL,       CFG_NO                   },
 
-    { "font",         "name",             "monospace"                                },
-    { "font",         "size",             "14"                                       },
-    { "font",         "color",            "#ccccccff"                                },
-    { "font",         "shadow",           "#000000d0"                                },
-    { "font",         "background",       "#00000000"                                },
+    { CFG_FONT,         CFG_FONT_NAME,      "monospace"              },
+    { CFG_FONT,         CFG_FONT_SIZE,      "14"                     },
+    { CFG_FONT,         CFG_FONT_COLOR,     "#ccccccff"              },
+    { CFG_FONT,         CFG_FONT_SHADOW,    "#000000d0"              },
+    { CFG_FONT,         CFG_FONT_BKG,       "#00000000"              },
 
-    { "info",         "show",             "yes"                                      },
-    { "info",         "info_timeout",     "5"                                        },
-    { "info",         "status_timeout",   "3"                                        },
+    { CFG_INFO,         CFG_INFO_SHOW,      CFG_YES                  },
+    { CFG_INFO,         CFG_INFO_ITIMEOUT,  "5"                      },
+    { CFG_INFO,         CFG_INFO_STIMEOUT,  "3"                      },
 
-    { "info.viewer",  "top_left",         "+name,+format,+filesize,+imagesize,+exif" },
-    { "info.viewer",  "top_right",        "index"                                    },
-    { "info.viewer",  "bottom_left",      "scale,frame"                              },
-    { "info.viewer",  "bottom_right",     "status"                                   },
+    { CFG_INFO_VIEWER,  CFG_INFO_CN,        "none"                   },
+    { CFG_INFO_VIEWER,  CFG_INFO_TL,        "+name,+format,+filesize,+imagesize,+exif" },
+    { CFG_INFO_VIEWER,  CFG_INFO_TR,        "index"                  },
+    { CFG_INFO_VIEWER,  CFG_INFO_BL,        "scale,frame"            },
+    { CFG_INFO_VIEWER,  CFG_INFO_BR,        "status"                 },
 
-    { "info.gallery", "top_left",         "none"                                     },
-    { "info.gallery", "top_right",        "none"                                     },
-    { "info.gallery", "bottom_left",      "none"                                     },
-    { "info.gallery", "bottom_right",     "name,status"                              },
+    { CFG_INFO_GALLERY, CFG_INFO_CN,        "none"                   },
+    { CFG_INFO_GALLERY, CFG_INFO_TL,        "none"                   },
+    { CFG_INFO_GALLERY, CFG_INFO_TR,        "none"                   },
+    { CFG_INFO_GALLERY, CFG_INFO_BL,        "none"                   },
+    { CFG_INFO_GALLERY, CFG_INFO_BR,        "name,status"            },
 
-    { "keys.viewer",  "F1",               "help"                                     },
-    { "keys.viewer",  "Home",             "first_file"                               },
-    { "keys.viewer",  "End",              "last_file"                                },
-    { "keys.viewer",  "Prior",            "prev_file"                                },
-    { "keys.viewer",  "Next",             "next_file"                                },
-    { "keys.viewer",  "Space",            "next_file"                                },
-    { "keys.viewer",  "Shift+d",          "prev_dir"                                 },
-    { "keys.viewer",  "d",                "next_dir"                                 },
-    { "keys.viewer",  "Shift+r",          "rand_file"                                },
-    { "keys.viewer",  "Shift+o",          "prev_frame"                               },
-    { "keys.viewer",  "o",                "next_frame"                               },
-    { "keys.viewer",  "c",                "skip_file"                                },
-    { "keys.viewer",  "Shift+s",          "slideshow"                                },
-    { "keys.viewer",  "s",                "animation"                                },
-    { "keys.viewer",  "f",                "fullscreen"                               },
-    { "keys.viewer",  "Return",           "mode"                                     },
-    { "keys.viewer",  "Left",             "step_left 10"                             },
-    { "keys.viewer",  "Right",            "step_right 10"                            },
-    { "keys.viewer",  "Up",               "step_up 10"                               },
-    { "keys.viewer",  "Down",             "step_down 10"                             },
-    { "keys.viewer",  "Equal",            "zoom +10"                                 },
-    { "keys.viewer",  "Plus",             "zoom +10"                                 },
-    { "keys.viewer",  "Minus",            "zoom -10"                                 },
-    { "keys.viewer",  "w",                "zoom width"                               },
-    { "keys.viewer",  "Shift+w",          "zoom height"                              },
-    { "keys.viewer",  "z",                "zoom fit"                                 },
-    { "keys.viewer",  "Shift+z",          "zoom fill"                                },
-    { "keys.viewer",  "0",                "zoom real"                                },
-    { "keys.viewer",  "BackSpace",        "zoom optimal"                             },
-    { "keys.viewer",  "bracketleft",      "rotate_left"                              },
-    { "keys.viewer",  "bracketright",     "rotate_right"                             },
-    { "keys.viewer",  "m",                "flip_vertical"                            },
-    { "keys.viewer",  "Shift+m",          "flip_horizontal"                          },
-    { "keys.viewer",  "a",                "antialiasing"                             },
-    { "keys.viewer",  "r",                "reload"                                   },
-    { "keys.viewer",  "i",                "info"                                     },
-    { "keys.viewer",  "Shift+Delete",     "exec rm '%'; skip_file"                   },
-    { "keys.viewer",  "Escape",           "exit"                                     },
-    { "keys.viewer",  "q",                "exit"                                     },
-    { "keys.viewer",  "ScrollLeft",       "step_right 5"                             },
-    { "keys.viewer",  "ScrollRight",      "step_left 5"                              },
-    { "keys.viewer",  "ScrollUp",         "step_up 5"                                },
-    { "keys.viewer",  "ScrollDown",       "step_down 5"                              },
-    { "keys.viewer",  "Ctrl+ScrollUp",    "zoom +10"                                 },
-    { "keys.viewer",  "Ctrl+ScrollDown",  "zoom -10"                                 },
-    { "keys.viewer",  "Shift+ScrollUp",   "prev_file"                                },
-    { "keys.viewer",  "Shift+ScrollDown", "next_file"                                },
-    { "keys.viewer",  "Alt+ScrollUp",     "prev_frame"                               },
-    { "keys.viewer",  "Alt+ScrollDown",   "next_frame"                               },
+    { CFG_KEYS_VIEWER,  "F1",               "help"                   },
+    { CFG_KEYS_VIEWER,  "Home",             "first_file"             },
+    { CFG_KEYS_VIEWER,  "End",              "last_file"              },
+    { CFG_KEYS_VIEWER,  "Prior",            "prev_file"              },
+    { CFG_KEYS_VIEWER,  "Next",             "next_file"              },
+    { CFG_KEYS_VIEWER,  "Space",            "next_file"              },
+    { CFG_KEYS_VIEWER,  "Shift+d",          "prev_dir"               },
+    { CFG_KEYS_VIEWER,  "d",                "next_dir"               },
+    { CFG_KEYS_VIEWER,  "Shift+r",          "rand_file"              },
+    { CFG_KEYS_VIEWER,  "Shift+o",          "prev_frame"             },
+    { CFG_KEYS_VIEWER,  "o",                "next_frame"             },
+    { CFG_KEYS_VIEWER,  "c",                "skip_file"              },
+    { CFG_KEYS_VIEWER,  "Shift+s",          "slideshow"              },
+    { CFG_KEYS_VIEWER,  "s",                "animation"              },
+    { CFG_KEYS_VIEWER,  "f",                "fullscreen"             },
+    { CFG_KEYS_VIEWER,  "Return",           "mode"                   },
+    { CFG_KEYS_VIEWER,  "Left",             "step_left 10"           },
+    { CFG_KEYS_VIEWER,  "Right",            "step_right 10"          },
+    { CFG_KEYS_VIEWER,  "Up",               "step_up 10"             },
+    { CFG_KEYS_VIEWER,  "Down",             "step_down 10"           },
+    { CFG_KEYS_VIEWER,  "Equal",            "zoom +10"               },
+    { CFG_KEYS_VIEWER,  "Plus",             "zoom +10"               },
+    { CFG_KEYS_VIEWER,  "Minus",            "zoom -10"               },
+    { CFG_KEYS_VIEWER,  "w",                "zoom width"             },
+    { CFG_KEYS_VIEWER,  "Shift+w",          "zoom height"            },
+    { CFG_KEYS_VIEWER,  "z",                "zoom fit"               },
+    { CFG_KEYS_VIEWER,  "Shift+z",          "zoom fill"              },
+    { CFG_KEYS_VIEWER,  "0",                "zoom real"              },
+    { CFG_KEYS_VIEWER,  "BackSpace",        "zoom optimal"           },
+    { CFG_KEYS_VIEWER,  "bracketleft",      "rotate_left"            },
+    { CFG_KEYS_VIEWER,  "bracketright",     "rotate_right"           },
+    { CFG_KEYS_VIEWER,  "m",                "flip_vertical"          },
+    { CFG_KEYS_VIEWER,  "Shift+m",          "flip_horizontal"        },
+    { CFG_KEYS_VIEWER,  "a",                "antialiasing"           },
+    { CFG_KEYS_VIEWER,  "r",                "reload"                 },
+    { CFG_KEYS_VIEWER,  "i",                "info"                   },
+    { CFG_KEYS_VIEWER,  "Shift+Delete",     "exec rm '%'; skip_file" },
+    { CFG_KEYS_VIEWER,  "Escape",           "exit"                   },
+    { CFG_KEYS_VIEWER,  "q",                "exit"                   },
+    { CFG_KEYS_VIEWER,  "ScrollLeft",       "step_right 5"           },
+    { CFG_KEYS_VIEWER,  "ScrollRight",      "step_left 5"            },
+    { CFG_KEYS_VIEWER,  "ScrollUp",         "step_up 5"              },
+    { CFG_KEYS_VIEWER,  "ScrollDown",       "step_down 5"            },
+    { CFG_KEYS_VIEWER,  "Ctrl+ScrollUp",    "zoom +10"               },
+    { CFG_KEYS_VIEWER,  "Ctrl+ScrollDown",  "zoom -10"               },
+    { CFG_KEYS_VIEWER,  "Shift+ScrollUp",   "prev_file"              },
+    { CFG_KEYS_VIEWER,  "Shift+ScrollDown", "next_file"              },
+    { CFG_KEYS_VIEWER,  "Alt+ScrollUp",     "prev_frame"             },
+    { CFG_KEYS_VIEWER,  "Alt+ScrollDown",   "next_frame"             },
 
-    { "keys.gallery", "F1",               "help"                                     },
-    { "keys.gallery", "Home",             "first_file"                               },
-    { "keys.gallery", "End",              "last_file"                                },
-    { "keys.gallery", "Left",             "step_left"                                },
-    { "keys.gallery", "Right",            "step_right"                               },
-    { "keys.gallery", "Up",               "step_up"                                  },
-    { "keys.gallery", "Down",             "step_down"                                },
-    { "keys.gallery", "Prior",            "page_up"                                  },
-    { "keys.gallery", "Next",             "page_down"                                },
-    { "keys.gallery", "c",                "skip_file"                                },
-    { "keys.gallery", "f",                "fullscreen"                               },
-    { "keys.gallery", "Return",           "mode"                                     },
-    { "keys.gallery", "a",                "antialiasing"                             },
-    { "keys.gallery", "r",                "reload"                                   },
-    { "keys.gallery", "i",                "info"                                     },
-    { "keys.gallery", "Shift+Delete",     "exec rm '%'; skip_file"                   },
-    { "keys.gallery", "Escape",           "exit"                                     },
-    { "keys.gallery", "q",                "exit"                                     },
-    { "keys.gallery", "ScrollLeft",       "step_right"                               },
-    { "keys.gallery", "ScrollRight",      "step_left"                                },
-    { "keys.gallery", "ScrollUp",         "step_up"                                  },
-    { "keys.gallery", "ScrollDown",       "step_down"                                },
+    { CFG_KEYS_GALLERY, "F1",               "help"                   },
+    { CFG_KEYS_GALLERY, "Home",             "first_file"             },
+    { CFG_KEYS_GALLERY, "End",              "last_file"              },
+    { CFG_KEYS_GALLERY, "Left",             "step_left"              },
+    { CFG_KEYS_GALLERY, "Right",            "step_right"             },
+    { CFG_KEYS_GALLERY, "Up",               "step_up"                },
+    { CFG_KEYS_GALLERY, "Down",             "step_down"              },
+    { CFG_KEYS_GALLERY, "Prior",            "page_up"                },
+    { CFG_KEYS_GALLERY, "Next",             "page_down"              },
+    { CFG_KEYS_GALLERY, "c",                "skip_file"              },
+    { CFG_KEYS_GALLERY, "f",                "fullscreen"             },
+    { CFG_KEYS_GALLERY, "Return",           "mode"                   },
+    { CFG_KEYS_GALLERY, "a",                "antialiasing"           },
+    { CFG_KEYS_GALLERY, "r",                "reload"                 },
+    { CFG_KEYS_GALLERY, "i",                "info"                   },
+    { CFG_KEYS_GALLERY, "Shift+Delete",     "exec rm '%'; skip_file" },
+    { CFG_KEYS_GALLERY, "Escape",           "exit"                   },
+    { CFG_KEYS_GALLERY, "q",                "exit"                   },
+    { CFG_KEYS_GALLERY, "ScrollLeft",       "step_right"             },
+    { CFG_KEYS_GALLERY, "ScrollRight",      "step_left"              },
+    { CFG_KEYS_GALLERY, "ScrollUp",         "step_up"                },
+    { CFG_KEYS_GALLERY, "ScrollDown",       "step_down"              },
 };
+// clang-format on
 
 /** Config file location. */
 struct location {
@@ -160,44 +164,6 @@ static const struct location config_locations[] = {
     { "XDG_CONFIG_DIRS", "/swayimg/config"         },
     { NULL,              "/etc/xdg/swayimg/config" }
 };
-
-/**
- * Create key/value entry.
- * @param key,value config param
- * @return key/value entry
- */
-static struct config_keyval* create_keyval(const char* key, const char* value)
-{
-    const size_t key_sz = strlen(key) + 1 /*last null*/;
-    const size_t value_sz = strlen(value) + 1 /*last null*/;
-
-    struct config_keyval* kv =
-        calloc(1, sizeof(struct config_keyval) + key_sz + value_sz);
-    if (kv) {
-        kv->key = (char*)kv + sizeof(struct config_keyval);
-        memcpy(kv->key, key, key_sz);
-        kv->value = (char*)kv + sizeof(struct config_keyval) + key_sz;
-        memcpy(kv->value, value, value_sz);
-    }
-
-    return kv;
-}
-
-/**
- * Get section entry.
- * @param cfg config instance
- * @param name section name
- * @return pointer to section entry or NULL if not found
- */
-static struct config* get_section(struct config* cfg, const char* name)
-{
-    list_for_each(cfg, struct config, it) {
-        if (strcmp(name, it->name) == 0) {
-            return it;
-        }
-    }
-    return NULL;
-}
 
 /**
  * Expand path from environment variable.
@@ -237,10 +203,11 @@ static char* expand_path(const char* prefix_env, const char* postfix)
 
 /**
  * Load configuration from a file.
+ * @param cfg config instance
  * @param path full path to the file
- * @return loaded config instance or NULL on errors
+ * @return false on errors
  */
-static bool load(const char* path, struct config** cfg)
+static bool load(struct config* cfg, const char* path)
 {
     FILE* fd = NULL;
     char* buff = NULL;
@@ -331,21 +298,129 @@ static bool load(const char* path, struct config** cfg)
     return true;
 }
 
+/**
+ * Create key/value entry.
+ * @param key,value config param
+ * @return key/value entry
+ */
+static struct config_keyval* create_keyval(const char* key, const char* value)
+{
+    const size_t key_sz = strlen(key) + 1 /*last null*/;
+    const size_t value_sz = strlen(value) + 1 /*last null*/;
+
+    struct config_keyval* kv =
+        calloc(1, sizeof(struct config_keyval) + key_sz + value_sz);
+    if (kv) {
+        kv->key = (char*)kv + sizeof(struct config_keyval);
+        memcpy(kv->key, key, key_sz);
+        kv->value = (char*)kv + sizeof(struct config_keyval) + key_sz;
+        memcpy(kv->value, value, value_sz);
+    }
+
+    return kv;
+}
+
+/**
+ * Create section in the config instance.
+ * @param cfg config instance
+ * @param name section name
+ */
+static void create_section(struct config** cfg, const char* name)
+{
+    const size_t sz = strlen(name) + 1 /*last null*/;
+    struct config* section = calloc(1, sizeof(struct config) + sz);
+    if (section) {
+        section->name = (char*)section + sizeof(struct config);
+        memcpy(section->name, name, sz);
+        *cfg = list_add(*cfg, section);
+    }
+}
+
+/**
+ * Convert text value to boolean config.
+ * @param text source config value
+ * @param value parsed value
+ * @param false if text has invalid format
+ */
+static bool text_to_bool(const char* text, bool* value)
+{
+    if (strcmp(text, CFG_YES) == 0) {
+        *value = true;
+    } else if (strcmp(text, CFG_NO) == 0) {
+        *value = false;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Convert text value to color.
+ * @param text source config value
+ * @param value parsed value
+ * @param false if text has invalid format
+ */
+static bool text_to_color(const char* text, argb_t* value)
+{
+    char* endptr;
+    argb_t color;
+
+    while (*text == '#' || isspace(*text)) {
+        ++text;
+    }
+
+    errno = 0;
+
+    color = strtoull(text, &endptr, 16);
+
+    if (endptr && !*endptr && errno == 0) {
+        if (strlen(text) > 6) { // value with alpha (RRGGBBAA)
+            color = (color >> 8) | ARGB_SET_A(color);
+        } else {
+            color |= ARGB_SET_A(0xff);
+        }
+        *value = color;
+        return true;
+    }
+
+    return false;
+}
+
 struct config* config_load(void)
 {
     struct config* cfg = NULL;
 
-    // set defaults
+    // create sections
+    create_section(&cfg, CFG_GENERAL);
+    create_section(&cfg, CFG_VIEWER);
+    create_section(&cfg, CFG_GALLERY);
+    create_section(&cfg, CFG_LIST);
+    create_section(&cfg, CFG_FONT);
+    create_section(&cfg, CFG_INFO);
+    create_section(&cfg, CFG_INFO_VIEWER);
+    create_section(&cfg, CFG_INFO_GALLERY);
+    create_section(&cfg, CFG_KEYS_VIEWER);
+    create_section(&cfg, CFG_KEYS_GALLERY);
+
+    // load default config
     for (size_t i = 0; i < ARRAY_SIZE(defaults); ++i) {
         const struct config_default* def = &defaults[i];
-        config_set(&cfg, def->section, def->key, def->value);
+        list_for_each(cfg, struct config, section) {
+            if (strcmp(def->section, section->name) == 0) {
+                struct config_keyval* kv = create_keyval(def->key, def->value);
+                if (kv) {
+                    section->params = list_add(section->params, kv);
+                }
+                break;
+            }
+        }
     }
 
     // find and load first available config file
     for (size_t i = 0; i < ARRAY_SIZE(config_locations); ++i) {
         const struct location* cl = &config_locations[i];
         char* path = expand_path(cl->prefix, cl->postfix);
-        const bool loaded = path && load(path, &cfg);
+        const bool loaded = path && load(cfg, path);
         free(path);
         if (loaded) {
             break;
@@ -357,7 +432,6 @@ struct config* config_load(void)
 
 void config_free(struct config* cfg)
 {
-    // free resources
     list_for_each(cfg, struct config, section) {
         list_for_each(section->params, struct config_keyval, kv) {
             free(kv);
@@ -366,56 +440,65 @@ void config_free(struct config* cfg)
     }
 }
 
-void config_check(struct config* cfg)
-{
-    // sanity checker: all config parameters should be read
-    list_for_each(cfg, struct config, section) {
-        list_for_each(section->params, struct config_keyval, kv) {
-            if (!kv->used) {
-                fprintf(stderr,
-                        "WARNING: Unknown config parameter \"%s = %s\" in "
-                        "section \"%s\"\n",
-                        kv->key, kv->value, section->name);
-            }
-        }
-    }
-}
-
-void config_set(struct config** cfg, const char* section, const char* key,
+bool config_set(struct config* cfg, const char* section, const char* key,
                 const char* value)
 {
-    struct config_keyval* kv;
-    struct config* cs;
+    struct config_keyval* kv = NULL;
+    struct config* cs = NULL;
 
-    cs = get_section(*cfg, section);
-    if (!cs) {
-        // add new section
-        const size_t sz = strlen(section) + 1 /*last null*/;
-        cs = calloc(1, sizeof(struct config) + sz);
-        if (!cs) {
-            return;
+    if (!value || !*value) {
+        fprintf(stderr,
+                "WARNING: Empty config value for key \"%s\" in section \"%s\" "
+                "is not alowed\n",
+                key, section);
+        return false;
+    }
+
+    // search for config section
+    list_for_each(cfg, struct config, it) {
+        if (strcmp(section, it->name) == 0) {
+            cs = it;
+            break;
         }
-        cs->name = (char*)cs + sizeof(struct config);
-        memcpy(cs->name, section, sz);
-        *cfg = list_add(*cfg, cs);
-    } else {
-        // remove existing entry
-        list_for_each(cs->params, struct config_keyval, it) {
-            if (strcmp(key, it->key) == 0) {
-                cs->params = list_remove(it);
-                free(it);
-                break;
-            }
+    }
+    if (!cs) {
+        fprintf(stderr, "WARNING: Unknown config section \"%s\"\n", section);
+        return false;
+    }
+
+    // search for existing key/value
+    list_for_each(cs->params, struct config_keyval, it) {
+        if (strcmp(key, it->key) == 0) {
+            kv = it;
+            break;
         }
     }
 
+    // check if config key is valid for the current section
+    if (strcmp(section, CFG_KEYS_VIEWER) != 0 &&
+        strcmp(section, CFG_KEYS_GALLERY) != 0 && !kv) {
+        fprintf(stderr,
+                "WARNING: Unknown config key \"%s\" in section \"%s\"\n", key,
+                section);
+        return false;
+    }
+
+    // remove existing key/value
+    if (kv) {
+        cs->params = list_remove(kv);
+        free(kv);
+    }
+
+    // add new key/value
     kv = create_keyval(key, value);
     if (kv) {
         cs->params = list_add(cs->params, kv);
     }
+
+    return true;
 }
 
-bool config_set_arg(struct config** cfg, const char* arg)
+bool config_set_arg(struct config* cfg, const char* arg)
 {
     char section[32];
     char key[32];
@@ -426,6 +509,8 @@ bool config_set_arg(struct config** cfg, const char* arg)
     // split section.key and value
     size = str_split(arg, '=', slices, ARRAY_SIZE(slices));
     if (size <= 1) {
+        fprintf(stderr, "WARNING: Invalid config argument format: \"%s\"\n",
+                arg);
         return false;
     }
 
@@ -433,6 +518,8 @@ bool config_set_arg(struct config** cfg, const char* arg)
     ptr = slices[0].value + slices[0].len;
     while (*ptr != '.') {
         if (--ptr < arg) {
+            fprintf(stderr, "WARNING: Invalid config argument format: \"%s\"\n",
+                    arg);
             return false;
         }
     }
@@ -454,107 +541,132 @@ bool config_set_arg(struct config** cfg, const char* arg)
     memcpy(key, ptr, size);
     key[size] = 0;
 
-    config_set(cfg, section, key, slices[1].value);
-
-    return true;
+    return config_set(cfg, section, key, slices[1].value);
 }
 
-const char* config_get(struct config* cfg, const char* section, const char* key)
+const char* config_get_default(const char* section, const char* key)
 {
-    struct config* cs = get_section(cfg, section);
+    for (size_t i = 0; i < ARRAY_SIZE(defaults); ++i) {
+        const struct config_default* def = &defaults[i];
+        if (strcmp(section, def->section) == 0 && strcmp(key, def->key) == 0) {
+            return def->value;
+        }
+    }
 
-    if (cs) {
-        list_for_each(cs->params, struct config_keyval, it) {
-            if (strcmp(key, it->key) == 0) {
-                it->used = true;
-                return it->value;
+    fprintf(
+        stderr,
+        "WARNING: Default value for key \"%s\" in section \"%s\" not found\n",
+        key, section);
+    return "";
+}
+
+const char* config_get(const struct config* cfg, const char* section,
+                       const char* key)
+{
+    list_for_each(cfg, const struct config, cs) {
+        if (strcmp(section, cs->name) == 0) {
+            list_for_each(cs->params, const struct config_keyval, kv) {
+                if (strcmp(key, kv->key) == 0) {
+                    const char* value = kv->value;
+                    if (!*kv->value) {
+                        value = config_get_default(section, key);
+                        fprintf(stderr,
+                                "WARNING: "
+                                "Empty value for the key \"%s\" in section "
+                                "\"%s\" is not allowed, "
+                                "the default value \"%s\" will be used\n",
+                                key, section, value);
+                    }
+                    return value;
+                }
             }
         }
     }
 
-    return NULL;
+    fprintf(stderr,
+            "WARNING: Value for key \"%s\" in section \"%s\" not found\n", key,
+            section);
+    return "";
 }
 
-const char* config_get_string(struct config* cfg, const char* section,
-                              const char* key, const char* fallback)
+ssize_t config_get_oneof(const struct config* cfg, const char* section,
+                         const char* key, const char** array, size_t array_sz)
 {
     const char* value = config_get(cfg, section, key);
-    return value ? value : fallback;
-}
+    ssize_t index = str_search_index(array, array_sz, value, 0);
 
-bool config_get_bool(struct config* cfg, const char* section, const char* key,
-                     bool fallback)
-{
-    const char* value = config_get(cfg, section, key);
-
-    if (value) {
-        if (strcmp(value, "yes") == 0 || strcmp(value, "true") == 0) {
-            return true;
-        } else if (strcmp(value, "no") == 0 || strcmp(value, "false") == 0) {
-            return false;
-        } else {
-            fprintf(stderr,
-                    "WARNING: "
-                    "Invalid config value \"%s = %s\" in section \"%s\": "
-                    "expected \"yes\" or \"no\"\n",
-                    key, value, section);
+    if (index == -1) {
+        fprintf(stderr,
+                "WARNING: "
+                "Invalid config value \"%s = %s\" in section \"%s\": "
+                "expected one of: ",
+                key, value, section);
+        for (size_t i = 0; i < array_sz; ++i) {
+            fprintf(stderr, "%s, ", array[i]);
         }
+        value = config_get_default(section, key);
+        fprintf(stderr, "the default value \"%s\" will be used\n", value);
+        index = str_search_index(array, array_sz, value, 0);
     }
 
-    return fallback;
+    return index >= 0 ? index : 0;
 }
 
-ssize_t config_get_num(struct config* cfg, const char* section, const char* key,
-                       ssize_t min_val, ssize_t max_val, ssize_t fallback)
+bool config_get_bool(const struct config* cfg, const char* section,
+                     const char* key)
 {
+    bool boolean = false;
     const char* value = config_get(cfg, section, key);
 
-    if (value) {
-        ssize_t num;
-        if (str_to_num(value, 0, &num, 0) && num >= min_val && num <= max_val) {
-            return num;
-        } else {
-            fprintf(stderr,
-                    "WARNING: "
-                    "Invalid config value \"%s = %s\" in section \"%s\": "
-                    "expected integer in range %zd-%zd\n",
-                    key, value, section, min_val, max_val);
-        }
+    if (!text_to_bool(value, &boolean)) {
+        text_to_bool(config_get_default(section, key), &boolean);
+        fprintf(stderr,
+                "WARNING: "
+                "Invalid config value \"%s = %s\" in section \"%s\": "
+                "expected \"" CFG_YES "\" or \"" CFG_NO "\", "
+                "the default value \"%s\" will be used\n",
+                key, value, section, boolean ? CFG_YES : CFG_NO);
     }
 
-    return fallback;
+    return boolean;
 }
 
-argb_t config_get_color(struct config* cfg, const char* section,
-                        const char* key, argb_t fallback)
+ssize_t config_get_num(const struct config* cfg, const char* section,
+                       const char* key, ssize_t min_val, ssize_t max_val)
 {
+    ssize_t num = 0;
     const char* value = config_get(cfg, section, key);
 
-    if (value) {
-        char* endptr;
-        argb_t color;
-        while (*value == '#' || isspace(*value)) {
-            ++value;
-        }
-        errno = 0;
-        color = strtoull(value, &endptr, 16);
-        if (endptr && !*endptr && errno == 0) {
-            if (strlen(value) > 6) { // value with alpha (RRGGBBAA)
-                color = (color >> 8) | ARGB_SET_A(color);
-            } else {
-                color |= ARGB_SET_A(0xff);
-            }
-            return color;
-        } else {
-            fprintf(stderr,
-                    "WARNING: "
-                    "Invalid color value \"%s = %s\" in section \"%s\": "
-                    "expected RGB(A) format, e.g. #11223344\n",
-                    key, value, section);
-        }
+    if (!str_to_num(value, 0, &num, 0) || num < min_val || num > max_val) {
+        str_to_num(config_get_default(section, key), 0, &num, 0);
+        fprintf(stderr,
+                "WARNING: "
+                "Invalid config value \"%s = %s\" in section \"%s\": "
+                "expected integer in range %zd-%zd, "
+                "the default value %zd will be used\n",
+                key, value, section, min_val, max_val, num);
     }
 
-    return fallback;
+    return num;
+}
+
+argb_t config_get_color(const struct config* cfg, const char* section,
+                        const char* key)
+{
+    argb_t color = 0;
+    const char* value = config_get(cfg, section, key);
+
+    if (!text_to_color(value, &color)) {
+        text_to_color(config_get_default(section, key), &color);
+        fprintf(stderr,
+                "WARNING: "
+                "Invalid color value \"%s = %s\" in section \"%s\": "
+                "expected RGB(A) format (e.g. #11223344), "
+                "the default value #%08x will be used\n",
+                key, value, section, color);
+    }
+
+    return color;
 }
 
 void config_error_key(const char* section, const char* key)

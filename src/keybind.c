@@ -177,17 +177,15 @@ static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
  * @param section name of the section
  * @param value actions
  */
-static void load_binding(struct keybind** head, struct config* cfg,
+static void load_binding(struct keybind** head, const struct config* cfg,
                          const char* section)
 {
-    list_for_each(cfg, struct config, cs) {
+    list_for_each(cfg, const struct config, cs) {
         if (strcmp(section, cs->name) == 0) {
-            list_for_each(cs->params, struct config_keyval, kv) {
+            list_for_each(cs->params, const struct config_keyval, kv) {
                 struct action_seq actions = { 0 };
                 xkb_keysym_t keysym;
                 uint8_t mods;
-
-                kv->used = true;
 
                 // parse keyboard shortcut
                 if (!parse_keymod(kv->key, &keysym, &mods)) {
@@ -207,10 +205,10 @@ static void load_binding(struct keybind** head, struct config* cfg,
     }
 }
 
-void keybind_init(struct config* cfg)
+void keybind_init(const struct config* cfg)
 {
-    load_binding(&kb_viewer, cfg, "keys.viewer");
-    load_binding(&kb_gallery, cfg, "keys.gallery");
+    load_binding(&kb_viewer, cfg, CFG_KEYS_VIEWER);
+    load_binding(&kb_gallery, cfg, CFG_KEYS_GALLERY);
 }
 
 void keybind_destroy(void)

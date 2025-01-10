@@ -25,7 +25,7 @@ enum info_field {
  * Initialize global info context.
  * @param cfg config instance
  */
-void info_init(struct config* cfg);
+void info_init(const struct config* cfg);
 
 /**
  * Destroy global info context.

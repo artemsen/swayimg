@@ -12,7 +12,7 @@
  * @param cfg config instance
  * @param image initial image to open
  */
-void gallery_init(struct config* cfg, struct image* image);
+void gallery_init(const struct config* cfg, struct image* image);
 
 /**
  * Destroy global gallery context.

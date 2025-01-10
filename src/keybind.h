@@ -38,7 +38,7 @@ struct keybind {
  * Initialize global default key binding scheme.
  * @param cfg config instance
  */
-void keybind_init(struct config* cfg);
+void keybind_init(const struct config* cfg);
 
 /**
  * Destroy global key binding scheme.

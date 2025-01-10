@@ -8,26 +8,12 @@
 #include "event.h"
 #include "image.h"
 
-// Configuration parameters
-#define VIEWER_SECTION        "viewer"
-#define VIEWER_WINDOW         "window"
-#define VIEWER_TRANSPARENCY   "transparency"
-#define VIEWER_SCALE          "scale"
-#define VIEWER_POSITION       "position"
-#define VIEWER_FIXED          "fixed"
-#define VIEWER_ANTIALIASING   "antialiasing"
-#define VIEWER_SCALE_METHOD   "scale_method"
-#define VIEWER_SLIDESHOW      "slideshow"
-#define VIEWER_SLIDESHOW_TIME "slideshow_time"
-#define VIEWER_HISTORY        "history"
-#define VIEWER_PRELOAD        "preload"
-
 /**
  * Initialize global viewer context.
  * @param cfg config instance
  * @param image initial image to open
  */
-void viewer_init(struct config* cfg, struct image* image);
+void viewer_init(const struct config* cfg, struct image* image);
 
 /**
  * Destroy global viewer context.
