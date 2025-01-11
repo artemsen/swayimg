@@ -89,6 +89,9 @@ TEST_LOADER(svg);
 #ifdef HAVE_LIBTIFF
 TEST_LOADER(tiff);
 #endif
+#ifdef HAVE_LIBSIXEL
+TEST_LOADER(six);
+#endif
 #ifdef HAVE_LIBWEBP
 TEST_LOADER(webp);
 #endif

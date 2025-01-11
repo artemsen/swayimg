@@ -60,6 +60,9 @@ const char* supported_formats = "bmp, pnm, farbfeld, tga"
 #ifdef HAVE_LIBTIFF
                                 ", tiff"
 #endif
+#ifdef HAVE_LIBSIXEL
+                                ", sixel"
+#endif
 #ifdef HAVE_LIBDICOM
                                 ", dicom"
 #endif
@@ -98,6 +101,9 @@ LOADER_DECLARE(svg);
 #endif
 #ifdef HAVE_LIBTIFF
 LOADER_DECLARE(tiff);
+#endif
+#ifdef HAVE_LIBSIXEL
+LOADER_DECLARE(sixel);
 #endif
 #ifdef HAVE_LIBWEBP
 LOADER_DECLARE(webp);
@@ -138,6 +144,9 @@ static const image_decoder decoders[] = {
 #endif
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),
+#endif
+#ifdef HAVE_LIBSIXEL
+    &LOADER_FUNCTION(sixel),
 #endif
     &LOADER_FUNCTION(qoi),
     &LOADER_FUNCTION(farbfeld),

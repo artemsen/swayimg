@@ -37,6 +37,7 @@ jobs:
         -D jpeg=enabled
         -D jxl=auto
         -D svg=enabled
+        -D sixel=enabled
         -D webp=enabled
         -D man=true
         -D desktop=true

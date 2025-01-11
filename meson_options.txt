@@ -35,6 +35,10 @@ option('tiff',
        type: 'feature',
        value: 'auto',
        description: 'Enable TIFF format support')
+option('sixel',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable Sixel format support')
 option('webp',
        type: 'feature',
        value: 'auto',

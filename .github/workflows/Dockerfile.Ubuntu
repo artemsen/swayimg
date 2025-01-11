@@ -18,6 +18,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libopenexr-dev \
     libopenexr-dev \
     librsvg2-dev \
+    libsixel-dev \
     libtiff-dev \
     libwayland-dev \
     libwebp-dev \

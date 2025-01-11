@@ -10,6 +10,7 @@ RUN apk add \
     libjpeg-turbo-dev \
     libjxl-dev \
     librsvg-dev \
+    libsixel-dev \
     libwebp-dev \
     libxkbcommon-dev \
     meson \
