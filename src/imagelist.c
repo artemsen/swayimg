@@ -7,10 +7,12 @@
 #include "loader.h"
 
 #include <dirent.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 /** Context of the image list (which is actually an array). */
 struct image_list {
@@ -35,14 +37,81 @@ static const char* order_names[] = {
 };
 
 /**
+ * Get absolute path from relative source.
+ * @param source relative file path
+ * @return absolute path, the caller should free the buffer
+ */
+static char* absolute_path(const char* source)
+{
+    char* abs_path = NULL;
+    char path[PATH_MAX];
+    struct str_slice dirs[1024];
+    size_t len;
+
+    if (strcmp(source, LDRSRC_STDIN) == 0 ||
+        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        return str_dup(source, NULL);
+    }
+
+    if (*source != '/') {
+        // relative to the current dir
+        if (!getcwd(path, sizeof(path) - 1)) {
+            return str_dup(source, NULL);
+        }
+        len = strlen(path);
+        if (path[len] != '/') {
+            path[len++] = '/';
+        }
+        strncpy(path + len, source, sizeof(path) - len - 1);
+    }
+
+    // split by component
+    len = str_split(path, '/', dirs, ARRAY_SIZE(dirs));
+
+    // remove "/../" and "/./"
+    for (size_t i = 0; i < len; ++i) {
+        if (dirs[i].len == 1 && dirs[i].value[0] == '.') {
+            dirs[i].len = 0;
+        } else if (dirs[i].len == 2 && dirs[i].value[0] == '.' &&
+                   dirs[i].value[1] == '.') {
+            dirs[i].len = 0;
+            for (ssize_t j = (ssize_t)i - 1; j >= 0; --j) {
+                if (dirs[j].len != 0) {
+                    dirs[j].len = 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    // collect to the absolute path
+    str_append("/", 1, &abs_path);
+    for (size_t i = 0; i < len; ++i) {
+        if (dirs[i].len) {
+            str_append(dirs[i].value, dirs[i].len, &abs_path);
+            if (i < len - 1) {
+                str_append("/", 1, &abs_path);
+            }
+        }
+    }
+
+    return abs_path;
+}
+
+/**
  * Add new entry to the list.
  * @param source image data source to add
  */
 static void add_entry(const char* source)
 {
+    char* abs_source = absolute_path(source);
+    if (!abs_source) {
+        return;
+    }
+
     // check for duplicates
     for (size_t i = 0; i < ctx.size; ++i) {
-        if (strcmp(ctx.sources[i], source) == 0) {
+        if (strcmp(ctx.sources[i], abs_source) == 0) {
             return;
         }
     }
@@ -59,7 +128,7 @@ static void add_entry(const char* source)
     }
 
     // add new entry
-    ctx.sources[ctx.size] = str_dup(source, NULL);
+    ctx.sources[ctx.size] = abs_source;
     if (ctx.sources[ctx.size]) {
         ++ctx.size;
     }
