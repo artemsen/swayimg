@@ -53,7 +53,9 @@ static char* absolute_path(const char* source)
         return str_dup(source, NULL);
     }
 
-    if (*source != '/') {
+    if (*source == '/') {
+        strncpy(path, source, sizeof(path) - 1);
+    } else {
         // relative to the current dir
         if (!getcwd(path, sizeof(path) - 1)) {
             return str_dup(source, NULL);
