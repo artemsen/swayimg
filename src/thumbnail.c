@@ -184,6 +184,25 @@ const struct thumbnail* pstore_load(size_t index)
     return entry;
 }
 
+/**
+ * Reset pstore saving queue.
+ * @param stop flag to stop pstore thread
+ */
+static void pstore_reset(bool stop)
+{
+    pthread_mutex_lock(&ctx.lock);
+    list_for_each(ctx.queue, struct thumbnail, it) {
+        free(it);
+    }
+    if (stop) {
+        ctx.queue = list_append(NULL, allocate_entry(NULL, 0, 0));
+        pthread_cond_signal(&ctx.signal);
+    } else {
+        ctx.queue = NULL;
+    }
+    pthread_mutex_unlock(&ctx.lock);
+}
+
 /** Thumbnail saver executed in background thread. */
 static void* pstore_saver_thread(__attribute__((unused)) void* data)
 {
@@ -236,14 +255,7 @@ void thumbnail_free(void)
 #ifdef THUMBNAIL_PSTORE
     if (ctx.pstore) {
         if (ctx.tid) {
-            // stop saver
-            pthread_mutex_lock(&ctx.lock);
-            list_for_each(ctx.queue, struct thumbnail, it) {
-                free(it);
-            }
-            ctx.queue = list_append(NULL, allocate_entry(NULL, 0, 0));
-            pthread_cond_signal(&ctx.signal);
-            pthread_mutex_unlock(&ctx.lock);
+            pstore_reset(true);
             pthread_join(ctx.tid, NULL);
         }
         pthread_mutex_destroy(&ctx.lock);
@@ -352,6 +364,8 @@ const struct thumbnail* thumbnail_get(size_t index)
 
 void thumbnail_remove(size_t index)
 {
+    pstore_reset(false);
+
     list_for_each(ctx.thumbs, struct thumbnail, it) {
         if (it->image->index == index) {
             ctx.thumbs = list_remove(it);
@@ -364,6 +378,8 @@ void thumbnail_remove(size_t index)
 
 void thumbnail_clear(size_t min_id, size_t max_id)
 {
+    pstore_reset(false);
+
     if (min_id == IMGLIST_INVALID && max_id == IMGLIST_INVALID) {
         list_for_each(ctx.thumbs, struct thumbnail, it) {
             ctx.thumbs = list_remove(it);
