@@ -2,7 +2,7 @@
 // JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "jpeg.h"
 
 #include <setjmp.h>
 #include <stdio.h>
@@ -17,7 +17,6 @@ static const uint8_t signature[] = { 0xff, 0xd8 };
 struct jpg_error_manager {
     struct jpeg_error_mgr mgr;
     jmp_buf setjmp;
-    struct image* img;
 };
 
 static void jpg_error_exit(j_common_ptr jpg)
@@ -43,7 +42,6 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     }
 
     jpg.err = jpeg_std_error(&err.mgr);
-    err.img = ctx;
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
         image_free_frames(ctx);
@@ -98,4 +96,42 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpeg_destroy_decompress(&jpg);
 
     return ldr_success;
+}
+
+bool encode_jpeg(const struct image* image, uint8_t** data, size_t* size)
+{
+    struct jpeg_compress_struct jpg;
+    struct jpg_error_manager err;
+    unsigned long jpeg_sz;
+    const struct pixmap* pm = &image->frames[0].pm;
+
+    jpg.err = jpeg_std_error(&err.mgr);
+    err.mgr.error_exit = jpg_error_exit;
+    if (setjmp(err.setjmp)) {
+        jpeg_destroy_compress(&jpg);
+        return false;
+    }
+
+    jpeg_create_compress(&jpg);
+    jpg.image_width = pm->width;
+    jpg.image_height = pm->height;
+    jpg.input_components = sizeof(*pm->data);
+    jpg.in_color_space = JCS_EXT_BGRA;
+
+    jpeg_mem_dest(&jpg, data, &jpeg_sz);
+    jpeg_set_defaults(&jpg);
+    jpeg_set_quality(&jpg, 70, TRUE);
+    jpeg_start_compress(&jpg, TRUE);
+
+    while (jpg.next_scanline < jpg.image_height) {
+        uint8_t* line = (uint8_t*)&pm->data[jpg.next_scanline * pm->width];
+        jpeg_write_scanlines(&jpg, &line, 1);
+    }
+
+    jpeg_finish_compress(&jpg);
+    jpeg_destroy_compress(&jpg);
+
+    *size = jpeg_sz;
+
+    return true;
 }
