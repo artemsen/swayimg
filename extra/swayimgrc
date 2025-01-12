@@ -60,10 +60,12 @@ preload = 1
 # Gallery mode configuration
 ################################################################################
 [gallery]
-# Max size of the thumbnail (pixels)
+# Size of the thumbnail (pixels)
 size = 200
-# Max number of thumbnails in cache, 0 for unlimited
+# Max number of thumbnails in memory cache, 0 for unlimited
 cache = 100
+# Enable/disable storing thumbnails in persistent storage (yes/no)
+pstore = no
 # Fill the entire tile with thumbnail (yes/no)
 fill = yes
 # Anti-aliasing mode for thumbnails (none/box/bilinear/bicubic/mks13)

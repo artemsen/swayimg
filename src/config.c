@@ -41,6 +41,7 @@ static const struct config_default defaults[] = {
 
     { CFG_GALLERY,      CFG_GLRY_SIZE,      "200"                    },
     { CFG_GALLERY,      CFG_GLRY_CACHE,     "100"                    },
+    { CFG_GALLERY,      CFG_GLRY_PSTORE,    CFG_NO                   },
     { CFG_GALLERY,      CFG_GLRY_FILL,      CFG_YES                  },
     { CFG_GALLERY,      CFG_GLRY_AA,        "mks13"                  },
     { CFG_GALLERY,      CFG_GLRY_WINDOW,    "#00000000"              },

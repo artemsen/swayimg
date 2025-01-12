@@ -53,6 +53,7 @@ struct config {
 #define CFG_VIEW_PRELOAD   "preload"
 #define CFG_GLRY_SIZE      "size"
 #define CFG_GLRY_CACHE     "cache"
+#define CFG_GLRY_PSTORE    "pstore"
 #define CFG_GLRY_FILL      "fill"
 #define CFG_GLRY_AA        "antialiasing"
 #define CFG_GLRY_WINDOW    "window"
