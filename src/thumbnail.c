@@ -99,8 +99,8 @@ static char* pstore_path(const char* source)
 static void pstore_save(const struct thumbnail* thumb)
 {
     char* th_path;
-    uint8_t* th_data;
-    size_t th_size;
+    uint8_t* th_data = NULL;
+    size_t th_size = 0;
     char* delim;
 
     th_path = pstore_path(thumb->image->source);
