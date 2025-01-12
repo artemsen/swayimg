@@ -330,7 +330,8 @@ void thumbnail_add(struct image* image)
     ctx.thumbs = list_append(ctx.thumbs, entry);
 
 #ifdef THUMBNAIL_PSTORE
-    if (entry && ctx.pstore) {
+    if (entry && ctx.pstore &&
+        (real_width > ctx.size || real_height > ctx.size)) {
         // save thumbnail to persistent storage
         struct thumbnail* save_entry =
             allocate_entry(entry->image, entry->width, entry->height);
