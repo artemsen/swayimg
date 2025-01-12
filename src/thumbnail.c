@@ -9,10 +9,10 @@
 
 #include <stdlib.h>
 
-#ifdef HAVE_LIBJPEG
+#ifdef HAVE_LIBPNG
 #define THUMBNAIL_PSTORE
 
-#include "formats/jpeg.h"
+#include "formats/png.h"
 #include "loader.h"
 
 #include <errno.h>
@@ -22,7 +22,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#endif // HAVE_LIBJPEG
+#endif // HAVE_LIBPNG
 
 /** Thumbnail context. */
 struct thumbnail_context {
@@ -124,7 +124,7 @@ static void pstore_save(const struct thumbnail* thumb)
     }
 
     // save thumbnail
-    if (encode_jpeg(thumb->image, &th_data, &th_size)) {
+    if (encode_png(thumb->image, &th_data, &th_size)) {
         const int fd = creat(th_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
         if (fd != -1) {
             ssize_t written = 0;
