@@ -198,6 +198,7 @@ sources = [
   'src/pixmap.c',
   'src/pixmap_scale.c',
   'src/sway.c',
+  'src/thumbnail.c',
   'src/ui.c',
   'src/viewer.c',
   'src/formats/bmp.c',

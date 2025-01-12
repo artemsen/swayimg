@@ -5,7 +5,6 @@
 #pragma once
 
 #include "pixmap.h"
-#include "pixmap_scale.h"
 
 struct image_frame;
 struct image_info;
@@ -73,16 +72,6 @@ void image_flip_horizontal(struct image* ctx);
  * @param angle rotation angle (only 90, 180, or 270)
  */
 void image_rotate(struct image* ctx, size_t angle);
-
-/**
- * Create thumbnail from full size image.
- * @param image original image
- * @param size thumbnail size in pixels
- * @param fill thumbnail scale mode (fill/fit)
- * @param scaler scale method to use
- */
-void image_thumbnail(struct image* image, size_t size, bool fill,
-                     enum pixmap_aa_mode scaler);
 
 /**
  * Set image format description.

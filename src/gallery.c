@@ -8,6 +8,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#include "thumbnail.h"
 #include "ui.h"
 
 #include <stdlib.h>
@@ -15,20 +16,10 @@
 // Scale for selected thumbnail
 #define THUMB_SELECTED_SCALE 1.15f
 
-/** List of thumbnails. */
-struct thumbnail {
-    struct list list;     ///< Links to prev/next entry
-    struct image* image;  ///< Preview image
-    size_t width, height; ///< Real image size
-};
-
 /** Gallery context. */
 struct gallery {
-    size_t thumb_size;           ///< Size of thumbnail
-    size_t thumb_max;            ///< Max number of thumbnails in cache
-    struct thumbnail* thumbs;    ///< List of preview images
-    bool thumb_fill;             ///< Scale mode (fill/fit)
-    enum pixmap_aa_mode aa_mode; ///< Anti-aliasing mode for thumbnails
+    size_t thumb_size;  ///< Size of thumbnail
+    size_t thumb_cache; ///< Max number of thumbnails in cache
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -42,51 +33,6 @@ struct gallery {
 
 /** Global gallery context. */
 static struct gallery ctx;
-
-/**
- * Add new thumbnail from existing image.
- * @param image original image
- */
-static void add_thumbnail(struct image* image)
-{
-    struct thumbnail* entry = malloc(sizeof(*entry));
-    if (!entry) {
-        image_free(image);
-    } else {
-        entry->width = image->frames[0].pm.width;
-        entry->height = image->frames[0].pm.height;
-        entry->image = image;
-        image_thumbnail(image, ctx.thumb_size, ctx.thumb_fill, ctx.aa_mode);
-        ctx.thumbs = list_append(ctx.thumbs, entry);
-    }
-}
-
-/**
- * Get thumbnail.
- * @param index image position in the image list
- * @return thumbnail instance or NULL if not found
- */
-static struct thumbnail* get_thumbnail(size_t index)
-{
-    list_for_each(ctx.thumbs, struct thumbnail, it) {
-        if (it->image->index == index) {
-            return it;
-        }
-    }
-    return NULL;
-}
-
-/**
- * Clear thumbnails cache.
- */
-static void clear_thumbnails(void)
-{
-    list_for_each(ctx.thumbs, struct thumbnail, it) {
-        image_free(it->image);
-        free(it);
-    }
-    ctx.thumbs = NULL;
-}
 
 /**
  * Get thumbnail layout.
@@ -129,38 +75,31 @@ static void reset_loader(void)
     size_t next_b = ctx.selected;
 
     loader_queue_reset();
-    if (!get_thumbnail(ctx.selected)) {
+    if (!thumbnail_get(ctx.selected)) {
         loader_queue_append(ctx.selected);
     }
 
     for (size_t i = 0; i < max(max_f, max_b); ++i) {
         if (i < max_f) {
             next_f = image_list_nearest(next_f, true, false);
-            if (!get_thumbnail(next_f)) {
+            if (!thumbnail_get(next_f)) {
                 loader_queue_append(next_f);
             }
         }
         if (i < max_b) {
             next_b = image_list_nearest(next_b, false, false);
-            if (!get_thumbnail(next_b)) {
+            if (!thumbnail_get(next_b)) {
                 loader_queue_append(next_b);
             }
         }
     }
 
     // remove the furthest thumbnails from the cache
-    if (ctx.thumb_max != 0 && total < ctx.thumb_max) {
-        const size_t half = (ctx.thumb_max - total) / 2;
+    if (ctx.thumb_cache != 0 && total < ctx.thumb_cache) {
+        const size_t half = (ctx.thumb_cache - total) / 2;
         const size_t min_id = image_list_jump(ctx.top, half, false);
         const size_t max_id = image_list_jump(last, half, true);
-        list_for_each(ctx.thumbs, struct thumbnail, it) {
-            if ((min_id != IMGLIST_INVALID && it->image->index < min_id) ||
-                (max_id != IMGLIST_INVALID && it->image->index > max_id)) {
-                ctx.thumbs = list_remove(it);
-                image_free(it->image);
-                free(it);
-            }
-        }
+        thumbnail_clear(min_id, max_id);
     }
 }
 
@@ -195,7 +134,7 @@ static void update_layout(void)
  */
 static void update_info(void)
 {
-    const struct thumbnail* th = get_thumbnail(ctx.selected);
+    const struct thumbnail* th = thumbnail_get(ctx.selected);
 
     if (th) {
         info_reset(th->image);
@@ -234,14 +173,7 @@ static bool skip_thumbnail(size_t index)
         return false;
     }
 
-    // remove thumbnail from cache
-    list_for_each(ctx.thumbs, struct thumbnail, it) {
-        if (it->image->index == index) {
-            ctx.thumbs = list_remove(it);
-            image_free(it->image);
-            free(it);
-        }
-    }
+    thumbnail_remove(index);
 
     if (index == ctx.top || ctx.top > next) {
         ctx.top = next;
@@ -374,7 +306,7 @@ static void draw_thumbnail(struct pixmap* window, ssize_t x, ssize_t y,
             const ssize_t thumb_h = thumb->height * THUMB_SELECTED_SCALE;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            pixmap_scale(ctx.aa_mode, thumb, window, tx, ty,
+            pixmap_scale(thumbnail_get_aa(), thumb, window, tx, ty,
                          THUMB_SELECTED_SCALE, image->alpha);
         }
 
@@ -430,7 +362,7 @@ static void draw_thumbnails(struct pixmap* window)
         const ssize_t y = row * ctx.thumb_size + gap * (row + 1);
         for (size_t col = 0; col < cols; ++col) {
             const ssize_t x = col * ctx.thumb_size + gap * (col + 1);
-            const struct thumbnail* th = get_thumbnail(index);
+            const struct thumbnail* th = thumbnail_get(index);
 
             // draw preview, but postpone the selected item
             if (index == ctx.selected) {
@@ -488,12 +420,9 @@ static void apply_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
-            if (++ctx.aa_mode >= ARRAY_SIZE(pixmap_aa_names)) {
-                ctx.aa_mode = 0;
-            }
             info_update(info_status, "Anti-aliasing: %s",
-                        pixmap_aa_names[ctx.aa_mode]);
-            clear_thumbnails();
+                        pixmap_aa_names[thumbnail_switch_aa()]);
+            thumbnail_clear(IMGLIST_INVALID, IMGLIST_INVALID);
             reset_loader();
             app_redraw();
             break;
@@ -515,7 +444,7 @@ static void apply_action(const struct action* action)
             skip_thumbnail(ctx.selected);
             break;
         case action_reload:
-            clear_thumbnails();
+            thumbnail_clear(IMGLIST_INVALID, IMGLIST_INVALID);
             reset_loader();
             app_redraw();
             break;
@@ -545,10 +474,10 @@ static void on_image_load(struct image* image, size_t index)
         loader_queue_reset();
         skip_thumbnail(index);
     } else {
-        if (get_thumbnail(index)) {
+        if (thumbnail_get(index)) {
             image_free(image);
         } else {
-            add_thumbnail(image);
+            thumbnail_add(image);
             if (index == ctx.selected) {
                 update_info();
             }
@@ -559,13 +488,10 @@ static void on_image_load(struct image* image, size_t index)
 
 void gallery_init(const struct config* cfg, struct image* image)
 {
-    ctx.thumb_size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 1024);
-    ctx.thumb_max = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 1024);
-    ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
+    thumbnail_init(cfg);
 
-    ctx.aa_mode =
-        config_get_oneof(cfg, CFG_GALLERY, CFG_GLRY_AA, pixmap_aa_names,
-                         ARRAY_SIZE(pixmap_aa_names));
+    ctx.thumb_size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 1024);
+    ctx.thumb_cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 1024);
 
     ctx.clr_window = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_WINDOW);
     ctx.clr_background = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BKG);
@@ -576,14 +502,14 @@ void gallery_init(const struct config* cfg, struct image* image)
     ctx.top = image_list_first();
     ctx.selected = ctx.top;
     if (image) {
-        add_thumbnail(image);
+        thumbnail_add(image);
         select_thumbnail(image->index);
     }
 }
 
 void gallery_destroy(void)
 {
-    clear_thumbnails();
+    thumbnail_free();
 }
 
 void gallery_handle(const struct event* event)

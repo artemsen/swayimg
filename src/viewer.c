@@ -9,6 +9,7 @@
 #include "fetcher.h"
 #include "imagelist.h"
 #include "info.h"
+#include "pixmap_scale.h"
 #include "ui.h"
 
 #include <stdio.h>
