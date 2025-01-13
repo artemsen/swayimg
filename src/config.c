@@ -635,30 +635,22 @@ argb_t config_get_color(const struct config* cfg, const char* section,
 
 char* config_expand_path(const char* prefix_env, const char* postfix)
 {
-    char* path;
-    const char* prefix;
-    size_t prefix_len = 0;
-    size_t postfix_len = strlen(postfix);
+    char* path = NULL;
 
     if (prefix_env) {
         const char* delim;
-        prefix = getenv(prefix_env);
+        size_t prefix_len = 0;
+        const char* prefix = getenv(prefix_env);
         if (!prefix || !*prefix) {
             return NULL;
         }
         // use only the first directory if prefix is a list
         delim = strchr(prefix, ':');
         prefix_len = delim ? (size_t)(delim - prefix) : strlen(prefix);
+        str_append(prefix, prefix_len, &path);
     }
 
-    // compose path
-    path = malloc(prefix_len + postfix_len + 1 /* last null*/);
-    if (path) {
-        if (prefix_len) {
-            memcpy(path, prefix, prefix_len);
-        }
-        memcpy(path + prefix_len, postfix, postfix_len + 1 /*last null*/);
-    }
+    str_append(postfix, 0, &path);
 
     return path;
 }
