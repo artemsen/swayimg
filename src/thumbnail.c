@@ -179,7 +179,16 @@ const struct thumbnail* pstore_load(size_t index)
         return NULL;
     }
 
+    // TODO: move to image instance
     thumb->index = index;
+    str_dup(path_origin, &thumb->source);
+    thumb->name = strrchr(thumb->source, '/');
+    if (!thumb->name || strcmp(thumb->name, "/") == 0) {
+        thumb->name = thumb->source;
+    } else {
+        ++thumb->name; // skip slash
+    }
+
     entry = allocate_entry(thumb, 0, 0);
     ctx.thumbs = list_append(ctx.thumbs, entry);
 
