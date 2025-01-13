@@ -127,9 +127,13 @@ static void pstore_save(const struct thumbnail* thumb)
     if (encode_png(thumb->image, &th_data, &th_size)) {
         const int fd = creat(th_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
         if (fd != -1) {
-            ssize_t written = 0;
-            while (written >= 0 && written < (ssize_t)th_size) {
-                written = write(fd, th_data + written, th_size - written);
+            size_t pos = 0;
+            while (pos < th_size) {
+                const ssize_t written = write(fd, th_data + pos, th_size - pos);
+                if (written == -1) {
+                    break;
+                }
+                pos += written;
             }
             close(fd);
         }
