@@ -7,6 +7,7 @@ project(
     'c_std=c99',
     'warning_level=3',
     'buildtype=release',
+    'b_ndebug=if-release',
   ],
   license: 'MIT',
   version: '0.0.0',
@@ -110,8 +111,10 @@ endif
 protocols = [
   wlproto_dir / 'stable/xdg-shell/xdg-shell.xml',
   wlproto_dir / 'stable/tablet/tablet-v2.xml',
+  wlproto_dir / 'stable/viewporter/viewporter.xml',
   wlproto_dir / 'staging/content-type/content-type-v1.xml',
   wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
+  wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
 ]
 wl_protos_src = []
 
@@ -201,6 +204,7 @@ sources = [
   'src/thumbnail.c',
   'src/ui.c',
   'src/viewer.c',
+  'src/wndbuf.c',
   'src/formats/bmp.c',
   'src/formats/dicom.c',
   'src/formats/farbfeld.c',

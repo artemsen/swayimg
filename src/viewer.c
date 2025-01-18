@@ -579,7 +579,7 @@ static void draw_image(struct pixmap* wnd)
     if (img->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height,
-                        ui_get_scale() * GRID_STEP, GRID_COLOR1, GRID_COLOR2);
+                        GRID_STEP, GRID_COLOR1, GRID_COLOR2);
         } else {
             pixmap_fill(wnd, ctx.img_x, ctx.img_y, width, height,
                         ctx.image_bkg);

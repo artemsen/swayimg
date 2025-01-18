@@ -69,12 +69,6 @@ size_t ui_get_width(void);
 size_t ui_get_height(void);
 
 /**
- * Get window scale factor.
- * @return window scale factor
- */
-size_t ui_get_scale(void);
-
-/**
  * Toggle full screen mode.
  */
 void ui_toggle_fullscreen(void);
