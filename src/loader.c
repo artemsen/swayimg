@@ -26,7 +26,7 @@
     enum loader_status LOADER_FUNCTION(name)(struct image * ctx, \
                                              const uint8_t* data, size_t size)
 
-const char* supported_formats = "bmp, pnm, farbfeld, tga"
+const char* supported_formats = "bmp, pnm, farbfeld, tga, dicom"
 #ifdef HAVE_LIBJPEG
                                 ", jpeg"
 #endif
@@ -62,9 +62,6 @@ const char* supported_formats = "bmp, pnm, farbfeld, tga"
 #endif
 #ifdef HAVE_LIBSIXEL
                                 ", sixel"
-#endif
-#ifdef HAVE_LIBDICOM
-                                ", dicom"
 #endif
     ;
 
