@@ -15,9 +15,10 @@ void ui_create(void);
  * Initialize global UI context: create window, register handlers etc.
  * @param app_id application id, used as window class
  * @param width,height initial window size in pixels
+ * @param decor flag to use server-side window decoration
  * @return true if window created
  */
-bool ui_init(const char* app_id, size_t width, size_t height);
+bool ui_init(const char* app_id, size_t width, size_t height, bool decor);
 
 /**
  * Destroy global UI context.

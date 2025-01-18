@@ -115,6 +115,7 @@ protocols = [
   wlproto_dir / 'staging/content-type/content-type-v1.xml',
   wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
   wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
+  wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
 ]
 wl_protos_src = []
 

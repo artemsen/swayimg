@@ -22,6 +22,8 @@ mode = viewer
 position = parent
 # Window size (fullscreen/parent/image, or absolute size, e.g. 800,600)
 size = parent
+# Use window decoration (yes/no)
+decoration = no
 # Action performed by SIGUSR1 signal (same format as for key bindings)
 sigusr1 = reload
 # Action performed by SIGUSR2 signal (same format as for key bindings)

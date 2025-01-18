@@ -66,6 +66,7 @@ struct application {
 
     event_handler ehandler; ///< Event handler for the current mode
     struct wndrect window;  ///< Preferable window position and size
+    bool wnd_decor;         //< Window decoration: borders and title
     char* app_id;           ///< Application id (app_id name)
 };
 
@@ -333,6 +334,8 @@ static void load_config(const struct config* cfg)
         }
     }
 
+    ctx.wnd_decor = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR);
+
     // signal actions
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
     if (!action_create(value, &ctx.sigusr1)) {
@@ -408,7 +411,8 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     }
 
     // connect to wayland
-    if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height)) {
+    if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height,
+                 ctx.wnd_decor)) {
         return false;
     }
 

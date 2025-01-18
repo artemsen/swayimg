@@ -23,6 +23,7 @@ static const struct config_default defaults[] = {
     { CFG_GENERAL,      CFG_GNRL_MODE,      "viewer"                 },
     { CFG_GENERAL,      CFG_GNRL_POSITION,  "parent"                 },
     { CFG_GENERAL,      CFG_GNRL_SIZE,      "parent"                 },
+    { CFG_GENERAL,      CFG_GNRL_DECOR,     CFG_NO                   },
     { CFG_GENERAL,      CFG_GNRL_SIGUSR1,   "reload"                 },
     { CFG_GENERAL,      CFG_GNRL_SIGUSR2,   "next_file"              },
     { CFG_GENERAL,      CFG_GNRL_APP_ID,    "swayimg"                },

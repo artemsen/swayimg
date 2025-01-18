@@ -13,6 +13,7 @@
 #include "cursor-shape-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
+#include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 #include <stdlib.h>
@@ -66,6 +67,8 @@ struct ui {
         struct wp_content_type_v1* ctype;
         struct wp_fractional_scale_manager_v1* scale_manager;
         struct wp_fractional_scale_v1* scale;
+        struct zxdg_decoration_manager_v1* decor_manager;
+        struct zxdg_toplevel_decoration_v1* decor;
     } wp;
 
     // window buffers
@@ -531,6 +534,13 @@ static void on_registry_global(void* data, struct wl_registry* registry,
         ctx.wp.scale_manager = wl_registry_bind(
             registry, name, &wp_fractional_scale_manager_v1_interface,
             WP_FRACTIONAL_SCALE_V1_PREFERRED_SCALE_SINCE_VERSION);
+
+    } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) ==
+               0) {
+        // server side window decoration
+        ctx.wp.decor_manager = wl_registry_bind(
+            registry, name, &zxdg_decoration_manager_v1_interface,
+            ZXDG_DECORATION_MANAGER_V1_GET_TOPLEVEL_DECORATION_SINCE_VERSION);
     }
 }
 
@@ -564,7 +574,7 @@ static void on_wayland_event(__attribute__((unused)) void* data)
     ctx.event_handled = true;
 }
 
-bool ui_init(const char* app_id, size_t width, size_t height)
+bool ui_init(const char* app_id, size_t width, size_t height, bool decor)
 {
     ctx.wnd.width = width;
     ctx.wnd.height = height;
@@ -629,6 +639,15 @@ bool ui_init(const char* app_id, size_t width, size_t height)
                                             WP_CONTENT_TYPE_V1_TYPE_PHOTO);
     }
 
+    if (ctx.wp.decor_manager && decor) {
+        ctx.wp.decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            ctx.wp.decor_manager, ctx.xdg.toplevel);
+        if (ctx.wp.decor) {
+            zxdg_toplevel_decoration_v1_set_mode(
+                ctx.wp.decor, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        }
+    }
+
     wl_surface_commit(ctx.wl.surface);
 
     app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event, NULL);
@@ -662,6 +681,12 @@ void ui_destroy(void)
     }
     if (ctx.wp.cursor) {
         wp_cursor_shape_manager_v1_destroy(ctx.wp.cursor);
+    }
+    if (ctx.wp.decor_manager) {
+        if (ctx.wp.decor) {
+            zxdg_toplevel_decoration_v1_destroy(ctx.wp.decor);
+        }
+        zxdg_decoration_manager_v1_destroy(ctx.wp.decor_manager);
     }
 
     // keyboard related

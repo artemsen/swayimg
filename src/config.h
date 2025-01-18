@@ -37,6 +37,7 @@ struct config {
 #define CFG_GNRL_MODE      "mode"
 #define CFG_GNRL_POSITION  "position"
 #define CFG_GNRL_SIZE      "size"
+#define CFG_GNRL_DECOR     "decoration"
 #define CFG_GNRL_SIGUSR1   "sigusr1"
 #define CFG_GNRL_SIGUSR2   "sigusr2"
 #define CFG_GNRL_APP_ID    "app_id"
