@@ -10,6 +10,7 @@
 /** Available info fields. */
 enum info_field {
     info_file_name,
+    info_file_dir,
     info_file_path,
     info_file_size,
     info_image_format,

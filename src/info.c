@@ -34,6 +34,7 @@ static const char* mode_names[] = {
 /** Field names. */
 static const char* field_names[] = {
     [info_file_name] = "name",
+    [info_file_dir] = "dir",
     [info_file_path] = "path",
     [info_file_size] = "filesize",
     [info_image_format] = "format",
@@ -45,7 +46,6 @@ static const char* field_names[] = {
     [info_status] = "status",
 };
 #define FIELDS_NUM ARRAY_SIZE(field_names)
-// clang-format on
 
 /** Positions of text info block. */
 enum block_position {
@@ -57,11 +57,14 @@ enum block_position {
 };
 /** Block position names. */
 static const char* position_names[] = {
-    [pos_center] = CFG_INFO_CN,       [pos_top_left] = CFG_INFO_TL,
-    [pos_top_right] = CFG_INFO_TR,    [pos_bottom_left] = CFG_INFO_BL,
+    [pos_center] = CFG_INFO_CN,
+    [pos_top_left] = CFG_INFO_TL,
+    [pos_top_right] = CFG_INFO_TR,
+    [pos_bottom_left] = CFG_INFO_BL,
     [pos_bottom_right] = CFG_INFO_BR,
 };
 #define POSITION_NUM ARRAY_SIZE(position_names)
+// clang-format on
 
 // Max number of lines in one positioned block
 #define MAX_LINES (FIELDS_NUM + 10 /* EXIF and duplicates */)
@@ -425,6 +428,7 @@ void info_init(const struct config* cfg)
     timeout_init(&ctx.status);
 
     font_render("File name:", &ctx.fields[info_file_name].key);
+    font_render("Directory:", &ctx.fields[info_file_dir].key);
     font_render("File path:", &ctx.fields[info_file_path].key);
     font_render("File size:", &ctx.fields[info_file_size].key);
     font_render("Image format:", &ctx.fields[info_image_format].key);
@@ -535,6 +539,7 @@ void info_reset(const struct image* image)
         (float)image->file_size / (image->file_size >= mib ? mib : 1024);
 
     font_render(image->name, &ctx.fields[info_file_name].value);
+    font_render(image->parent_dir, &ctx.fields[info_file_dir].value);
     font_render(image->source, &ctx.fields[info_file_path].value);
     font_render(image->format, &ctx.fields[info_image_format].value);
 
