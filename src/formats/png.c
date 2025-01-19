@@ -331,6 +331,17 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     rc = decode_single(ctx, png, info);
 #endif // PNG_APNG_SUPPORTED
 
+    // read text info
+    if (rc) {
+        png_text* txt;
+        int total;
+        if (png_get_text(png, info, &txt, &total)) {
+            for (int i = 0; i < total; ++i) {
+                image_add_meta(ctx, txt[i].key, "%s", txt[i].text);
+            }
+        }
+    }
+
     if (!rc) {
         image_free_frames(ctx);
     } else {
@@ -379,6 +390,22 @@ bool encode_png(const struct image* ctx, uint8_t** data, size_t* size)
                  8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     png_set_bgr(png);
+
+    // save meta info as text
+    if (ctx->info) {
+        const size_t info_sz = list_size(&ctx->info->list);
+        png_text* txt = calloc(1, info_sz * sizeof(png_text));
+        if (txt) {
+            size_t i = 0;
+            list_for_each(ctx->info, const struct image_info, it) {
+                txt[i].key = it->key;
+                txt[i].text = it->value;
+                ++i;
+            }
+            png_set_text(png, info, txt, info_sz);
+            free(txt);
+        }
+    }
 
     png_write_info(png, info);
 
