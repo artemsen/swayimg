@@ -93,7 +93,9 @@ void wndbuf_free(struct wl_buffer* buffer)
 {
     if (buffer) {
         struct pixmap* pm = wl_buffer_get_user_data(buffer);
-        munmap(pm->data, pm->width * pm->height * sizeof(argb_t));
+        const size_t sz =
+            pm->width * pm->height * sizeof(argb_t) + sizeof(struct pixmap);
+        munmap(pm->data, sz);
         wl_buffer_destroy(buffer);
     }
 }

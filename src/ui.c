@@ -389,9 +389,10 @@ static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
     }
 }
 
-static const struct wl_seat_listener seat_listener = { .capabilities =
-                                                           on_seat_capabilities,
-                                                       .name = on_seat_name };
+static const struct wl_seat_listener seat_listener = {
+    .capabilities = on_seat_capabilities,
+    .name = on_seat_name,
+};
 
 /*******************************************************************************
  * XDG handlers
