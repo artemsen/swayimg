@@ -9,36 +9,71 @@ extern "C" {
 
 #include <fstream>
 
-TEST(Exif, Read)
+class Exif : public ::testing::Test {
+protected:
+    void SetUp() override { image = image_alloc(); }
+    void TearDown() override { image_free(image); }
+    struct image* image;
+};
+
+TEST_F(Exif, Read)
 {
     std::ifstream file(TEST_DATA_DIR "/exif.jpg", std::ios::binary);
     const std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)),
                                     (std::istreambuf_iterator<char>()));
 
-    struct image* image = image_create();
     process_exif(image, data.data(), data.size());
 
-    EXPECT_EQ(image->num_info, static_cast<size_t>(7));
-    EXPECT_STREQ(image->info[0].value, "2024:07:06 12:31:44");
-    EXPECT_STREQ(image->info[1].value, "Google");
-    EXPECT_STREQ(image->info[2].value, "Pixel 7");
-    EXPECT_STREQ(image->info[3].value, "GIMP 2.99.16");
-    EXPECT_STREQ(image->info[4].value, "1/50 sec.");
-    EXPECT_STREQ(image->info[5].value, "f/1.9");
-    EXPECT_STREQ(image->info[6].value, "55°44'28.41\"N, 37°37'25.46\"E");
+    ASSERT_EQ(list_size(&image->info->list), static_cast<size_t>(7));
 
-    image_free(image);
+    size_t i = 0;
+    list_for_each(image->info, const struct image_info, it) {
+        const char* expect_key;
+        const char* expect_val;
+        switch (i) {
+            case 0:
+                expect_key = "DateTime";
+                expect_val = "2024:07:06 12:31:44";
+                break;
+            case 1:
+                expect_key = "Camera";
+                expect_val = "Google";
+                break;
+            case 2:
+                expect_key = "Model";
+                expect_val = "Pixel 7";
+                break;
+            case 3:
+                expect_key = "Software";
+                expect_val = "GIMP 2.99.16";
+                break;
+            case 4:
+                expect_key = "Exposure";
+                expect_val = "1/50 sec.";
+                break;
+            case 5:
+                expect_key = "F Number";
+                expect_val = "f/1.9";
+                break;
+            case 6:
+                expect_key = "Location";
+                expect_val = "55°44'28.41\"N, 37°37'25.46\"E";
+                break;
+            default:
+                GTEST_FAIL();
+                break;
+        }
+        EXPECT_STREQ(it->key, expect_key);
+        EXPECT_STREQ(it->value, expect_val);
+        ++i;
+    }
 }
 
-TEST(Exif, Fail)
+TEST_F(Exif, Fail)
 {
-    struct image* image = image_create();
-
     process_exif(image, nullptr, 0);
-    EXPECT_EQ(image->num_info, static_cast<size_t>(0));
+    EXPECT_EQ(list_size(&image->info->list), static_cast<size_t>(0));
 
     process_exif(image, reinterpret_cast<const uint8_t*>("abcd"), 4);
-    EXPECT_EQ(image->num_info, static_cast<size_t>(0));
-
-    image_free(image);
+    EXPECT_EQ(list_size(&image->info->list), static_cast<size_t>(0));
 }

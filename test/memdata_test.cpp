@@ -21,6 +21,7 @@ TEST(List, Add)
     ASSERT_EQ(head->next, nullptr);
     ASSERT_EQ(head->prev, nullptr);
     ASSERT_TRUE(list_is_last(head));
+    ASSERT_EQ(list_size(head), static_cast<size_t>(1));
 
     head = list_add_head(head, &entry[1]);
     ASSERT_EQ(head, &entry[1]);
@@ -29,6 +30,7 @@ TEST(List, Add)
     ASSERT_FALSE(list_is_last(head));
     ASSERT_EQ(entry[0].next, nullptr);
     ASSERT_EQ(entry[0].prev, &entry[1]);
+    ASSERT_EQ(list_size(head), static_cast<size_t>(2));
 }
 
 TEST(List, Append)
@@ -104,6 +106,7 @@ TEST(List, ForEach)
         }
         ++i;
     }
+    ASSERT_EQ(list_size(head), static_cast<size_t>(3));
     ASSERT_EQ(i, static_cast<size_t>(3));
 }
 

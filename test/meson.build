@@ -3,6 +3,7 @@
 sources = [
   'action_test.cpp',
   'config_test.cpp',
+  'image_test.cpp',
   'imagelist_test.cpp',
   'keybind_test.cpp',
   'loader_test.cpp',

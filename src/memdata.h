@@ -72,6 +72,13 @@ struct list* list_remove_entry(struct list* entry);
          it = it_next, it_next = it ? (type*)((struct list*)it)->next : NULL)
 
 /**
+ * Get number of entries in the list.
+ * @param head pointer to the list head
+ * @return length of the list
+ */
+size_t list_size(const struct list* head);
+
+/**
  * Duplicate string.
  * @param src source string to duplicate
  * @param dst pointer to destination buffer

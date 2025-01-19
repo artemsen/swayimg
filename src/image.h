@@ -4,24 +4,16 @@
 
 #pragma once
 
+#include "memdata.h"
 #include "pixmap.h"
 
-struct image_frame;
-struct image_info;
+// File name used for image, that is read from stdin through pipe
+#define LDRSRC_STDIN     "stdin://"
+#define LDRSRC_STDIN_LEN (sizeof(LDRSRC_STDIN) - 1)
 
-/** Image context. */
-struct image {
-    size_t index;               ///< Index of the entry in the image list
-    char* source;               ///< Image source (e.g. path to the image file)
-    const char* name;           ///< Name of the image file
-    size_t file_size;           ///< Size of image file
-    char* format;               ///< Format description
-    struct image_frame* frames; ///< Image frames
-    size_t num_frames;          ///< Total number of frames
-    bool alpha;                 ///< Image has alpha channel
-    struct image_info* info;    ///< Image meta info
-    size_t num_info;            ///< Total number of meta info entries
-};
+// Special prefix used to load images from external command output
+#define LDRSRC_EXEC     "exec://"
+#define LDRSRC_EXEC_LEN (sizeof(LDRSRC_EXEC) - 1)
 
 /** Image frame. */
 struct image_frame {
@@ -31,15 +23,30 @@ struct image_frame {
 
 /** Image meta info. */
 struct image_info {
-    const char* key; ///< Meta key name
-    char* value;     ///< Meta value
+    struct list list; ///< Links to prev/next entry
+    char* key;        ///< Meta key name
+    char* value;      ///< Meta value
+};
+
+/** Image context. */
+struct image {
+    size_t index;               ///< Index of the entry in the image list
+    char* source;               ///< Image source (e.g. path to the image file)
+    const char* name;           ///< Name of the image file
+    char* parent_dir;           ///< Parent directory name
+    size_t file_size;           ///< Size of image file
+    char* format;               ///< Format description
+    struct image_frame* frames; ///< Image frames
+    size_t num_frames;          ///< Total number of frames
+    bool alpha;                 ///< Image has alpha channel
+    struct image_info* info;    ///< Image meta info
 };
 
 /**
- * Create empty image instance.
+ * Allocate empty image instance.
  * @return image context or NULL on errors
  */
-struct image* image_create(void);
+struct image* image_alloc(void);
 
 /**
  * Free image.
@@ -48,11 +55,11 @@ struct image* image_create(void);
 void image_free(struct image* ctx);
 
 /**
- * Get image file name without path.
+ * Set image source (path or special prefix).
  * @param ctx image context
- * @return file name without path
+ * @param source image source
  */
-const char* image_file_name(const struct image* ctx);
+void image_set_source(struct image* ctx, const char* source);
 
 /**
  * Flip image vertically.
@@ -84,7 +91,7 @@ void image_set_format(struct image* ctx, const char* fmt, ...)
 /**
  * Add meta info property.
  * @param ctx image context
- * @param key property name (must be static)
+ * @param key property name
  * @param fmt value format
  */
 void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)

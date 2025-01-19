@@ -58,6 +58,15 @@ struct list* list_remove_entry(struct list* entry)
     return head;
 }
 
+size_t list_size(const struct list* head)
+{
+    size_t sz = 0;
+    list_for_each(head, const struct list, it) {
+        ++sz;
+    }
+    return sz;
+}
+
 char* str_dup(const char* src, char** dst)
 {
     const size_t sz = strlen(src) + 1;

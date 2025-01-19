@@ -323,16 +323,9 @@ enum loader_status loader_from_source(const char* source, struct image** image)
     struct image* img;
 
     // create image instance
-    img = image_create();
+    img = image_alloc();
     if (!img) {
         return ldr_ioerror;
-    }
-    img->source = str_dup(source, NULL);
-    img->name = strrchr(img->source, '/');
-    if (!img->name || strcmp(img->name, "/") == 0) {
-        img->name = img->source;
-    } else {
-        ++img->name; // skip slash
     }
 
     // decode image
@@ -345,6 +338,7 @@ enum loader_status loader_from_source(const char* source, struct image** image)
     }
 
     if (status == ldr_success) {
+        image_set_source(img, source);
         *image = img;
     } else {
         image_free(img);

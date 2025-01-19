@@ -7,8 +7,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-struct image* image_create(void)
+struct image* image_alloc(void)
 {
     return calloc(1, sizeof(struct image));
 }
@@ -17,16 +18,44 @@ void image_free(struct image* ctx)
 {
     if (ctx) {
         image_free_frames(ctx);
+
         free(ctx->source);
+        free(ctx->parent_dir);
         free(ctx->format);
 
-        while (ctx->num_info) {
-            --ctx->num_info;
-            free(ctx->info[ctx->num_info].value);
+        list_for_each(ctx->info, struct image_info, it) {
+            free(it);
         }
-        free(ctx->info);
 
         free(ctx);
+    }
+}
+
+void image_set_source(struct image* ctx, const char* source)
+{
+    ctx->source = str_dup(source, NULL);
+
+    // set name and parent dir
+    if (strcmp(source, LDRSRC_STDIN) == 0 ||
+        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        ctx->name = ctx->source;
+        str_dup("", &ctx->parent_dir);
+    } else {
+        size_t pos = strlen(ctx->source) - 1;
+        // get name
+        while (pos && ctx->source[--pos] != '/') { }
+        ctx->name = ctx->source + pos + (ctx->source[pos] == '/' ? 1 : 0);
+        // get parent dir
+        if (pos == 0) {
+            str_dup("", &ctx->parent_dir);
+        } else {
+            const size_t end = pos;
+            while (pos && ctx->source[--pos] != '/') { }
+            if (ctx->source[pos] == '/') {
+                ++pos;
+            }
+            str_append(ctx->source + pos, end - pos, &ctx->parent_dir);
+        }
     }
 }
 
@@ -79,16 +108,10 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
 {
     va_list args;
     int len;
-    void* buffer;
+    struct image_info* entry;
+    const size_t key_len = strlen(key) + 1 /* last null */;
 
-    buffer =
-        realloc(ctx->info, (ctx->num_info + 1) * sizeof(struct image_info));
-    if (!buffer) {
-        return;
-    }
-    ctx->info = buffer;
-
-    // construct value string
+    // get value string size
     va_start(args, fmt);
     // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
     len = vsnprintf(NULL, 0, fmt, args);
@@ -96,18 +119,23 @@ void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
     if (len <= 0) {
         return;
     }
-    ++len; // last null
-    buffer = malloc(len);
-    if (!buffer) {
+
+    // allocate new entry
+    len += sizeof(struct image_info) + key_len + 1 /* last null of value */;
+    entry = calloc(1, len);
+    if (!entry) {
         return;
     }
+
+    // fill entry
+    entry->key = (char*)entry + sizeof(struct image_info);
+    memcpy(entry->key, key, key_len);
+    entry->value = entry->key + key_len;
     va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
+    vsprintf(entry->value, fmt, args);
     va_end(args);
 
-    ctx->info[ctx->num_info].key = key;
-    ctx->info[ctx->num_info].value = buffer;
-    ++ctx->num_info;
+    ctx->info = list_append(ctx->info, entry);
 }
 
 struct pixmap* image_allocate_frame(struct image* ctx, size_t width,

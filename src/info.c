@@ -308,8 +308,9 @@ static void print_keyval(struct pixmap* wnd, enum block_position pos,
  */
 static void import_exif(const struct image* image)
 {
-    struct keyval* line;
-    const size_t buf_size = image->num_info * sizeof(*line);
+    struct keyval* lines;
+    const size_t num_entries = list_size(&image->info->list);
+    const size_t buf_size = num_entries * sizeof(*lines);
 
     // free previous lines
     for (size_t i = 0; i < ctx.exif_num; ++i) {
@@ -318,26 +319,25 @@ static void import_exif(const struct image* image)
     }
     ctx.exif_num = 0;
 
-    if (image->num_info == 0) {
+    if (num_entries == 0) {
         return;
     }
 
-    line = realloc(ctx.exif_lines, buf_size);
-    if (!line) {
+    lines = realloc(ctx.exif_lines, buf_size);
+    if (!lines) {
         return;
     }
-    memset(line, 0, buf_size);
+    memset(lines, 0, buf_size);
 
-    ctx.exif_num = image->num_info;
-    ctx.exif_lines = line;
+    ctx.exif_num = num_entries;
+    ctx.exif_lines = lines;
 
-    for (size_t i = 0; i < ctx.exif_num; ++i) {
-        const struct image_info* exif = &image->info[i];
+    list_for_each(image->info, const struct image_info, it) {
         char key[64];
-        snprintf(key, sizeof(key), "%s:", exif->key);
-        font_render(key, &line->key);
-        font_render(exif->value, &line->value);
-        ++line;
+        snprintf(key, sizeof(key), "%s:", it->key);
+        font_render(key, &lines->key);
+        font_render(it->value, &lines->value);
+        ++lines;
     }
 }
 
