@@ -77,6 +77,7 @@ static const char* position_names[] = {
 
 /** Viewer context. */
 struct viewer {
+    bool on_first_image;         ///< Differentiate first and others
     ssize_t img_x, img_y;        ///< Top left corner of the image
     size_t frame;                ///< Index of the current frame
     argb_t image_bkg;            ///< Image background mode/color
@@ -88,6 +89,9 @@ struct viewer {
     bool keep_zoom;              ///< Keep absolute zoom across images
     enum position position;      ///< Initial position
     float scale;                 ///< Current scale factor of the image
+
+    size_t prev_image_width;  ///< Previously loaded image's width
+    size_t prev_image_height; ///< Previously loaded image's height
 
     bool animation_enable; ///< Animation enable/disable
     int animation_fd;      ///< Animation timer
@@ -325,6 +329,8 @@ static void zoom_image(const char* params)
         const float step = (ctx.scale / 100) * percent;
         const double center_x = wnd_half_w / ctx.scale - ctx.img_x / ctx.scale;
         const double center_y = wnd_half_h / ctx.scale - ctx.img_y / ctx.scale;
+        const struct image* img = fetcher_current();
+        const struct pixmap* pm = &img->frames[ctx.frame].pm;
 
         if (percent > 0) {
             ctx.scale += step;
@@ -332,8 +338,6 @@ static void zoom_image(const char* params)
                 ctx.scale = MAX_SCALE;
             }
         } else {
-            const struct image* img = fetcher_current();
-            const struct pixmap* pm = &img->frames[ctx.frame].pm;
             const float scale_w = (float)MIN_SCALE / pm->width;
             const float scale_h = (float)MIN_SCALE / pm->height;
             const float scale_min = max(scale_w, scale_h);
@@ -428,12 +432,16 @@ static void reset_state(void)
 {
     const struct image* img = fetcher_current();
     const size_t total_img = image_list_size();
+    const struct pixmap* pm = &img->frames[ctx.frame].pm;
+    const bool eq_dim_prev_img = (pm->width == ctx.prev_image_width &&
+                                  pm->height == ctx.prev_image_height);
 
     ctx.frame = 0;
-    if (!ctx.keep_zoom || ctx.scale == 0) {
+    if (!ctx.keep_zoom || ctx.scale == 0 || !eq_dim_prev_img) {
         scale_image(ctx.scale_init);
+    } else {
+        fixup_position(false);
     }
-    set_position();
 
     ui_set_title(img->name);
     animation_ctl(true);
@@ -474,6 +482,12 @@ static bool skip_image(void)
 static bool next_image(enum action_type direction)
 {
     size_t index = fetcher_current()->index;
+
+    ctx.on_first_image = false;
+
+    const struct pixmap* img = &fetcher_current()->frames[ctx.frame].pm;
+    ctx.prev_image_width = img->width;
+    ctx.prev_image_height = img->height;
 
     do {
         switch (direction) {
@@ -675,6 +689,7 @@ static void apply_action(const struct action* action)
             break;
         case action_mode:
             app_switch_mode(fetcher_current()->index);
+            ctx.on_first_image = true;
             break;
         case action_step_left:
             move_image(true, true, action->params);
@@ -792,6 +807,11 @@ void viewer_init(const struct config* cfg, struct image* image)
     if (ctx.slideshow_fd != -1) {
         app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
+
+    // hacks
+    ctx.on_first_image = true;
+    ctx.prev_image_width = 0;
+    ctx.prev_image_height = 0;
 
     fetcher_init(image, history, preload);
 }
