@@ -440,11 +440,14 @@ static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel* lvl,
             wp_viewport_set_destination(ctx.wp.viewport, width, height);
         }
         ctx.xdg.initialized = true;
-        app_on_resize();
     }
 
-    if (reset_buffers && !recreate_buffers()) {
-        app_exit(1);
+    if (reset_buffers) {
+        if (recreate_buffers()) {
+            app_on_resize();
+        } else {
+            app_exit(1);
+        }
     }
 }
 
