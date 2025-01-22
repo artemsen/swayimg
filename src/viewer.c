@@ -432,8 +432,10 @@ static void reset_state(void)
     ctx.frame = 0;
     if (!ctx.keep_zoom || ctx.scale == 0) {
         scale_image(ctx.scale_init);
+        set_position();
+    } else {
+        fixup_position(true);
     }
-    set_position();
 
     ui_set_title(img->name);
     animation_ctl(true);
