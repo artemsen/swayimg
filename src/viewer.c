@@ -440,6 +440,7 @@ static void reset_state(void)
     slideshow_ctl(ctx.slideshow_enable);
 
     info_reset(img);
+    info_update(info_scale, "%.0f%%", ctx.scale * 100);
     if (total_img) {
         info_update(info_index, "%zu of %zu", img->index + 1, total_img);
     }
