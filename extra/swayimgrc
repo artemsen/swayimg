@@ -170,6 +170,7 @@ Shift+z = zoom fill
 0 = zoom real
 BackSpace = zoom optimal
 Alt+s = scale
+Alt+z = keep_zoom
 bracketleft = rotate_left
 bracketright = rotate_right
 m = flip_vertical

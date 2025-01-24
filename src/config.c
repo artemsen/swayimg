@@ -107,6 +107,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "Shift+z",          "zoom fill"              },
     { CFG_KEYS_VIEWER,  "0",                "zoom real"              },
     { CFG_KEYS_VIEWER,  "BackSpace",        "zoom optimal"           },
+    { CFG_KEYS_VIEWER,  "Alt+z",            "keep_zoom"              },
     { CFG_KEYS_VIEWER,  "bracketleft",      "rotate_left"            },
     { CFG_KEYS_VIEWER,  "bracketright",     "rotate_right"           },
     { CFG_KEYS_VIEWER,  "m",                "flip_vertical"          },

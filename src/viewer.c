@@ -387,6 +387,16 @@ static void scale_global(const char* params)
 }
 
 /**
+ * Toggle zoom keeping mode.
+ */
+static void toggle_keep_zoom(void)
+{
+    ctx.keep_zoom = !ctx.keep_zoom;
+    info_update(info_status, "Keep zoom %s", ctx.keep_zoom ? "ON" : "OFF");
+    app_redraw();
+}
+
+/**
  * Start/stop animation if image supports it.
  * @param enable state to set
  */
@@ -707,6 +717,9 @@ static void apply_action(const struct action* action)
             break;
         case action_scale:
             scale_global(action->params);
+            break;
+        case action_keep_zoom:
+            toggle_keep_zoom();
             break;
         case action_rotate_left:
             rotate_image(false);
