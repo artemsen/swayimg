@@ -378,7 +378,9 @@ const struct thumbnail* thumbnail_get(size_t index)
 
 void thumbnail_remove(size_t index)
 {
+#ifdef THUMBNAIL_PSTORE
     pstore_reset(false);
+#endif // THUMBNAIL_PSTORE
 
     list_for_each(ctx.thumbs, struct thumbnail, it) {
         if (it->image->index == index) {
@@ -392,7 +394,9 @@ void thumbnail_remove(size_t index)
 
 void thumbnail_clear(size_t min_id, size_t max_id)
 {
+#ifdef THUMBNAIL_PSTORE
     pstore_reset(false);
+#endif // THUMBNAIL_PSTORE
 
     if (min_id == IMGLIST_INVALID && max_id == IMGLIST_INVALID) {
         list_for_each(ctx.thumbs, struct thumbnail, it) {
