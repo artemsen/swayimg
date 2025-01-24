@@ -26,9 +26,6 @@ extern const char* pixmap_aa_names[5];
  * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
  * @param alpha flag to use alpha blending
- * Note that this function assumes -(src->width * scale) <= x < dst->width and
- * -(src->height * scale) <= y < dst->height (i.e. that at least some part of
- * the scaled image will appear on the destination)
  */
 void pixmap_scale(enum pixmap_aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,

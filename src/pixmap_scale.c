@@ -559,6 +559,12 @@ void pixmap_scale(enum pixmap_aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,
                   bool alpha)
 {
+    // Do nothing if the scaled image won't appear on the destination pixmap
+    if (x >= (ssize_t)dst->width || (ssize_t)(x + src->width * scale) <= 0 ||
+        y >= (ssize_t)dst->height || (ssize_t)(y + src->height * scale) <= 0) {
+        return;
+    }
+
     // TODO in some cases (especially when scaling to small outputs), using
     // threads is actually slower - it may be worth implementing some better
     // heuristics here to avoid using as many (or any) threads in those cases.
