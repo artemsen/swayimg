@@ -12,6 +12,7 @@
 #include "pixmap_scale.h"
 #include "ui.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/timerfd.h>
@@ -77,7 +78,9 @@ static const char* position_names[] = {
 
 /** Viewer context. */
 struct viewer {
-    ssize_t img_x, img_y;        ///< Top left corner of the image
+    ssize_t img_x, img_y; ///< Top left corner of the image
+    ssize_t img_w, img_h; ///< Image width and height
+
     size_t frame;                ///< Index of the current frame
     argb_t image_bkg;            ///< Image background mode/color
     argb_t window_bkg;           ///< Window background mode/color
@@ -87,7 +90,7 @@ struct viewer {
     enum fixed_scale scale_init; ///< Initial scale
     bool keep_zoom;              ///< Keep absolute zoom across images
     enum position position;      ///< Initial position
-    float scale;                 ///< Current scale factor of the image
+    double scale;                ///< Current scale factor of the image
 
     bool animation_enable; ///< Animation enable/disable
     int animation_fd;      ///< Animation timer
@@ -430,12 +433,20 @@ static void reset_state(void)
     const size_t total_img = image_list_size();
 
     ctx.frame = 0;
+
     if (!ctx.keep_zoom || ctx.scale == 0) {
         scale_image(ctx.scale_init);
         set_position();
     } else {
+        const ssize_t diff_w = ctx.img_w - img->frames[0].pm.width;
+        const ssize_t diff_h = ctx.img_h - img->frames[0].pm.height;
+        ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
+        ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
         fixup_position(true);
     }
+
+    ctx.img_w = img->frames[0].pm.width;
+    ctx.img_h = img->frames[0].pm.height;
 
     ui_set_title(img->name);
     animation_ctl(true);
