@@ -4,8 +4,8 @@
 #include "../loader.h"
 
 #include <sixel.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Sixel loader implementation
 enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,

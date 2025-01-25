@@ -602,8 +602,8 @@ static void draw_image(struct pixmap* wnd)
     // clear image background
     if (img->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
-            pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height,
-                        GRID_STEP, GRID_COLOR1, GRID_COLOR2);
+            pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height, GRID_STEP,
+                        GRID_COLOR1, GRID_COLOR2);
         } else {
             pixmap_fill(wnd, ctx.img_x, ctx.img_y, width, height,
                         ctx.image_bkg);
