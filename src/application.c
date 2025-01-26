@@ -381,7 +381,11 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
             sources = &stdin_name;
         }
     }
-    if (image_list_init(cfg, sources, num) == 0) {
+    image_list_init(cfg);
+    for (size_t i = 0; i < num; ++i) {
+        image_list_add(sources[i]);
+    }
+    if (image_list_size() == 0) {
         if (force_load) {
             fprintf(stderr, "%s: Unable to open\n", sources[0]);
         } else {
@@ -389,6 +393,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
         }
         return false;
     }
+    image_list_reorder();
 
     // load the first image
     first_image = load_first_file(image_list_find(sources[0]), force_load);

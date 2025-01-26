@@ -18,19 +18,26 @@ enum list_order {
 };
 
 /**
- * Initialize the image list: scan directories and fill the image list.
+ * Initialize global image list context.
  * @param cfg config instance
- * @param sources list of sources
- * @param num number of sources in the list
- * @return size of the image list
  */
-size_t image_list_init(const struct config* cfg, const char** sources,
-                       size_t num);
+void image_list_init(const struct config* cfg);
 
 /**
  * Destroy global image list context.
  */
 void image_list_destroy(void);
+
+/**
+ * Add image source to the list.
+ * @param source image source to add (file path or special prefix)
+ */
+void image_list_add(const char* source);
+
+/**
+ * Reorder image list (sort/random/...).
+ */
+void image_list_reorder(void);
 
 /**
  * Get image list size.

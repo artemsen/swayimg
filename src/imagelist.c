@@ -4,10 +4,13 @@
 
 #include "imagelist.h"
 
-#include "loader.h"
+#include "image.h"
 
+#include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -39,39 +42,49 @@ static const char* order_names[] = {
 /**
  * Get absolute path from relative source.
  * @param source relative file path
- * @return absolute path, the caller should free the buffer
+ * @param path output absolute path buffer
+ * @param path_max size of the buffer
+ * @return length of the absolute path including last null
  */
-static char* absolute_path(const char* source)
+static size_t absolute_path(const char* source, char* path, size_t path_max)
 {
-    char* abs_path = NULL;
-    char path[PATH_MAX];
+    assert(source && path && path_max);
+
+    char buffer[PATH_MAX];
     struct str_slice dirs[1024];
-    size_t len;
+    size_t dirs_num;
+    size_t pos;
 
     if (strcmp(source, LDRSRC_STDIN) == 0 ||
         strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        return str_dup(source, NULL);
+        strncpy(path, source, path_max - 1);
+        return strlen(path) + 1;
     }
 
     if (*source == '/') {
-        strncpy(path, source, sizeof(path) - 1);
+        strncpy(buffer, source, sizeof(buffer) - 1);
     } else {
         // relative to the current dir
-        if (!getcwd(path, sizeof(path) - 1)) {
-            return str_dup(source, NULL);
+        size_t len;
+        if (!getcwd(buffer, sizeof(buffer) - 1)) {
+            return 0;
         }
-        len = strlen(path);
-        if (path[len] != '/') {
-            path[len++] = '/';
+        len = strlen(buffer);
+        if (buffer[len] != '/') {
+            buffer[len] = '/';
+            ++len;
         }
-        strncpy(path + len, source, sizeof(path) - len - 1);
+        if (len >= sizeof(buffer)) {
+            return 0;
+        }
+        strncpy(buffer + len, source, sizeof(buffer) - len - 1);
     }
 
     // split by component
-    len = str_split(path, '/', dirs, ARRAY_SIZE(dirs));
+    dirs_num = str_split(buffer, '/', dirs, ARRAY_SIZE(dirs));
 
     // remove "/../" and "/./"
-    for (size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < dirs_num; ++i) {
         if (dirs[i].len == 1 && dirs[i].value[0] == '.') {
             dirs[i].len = 0;
         } else if (dirs[i].len == 2 && dirs[i].value[0] == '.' &&
@@ -87,17 +100,31 @@ static char* absolute_path(const char* source)
     }
 
     // collect to the absolute path
-    str_append("/", 1, &abs_path);
-    for (size_t i = 0; i < len; ++i) {
+    path[0] = '/';
+    pos = 1;
+    for (size_t i = 0; i < dirs_num; ++i) {
         if (dirs[i].len) {
-            str_append(dirs[i].value, dirs[i].len, &abs_path);
-            if (i < len - 1) {
-                str_append("/", 1, &abs_path);
+            if (pos + dirs[i].len + 1 >= path_max) {
+                return 0;
+            }
+            memcpy(path + pos, dirs[i].value, dirs[i].len);
+            pos += dirs[i].len;
+            if (i < dirs_num - 1) {
+                if (pos + 1 >= path_max) {
+                    return 0;
+                }
+                path[pos++] = '/';
             }
         }
     }
 
-    return abs_path;
+    // last null
+    if (pos + 1 >= path_max) {
+        return 0;
+    }
+    path[pos++] = 0;
+
+    return pos;
 }
 
 /**
@@ -106,14 +133,9 @@ static char* absolute_path(const char* source)
  */
 static void add_entry(const char* source)
 {
-    char* abs_source = absolute_path(source);
-    if (!abs_source) {
-        return;
-    }
-
     // check for duplicates
     for (size_t i = 0; i < ctx.size; ++i) {
-        if (strcmp(ctx.sources[i], abs_source) == 0) {
+        if (strcmp(ctx.sources[i], source) == 0) {
             return;
         }
     }
@@ -130,7 +152,7 @@ static void add_entry(const char* source)
     }
 
     // add new entry
-    ctx.sources[ctx.size] = abs_source;
+    ctx.sources[ctx.size] = str_dup(source, NULL);
     if (ctx.sources[ctx.size]) {
         ++ctx.size;
     }
@@ -140,68 +162,55 @@ static void add_entry(const char* source)
  * Add file to the list.
  * @param file path to the file
  */
-static void add_file(const char* file)
+static void add_file(const char* path)
 {
-    // remove "./" from file path
-    if (file[0] == '.' && file[1] == '/') {
-        file += 2;
+    char abspath[PATH_MAX];
+    if (absolute_path(path, abspath, sizeof(abspath))) {
+        add_entry(abspath);
     }
-
-    add_entry(file);
 }
 
 /**
  * Add files from the directory to the list.
  * @param dir full path to the directory
- * @param recursive flag to handle directory recursively
  */
-static void add_dir(const char* dir, bool recursive)
+static void add_dir(const char* dir)
 {
     DIR* dir_handle;
     struct dirent* dir_entry;
-    struct stat file_stat;
-    size_t len;
-    char* path;
+    char* path = NULL;
 
     dir_handle = opendir(dir);
     if (!dir_handle) {
         return;
     }
 
-    while (true) {
-        dir_entry = readdir(dir_handle);
-        if (!dir_entry) {
-            break;
+    while ((dir_entry = readdir(dir_handle))) {
+        const char* name = dir_entry->d_name;
+        struct stat st;
+
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+            continue; // skip link to self/parent dirs
         }
-        // skip link to self/parent dirs
-        if (strcmp(dir_entry->d_name, ".") == 0 ||
-            strcmp(dir_entry->d_name, "..") == 0) {
+
+        // compose full path
+        if (!str_dup(dir, &path) || !str_append("/", 1, &path) ||
+            !str_append(name, 0, &path)) {
             continue;
         }
-        // compose full path
-        len = strlen(dir) + 1 /*slash*/;
-        len += strlen(dir_entry->d_name) + 1 /*last null*/;
-        path = malloc(len);
-        if (path) {
-            // NOLINTBEGIN(clang-analyzer-security.insecureAPI.strcpy)
-            strcpy(path, dir);
-            strcat(path, "/");
-            strcat(path, dir_entry->d_name);
-            // NOLINTEND(clang-analyzer-security.insecureAPI.strcpy)
 
-            if (stat(path, &file_stat) == 0) {
-                if (S_ISDIR(file_stat.st_mode)) {
-                    if (recursive) {
-                        add_dir(path, recursive);
-                    }
-                } else {
-                    add_file(path);
+        if (stat(path, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                if (ctx.recursive) {
+                    add_dir(path);
                 }
+            } else if (S_ISREG(st.st_mode)) {
+                add_file(path);
             }
-            free(path);
         }
     }
 
+    free(path);
     closedir(dir_handle);
 }
 
@@ -268,101 +277,13 @@ static int compare_reverse(const void* a, const void* b)
     return -strcoll(*(const char**)a, *(const char**)b);
 }
 
-/**
- * Shuffle the image list.
- */
-static void shuffle_list(void)
-{
-    for (size_t i = 0; i < ctx.size; ++i) {
-        const size_t j = rand() % ctx.size;
-        if (i != j) {
-            char* swap = ctx.sources[i];
-            ctx.sources[i] = ctx.sources[j];
-            ctx.sources[j] = swap;
-        }
-    }
-}
-
-/**
- * Load config.
- * @param cfg config instance
- */
-static void load_config(const struct config* cfg)
+void image_list_init(const struct config* cfg)
 {
     ctx.order = config_get_oneof(cfg, CFG_LIST, CFG_LIST_ORDER, order_names,
                                  ARRAY_SIZE(order_names));
     ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
-}
-
-size_t image_list_init(const struct config* cfg, const char** sources,
-                       size_t num)
-{
-    struct stat file_stat;
-
-    load_config(cfg);
-
-    for (size_t i = 0; i < num; ++i) {
-        // special files
-        if (strncmp(sources[i], LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
-            strncmp(sources[i], LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-            add_entry(sources[i]);
-            continue;
-        }
-        // file system files
-        if (stat(sources[i], &file_stat) != 0) {
-            continue;
-        }
-        if (S_ISDIR(file_stat.st_mode)) {
-            add_dir(sources[i], ctx.recursive);
-            continue;
-        }
-        if (!ctx.all_files) {
-            add_file(sources[i]);
-            continue;
-        }
-        // add all files from the same directory
-        const char* delim = strrchr(sources[i], '/');
-        const size_t len = delim ? delim - sources[i] : 0;
-        if (len == 0) {
-            add_dir(".", ctx.recursive);
-        } else {
-            char* dir = malloc(len + 1);
-            if (dir) {
-                memcpy(dir, sources[i], len);
-                dir[len] = 0;
-                add_dir(dir, ctx.recursive);
-                free(dir);
-            }
-        }
-    }
-
-    if (ctx.size != 0) {
-        // init random sequence
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        srand(ts.tv_nsec);
-
-        // sort list
-        switch (ctx.order) {
-            case order_none:
-                break;
-            case order_alpha:
-                qsort(ctx.sources, ctx.size, sizeof(*ctx.sources),
-                      compare_alpha);
-                break;
-            case order_reverse:
-                qsort(ctx.sources, ctx.size, sizeof(*ctx.sources),
-                      compare_reverse);
-                break;
-            case order_random:
-                shuffle_list();
-                break;
-        }
-    }
-
-    return ctx.size;
 }
 
 void image_list_destroy(void)
@@ -374,6 +295,77 @@ void image_list_destroy(void)
     ctx.sources = NULL;
     ctx.capacity = 0;
     ctx.size = 0;
+}
+
+void image_list_add(const char* source)
+{
+    struct stat st;
+
+    // special url
+    if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
+        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        add_entry(source);
+        return;
+    }
+
+    // file from file system
+    if (stat(source, &st) != 0) {
+        fprintf(stderr, "Unable to query file %s: [%i] %s\n", source, errno,
+                strerror(errno));
+        return;
+    }
+    if (S_ISDIR(st.st_mode)) {
+        add_dir(source);
+    } else if (S_ISREG(st.st_mode)) {
+        if (!ctx.all_files) {
+            add_file(source);
+        } else {
+            // add all files from the same directory
+            const char* delim = strrchr(source, '/');
+            const size_t len = delim ? delim - source : 0;
+            if (len == 0) {
+                add_dir(".");
+            } else {
+                char* dir = str_append(source, len, NULL);
+                if (dir) {
+                    add_dir(dir);
+                    free(dir);
+                }
+            }
+        }
+    }
+}
+
+void image_list_reorder(void)
+{
+    assert(ctx.size);
+
+    switch (ctx.order) {
+        case order_none:
+            break;
+        case order_alpha:
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_alpha);
+            break;
+        case order_reverse:
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_reverse);
+            break;
+        case order_random:
+            for (size_t i = 0; i < ctx.size; ++i) {
+                if (i == 0) {
+                    // init random sequence
+                    struct timespec ts;
+                    clock_gettime(CLOCK_MONOTONIC, &ts);
+                    srand(ts.tv_nsec);
+                }
+                const size_t j = rand() % ctx.size;
+                if (i != j) {
+                    char* swap = ctx.sources[i];
+                    ctx.sources[i] = ctx.sources[j];
+                    ctx.sources[j] = swap;
+                }
+            }
+            break;
+    }
 }
 
 size_t image_list_size(void)
@@ -388,13 +380,12 @@ const char* image_list_get(size_t index)
 
 size_t image_list_find(const char* source)
 {
-    // remove "./" from file source
-    if (source[0] == '.' && source[1] == '/') {
-        source += 2;
-    }
-    for (size_t i = 0; i < ctx.size; ++i) {
-        if (ctx.sources[i] && strcmp(ctx.sources[i], source) == 0) {
-            return i;
+    char abspath[PATH_MAX];
+    if (absolute_path(source, abspath, sizeof(abspath))) {
+        for (size_t i = 0; i < ctx.size; ++i) {
+            if (ctx.sources[i] && strcmp(ctx.sources[i], abspath) == 0) {
+                return i;
+            }
         }
     }
     return IMGLIST_INVALID;

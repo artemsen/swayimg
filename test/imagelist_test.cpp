@@ -9,29 +9,51 @@ extern "C" {
 
 class ImageList : public ::testing::Test {
 protected:
-    void TearDown() override { image_list_destroy(); }
+    void SetUp() override
+    {
+        unsetenv("XDG_CONFIG_HOME");
+        unsetenv("XDG_CONFIG_DIRS");
+        unsetenv("HOME");
+        config = config_load();
+        ASSERT_TRUE(config);
+    }
+
+    void TearDown() override
+    {
+        image_list_destroy();
+        config_free(config);
+    }
+
+    struct config* config;
 };
 
-TEST_F(ImageList, Init)
+TEST_F(ImageList, Add)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
+    image_list_init(config);
     ASSERT_EQ(image_list_size(), static_cast<size_t>(0));
-    ASSERT_EQ(image_list_init(nullptr, sources, 3), static_cast<size_t>(3));
+
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_size(), static_cast<size_t>(3));
 }
 
 TEST_F(ImageList, Find)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     const size_t idx = image_list_find("exec://cmd2");
     ASSERT_EQ(idx, static_cast<size_t>(1));
 }
 
 TEST_F(ImageList, Skip)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_skip(2), static_cast<size_t>(1));
     ASSERT_EQ(image_list_skip(0), static_cast<size_t>(1));
     ASSERT_EQ(image_list_skip(1), static_cast<size_t>(IMGLIST_INVALID));
@@ -39,8 +61,10 @@ TEST_F(ImageList, Skip)
 
 TEST_F(ImageList, NearestFwdNoLoop)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, true, false),
               static_cast<size_t>(0));
     ASSERT_EQ(image_list_nearest(0, true, false), static_cast<size_t>(1));
@@ -56,8 +80,10 @@ TEST_F(ImageList, NearestFwdNoLoop)
 
 TEST_F(ImageList, NearestFwdLoop)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, true, true),
               static_cast<size_t>(0));
     ASSERT_EQ(image_list_nearest(0, true, true), static_cast<size_t>(1));
@@ -71,8 +97,10 @@ TEST_F(ImageList, NearestFwdLoop)
 
 TEST_F(ImageList, NearestBackNoLoop)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, false, false),
               static_cast<size_t>(IMGLIST_INVALID));
     ASSERT_EQ(image_list_nearest(0, false, false),
@@ -87,8 +115,10 @@ TEST_F(ImageList, NearestBackNoLoop)
 
 TEST_F(ImageList, NearestBackLoop)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_nearest(IMGLIST_INVALID, false, true),
               static_cast<size_t>(2));
     ASSERT_EQ(image_list_nearest(0, false, true), static_cast<size_t>(2));
@@ -102,8 +132,10 @@ TEST_F(ImageList, NearestBackLoop)
 
 TEST_F(ImageList, JumpFwd)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
 
     ASSERT_EQ(image_list_jump(IMGLIST_INVALID, 1, true),
               static_cast<size_t>(IMGLIST_INVALID));
@@ -121,8 +153,10 @@ TEST_F(ImageList, JumpFwd)
 
 TEST_F(ImageList, JumpBack)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
 
     ASSERT_EQ(image_list_jump(IMGLIST_INVALID, 1, false),
               static_cast<size_t>(IMGLIST_INVALID));
@@ -140,8 +174,10 @@ TEST_F(ImageList, JumpBack)
 
 TEST_F(ImageList, Distance)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_distance(IMGLIST_INVALID, IMGLIST_INVALID),
               static_cast<size_t>(2));
     ASSERT_EQ(image_list_distance(0, IMGLIST_INVALID), static_cast<size_t>(2));
@@ -159,30 +195,38 @@ TEST_F(ImageList, Distance)
 
 TEST_F(ImageList, Get)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     const char* src = image_list_get(1);
     ASSERT_STREQ(src, "exec://cmd2");
 }
 
 TEST_F(ImageList, GetFirst)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_first(), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GetLast)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_last(), static_cast<size_t>(2));
 }
 
 TEST_F(ImageList, GetNextFile)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_next_file(0), static_cast<size_t>(1));
     ASSERT_EQ(image_list_next_file(1), static_cast<size_t>(2));
     ASSERT_EQ(image_list_next_file(2), static_cast<size_t>(0));
@@ -190,20 +234,22 @@ TEST_F(ImageList, GetNextFile)
 
 TEST_F(ImageList, GePrevFile)
 {
-    const char* sources[] = { "exec://cmd1", "exec://cmd2", "exec://cmd3" };
-    image_list_init(nullptr, sources, 3);
+    image_list_init(config);
+    image_list_add("exec://cmd1");
+    image_list_add("exec://cmd2");
+    image_list_add("exec://cmd3");
     ASSERT_EQ(image_list_prev_file(0), static_cast<size_t>(2));
     ASSERT_EQ(image_list_prev_file(1), static_cast<size_t>(0));
 }
 
 TEST_F(ImageList, GetNextDir)
 {
-    const char* sources[] = {
-        "exec://cmd1/dir1/image1", "exec://cmd1/dir1/image2",
-        "exec://cmd1/dir2/image3", "exec://cmd1/dir2/image4",
-        "exec://cmd1/dir3/image5",
-    };
-    image_list_init(nullptr, sources, 5);
+    image_list_init(config);
+    image_list_add("exec://cmd1/dir1/image1");
+    image_list_add("exec://cmd1/dir1/image2");
+    image_list_add("exec://cmd1/dir2/image3");
+    image_list_add("exec://cmd1/dir2/image4");
+    image_list_add("exec://cmd1/dir3/image5");
     ASSERT_EQ(image_list_next_dir(0), static_cast<size_t>(2));
     ASSERT_EQ(image_list_next_dir(2), static_cast<size_t>(4));
     ASSERT_EQ(image_list_next_dir(4), static_cast<size_t>(0));
@@ -211,12 +257,12 @@ TEST_F(ImageList, GetNextDir)
 
 TEST_F(ImageList, GetPrevDir)
 {
-    const char* sources[] = {
-        "exec://cmd1/dir1/image1", "exec://cmd1/dir1/image2",
-        "exec://cmd1/dir2/image3", "exec://cmd1/dir2/image4",
-        "exec://cmd1/dir3/image5",
-    };
-    image_list_init(nullptr, sources, 5);
+    image_list_init(config);
+    image_list_add("exec://cmd1/dir1/image1");
+    image_list_add("exec://cmd1/dir1/image2");
+    image_list_add("exec://cmd1/dir2/image3");
+    image_list_add("exec://cmd1/dir2/image4");
+    image_list_add("exec://cmd1/dir3/image5");
     ASSERT_EQ(image_list_prev_dir(0), static_cast<size_t>(4));
     ASSERT_EQ(image_list_prev_dir(2), static_cast<size_t>(1));
     ASSERT_EQ(image_list_prev_dir(3), static_cast<size_t>(1));
