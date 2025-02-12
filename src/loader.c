@@ -399,10 +399,12 @@ void loader_init(void)
 {
     pthread_cond_init(&ctx.signal, NULL);
     pthread_cond_init(&ctx.ready, NULL);
+
     pthread_mutex_init(&ctx.lock, NULL);
+    pthread_mutex_lock(&ctx.lock);
+
     pthread_create(&ctx.tid, NULL, loading_thread, NULL);
 
-    pthread_mutex_lock(&ctx.lock);
     pthread_cond_wait(&ctx.ready, &ctx.lock);
     pthread_mutex_unlock(&ctx.lock);
 }
