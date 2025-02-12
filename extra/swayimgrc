@@ -178,7 +178,7 @@ Shift+m = flip_horizontal
 a = antialiasing
 r = reload
 i = info
-Shift+Delete = exec rm "%"; skip_file
+Shift+Delete = exec rm -f "%"; skip_file
 Escape = exit
 q = exit
 # Mouse related
@@ -212,7 +212,7 @@ Return = mode
 a = antialiasing
 r = reload
 i = info
-Shift+Delete = exec rm "%"; skip_file
+Shift+Delete = exec rm -f "%"; skip_file
 Escape = exit
 q = exit
 # Mouse related
