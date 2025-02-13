@@ -48,6 +48,7 @@ static const char* action_names[] = {
     [action_antialiasing] = "antialiasing",
     [action_info] = "info",
     [action_exec] = "exec",
+    [action_export] = "export",
     [action_status] = "status",
     [action_exit] = "exit",
 };
@@ -131,7 +132,7 @@ bool action_create(const char* text, struct action_seq* actions)
             while (i) {
                 free(load[--i].params);
             }
-            return 0;
+            return false;
         }
     }
 
@@ -142,13 +143,13 @@ bool action_create(const char* text, struct action_seq* actions)
         for (size_t i = 0; i < ARRAY_SIZE(load); ++i) {
             free(load[i].params);
         }
-        return 0;
+        return false;
     }
     memcpy(buf, load, buf_sz);
     actions->num = seq_len;
     actions->sequence = buf;
 
-    return seq_len;
+    return !!seq_len;
 }
 
 void action_free(struct action_seq* actions)

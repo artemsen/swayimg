@@ -16,12 +16,6 @@ struct mem_reader {
     size_t position;
 };
 
-// PNG memory writer
-struct mem_writer {
-    uint8_t** data;
-    size_t* size;
-};
-
 // PNG reader callback, see `png_rw_ptr` in png.h
 static void png_reader(png_structp png, png_bytep buffer, size_t size)
 {
@@ -31,23 +25,6 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
         reader->position += size;
     } else {
         png_error(png, "No data in PNG reader");
-    }
-}
-
-// PNG writer callback, see `png_rw_ptr` in png.h
-static void png_writer(png_structp png, png_bytep buffer, size_t size)
-{
-    struct mem_writer* writer = (struct mem_writer*)png_get_io_ptr(png);
-    const size_t old_size = *writer->size;
-    const size_t new_size = old_size + size;
-    uint8_t* new_ptr = realloc(*writer->data, new_size);
-
-    if (new_ptr) {
-        memcpy(new_ptr + old_size, buffer, size);
-        *writer->data = new_ptr;
-        *writer->size = new_size;
-    } else {
-        png_error(png, "No memory");
     }
 }
 
@@ -355,72 +332,79 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
     return rc ? ldr_success : ldr_fmterror;
 }
 
-bool encode_png(const struct image* ctx, uint8_t** data, size_t* size)
+bool export_png(const struct pixmap* pm, const struct image_info* info,
+                const char* path)
 {
     png_struct* png = NULL;
-    png_info* info = NULL;
+    png_info* png_inf = NULL;
     png_bytep* bind = NULL;
-    struct mem_writer writer = {
-        .data = data,
-        .size = size,
-    };
+    FILE* file;
+
+    file = fopen(path, "wb");
+    if (!file) {
+        return false;
+    }
 
     // create encoder
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
+        fclose(file);
         return false;
     }
-    info = png_create_info_struct(png);
-    if (!info) {
+    png_inf = png_create_info_struct(png);
+    if (!png_inf) {
         png_destroy_write_struct(&png, NULL);
+        fclose(file);
         return false;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
-        free(bind);
-        png_destroy_write_struct(&png, &info);
+        png_destroy_write_struct(&png, &png_inf);
+        fclose(file);
         return false;
     }
 
-    png_set_write_fn(png, &writer, png_writer, NULL);
+    png_init_io(png, file);
 
     // setup output: 8bit RGBA
-    png_set_IHDR(png, info, ctx->frames[0].pm.width, ctx->frames[0].pm.height,
-                 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+    png_set_IHDR(png, png_inf, pm->width, pm->height, 8,
+                 PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     png_set_bgr(png);
 
     // save meta info as text
-    if (ctx->info) {
-        const size_t info_sz = list_size(&ctx->info->list);
+    if (info) {
+        const size_t info_sz = list_size(&info->list);
         png_text* txt = calloc(1, info_sz * sizeof(png_text));
         if (txt) {
             size_t i = 0;
-            list_for_each(ctx->info, const struct image_info, it) {
+            list_for_each(info, const struct image_info, it) {
                 txt[i].key = it->key;
                 txt[i].text = it->value;
                 ++i;
             }
-            png_set_text(png, info, txt, info_sz);
+            png_set_text(png, png_inf, txt, info_sz);
             free(txt);
         }
     }
 
-    png_write_info(png, info);
+    png_write_info(png, png_inf);
 
     // encode image
-    bind = bind_pixmap(&ctx->frames[0].pm);
+    bind = bind_pixmap(pm);
     if (!bind) {
-        png_destroy_write_struct(&png, &info);
+        png_destroy_write_struct(&png, &png_inf);
+        fclose(file);
         return false;
     }
     png_write_image(png, bind);
     png_write_end(png, NULL);
 
     // free resources
+    png_destroy_write_struct(&png, &png_inf);
     free(bind);
-    png_destroy_write_struct(&png, &info);
+    fclose(file);
 
     return true;
 }

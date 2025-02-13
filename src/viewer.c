@@ -12,6 +12,10 @@
 #include "pixmap_scale.h"
 #include "ui.h"
 
+#ifdef HAVE_LIBPNG
+#include "formats/png.h"
+#endif
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -748,6 +752,21 @@ static void apply_action(const struct action* action)
             break;
         case action_exec:
             app_execute(action->params, fetcher_current()->source);
+            break;
+        case action_export:
+#ifdef HAVE_LIBPNG
+            if (!action->params || !*action->params) {
+                info_update(info_status, "Error: export path is not specified");
+            } else if (export_png(&fetcher_current()->frames[ctx.frame].pm,
+                                  NULL, action->params)) {
+                info_update(info_status, "Export completed");
+            } else {
+                info_update(info_status, "Error: export failed");
+            }
+#else
+            info_update(info_status, "Error: export to PNG is not supported");
+#endif // HAVE_LIBPNG
+            app_redraw();
             break;
         default:
             break;

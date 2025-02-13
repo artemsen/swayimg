@@ -99,8 +99,6 @@ static char* pstore_path(const char* source)
 static void pstore_save(const struct thumbnail* thumb)
 {
     char* th_path;
-    uint8_t* th_data = NULL;
-    size_t th_size = 0;
     char* delim;
 
     th_path = pstore_path(thumb->image->source);
@@ -124,21 +122,7 @@ static void pstore_save(const struct thumbnail* thumb)
     }
 
     // save thumbnail
-    if (encode_png(thumb->image, &th_data, &th_size)) {
-        const int fd = creat(th_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-        if (fd != -1) {
-            size_t pos = 0;
-            while (pos < th_size) {
-                const ssize_t written = write(fd, th_data + pos, th_size - pos);
-                if (written == -1) {
-                    break;
-                }
-                pos += written;
-            }
-            close(fd);
-        }
-        free(th_data);
-    }
+    export_png(&thumb->image->frames[0].pm, thumb->image->info, th_path);
 
     free(th_path);
 }

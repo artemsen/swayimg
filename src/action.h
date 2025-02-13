@@ -42,6 +42,7 @@ enum action_type {
     action_antialiasing,
     action_info,
     action_exec,
+    action_export,
     action_status,
     action_exit,
 };
