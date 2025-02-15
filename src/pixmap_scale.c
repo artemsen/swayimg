@@ -183,6 +183,7 @@ static void new_kernel(struct kernel* kernel, size_t nin, size_t nout,
     for (size_t out = start; out < end; ++out) {
         double sum, norm;
         size_t tfirst, tlast;
+        int16_t isum;
 
         // Input bounds for this output
         struct output* output = &kernel->outputs[out - start];
@@ -197,11 +198,13 @@ static void new_kernel(struct kernel* kernel, size_t nin, size_t nout,
             sum += w;
         }
         norm = 1.0 / sum;
+        isum = 0;
         for (size_t in = first; in <= last; ++in) {
-            // TODO if more accuracy is needed, round may help
-            int_weights[in - first] =
-                weights[in - first] * norm * (1 << FIXED_BITS);
+            int16_t iw = round(weights[in - first] * norm * (1 << FIXED_BITS));
+            int_weights[in - first] = iw;
+            isum += iw;
         }
+        int_weights[(last - first) / 2] += (1 << FIXED_BITS) - isum;
 
         // Ignore leading or trailing zeros
         for (tfirst = first; tfirst < last && int_weights[tfirst - first] == 0;
