@@ -9,6 +9,7 @@ RUN apk add \
     libheif-dev \
     libjpeg-turbo-dev \
     libjxl-dev \
+    libraw-dev \
     librsvg-dev \
     libsixel-dev \
     libwebp-dev \

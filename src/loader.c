@@ -63,6 +63,9 @@ const char* supported_formats = "bmp, pnm, farbfeld, tga, dicom"
 #ifdef HAVE_LIBSIXEL
                                 ", sixel"
 #endif
+#ifdef HAVE_LIBRAW
+                                ", raw"
+#endif
     ;
 
 // declaration of loaders
@@ -102,6 +105,9 @@ LOADER_DECLARE(tiff);
 #ifdef HAVE_LIBSIXEL
 LOADER_DECLARE(sixel);
 #endif
+#ifdef HAVE_LIBRAW
+LOADER_DECLARE(raw);
+#endif
 #ifdef HAVE_LIBWEBP
 LOADER_DECLARE(webp);
 #endif
@@ -138,6 +144,9 @@ static const image_decoder decoders[] = {
 #endif
 #ifdef HAVE_LIBEXR
     &LOADER_FUNCTION(exr),
+#endif
+#ifdef HAVE_LIBRAW
+    &LOADER_FUNCTION(raw),
 #endif
 #ifdef HAVE_LIBTIFF
     &LOADER_FUNCTION(tiff),

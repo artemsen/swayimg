@@ -59,6 +59,9 @@ endif
 if sixel.found()
   sources += '../src/formats/sixel.c'
 endif
+if raw.found()
+  sources += '../src/formats/raw.c'
+endif
 if webp.found() and webp_demux.found()
   sources += '../src/formats/webp.c'
 endif
@@ -83,6 +86,7 @@ test(
       rsvg,
       tiff,
       sixel,
+      raw,
       webp, webp_demux,
     ],
     include_directories: '../src',

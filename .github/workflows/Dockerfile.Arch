@@ -10,6 +10,7 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     libheif \
     libjpeg-turbo \
     libjxl \
+    libraw \
     librsvg \
     libsixel \
     libtiff \
@@ -30,6 +31,6 @@ ENV CC="clang"
 ENV CXX="clang++"
 ENV CFLAGS="-g -fsanitize=address"
 ENV CXXFLAGS="-g -fsanitize=address"
-ENV LDFLAGS="-fsanitize=address"
+ENV LDFLAGS="-fsanitize=address -fopenmp=libgomp"
 
 USER builder

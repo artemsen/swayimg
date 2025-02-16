@@ -13,6 +13,7 @@ Fully customizable and lightweight image viewer for Wayland based display server
   - AV1F/AVIFS (via [libavif](https://github.com/AOMediaCodec/libavif));
   - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
   - Sixel (via [libsixel](https://github.com/saitoha/libsixel));
+  - Raw: CRW/CR2, NEF, RAF, etc (via [libraw](https://www.libraw.org));
   - EXR (via [OpenEXR](https://openexr.com));
   - BMP (built-in);
   - PNM (built-in);

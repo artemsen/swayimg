@@ -17,6 +17,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libjxl-dev \
     libopenexr-dev \
     libopenexr-dev \
+    libraw-dev \
     librsvg2-dev \
     libsixel-dev \
     libtiff-dev \

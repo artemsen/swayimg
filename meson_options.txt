@@ -39,6 +39,10 @@ option('sixel',
        type: 'feature',
        value: 'auto',
        description: 'Enable Sixel format support')
+option('raw',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable raw format support')
 option('webp',
        type: 'feature',
        value: 'auto',

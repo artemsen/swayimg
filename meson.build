@@ -55,6 +55,7 @@ png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 sixel = dependency('libsixel', required: get_option('sixel'))
+raw = dependency('libraw', required: get_option('raw'))
 webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 
@@ -91,6 +92,7 @@ conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
+conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
@@ -247,6 +249,9 @@ endif
 if sixel.found()
   sources += 'src/formats/sixel.c'
 endif
+if raw.found()
+  sources += 'src/formats/raw.c'
+endif
 if webp.found() and webp_demux.found()
   sources += 'src/formats/webp.c'
 endif
@@ -278,6 +283,7 @@ executable(
     rsvg,
     tiff,
     sixel,
+    raw,
     webp, webp_demux,
   ],
   install: true
