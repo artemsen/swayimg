@@ -27,30 +27,22 @@
  */
 static bool is_svg(const uint8_t* data, size_t size)
 {
-    const char svg_begin[] = "<svg";
-    const char xml_begin[] = "<?xml";
+    const char svg_node[] = { '<', 's', 'v', 'g' };
+    size_t max_pos;
 
-    // svg is an xml, skip spaces from the start
-    while (size && isspace(*data) != 0) {
-        ++data;
-        --size;
+    if (size < sizeof(svg_node)) {
+        return false;
     }
 
-    if (size > sizeof(svg_begin) &&
-        strncmp((const char*)data, svg_begin, sizeof(svg_begin) - 1) == 0) {
-        return true;
+    max_pos = size - sizeof(svg_node);
+    if (max_pos > MAX_OFFSET) {
+        max_pos = MAX_OFFSET;
     }
 
-    if (size > sizeof(xml_begin) &&
-        strncmp((const char*)data, xml_begin, sizeof(xml_begin) - 1) == 0) {
-        // search for svg node
-        size_t pos = sizeof(xml_begin);
-        while (pos < MAX_OFFSET && pos + sizeof(svg_begin) < size) {
-            if (strncmp((const char*)&data[pos], svg_begin,
-                        sizeof(svg_begin) - 1) == 0) {
-                return true;
-            }
-            ++pos;
+    // search for svg node
+    for (size_t i = 0; i < max_pos; ++i) {
+        if (memcmp(data + i, svg_node, sizeof(svg_node)) == 0) {
+            return true;
         }
     }
 
