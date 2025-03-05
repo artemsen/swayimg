@@ -294,9 +294,10 @@ void sway_disconnect(int ipc)
     }
 }
 
-bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen)
+bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen, const struct config* cfg)
 {
     bool rc = false;
+    bool config_decoration = config_get_bool(cfg, "general", "decoration");
 
     // get currently focused window
     json_object* tree = ipc_message(ipc, IPC_GET_TREE, NULL);
@@ -325,11 +326,26 @@ bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen)
     if (cur_wks) {
         struct wndrect workspace;
         struct wndrect global;
+        struct wndrect window_rect; // window_rect represents the CURRENT window decoration border width
+        int sway_border_width;
+
         rc = read_rect(cur_wks, "rect", &workspace) &&
-            read_rect(cur_wnd, "rect", &global);
+            read_rect(cur_wnd, "rect", &global) &&
+            read_rect(cur_wnd, "window_rect", &window_rect) &&
+            read_int(cur_wnd, "current_border_width", &sway_border_width); // despite its name, doesn't represent current border width, window_rect does though
         if (rc) {
-            wnd->x += global.x - workspace.x;
-            wnd->y += global.y - workspace.y;
+            // if swayimg window decorations are enabled, offset by border width (window_rect)
+            // otherwise, position is off by the thickness of the borders
+            wnd->x += global.x - workspace.x - (config_decoration == 1 ? window_rect.x : 0);
+            wnd->y += global.y - workspace.y - (config_decoration == 1 ? window_rect.y : 0);
+
+            // if they are not the same, it means that sway smart borders are enabled (for the current window) and the window size needs to be adjusted accordingly
+            // it is also only a problem when swayimg's window decorations are enabled
+            if (sway_border_width != window_rect.x && config_decoration) {
+                // times 2 because there are borders on every side
+                wnd->width -= sway_border_width * 2;
+                wnd->height -= sway_border_width * 2;
+            }
         }
     }
     json_object_put(workspaces);

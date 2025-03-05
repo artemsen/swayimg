@@ -76,7 +76,7 @@ static struct application ctx;
 /**
  * Setup window position via Sway IPC.
  */
-static void sway_setup(void)
+static void sway_setup(const struct config* cfg)
 {
     struct wndrect parent;
     bool fullscreen;
@@ -87,7 +87,7 @@ static void sway_setup(void)
     if (ipc == INVALID_SWAY_IPC) {
         return; // sway not available
     }
-    if (!sway_current(ipc, &parent, &fullscreen)) {
+    if (!sway_current(ipc, &parent, &fullscreen, cfg)) {
         sway_disconnect(ipc);
         return;
     }
@@ -403,7 +403,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
 
     // setup window position and size
     if (ctx.window.width != SIZE_FULLSCREEN) {
-        sway_setup(); // try Sway integration
+        sway_setup(cfg); // try Sway integration
     }
     if (ctx.window.width == SIZE_FULLSCREEN) {
         ui_toggle_fullscreen();
