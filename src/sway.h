@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
@@ -37,7 +39,7 @@ void sway_disconnect(int ipc);
  * @param fullscreen current full screen mode
  * @return true if operation completed successfully
  */
-bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen);
+bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen, const struct config* cfg);
 
 /**
  * Add rules for Sway for application's window:
