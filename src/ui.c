@@ -187,8 +187,10 @@ static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
                                   uint32_t mods_latched, uint32_t mods_locked,
                                   uint32_t group)
 {
-    xkb_state_update_mask(ctx.xkb.state, mods_depressed, mods_latched,
-                          mods_locked, 0, 0, group);
+    if (ctx.xkb.state) {
+        xkb_state_update_mask(ctx.xkb.state, mods_depressed, mods_latched,
+                              mods_locked, 0, 0, group);
+    }
 }
 
 static void on_keyboard_repeat_info(void* data, struct wl_keyboard* wl_keyboard,
@@ -204,16 +206,24 @@ static void on_keyboard_keymap(void* data, struct wl_keyboard* wl_keyboard,
 {
     char* keymap;
 
-    xkb_state_unref(ctx.xkb.state);
-    xkb_keymap_unref(ctx.xkb.keymap);
+    if (ctx.xkb.state) {
+        xkb_state_unref(ctx.xkb.state);
+        ctx.xkb.state = NULL;
+    }
+    if (ctx.xkb.keymap) {
+        xkb_keymap_unref(ctx.xkb.keymap);
+        ctx.xkb.keymap = NULL;
+    }
 
     keymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-    ctx.xkb.keymap = xkb_keymap_new_from_string(ctx.xkb.context, keymap,
-                                                XKB_KEYMAP_FORMAT_TEXT_V1,
-                                                XKB_KEYMAP_COMPILE_NO_FLAGS);
-    ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
+    if (keymap != MAP_FAILED) {
+        ctx.xkb.keymap = xkb_keymap_new_from_string(
+            ctx.xkb.context, keymap, XKB_KEYMAP_FORMAT_TEXT_V1,
+            XKB_KEYMAP_COMPILE_NO_FLAGS);
+        ctx.xkb.state = xkb_state_new(ctx.xkb.keymap);
+        munmap(keymap, size);
+    }
 
-    munmap(keymap, size);
     close(fd);
 }
 
@@ -226,7 +236,7 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
     if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         // stop key repeat timer
         timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
-    } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+    } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED && ctx.xkb.state) {
         xkb_keysym_t keysym;
         key += 8;
         keysym = xkb_state_key_get_one_sym(ctx.xkb.state, key);

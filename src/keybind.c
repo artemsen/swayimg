@@ -297,17 +297,19 @@ uint8_t keybind_mods(struct xkb_state* state)
 {
     uint8_t mods = 0;
 
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_CTRL,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_CTRL;
-    }
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_ALT,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_ALT;
-    }
-    if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_SHIFT,
-                                     XKB_STATE_MODS_EFFECTIVE) > 0) {
-        mods |= KEYMOD_SHIFT;
+    if (state) {
+        if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_CTRL,
+                                         XKB_STATE_MODS_EFFECTIVE) > 0) {
+            mods |= KEYMOD_CTRL;
+        }
+        if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_ALT,
+                                         XKB_STATE_MODS_EFFECTIVE) > 0) {
+            mods |= KEYMOD_ALT;
+        }
+        if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_SHIFT,
+                                         XKB_STATE_MODS_EFFECTIVE) > 0) {
+            mods |= KEYMOD_SHIFT;
+        }
     }
 
     return mods;
