@@ -81,7 +81,6 @@ static void sway_setup(const struct config* cfg)
 {
     struct wndrect parent;
     bool fullscreen;
-    bool absolute = false;
     int border;
     int ipc;
 
@@ -110,13 +109,12 @@ static void sway_setup(const struct config* cfg)
         }
     }
     if (ctx.window.x == POS_FROM_PARENT) {
-        absolute = false;
         ctx.window.x = parent.x;
         ctx.window.y = parent.y;
     }
 
     // set window position via sway rules
-    sway_add_rules(ipc, ctx.window.x, ctx.window.y, absolute);
+    sway_add_rules(ipc, ctx.window.x, ctx.window.y);
 
     sway_disconnect(ipc);
 }

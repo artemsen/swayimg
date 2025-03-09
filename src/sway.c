@@ -343,10 +343,9 @@ done:
     return rc;
 }
 
-bool sway_add_rules(int ipc, int x, int y, bool absolute)
+bool sway_add_rules(int ipc, int x, int y)
 {
     char move[64];
-    snprintf(move, sizeof(move), "move %s position %i %i",
-             absolute ? "absolute" : "", x, y);
+    snprintf(move, sizeof(move), "move position %i %i", x, y);
     return ipc_command(ipc, "floating enable") && ipc_command(ipc, move);
 }
