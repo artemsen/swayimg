@@ -85,11 +85,11 @@ struct viewer {
     ssize_t img_x, img_y; ///< Top left corner of the image
     ssize_t img_w, img_h; ///< Image width and height
 
-    size_t frame;                ///< Index of the current frame
-    argb_t image_bkg;            ///< Image background mode/color
-    argb_t window_bkg;           ///< Window background mode/color
-    enum pixmap_aa_mode aa_mode; ///< Anti-aliasing mode
-    bool fixed;                  ///< Fix image position
+    size_t frame;         ///< Index of the current frame
+    argb_t image_bkg;     ///< Image background mode/color
+    argb_t window_bkg;    ///< Window background mode/color
+    enum aa_mode aa_mode; ///< Anti-aliasing mode
+    bool fixed;           ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
     bool keep_zoom;              ///< Keep absolute zoom across images
@@ -740,11 +740,8 @@ static void apply_action(const struct action* action)
             app_redraw();
             break;
         case action_antialiasing:
-            if (++ctx.aa_mode >= ARRAY_SIZE(pixmap_aa_names)) {
-                ctx.aa_mode = 0;
-            }
-            info_update(info_status, "Anti-aliasing: %s",
-                        pixmap_aa_names[ctx.aa_mode]);
+            ctx.aa_mode = aa_switch(ctx.aa_mode, action->params);
+            info_update(info_status, "Anti-aliasing: %s", aa_name(ctx.aa_mode));
             app_redraw();
             break;
         case action_reload:
@@ -798,9 +795,7 @@ void viewer_init(const struct config* cfg, struct image* image)
     const char* value;
 
     ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
-    ctx.aa_mode =
-        config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_AA, pixmap_aa_names,
-                         ARRAY_SIZE(pixmap_aa_names));
+    ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
     ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
     // background for transparent images

@@ -421,7 +421,7 @@ static void apply_action(const struct action* action)
     switch (action->type) {
         case action_antialiasing:
             info_update(info_status, "Anti-aliasing: %s",
-                        pixmap_aa_names[thumbnail_switch_aa()]);
+                        aa_name(thumbnail_switch_aa(action->params)));
             thumbnail_clear(IMGLIST_INVALID, IMGLIST_INVALID);
             reset_loader();
             app_redraw();

@@ -109,14 +109,56 @@ struct task_sc_priv {
 
 // clang-format off
 /** Names of supported anti-aliasing modes. */
-const char* pixmap_aa_names[5] = {
-    [pixmap_nearest] = "none",
-    [pixmap_box] = "box",
-    [pixmap_bilinear] = "bilinear",
-    [pixmap_bicubic] = "bicubic",
-    [pixmap_mks13] = "mks13",
+const char* aa_names[] = {
+    [aa_nearest] = "none",
+    [aa_box] = "box",
+    [aa_bilinear] = "bilinear",
+    [aa_bicubic] = "bicubic",
+    [aa_mks13] = "mks13",
 };
 // clang-format on
+
+enum aa_mode aa_init(const struct config* cfg, const char* section,
+                     const char* key)
+{
+    return config_get_oneof(cfg, section, key, aa_names, ARRAY_SIZE(aa_names));
+}
+
+enum aa_mode aa_switch(enum aa_mode curr, const char* opt)
+{
+    ssize_t index;
+
+    if (!opt || !*opt) {
+        opt = "next";
+    }
+
+    index = str_index(aa_names, opt, 0);
+    if (index < 0) {
+        if (strcmp(opt, "next") == 0) {
+            index = curr;
+            if (++index >= (ssize_t)ARRAY_SIZE(aa_names)) {
+                index = 0;
+            }
+        } else if (strcmp(opt, "prev") == 0) {
+            index = curr;
+            if (--index < 0) {
+                index = ARRAY_SIZE(aa_names) - 1;
+            }
+        }
+    }
+
+    if (index < 0) {
+        fprintf(stderr, "Invalid AA mode: \"%s\"\n", opt);
+        return curr;
+    }
+
+    return index;
+}
+
+const char* aa_name(enum aa_mode aa)
+{
+    return aa_names[aa];
+}
 
 // Get the first and last input for a given output
 static inline void get_bounds(size_t out, double scale, double window,
@@ -269,24 +311,24 @@ static double mks13(double x)
     return -1.0 / 8.0 * x * x + 5.0 / 8.0 * x - 25.0 / 32.0;
 }
 
-static void new_named_kernel(enum pixmap_aa_mode scaler, struct kernel* kernel,
+static void new_named_kernel(enum aa_mode scaler, struct kernel* kernel,
                              size_t in, size_t out, ssize_t offset,
                              double scale)
 {
     switch (scaler) {
-        case pixmap_nearest:
+        case aa_nearest:
             // We shouldn't ever get here
             break;
-        case pixmap_box:
+        case aa_box:
             new_kernel(kernel, in, out, offset, scale, 0.5, box);
             break;
-        case pixmap_bilinear:
+        case aa_bilinear:
             new_kernel(kernel, in, out, offset, scale, 1.0, lin);
             break;
-        case pixmap_bicubic:
+        case aa_bicubic:
             new_kernel(kernel, in, out, offset, scale, 2.0, cub);
             break;
-        case pixmap_mks13:
+        case aa_mks13:
             new_kernel(kernel, in, out, offset, scale, 2.5, mks13);
             break;
     }
@@ -500,7 +542,7 @@ static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
     free(task_priv);
 }
 
-static void pixmap_scale_aa(enum pixmap_aa_mode scaler, size_t threads,
+static void pixmap_scale_aa(enum aa_mode scaler, size_t threads,
                             const struct pixmap* src, struct pixmap* dst,
                             ssize_t x, ssize_t y, float scale, bool alpha)
 {
@@ -558,7 +600,7 @@ static void pixmap_scale_aa(enum pixmap_aa_mode scaler, size_t threads,
     pixmap_free(&task_shared.in);
 }
 
-void pixmap_scale(enum pixmap_aa_mode scaler, const struct pixmap* src,
+void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,
                   bool alpha)
 {
@@ -587,7 +629,7 @@ void pixmap_scale(enum pixmap_aa_mode scaler, const struct pixmap* src,
     // but limit background threads to at most 15
     const size_t bthreads = clamp(cpus, 1, 16) - 1;
 
-    if (scaler == pixmap_nearest) {
+    if (scaler == aa_nearest) {
         pixmap_scale_nn(bthreads, src, dst, x, y, scale, alpha);
     } else {
         pixmap_scale_aa(scaler, bthreads, src, dst, x, y, scale, alpha);

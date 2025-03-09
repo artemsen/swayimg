@@ -26,10 +26,10 @@
 
 /** Thumbnail context. */
 struct thumbnail_context {
-    size_t size;                 ///< Size of thumbnail
-    bool fill;                   ///< Scale mode (fill/fit)
-    enum pixmap_aa_mode aa_mode; ///< Anti-aliasing mode
-    struct thumbnail* thumbs;    ///< List of thumbnails
+    size_t size;              ///< Size of thumbnail
+    bool fill;                ///< Scale mode (fill/fit)
+    enum aa_mode aa_mode;     ///< Anti-aliasing mode
+    struct thumbnail* thumbs; ///< List of thumbnails
 
     bool pstore;             ///< Use persistent storage for thumbnails
     pthread_t tid;           ///< Background loader thread id
@@ -233,9 +233,7 @@ void thumbnail_init(const struct config* cfg)
 {
     ctx.size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 1024);
     ctx.fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
-    ctx.aa_mode =
-        config_get_oneof(cfg, CFG_GALLERY, CFG_GLRY_AA, pixmap_aa_names,
-                         ARRAY_SIZE(pixmap_aa_names));
+    ctx.aa_mode = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA);
 
 #ifdef THUMBNAIL_PSTORE
     ctx.pstore = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PSTORE);
@@ -266,16 +264,14 @@ void thumbnail_free(void)
     }
 }
 
-enum pixmap_aa_mode thumbnail_get_aa(void)
+enum aa_mode thumbnail_get_aa(void)
 {
     return ctx.aa_mode;
 }
 
-enum pixmap_aa_mode thumbnail_switch_aa(void)
+enum aa_mode thumbnail_switch_aa(const char* opt)
 {
-    if (++ctx.aa_mode >= ARRAY_SIZE(pixmap_aa_names)) {
-        ctx.aa_mode = 0;
-    }
+    ctx.aa_mode = aa_switch(ctx.aa_mode, opt);
     return ctx.aa_mode;
 }
 

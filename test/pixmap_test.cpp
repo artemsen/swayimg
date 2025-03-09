@@ -24,8 +24,8 @@ protected:
         }
     }
 
-    void ScaleCopy(enum pixmap_aa_mode scaler, const struct pixmap& src,
-                   size_t w, size_t h, float scale, ssize_t x, ssize_t y)
+    void ScaleCopy(enum aa_mode scaler, const struct pixmap& src, size_t w,
+                   size_t h, float scale, ssize_t x, ssize_t y)
     {
         struct pixmap full, dst1, dst2;
         pixmap_create(&full, src.width * scale, src.height * scale);
@@ -561,7 +561,7 @@ TEST_F(Pixmap, ScaleCopyUp)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, 0, 0);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 0, 0);
 }
 
 TEST_F(Pixmap, ScaleCopyUpNeg)
@@ -576,7 +576,7 @@ TEST_F(Pixmap, ScaleCopyUpNeg)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, -1, -1);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, -1, -1);
 }
 
 TEST_F(Pixmap, ScaleCopyUpPos)
@@ -591,7 +591,7 @@ TEST_F(Pixmap, ScaleCopyUpPos)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 2.0, 1, 1);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 1, 1);
 }
 
 TEST_F(Pixmap, ScaleCopyDown)
@@ -606,7 +606,7 @@ TEST_F(Pixmap, ScaleCopyDown)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, 0, 0);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 0, 0);
 }
 
 TEST_F(Pixmap, ScaleCopyDownNeg)
@@ -621,7 +621,7 @@ TEST_F(Pixmap, ScaleCopyDownNeg)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, -1, -1);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, -1, -1);
 }
 
 TEST_F(Pixmap, ScaleCopyDownPos)
@@ -636,5 +636,5 @@ TEST_F(Pixmap, ScaleCopyDownPos)
     // clang-format on
 
     const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(pixmap_bilinear, pm, 2, 2, 0.5, 1, 1);
+    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 1, 1);
 }

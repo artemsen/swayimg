@@ -30,13 +30,14 @@ void thumbnail_free(void);
  * Get current anti-aliasing mode for thumbnails.
  * @return current mode
  */
-enum pixmap_aa_mode thumbnail_get_aa(void);
+enum aa_mode thumbnail_get_aa(void);
 
 /**
  * Switch anti-aliasing mode.
+ * @param opt switch operation
  * @return new mode
  */
-enum pixmap_aa_mode thumbnail_switch_aa(void);
+enum aa_mode thumbnail_switch_aa(const char* opt);
 
 /**
  * Create new thumbnail from the image.
