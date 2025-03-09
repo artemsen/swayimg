@@ -297,7 +297,7 @@ void sway_disconnect(int ipc)
     }
 }
 
-bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen)
+bool sway_current(int ipc, struct wndrect* wnd, int* border, bool* fullscreen)
 {
     bool rc = false;
 
@@ -329,7 +329,8 @@ bool sway_current(int ipc, struct wndrect* wnd, bool* fullscreen)
         struct wndrect workspace;
         struct wndrect global;
         rc = read_rect(cur_wks, "rect", &workspace) &&
-            read_rect(cur_wnd, "rect", &global);
+            read_rect(cur_wnd, "rect", &global) &&
+            read_int(cur_wnd, "current_border_width", border);
         if (rc) {
             wnd->x += global.x - workspace.x;
             wnd->y += global.y - workspace.y;
