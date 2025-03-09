@@ -252,19 +252,21 @@ static struct json_object* current_window(json_object* node)
 int sway_connect(void)
 {
     struct sockaddr_un sa;
-    memset(&sa, 0, sizeof(sa));
+    const char* path;
+    size_t len;
+    int fd;
 
-    const char* path = getenv("SWAYSOCK");
-    if (!path) {
+    path = getenv("SWAYSOCK");
+    len = path ? strlen(path) : 0;
+    if (len == 0 || strcmp(path, "/dev/null") == 0) {
         return INVALID_SWAY_IPC;
     }
-    size_t len = strlen(path);
-    if (!len || len > sizeof(sa.sun_path)) {
+    if (len > sizeof(sa.sun_path)) {
         fprintf(stderr, "Invalid SWAYSOCK variable\n");
         return INVALID_SWAY_IPC;
     }
 
-    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd == -1) {
         const int ec = errno;
         fprintf(stderr, "Failed to create IPC socket: [%i] %s\n", ec,
@@ -272,6 +274,7 @@ int sway_connect(void)
         return INVALID_SWAY_IPC;
     }
 
+    memset(&sa, 0, sizeof(sa));
     sa.sun_family = AF_UNIX;
     memcpy(sa.sun_path, path, len);
 
