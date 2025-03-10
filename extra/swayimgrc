@@ -179,7 +179,7 @@ a = antialiasing next
 Shift+a = antialiasing prev
 r = reload
 i = info
-Shift+Delete = exec rm -f "%"; skip_file
+Shift+Delete = exec rm -f '%' && echo "File removed: %"; skip_file
 Escape = exit
 q = exit
 # Mouse related
@@ -214,7 +214,7 @@ a = antialiasing next
 Shift+a = antialiasing prev
 r = reload
 i = info
-Shift+Delete = exec rm -f "%"; skip_file
+Shift+Delete = exec rm -f '%' && echo "File removed: %"; skip_file
 Escape = exit
 q = exit
 # Mouse related

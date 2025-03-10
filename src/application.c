@@ -10,6 +10,7 @@
 #include "imagelist.h"
 #include "info.h"
 #include "loader.h"
+#include "shellcmd.h"
 #include "sway.h"
 #include "ui.h"
 #include "viewer.h"
@@ -21,7 +22,6 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 // Special ids for windows size and position
@@ -678,49 +678,31 @@ void app_on_load(struct image* image, size_t index)
 
 void app_execute(const char* expr, const char* path)
 {
-    char* cmd = NULL;
-    int rc = -1;
+    int rc;
+    char* out = NULL;
 
-    // construct command from template
-    while (expr && *expr) {
-        if (*expr == '%') {
-            ++expr;
-            if (*expr != '%') {
-                str_append(path, 0, &cmd); // replace % with path
-                continue;
-            }
-        }
-        str_append(expr, 1, &cmd);
-        ++expr;
-    }
+    rc = shellcmd_expr(expr, path, &out);
 
-    if (cmd) {
-        rc = system(cmd); // execute
-        if (rc != -1) {
-            rc = WEXITSTATUS(rc);
-        } else if (errno) {
-            rc = errno;
+    if (out) {
+        // trim long output text
+        const size_t max_len = 60;
+        if (strlen(out) > max_len) {
+            const char* ellipsis = "...";
+            const size_t ellipsis_len = strlen(ellipsis) + 1;
+            memcpy(&out[max_len - ellipsis_len], ellipsis, ellipsis_len);
         }
     }
 
     // show execution status
-    if (!cmd) {
-        info_update(info_status, "Error: no command to execute");
+    if (rc) {
+        info_update(info_status, "Error %d: %s", rc, out ? out : strerror(rc));
+    } else if (out) {
+        info_update(info_status, "%s", out);
     } else {
-        size_t max_len = 30; // trim long command text
-        if (strlen(cmd) > max_len) {
-            const char* ellipsis = "...";
-            const size_t ellipsis_len = strlen(ellipsis);
-            memcpy(&cmd[max_len - ellipsis_len], ellipsis, ellipsis_len + 1);
-        }
-        if (rc) {
-            info_update(info_status, "Error %d: %s", rc, cmd);
-        } else {
-            info_update(info_status, "OK: %s", cmd);
-        }
+        info_update(info_status, "Success: %s", expr);
     }
 
-    free(cmd);
+    free(out);
 
     app_redraw();
 }

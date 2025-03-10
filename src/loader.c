@@ -8,6 +8,7 @@
 #include "buildcfg.h"
 #include "exif.h"
 #include "imagelist.h"
+#include "shellcmd.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -16,7 +17,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 // Construct function name of loader
@@ -291,37 +291,20 @@ static enum loader_status image_from_stream(struct image* img, int fd)
  */
 static enum loader_status image_from_exec(struct image* img, const char* cmd)
 {
-    enum loader_status status = ldr_ioerror;
-    int pfd[2];
-    pid_t pid;
+    uint8_t* data = NULL;
+    size_t data_sz = 0;
+    enum loader_status status;
+    int rc;
 
-    if (pipe(pfd) == -1) {
-        return ldr_ioerror;
+    rc = shellcmd_exec(cmd, &data, &data_sz);
+
+    if (rc == 0 && data) {
+        status = image_from_memory(img, data, data_sz);
+    } else {
+        status = ldr_ioerror;
     }
 
-    pid = fork();
-    if (pid == -1) {
-        close(pfd[1]);
-        close(pfd[0]);
-        return ldr_ioerror;
-    }
-
-    if (pid) { // parent
-        close(pfd[1]);
-        status = image_from_stream(img, pfd[0]);
-        close(pfd[0]);
-        waitpid(pid, NULL, 0);
-    } else { // child
-        const char* shell = getenv("SHELL");
-        if (!shell || !*shell) {
-            shell = "/bin/sh";
-        }
-        dup2(pfd[1], STDOUT_FILENO);
-        close(pfd[1]);
-        close(pfd[0]);
-        execlp(shell, shell, "-c", cmd, NULL);
-        exit(1);
-    }
+    free(data);
 
     return status;
 }

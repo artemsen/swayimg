@@ -203,6 +203,7 @@ sources = [
   'src/memdata.c',
   'src/pixmap.c',
   'src/pixmap_scale.c',
+  'src/shellcmd.c',
   'src/sway.c',
   'src/thumbnail.c',
   'src/ui.c',

@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define RM_FILE_ACTION "exec rm '%' && echo \"File removed: %\"; skip_file"
+
 /** Default configuration. */
 struct config_default {
     const char* section;
@@ -116,7 +118,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "Shift+a",          "antialiasing prev"      },
     { CFG_KEYS_VIEWER,  "r",                "reload"                 },
     { CFG_KEYS_VIEWER,  "i",                "info"                   },
-    { CFG_KEYS_VIEWER,  "Shift+Delete",     "exec rm -f '%'; skip_file" },
+    { CFG_KEYS_VIEWER,  "Shift+Delete",     RM_FILE_ACTION           },
     { CFG_KEYS_VIEWER,  "Escape",           "exit"                   },
     { CFG_KEYS_VIEWER,  "q",                "exit"                   },
     { CFG_KEYS_VIEWER,  "ScrollLeft",       "step_right 5"           },
@@ -146,7 +148,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_GALLERY, "Shift+a",          "antialiasing prev"      },
     { CFG_KEYS_GALLERY, "r",                "reload"                 },
     { CFG_KEYS_GALLERY, "i",                "info"                   },
-    { CFG_KEYS_GALLERY, "Shift+Delete",     "exec rm -f '%'; skip_file" },
+    { CFG_KEYS_GALLERY, "Shift+Delete",     RM_FILE_ACTION           },
     { CFG_KEYS_GALLERY, "Escape",           "exit"                   },
     { CFG_KEYS_GALLERY, "q",                "exit"                   },
     { CFG_KEYS_GALLERY, "ScrollLeft",       "step_right"             },
