@@ -119,6 +119,47 @@ static void sway_setup(const struct config* cfg)
     sway_disconnect(ipc);
 }
 
+/**
+ * Apply common action.
+ * @param action pointer to the action being performed
+ * @return true if action handled, false if it's not a common action
+ */
+static bool apply_common_action(const struct action* action)
+{
+    bool handled = true;
+
+    switch (action->type) {
+        case action_info:
+            info_switch(action->params);
+            app_redraw();
+            break;
+        case action_status:
+            info_update(info_status, "%s", action->params);
+            app_redraw();
+            break;
+        case action_fullscreen:
+            ui_toggle_fullscreen();
+            break;
+        case action_help:
+            info_switch_help();
+            app_redraw();
+            break;
+        case action_exit:
+            if (info_help_active()) {
+                info_switch_help(); // remove help overlay
+                app_redraw();
+            } else {
+                app_exit(0);
+            }
+            break;
+        default:
+            handled = false;
+            break;
+    }
+
+    return handled;
+}
+
 /** Notification callback: handle event queue. */
 static void handle_event_queue(__attribute__((unused)) void* data)
 {
@@ -133,7 +174,10 @@ static void handle_event_queue(__attribute__((unused)) void* data)
         }
         pthread_mutex_unlock(&ctx.events_lock);
         if (entry) {
-            ctx.ehandler(&entry->event);
+            if (entry->event.type != event_action ||
+                !apply_common_action(entry->event.param.action)) {
+                ctx.ehandler(&entry->event);
+            }
             free(entry);
         }
     }
@@ -163,47 +207,6 @@ static void append_event(const struct event* event)
 }
 
 /**
- * Apply action.
- * @param action pointer to the action being performed
- */
-static void apply_action(const struct action* action)
-{
-    struct event event;
-
-    switch (action->type) {
-        case action_info:
-            info_switch(action->params);
-            app_redraw();
-            break;
-        case action_status:
-            info_update(info_status, "%s", action->params);
-            app_redraw();
-            break;
-        case action_fullscreen:
-            ui_toggle_fullscreen();
-            break;
-        case action_help:
-            info_switch_help();
-            app_redraw();
-            break;
-        case action_exit:
-            if (info_help_active()) {
-                info_switch_help(); // remove help overlay
-                app_redraw();
-            } else {
-                app_exit(0);
-            }
-            break;
-        default:
-            // not a general action, add to event queue
-            event.type = event_action;
-            event.param.action = action;
-            append_event(&event);
-            break;
-    }
-}
-
-/**
  * POSIX Signal handler.
  * @param signum signal number
  */
@@ -223,7 +226,11 @@ static void on_signal(int signum)
     }
 
     for (size_t i = 0; i < sigact->num; ++i) {
-        apply_action(&sigact->sequence[i]);
+        const struct event event = {
+            .type = event_action,
+            .param.action = &sigact->sequence[i],
+        };
+        append_event(&event);
     }
 }
 
@@ -533,7 +540,7 @@ bool app_run(void)
         }
 
         // call handlers for each active event
-        for (size_t i = 0; i < ctx.wfds_num; ++i) {
+        for (size_t i = 0; ctx.state == loop_run && i < ctx.wfds_num; ++i) {
             if (fds[i].revents & POLLIN) {
                 ctx.wfds[i].callback(ctx.wfds[i].data);
             }
@@ -633,7 +640,11 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 
     if (kb) {
         for (size_t i = 0; i < kb->actions.num; ++i) {
-            apply_action(&kb->actions.sequence[i]);
+            const struct event event = {
+                .type = event_action,
+                .param.action = &kb->actions.sequence[i],
+            };
+            append_event(&event);
         }
     } else {
         char* name = keybind_name(key, mods);
