@@ -695,6 +695,9 @@ void app_execute(const char* expr, const char* path)
     rc = shellcmd_expr(expr, path, &out);
 
     if (out) {
+        // duplicate output to stdout
+        printf("%s", out);
+
         // trim long output text
         const size_t max_len = 60;
         if (strlen(out) > max_len) {
