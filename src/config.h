@@ -63,6 +63,7 @@ struct config {
 #define CFG_GLRY_BORDER    "border"
 #define CFG_GLRY_SHADOW    "shadow"
 #define CFG_LIST_ORDER     "order"
+#define CFG_LIST_REVERSE   "reverse"
 #define CFG_LIST_LOOP      "loop"
 #define CFG_LIST_RECURSIVE "recursive"
 #define CFG_LIST_ALL       "all"
