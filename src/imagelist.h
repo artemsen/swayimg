@@ -13,7 +13,7 @@
 enum list_order {
     order_none,    ///< Unsorted (system depended)
     order_alpha,   ///< Alphanumeric sort
-    order_reverse, ///< Reversed alphanumeric sort
+    order_time,    ///< Time sort
     order_random   ///< Random order
 };
 
