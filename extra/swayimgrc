@@ -87,8 +87,10 @@ shadow = #000000ff
 # Image list configuration
 ################################################################################
 [list]
-# Default order (none/alpha/reverse/random)
+# Default order (none/alpha/ctime/mtime/size/random)
 order = alpha
+# Reverse order (yes/no)
+reverse = no
 # Looping list of images (yes/no)
 loop = yes
 # Read directories recursively (yes/no)

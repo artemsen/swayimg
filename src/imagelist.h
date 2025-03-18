@@ -13,7 +13,9 @@
 enum list_order {
     order_none,    ///< Unsorted (system depended)
     order_alpha,   ///< Alphanumeric sort
-    order_time,    ///< Time sort
+    order_ctime,   ///< Metadata change sort
+    order_mtime,   ///< Modification time sort
+    order_size,    ///< Size sort
     order_random   ///< Random order
 };
 

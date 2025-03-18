@@ -118,7 +118,10 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 config_set(cfg, CFG_LIST, CFG_LIST_ORDER, optarg);
                 break;
             case 'R':
-                config_set(cfg, CFG_LIST, CFG_LIST_REVERSE, CFG_YES);
+                if (config_get_bool(cfg, CFG_LIST, CFG_LIST_REVERSE))
+                    config_set(cfg, CFG_LIST, CFG_LIST_REVERSE, CFG_NO);
+                else
+                    config_set(cfg, CFG_LIST, CFG_LIST_REVERSE, CFG_YES);
                 break;
             case 's':
                 config_set(cfg, CFG_VIEWER, CFG_VIEW_SCALE, optarg);
