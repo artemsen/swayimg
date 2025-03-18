@@ -19,23 +19,21 @@
 
 /** Image list array entry. */
 struct image_src {
-    char *source;          ///< Entry name
-    union {
-        time_t time;
-        size_t size;
-    } data;
+    char* source; ///< Entry name
+    time_t time;
+    size_t size;
 };
 
 /** Context of the image list (which is actually an array). */
 struct image_list {
-    struct image_src *sources;  ///< Array of entries
-    size_t capacity;       ///< Number of allocated entries (size of array)
-    size_t size;           ///< Number of entries in array
-    enum list_order order; ///< File list order
-    bool reverse;          ///< Reverse order flag
-    bool loop;             ///< File list loop mode
-    bool recursive;        ///< Read directories recursively
-    bool all_files;        ///< Open all files from the same directory
+    struct image_src* sources; ///< Array of entries
+    size_t capacity;           ///< Number of allocated entries (size of array)
+    size_t size;               ///< Number of entries in array
+    enum list_order order;     ///< File list order
+    bool reverse;              ///< Reverse order flag
+    bool loop;                 ///< File list loop mode
+    bool recursive;            ///< Read directories recursively
+    bool all_files;            ///< Open all files from the same directory
 };
 
 /** Global image list instance. */
@@ -45,7 +43,6 @@ static struct image_list ctx;
 static const char* order_names[] = {
     [order_none] = "none",
     [order_alpha] = "alpha",
-    [order_ctime] = "ctime",
     [order_mtime] = "mtime",
     [order_size] = "size",
     [order_random] = "random",
@@ -143,7 +140,7 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
  * Add new entry to the list.
  * @param source image data source to add
  */
-static void add_entry(const char* source, struct stat *st)
+static void add_entry(const char* source, struct stat* st)
 {
     // check for duplicates
     for (size_t i = 0; i < ctx.size; ++i) {
@@ -155,7 +152,8 @@ static void add_entry(const char* source, struct stat *st)
     // relocate array, if needed
     if (ctx.size + 1 >= ctx.capacity) {
         const size_t cap = ctx.capacity ? ctx.capacity * 2 : 4;
-        struct image_src *ptr = realloc(ctx.sources, cap * sizeof(struct image_src));
+        struct image_src* ptr =
+            realloc(ctx.sources, cap * sizeof(struct image_src));
         if (!ptr) {
             return;
         }
@@ -166,21 +164,18 @@ static void add_entry(const char* source, struct stat *st)
     // add new entry
     ctx.sources[ctx.size].source = str_dup(source, NULL);
     if (ctx.sources[ctx.size].source) {
-        switch(ctx.order) {
-        case order_ctime:
-            ctx.sources[ctx.size].data.time = st->st_ctime;
-            break;
-        case order_mtime:
-            ctx.sources[ctx.size].data.time = st->st_mtime;
-            break;
-        case order_size:
-            ctx.sources[ctx.size].data.size = st->st_size;
-            break;
-        // avoid compiler warning
-        case order_alpha:  
-        case order_random:
-        case order_none:
-            break;
+        switch (ctx.order) {
+            case order_mtime:
+                ctx.sources[ctx.size].time = st->st_mtime;
+                break;
+            case order_size:
+                ctx.sources[ctx.size].size = st->st_size;
+                break;
+            // avoid compiler warning
+            case order_alpha:
+            case order_random:
+            case order_none:
+                break;
         }
         ++ctx.size;
     }
@@ -190,7 +185,7 @@ static void add_entry(const char* source, struct stat *st)
  * Add file to the list.
  * @param file path to the file
  */
-static void add_file(const char* path, struct stat *st)
+static void add_file(const char* path, struct stat* st)
 {
     char abspath[PATH_MAX];
     if (absolute_path(path, abspath, sizeof(abspath))) {
@@ -293,9 +288,10 @@ static size_t next_dir(size_t start, bool forward)
  */
 static int compare_alpha(const void* a, const void* b)
 {
-    int cmp = strcoll(((struct image_src*)a)->source, ((struct image_src*)b)->source);
+    int cmp =
+        strcoll(((struct image_src*)a)->source, ((struct image_src*)b)->source);
 
-    return ctx.reverse? -cmp: cmp;
+    return ctx.reverse ? -cmp : cmp;
 }
 
 /**
@@ -304,11 +300,15 @@ static int compare_alpha(const void* a, const void* b)
  */
 static int compare_time(const void* a, const void* b)
 {
-    time_t ta = ((struct image_src*)a)->data.time;
-    time_t tb = ((struct image_src*)b)->data.time;
+    time_t ta = ((struct image_src*)a)->time;
+    time_t tb = ((struct image_src*)b)->time;
 
-    if (ta < tb) return ctx.reverse?  1: -1;
-    if (ta > tb) return ctx.reverse? -1:  1;
+    if (ta < tb) {
+        return ctx.reverse ? 1 : -1;
+    }
+    if (ta > tb) {
+        return ctx.reverse ? -1 : 1;
+    }
     return 0;
 }
 
@@ -318,14 +318,17 @@ static int compare_time(const void* a, const void* b)
  */
 static int compare_size(const void* a, const void* b)
 {
-    size_t sa = ((struct image_src*)a)->data.size;
-    size_t sb = ((struct image_src*)b)->data.size;
+    size_t sa = ((struct image_src*)a)->size;
+    size_t sb = ((struct image_src*)b)->size;
 
-    if (sa < sb) return ctx.reverse?  1: -1;
-    if (sa > sb) return ctx.reverse? -1:  1;
+    if (sa < sb) {
+        return ctx.reverse ? 1 : -1;
+    }
+    if (sa > sb) {
+        return ctx.reverse ? -1 : 1;
+    }
     return 0;
 }
-
 
 void image_list_init(const struct config* cfg)
 {
@@ -399,7 +402,6 @@ void image_list_reorder(void)
         case order_alpha:
             qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_alpha);
             break;
-        case order_ctime:
         case order_mtime:
             qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_time);
             break;
@@ -440,7 +442,8 @@ size_t image_list_find(const char* source)
     char abspath[PATH_MAX];
     if (absolute_path(source, abspath, sizeof(abspath))) {
         for (size_t i = 0; i < ctx.size; ++i) {
-            if (ctx.sources[i].source && strcmp(ctx.sources[i].source, abspath) == 0) {
+            if (ctx.sources[i].source &&
+                strcmp(ctx.sources[i].source, abspath) == 0) {
                 return i;
             }
         }
@@ -593,7 +596,8 @@ size_t image_list_last(void)
     if (ctx.size == 0) {
         return IMGLIST_INVALID;
     }
-    return ctx.sources[index].source ? index : image_list_nearest(index, false, false);
+    return ctx.sources[index].source ? index
+                                     : image_list_nearest(index, false, false);
 }
 
 size_t image_list_skip(size_t index)

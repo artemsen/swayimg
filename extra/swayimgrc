@@ -87,7 +87,7 @@ shadow = #000000ff
 # Image list configuration
 ################################################################################
 [list]
-# Default order (none/alpha/ctime/mtime/size/random)
+# Default order (none/alpha/mtime/size/random)
 order = alpha
 # Reverse order (yes/no)
 reverse = no

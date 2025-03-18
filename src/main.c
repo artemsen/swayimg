@@ -27,8 +27,7 @@ struct cmdarg {
 static const struct cmdarg arguments[] = {
     { 'g', "gallery",    NULL,    "start in gallery mode" },
     { 'r', "recursive",  NULL,    "read directories recursively" },
-    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/reverse/random" },
-    { 'R', "reverse",    NULL,    "reverse sort order" },
+    { 'o', "order",      "ORDER", "set sort order for image list: none/alpha/mtime/size/random" },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real" },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup" },
     { 'p', "position",   "POS",   "set window position [parent]/X,Y" },
@@ -116,12 +115,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'o':
                 config_set(cfg, CFG_LIST, CFG_LIST_ORDER, optarg);
-                break;
-            case 'R':
-                if (config_get_bool(cfg, CFG_LIST, CFG_LIST_REVERSE))
-                    config_set(cfg, CFG_LIST, CFG_LIST_REVERSE, CFG_NO);
-                else
-                    config_set(cfg, CFG_LIST, CFG_LIST_REVERSE, CFG_YES);
                 break;
             case 's':
                 config_set(cfg, CFG_VIEWER, CFG_VIEW_SCALE, optarg);
