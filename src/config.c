@@ -54,6 +54,7 @@ static const struct config_default defaults[] = {
     { CFG_GALLERY,      CFG_GLRY_SHADOW,    "#000000ff"              },
 
     { CFG_LIST,         CFG_LIST_ORDER,     "alpha"                  },
+    { CFG_LIST,         CFG_LIST_REVERSE,   CFG_NO                   },
     { CFG_LIST,         CFG_LIST_LOOP,      CFG_YES                  },
     { CFG_LIST,         CFG_LIST_RECURSIVE, CFG_NO                   },
     { CFG_LIST,         CFG_LIST_ALL,       CFG_NO                   },

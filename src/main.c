@@ -27,7 +27,7 @@ struct cmdarg {
 static const struct cmdarg arguments[] = {
     { 'g', "gallery",    NULL,    "start in gallery mode" },
     { 'r', "recursive",  NULL,    "read directories recursively" },
-    { 'o', "order",      "ORDER", "set sort order for image list: none/[alpha]/reverse/random" },
+    { 'o', "order",      "ORDER", "set sort order for image list: none/alpha/mtime/size/random" },
     { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real" },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup" },
     { 'p', "position",   "POS",   "set window position [parent]/X,Y" },

@@ -17,15 +17,23 @@
 #include <time.h>
 #include <unistd.h>
 
+/** Image list array entry. */
+struct image_src {
+    char* source; ///< Entry name
+    time_t time;
+    size_t size;
+};
+
 /** Context of the image list (which is actually an array). */
 struct image_list {
-    char** sources;        ///< Array of entries
-    size_t capacity;       ///< Number of allocated entries (size of array)
-    size_t size;           ///< Number of entries in array
-    enum list_order order; ///< File list order
-    bool loop;             ///< File list loop mode
-    bool recursive;        ///< Read directories recursively
-    bool all_files;        ///< Open all files from the same directory
+    struct image_src* sources; ///< Array of entries
+    size_t capacity;           ///< Number of allocated entries (size of array)
+    size_t size;               ///< Number of entries in array
+    enum list_order order;     ///< File list order
+    bool reverse;              ///< Reverse order flag
+    bool loop;                 ///< File list loop mode
+    bool recursive;            ///< Read directories recursively
+    bool all_files;            ///< Open all files from the same directory
 };
 
 /** Global image list instance. */
@@ -35,7 +43,8 @@ static struct image_list ctx;
 static const char* order_names[] = {
     [order_none] = "none",
     [order_alpha] = "alpha",
-    [order_reverse] = "reverse",
+    [order_mtime] = "mtime",
+    [order_size] = "size",
     [order_random] = "random",
 };
 
@@ -131,11 +140,11 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
  * Add new entry to the list.
  * @param source image data source to add
  */
-static void add_entry(const char* source)
+static void add_entry(const char* source, struct stat* st)
 {
     // check for duplicates
     for (size_t i = 0; i < ctx.size; ++i) {
-        if (strcmp(ctx.sources[i], source) == 0) {
+        if (strcmp(ctx.sources[i].source, source) == 0) {
             return;
         }
     }
@@ -143,7 +152,8 @@ static void add_entry(const char* source)
     // relocate array, if needed
     if (ctx.size + 1 >= ctx.capacity) {
         const size_t cap = ctx.capacity ? ctx.capacity * 2 : 4;
-        char** ptr = realloc(ctx.sources, cap * sizeof(*ctx.sources));
+        struct image_src* ptr =
+            realloc(ctx.sources, cap * sizeof(struct image_src));
         if (!ptr) {
             return;
         }
@@ -152,8 +162,21 @@ static void add_entry(const char* source)
     }
 
     // add new entry
-    ctx.sources[ctx.size] = str_dup(source, NULL);
-    if (ctx.sources[ctx.size]) {
+    ctx.sources[ctx.size].source = str_dup(source, NULL);
+    if (ctx.sources[ctx.size].source) {
+        switch (ctx.order) {
+            case order_mtime:
+                ctx.sources[ctx.size].time = st->st_mtime;
+                break;
+            case order_size:
+                ctx.sources[ctx.size].size = st->st_size;
+                break;
+            // avoid compiler warning
+            case order_alpha:
+            case order_random:
+            case order_none:
+                break;
+        }
         ++ctx.size;
     }
 }
@@ -162,11 +185,11 @@ static void add_entry(const char* source)
  * Add file to the list.
  * @param file path to the file
  */
-static void add_file(const char* path)
+static void add_file(const char* path, struct stat* st)
 {
     char abspath[PATH_MAX];
     if (absolute_path(path, abspath, sizeof(abspath))) {
-        add_entry(abspath);
+        add_entry(abspath, st);
     }
 }
 
@@ -205,7 +228,7 @@ static void add_dir(const char* dir)
                     add_dir(path);
                 }
             } else if (S_ISREG(st.st_mode)) {
-                add_file(path);
+                add_file(path, &st);
             }
         }
     }
@@ -222,7 +245,7 @@ static void add_dir(const char* dir)
  */
 static size_t next_dir(size_t start, bool forward)
 {
-    const char* cur_path = ctx.sources[start];
+    const char* cur_path = ctx.sources[start].source;
     size_t cur_len;
     size_t index = start;
 
@@ -246,7 +269,7 @@ static size_t next_dir(size_t start, bool forward)
             break; // not found
         }
 
-        next_path = ctx.sources[index];
+        next_path = ctx.sources[index].source;
         next_len = strlen(next_path) - 1;
         while (next_len && next_path[next_len] != '/') {
             --next_len;
@@ -265,22 +288,53 @@ static size_t next_dir(size_t start, bool forward)
  */
 static int compare_alpha(const void* a, const void* b)
 {
-    return strcoll(*(const char**)a, *(const char**)b);
+    int cmp =
+        strcoll(((struct image_src*)a)->source, ((struct image_src*)b)->source);
+
+    return ctx.reverse ? -cmp : cmp;
 }
 
 /**
  * Compare sources callback for `qsort`.
- * @return negative if a > b, positive if a < b, 0 otherwise
+ * @return negative if a < b, positive if a > b, 0 otherwise
  */
-static int compare_reverse(const void* a, const void* b)
+static int compare_time(const void* a, const void* b)
 {
-    return -strcoll(*(const char**)a, *(const char**)b);
+    time_t ta = ((struct image_src*)a)->time;
+    time_t tb = ((struct image_src*)b)->time;
+
+    if (ta < tb) {
+        return ctx.reverse ? 1 : -1;
+    }
+    if (ta > tb) {
+        return ctx.reverse ? -1 : 1;
+    }
+    return 0;
+}
+
+/**
+ * Compare sources callback for `qsort`.
+ * @return negative if a < b, positive if a > b, 0 otherwise
+ */
+static int compare_size(const void* a, const void* b)
+{
+    size_t sa = ((struct image_src*)a)->size;
+    size_t sb = ((struct image_src*)b)->size;
+
+    if (sa < sb) {
+        return ctx.reverse ? 1 : -1;
+    }
+    if (sa > sb) {
+        return ctx.reverse ? -1 : 1;
+    }
+    return 0;
 }
 
 void image_list_init(const struct config* cfg)
 {
     ctx.order = config_get_oneof(cfg, CFG_LIST, CFG_LIST_ORDER, order_names,
                                  ARRAY_SIZE(order_names));
+    ctx.reverse = config_get_bool(cfg, CFG_LIST, CFG_LIST_REVERSE);
     ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
@@ -289,7 +343,7 @@ void image_list_init(const struct config* cfg)
 void image_list_destroy(void)
 {
     for (size_t i = 0; i < ctx.size; ++i) {
-        free(ctx.sources[i]);
+        free(ctx.sources[i].source);
     }
     free(ctx.sources);
     ctx.sources = NULL;
@@ -301,10 +355,12 @@ void image_list_add(const char* source)
 {
     struct stat st;
 
+    memset(&st, 0, sizeof(struct stat));
+
     // special url
     if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
         strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        add_entry(source);
+        add_entry(source, &st);
         return;
     }
 
@@ -318,7 +374,7 @@ void image_list_add(const char* source)
         add_dir(source);
     } else if (S_ISREG(st.st_mode)) {
         if (!ctx.all_files) {
-            add_file(source);
+            add_file(source, &st);
         } else {
             // add all files from the same directory
             const char* delim = strrchr(source, '/');
@@ -346,8 +402,11 @@ void image_list_reorder(void)
         case order_alpha:
             qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_alpha);
             break;
-        case order_reverse:
-            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_reverse);
+        case order_mtime:
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_time);
+            break;
+        case order_size:
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_size);
             break;
         case order_random:
             for (size_t i = 0; i < ctx.size; ++i) {
@@ -359,7 +418,7 @@ void image_list_reorder(void)
                 }
                 const size_t j = rand() % ctx.size;
                 if (i != j) {
-                    char* swap = ctx.sources[i];
+                    struct image_src swap = ctx.sources[i];
                     ctx.sources[i] = ctx.sources[j];
                     ctx.sources[j] = swap;
                 }
@@ -375,7 +434,7 @@ size_t image_list_size(void)
 
 const char* image_list_get(size_t index)
 {
-    return index < ctx.size ? ctx.sources[index] : NULL;
+    return index < ctx.size ? ctx.sources[index].source : NULL;
 }
 
 size_t image_list_find(const char* source)
@@ -383,7 +442,8 @@ size_t image_list_find(const char* source)
     char abspath[PATH_MAX];
     if (absolute_path(source, abspath, sizeof(abspath))) {
         for (size_t i = 0; i < ctx.size; ++i) {
-            if (ctx.sources[i] && strcmp(ctx.sources[i], abspath) == 0) {
+            if (ctx.sources[i].source &&
+                strcmp(ctx.sources[i].source, abspath) == 0) {
                 return i;
             }
         }
@@ -440,7 +500,7 @@ size_t image_list_nearest(size_t start, bool forward, bool loop)
             break;
         }
 
-        if (ctx.sources[index]) {
+        if (ctx.sources[index].source) {
             break;
         }
     }
@@ -527,7 +587,7 @@ size_t image_list_first(void)
     if (ctx.size == 0) {
         return IMGLIST_INVALID;
     }
-    return ctx.sources[0] ? 0 : image_list_nearest(0, true, false);
+    return ctx.sources[0].source ? 0 : image_list_nearest(0, true, false);
 }
 
 size_t image_list_last(void)
@@ -536,7 +596,8 @@ size_t image_list_last(void)
     if (ctx.size == 0) {
         return IMGLIST_INVALID;
     }
-    return ctx.sources[index] ? index : image_list_nearest(index, false, false);
+    return ctx.sources[index].source ? index
+                                     : image_list_nearest(index, false, false);
 }
 
 size_t image_list_skip(size_t index)
@@ -544,9 +605,9 @@ size_t image_list_skip(size_t index)
     size_t next;
 
     // remove current entry from list
-    if (index < ctx.size && ctx.sources[index]) {
-        free(ctx.sources[index]);
-        ctx.sources[index] = NULL;
+    if (index < ctx.size && ctx.sources[index].source) {
+        free(ctx.sources[index].source);
+        ctx.sources[index].source = NULL;
     }
 
     // get next entry

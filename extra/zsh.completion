@@ -6,7 +6,7 @@
 _arguments \
   '(-g --gallery)'{-g,--gallery}'[start in gallery mode]' \
   '(-r --recursive)'{-r,--recursive}'[read directories recursively]' \
-  '(-o --order)'{-o,--order=}'[set sort order for image list]:order:(none alpha reverse random)' \
+  '(-o --order)'{-o,--order=}'[set sort order for image list]:order:(none alpha mtime size random)' \
   '(-s --scale=SCALE)'{-s,--scale=}'[set initial image scale]:scale:(optimal width height fit fill real)' \
   '(-l --slideshow)'{-l,--slideshow}'[activate slideshow mode on startup]' \
   '(-f --fullscreen)'{-f,--fullscreen}'[show image in full screen mode]' \
