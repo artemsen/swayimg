@@ -17,6 +17,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+/** Limit on the length of the meta info key/value */
+#define MAX_META_KEY_LEN   32
+#define MAX_META_VALUE_LEN 128
+
 /** Display modes. */
 enum info_mode {
     mode_viewer,
@@ -309,7 +313,7 @@ static void print_keyval(struct pixmap* wnd, enum block_position pos,
  * Import meta data from image.
  * @param image source image
  */
-static void import_exif(const struct image* image)
+static void import_meta(const struct image* image)
 {
     struct keyval* lines;
     const size_t num_entries = list_size(&image->info->list);
@@ -336,10 +340,32 @@ static void import_exif(const struct image* image)
     ctx.exif_lines = lines;
 
     list_for_each(image->info, const struct image_info, it) {
-        char key[64];
-        snprintf(key, sizeof(key), "%s:", it->key);
+        char key[MAX_META_KEY_LEN];
+        char value[MAX_META_VALUE_LEN];
+        size_t len;
+
+        // limit key
+        len = strlen(it->key);
+        if (len > sizeof(key) - 2 /* : and last null */) {
+            len = sizeof(key) - 2;
+        }
+        memcpy(key, it->key, len);
+        key[len] = ':';
+        key[len + 1] = 0;
+
+        // limit value
+        len = strlen(it->value) + 1 /* last null */;
+        if (len <= sizeof(value)) {
+            memcpy(value, it->value, len);
+        } else {
+            const char elipsis[] = "...";
+            len = sizeof(value) - sizeof(elipsis);
+            memcpy(value, it->value, len);
+            memcpy(value + len, elipsis, sizeof(elipsis));
+        }
+
         font_render(key, &lines->key);
-        font_render(it->value, &lines->value);
+        font_render(value, &lines->value);
         ++lines;
     }
 }
@@ -547,7 +573,7 @@ void info_reset(const struct image* image)
     info_update(info_image_size, "%zux%zu", image->frames[0].pm.width,
                 image->frames[0].pm.height);
 
-    import_exif(image);
+    import_meta(image);
 
     info_update(info_frame, NULL);
     info_update(info_scale, NULL);
