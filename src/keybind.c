@@ -5,6 +5,7 @@
 #include "keybind.h"
 
 #include "application.h"
+#include "array.h"
 
 #include <stdlib.h>
 #include <string.h>

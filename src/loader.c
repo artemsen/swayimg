@@ -5,6 +5,7 @@
 #include "loader.h"
 
 #include "application.h"
+#include "array.h"
 #include "buildcfg.h"
 #include "exif.h"
 #include "imagelist.h"

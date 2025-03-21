@@ -4,6 +4,7 @@
 
 #include "application.h"
 
+#include "array.h"
 #include "buildcfg.h"
 #include "font.h"
 #include "gallery.h"

@@ -4,7 +4,7 @@
 
 #include "font.h"
 
-#include "memdata.h"
+#include "array.h"
 
 // font related
 #include <fontconfig/fontconfig.h>

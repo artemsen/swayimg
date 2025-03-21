@@ -4,7 +4,7 @@
 
 #include "shellcmd.h"
 
-#include "memdata.h"
+#include "array.h"
 
 #include <errno.h>
 #include <fcntl.h>

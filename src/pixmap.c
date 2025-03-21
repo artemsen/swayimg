@@ -4,7 +4,7 @@
 
 #include "pixmap.h"
 
-#include "memdata.h"
+#include "array.h"
 #include "pixmap_ablend.h"
 
 #include <stdlib.h>

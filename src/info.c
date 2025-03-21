@@ -5,6 +5,7 @@
 #include "info.h"
 
 #include "application.h"
+#include "array.h"
 #include "font.h"
 #include "keybind.h"
 #include "loader.h"

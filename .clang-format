@@ -14,7 +14,7 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortLambdasOnASingleLine: Empty
 
-ForEachMacros: [list_for_each]
+ForEachMacros: [list_for_each, list_for_each_back]
 SpaceBeforeParens: ControlStatementsExceptForEachMacros
 
 BreakBeforeBinaryOperators: None

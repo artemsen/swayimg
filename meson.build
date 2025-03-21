@@ -189,6 +189,7 @@ endif
 sources = [
   'src/action.c',
   'src/application.c',
+  'src/array.c',
   'src/config.c',
   'src/event.c',
   'src/fetcher.c',
@@ -198,9 +199,9 @@ sources = [
   'src/imagelist.c',
   'src/info.c',
   'src/keybind.c',
+  'src/list.c',
   'src/loader.c',
   'src/main.c',
-  'src/memdata.c',
   'src/pixmap.c',
   'src/pixmap_scale.c',
   'src/shellcmd.c',

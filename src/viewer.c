@@ -5,6 +5,7 @@
 #include "viewer.h"
 
 #include "application.h"
+#include "array.h"
 #include "buildcfg.h"
 #include "fetcher.h"
 #include "imagelist.h"

@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-#include "memdata.h"
+#include "array.h"
 
 #include <ctype.h>
 #include <errno.h>

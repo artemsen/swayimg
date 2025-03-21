@@ -4,6 +4,7 @@
 
 #include "thumbnail.h"
 
+#include "array.h"
 #include "buildcfg.h"
 #include "imagelist.h"
 

@@ -3,6 +3,7 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "application.h"
+#include "array.h"
 #include "buildcfg.h"
 #include "config.h"
 #include "imagelist.h"

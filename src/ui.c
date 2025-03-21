@@ -5,6 +5,7 @@
 #include "ui.h"
 
 #include "application.h"
+#include "array.h"
 #include "buildcfg.h"
 #include "wndbuf.h"
 

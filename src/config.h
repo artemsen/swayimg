@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "memdata.h"
+#include "list.h"
 #include "pixmap.h"
 
 /* Key/value config option. */

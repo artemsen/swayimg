@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "memdata.h"
+#include "list.h"
 #include "pixmap.h"
 
 // File name used for image, that is read from stdin through pipe

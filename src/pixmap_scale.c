@@ -4,8 +4,8 @@
 
 #include "pixmap_scale.h"
 
+#include "array.h"
 #include "loader.h"
-#include "memdata.h"
 #include "pixmap_ablend.h"
 
 #include <math.h>

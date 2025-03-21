@@ -4,6 +4,7 @@
 
 #include "imagelist.h"
 
+#include "array.h"
 #include "image.h"
 
 #include <assert.h>
@@ -41,11 +42,8 @@ static struct image_list ctx;
 
 /** Order names. */
 static const char* order_names[] = {
-    [order_none] = "none",
-    [order_alpha] = "alpha",
-    [order_mtime] = "mtime",
-    [order_size] = "size",
-    [order_random] = "random",
+    [order_none] = "none", [order_alpha] = "alpha",   [order_mtime] = "mtime",
+    [order_size] = "size", [order_random] = "random",
 };
 
 /**
