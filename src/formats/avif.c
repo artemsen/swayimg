@@ -2,7 +2,7 @@
 // AV1 (AVIF/AVIFS) format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <avif/avif.h>
 #include <string.h>

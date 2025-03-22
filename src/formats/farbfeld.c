@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Farbfeld format decoder
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <arpa/inet.h>
 #include <string.h>

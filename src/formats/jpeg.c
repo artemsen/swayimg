@@ -2,7 +2,9 @@
 // JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "../exif.h"
+#include "buildcfg.h"
+#include "loader.h"
 
 #include <setjmp.h>
 #include <stdio.h>
@@ -94,6 +96,10 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
+
+#ifdef HAVE_LIBEXIF
+    process_exif(ctx, data, size);
+#endif
 
     return ldr_success;
 }

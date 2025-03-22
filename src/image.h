@@ -42,6 +42,20 @@ struct image {
     struct image_info* info;    ///< Image meta info
 };
 
+/** Loader status. */
+enum loader_status {
+    ldr_success,     ///< Image was decoded successfully
+    ldr_unsupported, ///< Unsupported format
+    ldr_fmterror,    ///< Invalid data format
+    ldr_ioerror      ///< IO errors
+};
+
+/**
+ * Get list of supported image formats.
+ * @return list of supported formats
+ */
+const char* image_formats(void);
+
 /**
  * Allocate empty image instance.
  * @return image context or NULL on errors
@@ -53,6 +67,14 @@ struct image* image_alloc(void);
  * @param ctx image context to free
  */
 void image_free(struct image* ctx);
+
+/**
+ * Load image from specified source.
+ * @param ctx pointer to output image instance
+ * @param source image data source: path to the file, exec command, etc
+ * @return loading status
+ */
+enum loader_status image_load(struct image* ctx, const char* source);
 
 /**
  * Set image source (path or special prefix).

@@ -2,7 +2,7 @@
 // TIFF format decoder.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <string.h>
 #include <tiffio.h>

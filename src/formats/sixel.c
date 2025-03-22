@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Sixel format decoder.
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <sixel.h>
 #include <stdio.h>

@@ -3,8 +3,8 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
-#include "../loader.h"
 #include "buildcfg.h"
+#include "loader.h"
 
 #include <string.h>
 #include <webp/demux.h>

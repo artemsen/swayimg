@@ -2,7 +2,7 @@
 // EXR format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <stdlib.h>
 #include <string.h>

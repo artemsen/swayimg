@@ -6,9 +6,7 @@
 #include "array.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "imagelist.h"
-#include "loader.h"
-#include "viewer.h"
+#include "image.h"
 
 #include <getopt.h>
 #include <locale.h>
@@ -72,7 +70,7 @@ static void print_version(void)
 {
     puts(APP_NAME " version " APP_VERSION ".");
     puts("https://github.com/artemsen/swayimg");
-    printf("Supported formats: %s.\n", supported_formats);
+    printf("Supported formats: %s.\n", image_formats());
 }
 
 /**

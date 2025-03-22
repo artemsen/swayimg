@@ -2,7 +2,7 @@
 // PNM formats decoder
 // Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <limits.h>
 
