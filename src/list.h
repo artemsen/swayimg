@@ -68,13 +68,14 @@ struct list* list_append_tail(struct list* head, struct list* entry);
     (void*)list_append_tail((struct list*)head, (struct list*)entry)
 
 /**
- * Insert new entry after specified one.
- * @param after entry to append new one
- * @param entry pointer to entry to insert
+ * Insert new entry before the specified one.
+ * @param before insert position
+ * @param entry pointer to the entry to insert
+ * @return new head pointer
  */
-void list_insert_entry(struct list* after, struct list* entry);
-#define list_insert(after, entry) \
-    list_insert_entry((struct list*)after, (struct list*)entry)
+struct list* list_insert_entry(struct list* before, struct list* entry);
+#define list_insert(before, entry) \
+    (void*)list_insert_entry((struct list*)before, (struct list*)entry)
 
 /**
  * Remove entry from the list.
