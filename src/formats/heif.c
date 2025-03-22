@@ -3,8 +3,8 @@
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
-#include "../loader.h"
 #include "buildcfg.h"
+#include "loader.h"
 
 #include <libheif/heif.h>
 #include <stdlib.h>

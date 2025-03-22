@@ -2,7 +2,7 @@
 // QOI format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <arpa/inet.h>
 #include <string.h>

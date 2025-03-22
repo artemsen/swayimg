@@ -2,7 +2,7 @@
 // BMP format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <stdlib.h>
 

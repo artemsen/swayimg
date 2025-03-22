@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Raw format decoder.
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>

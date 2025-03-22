@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../loader.h"
+#include "loader.h"
 
 // PNG decoder implementation
 enum loader_status decode_png(struct image* ctx, const uint8_t* data,

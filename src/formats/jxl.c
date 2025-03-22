@@ -2,7 +2,7 @@
 // JPEG XL format decoder.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <jxl/decode.h>
 #include <stdlib.h>

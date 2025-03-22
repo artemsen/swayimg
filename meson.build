@@ -210,6 +210,7 @@ sources = [
   'src/ui.c',
   'src/viewer.c',
   'src/wndbuf.c',
+  'src/formats/loader.c',
   'src/formats/bmp.c',
   'src/formats/dicom.c',
   'src/formats/farbfeld.c',
