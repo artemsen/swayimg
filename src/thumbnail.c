@@ -260,7 +260,7 @@ void thumbnail_free(void)
 #endif // THUMBNAIL_PSTORE
 
     list_for_each(ctx.thumbs, struct thumbnail, it) {
-        image_free(it->image);
+        image_deref(it->image);
         free(it);
     }
 }
@@ -305,7 +305,7 @@ void thumbnail_add(struct image* image)
 
     // create thumbnail from image (replace the first frame)
     if (!pixmap_create(&thumb, thumb_width, thumb_height)) {
-        image_free(image);
+        image_deref(image);
         return;
     }
     pixmap_scale(ctx.aa_mode, full, &thumb, offset_x, offset_y, scale,
@@ -314,7 +314,7 @@ void thumbnail_add(struct image* image)
     frame = image_create_frames(image, 1);
     if (!frame) {
         pixmap_free(&thumb);
-        image_free(image);
+        image_deref(image);
         return;
     }
     frame->pm = thumb;
@@ -366,7 +366,7 @@ void thumbnail_remove(size_t index)
     list_for_each(ctx.thumbs, struct thumbnail, it) {
         if (it->image->index == index) {
             ctx.thumbs = list_remove(it);
-            image_free(it->image);
+            image_deref(it->image);
             free(it);
             break;
         }
@@ -382,7 +382,7 @@ void thumbnail_clear(size_t min_id, size_t max_id)
     if (min_id == IMGLIST_INVALID && max_id == IMGLIST_INVALID) {
         list_for_each(ctx.thumbs, struct thumbnail, it) {
             ctx.thumbs = list_remove(it);
-            image_free(it->image);
+            image_deref(it->image);
             free(it);
         }
     } else {
@@ -390,7 +390,7 @@ void thumbnail_clear(size_t min_id, size_t max_id)
             if ((min_id != IMGLIST_INVALID && it->image->index < min_id) ||
                 (max_id != IMGLIST_INVALID && it->image->index > max_id)) {
                 ctx.thumbs = list_remove(it);
-                image_free(it->image);
+                image_deref(it->image);
                 free(it);
             }
         }

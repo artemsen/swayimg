@@ -11,8 +11,8 @@ extern "C" {
 
 class Exif : public ::testing::Test {
 protected:
-    void SetUp() override { image = image_alloc(); }
-    void TearDown() override { image_free(image); }
+    void SetUp() override { image = image_create("no_matter"); }
+    void TearDown() override { image_deref(image); }
     struct image* image;
 };
 

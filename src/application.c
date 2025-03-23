@@ -236,53 +236,92 @@ static void on_signal(int signum)
 }
 
 /**
- * Load first (initial) image.
- * @param index initial index of image in the image list
- * @param force mandatory image index flag
+ * Create image list and load the first image.
+ * @param sources list of sources
+ * @param num number of sources in the list
  * @return image instance or NULL on errors
  */
-static struct image* load_first_file(size_t index, bool force)
+static struct image* create_imglist(const char** sources, size_t num)
 {
-    struct image* img = NULL;
-    enum loader_status status = ldr_ioerror;
+    struct image* image = NULL;
+    bool force_first = false;
 
-    if (index == IMGLIST_INVALID) {
-        index = image_list_first();
-        force = false;
+    // compose image list
+    if (num == 0) {
+        // no input files specified, use all from the current directory
+        static const char* current_dir = ".";
+        sources = &current_dir;
+        num = 1;
+    } else if (num == 1) {
+        force_first = true;
+        if (strcmp(sources[0], "-") == 0) {
+            // load from stdin
+            static const char* stdin_name = LDRSRC_STDIN;
+            sources = &stdin_name;
+        }
+    }
+    for (size_t i = 0; i < num; ++i) {
+        struct image* added = imglist_add(sources[i]);
+        if (added && i == 0) {
+            image = added;
+            image_addref(image);
+        }
+    }
+    if (!image) {
+        image = imglist_first();
+        force_first = false;
+    }
+    if (imglist_size() == 0) {
+        if (force_first) {
+            fprintf(stderr, "%s: Unable to open\n", sources[0]);
+        } else {
+            fprintf(stderr, "No image files found to view, exit\n");
+        }
+        return NULL;
     }
 
-    while (index != IMGLIST_INVALID) {
-        status = loader_from_index(index, &img);
-        if (force || status == ldr_success) {
+    // load first image
+    if (force_first) {
+        const char* reason;
+        switch (image_load(image)) {
+            case ldr_success:
+                return image;
+            case ldr_unsupported:
+                reason = "Unsupported format";
+                break;
+            case ldr_fmterror:
+                reason = "Invalid format";
+                break;
+            case ldr_ioerror:
+                reason = "I/O error";
+                break;
+            default:
+                reason = "Unknown error";
+                break;
+        }
+        fprintf(stderr, "%s: %s\n", image->source, reason);
+        image_deref(image);
+        return NULL;
+    }
+
+    imglist_reindex();
+
+    // try to load first available image
+    while (image) {
+        const enum loader_status status = image_load(image);
+        if (status == ldr_success) {
             break;
         }
-        index = image_list_skip(index);
+        struct image* skip = image;
+        image = imglist_next(image);
+        image_deref(skip);
+        imglist_remove(skip);
+    }
+    if (!image) {
+        fprintf(stderr, "No image files was loaded, exit\n");
     }
 
-    if (status != ldr_success) {
-        // print error message
-        if (!force) {
-            fprintf(stderr, "No image files was loaded, exit\n");
-        } else {
-            const char* reason = "Unknown error";
-            switch (status) {
-                case ldr_success:
-                    break;
-                case ldr_unsupported:
-                    reason = "Unsupported format";
-                    break;
-                case ldr_fmterror:
-                    reason = "Invalid format";
-                    break;
-                case ldr_ioerror:
-                    reason = "I/O error";
-                    break;
-            }
-            fprintf(stderr, "%s: %s\n", image_list_get(index), reason);
-        }
-    }
-
-    return img;
+    return image;
 }
 
 /**
@@ -373,42 +412,13 @@ static void load_config(const struct config* cfg)
 
 bool app_init(const struct config* cfg, const char** sources, size_t num)
 {
-    bool force_load = false;
     struct image* first_image;
     struct sigaction sigact;
 
     load_config(cfg);
+    imglist_init(cfg);
 
-    // compose image list
-    if (num == 0) {
-        // no input files specified, use all from the current directory
-        static const char* current_dir = ".";
-        sources = &current_dir;
-        num = 1;
-    } else if (num == 1) {
-        force_load = true;
-        if (strcmp(sources[0], "-") == 0) {
-            // load from stdin
-            static const char* stdin_name = LDRSRC_STDIN;
-            sources = &stdin_name;
-        }
-    }
-    image_list_init(cfg);
-    for (size_t i = 0; i < num; ++i) {
-        image_list_add(sources[i]);
-    }
-    if (image_list_size() == 0) {
-        if (force_load) {
-            fprintf(stderr, "%s: Unable to open\n", sources[0]);
-        } else {
-            fprintf(stderr, "No image files found to view, exit\n");
-        }
-        return false;
-    }
-    image_list_reorder();
-
-    // load the first image
-    first_image = load_first_file(image_list_find(sources[0]), force_load);
+    first_image = create_imglist(sources, num);
     if (!first_image) {
         return false;
     }
@@ -449,7 +459,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     info_init(cfg);
     loader_init();
     viewer_init(cfg, ctx.ehandler == viewer_handle ? first_image : NULL);
-    gallery_init(cfg, ctx.ehandler == gallery_handle ? first_image : NULL);
+    // gallery_init(cfg, ctx.ehandler == gallery_handle ? first_image : NULL);
 
     // set mode for info
     if (info_enabled()) {
@@ -473,7 +483,7 @@ void app_destroy(void)
     gallery_destroy();
     viewer_destroy();
     ui_destroy();
-    image_list_destroy();
+    imglist_destroy();
     info_destroy();
     keybind_destroy();
     font_destroy();
@@ -485,7 +495,7 @@ void app_destroy(void)
 
     list_for_each(ctx.events, struct event_queue, it) {
         if (it->event.type == event_load) {
-            image_free(it->event.param.load.image);
+            image_deref(it->event.param.load.image);
         }
         free(it);
     }

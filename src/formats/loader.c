@@ -288,21 +288,42 @@ static enum loader_status load_from_exec(struct image* img, const char* cmd)
     return status;
 }
 
-enum loader_status image_load(struct image* img, const char* source)
+enum loader_status image_load(struct image* img)
 {
     enum loader_status status;
 
     // decode image
-    if (strcmp(source, LDRSRC_STDIN) == 0) {
+    if (strcmp(img->source, LDRSRC_STDIN) == 0) {
         status = load_from_stream(img, STDIN_FILENO);
-    } else if (strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        status = load_from_exec(img, source + LDRSRC_EXEC_LEN);
+    } else if (strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        status = load_from_exec(img, img->source + LDRSRC_EXEC_LEN);
     } else {
-        status = load_from_file(img, source);
+        status = load_from_file(img, img->source);
     }
 
     if (status == ldr_success) {
-        image_set_source(img, source);
+        // set name and parent dir
+        if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
+            strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+            img->name = img->source;
+            str_dup("", &img->parent_dir);
+        } else {
+            size_t pos = strlen(img->source) - 1;
+            // get name
+            while (pos && img->source[--pos] != '/') { }
+            img->name = img->source + pos + (img->source[pos] == '/' ? 1 : 0);
+            // get parent dir
+            if (pos == 0) {
+                str_dup("", &img->parent_dir);
+            } else {
+                const size_t end = pos;
+                while (pos && img->source[--pos] != '/') { }
+                if (img->source[pos] == '/') {
+                    ++pos;
+                }
+                str_append(img->source + pos, end - pos, &img->parent_dir);
+            }
+        }
     }
 
     return status;

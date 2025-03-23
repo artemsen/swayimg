@@ -6,59 +6,63 @@
 
 #include "array.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct image* image_alloc(void)
+struct image* image_create(const char* source)
 {
-    return calloc(1, sizeof(struct image));
+    struct image* img;
+    const size_t len = strlen(source) + 1 /* last null */;
+
+    img = calloc(1, sizeof(struct image) + len);
+    if (img) {
+        img->source = (char*)img + sizeof(struct image);
+        memcpy(img->source, source, len);
+        image_addref(img);
+    }
+
+    return img;
 }
 
-void image_free(struct image* ctx)
+void image_addref(struct image* img)
 {
-    if (ctx) {
-        image_free_frames(ctx);
+    __sync_add_and_fetch(&img->ref_count, 1);
+}
 
-        free(ctx->source);
-        free(ctx->parent_dir);
-        free(ctx->format);
+void image_deref(struct image* img)
+{
+    assert(img && img->ref_count > 0);
 
-        list_for_each(ctx->info, struct image_info, it) {
-            free(it);
-        }
-
-        free(ctx);
+    if (__sync_sub_and_fetch(&img->ref_count, 1) == 0) {
+        image_unload(img);
+        free(img);
     }
 }
 
-void image_set_source(struct image* ctx, const char* source)
+void image_unload(struct image* img)
 {
-    ctx->source = str_dup(source, NULL);
-
-    // set name and parent dir
-    if (strcmp(source, LDRSRC_STDIN) == 0 ||
-        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        ctx->name = ctx->source;
-        str_dup("", &ctx->parent_dir);
-    } else {
-        size_t pos = strlen(ctx->source) - 1;
-        // get name
-        while (pos && ctx->source[--pos] != '/') { }
-        ctx->name = ctx->source + pos + (ctx->source[pos] == '/' ? 1 : 0);
-        // get parent dir
-        if (pos == 0) {
-            str_dup("", &ctx->parent_dir);
-        } else {
-            const size_t end = pos;
-            while (pos && ctx->source[--pos] != '/') { }
-            if (ctx->source[pos] == '/') {
-                ++pos;
-            }
-            str_append(ctx->source + pos, end - pos, &ctx->parent_dir);
-        }
+    // free frames
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        pixmap_free(&img->frames[i].pm);
     }
+    free(img->frames);
+    img->frames = NULL;
+    img->num_frames = 0;
+
+    // free descriptions
+    free(img->parent_dir);
+    img->parent_dir = NULL;
+    free(img->format);
+    img->format = NULL;
+
+    // free meta data
+    list_for_each(img->info, struct image_info, it) {
+        free(it);
+    }
+    img->info = NULL;
 }
 
 void image_flip_vertical(struct image* ctx)
@@ -154,6 +158,8 @@ struct pixmap* image_allocate_frame(struct image* ctx, size_t width,
 struct image_frame* image_create_frames(struct image* ctx, size_t num)
 {
     struct image_frame* frames;
+
+    assert(!ctx->frames); // already allocated?
 
     frames = calloc(1, num * sizeof(struct image_frame));
     if (frames) {

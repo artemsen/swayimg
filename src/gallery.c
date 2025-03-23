@@ -475,7 +475,7 @@ static void on_image_load(struct image* image, size_t index)
         skip_thumbnail(index);
     } else {
         if (thumbnail_get(index)) {
-            image_free(image);
+            image_deref(image);
         } else {
             thumbnail_add(image);
             if (index == ctx.selected) {

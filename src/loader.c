@@ -40,21 +40,23 @@ static struct loader ctx;
 
 enum loader_status loader_from_source(const char* source, struct image** image)
 {
+        return ldr_ioerror;
+
     enum loader_status status;
     struct image* img;
 
     // create image instance
-    img = image_alloc();
+    img = image_create(source);
     if (!img) {
         return ldr_ioerror;
     }
 
-    status = image_load(img, source);
+    status = image_load(img);
 
     if (status == ldr_success) {
         *image = img;
     } else {
-        image_free(img);
+        image_deref(img);
     }
 
     return status;

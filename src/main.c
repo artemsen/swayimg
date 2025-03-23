@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /** Command line arguments. */
 struct cmdarg {
@@ -161,12 +162,18 @@ int main(int argc, char* argv[])
 {
     bool rc;
     struct config* cfg;
+    struct timespec ts;
     int argn;
 
     setlocale(LC_ALL, "");
 
     cfg = config_load();
     argn = parse_cmdargs(argc, argv, cfg);
+
+    // init random sequence
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    srand(ts.tv_nsec);
+
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
     config_free(cfg);
 

@@ -5,136 +5,161 @@
 #pragma once
 
 #include "config.h"
-
-// Invalid index of the entry
-#define IMGLIST_INVALID SIZE_MAX
-
-/** Order of file list. */
-enum list_order {
-    order_none,    ///< Unsorted (system depended)
-    order_alpha,   ///< Alphanumeric sort
-    order_mtime,   ///< Modification time sort
-    order_size,    ///< Size sort
-    order_random   ///< Random order
-};
+#include "image.h"
 
 /**
  * Initialize global image list context.
  * @param cfg config instance
  */
-void image_list_init(const struct config* cfg);
+void imglist_init(const struct config* cfg);
 
 /**
  * Destroy global image list context.
  */
-void image_list_destroy(void);
+void imglist_destroy(void);
 
 /**
  * Add image source to the list.
  * @param source image source to add (file path or special prefix)
+ * @return created image entry or NULL on errors or if source is deirectory
  */
-void image_list_add(const char* source);
+struct image* imglist_add(const char* source);
 
 /**
- * Reorder image list (sort/random/...).
+ * Remove image source to the list.
+ * @param img image instance to remove
  */
-void image_list_reorder(void);
+void imglist_remove(struct image* img);
+
+/**
+ * Reindex the image list.
+ */
+void imglist_reindex(void);
 
 /**
  * Get image list size.
- * @return total number of entries in the list include non-image files
+ * @return total number of entries in the list
  */
-size_t image_list_size(void);
+size_t imglist_size(void);
 
 /**
- * Get image source for specified index.
- * @param index index of the image list entry
- * @return image data source description (path, ...) or NULL if no source
+ * Get the first image entry.
+ * @return first image instance or NULL list is empty
  */
-const char* image_list_get(size_t index);
+struct image* imglist_first(void) __attribute__((warn_unused_result));
 
 /**
- * Find index for specified source.
- * @param source image data source
- * @return index of the entry or IMGLIST_INVALID if not found
+ * Get the last entry index.
+ * @return last image instance or NULL list is empty
  */
-size_t image_list_find(const char* source);
+struct image* imglist_last(void) __attribute__((warn_unused_result));
 
 /**
- * Get index of nearest entry in the list.
- * @param start start position
- * @param forward direction(forward/backward)
- * @param loop enable/disable loop mode
- * @return index of the entry or IMGLIST_INVALID
+ * Get next image entry.
+ * @param img start image entry
+ * @return next nearest image instance or NULL if `img` is the last entry
  */
-size_t image_list_nearest(size_t start, bool forward, bool loop);
+struct image* imglist_next(struct image* img)
+    __attribute__((warn_unused_result));
 
 /**
- * Get distance between two indexes.
- * @param start,end entry indexes
- * @return number of image entries between indexes
+ * Get previous image entry.
+ * @param img start image entry
+ * @return previous nearest image instance or NULL if `img` is the first entry
  */
-size_t image_list_distance(size_t start, size_t end);
+struct image* imglist_prev(struct image* img)
+    __attribute__((warn_unused_result));
 
 /**
- * Get index of the entry in specified distance from start.
- * @param start start position
+ * Get next image entry given the loop setting.
+ * @param img start image entry
+ * @return next nearest image instance or NULL next instance not found
+ */
+struct image* imglist_next_file(struct image* img)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get previous image entry given the loop setting.
+ * @param img start image entry
+ * @return previous nearest image instance or NULL previous instance not found
+ */
+struct image* imglist_prev_file(struct image* img)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get next image entry with different parent (another dir).
+ * @param img start image entry
+ * @return next nearest image instance or NULL next instance not found
+ */
+struct image* imglist_next_dir(struct image* img)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get previous image entry with different parent (another dir).
+ * @param img start image entry
+ * @return next previous image instance or NULL next instance not found
+ */
+struct image* imglist_prev_dir(struct image* img)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get random image entry.
+ * @param img image entry to exclude (current one)
+ * @return random image entry
+ */
+struct image* imglist_rand(struct image* img)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get image entry in specified distance from the start (forward).
+ * @param img start position
  * @param distance number entries to skip
- * @param forward direction(forward/backward)
- * @return index of the entry or IMGLIST_INVALID
+ * @return image entry
  */
+struct image* imglist_fwd(struct image* img, size_t distance)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get image entry in specified distance from the start (backward).
+ * @param img start position
+ * @param distance number entries to skip
+ * @return image entry
+ */
+struct image* imglist_back(struct image* img, size_t distance)
+    __attribute__((warn_unused_result));
+
+/**
+ * Get distance between two image entries.
+ * @param start,end image entries
+ * @return number of entries in range [start,end]
+ */
+size_t imglist_distance(const struct image* start, const struct image* end);
+
+/**
+ * File watcher notification callback.
+ */
+typedef void (*imglist_watch_cb)(void);
+
+/**
+ * Add image file to watcher for update/delete.
+ * @param img image instance to watch
+ * @param callback change notification callback
+ */
+void imglist_watch(struct image* img, imglist_watch_cb callback);
+
+////////////////////////////////////////////////////////////////////////////////
+// DEPRECATED API
+#define IMGLIST_INVALID SIZE_MAX
+size_t image_list_size(void);
+const char* image_list_get(size_t index);
+size_t image_list_nearest(size_t start, bool forward, bool loop);
+size_t image_list_distance(size_t start, size_t end);
 size_t image_list_jump(size_t start, size_t distance, bool forward);
-
-/**
- * Get next entry index.
- * @param start index of the start position
- * @return index of the entry or IMGLIST_INVALID if not found
- */
 size_t image_list_next_file(size_t start);
-
-/**
- * Get previous entry index.
- * @param start index of the start position
- * @return index of the entry or IMGLIST_INVALID if not found
- */
 size_t image_list_prev_file(size_t start);
-
-/**
- * Get random entry index.
- * @param exclude index of the excluded position (currently viewed image)
- * @return index of the entry or IMGLIST_INVALID if not found
- */
 size_t image_list_rand_file(size_t exclude);
-
-/**
- * Get next directory entry index (works only for paths as source).
- * @param start index of the start position
- * @return index of the entry or IMGLIST_INVALID if not found
- */
 size_t image_list_next_dir(size_t start);
-
-/**
- * Get previous directory entry index (works only for paths as source).
- * @param start index of the start position
- * @return index of the entry or IMGLIST_INVALID if not found
- */
 size_t image_list_prev_dir(size_t start);
-
-/**
- * Get the first entry index.
- * @return index of the entry or IMGLIST_INVALID if image list is empty
- */
 size_t image_list_first(void);
-
-/**
- * Get the first entry index.
- * @return index of the entry or IMGLIST_INVALID if image list is empty
- */
 size_t image_list_last(void);
-
-/**
- * Skip entry (remove from the image list).
- * @param index entry to remove
- * @return next valid index of the entry or IMGLIST_INVALID if list is empty
- */
 size_t image_list_skip(size_t index);

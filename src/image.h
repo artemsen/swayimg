@@ -30,16 +30,23 @@ struct image_info {
 
 /** Image context. */
 struct image {
-    size_t index;               ///< Index of the entry in the image list
-    char* source;               ///< Image source (e.g. path to the image file)
-    const char* name;           ///< Name of the image file
-    char* parent_dir;           ///< Parent directory name
-    size_t file_size;           ///< Size of image file
+    struct list list; ///< Links to prev/next entry in the image list
+
+    char* source;     ///< Image source (e.g. path to the image file)
+    size_t file_size; ///< Size of image file
+    time_t file_time; ///< File modification time
+
+    size_t index;     ///< Index of the image
+    const char* name; ///< Name of the image file
+    char* parent_dir; ///< Parent directory name
+
     char* format;               ///< Format description
     struct image_frame* frames; ///< Image frames
     size_t num_frames;          ///< Total number of frames
-    bool alpha;                 ///< Image has alpha channel
     struct image_info* info;    ///< Image meta info
+    bool alpha;                 ///< Image has alpha channel
+
+    size_t ref_count; ///< Reference count
 };
 
 /** Loader status. */
@@ -57,31 +64,36 @@ enum loader_status {
 const char* image_formats(void);
 
 /**
- * Allocate empty image instance.
+ * Create empty image instance.
+ * @param source image source
  * @return image context or NULL on errors
  */
-struct image* image_alloc(void);
+struct image* image_create(const char* source);
 
 /**
- * Free image.
- * @param ctx image context to free
+ * Increment usage counter.
+ * @param img image context
  */
-void image_free(struct image* ctx);
+void image_addref(struct image* img);
+
+/**
+ * Decrement usage counter.
+ * @param img image context
+ */
+void image_deref(struct image* img);
 
 /**
  * Load image from specified source.
- * @param ctx pointer to output image instance
- * @param source image data source: path to the file, exec command, etc
+ * @param img image context
  * @return loading status
  */
-enum loader_status image_load(struct image* ctx, const char* source);
+enum loader_status image_load(struct image* img);
 
 /**
- * Set image source (path or special prefix).
- * @param ctx image context
- * @param source image source
+ * Unload image: free pixmaps, meta, etc.
+ * @param img image context to unload
  */
-void image_set_source(struct image* ctx, const char* source);
+void image_unload(struct image* img);
 
 /**
  * Flip image vertically.
