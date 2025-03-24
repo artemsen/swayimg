@@ -4,7 +4,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes \
     bash-completion \
     build-essential \
-    cmake \
     libavif-dev \
     libexif-dev \
     libfontconfig-dev \
@@ -16,7 +15,6 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libjson-c-dev \
     libjxl-dev \
     libopenexr-dev \
-    libopenexr-dev \
     libraw-dev \
     librsvg2-dev \
     libsixel-dev \
@@ -27,12 +25,5 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     meson \
     pkg-config \
     wayland-protocols
-
-# install gtest
-RUN mkdir /tmp/gtest && \
-    cd /tmp/gtest && \
-    cmake /usr/src/gtest && \
-    make -j8 && \
-    cp /tmp/gtest/lib/* /usr/lib/
 
 USER ubuntu

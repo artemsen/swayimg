@@ -1,0 +1,54 @@
+name: Ubuntu/aarch64
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_PATH: /tmp/build
+      INSTALL_PATH: /tmp/install
+
+    steps:
+    - name: Check out source code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Build and check
+      uses: uraimo/run-on-arch-action@v3
+      with:
+        arch: aarch64
+        distro: ubuntu_rolling
+
+        install: >
+          apt update && apt install --no-install-recommends --yes
+          bash-completion
+          build-essential
+          libavif-dev
+          libexif-dev
+          libfontconfig-dev
+          libfreetype-dev
+          libgif-dev
+          libgtest-dev
+          libheif-dev
+          libjpeg-dev
+          libjson-c-dev
+          libjxl-dev
+          libopenexr-dev
+          libraw-dev
+          librsvg2-dev
+          libsixel-dev
+          libtiff-dev
+          libwayland-dev
+          libwebp-dev
+          libxkbcommon-dev
+          meson
+          pkg-config
+          wayland-protocols
+
+        run: |
+          set -e
+          meson setup --werror -D tests=enabled -D heif=auto -D bash=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
+          meson compile -C ${{ env.BUILD_PATH }}
+          meson test --verbose -C ${{ env.BUILD_PATH }}
+          DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}

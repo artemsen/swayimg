@@ -1,4 +1,4 @@
-name: Linux/i386
+name: Alpine/i386
 on: [push, pull_request]
 
 jobs:
