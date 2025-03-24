@@ -101,7 +101,7 @@ conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
 
 # Wayland protocols
-wlproto = dependency('wayland-protocols')
+wlproto = dependency('wayland-protocols', version: '>=1.35')
 wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
 wlscan = dependency('wayland-scanner', required: false, native: true)
 if wlscan.found()
