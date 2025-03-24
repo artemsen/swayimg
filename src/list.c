@@ -21,10 +21,7 @@ struct list* list_append_tail(struct list* head, struct list* entry)
     if (!head) {
         head = entry;
     } else {
-        last = head;
-        while (last && last->next) {
-            last = last->next;
-        }
+        last = list_get_last_entry(head);
         last->next = entry;
     }
 
@@ -34,12 +31,23 @@ struct list* list_append_tail(struct list* head, struct list* entry)
     return head;
 }
 
-void list_insert_entry(struct list* after, struct list* entry)
+struct list* list_insert_entry(struct list* before, struct list* entry)
 {
-    entry->prev = after;
-    entry->next = after->next;
-    after->next->prev = entry;
-    after->next = entry;
+    entry->next = before;
+    entry->prev = before ? before->prev : NULL;
+
+    if (entry->prev) {
+        entry->prev->next = entry;
+    }
+    if (before) {
+        before->prev = entry;
+    }
+
+    while (entry->prev) {
+        entry = entry->prev;
+    }
+
+    return entry;
 }
 
 struct list* list_remove_entry(struct list* entry)
@@ -54,6 +62,10 @@ struct list* list_remove_entry(struct list* entry)
     if (next) {
         next->prev = prev;
     }
+
+    entry->next = NULL;
+    entry->prev = NULL;
+
     while (head && head->prev) {
         head = head->prev;
     }

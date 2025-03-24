@@ -54,7 +54,8 @@ TEST(List, Append)
 TEST(List, Insert)
 {
     struct list entry[3];
-    struct list insert;
+    struct list insert_middle;
+    struct list insert_start;
     struct list* head = NULL;
 
     memset(entry, 0xff, sizeof(entry)); // poison
@@ -63,11 +64,18 @@ TEST(List, Insert)
         head = list_append_tail(head, &it);
     }
 
-    list_insert_entry(&entry[1], &insert);
-    ASSERT_EQ(entry[1].next, &insert);
-    ASSERT_EQ(entry[2].prev, &insert);
-    ASSERT_EQ(insert.prev, &entry[1]);
-    ASSERT_EQ(insert.next, &entry[2]);
+    head = list_insert_entry(&entry[1], &insert_middle);
+    ASSERT_EQ(head, &entry[0]);
+    ASSERT_EQ(entry[0].next, &insert_middle);
+    ASSERT_EQ(entry[1].prev, &insert_middle);
+    ASSERT_EQ(insert_middle.prev, &entry[0]);
+    ASSERT_EQ(insert_middle.next, &entry[1]);
+
+    head = list_insert_entry(&entry[0], &insert_start);
+    ASSERT_EQ(head, &insert_start);
+    ASSERT_EQ(insert_start.prev, nullptr);
+    ASSERT_EQ(insert_start.next, &entry[0]);
+    ASSERT_EQ(entry[0].prev, &insert_start);
 }
 
 TEST(List, Remove)
@@ -82,6 +90,8 @@ TEST(List, Remove)
     }
 
     head = list_remove_entry(&entry[1]);
+    ASSERT_EQ(entry[1].next, nullptr);
+    ASSERT_EQ(entry[1].prev, nullptr);
     ASSERT_EQ(head, &entry[2]);
     ASSERT_EQ(head->next, &entry[0]);
     ASSERT_EQ(head->prev, nullptr);
@@ -137,8 +147,7 @@ TEST(List, ForEachBack)
     }
 
     size_t i = 0;
-    list_for_each_back(&entry[2], struct list, it)
-    {
+    list_for_each_back(&entry[2], struct list, it) {
         switch (i) {
             case 0:
                 ASSERT_EQ(it, &entry[2]);
