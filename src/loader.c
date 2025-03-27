@@ -103,7 +103,7 @@ static void* loading_thread(__attribute__((unused)) void* data)
 
         image = NULL;
         loader_from_index(entry->index, &image);
-        app_on_load(image, entry->index);
+        // app_on_load(image, entry->index);
         free(entry);
     } while (true);
 

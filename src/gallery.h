@@ -5,21 +5,16 @@
 #pragma once
 
 #include "config.h"
-#include "event.h"
+#include "mode.h"
 
 /**
  * Initialize global gallery context.
  * @param cfg config instance
- * @param image initial image to open
+ * @param handlers mode handlers
  */
-void gallery_init(const struct config* cfg, struct image* image);
+void gallery_init(const struct config* cfg, struct mode_handlers* handlers);
 
 /**
  * Destroy global gallery context.
  */
 void gallery_destroy(void);
-
-/**
- * Event handler, see `event_handler` for details.
- */
-void gallery_handle(const struct event* event);

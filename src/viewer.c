@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Business logic of application and UI event handlers.
+// Image viewer mode.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "viewer.h"
@@ -678,6 +678,19 @@ static void next_frame(bool forward)
     }
 }
 
+/** Animation timer event handler. */
+static void on_animation_timer(__attribute__((unused)) void* data)
+{
+    next_frame(true);
+    animation_ctl(true);
+}
+
+/** Slideshow timer event handler. */
+static void on_slideshow_timer(__attribute__((unused)) void* data)
+{
+    slideshow_ctl(next_file(action_next_file));
+}
+
 /**
  * Reload image file and reset state (position, scale, etc).
  */
@@ -744,32 +757,21 @@ static void draw_image(struct pixmap* wnd)
     }
 }
 
-/**
- * Redraw handler.
- */
-static void redraw(void)
+/** Mode handler: window redraw. */
+static void on_redraw(struct pixmap* window)
 {
-    struct pixmap* window = ui_draw_begin();
-    if (window) {
-        draw_image(window);
-        info_print(window);
-        ui_draw_commit();
-    }
+    draw_image(window);
+    info_print(window);
 }
 
-/**
- * Window resize handler.
- */
+/** Mode handler: window resize. */
 static void on_resize(void)
 {
     fixup_position(false);
     reset_state();
 }
 
-/**
- * Image drag handler.
- * @param dx,dy delta to move viewpoint
- */
+/** Mode handler: mouse drag. */
 static void on_drag(int dx, int dy)
 {
     const ssize_t old_x = ctx.img_x;
@@ -784,28 +786,8 @@ static void on_drag(int dx, int dy)
     }
 }
 
-/**
- * Animation timer event handler.
- */
-static void on_animation_timer(__attribute__((unused)) void* data)
-{
-    next_frame(true);
-    animation_ctl(true);
-}
-
-/**
- * Slideshow timer event handler.
- */
-static void on_slideshow_timer(__attribute__((unused)) void* data)
-{
-    slideshow_ctl(next_file(action_next_file));
-}
-
-/**
- * Apply action.
- * @param action pointer to the action being performed
- */
-static void apply_action(const struct action* action)
+/** Mode handler: apply action. */
+static void on_action(const struct action* action)
 {
     switch (action->type) {
         case action_first_file:
@@ -830,9 +812,6 @@ static void apply_action(const struct action* action)
             break;
         case action_slideshow:
             slideshow_ctl(!ctx.slideshow_enable && next_file(action_next_file));
-            break;
-        case action_mode:
-            app_switch_mode(ctx.current->index);
             break;
         case action_step_left:
             move_image(true, true, action->params);
@@ -877,9 +856,6 @@ static void apply_action(const struct action* action)
         case action_reload:
             reload_file();
             break;
-        case action_exec:
-            app_execute(action->params, ctx.current->source);
-            break;
         case action_export:
 #ifdef HAVE_LIBPNG
             if (!action->params || !*action->params) {
@@ -900,21 +876,40 @@ static void apply_action(const struct action* action)
     }
 }
 
-void viewer_init(const struct config* cfg, struct image* image)
+/** Mode handler: get currently viewed image. */
+static struct image* on_current(void)
 {
-    size_t history;
-    size_t preload;
-    const char* value;
+    return ctx.current;
+}
 
+/** Mode handler: activate viewer. */
+static void on_activate(struct image* image)
+{
     ctx.current = image;
+    reset_state();
+    preloader_start();
+    imglist_watch(ctx.current, reload_file);
+}
+
+/** Mode handler: deactivate viewer. */
+static struct image* on_deactivate(void)
+{
+    preloader_stop();
+    return ctx.current;
+}
+
+void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
+{
+    size_t cval_num;
+    const char* cval_txt;
 
     ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
     ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
     ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
     // background for transparent images
-    value = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
-    if (strcmp(value, GRID_NAME) == 0) {
+    cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
+    if (strcmp(cval_txt, GRID_NAME) == 0) {
         ctx.image_bkg = GRID_BKGID;
     } else {
         ctx.image_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
@@ -927,11 +922,11 @@ void viewer_init(const struct config* cfg, struct image* image)
     ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
                                     position_names, ARRAY_SIZE(position_names));
 
-    // cache and preloads
-    history = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
-    preload = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
-    ctx.history = cache_init(history);
-    ctx.preload = cache_init(preload);
+    // history and preloads caches
+    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
+    ctx.history = cache_init(cval_num);
+    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
+    ctx.preload = cache_init(cval_num);
 
     // setup animation timer
     ctx.animation_enable = true;
@@ -950,8 +945,13 @@ void viewer_init(const struct config* cfg, struct image* image)
         app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
 
-    preloader_start();
-    imglist_watch(ctx.current, reload_file);
+    handlers->action = on_action;
+    handlers->redraw = on_redraw;
+    handlers->resize = on_resize;
+    handlers->drag = on_drag;
+    handlers->current = on_current;
+    handlers->activate = on_activate;
+    handlers->deactivate = on_deactivate;
 }
 
 void viewer_destroy(void)
@@ -969,33 +969,4 @@ void viewer_destroy(void)
     cache_free(ctx.preload);
 
     image_deref(ctx.current);
-}
-
-void viewer_handle(const struct event* event)
-{
-    switch (event->type) {
-        case event_action:
-            apply_action(event->param.action);
-            break;
-        case event_redraw:
-            redraw();
-            break;
-        case event_resize:
-            on_resize();
-            break;
-        case event_drag:
-            on_drag(event->param.drag.dx, event->param.drag.dy);
-            break;
-        case event_activate:
-            // if (fetcher_reset(event->param.activate.index, false)) {
-            reset_state();
-            // start_preloader();
-            // imglist_watch(ctx.current, reload_file);
-            // } else {
-            //     app_exit(0);
-            // }
-            break;
-        case event_load:
-            break;
-    }
 }

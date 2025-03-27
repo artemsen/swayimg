@@ -390,33 +390,32 @@ done:
 /**
  * Draw gallery.
  */
-static void redraw(void)
+// static void redraw(void)
+static void on_redraw(struct pixmap* window)
 {
-    struct pixmap* wnd;
-
     if (image_list_first() == IMGLIST_INVALID) {
         printf("No more images, exit\n");
         app_exit(0);
         return;
     }
 
-    wnd = ui_draw_begin();
-    if (!wnd) {
-        return;
-    }
+    // wnd = ui_draw_begin();
+    // if (!wnd) {
+    //     return;
+    // }
 
-    pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
-    draw_thumbnails(wnd);
-    info_print(wnd);
+    pixmap_fill(window, 0, 0, window->width, window->height, ctx.clr_window);
+    draw_thumbnails(window);
+    info_print(window);
 
-    ui_draw_commit();
+    // ui_draw_commit();
 }
 
 /**
  * Apply action.
  * @param action pointer to the action being performed
  */
-static void apply_action(const struct action* action)
+static void on_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
@@ -448,45 +447,57 @@ static void apply_action(const struct action* action)
             reset_loader();
             app_redraw();
             break;
-        case action_exec:
-            app_execute(action->params, image_list_get(ctx.selected));
-            break;
         case action_status:
             info_update(info_status, "%s", action->params);
             app_redraw();
-            break;
-        case action_mode:
-            app_switch_mode(ctx.selected);
             break;
         default:
             break;
     }
 }
 
+/** Mode handler: get currently viewed image. */
+static struct image* on_current(void)
+{
+    return NULL;//ctx.selected;
+}
+
+/** Mode handler: activate viewer. */
+static void on_activate(struct image* image)
+{
+    (void)image;
+    // ctx.selected = image;
+}
+
+/** Mode handler: deactivate viewer. */
+static struct image* on_deactivate(void)
+{
+    return NULL;//ctx.current;
+}
 /**
  * Background loader thread callback.
  * @param image loaded image instance, NULL if load error
  * @param index index of the image in the image list
  */
-static void on_image_load(struct image* image, size_t index)
-{
-    if (!image) {
-        loader_queue_reset();
-        skip_thumbnail(index);
-    } else {
-        if (thumbnail_get(index)) {
-            image_deref(image);
-        } else {
-            thumbnail_add(image);
-            if (index == ctx.selected) {
-                update_info();
-            }
-        }
-    }
-    app_redraw();
-}
+// static void on_image_load(struct image* image, size_t index)
+// {
+//     if (!image) {
+//         loader_queue_reset();
+//         skip_thumbnail(index);
+//     } else {
+//         if (thumbnail_get(index)) {
+//             image_deref(image);
+//         } else {
+//             thumbnail_add(image);
+//             if (index == ctx.selected) {
+//                 update_info();
+//             }
+//         }
+//     }
+//     app_redraw();
+// }
 
-void gallery_init(const struct config* cfg, struct image* image)
+void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
 {
     thumbnail_init(cfg);
 
@@ -499,12 +510,19 @@ void gallery_init(const struct config* cfg, struct image* image)
     ctx.clr_border = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BORDER);
     ctx.clr_shadow = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SHADOW);
 
-    ctx.top = image_list_first();
-    ctx.selected = ctx.top;
-    if (image) {
-        thumbnail_add(image);
-        select_thumbnail(image->index);
-    }
+    handlers->action = on_action;
+    handlers->redraw= on_redraw;
+    handlers->resize = update_layout;
+    // handlers->drag = on_drag;
+    handlers->current = on_current;
+    handlers->activate = on_activate;
+    handlers->deactivate = on_deactivate;
+    // ctx.top = image_list_first();
+    // ctx.selected = ctx.top;
+    // if (image) {
+    //     thumbnail_add(image);
+    //     select_thumbnail(image->index);
+    // }
 }
 
 void gallery_destroy(void)
@@ -512,25 +530,25 @@ void gallery_destroy(void)
     thumbnail_free();
 }
 
-void gallery_handle(const struct event* event)
-{
-    switch (event->type) {
-        case event_action:
-            apply_action(event->param.action);
-            break;
-        case event_redraw:
-            redraw();
-            break;
-        case event_activate:
-            select_thumbnail(event->param.activate.index);
-            break;
-        case event_load:
-            on_image_load(event->param.load.image, event->param.load.index);
-            break;
-        case event_resize:
-            update_layout();
-            break;
-        case event_drag:
-            break; // unused in gallery mode
-    }
-}
+// void gallery_handle(const struct event* event)
+// {
+//     switch (event->type) {
+//         case event_action:
+//             apply_action(event->param.action);
+//             break;
+//         case event_redraw:
+//             redraw();
+//             break;
+//         case event_activate:
+//             select_thumbnail(event->param.activate.index);
+//             break;
+//         case event_load:
+//             on_image_load(event->param.load.image, event->param.load.index);
+//             break;
+//         case event_resize:
+//             update_layout();
+//             break;
+//         case event_drag:
+//             break; // unused in gallery mode
+//     }
+// }

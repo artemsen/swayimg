@@ -192,7 +192,6 @@ sources = [
   'src/array.c',
   'src/cache.c',
   'src/config.c',
-  'src/event.c',
   'src/font.c',
   'src/gallery.c',
   'src/image.c',
