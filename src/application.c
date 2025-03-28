@@ -10,7 +10,6 @@
 #include "gallery.h"
 #include "imagelist.h"
 #include "info.h"
-#include "loader.h"
 #include "shellcmd.h"
 #include "sway.h"
 #include "ui.h"
@@ -561,7 +560,6 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     font_init(cfg);
     keybind_init(cfg);
     info_init(cfg);
-    loader_init();
     viewer_init(cfg, &ctx.mode_handlers[mode_viewer]);
     gallery_init(cfg, &ctx.mode_handlers[mode_gallery]);
 
@@ -585,7 +583,6 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
 
 void app_destroy(void)
 {
-    loader_destroy();
     gallery_destroy();
     viewer_destroy();
     ui_destroy();

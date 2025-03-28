@@ -8,7 +8,6 @@
 #include "array.h"
 #include "font.h"
 #include "keybind.h"
-#include "loader.h"
 #include "ui.h"
 
 #include <stdarg.h>

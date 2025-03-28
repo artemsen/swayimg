@@ -868,7 +868,7 @@ static void on_action(const struct action* action)
                 info_update(info_status, "Error: export path is not specified");
             } else if (export_png(&ctx.current->frames[ctx.frame].pm, NULL,
                                   action->params)) {
-                info_update(info_status, "Export completed");
+                info_update(info_status, "Exported to %s", action->params);
             } else {
                 info_update(info_status, "Error: export failed");
             }
@@ -900,8 +900,10 @@ static void on_activate(struct image* image)
 /** Mode handler: deactivate viewer. */
 static struct image* on_deactivate(void)
 {
+    struct image* current = ctx.current;
+    ctx.current = NULL;
     preloader_stop();
-    return ctx.current;
+    return current;
 }
 
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
@@ -973,6 +975,4 @@ void viewer_destroy(void)
 
     cache_free(ctx.history);
     cache_free(ctx.preload);
-
-    image_deref(ctx.current);
 }

@@ -305,7 +305,7 @@ enum loader_status decode_png(struct image* img, const uint8_t* data,
         rc = decode_single(img, png, info);
     }
 #else
-    rc = decode_single(ctx, png, info);
+    rc = decode_single(img, png, info);
 #endif // PNG_APNG_SUPPORTED
 
     // read text info

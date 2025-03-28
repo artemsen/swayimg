@@ -25,6 +25,9 @@ void pixmap_free(struct pixmap* pm)
 {
     if (pm) {
         free(pm->data);
+        pm->data = NULL;
+        pm->width = 0;
+        pm->height = 0;
     }
 }
 

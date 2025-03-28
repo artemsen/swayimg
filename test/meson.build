@@ -20,7 +20,6 @@ sources = [
   '../src/imagelist.c',
   '../src/keybind.c',
   '../src/list.c',
-  '../src/loader.c',
   '../src/pixmap.c',
   '../src/pixmap_scale.c',
   '../src/shellcmd.c',

@@ -146,20 +146,3 @@ typedef void (*imglist_watch_cb)(void);
  * @param callback change notification callback
  */
 void imglist_watch(struct image* img, imglist_watch_cb callback);
-
-////////////////////////////////////////////////////////////////////////////////
-// DEPRECATED API
-#define IMGLIST_INVALID SIZE_MAX
-size_t image_list_size(void);
-const char* image_list_get(size_t index);
-size_t image_list_nearest(size_t start, bool forward, bool loop);
-size_t image_list_distance(size_t start, size_t end);
-size_t image_list_jump(size_t start, size_t distance, bool forward);
-size_t image_list_next_file(size_t start);
-size_t image_list_prev_file(size_t start);
-size_t image_list_rand_file(size_t exclude);
-size_t image_list_next_dir(size_t start);
-size_t image_list_prev_dir(size_t start);
-size_t image_list_first(void);
-size_t image_list_last(void);
-size_t image_list_skip(size_t index);
