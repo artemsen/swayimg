@@ -513,7 +513,6 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->action = on_action;
     handlers->redraw= on_redraw;
     handlers->resize = update_layout;
-    // handlers->drag = on_drag;
     handlers->current = on_current;
     handlers->activate = on_activate;
     handlers->deactivate = on_deactivate;

@@ -190,7 +190,7 @@ static bool get_image(struct stream* stream, struct dicom_image* image)
 }
 
 // DICOM loader implementation
-enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
+enum loader_status decode_dicom(struct image* img, const uint8_t* data,
                                 size_t size)
 {
     struct dicom_image dicom;
@@ -236,7 +236,7 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
     }
 
     // allocate image buffer
-    pm = image_allocate_frame(ctx, dicom.width, dicom.height);
+    pm = image_alloc_frame(img, dicom.width, dicom.height);
     if (!pm) {
         return ldr_fmterror;
     }
@@ -250,7 +250,7 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
         pm->data[i] = ARGB(0xff, color, color, color);
     }
 
-    image_set_format(ctx, "DICOM");
+    image_set_format(img, "DICOM");
 
     return ldr_success;
 }

@@ -30,7 +30,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 }
 
 // JPEG loader implementation
-enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
+enum loader_status decode_jpeg(struct image* img, const uint8_t* data,
                                size_t size)
 {
     struct pixmap* pm;
@@ -46,7 +46,7 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpg.err = jpeg_std_error(&err.mgr);
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        image_free_frames(ctx);
+        image_unload(img);
         jpeg_destroy_decompress(&jpg);
         return ldr_fmterror;
     }
@@ -59,7 +59,7 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    pm = image_allocate_frame(ctx, jpg.output_width, jpg.output_height);
+    pm = image_alloc_frame(img, jpg.output_width, jpg.output_height);
     if (!pm) {
         jpeg_destroy_decompress(&jpg);
         return ldr_fmterror;
@@ -92,13 +92,13 @@ enum loader_status decode_jpeg(struct image* ctx, const uint8_t* data,
 #endif // LIBJPEG_TURBO_VERSION
     }
 
-    image_set_format(ctx, "JPEG %dbit", jpg.out_color_components * 8);
+    image_set_format(img, "JPEG %dbit", jpg.out_color_components * 8);
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
 
 #ifdef HAVE_LIBEXIF
-    process_exif(ctx, data, size);
+    process_exif(img, data, size);
 #endif
 
     return ldr_success;

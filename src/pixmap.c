@@ -23,7 +23,9 @@ bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
 
 void pixmap_free(struct pixmap* pm)
 {
-    free(pm->data);
+    if (pm) {
+        free(pm->data);
+    }
 }
 
 void pixmap_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,

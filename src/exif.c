@@ -3,6 +3,7 @@
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "exif.h"
+#include "formats/loader.h"
 
 #include <libexif/exif-data.h>
 #include <string.h>

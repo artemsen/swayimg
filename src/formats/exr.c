@@ -319,7 +319,7 @@ done:
 }
 
 // EXR loader implementation
-enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
+enum loader_status decode_exr(struct image* img, const uint8_t* data,
                               size_t size)
 {
     exr_result_t rc;
@@ -353,8 +353,8 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         goto done;
     }
 
-    pm = image_allocate_frame(ctx, dwnd.max.x - dwnd.min.x + 1,
-                              dwnd.max.y - dwnd.min.y + 1);
+    pm = image_alloc_frame(img, dwnd.max.x - dwnd.min.x + 1,
+                           dwnd.max.y - dwnd.min.y + 1);
     if (!pm) {
         rc = EXR_ERR_OUT_OF_MEMORY;
         goto done;
@@ -365,8 +365,8 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         goto done;
     }
 
-    image_set_format(ctx, "EXR");
-    ctx->alpha = true;
+    image_set_format(img, "EXR");
+    img->alpha = true;
 
     if (storage == EXR_STORAGE_SCANLINE) {
         rc = load_scanlined(exr, pm);
@@ -379,7 +379,7 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
 done:
     exr_finish(&exr);
     if (rc != EXR_ERR_SUCCESS) {
-        image_free_frames(ctx);
+        image_unload(img);
         return ldr_fmterror;
     }
     return ldr_success;

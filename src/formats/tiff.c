@@ -85,7 +85,7 @@ static void tiff_unmap(__attribute__((unused)) thandle_t data,
 }
 
 // TIFF loader implementation
-enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
+enum loader_status decode_tiff(struct image* img, const uint8_t* data,
                                size_t size)
 {
     TIFF* tiff;
@@ -119,7 +119,7 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
         goto fail;
     }
 
-    pm = image_allocate_frame(ctx, timg.width, timg.height);
+    pm = image_alloc_frame(img, timg.width, timg.height);
     if (!pm) {
         goto fail;
     }
@@ -133,19 +133,19 @@ enum loader_status decode_tiff(struct image* ctx, const uint8_t* data,
     }
 
     if (timg.orientation == ORIENTATION_TOPLEFT) {
-        image_flip_vertical(ctx);
+        image_flip_vertical(img);
     }
 
-    image_set_format(ctx, "TIFF %dbpp",
+    image_set_format(img, "TIFF %dbpp",
                      timg.bitspersample * timg.samplesperpixel);
-    ctx->alpha = true;
+    img->alpha = true;
 
     TIFFRGBAImageEnd(&timg);
     TIFFClose(tiff);
     return ldr_success;
 
 fail:
-    image_free_frames(ctx);
+    image_unload(img);
     TIFFRGBAImageEnd(&timg);
     TIFFClose(tiff);
     return ldr_fmterror;

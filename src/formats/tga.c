@@ -169,7 +169,7 @@ static bool decode_rle(struct pixmap* pm, const struct tga_header* tga,
 }
 
 // TGA loader implementation
-enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
+enum loader_status decode_tga(struct image* img, const uint8_t* data,
                               size_t size)
 {
     const struct tga_header* tga = (const struct tga_header*)data;
@@ -223,7 +223,7 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
     size -= data_offset;
 
     // decode image
-    pm = image_allocate_frame(ctx, tga->width, tga->height);
+    pm = image_alloc_frame(img, tga->width, tga->height);
     if (!pm) {
         return ldr_fmterror;
     }
@@ -240,7 +240,7 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
             break;
     }
     if (!rc) {
-        image_free_frames(ctx);
+        image_unload(img);
         return ldr_fmterror;
     }
 
@@ -273,8 +273,8 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
             type_name = "RLE grayscale";
             break;
     }
-    image_set_format(ctx, "TARGA %dbpp, %s", tga->bpp, type_name);
-    ctx->alpha = (tga->bpp == 32);
+    image_set_format(img, "TARGA %dbpp, %s", tga->bpp, type_name);
+    img->alpha = (tga->bpp == 32);
 
     return ldr_success;
 }

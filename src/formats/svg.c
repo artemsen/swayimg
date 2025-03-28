@@ -50,7 +50,7 @@ static bool is_svg(const uint8_t* data, size_t size)
 }
 
 // SVG loader implementation
-enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
+enum loader_status decode_svg(struct image* img, const uint8_t* data,
                               size_t size)
 {
     RsvgHandle* svg;
@@ -91,7 +91,7 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     }
 
     // allocate and bind buffer
-    pm = image_allocate_frame(ctx, vb_render.width, vb_render.height);
+    pm = image_alloc_frame(img, vb_render.width, vb_render.height);
     if (!pm) {
         goto fail;
     }
@@ -110,12 +110,12 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
         goto fail;
     }
 
-    image_set_format(ctx, "SVG");
+    image_set_format(img, "SVG");
     if (has_vb_real) {
-        image_add_meta(ctx, "Real size", "%0.2fx%0.2f", vb_real.width,
+        image_add_meta(img, "Real size", "%0.2fx%0.2f", vb_real.width,
                        vb_real.height);
     }
-    ctx->alpha = true;
+    img->alpha = true;
 
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
@@ -130,7 +130,7 @@ fail:
     if (surface) {
         cairo_surface_destroy(surface);
     }
-    image_free_frames(ctx);
+    image_unload(img);
     g_object_unref(svg);
     return ldr_fmterror;
 }

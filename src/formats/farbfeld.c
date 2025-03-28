@@ -24,7 +24,7 @@ struct __attribute__((__packed__)) farbfeld_rgba {
     uint16_t a;
 };
 
-enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
+enum loader_status decode_farbfeld(struct image* img, const uint8_t* data,
                                    size_t size)
 {
     const struct farbfeld_header* header = (const struct farbfeld_header*)data;
@@ -41,7 +41,7 @@ enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
     // create pixmap
     width = htonl(header->width);
     height = htonl(header->height);
-    if (!image_allocate_frame(ctx, width, height)) {
+    if (!image_alloc_frame(img, width, height)) {
         return ldr_fmterror;
     }
 
@@ -49,7 +49,7 @@ enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
     data += sizeof(struct farbfeld_header);
 
     // decode image
-    dst = ctx->frames[0].pm.data;
+    dst = img->frames[0].pm.data;
     src = (struct farbfeld_rgba*)data;
     total = min(width * height, size / sizeof(struct farbfeld_rgba));
     for (size_t i = 0; i < total; ++i) {
@@ -58,8 +58,8 @@ enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
         ++src;
     }
 
-    image_set_format(ctx, "Farbfeld");
-    ctx->alpha = true;
+    image_set_format(img, "Farbfeld");
+    img->alpha = true;
 
     return ldr_success;
 }

@@ -5,10 +5,12 @@
 #include "image.h"
 
 #include "array.h"
+#include "buildcfg.h"
+#ifdef HAVE_LIBPNG
+#include "formats/png.h"
+#endif // HAVE_LIBPNG
 
 #include <assert.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -37,6 +39,7 @@ void image_deref(struct image* img)
     assert(img && img->ref_count > 0);
 
     if (__sync_sub_and_fetch(&img->ref_count, 1) == 0) {
+        image_thumb_free(img);
         image_unload(img);
         free(img);
     }
@@ -57,6 +60,7 @@ void image_unload(struct image* img)
     img->parent_dir = NULL;
     free(img->format);
     img->format = NULL;
+    img->name = NULL;
 
     // free meta data
     list_for_each(img->info, struct image_info, it) {
@@ -65,117 +69,93 @@ void image_unload(struct image* img)
     img->info = NULL;
 }
 
-void image_flip_vertical(struct image* ctx)
+void image_flip_vertical(struct image* img)
 {
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        pixmap_flip_vertical(&ctx->frames[i].pm);
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        pixmap_flip_vertical(&img->frames[i].pm);
     }
 }
 
-void image_flip_horizontal(struct image* ctx)
+void image_flip_horizontal(struct image* img)
 {
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        pixmap_flip_horizontal(&ctx->frames[i].pm);
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        pixmap_flip_horizontal(&img->frames[i].pm);
     }
 }
 
-void image_rotate(struct image* ctx, size_t angle)
+void image_rotate(struct image* img, size_t angle)
 {
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        pixmap_rotate(&ctx->frames[i].pm, angle);
+    assert(angle == 90 || angle == 180 || angle == 270);
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        pixmap_rotate(&img->frames[i].pm, angle);
     }
 }
 
-void image_set_format(struct image* ctx, const char* fmt, ...)
+void image_thumb_create(struct image* img, size_t size, bool fill,
+                        enum aa_mode aa_mode)
 {
-    va_list args;
-    int len;
-    char* buffer;
+    assert(!img->thumbnail.data);
+    assert(img->num_frames);
 
-    va_start(args, fmt);
-    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
+    const struct pixmap* full = &img->frames[0].pm;
+    const size_t real_width = full->width;
+    const size_t real_height = full->height;
+
+    const float scale_width = 1.0 / ((float)real_width / size);
+    const float scale_height = 1.0 / ((float)real_height / size);
+    const float scale =
+        fill ? max(scale_width, scale_height) : min(scale_width, scale_height);
+
+    size_t thumb_width = scale * real_width;
+    size_t thumb_height = scale * real_height;
+    ssize_t offset_x, offset_y;
+
+    if (fill) {
+        offset_x = size / 2 - thumb_width / 2;
+        offset_y = size / 2 - thumb_height / 2;
+        thumb_width = size;
+        thumb_height = size;
+    } else {
+        offset_x = 0;
+        offset_y = 0;
     }
-    ++len; // last null
-    buffer = realloc(ctx->format, len);
-    if (!buffer) {
-        return;
+
+    if (pixmap_create(&img->thumbnail, thumb_width, thumb_height)) {
+        pixmap_scale(aa_mode, full, &img->thumbnail, offset_x, offset_y, scale,
+                     img->alpha);
     }
-    va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
-    va_end(args);
-    ctx->format = buffer;
 }
 
-void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
+void image_thumb_free(struct image* img)
 {
-    va_list args;
-    int len;
-    struct image_info* entry;
-    const size_t key_len = strlen(key) + 1 /* last null */;
-
-    // get value string size
-    va_start(args, fmt);
-    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
-    }
-
-    // allocate new entry
-    len += sizeof(struct image_info) + key_len + 1 /* last null of value */;
-    entry = calloc(1, len);
-    if (!entry) {
-        return;
-    }
-
-    // fill entry
-    entry->key = (char*)entry + sizeof(struct image_info);
-    memcpy(entry->key, key, key_len);
-    entry->value = entry->key + key_len;
-    va_start(args, fmt);
-    vsprintf(entry->value, fmt, args);
-    va_end(args);
-
-    ctx->info = list_append(ctx->info, entry);
+    pixmap_free(&img->thumbnail);
 }
 
-struct pixmap* image_allocate_frame(struct image* ctx, size_t width,
-                                    size_t height)
+bool image_thumb_load(struct image* img, const char* path)
 {
-    if (image_create_frames(ctx, 1) &&
-        pixmap_create(&ctx->frames[0].pm, width, height)) {
-        return &ctx->frames[0].pm;
+    assert(!img->thumbnail.data);
+
+    struct image* thumb = image_create(path);
+    if (!thumb) {
+        return false;
     }
-    image_free_frames(ctx);
-    return NULL;
+    if (image_load(thumb) == ldr_success) {
+        img->thumbnail = thumb->frames[0].pm;
+        thumb->frames[0].pm.data = NULL;
+    }
+    image_deref(thumb);
+
+    return !!img->thumbnail.data;
 }
 
-struct image_frame* image_create_frames(struct image* ctx, size_t num)
+bool image_thumb_save(const struct image* img, const char* path)
 {
-    struct image_frame* frames;
-
-    assert(!ctx->frames); // already allocated?
-
-    frames = calloc(1, num * sizeof(struct image_frame));
-    if (frames) {
-        ctx->frames = frames;
-        ctx->num_frames = num;
-    }
-
-    return frames;
-}
-
-void image_free_frames(struct image* ctx)
-{
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        pixmap_free(&ctx->frames[i].pm);
-    }
-    free(ctx->frames);
-    ctx->frames = NULL;
-    ctx->num_frames = 0;
+#ifdef HAVE_LIBPNG
+    assert(img->thumbnail.data);
+    return export_png(&img->thumbnail, img->info, path);
+#else
+    (void)img;
+    (void)path;
+    return false;
+#endif // HAVE_LIBPNG
 }

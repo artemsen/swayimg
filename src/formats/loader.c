@@ -8,8 +8,11 @@
 #include "../shellcmd.h"
 #include "buildcfg.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -327,4 +330,87 @@ enum loader_status image_load(struct image* img)
     }
 
     return status;
+}
+
+void image_set_format(struct image* img, const char* fmt, ...)
+{
+    va_list args;
+    int len;
+    char* buffer;
+
+    va_start(args, fmt);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
+    }
+    ++len; // last null
+    buffer = realloc(img->format, len);
+    if (!buffer) {
+        return;
+    }
+    va_start(args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end(args);
+    img->format = buffer;
+}
+
+void image_add_meta(struct image* img, const char* key, const char* fmt, ...)
+{
+    va_list args;
+    int len;
+    struct image_info* entry;
+    const size_t key_len = strlen(key) + 1 /* last null */;
+
+    // get value string size
+    va_start(args, fmt);
+    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
+    len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len <= 0) {
+        return;
+    }
+
+    // allocate new entry
+    len += sizeof(struct image_info) + key_len + 1 /* last null of value */;
+    entry = calloc(1, len);
+    if (!entry) {
+        return;
+    }
+
+    // fill entry
+    entry->key = (char*)entry + sizeof(struct image_info);
+    memcpy(entry->key, key, key_len);
+    entry->value = entry->key + key_len;
+    va_start(args, fmt);
+    vsprintf(entry->value, fmt, args);
+    va_end(args);
+
+    img->info = list_append(img->info, entry);
+}
+
+struct pixmap* image_alloc_frame(struct image* img, size_t width, size_t height)
+{
+    struct image_frame* frame = image_alloc_frames(img, 1);
+    if (frame && pixmap_create(&frame->pm, width, height)) {
+        return &frame->pm;
+    }
+    image_unload(img);
+    return NULL;
+}
+
+struct image_frame* image_alloc_frames(struct image* img, size_t num)
+{
+    struct image_frame* frames;
+
+    assert(!img->frames); // already allocated?
+
+    frames = calloc(1, num * sizeof(struct image_frame));
+    if (frames) {
+        img->frames = frames;
+        img->num_frames = num;
+    }
+
+    return frames;
 }

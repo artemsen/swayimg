@@ -90,6 +90,7 @@ struct viewer {
     struct cache* history; ///< Recently viewed images
     struct cache* preload; ///< Preloaded images
     pthread_t preload_tid; ///< Preload thread id
+    bool preload_active;   ///< Preload in progress flag
 
     ssize_t img_x, img_y; ///< Top left corner of the image
     ssize_t img_w, img_h; ///< Image width and height
@@ -126,15 +127,13 @@ static void* preloader_thread(__attribute__((unused)) void* data)
     struct image* current = ctx.current;
     size_t counter = 0;
 
-    while (counter < cache_capacity(ctx.preload)) {
+    while (ctx.preload_active && counter < cache_capacity(ctx.preload)) {
         struct image* next;
 
         if (current != ctx.current) {
             current = ctx.current;
             counter = 0;
         }
-
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
         // get next image
         next = imglist_fwd(current, counter + 1);
@@ -149,10 +148,17 @@ static void* preloader_thread(__attribute__((unused)) void* data)
         while (next) {
             struct image* skip;
 
+            if (!ctx.preload_active) {
+                image_deref(next);
+                next = NULL;
+                break;
+            }
+
             if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
                 image_deref(next);
                 break;
             }
+
             if (image_load(next) == ldr_success) {
                 break;
             }
@@ -163,16 +169,14 @@ static void* preloader_thread(__attribute__((unused)) void* data)
             imglist_remove(skip);
         }
         if (!next) {
-            break; // no more images in the list
+            break;
         }
 
         cache_put(ctx.preload, next);
         ++counter;
-
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
-    ctx.preload_tid = 0;
+    ctx.preload_active = false;
     return NULL;
 }
 
@@ -181,7 +185,8 @@ static void* preloader_thread(__attribute__((unused)) void* data)
  */
 static void preloader_start(void)
 {
-    if (ctx.preload && !ctx.preload_tid) {
+    if (ctx.preload && !ctx.preload_active) {
+        ctx.preload_active = true;
         pthread_create(&ctx.preload_tid, NULL, preloader_thread, NULL);
     }
 }
@@ -191,10 +196,9 @@ static void preloader_start(void)
  */
 static void preloader_stop(void)
 {
-    if (ctx.preload_tid) {
-        pthread_cancel(ctx.preload_tid);
+    if (ctx.preload_active) {
+        ctx.preload_active = false;
         pthread_join(ctx.preload_tid, NULL);
-        ctx.preload_tid = 0;
     }
 }
 
@@ -571,6 +575,8 @@ static bool next_file(enum action_type direction)
 {
     struct image* next;
     bool forward = false; // prefered direction after skipping file
+
+    preloader_stop();
 
     switch (direction) {
         case action_first_file:

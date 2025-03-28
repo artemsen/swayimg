@@ -7,7 +7,7 @@
 #include "loader.h"
 
 // PNG decoder implementation
-enum loader_status decode_png(struct image* ctx, const uint8_t* data,
+enum loader_status decode_png(struct image* img, const uint8_t* data,
                               size_t size);
 
 /**

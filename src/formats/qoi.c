@@ -37,7 +37,7 @@ struct __attribute__((__packed__)) qoi_header {
 };
 
 // QOI loader implementation
-enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
+enum loader_status decode_qoi(struct image* img, const uint8_t* data,
                               size_t size)
 {
     const struct qoi_header* qoi = (const struct qoi_header*)data;
@@ -60,7 +60,7 @@ enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
     }
 
     // allocate image buffer
-    pm = image_allocate_frame(ctx, htonl(qoi->width), htonl(qoi->height));
+    pm = image_alloc_frame(img, htonl(qoi->width), htonl(qoi->height));
     if (!pm) {
         return ldr_fmterror;
     }
@@ -130,11 +130,11 @@ enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
         pm->data[i] = ARGB(a, r, g, b);
     }
 
-    image_set_format(ctx, "QOI %dbpp", qoi->channels * 8);
-    ctx->alpha = (qoi->channels == 4);
+    image_set_format(img, "QOI %dbpp", qoi->channels * 8);
+    img->alpha = (qoi->channels == 4);
     return ldr_success;
 
 fail:
-    image_free_frames(ctx);
+    image_unload(img);
     return ldr_fmterror;
 }

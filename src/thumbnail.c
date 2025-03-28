@@ -310,8 +310,8 @@ void thumbnail_add(struct image* image)
     }
     pixmap_scale(ctx.aa_mode, full, &thumb, offset_x, offset_y, scale,
                  image->alpha);
-    image_free_frames(image);
-    frame = image_create_frames(image, 1);
+    image_unload(image);
+    frame = image_alloc_frames(image, 1);
     if (!frame) {
         pixmap_free(&thumb);
         image_deref(image);

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 // Sixel loader implementation
-enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
+enum loader_status decode_sixel(struct image* img, const uint8_t* data,
                                 size_t size)
 {
     uint8_t* pixels = NULL;
@@ -28,7 +28,7 @@ enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
         return ldr_unsupported;
     }
 
-    if (!image_allocate_frame(ctx, width, height)) {
+    if (!image_alloc_frame(img, width, height)) {
         free(pixels);
         free(palette);
         return ldr_fmterror;
@@ -38,7 +38,7 @@ enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
     for (int y = 0; y < height; ++y) {
         const int y_offset = y * width;
         const uint8_t* src = &pixels[y_offset];
-        argb_t* dst = &ctx->frames[0].pm.data[y_offset];
+        argb_t* dst = &img->frames[0].pm.data[y_offset];
         for (int x = 0; x < width; ++x) {
             if (src[x] >= ncolors) {
                 dst[x] = ARGB(0xff, 0, 0, 0);
@@ -49,7 +49,7 @@ enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
         }
     }
 
-    image_set_format(ctx, "Sixel");
+    image_set_format(img, "Sixel");
 
     free(pixels);
     free(palette);

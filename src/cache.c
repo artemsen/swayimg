@@ -5,7 +5,7 @@
 #include "cache.h"
 
 #include <assert.h>
-#include <pthread.h>
+// #include <pthread.h>
 #include <stdlib.h>
 
 /** Cache entry. */
@@ -18,7 +18,7 @@ struct cache_entry {
 struct cache {
     struct cache_entry* queue; ///< Cache queue
     size_t capacity;           ///< Max length of the queue
-    pthread_mutex_t lock;      ///< Queue access lock
+    // pthread_mutex_t lock;      ///< Queue access lock
 };
 
 struct cache* cache_init(size_t capacity)
@@ -29,7 +29,7 @@ struct cache* cache_init(size_t capacity)
         cache = calloc(1, sizeof(struct cache));
         if (cache) {
             cache->capacity = capacity;
-            pthread_mutex_init(&cache->lock, NULL);
+            // pthread_mutex_init(&cache->lock, NULL);
         }
     }
 
@@ -45,7 +45,7 @@ void cache_free(struct cache* cache)
 {
     if (cache) {
         cache_trim(cache, 0);
-        pthread_mutex_destroy(&cache->lock);
+        // pthread_mutex_destroy(&cache->lock);
         free(cache);
     }
 }
@@ -53,7 +53,7 @@ void cache_free(struct cache* cache)
 void cache_trim(struct cache* cache, size_t size)
 {
     if (cache) {
-        pthread_mutex_lock(&cache->lock);
+        // pthread_mutex_lock(&cache->lock);
         list_for_each(cache->queue, struct cache_entry, it) {
             if (size) {
                 --size;
@@ -64,7 +64,7 @@ void cache_trim(struct cache* cache, size_t size)
                 free(it);
             }
         }
-        pthread_mutex_unlock(&cache->lock);
+        // pthread_mutex_unlock(&cache->lock);
     }
 }
 
@@ -84,7 +84,7 @@ bool cache_put(struct cache* cache, struct image* image)
     }
     new_entry->image = image;
 
-    pthread_mutex_lock(&cache->lock);
+    // pthread_mutex_lock(&cache->lock);
 
     // get size and last entry
     size = 0;
@@ -107,7 +107,7 @@ bool cache_put(struct cache* cache, struct image* image)
 
     cache->queue = list_add(cache->queue, new_entry);
 
-    pthread_mutex_unlock(&cache->lock);
+    // pthread_mutex_unlock(&cache->lock);
 
     return true;
 }
@@ -117,7 +117,7 @@ bool cache_out(struct cache* cache, struct image* image)
     bool found = false;
 
     if (cache) {
-        pthread_mutex_lock(&cache->lock);
+        // pthread_mutex_lock(&cache->lock);
         list_for_each(cache->queue, struct cache_entry, it) {
             found = (image == it->image);
             if (found) {
@@ -126,7 +126,7 @@ bool cache_out(struct cache* cache, struct image* image)
                 break;
             }
         }
-        pthread_mutex_unlock(&cache->lock);
+        // pthread_mutex_unlock(&cache->lock);
     }
 
     return found;

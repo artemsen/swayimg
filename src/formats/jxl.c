@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 // JPEG XL loader implementation
-enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
+enum loader_status decode_jxl(struct image* img, const uint8_t* data,
                               size_t size)
 {
     JxlDecoder* jxl;
@@ -64,26 +64,26 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 break;
             case JXL_DEC_FULL_IMAGE:
                 // convert ABGR -> ARGB
-                for (size_t i = 0; i < ctx->frames[frame_num].pm.width *
-                         ctx->frames[frame_num].pm.height;
+                for (size_t i = 0; i < img->frames[frame_num].pm.width *
+                         img->frames[frame_num].pm.height;
                      ++i) {
-                    ctx->frames[frame_num].pm.data[i] =
-                        ABGR_TO_ARGB(ctx->frames[frame_num].pm.data[i]);
+                    img->frames[frame_num].pm.data[i] =
+                        ABGR_TO_ARGB(img->frames[frame_num].pm.data[i]);
                 }
-                frame_num = ctx->num_frames;
+                frame_num = img->num_frames;
                 break;
             case JXL_DEC_FRAME:
-                frames = realloc(ctx->frames,
-                                 sizeof(*ctx->frames) * (ctx->num_frames + 1));
+                frames = realloc(img->frames,
+                                 sizeof(*img->frames) * (img->num_frames + 1));
                 if (!frames) {
                     goto fail;
                 }
-                ctx->frames = frames;
-                if (!pixmap_create(&ctx->frames[frame_num].pm, info.xsize,
+                img->frames = frames;
+                if (!pixmap_create(&img->frames[frame_num].pm, info.xsize,
                                    info.ysize)) {
                     goto fail;
                 }
-                ctx->num_frames += 1;
+                img->num_frames += 1;
 
                 if (info.have_animation) {
                     JxlFrameHeader header;
@@ -91,7 +91,7 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                     if (rc != JXL_DEC_SUCCESS) {
                         goto fail;
                     }
-                    ctx->frames[frame_num].duration = header.duration *
+                    img->frames[frame_num].duration = header.duration *
                         1000.0f * info.animation.tps_denominator /
                         info.animation.tps_numerator;
                 }
@@ -104,13 +104,13 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
                 }
                 // check buffer format
                 if (buffer_sz !=
-                    ctx->frames[frame_num].pm.width *
-                        ctx->frames[frame_num].pm.height * sizeof(argb_t)) {
+                    img->frames[frame_num].pm.width *
+                        img->frames[frame_num].pm.height * sizeof(argb_t)) {
                     goto fail;
                 }
                 // set output buffer
                 rc = JxlDecoderSetImageOutBuffer(jxl, &jxl_format,
-                                                 ctx->frames[frame_num].pm.data,
+                                                 img->frames[frame_num].pm.data,
                                                  buffer_sz);
                 if (rc != JXL_DEC_SUCCESS) {
                     goto fail;
@@ -121,20 +121,20 @@ enum loader_status decode_jxl(struct image* ctx, const uint8_t* data,
         }
     } while (status != JXL_DEC_SUCCESS);
 
-    if (!ctx->frames) {
+    if (!img->frames) {
         goto fail;
     }
 
-    image_set_format(ctx, "JPEG XL %ubpp",
+    image_set_format(img, "JPEG XL %ubpp",
                      info.bits_per_sample * info.num_color_channels +
                          info.alpha_bits);
-    ctx->alpha = info.alpha_bits != 0;
+    img->alpha = info.alpha_bits != 0;
 
     JxlDecoderDestroy(jxl);
     return ldr_success;
 
 fail:
     JxlDecoderDestroy(jxl);
-    image_free_frames(ctx);
+    image_unload(img);
     return ldr_fmterror;
 }
