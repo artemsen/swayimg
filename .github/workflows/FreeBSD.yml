@@ -29,7 +29,7 @@ jobs:
           googletest
         run: |
           set -e
-          meson setup --werror -D tests=enabled -D heif=auto -D bash=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=auto -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
+          meson setup --werror -D tests=enabled -D heif=auto -D bash=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           meson test --verbose -C ${{ env.BUILD_PATH }}
           DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}
