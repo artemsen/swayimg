@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <time.h>
 #include <unistd.h>
 
 struct wl_buffer* wndbuf_create(struct wl_shm* shm, size_t width, size_t height)
@@ -29,29 +28,29 @@ struct wl_buffer* wndbuf_create(struct wl_shm* shm, size_t width, size_t height)
     struct wl_buffer* buffer;
     struct wl_shm_pool* pool;
 
+    static size_t counter = 0;
     int fd = -1;
     char path[64];
-    struct timespec ts;
     void* data;
 
     // generate unique file name
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    snprintf(path, sizeof(path), "/" APP_NAME "_%" PRIx64,
-             ((uint64_t)ts.tv_sec << 32) | ts.tv_nsec);
+    snprintf(path, sizeof(path), "/" APP_NAME "_%x_%zx", getpid(), ++counter);
 
     // open shared mem
     fd = shm_open(path, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1) {
-        fprintf(stderr, "Unable to create shared file: [%i] %s\n", errno,
-                strerror(errno));
+        const int err = errno;
+        fprintf(stderr, "Unable to create shared file %s: [%i] %s\n", path, err,
+                strerror(err));
         return NULL;
     }
     shm_unlink(path);
 
     // set shared memory size
     if (ftruncate(fd, buffer_sz) == -1) {
-        fprintf(stderr, "Unable to truncate shared file: [%i] %s\n", errno,
-                strerror(errno));
+        const int err = errno;
+        fprintf(stderr, "Unable to truncate shared file %s: [%i] %s\n", path,
+                err, strerror(err));
         close(fd);
         return NULL;
     }
@@ -59,8 +58,9 @@ struct wl_buffer* wndbuf_create(struct wl_shm* shm, size_t width, size_t height)
     // get data pointer of the shared mem
     data = mmap(NULL, buffer_sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
-        fprintf(stderr, "Unable to map shared file: [%i] %s\n", errno,
-                strerror(errno));
+        const int err = errno;
+        fprintf(stderr, "Unable to map shared file %s: [%i] %s\n", path, err,
+                strerror(err));
         close(fd);
         return NULL;
     }
