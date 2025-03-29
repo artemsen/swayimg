@@ -31,7 +31,6 @@ struct image_info {
 /** Image context. */
 struct image {
     struct list list; ///< Links to prev/next entry in the image list
-    size_t ref_count; ///< Reference count
 
     char* source;     ///< Image source (e.g. path to the image file)
     size_t file_size; ///< Size of the image file
@@ -73,16 +72,17 @@ const char* image_formats(void);
 struct image* image_create(const char* source);
 
 /**
- * Increment usage counter.
- * @param img image context
+ * Create copy of the image instance.
+ * @param img source image instance
+ * @return image context or NULL on errors
  */
-void image_addref(struct image* img);
+struct image* image_copy(const struct image* img);
 
 /**
- * Decrement usage counter.
+ * Free image instance.
  * @param img image context
  */
-void image_deref(struct image* img);
+void image_free(struct image* img);
 
 /**
  * Load image from specified source.

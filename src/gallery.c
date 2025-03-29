@@ -357,7 +357,7 @@ static void draw_thumbnail(struct pixmap* window, size_t x, size_t y,
 static void draw_thumbnails(struct pixmap* window)
 {
     size_t cols, rows, gap;
-    size_t selected_x, selected_y;
+    size_t selected_x = 0, selected_y = 0;
     struct image* img;
 
     // thumbnail layout
@@ -372,7 +372,6 @@ static void draw_thumbnails(struct pixmap* window)
 
     // draw
     img = ctx.top;
-    image_addref(img);
     for (size_t row = 0; img && row < rows; ++row) {
         const size_t y = row * ctx.thumb_size + gap * (row + 1);
         for (size_t col = 0; img && col < cols; ++col) {
@@ -388,13 +387,13 @@ static void draw_thumbnails(struct pixmap* window)
             }
 
             next = imglist_next(img);
-            image_deref(img);
+            image_free(img);
             img = next;
         }
     }
 
     if (img) {
-        image_deref(img);
+        image_free(img);
     }
 
     draw_thumbnail(window, selected_x, selected_y, ctx.selected);
@@ -466,16 +465,13 @@ static struct image* on_current(void)
 static void on_activate(struct image* image)
 {
     ctx.selected = image;
+    ctx.top = NULL;
 }
 
 /** Mode handler: deactivate viewer. */
 static struct image* on_deactivate(void)
 {
-    struct image* selected = ctx.selected;
-    ctx.selected = NULL;
-    image_deref(ctx.top);
-    ctx.top = NULL;
-    return selected;
+    return ctx.selected;
 }
 
 void gallery_init(const struct config* cfg, struct mode_handlers* handlers)

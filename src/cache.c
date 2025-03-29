@@ -18,7 +18,7 @@ struct cache_entry {
 struct cache {
     struct cache_entry* queue; ///< Cache queue
     size_t capacity;           ///< Max length of the queue
-    // pthread_mutex_t lock;      ///< Queue access lock
+    pthread_mutex_t lock;      ///< Queue access lock
 };
 
 struct cache* cache_init(size_t capacity)
@@ -60,7 +60,7 @@ void cache_trim(struct cache* cache, size_t size)
             } else {
                 cache->queue = list_remove(it);
                 image_unload(it->image);
-                image_deref(it->image);
+                // image_free(it->image);
                 free(it);
             }
         }
@@ -101,7 +101,7 @@ bool cache_put(struct cache* cache, struct image* image)
     if (size >= cache->capacity && last_entry) {
         cache->queue = list_remove(last_entry);
         image_unload(last_entry->image);
-        image_deref(last_entry->image);
+        // image_free(last_entry->image);
         free(last_entry);
     }
 

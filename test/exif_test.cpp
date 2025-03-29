@@ -12,7 +12,7 @@ extern "C" {
 class Exif : public ::testing::Test {
 protected:
     void SetUp() override { image = image_create("no_matter"); }
-    void TearDown() override { image_deref(image); }
+    void TearDown() override { image_free(image); }
     struct image* image;
 };
 

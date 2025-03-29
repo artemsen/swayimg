@@ -13,7 +13,7 @@ protected:
     void TearDown() override
     {
         if (image) {
-            image_deref(image);
+            image_free(image);
         }
     }
 
@@ -32,15 +32,46 @@ protected:
 
 TEST_F(Image, Create)
 {
-    image = image_create("file");
+    image = image_create("file123");
     ASSERT_TRUE(image);
-    ASSERT_EQ(image->ref_count, static_cast<size_t>(1));
+    ASSERT_STREQ(image->source, "file123");
+}
 
-    image_addref(image);
-    ASSERT_EQ(image->ref_count, static_cast<size_t>(2));
+TEST_F(Image, Copy)
+{
+    image = image_create("file123");
+    struct image* copy = image_copy(image);
+    ASSERT_TRUE(copy);
+    EXPECT_STREQ(image->source, "file123");
+    image_free(copy);
+}
 
-    image_deref(image);
-    ASSERT_EQ(image->ref_count, static_cast<size_t>(1));
+TEST_F(Image, Unload)
+{
+    Load(TEST_DATA_DIR "/image.bmp");
+    image_unload(image);
+    EXPECT_EQ(image->num_frames, static_cast<size_t>(0));
+}
+
+TEST_F(Image, Transform)
+{
+    Load(TEST_DATA_DIR "/image.bmp");
+    image_flip_vertical(image);
+    image_flip_horizontal(image);
+    image_rotate(image, 90);
+}
+
+TEST_F(Image, Thumbnail)
+{
+    Load(TEST_DATA_DIR "/image.bmp");
+
+    image_thumb_create(image, 10, true, aa_nearest);
+    EXPECT_TRUE(image->thumbnail.data);
+    EXPECT_EQ(image->thumbnail.width, static_cast<size_t>(10));
+    EXPECT_EQ(image->thumbnail.height, static_cast<size_t>(10));
+
+    image_thumb_free(image);
+    EXPECT_FALSE(image->thumbnail.data);
 }
 
 TEST_F(Image, LoadFromExec)

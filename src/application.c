@@ -367,7 +367,6 @@ static struct image* create_imglist(const char** sources, size_t num)
         struct image* added = imglist_add(sources[i]);
         if (added && i == 0) {
             image = added;
-            image_addref(image);
         }
     }
     if (!image) {
@@ -403,7 +402,7 @@ static struct image* create_imglist(const char** sources, size_t num)
                 break;
         }
         fprintf(stderr, "%s: %s\n", image->source, reason);
-        image_deref(image);
+        image_free(image);
         return NULL;
     }
 
@@ -417,7 +416,6 @@ static struct image* create_imglist(const char** sources, size_t num)
         }
         struct image* skip = image;
         image = imglist_next(image);
-        image_deref(skip);
         imglist_remove(skip);
     }
     if (!image) {

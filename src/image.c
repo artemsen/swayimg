@@ -23,22 +23,25 @@ struct image* image_create(const char* source)
     if (img) {
         img->source = (char*)img + sizeof(struct image);
         memcpy(img->source, source, len);
-        image_addref(img);
     }
 
     return img;
 }
 
-void image_addref(struct image* img)
+struct image* image_copy(const struct image* img)
 {
-    __sync_add_and_fetch(&img->ref_count, 1);
+    struct image* copy = image_create(img->source);
+    if (copy) {
+        copy->index = img->index;
+    }
+    return copy;
 }
 
-void image_deref(struct image* img)
+void image_free(struct image* img)
 {
-    assert(img && img->ref_count > 0);
+    assert(img);
 
-    if (__sync_sub_and_fetch(&img->ref_count, 1) == 0) {
+    if (img) {
         image_thumb_free(img);
         image_unload(img);
         free(img);
@@ -143,7 +146,7 @@ bool image_thumb_load(struct image* img, const char* path)
         img->thumbnail = thumb->frames[0].pm;
         thumb->frames[0].pm.data = NULL;
     }
-    image_deref(thumb);
+    image_free(thumb);
 
     return !!img->thumbnail.data;
 }

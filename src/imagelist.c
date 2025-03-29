@@ -46,9 +46,9 @@ static const char* order_names[] = {
 
 /** Context of the image list. */
 struct image_list {
-    struct image* images;  ///< Image list
-    size_t size;           ///< Size of image list
-    pthread_rwlock_t lock; ///< List RW lock
+    struct image* images; ///< Image list
+    size_t size;          ///< Size of image list
+    pthread_mutex_t lock; ///< List lock
 
     enum list_order order; ///< File list order
     bool reverse;          ///< Reverse order flag
@@ -163,6 +163,12 @@ static struct image* add_entry(const char* source, const struct stat* st)
     struct image* entry;
     struct image* pos;
 
+    // search for duplicates
+    entry = imglist_find(source);
+    if (entry) {
+        return entry;
+    }
+
     // create new entry
     entry = image_create(source);
     if (!entry) {
@@ -174,9 +180,7 @@ static struct image* add_entry(const char* source, const struct stat* st)
     }
     entry->index = ++ctx.size;
 
-    pthread_rwlock_wrlock(&ctx.lock);
-
-    // seach the right place to insert according to sort order
+    // search the right place to insert according to sort order
     pos = NULL;
     if (ctx.order == order_alpha || ctx.order == order_mtime ||
         ctx.order == order_size) {
@@ -216,8 +220,6 @@ static struct image* add_entry(const char* source, const struct stat* st)
     } else {
         ctx.images = list_append(ctx.images, entry);
     }
-
-    pthread_rwlock_unlock(&ctx.lock);
 
     return entry;
 }
@@ -296,8 +298,6 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
     struct image* next = NULL;
     struct image* it = img;
 
-    pthread_rwlock_rdlock(&ctx.lock);
-
     while (!next) {
         const char* it_src;
         const char* it_delim;
@@ -324,11 +324,8 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
 
         if (cur_len != it_len || strncmp(cur_src, it_src, cur_len) != 0) {
             next = it;
-            image_addref(next);
         }
     }
-
-    pthread_rwlock_unlock(&ctx.lock);
 
     return next;
 }
@@ -369,7 +366,7 @@ static void on_inotify(__attribute__((unused)) void* data)
 
 void imglist_init(const struct config* cfg)
 {
-    pthread_rwlock_init(&ctx.lock, NULL);
+    pthread_mutex_init(&ctx.lock, NULL);
 
     ctx.order = config_get_oneof(cfg, CFG_LIST, CFG_LIST_ORDER, order_names,
                                  ARRAY_SIZE(order_names));
@@ -398,17 +395,24 @@ void imglist_destroy(void)
     }
 #endif // HAVE_INOTIFY
 
-    pthread_rwlock_wrlock(&ctx.lock);
     list_for_each(ctx.images, struct image, it) {
-        assert(it->ref_count == 1); // should be the last owner at this moment
-        image_deref(it);
+        image_free(it);
     }
-    pthread_rwlock_unlock(&ctx.lock);
 
     ctx.images = NULL;
     ctx.size = 0;
 
-    pthread_rwlock_destroy(&ctx.lock);
+    pthread_mutex_destroy(&ctx.lock);
+}
+
+void imglist_lock(void)
+{
+    pthread_mutex_lock(&ctx.lock);
+}
+
+void imglist_unlock(void)
+{
+    pthread_mutex_unlock(&ctx.lock);
 }
 
 struct image* imglist_add(const char* source)
@@ -453,24 +457,32 @@ struct image* imglist_add(const char* source)
     return NULL;
 }
 
+bool imglist_replace(struct image* img)
+{
+    struct image* entry = imglist_find(img->source);
+    if (entry) {
+        ctx.images = list_insert(entry, img);
+        ctx.images = list_remove(entry);
+        image_free(entry);
+    }
+    return !!entry;
+}
+
 void imglist_remove(struct image* img)
 {
-    pthread_rwlock_wrlock(&ctx.lock);
     ctx.images = list_remove(img);
-    image_deref(img);
-    pthread_rwlock_unlock(&ctx.lock);
-
+    image_free(img);
     imglist_reindex();
 }
 
-void imglist_reindex(void)
+struct image* imglist_find(const char* source)
 {
-    ctx.size = 0;
-    pthread_rwlock_rdlock(&ctx.lock);
     list_for_each(ctx.images, struct image, it) {
-        it->index = ++ctx.size;
+        if (strcmp(source, it->source) == 0) {
+            return it;
+        }
     }
-    pthread_rwlock_unlock(&ctx.lock);
+    return NULL;
 }
 
 size_t imglist_size(void)
@@ -478,60 +490,32 @@ size_t imglist_size(void)
     return ctx.size;
 }
 
+void imglist_reindex(void)
+{
+    ctx.size = 0;
+    list_for_each(ctx.images, struct image, it) {
+        it->index = ++ctx.size;
+    }
+}
+
 struct image* imglist_first(void)
 {
-    struct image* first;
-
-    pthread_rwlock_rdlock(&ctx.lock);
-    first = ctx.images;
-    if (first) {
-        image_addref(first);
-    }
-    pthread_rwlock_unlock(&ctx.lock);
-
-    return first;
+    return ctx.images;
 }
 
 struct image* imglist_last(void)
 {
-    struct image* last;
-
-    pthread_rwlock_rdlock(&ctx.lock);
-    last = list_get_last(ctx.images);
-    if (last) {
-        image_addref(last);
-    }
-    pthread_rwlock_unlock(&ctx.lock);
-
-    return last;
+    return list_get_last(ctx.images);
 }
 
 struct image* imglist_next(struct image* img)
 {
-    struct image* next;
-
-    pthread_rwlock_rdlock(&ctx.lock);
-    next = list_next(img);
-    if (next) {
-        image_addref(next);
-    }
-    pthread_rwlock_unlock(&ctx.lock);
-
-    return next;
+    return list_next(img);
 }
 
 struct image* imglist_prev(struct image* img)
 {
-    struct image* prev;
-
-    pthread_rwlock_rdlock(&ctx.lock);
-    prev = list_prev(img);
-    if (prev) {
-        image_addref(prev);
-    }
-    pthread_rwlock_unlock(&ctx.lock);
-
-    return prev;
+    return list_prev(img);
 }
 
 struct image* imglist_next_file(struct image* img)
@@ -539,16 +523,12 @@ struct image* imglist_next_file(struct image* img)
     struct image* next = imglist_next(img);
 
     if (!next && ctx.loop) {
-        pthread_rwlock_rdlock(&ctx.lock);
         next = ctx.images;
         if (next) {
             if (next == img) {
                 next = NULL;
-            } else {
-                image_addref(next);
             }
         }
-        pthread_rwlock_unlock(&ctx.lock);
     }
 
     return next;
@@ -559,16 +539,12 @@ struct image* imglist_prev_file(struct image* img)
     struct image* prev = imglist_prev(img);
 
     if (!prev && ctx.loop) {
-        pthread_rwlock_rdlock(&ctx.lock);
         prev = list_get_last(ctx.images);
         if (prev) {
             if (prev == img) {
                 prev = NULL;
-            } else {
-                image_addref(prev);
             }
         }
-        pthread_rwlock_unlock(&ctx.lock);
     }
 
     return prev;
@@ -588,17 +564,12 @@ struct image* imglist_rand(struct image* img)
 {
     size_t offset = 1 + rand() % (ctx.size - 1);
 
-    pthread_rwlock_rdlock(&ctx.lock);
     while (offset--) {
         img = list_next(img);
         if (!img) {
             img = ctx.images;
         }
     }
-    if (img) {
-        image_addref(img);
-    }
-    pthread_rwlock_unlock(&ctx.lock);
 
     return img;
 }
@@ -607,15 +578,12 @@ struct image* imglist_fwd(struct image* img, size_t distance)
 {
     struct image* next = NULL;
 
-    pthread_rwlock_rdlock(&ctx.lock);
     list_for_each(img, struct image, it) {
         if (list_is_last(it) || distance-- == 0) {
             next = it;
-            image_addref(next);
             break;
         }
     }
-    pthread_rwlock_unlock(&ctx.lock);
 
     return next;
 }
@@ -624,15 +592,12 @@ struct image* imglist_back(struct image* img, size_t distance)
 {
     struct image* prev = NULL;
 
-    pthread_rwlock_rdlock(&ctx.lock);
     list_for_each_back(img, struct image, it) {
         if (list_is_first(it) || distance-- == 0) {
             prev = it;
-            image_addref(prev);
             break;
         }
     }
-    pthread_rwlock_unlock(&ctx.lock);
 
     return prev;
 }
@@ -647,14 +612,12 @@ size_t imglist_distance(const struct image* start, const struct image* end)
         end = swap;
     }
 
-    pthread_rwlock_rdlock(&ctx.lock);
     list_for_each(start, const struct image, it) {
         if (it == end) {
             break;
         }
         ++distance;
     }
-    pthread_rwlock_unlock(&ctx.lock);
 
     return distance;
 }

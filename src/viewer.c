@@ -87,6 +87,7 @@ static const char* position_names[] = {
 /** Viewer context. */
 struct viewer {
     struct image* current; ///< Currently shown image
+
     struct cache* history; ///< Recently viewed images
     struct cache* preload; ///< Preloaded images
     pthread_t preload_tid; ///< Preload thread id
@@ -128,7 +129,10 @@ static void* preloader_thread(__attribute__((unused)) void* data)
     size_t counter = 0;
 
     while (ctx.preload_active && counter < cache_capacity(ctx.preload)) {
-        struct image* next;
+        struct image* img;
+        enum loader_status status;
+
+        imglist_lock();
 
         if (current != ctx.current) {
             current = ctx.current;
@@ -136,47 +140,60 @@ static void* preloader_thread(__attribute__((unused)) void* data)
         }
 
         // get next image
-        next = imglist_fwd(current, counter + 1);
-        if (next == current) {
+        img = imglist_fwd(ctx.current, counter + 1);
+        if (img == ctx.current) {
             // last image in the list
+            imglist_unlock();
             cache_trim(ctx.preload, counter);
-            image_deref(next);
             break;
         }
 
-        // load next image
-        while (next) {
-            struct image* skip;
+        // get existing image form history/preload cache
+        if (cache_out(ctx.preload, img) || cache_out(ctx.history, img)) {
+            cache_put(ctx.preload, img);
+            imglist_unlock();
+            ++counter;
+            continue;
+        }
 
-            if (!ctx.preload_active) {
-                image_deref(next);
-                next = NULL;
-                break;
+        // create copy to unlock the list
+        img = image_copy(img);
+        imglist_unlock();
+        // ...and load next image
+        status = image_load(img);
+
+        imglist_lock();
+
+        // check if image is already loaded as current
+        if (strcmp(img->source, ctx.current->source) == 0) {
+            imglist_unlock();
+            image_free(img);
+            continue;
+        }
+
+        if (status == ldr_success) {
+            if (!imglist_replace(img)) {
+                image_free(img);
+            } else {
+                if (!cache_put(ctx.preload, img)) {
+                    // not enough memory
+                    imglist_unlock();
+                    image_free(img);
+                    break;
+                }
+                ++counter;
             }
-
-            if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
-                image_deref(next);
-                break;
-            }
-
-            if (image_load(next) == ldr_success) {
-                break;
-            }
-
-            skip = next;
-            next = imglist_next(skip);
-            image_deref(skip);
+        } else {
+            struct image* skip = imglist_find(img->source);
             imglist_remove(skip);
-        }
-        if (!next) {
-            break;
+            image_free(img);
         }
 
-        cache_put(ctx.preload, next);
-        ++counter;
+        imglist_unlock();
     }
 
     ctx.preload_active = false;
+
     return NULL;
 }
 
@@ -576,7 +593,7 @@ static bool next_file(enum action_type direction)
     struct image* next;
     bool forward = false; // prefered direction after skipping file
 
-    preloader_stop();
+    imglist_lock();
 
     switch (direction) {
         case action_first_file:
@@ -615,7 +632,6 @@ static bool next_file(enum action_type direction)
 
         // get file form history/preload cache
         if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
-            image_deref(next);
             break;
         }
         if (image_load(next) == ldr_success) {
@@ -626,31 +642,28 @@ static bool next_file(enum action_type direction)
         skip = next;
         next = forward ? imglist_next_file(skip) : imglist_prev_file(skip);
         if (next == ctx.current) {
-            image_deref(next);
             next = NULL;
         }
         if (!next) {
             next = forward ? imglist_prev_file(skip) : imglist_next_file(skip);
             if (next == ctx.current) {
-                image_deref(next);
                 next = NULL;
             }
         }
-        image_deref(skip);
         imglist_remove(skip);
     }
 
     if (next) {
         if (!cache_put(ctx.history, ctx.current)) {
             image_unload(ctx.current);
-            image_deref(ctx.current);
-            assert(ctx.current->ref_count == 1);
         }
         ctx.current = next;
         preloader_start();
         imglist_watch(ctx.current, reload_file);
         reset_state();
     }
+
+    imglist_unlock();
 
     return !!next;
 }
@@ -766,6 +779,16 @@ static void draw_image(struct pixmap* wnd)
 /** Mode handler: window redraw. */
 static void on_redraw(struct pixmap* window)
 {
+
+    // struct timespec begin;
+    // clock_gettime(CLOCK_MONOTONIC, &begin);
+
+    // struct timespec end;
+    // clock_gettime(CLOCK_MONOTONIC, &end);
+    // const double ns = (end.tv_sec * 1000000000 + end.tv_nsec) -
+    //     (begin.tv_sec * 1000000000 + begin.tv_nsec);
+    // printf("Wait %.6f sec\n", ns / 1000000000);
+
     draw_image(window);
     info_print(window);
 }
@@ -900,10 +923,9 @@ static void on_activate(struct image* image)
 /** Mode handler: deactivate viewer. */
 static struct image* on_deactivate(void)
 {
-    struct image* current = ctx.current;
-    ctx.current = NULL;
     preloader_stop();
-    return current;
+    imglist_watch(NULL, NULL);
+    return ctx.current;
 }
 
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
