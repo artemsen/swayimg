@@ -2,6 +2,8 @@
 // List of images.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
+#define _GNU_SOURCE
+
 #include "imagelist.h"
 
 #include "array.h"
@@ -42,8 +44,12 @@ static struct image_list ctx;
 
 /** Order names. */
 static const char* order_names[] = {
-    [order_none] = "none", [order_alpha] = "alpha",   [order_mtime] = "mtime",
-    [order_size] = "size", [order_random] = "random",
+    [order_none] = "none",
+    [order_alpha] = "alpha",
+    [order_numeric] = "numeric",
+    [order_mtime] = "mtime",
+    [order_size] = "size",
+    [order_random] = "random",
 };
 
 /**
@@ -171,6 +177,7 @@ static void add_entry(const char* source, struct stat* st)
                 break;
             // avoid compiler warning
             case order_alpha:
+            case order_numeric:
             case order_random:
             case order_none:
                 break;
@@ -296,6 +303,18 @@ static int compare_alpha(const void* a, const void* b)
  * Compare sources callback for `qsort`.
  * @return negative if a < b, positive if a > b, 0 otherwise
  */
+static int compare_numeric(const void* a, const void* b)
+{
+    int cmp =
+        strverscmp(((struct image_src*)a)->source, ((struct image_src*)b)->source);
+
+    return ctx.reverse ? -cmp : cmp;
+}
+
+/**
+ * Compare sources callback for `qsort`.
+ * @return negative if a < b, positive if a > b, 0 otherwise
+ */
 static int compare_time(const void* a, const void* b)
 {
     time_t ta = ((struct image_src*)a)->time;
@@ -399,6 +418,9 @@ void image_list_reorder(void)
             break;
         case order_alpha:
             qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_alpha);
+            break;
+        case order_numeric:
+            qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_numeric);
             break;
         case order_mtime:
             qsort(ctx.sources, ctx.size, sizeof(*ctx.sources), compare_time);
