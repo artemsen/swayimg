@@ -110,18 +110,81 @@ static struct viewer ctx;
 
 /**
  * Fix up image position.
- * @param force true to ignore current config setting
+ * @param force flag to force update position
  */
 static void fixup_position(bool force)
 {
     const ssize_t wnd_width = ui_get_width();
     const ssize_t wnd_height = ui_get_height();
 
-    const struct pixmap* img = &fetcher_current()->frames[ctx.frame].pm;
-    const ssize_t img_width = ctx.scale * img->width;
-    const ssize_t img_height = ctx.scale * img->height;
+    const struct pixmap* pm = &fetcher_current()->frames[ctx.frame].pm;
+    const ssize_t img_width = ctx.scale * pm->width;
+    const ssize_t img_height = ctx.scale * pm->height;
 
-    if (force || ctx.fixed) {
+    if (force || (ctx.fixed && img_width <= wnd_width)) {
+        switch (ctx.position) {
+            case position_top:
+                ctx.img_x = wnd_width / 2 - img_width / 2;
+                break;
+            case position_center:
+                ctx.img_x = wnd_width / 2 - img_width / 2;
+                break;
+            case position_bottom:
+                ctx.img_x = wnd_width / 2 - img_width / 2;
+                break;
+            case position_left:
+                ctx.img_x = 0;
+                break;
+            case position_right:
+                ctx.img_x = wnd_width - img_width;
+                break;
+            case position_top_left:
+                ctx.img_x = 0;
+                break;
+            case position_top_right:
+                ctx.img_x = wnd_width - img_width;
+                break;
+            case position_bottom_left:
+                ctx.img_x = 0;
+                break;
+            case position_bottom_right:
+                ctx.img_x = wnd_width - img_width;
+                break;
+        }
+    }
+    if (force || (ctx.fixed && img_height <= wnd_height)) {
+        switch (ctx.position) {
+            case position_top:
+                ctx.img_y = 0;
+                break;
+            case position_center:
+                ctx.img_y = wnd_height / 2 - img_height / 2;
+                break;
+            case position_bottom:
+                ctx.img_y = wnd_height - img_height;
+                break;
+            case position_left:
+                ctx.img_y = wnd_height / 2 - img_height / 2;
+                break;
+            case position_right:
+                ctx.img_y = wnd_height / 2 - img_height / 2;
+                break;
+            case position_top_left:
+                ctx.img_y = 0;
+                break;
+            case position_top_right:
+                ctx.img_y = 0;
+                break;
+            case position_bottom_left:
+                ctx.img_y = wnd_height - img_height;
+                break;
+            case position_bottom_right:
+                ctx.img_y = wnd_height - img_height;
+                break;
+        }
+    }
+
+    if (ctx.fixed) {
         // bind to window border
         if (ctx.img_x > 0 && ctx.img_x + img_width > wnd_width) {
             ctx.img_x = 0;
@@ -134,14 +197,6 @@ static void fixup_position(bool force)
         }
         if (ctx.img_y < 0 && ctx.img_y + img_height < wnd_height) {
             ctx.img_y = wnd_height - img_height;
-        }
-
-        // centering small image
-        if (img_width <= wnd_width) {
-            ctx.img_x = wnd_width / 2 - img_width / 2;
-        }
-        if (img_height <= wnd_height) {
-            ctx.img_y = wnd_height / 2 - img_height / 2;
         }
     }
 
@@ -158,56 +213,6 @@ static void fixup_position(bool force)
     if (ctx.img_y > wnd_height) {
         ctx.img_y = wnd_height;
     }
-}
-
-/** Set image position. */
-static void set_position(void)
-{
-    const struct image* img = fetcher_current();
-    const struct pixmap* pm = &img->frames[ctx.frame].pm;
-    const size_t wnd_width = ui_get_width();
-    const size_t wnd_height = ui_get_height();
-
-    switch (ctx.position) {
-        case position_top:
-            ctx.img_y = 0;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_center:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_bottom:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = wnd_width / 2 - (ctx.scale * pm->width) / 2;
-            break;
-        case position_left:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = 0;
-            break;
-        case position_right:
-            ctx.img_y = wnd_height / 2 - (ctx.scale * pm->height) / 2;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-        case position_top_left:
-            ctx.img_y = 0;
-            ctx.img_x = 0;
-            break;
-        case position_top_right:
-            ctx.img_y = 0;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-        case position_bottom_left:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = 0;
-            break;
-        case position_bottom_right:
-            ctx.img_y = wnd_height - ctx.scale * pm->height;
-            ctx.img_x = wnd_width - ctx.scale * pm->width;
-            break;
-    }
-
-    fixup_position(true);
 }
 
 /**
@@ -271,7 +276,7 @@ static void rotate_image(bool clockwise)
  * Set fixed scale for the image.
  * @param sc scale to set
  */
-static void scale_image(enum fixed_scale sc)
+static void set_scale(enum fixed_scale sc)
 {
     const struct image* img = fetcher_current();
     const struct pixmap* pm = &img->frames[ctx.frame].pm;
@@ -304,8 +309,36 @@ static void scale_image(enum fixed_scale sc)
             break;
     }
 
-    set_position();
+    fixup_position(true);
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
+}
+
+/**
+ * Switch scale to one of fixed value.
+ * @param params fixed scale to set
+ */
+static void scale_image(const char* params)
+{
+    if (params && *params) {
+        ssize_t fixed_scale = str_index(scale_names, params, 0);
+
+        if (fixed_scale >= 0) {
+            ctx.scale_init = fixed_scale;
+        } else {
+            fprintf(stderr, "Invalid scale operation: \"%s\"\n", params);
+            return;
+        }
+    } else {
+        // toggle to the next scale
+        ctx.scale_init++;
+        if (ctx.scale_init >= ARRAY_SIZE(scale_names)) {
+            ctx.scale_init = 0;
+        }
+    }
+
+    info_update(info_status, "Scale %s", scale_names[ctx.scale_init]);
+    set_scale(ctx.scale_init);
+    app_redraw();
 }
 
 /**
@@ -324,7 +357,7 @@ static void zoom_image(const char* params)
     // check for fixed scale type
     fixed_scale = str_index(scale_names, params, 0);
     if (fixed_scale >= 0) {
-        scale_image(fixed_scale);
+        set_scale(fixed_scale);
     } else if (str_to_num(params, 0, &percent, 0) && percent != 0 &&
                percent > -1000 && percent < 1000) {
         // zoom in %
@@ -360,34 +393,6 @@ static void zoom_image(const char* params)
     }
 
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
-    app_redraw();
-}
-
-/**
- * Set default scale to a fixed scale value and apply it.
- * @param params fixed scale to set
- */
-static void scale_global(const char* params)
-{
-    if (params && *params) {
-        ssize_t fixed_scale = str_index(scale_names, params, 0);
-
-        if (fixed_scale >= 0) {
-            ctx.scale_init = fixed_scale;
-        } else {
-            fprintf(stderr, "Invalid scale operation: \"%s\"\n", params);
-            return;
-        }
-    } else {
-        // toggle to the next scale
-        ctx.scale_init++;
-        if (ctx.scale_init >= ARRAY_SIZE(scale_names)) {
-            ctx.scale_init = 0;
-        }
-    }
-
-    info_update(info_status, "Scale %s", scale_names[ctx.scale_init]);
-    scale_image(ctx.scale_init);
     app_redraw();
 }
 
@@ -450,8 +455,7 @@ static void reset_state(void)
     ctx.frame = 0;
 
     if (!ctx.keep_zoom || ctx.scale == 0) {
-        scale_image(ctx.scale_init);
-        set_position();
+        set_scale(ctx.scale_init);
     } else {
         const ssize_t diff_w = ctx.img_w - img->frames[0].pm.width;
         const ssize_t diff_h = ctx.img_h - img->frames[0].pm.height;
@@ -721,7 +725,7 @@ static void apply_action(const struct action* action)
             zoom_image(action->params);
             break;
         case action_scale:
-            scale_global(action->params);
+            scale_image(action->params);
             break;
         case action_keep_zoom:
             toggle_keep_zoom();
