@@ -306,8 +306,8 @@ static int strnumcmp(char* a, char* b)
 {
     while (!(*a == '\0' && *b == '\0')) {
         if (isdigit(*a) && isdigit(*b)) {
-            long a_num = strtol(a, &a, 10);
-            long b_num = strtol(b, &b, 10);
+            unsigned long a_num = strtoul(a, &a, 10);
+            unsigned long b_num = strtoul(b, &b, 10);
 
             if (a_num < b_num) {
                 return -1;
