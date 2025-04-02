@@ -927,7 +927,10 @@ static void on_activate(struct image* image)
 static struct image* on_deactivate(void)
 {
     preloader_stop();
+    animation_ctl(false);
+    slideshow_ctl(false);
     imglist_watch(NULL, NULL);
+
     return ctx.current;
 }
 
