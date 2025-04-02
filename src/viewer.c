@@ -908,10 +908,10 @@ static struct image* on_current(void)
 static void on_activate(struct image* image)
 {
     ctx.current = image;
+    cache_out(ctx.preload, ctx.current);
+    cache_out(ctx.history, ctx.current);
 
     if (!image_has_frames(ctx.current) &&
-        !cache_out(ctx.preload, ctx.current) &&
-        !cache_out(ctx.history, ctx.current) &&
         image_load(ctx.current) != imgload_success &&
         !next_file(action_next_file)) {
         printf("No more images to view, exit\n");
