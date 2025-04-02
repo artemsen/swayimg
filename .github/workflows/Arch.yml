@@ -36,7 +36,7 @@ jobs:
         --werror
         ${{ env.BUILD_PATH }}
 
-    - name: Compile and link
+    - name: Compile
       run: docker exec swayimg meson compile -C ${{ env.BUILD_PATH }}
 
     - name: Install
@@ -51,5 +51,8 @@ jobs:
     - name: Run unit tests
       run: docker exec swayimg meson test --verbose -C ${{ env.BUILD_PATH }}
 
-    - name: Run clang tidy
+    - name: Check clang-tidy
       run: docker exec swayimg ninja -C ${{ env.BUILD_PATH }} clang-tidy
+
+    - name: Check clang-format
+      run: docker exec swayimg clang-format --Werror --dry-run src/*.c src/*.h src/formats/* test/*.cpp
