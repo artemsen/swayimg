@@ -454,6 +454,11 @@ void info_init(const struct config* cfg)
         config_get_num(cfg, CFG_INFO, CFG_INFO_STIMEOUT, 0, 1024);
     timeout_init(&ctx.status);
 
+    info_on_scale();
+}
+
+void info_on_scale(void)
+{
     font_render("File name:", &ctx.fields[info_file_name].key);
     font_render("Directory:", &ctx.fields[info_file_dir].key);
     font_render("File path:", &ctx.fields[info_file_path].key);
