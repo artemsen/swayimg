@@ -105,11 +105,11 @@ static const image_decoder decoders[] = {
 #ifdef HAVE_LIBEXR
     &LOADER_FUNCTION(exr),
 #endif
-#ifdef HAVE_LIBTIFF
-    &LOADER_FUNCTION(tiff),
-#endif
 #ifdef HAVE_LIBRAW
     &LOADER_FUNCTION(raw),
+#endif
+#ifdef HAVE_LIBTIFF
+    &LOADER_FUNCTION(tiff),
 #endif
 #ifdef HAVE_LIBSIXEL
     &LOADER_FUNCTION(sixel),
