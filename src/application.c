@@ -404,18 +404,22 @@ static struct image* create_imglist(const char** sources, size_t num)
                 break;
         }
         fprintf(stderr, "%s: %s\n", image->source, reason);
-        image_free(image, IMGFREE_ALL);
+        imglist_remove(image);
         return NULL;
     }
 
     // try to load first available image
     while (image) {
+        struct image* skip;
         const enum image_status status = image_load(image);
         if (status == imgload_success) {
             break;
         }
-        struct image* skip = image;
-        image = imglist_next(image);
+        skip = image;
+        image = imglist_next(skip);
+        if (!image) {
+            image = imglist_prev(skip);
+        }
         imglist_remove(skip);
     }
     if (!image) {
@@ -521,6 +525,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
 
     first_image = create_imglist(sources, num);
     if (!first_image) {
+        imglist_destroy();
         return false;
     }
 
@@ -541,6 +546,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     // user interface initialization
     if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height,
                  ctx.wnd_decor)) {
+        imglist_destroy();
         return false;
     }
 
@@ -550,6 +556,8 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
         app_watch(ctx.event_signal, handle_event_queue, NULL);
     } else {
         perror("Unable to create eventfd");
+        imglist_destroy();
+        ui_destroy();
         return false;
     }
     pthread_mutex_init(&ctx.events_lock, NULL);
