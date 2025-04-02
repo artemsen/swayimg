@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
-// Business logic of application and UI event handlers.
+// Image viewer mode.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
 
 #include "config.h"
-#include "event.h"
-#include "image.h"
+#include "mode.h"
 
 /**
  * Initialize global viewer context.
  * @param cfg config instance
- * @param image initial image to open
+ * @param handlers mode handlers
  */
-void viewer_init(const struct config* cfg, struct image* image);
+void viewer_init(const struct config* cfg, struct mode_handlers* handlers);
 
 /**
  * Destroy global viewer context.
  */
 void viewer_destroy(void);
-
-/**
- * Event handler, see `event_handler` for details.
- */
-void viewer_handle(const struct event* event);

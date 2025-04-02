@@ -2,7 +2,7 @@
 // Truevision TGA format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <string.h>
 
@@ -169,8 +169,8 @@ static bool decode_rle(struct pixmap* pm, const struct tga_header* tga,
 }
 
 // TGA loader implementation
-enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_tga(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     const struct tga_header* tga = (const struct tga_header*)data;
     const uint8_t* colormap = NULL;
@@ -185,13 +185,13 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
         (tga->image_type != TGA_UNC_CM && tga->image_type != TGA_UNC_TC &&
          tga->image_type != TGA_UNC_GS && tga->image_type != TGA_RLE_CM &&
          tga->image_type != TGA_RLE_TC && tga->image_type != TGA_RLE_GS)) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
     // check image params
     if (tga->width == 0 || tga->height == 0 ||
         (tga->bpp != 8 && tga->bpp != 15 && tga->bpp != 16 && tga->bpp != 24 &&
          tga->bpp != 32)) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // get color map
@@ -200,7 +200,7 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
         case TGA_RLE_CM:
             if (!(tga->clrmap_type & TGA_COLORMAP) || !tga->cm_size ||
                 !tga->cm_bpc) {
-                return ldr_unsupported;
+                return imgload_unsupported;
             }
             colormap_sz =
                 tga->cm_size * (tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0));
@@ -209,7 +209,7 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
         default:
             if (tga->clrmap_type & TGA_COLORMAP || tga->cm_size ||
                 tga->cm_bpc) {
-                return ldr_unsupported;
+                return imgload_unsupported;
             }
             break;
     }
@@ -217,15 +217,15 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
     // get pixel array offset
     data_offset = sizeof(struct tga_header) + tga->id_len + colormap_sz;
     if (data_offset >= size) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
     data += data_offset;
     size -= data_offset;
 
     // decode image
-    pm = image_allocate_frame(ctx, tga->width, tga->height);
+    pm = image_alloc_frame(img, tga->width, tga->height);
     if (!pm) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
     switch (tga->image_type) {
         case TGA_UNC_CM:
@@ -240,8 +240,8 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
             break;
     }
     if (!rc) {
-        image_free_frames(ctx);
-        return ldr_fmterror;
+        image_free(img, IMGFREE_FRAMES);
+        return imgload_fmterror;
     }
 
     // fix orientation
@@ -273,8 +273,8 @@ enum loader_status decode_tga(struct image* ctx, const uint8_t* data,
             type_name = "RLE grayscale";
             break;
     }
-    image_set_format(ctx, "TARGA %dbpp, %s", tga->bpp, type_name);
-    ctx->alpha = (tga->bpp == 32);
+    image_set_format(img, "TARGA %dbpp, %s", tga->bpp, type_name);
+    img->alpha = (tga->bpp == 32);
 
-    return ldr_success;
+    return imgload_success;
 }

@@ -2,7 +2,7 @@
 // PNM formats decoder
 // Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <limits.h>
 
@@ -220,8 +220,8 @@ static int decode_raw(struct pixmap* pm, struct pnm_iter* it,
     return 0;
 }
 
-enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_pnm(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     struct pnm_iter it;
     bool plain;
@@ -229,7 +229,7 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
     int width, height, maxval, ret;
 
     if (size < 2 || data[0] != 'P') {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
     switch (data[1]) {
         case '1':
@@ -257,28 +257,28 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
             type = pnm_ppm;
             break;
         default:
-            return ldr_unsupported;
+            return imgload_unsupported;
     }
     it.pos = data + 2;
     it.end = data + size;
 
     width = pnm_readint(&it, 0);
     if (width < 0) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
     height = pnm_readint(&it, 0);
     if (height < 0) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
     if (type == pnm_pbm) {
         maxval = 1;
     } else {
         maxval = pnm_readint(&it, 0);
         if (maxval < 0) {
-            return ldr_fmterror;
+            return imgload_fmterror;
         }
         if (!maxval || maxval > UINT16_MAX) {
-            return ldr_fmterror;
+            return imgload_fmterror;
         }
     }
     if (!plain) {
@@ -287,24 +287,24 @@ enum loader_status decode_pnm(struct image* ctx, const uint8_t* data,
         // so we won't allow one either
         const char c = *it.pos;
         if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-            return ldr_fmterror;
+            return imgload_fmterror;
         }
         ++it.pos;
     }
-    if (!image_allocate_frame(ctx, width, height)) {
-        return ldr_fmterror;
+    if (!image_alloc_frame(img, width, height)) {
+        return imgload_fmterror;
     }
 
-    ret = plain ? decode_plain(&ctx->frames[0].pm, &it, type, maxval)
-                : decode_raw(&ctx->frames[0].pm, &it, type, maxval);
+    ret = plain ? decode_plain(&img->frames[0].pm, &it, type, maxval)
+                : decode_raw(&img->frames[0].pm, &it, type, maxval);
     if (ret < 0) {
-        image_free_frames(ctx);
-        return ldr_fmterror;
+        image_free(img, IMGFREE_FRAMES);
+        return imgload_fmterror;
     }
 
-    image_set_format(ctx, "P%cM (%s)",
+    image_set_format(img, "P%cM (%s)",
                      type == pnm_pbm ? 'B' : (type == pnm_pgm ? 'G' : 'P'),
                      plain ? "ASCII" : "raw");
 
-    return ldr_success;
+    return imgload_success;
 }

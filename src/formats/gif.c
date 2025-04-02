@@ -2,7 +2,7 @@
 // GIF format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <gif_lib.h>
 #include <string.h>
@@ -31,19 +31,19 @@ static int gif_reader(GifFileType* gif, GifByteType* dst, int sz)
 
 /**
  * Decode single GIF frame.
- * @param ctx image context
+ * @param img image context
  * @param gif gif context
  * @param index number of the frame to load
  * @return true if completed successfully
  */
-static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
+static bool decode_frame(struct image* img, GifFileType* gif, size_t index)
 {
-    const SavedImage* img = &gif->SavedImages[index];
-    const GifImageDesc* desc = &img->ImageDesc;
+    const SavedImage* gif_img = &gif->SavedImages[index];
+    const GifImageDesc* desc = &gif_img->ImageDesc;
     const ColorMapObject* color_map =
         desc->ColorMap ? desc->ColorMap : gif->SColorMap;
     GraphicsControlBlock ctl = { .TransparentColor = NO_TRANSPARENT_COLOR };
-    struct image_frame* frame = &ctx->frames[index];
+    struct image_frame* frame = &img->frames[index];
 
     const size_t width = (size_t)desc->Width > frame->pm.width - desc->Left
         ? frame->pm.width - desc->Left
@@ -54,13 +54,13 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 
     DGifSavedExtensionToGCB(gif, index, &ctl);
 
-    if (ctl.DisposalMode == DISPOSE_PREVIOUS && index < ctx->num_frames - 1) {
-        struct pixmap* next = &ctx->frames[index + 1].pm;
+    if (ctl.DisposalMode == DISPOSE_PREVIOUS && index < img->num_frames - 1) {
+        struct pixmap* next = &img->frames[index + 1].pm;
         pixmap_copy(&frame->pm, next, 0, 0, false);
     }
 
     for (size_t y = 0; y < height; ++y) {
-        const uint8_t* raster = &img->RasterBits[y * desc->Width];
+        const uint8_t* raster = &gif_img->RasterBits[y * desc->Width];
         argb_t* pixel = frame->pm.data + desc->Top * frame->pm.width +
             y * frame->pm.width + desc->Left;
 
@@ -76,8 +76,8 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
         }
     }
 
-    if (ctl.DisposalMode == DISPOSE_DO_NOT && index < ctx->num_frames - 1) {
-        struct pixmap* next = &ctx->frames[index + 1].pm;
+    if (ctl.DisposalMode == DISPOSE_DO_NOT && index < img->num_frames - 1) {
+        struct pixmap* next = &img->frames[index + 1].pm;
         pixmap_copy(&frame->pm, next, 0, 0, false);
     }
 
@@ -91,8 +91,8 @@ static bool decode_frame(struct image* ctx, GifFileType* gif, size_t index)
 }
 
 //  GIF loader implementation
-enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_gif(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     GifFileType* gif = NULL;
     struct buffer buf = {
@@ -105,45 +105,45 @@ enum loader_status decode_gif(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // decode
     gif = DGifOpen(&buf, gif_reader, &err);
     if (!gif) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
     if (DGifSlurp(gif) != GIF_OK) {
         goto fail;
     }
 
     // allocate frame sequence
-    if (!image_create_frames(ctx, gif->ImageCount)) {
+    if (!image_alloc_frames(img, gif->ImageCount)) {
         goto fail;
     }
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        struct pixmap* pm = &ctx->frames[i].pm;
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        struct pixmap* pm = &img->frames[i].pm;
         if (!pixmap_create(pm, gif->SWidth, gif->SHeight)) {
             goto fail;
         }
     }
 
     // decode every frame
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
-        if (!decode_frame(ctx, gif, i)) {
+    for (size_t i = 0; i < img->num_frames; ++i) {
+        if (!decode_frame(img, gif, i)) {
             goto fail;
         }
     }
 
-    image_set_format(ctx, "GIF%s", gif->ImageCount > 1 ? " animation" : "");
-    ctx->alpha = true;
+    image_set_format(img, "GIF%s", gif->ImageCount > 1 ? " animation" : "");
+    img->alpha = true;
 
     DGifCloseFile(gif, NULL);
 
-    return ldr_success;
+    return imgload_success;
 
 fail:
     DGifCloseFile(gif, NULL);
-    image_free_frames(ctx);
-    return ldr_fmterror;
+    image_free(img, IMGFREE_FRAMES);
+    return imgload_fmterror;
 }

@@ -2,7 +2,7 @@
 // SVG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -50,8 +50,8 @@ static bool is_svg(const uint8_t* data, size_t size)
 }
 
 // SVG loader implementation
-enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_svg(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     RsvgHandle* svg;
     gboolean has_vb_real;
@@ -64,12 +64,12 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     cairo_status_t status;
 
     if (!is_svg(data, size)) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     svg = rsvg_handle_new_from_data(data, size, &err);
     if (!svg) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // define image size in pixels
@@ -91,7 +91,7 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
     }
 
     // allocate and bind buffer
-    pm = image_allocate_frame(ctx, vb_render.width, vb_render.height);
+    pm = image_alloc_frame(img, vb_render.width, vb_render.height);
     if (!pm) {
         goto fail;
     }
@@ -110,18 +110,18 @@ enum loader_status decode_svg(struct image* ctx, const uint8_t* data,
         goto fail;
     }
 
-    image_set_format(ctx, "SVG");
+    image_set_format(img, "SVG");
     if (has_vb_real) {
-        image_add_meta(ctx, "Real size", "%0.2fx%0.2f", vb_real.width,
+        image_add_meta(img, "Real size", "%0.2fx%0.2f", vb_real.width,
                        vb_real.height);
     }
-    ctx->alpha = true;
+    img->alpha = true;
 
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
     g_object_unref(svg);
 
-    return ldr_success;
+    return imgload_success;
 
 fail:
     if (cr) {
@@ -130,7 +130,7 @@ fail:
     if (surface) {
         cairo_surface_destroy(surface);
     }
-    image_free_frames(ctx);
+    image_free(img, IMGFREE_FRAMES);
     g_object_unref(svg);
-    return ldr_fmterror;
+    return imgload_fmterror;
 }

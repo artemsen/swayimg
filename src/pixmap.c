@@ -18,7 +18,7 @@ bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
         pm->height = height;
         pm->data = data;
     }
-    return !!data;
+    return data;
 }
 
 void pixmap_free(struct pixmap* pm)

@@ -6,15 +6,14 @@
 #include "array.h"
 #include "buildcfg.h"
 #include "config.h"
-#include "imagelist.h"
-#include "loader.h"
-#include "viewer.h"
+#include "image.h"
 
 #include <getopt.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /** Command line arguments. */
 struct cmdarg {
@@ -72,7 +71,7 @@ static void print_version(void)
 {
     puts(APP_NAME " version " APP_VERSION ".");
     puts("https://github.com/artemsen/swayimg");
-    printf("Supported formats: %s.\n", supported_formats);
+    printf("Supported formats: %s.\n", image_formats());
 }
 
 /**
@@ -169,6 +168,9 @@ int main(int argc, char* argv[])
 
     cfg = config_load();
     argn = parse_cmdargs(argc, argv, cfg);
+
+    srand(getpid());
+
     rc = app_init(cfg, (const char**)&argv[argn], argc - argn);
     config_free(cfg);
 

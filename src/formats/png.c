@@ -48,16 +48,16 @@ static png_bytep* bind_pixmap(const struct pixmap* pm)
 
 /**
  * Decode single framed image.
- * @param ctx image context
+ * @param img image context
  * @param png png decoder
  * @param info png image info
  * @return false if decode failed
  */
-static bool decode_single(struct image* ctx, png_struct* png, png_info* info)
+static bool decode_single(struct image* img, png_struct* png, png_info* info)
 {
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
-    struct pixmap* pm = image_allocate_frame(ctx, width, height);
+    struct pixmap* pm = image_alloc_frame(img, width, height);
     png_bytep* bind;
 
     if (!pm) {
@@ -84,13 +84,13 @@ static bool decode_single(struct image* ctx, png_struct* png, png_info* info)
 #ifdef PNG_APNG_SUPPORTED
 /**
  * Decode single PNG frame.
- * @param ctx image context
+ * @param img image context
  * @param png png decoder
  * @param info png image info
  * @param index number of the frame to load
  * @return true if completed successfully
  */
-static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
+static bool decode_frame(struct image* img, png_struct* png, png_info* info,
                          size_t index)
 {
     png_uint_32 width = 0;
@@ -103,7 +103,7 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
     png_byte blend = 0;
     png_bytep* bind;
     struct pixmap frame_png;
-    struct image_frame* frame_img = &ctx->frames[index];
+    struct image_frame* frame_img = &img->frames[index];
 
     // get frame params
     if (png_get_valid(png, info, PNG_INFO_acTL)) {
@@ -151,8 +151,8 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
     if (dispose == PNG_DISPOSE_OP_PREVIOUS) {
         if (index == 0) {
             dispose = PNG_DISPOSE_OP_BACKGROUND;
-        } else if (index + 1 < ctx->num_frames) {
-            struct pixmap* next = &ctx->frames[index + 1].pm;
+        } else if (index + 1 < img->num_frames) {
+            struct pixmap* next = &img->frames[index + 1].pm;
             pixmap_copy(&frame_img->pm, next, 0, 0, false);
         }
     }
@@ -162,8 +162,8 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
                 blend == PNG_BLEND_OP_OVER);
 
     // handle dispose
-    if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < ctx->num_frames) {
-        struct pixmap* next = &ctx->frames[index + 1].pm;
+    if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < img->num_frames) {
+        struct pixmap* next = &img->frames[index + 1].pm;
         pixmap_copy(&frame_img->pm, next, 0, 0, false);
     }
 
@@ -178,12 +178,12 @@ static bool decode_frame(struct image* ctx, png_struct* png, png_info* info,
 
 /**
  * Decode multi framed image.
- * @param ctx image context
+ * @param img image context
  * @param png png decoder
  * @param info png image info
  * @return false if decode failed
  */
-static bool decode_multiple(struct image* ctx, png_struct* png, png_info* info)
+static bool decode_multiple(struct image* img, png_struct* png, png_info* info)
 {
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
@@ -191,11 +191,11 @@ static bool decode_multiple(struct image* ctx, png_struct* png, png_info* info)
     uint32_t index;
 
     // allocate frames
-    if (!image_create_frames(ctx, frames)) {
+    if (!image_alloc_frames(img, frames)) {
         return false;
     }
     for (index = 0; index < frames; ++index) {
-        struct image_frame* frame = &ctx->frames[index];
+        struct image_frame* frame = &img->frames[index];
         if (!pixmap_create(&frame->pm, width, height)) {
             return false;
         }
@@ -203,23 +203,23 @@ static bool decode_multiple(struct image* ctx, png_struct* png, png_info* info)
 
     // decode frames
     for (index = 0; index < frames; ++index) {
-        if (!decode_frame(ctx, png, info, index)) {
+        if (!decode_frame(img, png, info, index)) {
             break;
         }
     }
     if (index != frames) {
         // not all frames were decoded, leave only the first
         for (index = 1; index < frames; ++index) {
-            pixmap_free(&ctx->frames[index].pm);
+            pixmap_free(&img->frames[index].pm);
         }
-        ctx->num_frames = 1;
+        img->num_frames = 1;
     }
 
-    if (png_get_first_frame_is_hidden(png, info) && ctx->num_frames > 1) {
-        --ctx->num_frames;
-        pixmap_free(&ctx->frames[0].pm);
-        memmove(&ctx->frames[0], &ctx->frames[1],
-                ctx->num_frames * sizeof(*ctx->frames));
+    if (png_get_first_frame_is_hidden(png, info) && img->num_frames > 1) {
+        --img->num_frames;
+        pixmap_free(&img->frames[0].pm);
+        memmove(&img->frames[0], &img->frames[1],
+                img->num_frames * sizeof(*img->frames));
     }
 
     return true;
@@ -227,8 +227,8 @@ static bool decode_multiple(struct image* ctx, png_struct* png, png_info* info)
 #endif // PNG_APNG_SUPPORTED
 
 // PNG loader implementation
-enum loader_status decode_png(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_png(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     png_struct* png = NULL;
     png_info* info = NULL;
@@ -243,24 +243,24 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
 
     // check signature
     if (png_sig_cmp(data, 0, size) != 0) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // create decoder
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
     info = png_create_info_struct(png);
     if (!info) {
         png_destroy_read_struct(&png, NULL, NULL);
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
         png_destroy_read_struct(&png, &info, NULL);
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // get general image info
@@ -300,12 +300,12 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
 #ifdef PNG_APNG_SUPPORTED
     if (png_get_valid(png, info, PNG_INFO_acTL) &&
         png_get_num_frames(png, info) > 1) {
-        rc = decode_multiple(ctx, png, info);
+        rc = decode_multiple(img, png, info);
     } else {
-        rc = decode_single(ctx, png, info);
+        rc = decode_single(img, png, info);
     }
 #else
-    rc = decode_single(ctx, png, info);
+    rc = decode_single(img, png, info);
 #endif // PNG_APNG_SUPPORTED
 
     // read text info
@@ -314,22 +314,22 @@ enum loader_status decode_png(struct image* ctx, const uint8_t* data,
         int total;
         if (png_get_text(png, info, &txt, &total)) {
             for (int i = 0; i < total; ++i) {
-                image_add_meta(ctx, txt[i].key, "%s", txt[i].text);
+                image_add_meta(img, txt[i].key, "%s", txt[i].text);
             }
         }
     }
 
     if (!rc) {
-        image_free_frames(ctx);
+        image_free(img, IMGFREE_FRAMES);
     } else {
-        image_set_format(ctx, "PNG %dbit", bit_depth * 4);
-        ctx->alpha = true;
+        image_set_format(img, "PNG %dbit", bit_depth * 4);
+        img->alpha = true;
     }
 
     // free resources
     png_destroy_read_struct(&png, &info, NULL);
 
-    return rc ? ldr_success : ldr_fmterror;
+    return rc ? imgload_success : imgload_fmterror;
 }
 
 bool export_png(const struct pixmap* pm, const struct image_info* info,

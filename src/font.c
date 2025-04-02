@@ -166,6 +166,11 @@ bool font_render(const char* text, struct text_surface* surface)
     if (!ctx.face) {
         return false;
     }
+    if (!text || !*text) {
+        surface->width = 0;
+        surface->height = 0;
+        return true;
+    }
 
     space_size = ctx.face->size->metrics.x_ppem / SPACE_WH_REL;
 

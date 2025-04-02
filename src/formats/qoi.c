@@ -2,7 +2,7 @@
 // QOI format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <arpa/inet.h>
 #include <string.h>
@@ -37,8 +37,8 @@ struct __attribute__((__packed__)) qoi_header {
 };
 
 // QOI loader implementation
-enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_qoi(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     const struct qoi_header* qoi = (const struct qoi_header*)data;
     argb_t color_map[QOI_CLRMAP_SIZE];
@@ -51,18 +51,18 @@ enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < sizeof(*qoi) ||
         memcmp(qoi->magic, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
     // check format
     if (qoi->width == 0 || qoi->height == 0 || qoi->channels < 3 ||
         qoi->channels > 4) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // allocate image buffer
-    pm = image_allocate_frame(ctx, htonl(qoi->width), htonl(qoi->height));
+    pm = image_alloc_frame(img, htonl(qoi->width), htonl(qoi->height));
     if (!pm) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // initialize decoder state
@@ -130,11 +130,11 @@ enum loader_status decode_qoi(struct image* ctx, const uint8_t* data,
         pm->data[i] = ARGB(a, r, g, b);
     }
 
-    image_set_format(ctx, "QOI %dbpp", qoi->channels * 8);
-    ctx->alpha = (qoi->channels == 4);
-    return ldr_success;
+    image_set_format(img, "QOI %dbpp", qoi->channels * 8);
+    img->alpha = (qoi->channels == 4);
+    return imgload_success;
 
 fail:
-    image_free_frames(ctx);
-    return ldr_fmterror;
+    image_free(img, IMGFREE_FRAMES);
+    return imgload_fmterror;
 }

@@ -2,7 +2,7 @@
 // EXR format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -319,8 +319,8 @@ done:
 }
 
 // EXR loader implementation
-enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_exr(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     exr_result_t rc;
     exr_context_t exr;
@@ -339,13 +339,13 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // decode
     rc = exr_start_read(&exr, "exr", &einit);
     if (rc != EXR_ERR_SUCCESS) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     rc = exr_get_data_window(exr, 0, &dwnd);
@@ -353,8 +353,8 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         goto done;
     }
 
-    pm = image_allocate_frame(ctx, dwnd.max.x - dwnd.min.x + 1,
-                              dwnd.max.y - dwnd.min.y + 1);
+    pm = image_alloc_frame(img, dwnd.max.x - dwnd.min.x + 1,
+                           dwnd.max.y - dwnd.min.y + 1);
     if (!pm) {
         rc = EXR_ERR_OUT_OF_MEMORY;
         goto done;
@@ -365,8 +365,8 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
         goto done;
     }
 
-    image_set_format(ctx, "EXR");
-    ctx->alpha = true;
+    image_set_format(img, "EXR");
+    img->alpha = true;
 
     if (storage == EXR_STORAGE_SCANLINE) {
         rc = load_scanlined(exr, pm);
@@ -379,8 +379,8 @@ enum loader_status decode_exr(struct image* ctx, const uint8_t* data,
 done:
     exr_finish(&exr);
     if (rc != EXR_ERR_SUCCESS) {
-        image_free_frames(ctx);
-        return ldr_fmterror;
+        image_free(img, IMGFREE_FRAMES);
+        return imgload_fmterror;
     }
-    return ldr_success;
+    return imgload_success;
 }

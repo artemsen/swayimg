@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Raw format decoder.
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,8 +12,8 @@
 #pragma GCC diagnostic pop
 
 // Raw loader implementation
-enum loader_status decode_raw(struct image* ctx, const uint8_t* data,
-                              size_t size)
+enum image_status decode_raw(struct image* img, const uint8_t* data,
+                             size_t size)
 {
     libraw_data_t* decoder = NULL;
     libraw_processed_image_t* raw_img = NULL;
@@ -22,7 +22,7 @@ enum loader_status decode_raw(struct image* ctx, const uint8_t* data,
 
     decoder = libraw_init(0);
     if (!decoder) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     rc = libraw_open_buffer(decoder, data, size);
@@ -52,7 +52,7 @@ enum loader_status decode_raw(struct image* ctx, const uint8_t* data,
         goto fail;
     }
 
-    if (!image_allocate_frame(ctx, raw_img->width, raw_img->height)) {
+    if (!image_alloc_frame(img, raw_img->width, raw_img->height)) {
         goto fail;
     }
 
@@ -60,23 +60,22 @@ enum loader_status decode_raw(struct image* ctx, const uint8_t* data,
     end = raw_img->width * raw_img->height;
     while (pos < end) {
         const uint8_t* src = &raw_img->data[pos * 3];
-        argb_t* dst = &ctx->frames[0].pm.data[pos];
+        argb_t* dst = &img->frames[0].pm.data[pos];
         *dst = ARGB(0xff, src[0], src[1], src[2]);
         ++pos;
     }
 
-    image_set_format(ctx, "RAW");
+    image_set_format(img, "RAW");
 
     libraw_dcraw_clear_mem(raw_img);
     libraw_close(decoder);
-    return ldr_success;
+    return imgload_success;
 
 fail:
-    image_free_frames(ctx);
+    image_free(img, IMGFREE_FRAMES);
     if (raw_img) {
         libraw_dcraw_clear_mem(raw_img);
     }
     libraw_close(decoder);
-
-    return ldr_unsupported;
+    return imgload_unsupported;
 }

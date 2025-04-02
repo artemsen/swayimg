@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Farbfeld format decoder
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <arpa/inet.h>
 #include <string.h>
@@ -24,8 +24,8 @@ struct __attribute__((__packed__)) farbfeld_rgba {
     uint16_t a;
 };
 
-enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
-                                   size_t size)
+enum image_status decode_farbfeld(struct image* img, const uint8_t* data,
+                                  size_t size)
 {
     const struct farbfeld_header* header = (const struct farbfeld_header*)data;
     size_t width, height, total;
@@ -35,21 +35,21 @@ enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < sizeof(*header) ||
         memcmp(header->magic, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // create pixmap
     width = htonl(header->width);
     height = htonl(header->height);
-    if (!image_allocate_frame(ctx, width, height)) {
-        return ldr_fmterror;
+    if (!image_alloc_frame(img, width, height)) {
+        return imgload_fmterror;
     }
 
     size -= sizeof(struct farbfeld_header);
     data += sizeof(struct farbfeld_header);
 
     // decode image
-    dst = ctx->frames[0].pm.data;
+    dst = img->frames[0].pm.data;
     src = (struct farbfeld_rgba*)data;
     total = min(width * height, size / sizeof(struct farbfeld_rgba));
     for (size_t i = 0; i < total; ++i) {
@@ -58,8 +58,8 @@ enum loader_status decode_farbfeld(struct image* ctx, const uint8_t* data,
         ++src;
     }
 
-    image_set_format(ctx, "Farbfeld");
-    ctx->alpha = true;
+    image_set_format(img, "Farbfeld");
+    img->alpha = true;
 
-    return ldr_success;
+    return imgload_success;
 }

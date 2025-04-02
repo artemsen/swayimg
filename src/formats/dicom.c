@@ -2,7 +2,7 @@
 // DICOM format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <limits.h>
 #include <string.h>
@@ -190,8 +190,8 @@ static bool get_image(struct stream* stream, struct dicom_image* image)
 }
 
 // DICOM loader implementation
-enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
-                                size_t size)
+enum image_status decode_dicom(struct image* img, const uint8_t* data,
+                               size_t size)
 {
     struct dicom_image dicom;
     struct stream stream;
@@ -202,7 +202,7 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < DICOM_SIGNATURE_OFFSET + sizeof(signature) ||
         memcmp(data + DICOM_SIGNATURE_OFFSET, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // get image description
@@ -211,7 +211,7 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
     stream.pos = DICOM_SIGNATURE_OFFSET + sizeof(signature);
     if (!get_image(&stream, &dicom) || dicom.spp != 1 /* monochrome */ ||
         dicom.bpp != 16 /* 2 bytes per pixel */) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // calculate min/max color value if not set yet
@@ -236,9 +236,9 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
     }
 
     // allocate image buffer
-    pm = image_allocate_frame(ctx, dicom.width, dicom.height);
+    pm = image_alloc_frame(img, dicom.width, dicom.height);
     if (!pm) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // decode image
@@ -250,7 +250,7 @@ enum loader_status decode_dicom(struct image* ctx, const uint8_t* data,
         pm->data[i] = ARGB(0xff, color, color, color);
     }
 
-    image_set_format(ctx, "DICOM");
+    image_set_format(img, "DICOM");
 
-    return ldr_success;
+    return imgload_success;
 }

@@ -3,8 +3,8 @@
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
-#include "../loader.h"
 #include "buildcfg.h"
+#include "loader.h"
 
 #include <libheif/heif.h>
 #include <stdlib.h>
@@ -12,10 +12,10 @@
 #ifdef HAVE_LIBEXIF
 /**
  * Read Exif info.
- * @param ctx image context
+ * @param img image context
  * @param pih handle of HEIF/AVIF image
  */
-static void read_exif(struct image* ctx, struct heif_image_handle* pih)
+static void read_exif(struct image* img, struct heif_image_handle* pih)
 {
     heif_item_id id;
     const int count =
@@ -28,7 +28,7 @@ static void read_exif(struct image* ctx, struct heif_image_handle* pih)
             const struct heif_error err =
                 heif_image_handle_get_metadata(pih, id, data);
             if (err.code == heif_error_Ok) {
-                process_exif(ctx, data + 4 /* skip offset */, sz);
+                process_exif(img, data + 4 /* skip offset */, sz);
             }
             free(data);
         }
@@ -37,20 +37,20 @@ static void read_exif(struct image* ctx, struct heif_image_handle* pih)
 #endif // HAVE_LIBEXIF
 
 // HEIF/AVIF loader implementation
-enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
-                               size_t size)
+enum image_status decode_heif(struct image* img, const uint8_t* data,
+                              size_t size)
 {
     struct heif_context* heif = NULL;
     struct heif_image_handle* pih = NULL;
-    struct heif_image* img = NULL;
+    struct heif_image* him = NULL;
     struct heif_error err;
     const uint8_t* decoded;
     struct pixmap* pm;
     int stride = 0;
-    enum loader_status status = ldr_fmterror;
+    enum image_status status = imgload_fmterror;
 
     if (heif_check_filetype(data, size) != heif_filetype_yes_supported) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     heif = heif_context_alloc();
@@ -65,19 +65,19 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
     if (err.code != heif_error_Ok) {
         goto done;
     }
-    err = heif_decode_image(pih, &img, heif_colorspace_RGB,
+    err = heif_decode_image(pih, &him, heif_colorspace_RGB,
                             heif_chroma_interleaved_RGBA, NULL);
     if (err.code != heif_error_Ok) {
         goto done;
     }
     decoded =
-        heif_image_get_plane_readonly(img, heif_channel_interleaved, &stride);
+        heif_image_get_plane_readonly(him, heif_channel_interleaved, &stride);
     if (!decoded) {
         goto done;
     }
 
-    pm = image_allocate_frame(ctx, heif_image_get_primary_width(img),
-                              heif_image_get_primary_height(img));
+    pm = image_alloc_frame(img, heif_image_get_primary_width(him),
+                           heif_image_get_primary_height(him));
     if (!pm) {
         goto done;
     }
@@ -91,21 +91,21 @@ enum loader_status decode_heif(struct image* ctx, const uint8_t* data,
         }
     }
 
-    ctx->alpha = heif_image_handle_has_alpha_channel(pih);
-    image_set_format(ctx, "HEIF/AVIF %dbpp",
+    img->alpha = heif_image_handle_has_alpha_channel(pih);
+    image_set_format(img, "HEIF/AVIF %dbpp",
                      heif_image_handle_get_luma_bits_per_pixel(pih));
 #ifdef HAVE_LIBEXIF
-    read_exif(ctx, pih);
+    read_exif(img, pih);
 #endif
 
-    status = ldr_success;
+    status = imgload_success;
 
 done:
-    if (status != ldr_success) {
-        image_free_frames(ctx);
+    if (status != imgload_success) {
+        image_free(img, IMGFREE_FRAMES);
     }
-    if (img) {
-        heif_image_release(img);
+    if (him) {
+        heif_image_release(him);
     }
     if (pih) {
         heif_image_handle_release(pih);

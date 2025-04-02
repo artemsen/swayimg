@@ -5,7 +5,7 @@
 #pragma once
 
 #include "list.h"
-#include "pixmap.h"
+#include "pixmap_scale.h"
 
 // File name used for image, that is read from stdin through pipe
 #define LDRSRC_STDIN     "stdin://"
@@ -30,92 +30,129 @@ struct image_info {
 
 /** Image context. */
 struct image {
-    size_t index;               ///< Index of the entry in the image list
-    char* source;               ///< Image source (e.g. path to the image file)
-    const char* name;           ///< Name of the image file
-    char* parent_dir;           ///< Parent directory name
-    size_t file_size;           ///< Size of image file
-    char* format;               ///< Format description
+    struct list list; ///< Links to prev/next entry in the image list
+
+    char* source;     ///< Image source (e.g. path to the image file)
+    size_t file_size; ///< Size of the image file
+    time_t file_time; ///< File modification time
+
+    size_t index;     ///< Index of the image
+    const char* name; ///< Name of the image file
+    char* parent_dir; ///< Parent directory name
+
+    char* format;            ///< Format description
+    struct image_info* info; ///< Image meta info
+    bool alpha;              ///< Image has alpha channel
+
     struct image_frame* frames; ///< Image frames
     size_t num_frames;          ///< Total number of frames
-    bool alpha;                 ///< Image has alpha channel
-    struct image_info* info;    ///< Image meta info
+
+    struct pixmap thumbnail; ///< Image thumbnail
 };
 
+/** Image loading status. */
+enum image_status {
+    imgload_success,     ///< Image was decoded successfully
+    imgload_unsupported, ///< Unsupported format
+    imgload_fmterror,    ///< Invalid data format
+    imgload_ioerror      ///< IO errors
+};
+
+/** Image data types (used as mask for freeing data). */
+#define IMGFREE_FRAMES 1
+#define IMGFREE_THUMB  2
+#define IMGFREE_ALL    7
+
 /**
- * Allocate empty image instance.
+ * Get list of supported image formats.
+ * @return list of supported formats
+ */
+const char* image_formats(void);
+
+/**
+ * Create empty image instance.
+ * @param source image source
  * @return image context or NULL on errors
  */
-struct image* image_alloc(void);
+struct image* image_create(const char* source);
 
 /**
- * Free image.
- * @param ctx image context to free
+ * Load image from specified source.
+ * @param img image context
+ * @return loading status
  */
-void image_free(struct image* ctx);
+enum image_status image_load(struct image* img);
 
 /**
- * Set image source (path or special prefix).
- * @param ctx image context
- * @param source image source
+ * Update image data (move) from another instance.
+ * @param img target image instance
+ * @param from adopted image instance
  */
-void image_set_source(struct image* ctx, const char* source);
+void image_update(struct image* img, struct image* from);
+
+/**
+ * Free image instance.
+ * @param img image context
+ * @param dt image data type to free (mask with `IMGFREE_*`)
+ */
+void image_free(struct image* img, size_t dt);
+
+/**
+ * Check if image has frame data.
+ * @param img image context
+ * @return true if image has frame data
+ */
+bool image_has_frames(const struct image* img);
+
+/**
+ * Check if image has thumbnail.
+ * @param img image context
+ * @return true if image has thumbnail
+ */
+bool image_has_thumb(const struct image* img);
 
 /**
  * Flip image vertically.
- * @param ctx image context
+ * @param img image context
  */
-void image_flip_vertical(struct image* ctx);
+void image_flip_vertical(struct image* img);
 
 /**
  * Flip image horizontally.
- * @param ctx image context
+ * @param img image context
  */
-void image_flip_horizontal(struct image* ctx);
+void image_flip_horizontal(struct image* img);
 
 /**
  * Rotate image.
- * @param ctx image context
+ * @param img image context
  * @param angle rotation angle (only 90, 180, or 270)
  */
-void image_rotate(struct image* ctx, size_t angle);
+void image_rotate(struct image* img, size_t angle);
 
 /**
- * Set image format description.
- * @param ctx image context
- * @param fmt format description
+ * Create thumbnail.
+ * @param img image context
+ * @param size thumbnail size in pixels
+ * @param fill scale mode (fill/fit)
+ * @param aa_mode anti-aliasing mode
+ * @return true if thumbnail created
  */
-void image_set_format(struct image* ctx, const char* fmt, ...)
-    __attribute__((format(printf, 2, 3)));
+bool image_thumb_create(struct image* img, size_t size, bool fill,
+                        enum aa_mode aa_mode);
 
 /**
- * Add meta info property.
- * @param ctx image context
- * @param key property name
- * @param fmt value format
+ * Load thumbnail from specified file.
+ * @param img image context
+ * @param path path to the thumbnail file to load
+ * @return true if thumbnail loaded
  */
-void image_add_meta(struct image* ctx, const char* key, const char* fmt, ...)
-    __attribute__((format(printf, 3, 4)));
+bool image_thumb_load(struct image* img, const char* path);
 
 /**
- * Create single frame, allocate buffer and add frame to the image.
- * @param width frame width in px
- * @param height frame height in px
- * @return pointer to the pixmap associated with the frame, or NULL on errors
+ * Save thumbnail to specified file.
+ * @param img image context
+ * @param path path to the thumbnail file
+ * @return true if thumbnail saved
  */
-struct pixmap* image_allocate_frame(struct image* ctx, size_t width,
-                                    size_t height);
-
-/**
- * Create list of empty frames.
- * @param ctx image context
- * @param num total number of frames
- * @return pointer to the frame list, NULL on errors
- */
-struct image_frame* image_create_frames(struct image* ctx, size_t num);
-
-/**
- * Free image frames.
- * @param ctx image context
- */
-void image_free_frames(struct image* ctx);
+bool image_thumb_save(const struct image* img, const char* path);

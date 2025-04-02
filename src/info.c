@@ -7,8 +7,8 @@
 #include "application.h"
 #include "array.h"
 #include "font.h"
+#include "imglist.h"
 #include "keybind.h"
-#include "loader.h"
 #include "ui.h"
 
 #include <stdarg.h>
@@ -550,7 +550,7 @@ void info_switch_help(void)
 
 bool info_help_active(void)
 {
-    return !!ctx.help_num;
+    return ctx.help_num;
 }
 
 bool info_enabled(void)
@@ -564,6 +564,7 @@ void info_reset(const struct image* image)
     const char unit = image->file_size >= mib ? 'M' : 'K';
     const float sz =
         (float)image->file_size / (image->file_size >= mib ? mib : 1024);
+    const size_t list_size = imglist_size();
 
     font_render(image->name, &ctx.fields[info_file_name].value);
     font_render(image->parent_dir, &ctx.fields[info_file_dir].value);
@@ -571,8 +572,18 @@ void info_reset(const struct image* image)
     font_render(image->format, &ctx.fields[info_image_format].value);
 
     info_update(info_file_size, "%.02f %ciB", sz, unit);
-    info_update(info_image_size, "%zux%zu", image->frames[0].pm.width,
-                image->frames[0].pm.height);
+
+    if (image_has_frames(image)) {
+        info_update(info_image_size, "%zux%zu", image->frames[0].pm.width,
+                    image->frames[0].pm.height);
+    } else {
+        ctx.fields[info_image_size].value.width = 0;
+        ctx.fields[info_image_size].value.height = 0;
+    }
+
+    if (list_size) {
+        info_update(info_index, "%zu of %zu", image->index, list_size);
+    }
 
     import_meta(image);
 

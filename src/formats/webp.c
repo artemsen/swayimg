@@ -3,8 +3,8 @@
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "../exif.h"
-#include "../loader.h"
 #include "buildcfg.h"
+#include "loader.h"
 
 #include <string.h>
 #include <webp/demux.h>
@@ -13,8 +13,8 @@
 static const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
 
 // WebP loader implementation
-enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
-                               size_t size)
+enum image_status decode_webp(struct image* img, const uint8_t* data,
+                              size_t size)
 {
     const WebPData raw = { .bytes = data, .size = size };
     WebPAnimDecoderOptions webp_opts;
@@ -26,12 +26,12 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
     // check signature
     if (size < sizeof(signature) ||
         memcmp(data, signature, sizeof(signature))) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // get image properties
     if (WebPGetFeatures(data, size, &prop) != VP8_STATUS_OK) {
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // open decoder
@@ -46,15 +46,15 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
     }
 
     // allocate frame sequence
-    if (!image_create_frames(ctx, webp_info.frame_count)) {
+    if (!image_alloc_frames(img, webp_info.frame_count)) {
         goto fail;
     }
 
     // decode every frame
-    for (size_t i = 0; i < ctx->num_frames; ++i) {
+    for (size_t i = 0; i < img->num_frames; ++i) {
         uint8_t* buffer;
         int timestamp;
-        struct image_frame* frame = &ctx->frames[i];
+        struct image_frame* frame = &img->frames[i];
         struct pixmap* pm = &frame->pm;
 
         if (!pixmap_create(pm, webp_info.canvas_width,
@@ -66,7 +66,7 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
         }
         memcpy(pm->data, buffer, pm->width * pm->height * sizeof(argb_t));
 
-        if (ctx->num_frames > 1) {
+        if (img->num_frames > 1) {
             frame->duration = timestamp - prev_timestamp;
             prev_timestamp = timestamp;
             if (frame->duration <= 0) {
@@ -80,7 +80,7 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
     if (WebPDemuxGetI(webp_dmx, WEBP_FF_FORMAT_FLAGS) & EXIF_FLAG) {
         WebPChunkIterator it;
         if (WebPDemuxGetChunk(webp_dmx, "EXIF", 1, &it)) {
-            process_exif(ctx, it.chunk.bytes, it.chunk.size);
+            process_exif(img, it.chunk.bytes, it.chunk.size);
             WebPDemuxReleaseChunkIterator(&it);
         }
     }
@@ -89,15 +89,15 @@ enum loader_status decode_webp(struct image* ctx, const uint8_t* data,
     WebPAnimDecoderDelete(webp_dec);
 
     image_set_format(
-        ctx, "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
+        img, "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
         prop.has_alpha ? "+alpha" : "", prop.has_animation ? "+animation" : "");
-    ctx->alpha = prop.has_alpha;
+    img->alpha = prop.has_alpha;
 
-    return ldr_success;
+    return imgload_success;
 
 fail:
     if (webp_dec) {
         WebPAnimDecoderDelete(webp_dec);
     }
-    return ldr_fmterror;
+    return imgload_fmterror;
 }

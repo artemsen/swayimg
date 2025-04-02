@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Business logic of application and UI event handlers.
+// Image viewer mode.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "viewer.h"
@@ -7,8 +7,8 @@
 #include "application.h"
 #include "array.h"
 #include "buildcfg.h"
-#include "fetcher.h"
-#include "imagelist.h"
+#include "cache.h"
+#include "imglist.h"
 #include "info.h"
 #include "pixmap_scale.h"
 #include "ui.h"
@@ -17,8 +17,11 @@
 #include "formats/png.h"
 #endif
 
+#include <assert.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -83,6 +86,13 @@ static const char* position_names[] = {
 
 /** Viewer context. */
 struct viewer {
+    struct image* current; ///< Currently shown image
+
+    struct cache* history; ///< Recently viewed images
+    struct cache* preload; ///< Preloaded images
+    pthread_t preload_tid; ///< Preload thread id
+    bool preload_active;   ///< Preload in progress flag
+
     ssize_t img_x, img_y; ///< Top left corner of the image
     ssize_t img_w, img_h; ///< Image width and height
 
@@ -108,6 +118,108 @@ struct viewer {
 /** Global viewer context. */
 static struct viewer ctx;
 
+static void reload_file(void);
+
+/**
+ * Preloader thread.
+ */
+static void* preloader_thread(__attribute__((unused)) void* data)
+{
+    struct image* current = ctx.current;
+    size_t counter = 0;
+
+    while (ctx.preload_active && counter < cache_capacity(ctx.preload)) {
+        struct image* next;
+        struct image* origin;
+        enum image_status status;
+
+        imglist_lock();
+
+        if (current != ctx.current) {
+            current = ctx.current;
+            counter = 0;
+        }
+
+        // get next image
+        next = imglist_jump(ctx.current, counter + 1);
+        if (!next) {
+            // last image in the list
+            imglist_unlock();
+            cache_trim(ctx.preload, counter);
+            break;
+        }
+
+        // get existing image form history/preload cache
+        if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
+            cache_put(ctx.preload, next);
+            imglist_unlock();
+            ++counter;
+            continue;
+        }
+
+        // create copy to unlock the list
+        next = image_create(next->source);
+        imglist_unlock();
+        if (!next) {
+            break; // not enough memory
+        }
+
+        // load next image
+        status = image_load(next);
+
+        imglist_lock();
+
+        origin = imglist_find(next->source);
+        if (!origin || image_has_frames(origin)) {
+            image_free(next, IMGFREE_ALL);
+            imglist_unlock();
+            continue; // already skipped or loaded by main thread
+        }
+
+        if (status != imgload_success) {
+            imglist_remove(origin);
+        } else {
+            // replace existing image data
+            image_update(origin, next);
+            if (!cache_put(ctx.preload, origin)) {
+                // not enough memory
+                image_free(origin, IMGFREE_FRAMES);
+                image_free(next, IMGFREE_ALL);
+                break;
+            }
+            ++counter;
+        }
+
+        image_free(next, IMGFREE_ALL);
+        imglist_unlock();
+    }
+
+    ctx.preload_active = false;
+    return NULL;
+}
+
+/**
+ * Start preloader.
+ */
+static void preloader_start(void)
+{
+    if (ctx.preload && !ctx.preload_active) {
+        ctx.preload_active = true;
+        pthread_create(&ctx.preload_tid, NULL, preloader_thread, NULL);
+    }
+}
+
+/**
+ * Stop preloader.
+ */
+static void preloader_stop(void)
+{
+    if (ctx.preload_active) {
+        ctx.preload_active = false;
+        pthread_join(ctx.preload_tid, NULL);
+    }
+}
+
 /**
  * Fix up image position.
  * @param force flag to force update position
@@ -117,7 +229,7 @@ static void fixup_position(bool force)
     const ssize_t wnd_width = ui_get_width();
     const ssize_t wnd_height = ui_get_height();
 
-    const struct pixmap* pm = &fetcher_current()->frames[ctx.frame].pm;
+    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
     const ssize_t img_width = ctx.scale * pm->width;
     const ssize_t img_height = ctx.scale * pm->height;
 
@@ -259,12 +371,11 @@ static void move_image(bool horizontal, bool positive, const char* params)
  */
 static void rotate_image(bool clockwise)
 {
-    struct image* img = fetcher_current();
-    const struct pixmap* pm = &img->frames[ctx.frame].pm;
+    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
     const ssize_t diff = (ssize_t)pm->width - pm->height;
     const ssize_t shift = (ctx.scale * diff) / 2;
 
-    image_rotate(img, clockwise ? 90 : 270);
+    image_rotate(ctx.current, clockwise ? 90 : 270);
     ctx.img_x += shift;
     ctx.img_y -= shift;
     fixup_position(false);
@@ -278,8 +389,7 @@ static void rotate_image(bool clockwise)
  */
 static void set_scale(enum fixed_scale sc)
 {
-    const struct image* img = fetcher_current();
-    const struct pixmap* pm = &img->frames[ctx.frame].pm;
+    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
     const size_t wnd_width = ui_get_width();
     const size_t wnd_height = ui_get_height();
     const float scale_w = 1.0 / ((float)pm->width / wnd_width);
@@ -373,8 +483,7 @@ static void zoom_image(const char* params)
                 ctx.scale = MAX_SCALE;
             }
         } else {
-            const struct image* img = fetcher_current();
-            const struct pixmap* pm = &img->frames[ctx.frame].pm;
+            const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
             const float scale_w = (float)MIN_SCALE / pm->width;
             const float scale_h = (float)MIN_SCALE / pm->height;
             const float scale_min = max(scale_w, scale_h);
@@ -415,9 +524,8 @@ static void animation_ctl(bool enable)
     struct itimerspec ts = { 0 };
 
     if (enable) {
-        const struct image* img = fetcher_current();
-        const size_t duration = img->frames[ctx.frame].duration;
-        enable = (img->num_frames > 1 && duration);
+        const size_t duration = ctx.current->frames[ctx.frame].duration;
+        enable = (ctx.current->num_frames > 1 && duration);
         if (enable) {
             ts.it_value.tv_sec = duration / 1000;
             ts.it_value.tv_nsec = (duration % 1000) * 1000000;
@@ -449,33 +557,27 @@ static void slideshow_ctl(bool enable)
  */
 static void reset_state(void)
 {
-    const struct image* img = fetcher_current();
-    const size_t total_img = image_list_size();
-
     ctx.frame = 0;
 
     if (!ctx.keep_zoom || ctx.scale == 0) {
         set_scale(ctx.scale_init);
     } else {
-        const ssize_t diff_w = ctx.img_w - img->frames[0].pm.width;
-        const ssize_t diff_h = ctx.img_h - img->frames[0].pm.height;
+        const ssize_t diff_w = ctx.img_w - ctx.current->frames[0].pm.width;
+        const ssize_t diff_h = ctx.img_h - ctx.current->frames[0].pm.height;
         ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
         ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
         fixup_position(true);
     }
 
-    ctx.img_w = img->frames[0].pm.width;
-    ctx.img_h = img->frames[0].pm.height;
+    ctx.img_w = ctx.current->frames[0].pm.width;
+    ctx.img_h = ctx.current->frames[0].pm.height;
 
-    ui_set_title(img->name);
+    ui_set_title(ctx.current->name);
     animation_ctl(true);
     slideshow_ctl(ctx.slideshow_enable);
 
-    info_reset(img);
+    info_reset(ctx.current);
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
-    if (total_img) {
-        info_update(info_index, "%zu of %zu", img->index + 1, total_img);
-    }
 
     ui_set_content_type_animated(ctx.animation_enable);
 
@@ -483,70 +585,88 @@ static void reset_state(void)
 }
 
 /**
- * Skip current image.
- * @return true if next image was loaded
- */
-static bool skip_image(void)
-{
-    size_t index;
-    const size_t current = fetcher_current()->index;
-
-    index = image_list_skip(current);
-    while (index != IMGLIST_INVALID && !fetcher_open(index)) {
-        index = image_list_skip(index);
-    }
-
-    return (index != IMGLIST_INVALID);
-}
-
-/**
  * Switch to the next image.
  * @param direction next image position
  * @return true if next image was loaded
  */
-static bool next_image(enum action_type direction)
+static bool next_file(enum action_type direction)
 {
-    size_t index = fetcher_current()->index;
+    struct image* next;
+    bool forward = false; // preferred direction after skipping file
 
-    do {
-        switch (direction) {
-            case action_first_file:
-                index = image_list_first();
-                // look forward in case the first file fails to load
-                direction = action_next_file;
-                break;
-            case action_last_file:
-                index = image_list_last();
-                // look backward in case the last file fails to load
-                direction = action_prev_file;
-                break;
-            case action_prev_dir:
-                index = image_list_prev_dir(index);
-                break;
-            case action_next_dir:
-                index = image_list_next_dir(index);
-                break;
-            case action_prev_file:
-                index = image_list_prev_file(index);
-                break;
-            case action_next_file:
-                index = image_list_next_file(index);
-                break;
-            case action_rand_file:
-                index = image_list_rand_file(index);
-                break;
-            default:
-                break;
-        }
-    } while (index != IMGLIST_INVALID && !fetcher_open(index));
+    imglist_lock();
 
-    if (index == IMGLIST_INVALID) {
-        return false;
+    switch (direction) {
+        case action_first_file:
+            next = imglist_first();
+            forward = true;
+            break;
+        case action_last_file:
+            next = imglist_last();
+            break;
+        case action_prev_dir:
+            next = imglist_prev_dir(ctx.current);
+            break;
+        case action_next_dir:
+            next = imglist_next_dir(ctx.current);
+            forward = true;
+            break;
+        case action_prev_file:
+            next = imglist_prev_file(ctx.current);
+            break;
+        case action_next_file:
+            next = imglist_next_file(ctx.current);
+            forward = true;
+            break;
+        case action_rand_file:
+            next = imglist_rand(ctx.current);
+            forward = true;
+            break;
+        default:
+            next = NULL;
+            break;
     }
 
-    reset_state();
+    // load next image
+    while (next) {
+        struct image* skip;
 
-    return true;
+        // get file form history/preload cache
+        if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
+            break;
+        }
+        if (image_load(next) == imgload_success) {
+            break;
+        }
+
+        // skip and jump to the nearest entry
+        skip = next;
+        next = forward ? imglist_next_file(skip) : imglist_prev_file(skip);
+        if (next == ctx.current) {
+            next = NULL;
+        }
+        if (!next) {
+            next = forward ? imglist_prev_file(skip) : imglist_next_file(skip);
+            if (next == ctx.current) {
+                next = NULL;
+            }
+        }
+        imglist_remove(skip);
+    }
+
+    if (next) {
+        if (!cache_put(ctx.history, ctx.current)) {
+            image_free(ctx.current, IMGFREE_FRAMES);
+        }
+        ctx.current = next;
+        preloader_start();
+        imglist_watch(ctx.current, reload_file);
+        reset_state();
+    }
+
+    imglist_unlock();
+
+    return next;
 }
 
 /**
@@ -556,41 +676,73 @@ static bool next_image(enum action_type direction)
 static void next_frame(bool forward)
 {
     size_t index = ctx.frame;
-    const struct image* img = fetcher_current();
 
     if (forward) {
-        if (++index >= img->num_frames) {
+        if (++index >= ctx.current->num_frames) {
             index = 0;
         }
     } else {
         if (index-- == 0) {
-            index = img->num_frames - 1;
+            index = ctx.current->num_frames - 1;
         }
     }
+
     if (index != ctx.frame) {
         ctx.frame = index;
-        info_update(info_frame, "%zu of %zu", ctx.frame + 1, img->num_frames);
-        info_update(info_image_size, "%zux%zu", img->frames[ctx.frame].pm.width,
-                    img->frames[ctx.frame].pm.height);
+        info_update(info_frame, "%zu of %zu", ctx.frame + 1,
+                    ctx.current->num_frames);
+        info_update(info_image_size, "%zux%zu",
+                    ctx.current->frames[ctx.frame].pm.width,
+                    ctx.current->frames[ctx.frame].pm.height);
         app_redraw();
     }
 }
 
-/**
- * Animation timer event handler.
- */
+/** Animation timer event handler. */
 static void on_animation_timer(__attribute__((unused)) void* data)
 {
     next_frame(true);
     animation_ctl(true);
 }
 
-/**
- * Slideshow timer event handler.
- */
+/** Slideshow timer event handler. */
 static void on_slideshow_timer(__attribute__((unused)) void* data)
 {
-    slideshow_ctl(next_image(action_next_file));
+    slideshow_ctl(next_file(action_next_file));
+}
+
+/**
+ * Reload image file and reset state (position, scale, etc).
+ */
+static void reload_file(void)
+{
+    image_free(ctx.current, IMGFREE_FRAMES | IMGFREE_THUMB);
+    if (image_load(ctx.current) == imgload_success) {
+        info_update(info_status, "Image reloaded");
+        reset_state();
+    } else {
+        info_update(info_status, "Unable to reload file, open next one");
+        if (!next_file(action_next_file)) {
+            printf("No more images to view, exit\n");
+            app_exit(0);
+        }
+    }
+}
+
+/**
+ * Skip current image file.
+ */
+static void skip_file(void)
+{
+    struct image* skip = ctx.current;
+    if (next_file(action_next_file) || next_file(action_prev_file)) {
+        imglist_lock();
+        imglist_remove(skip);
+        imglist_unlock();
+    } else {
+        printf("No more images to view, exit\n");
+        app_exit(0);
+    }
 }
 
 /**
@@ -599,17 +751,16 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
  */
 static void draw_image(struct pixmap* wnd)
 {
-    const struct image* img = fetcher_current();
-    const struct pixmap* img_pm = &img->frames[ctx.frame].pm;
-    const size_t width = ctx.scale * img_pm->width;
-    const size_t height = ctx.scale * img_pm->height;
+    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
+    const size_t width = ctx.scale * pm->width;
+    const size_t height = ctx.scale * pm->height;
 
     // clear window background
     pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
                         ctx.window_bkg);
 
     // clear image background
-    if (img->alpha) {
+    if (ctx.current->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height, GRID_STEP,
                         GRID_COLOR1, GRID_COLOR2);
@@ -621,60 +772,44 @@ static void draw_image(struct pixmap* wnd)
 
     // put image on window surface
     if (ctx.scale == 1.0) {
-        pixmap_copy(img_pm, wnd, ctx.img_x, ctx.img_y, img->alpha);
+        pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->alpha);
     } else {
-        pixmap_scale(ctx.aa_mode, img_pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                     img->alpha);
+        pixmap_scale(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                     ctx.current->alpha);
     }
 }
 
-/**
- * Reload image file and reset state (position, scale, etc).
- */
-static void reload(void)
+/** Mode handler: window redraw. */
+static void on_redraw(struct pixmap* window)
 {
-    const size_t index = fetcher_current()->index;
-
-    if (fetcher_reset(index, false)) {
-        if (index == fetcher_current()->index) {
-            info_update(info_status, "Image reloaded");
-        } else {
-            info_update(info_status, "Unable to update, open next file");
-        }
-        reset_state();
-    } else {
-        printf("No more images to view, exit\n");
-        app_exit(0);
-    }
+    draw_image(window);
+    info_print(window);
 }
 
-/**
- * Redraw handler.
- */
-static void redraw(void)
-{
-    struct pixmap* window = ui_draw_begin();
-    if (window) {
-        draw_image(window);
-        info_print(window);
-        ui_draw_commit();
-    }
-}
-
-/**
- * Window resize handler.
- */
+/** Mode handler: window resize. */
 static void on_resize(void)
 {
     fixup_position(false);
     reset_state();
 }
 
-/**
- * Apply action.
- * @param action pointer to the action being performed
- */
-static void apply_action(const struct action* action)
+/** Mode handler: mouse drag. */
+static void on_drag(int dx, int dy)
+{
+    const ssize_t old_x = ctx.img_x;
+    const ssize_t old_y = ctx.img_y;
+
+    ctx.img_x += dx;
+    ctx.img_y += dy;
+
+    if (ctx.img_x != old_x || ctx.img_y != old_y) {
+        fixup_position(false);
+        app_redraw();
+    }
+}
+
+/** Mode handler: apply action. */
+static void on_action(const struct action* action)
 {
     switch (action->type) {
         case action_first_file:
@@ -684,15 +819,10 @@ static void apply_action(const struct action* action)
         case action_prev_file:
         case action_next_file:
         case action_rand_file:
-            next_image(action->type);
+            next_file(action->type);
             break;
         case action_skip_file:
-            if (skip_image()) {
-                reset_state();
-            } else {
-                printf("No more images, exit\n");
-                app_exit(0);
-            }
+            skip_file();
             break;
         case action_prev_frame:
         case action_next_frame:
@@ -703,11 +833,7 @@ static void apply_action(const struct action* action)
             animation_ctl(!ctx.animation_enable);
             break;
         case action_slideshow:
-            slideshow_ctl(!ctx.slideshow_enable &&
-                          next_image(action_next_file));
-            break;
-        case action_mode:
-            app_switch_mode(fetcher_current()->index);
+            slideshow_ctl(!ctx.slideshow_enable && next_file(action_next_file));
             break;
         case action_step_left:
             move_image(true, true, action->params);
@@ -737,11 +863,11 @@ static void apply_action(const struct action* action)
             rotate_image(true);
             break;
         case action_flip_vertical:
-            image_flip_vertical(fetcher_current());
+            image_flip_vertical(ctx.current);
             app_redraw();
             break;
         case action_flip_horizontal:
-            image_flip_horizontal(fetcher_current());
+            image_flip_horizontal(ctx.current);
             app_redraw();
             break;
         case action_antialiasing:
@@ -750,18 +876,15 @@ static void apply_action(const struct action* action)
             app_redraw();
             break;
         case action_reload:
-            reload();
-            break;
-        case action_exec:
-            app_execute(action->params, fetcher_current()->source);
+            reload_file();
             break;
         case action_export:
 #ifdef HAVE_LIBPNG
             if (!action->params || !*action->params) {
                 info_update(info_status, "Error: export path is not specified");
-            } else if (export_png(&fetcher_current()->frames[ctx.frame].pm,
-                                  NULL, action->params)) {
-                info_update(info_status, "Export completed");
+            } else if (export_png(&ctx.current->frames[ctx.frame].pm, NULL,
+                                  action->params)) {
+                info_update(info_status, "Exported to %s", action->params);
             } else {
                 info_update(info_status, "Error: export failed");
             }
@@ -775,37 +898,51 @@ static void apply_action(const struct action* action)
     }
 }
 
-/**
- * Image drag handler.
- * @param dx,dy delta to move viewpoint
- */
-static void on_drag(int dx, int dy)
+/** Mode handler: get currently viewed image. */
+static struct image* on_current(void)
 {
-    const ssize_t old_x = ctx.img_x;
-    const ssize_t old_y = ctx.img_y;
-
-    ctx.img_x += dx;
-    ctx.img_y += dy;
-
-    if (ctx.img_x != old_x || ctx.img_y != old_y) {
-        fixup_position(false);
-        app_redraw();
-    }
+    return ctx.current;
 }
 
-void viewer_init(const struct config* cfg, struct image* image)
+/** Mode handler: activate viewer. */
+static void on_activate(struct image* image)
 {
-    size_t history;
-    size_t preload;
-    const char* value;
+    ctx.current = image;
+
+    if (!image_has_frames(ctx.current) &&
+        !cache_out(ctx.preload, ctx.current) &&
+        !cache_out(ctx.history, ctx.current) &&
+        image_load(ctx.current) != imgload_success &&
+        !next_file(action_next_file)) {
+        printf("No more images to view, exit\n");
+        app_exit(0);
+    }
+
+    reset_state();
+    preloader_start();
+    imglist_watch(ctx.current, reload_file);
+}
+
+/** Mode handler: deactivate viewer. */
+static struct image* on_deactivate(void)
+{
+    preloader_stop();
+    imglist_watch(NULL, NULL);
+    return ctx.current;
+}
+
+void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
+{
+    size_t cval_num;
+    const char* cval_txt;
 
     ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
     ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
     ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
     // background for transparent images
-    value = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
-    if (strcmp(value, GRID_NAME) == 0) {
+    cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
+    if (strcmp(cval_txt, GRID_NAME) == 0) {
         ctx.image_bkg = GRID_BKGID;
     } else {
         ctx.image_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
@@ -818,9 +955,11 @@ void viewer_init(const struct config* cfg, struct image* image)
     ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
                                     position_names, ARRAY_SIZE(position_names));
 
-    // cache and preloads
-    history = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
-    preload = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
+    // history and preloads caches
+    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
+    ctx.history = cache_init(cval_num);
+    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
+    ctx.preload = cache_init(cval_num);
 
     // setup animation timer
     ctx.animation_enable = true;
@@ -839,12 +978,18 @@ void viewer_init(const struct config* cfg, struct image* image)
         app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
 
-    fetcher_init(image, history, preload);
+    handlers->action = on_action;
+    handlers->redraw = on_redraw;
+    handlers->resize = on_resize;
+    handlers->drag = on_drag;
+    handlers->current = on_current;
+    handlers->activate = on_activate;
+    handlers->deactivate = on_deactivate;
 }
 
 void viewer_destroy(void)
 {
-    fetcher_destroy();
+    preloader_stop();
 
     if (ctx.animation_fd != -1) {
         close(ctx.animation_fd);
@@ -852,32 +997,7 @@ void viewer_destroy(void)
     if (ctx.slideshow_fd != -1) {
         close(ctx.slideshow_fd);
     }
-}
 
-void viewer_handle(const struct event* event)
-{
-    switch (event->type) {
-        case event_action:
-            apply_action(event->param.action);
-            break;
-        case event_redraw:
-            redraw();
-            break;
-        case event_resize:
-            on_resize();
-            break;
-        case event_drag:
-            on_drag(event->param.drag.dx, event->param.drag.dy);
-            break;
-        case event_activate:
-            if (fetcher_reset(event->param.activate.index, false)) {
-                reset_state();
-            } else {
-                app_exit(0);
-            }
-            break;
-        case event_load:
-            fetcher_attach(event->param.load.image, event->param.load.index);
-            break;
-    }
+    cache_free(ctx.history);
+    cache_free(ctx.preload);
 }

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Sixel format decoder.
 
-#include "../loader.h"
+#include "loader.h"
 
 #include <sixel.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 // Sixel loader implementation
-enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
-                                size_t size)
+enum image_status decode_sixel(struct image* img, const uint8_t* data,
+                               size_t size)
 {
     uint8_t* pixels = NULL;
     uint8_t* palette = NULL;
@@ -18,27 +18,27 @@ enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
 
     // sixel always starts with Esc code
     if (data[0] != 0x1b) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
     // decode image
     status = sixel_decode_raw((uint8_t*)data, (int)size, &pixels, &width,
                               &height, &palette, &ncolors, NULL);
     if (SIXEL_FAILED(status)) {
-        return ldr_unsupported;
+        return imgload_unsupported;
     }
 
-    if (!image_allocate_frame(ctx, width, height)) {
+    if (!image_alloc_frame(img, width, height)) {
         free(pixels);
         free(palette);
-        return ldr_fmterror;
+        return imgload_fmterror;
     }
 
     // convert palette to real pixels
     for (int y = 0; y < height; ++y) {
         const int y_offset = y * width;
         const uint8_t* src = &pixels[y_offset];
-        argb_t* dst = &ctx->frames[0].pm.data[y_offset];
+        argb_t* dst = &img->frames[0].pm.data[y_offset];
         for (int x = 0; x < width; ++x) {
             if (src[x] >= ncolors) {
                 dst[x] = ARGB(0xff, 0, 0, 0);
@@ -49,9 +49,9 @@ enum loader_status decode_sixel(struct image* ctx, const uint8_t* data,
         }
     }
 
-    image_set_format(ctx, "Sixel");
+    image_set_format(img, "Sixel");
 
     free(pixels);
     free(palette);
-    return ldr_success;
+    return imgload_success;
 }

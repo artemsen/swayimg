@@ -4,6 +4,8 @@
 
 #include "exif.h"
 
+#include "formats/loader.h"
+
 #include <libexif/exif-data.h>
 #include <string.h>
 

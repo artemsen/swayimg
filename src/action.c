@@ -149,7 +149,7 @@ bool action_create(const char* text, struct action_seq* actions)
     actions->num = seq_len;
     actions->sequence = buf;
 
-    return !!seq_len;
+    return seq_len;
 }
 
 void action_free(struct action_seq* actions)

@@ -8,9 +8,8 @@
 #include "buildcfg.h"
 #include "font.h"
 #include "gallery.h"
-#include "imagelist.h"
+#include "imglist.h"
 #include "info.h"
-#include "loader.h"
 #include "shellcmd.h"
 #include "sway.h"
 #include "ui.h"
@@ -23,6 +22,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 
 // Special ids for windows size and position
@@ -45,10 +45,24 @@ struct watchfd {
     fd_callback callback;
 };
 
-/* Application event queue (list). */
+/** Event types. */
+enum event_type {
+    event_action, ///< Apply action
+    event_redraw, ///< Redraw window request
+    event_drag,   ///< Mouse or touch drag operation
+};
+
+/* Event queue. */
 struct event_queue {
-    struct list list;
-    struct event event;
+    struct list list;     ///< Links to prev/next entry
+    enum event_type type; ///< Event type
+    union event_params {  ///< Event parameters
+        const struct action* action;
+        struct drag {
+            int dx;
+            int dy;
+        } drag;
+    } param;
 };
 
 /** Application context */
@@ -65,10 +79,12 @@ struct application {
     struct action_seq sigusr1; ///< Actions applied by USR1 signal
     struct action_seq sigusr2; ///< Actions applied by USR2 signal
 
-    event_handler ehandler; ///< Event handler for the current mode
-    struct wndrect window;  ///< Preferable window position and size
-    bool wnd_decor;         //< Window decoration: borders and title
-    char* app_id;           ///< Application id (app_id name)
+    enum mode_type mode_current; ///< Currently active mode (viewer/gallery)
+    struct mode_handlers mode_handlers[2]; ///< Mode handlers
+
+    struct wndrect window; ///< Preferable window position and size
+    bool wnd_decor;        ///< Window decoration: borders and title
+    char* app_id;          ///< Application id (app_id name)
 };
 
 /** Global application context. */
@@ -120,51 +136,78 @@ static void sway_setup(const struct config* cfg)
     sway_disconnect(ipc);
 }
 
-/**
- * Apply common action.
- * @param action pointer to the action being performed
- * @return true if action handled, false if it's not a common action
- */
-static bool apply_common_action(const struct action* action)
+/** Switch mode (viewer/gallery). */
+static void switch_mode(void)
 {
-    bool handled = true;
+    struct image* current = ctx.mode_handlers[ctx.mode_current].deactivate();
 
-    switch (action->type) {
-        case action_info:
-            info_switch(action->params);
-            app_redraw();
-            break;
-        case action_status:
-            info_update(info_status, "%s", action->params);
-            app_redraw();
-            break;
-        case action_fullscreen:
-            ui_toggle_fullscreen();
-            break;
-        case action_help:
-            info_switch_help();
-            app_redraw();
-            break;
-        case action_exit:
-            if (info_help_active()) {
-                info_switch_help(); // remove help overlay
-                app_redraw();
-            } else {
-                app_exit(0);
-            }
-            break;
-        default:
-            handled = false;
-            break;
+    if (ctx.mode_current == mode_viewer) {
+        ctx.mode_current = mode_gallery;
+    } else {
+        ctx.mode_current = mode_viewer;
     }
 
-    return handled;
+    ctx.mode_handlers[ctx.mode_current].activate(current);
+
+    if (info_enabled()) {
+        info_switch(ctx.mode_current == mode_viewer ? CFG_MODE_VIEWER
+                                                    : CFG_MODE_GALLERY);
+    }
+    if (info_help_active()) {
+        info_switch_help();
+    }
+
+    app_redraw();
+}
+
+/**
+ * Execute system command for the specified image.
+ * @param expr command expression
+ * @param path file path to substitute into expression
+ */
+static void execute_cmd(const char* expr, const char* path)
+{
+    int rc;
+    char* out = NULL;
+
+    rc = shellcmd_expr(expr, path, &out);
+
+    if (out) {
+        // duplicate output to stdout
+        printf("%s", out);
+
+        // trim long output text
+        const size_t max_len = 60;
+        if (strlen(out) > max_len) {
+            const char* ellipsis = "...";
+            const size_t ellipsis_len = strlen(ellipsis) + 1;
+            memcpy(&out[max_len - ellipsis_len], ellipsis, ellipsis_len);
+        }
+    }
+
+    // show execution status
+    if (rc) {
+        info_update(info_status, "Error %d: %s", rc, out ? out : strerror(rc));
+    } else if (out) {
+        info_update(info_status, "%s", out);
+    } else {
+        info_update(info_status, "Success: %s", expr);
+    }
+
+    free(out);
+
+    app_redraw();
 }
 
 /** Notification callback: handle event queue. */
 static void handle_event_queue(__attribute__((unused)) void* data)
 {
-    notification_reset(ctx.event_signal);
+    // reset notification
+    uint64_t value;
+    ssize_t len;
+    do {
+        len = read(ctx.event_signal, &value, sizeof(value));
+    } while (len == -1 && errno == EINTR);
 
     while (ctx.events && ctx.state == loop_run) {
         struct event_queue* entry = NULL;
@@ -174,37 +217,100 @@ static void handle_event_queue(__attribute__((unused)) void* data)
             ctx.events = list_remove(entry);
         }
         pthread_mutex_unlock(&ctx.events_lock);
-        if (entry) {
-            if (entry->event.type != event_action ||
-                !apply_common_action(entry->event.param.action)) {
-                ctx.ehandler(&entry->event);
-            }
-            free(entry);
+        if (!entry) {
+            continue;
         }
+
+        switch (entry->type) {
+            case event_action: {
+                const struct action* action = entry->param.action;
+                switch (action->type) {
+                    case action_info:
+                        info_switch(action->params);
+                        app_redraw();
+                        break;
+                    case action_status:
+                        info_update(info_status, "%s", action->params);
+                        app_redraw();
+                        break;
+                    case action_fullscreen:
+                        ui_toggle_fullscreen();
+                        break;
+                    case action_mode:
+                        switch_mode();
+                        break;
+                    case action_exec:
+                        execute_cmd(action->params,
+                                    ctx.mode_handlers[ctx.mode_current]
+                                        .current()
+                                        ->source);
+                        break;
+                    case action_help:
+                        info_switch_help();
+                        app_redraw();
+                        break;
+                    case action_exit:
+                        if (info_help_active()) {
+                            info_switch_help(); // remove help overlay
+                            app_redraw();
+                        } else {
+                            app_exit(0);
+                        }
+                        break;
+                    default:
+                        ctx.mode_handlers[ctx.mode_current].action(action);
+                        break;
+                }
+            } break;
+            case event_redraw: {
+                struct pixmap* window = ui_draw_begin();
+                if (window) {
+                    ctx.mode_handlers[ctx.mode_current].redraw(window);
+                    ui_draw_commit();
+                }
+            } break;
+            case event_drag:
+                if (ctx.mode_handlers[ctx.mode_current].drag) {
+                    ctx.mode_handlers[ctx.mode_current].drag(
+                        entry->param.drag.dx, entry->param.drag.dy);
+                }
+                break;
+        }
+
+        free(entry);
     }
 }
 
 /**
  * Append event to queue.
- * @param event pointer to the event
+ * @param evt event type
+ * @param evp event parameters
  */
-static void append_event(const struct event* event)
+static void append_event(enum event_type evt, const union event_params* evp)
 {
     struct event_queue* entry;
+    const uint64_t value = 1;
+    ssize_t len;
 
     // create new entry
-    entry = malloc(sizeof(*entry));
+    entry = calloc(1, sizeof(*entry));
     if (!entry) {
         return;
     }
-    memcpy(&entry->event, event, sizeof(entry->event));
+    entry->type = evt;
+    if (evp) {
+        memcpy(&entry->param, evp, sizeof(*evp));
+    }
 
     // add to queue tail
     pthread_mutex_lock(&ctx.events_lock);
     ctx.events = list_append(ctx.events, entry);
     pthread_mutex_unlock(&ctx.events_lock);
 
-    notification_raise(ctx.event_signal);
+    // raise notification
+    do {
+        len = write(ctx.event_signal, &value, sizeof(value));
+    } while (len == -1 && errno == EINTR);
 }
 
 /**
@@ -227,62 +333,96 @@ static void on_signal(int signum)
     }
 
     for (size_t i = 0; i < sigact->num; ++i) {
-        const struct event event = {
-            .type = event_action,
-            .param.action = &sigact->sequence[i],
-        };
-        append_event(&event);
+        const union event_params evp = { .action = &sigact->sequence[i] };
+        append_event(event_action, &evp);
     }
 }
 
 /**
- * Load first (initial) image.
- * @param index initial index of image in the image list
- * @param force mandatory image index flag
- * @return image instance or NULL on errors
+ * Create image list and load the first image.
+ * @param sources list of sources
+ * @param num number of sources in the list
+ * @return first image instance to show or NULL on errors
  */
-static struct image* load_first_file(size_t index, bool force)
+static struct image* create_imglist(const char** sources, size_t num)
 {
-    struct image* img = NULL;
-    enum loader_status status = ldr_ioerror;
+    struct image* image = NULL;
+    bool force_first = false;
 
-    if (index == IMGLIST_INVALID) {
-        index = image_list_first();
-        force = false;
+    // compose image list
+    if (num == 0) {
+        // no input files specified, use all from the current directory
+        static const char* current_dir = ".";
+        sources = &current_dir;
+        num = 1;
+    } else if (num == 1) {
+        force_first = true;
+        if (strcmp(sources[0], "-") == 0) {
+            // load from stdin
+            static const char* stdin_name = LDRSRC_STDIN;
+            sources = &stdin_name;
+        }
+    }
+    for (size_t i = 0; i < num; ++i) {
+        struct image* added = imglist_add(sources[i]);
+        if (added && i == 0) {
+            image = added;
+        }
+    }
+    if (!image) {
+        image = imglist_first();
+        force_first = false;
+    }
+    if (imglist_size() == 0) {
+        if (force_first) {
+            fprintf(stderr, "%s: Unable to open\n", sources[0]);
+        } else {
+            fprintf(stderr, "No image files found to view, exit\n");
+        }
+        return NULL;
     }
 
-    while (index != IMGLIST_INVALID) {
-        status = loader_from_index(index, &img);
-        if (force || status == ldr_success) {
+    imglist_reindex();
+
+    // load first image
+    if (force_first) {
+        const char* reason;
+        switch (image_load(image)) {
+            case imgload_success:
+                return image;
+            case imgload_unsupported:
+                reason = "Unsupported format";
+                break;
+            case imgload_fmterror:
+                reason = "Invalid format";
+                break;
+            case imgload_ioerror:
+                reason = "I/O error";
+                break;
+            default:
+                reason = "Unknown error";
+                break;
+        }
+        fprintf(stderr, "%s: %s\n", image->source, reason);
+        image_free(image, IMGFREE_ALL);
+        return NULL;
+    }
+
+    // try to load first available image
+    while (image) {
+        const enum image_status status = image_load(image);
+        if (status == imgload_success) {
             break;
         }
-        index = image_list_skip(index);
+        struct image* skip = image;
+        image = imglist_next(image);
+        imglist_remove(skip);
+    }
+    if (!image) {
+        fprintf(stderr, "No image files was loaded, exit\n");
     }
 
-    if (status != ldr_success) {
-        // print error message
-        if (!force) {
-            fprintf(stderr, "No image files was loaded, exit\n");
-        } else {
-            const char* reason = "Unknown error";
-            switch (status) {
-                case ldr_success:
-                    break;
-                case ldr_unsupported:
-                    reason = "Unsupported format";
-                    break;
-                case ldr_fmterror:
-                    reason = "Invalid format";
-                    break;
-                case ldr_ioerror:
-                    reason = "I/O error";
-                    break;
-            }
-            fprintf(stderr, "%s: %s\n", image_list_get(index), reason);
-        }
-    }
-
-    return img;
+    return image;
 }
 
 /**
@@ -297,9 +437,9 @@ static void load_config(const struct config* cfg)
     static const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
     if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
                          ARRAY_SIZE(modes)) == 1) {
-        ctx.ehandler = gallery_handle;
+        ctx.mode_current = mode_gallery;
     } else {
-        ctx.ehandler = viewer_handle;
+        ctx.mode_current = mode_viewer;
     }
 
     // initial window position
@@ -373,42 +513,13 @@ static void load_config(const struct config* cfg)
 
 bool app_init(const struct config* cfg, const char** sources, size_t num)
 {
-    bool force_load = false;
     struct image* first_image;
     struct sigaction sigact;
 
     load_config(cfg);
+    imglist_init(cfg);
 
-    // compose image list
-    if (num == 0) {
-        // no input files specified, use all from the current directory
-        static const char* current_dir = ".";
-        sources = &current_dir;
-        num = 1;
-    } else if (num == 1) {
-        force_load = true;
-        if (strcmp(sources[0], "-") == 0) {
-            // load from stdin
-            static const char* stdin_name = LDRSRC_STDIN;
-            sources = &stdin_name;
-        }
-    }
-    image_list_init(cfg);
-    for (size_t i = 0; i < num; ++i) {
-        image_list_add(sources[i]);
-    }
-    if (image_list_size() == 0) {
-        if (force_load) {
-            fprintf(stderr, "%s: Unable to open\n", sources[0]);
-        } else {
-            fprintf(stderr, "No image files found to view, exit\n");
-        }
-        return false;
-    }
-    image_list_reorder();
-
-    // load the first image
-    first_image = load_first_file(image_list_find(sources[0]), force_load);
+    first_image = create_imglist(sources, num);
     if (!first_image) {
         return false;
     }
@@ -427,14 +538,14 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
         ctx.window.height = pm->height;
     }
 
-    // connect to wayland
+    // user interface initialization
     if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height,
                  ctx.wnd_decor)) {
         return false;
     }
 
     // create event queue notification
-    ctx.event_signal = notification_create();
+    ctx.event_signal = eventfd(0, 0);
     if (ctx.event_signal != -1) {
         app_watch(ctx.event_signal, handle_event_queue, NULL);
     } else {
@@ -447,14 +558,13 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     font_init(cfg);
     keybind_init(cfg);
     info_init(cfg);
-    loader_init();
-    viewer_init(cfg, ctx.ehandler == viewer_handle ? first_image : NULL);
-    gallery_init(cfg, ctx.ehandler == gallery_handle ? first_image : NULL);
+    viewer_init(cfg, &ctx.mode_handlers[mode_viewer]);
+    gallery_init(cfg, &ctx.mode_handlers[mode_gallery]);
 
-    // set mode for info
+    // set mode for text info
     if (info_enabled()) {
-        info_switch(ctx.ehandler == viewer_handle ? CFG_MODE_VIEWER
-                                                  : CFG_MODE_GALLERY);
+        info_switch(ctx.mode_current == mode_viewer ? CFG_MODE_VIEWER
+                                                    : CFG_MODE_GALLERY);
     }
 
     // set signal handler
@@ -464,16 +574,17 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     sigaction(SIGUSR1, &sigact, NULL);
     sigaction(SIGUSR2, &sigact, NULL);
 
+    ctx.mode_handlers[ctx.mode_current].activate(first_image);
+
     return true;
 }
 
 void app_destroy(void)
 {
-    loader_destroy();
     gallery_destroy();
     viewer_destroy();
     ui_destroy();
-    image_list_destroy();
+    imglist_destroy();
     info_destroy();
     keybind_destroy();
     font_destroy();
@@ -484,13 +595,11 @@ void app_destroy(void)
     free(ctx.wfds);
 
     list_for_each(ctx.events, struct event_queue, it) {
-        if (it->event.type == event_load) {
-            image_free(it->event.param.load.image);
-        }
         free(it);
     }
+
     if (ctx.event_signal != -1) {
-        notification_free(ctx.event_signal);
+        close(ctx.event_signal);
     }
     pthread_mutex_destroy(&ctx.events_lock);
 
@@ -560,59 +669,24 @@ void app_exit(int rc)
     ctx.state = rc ? loop_error : loop_stop;
 }
 
-void app_switch_mode(size_t index)
-{
-    const char* info_mode;
-    const struct event event = {
-        .type = event_activate,
-        .param.activate.index = index,
-    };
-
-    if (ctx.ehandler == viewer_handle) {
-        ctx.ehandler = gallery_handle;
-        info_mode = CFG_MODE_GALLERY;
-    } else {
-        ctx.ehandler = viewer_handle;
-        info_mode = CFG_MODE_VIEWER;
-    }
-
-    ctx.ehandler(&event);
-
-    if (info_enabled()) {
-        info_switch(info_mode);
-    }
-    if (info_help_active()) {
-        info_switch_help();
-    }
-
-    app_redraw();
-}
-
 bool app_is_viewer(void)
 {
-    return ctx.ehandler == viewer_handle;
+    return ctx.mode_current == mode_viewer;
 }
 
 void app_reload(void)
 {
     static const struct action action = { .type = action_reload };
-    const struct event event = {
-        .type = event_action,
-        .param.action = &action,
-    };
-    append_event(&event);
+    const union event_params evp = { .action = &action };
+    append_event(event_action, &evp);
 }
 
 void app_redraw(void)
 {
-    const struct event event = {
-        .type = event_redraw,
-    };
-
     // remove the same event to append new one to tail
     pthread_mutex_lock(&ctx.events_lock);
     list_for_each(ctx.events, struct event_queue, it) {
-        if (it->event.type == event_redraw) {
+        if (it->type == event_redraw) {
             if (list_is_last(it)) {
                 pthread_mutex_unlock(&ctx.events_lock);
                 return;
@@ -624,15 +698,12 @@ void app_redraw(void)
     }
     pthread_mutex_unlock(&ctx.events_lock);
 
-    append_event(&event);
+    append_event(event_redraw, NULL);
 }
 
 void app_on_resize(void)
 {
-    const struct event event = {
-        .type = event_resize,
-    };
-    append_event(&event);
+    ctx.mode_handlers[ctx.mode_current].resize();
 }
 
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
@@ -641,11 +712,10 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 
     if (kb) {
         for (size_t i = 0; i < kb->actions.num; ++i) {
-            const struct event event = {
-                .type = event_action,
-                .param.action = &kb->actions.sequence[i],
+            const union event_params evp = {
+                .action = &kb->actions.sequence[i],
             };
-            append_event(&event);
+            append_event(event_action, &evp);
         }
     } else {
         char* name = keybind_name(key, mods);
@@ -659,65 +729,21 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 
 void app_on_drag(int dx, int dy)
 {
-    const struct event event = { .type = event_drag,
-                                 .param.drag.dx = dx,
-                                 .param.drag.dy = dy };
+    union event_params evp;
 
-    // merge with existing event
+    // try to merge with existing event
     pthread_mutex_lock(&ctx.events_lock);
     list_for_each(ctx.events, struct event_queue, it) {
-        if (it->event.type == event_drag) {
-            it->event.param.drag.dx += dx;
-            it->event.param.drag.dy += dy;
+        if (it->type == event_drag) {
+            it->param.drag.dx += dx;
+            it->param.drag.dy += dy;
             pthread_mutex_unlock(&ctx.events_lock);
             return;
         }
     }
     pthread_mutex_unlock(&ctx.events_lock);
 
-    append_event(&event);
-}
-
-void app_on_load(struct image* image, size_t index)
-{
-    const struct event event = {
-        .type = event_load,
-        .param.load.image = image,
-        .param.load.index = index,
-    };
-    append_event(&event);
-}
-
-void app_execute(const char* expr, const char* path)
-{
-    int rc;
-    char* out = NULL;
-
-    rc = shellcmd_expr(expr, path, &out);
-
-    if (out) {
-        // duplicate output to stdout
-        printf("%s", out);
-
-        // trim long output text
-        const size_t max_len = 60;
-        if (strlen(out) > max_len) {
-            const char* ellipsis = "...";
-            const size_t ellipsis_len = strlen(ellipsis) + 1;
-            memcpy(&out[max_len - ellipsis_len], ellipsis, ellipsis_len);
-        }
-    }
-
-    // show execution status
-    if (rc) {
-        info_update(info_status, "Error %d: %s", rc, out ? out : strerror(rc));
-    } else if (out) {
-        info_update(info_status, "%s", out);
-    } else {
-        info_update(info_status, "Success: %s", expr);
-    }
-
-    free(out);
-
-    app_redraw();
+    evp.drag.dx = dx;
+    evp.drag.dy = dy;
+    append_event(event_drag, &evp);
 }
