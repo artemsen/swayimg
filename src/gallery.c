@@ -356,14 +356,11 @@ static void fixup_position(void)
     }
 
     // fix bottom
-    if (first != imglist_first()) {
-        const ssize_t total = ctx.layout_columns * (ctx.layout_rows - 2);
-        if (!imglist_jump(first, total)) {
-            first = imglist_jump(imglist_last(), -total);
-            const size_t distance = imglist_distance(first, ctx.current);
-            ctx.curr_col = distance % ctx.layout_columns;
-            ctx.curr_row = distance / ctx.layout_columns;
-        }
+    if (first != imglist_first() && ctx.layout_rows > 2 &&
+        !imglist_jump(first, ctx.layout_columns * (ctx.layout_rows - 2))) {
+        const size_t distance = imglist_distance(imglist_first(), ctx.current);
+        ctx.curr_col = distance % ctx.layout_columns;
+        ctx.curr_row = ctx.layout_rows - 2;
     }
 }
 
@@ -389,7 +386,7 @@ static bool select_next(enum action_type direction)
             break;
         case action_last_file:
             next = imglist_last();
-            next_col = (imglist_size() % ctx.layout_columns) - 1;
+            next_col = (imglist_size() - 1) % ctx.layout_columns;
             next_row = ctx.layout_rows - 1;
             break;
         case action_prev_file:
@@ -423,7 +420,7 @@ static bool select_next(enum action_type direction)
                                 ctx.layout_columns * (ctx.layout_rows - 1));
             if (!next) {
                 next = imglist_last();
-                next_col = (imglist_size() % ctx.layout_columns) - 1;
+                next_col = (imglist_size() - 1) % ctx.layout_columns;
                 next_row = ctx.layout_rows - 1;
             }
             break;
