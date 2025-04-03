@@ -21,6 +21,7 @@
 struct font {
     FT_Library lib;    ///< Font lib instance
     FT_Face face;      ///< Font face instance
+    size_t size;       ///< Font size in points
     argb_t color;      ///< Font color
     argb_t shadow;     ///< Font shadow color
     argb_t background; ///< Font background
@@ -124,7 +125,6 @@ void font_init(const struct config* cfg)
 {
     char font_file[256];
     const char* font_name;
-    size_t font_size;
 
     // load font
     font_name = config_get(cfg, CFG_FONT, CFG_FONT_NAME);
@@ -136,13 +136,18 @@ void font_init(const struct config* cfg)
     }
 
     // set font size
-    font_size = config_get_num(cfg, CFG_FONT, CFG_FONT_SIZE, 1, 256);
-    FT_Set_Char_Size(ctx.face, font_size * POINT_FACTOR, 0, 96, 0);
+    ctx.size = config_get_num(cfg, CFG_FONT, CFG_FONT_SIZE, 1, 256);
+    FT_Set_Char_Size(ctx.face, ctx.size * POINT_FACTOR, 0, 96, 0);
 
     // color/background/shadow parameters
     ctx.color = config_get_color(cfg, CFG_FONT, CFG_FONT_COLOR);
     ctx.background = config_get_color(cfg, CFG_FONT, CFG_FONT_BKG);
     ctx.shadow = config_get_color(cfg, CFG_FONT, CFG_FONT_SHADOW);
+}
+
+void font_set_scale(double scale)
+{
+    FT_Set_Char_Size(ctx.face, ctx.size * POINT_FACTOR, 0, 96 * scale, 0);
 }
 
 void font_destroy(void)

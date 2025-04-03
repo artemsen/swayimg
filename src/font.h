@@ -20,6 +20,12 @@ struct text_surface {
 void font_init(const struct config* cfg);
 
 /**
+ * Set font scale based on Wayland scale
+ * @param scale the scale to multiply by
+ */
+void font_set_scale(double scale);
+
+/**
  * Destroy global font context.
  */
 void font_destroy(void);

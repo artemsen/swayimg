@@ -75,3 +75,5 @@ void info_update(enum info_field field, const char* fmt, ...)
  * @param window target window surface
  */
 void info_print(struct pixmap* window);
+
+void info_on_scale(void);
