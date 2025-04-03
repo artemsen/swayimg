@@ -40,7 +40,7 @@ Read directories recursively.
 .IP "\fB\-o\fR, \fB\-\-order\fR=\fIORDER\fR:"
 Set order of the image list:
 .nf
-\fInone\fR: unsorted, order is system depended;
+\fInone\fR: unsorted, order is system-dependent;
 \fIalpha\fR: sorted alphabetically (default);
 \fInumeric\fR: sorted numerically;
 \fImtime\fR: sorted by file modification time;
@@ -64,7 +64,7 @@ Set the default image scale, valid modes are:
 Run slideshow mode on startup.
 .\" ----------------------------------------------------------------------------
 .IP "\fB\-f\fR, \fB\-\-fullscreen\fR"
-Start in full screen mode.
+Start in full-screen mode.
 .\" ----------------------------------------------------------------------------
 .IP "\fB\-p\fR, \fB\-\-position\fR=\fIPOS\fR"
 Set initial position of the window (Sway only):
@@ -83,12 +83,12 @@ Set initial size of the window:
 Set a constant window class/app_id.
 .\" ----------------------------------------------------------------------------
 .IP "\fB\-c\fR, \fB\-\-config\fR=\fISECTION.KEY=VALUE\fR"
-Set a configuration parameter, see swayimgrc(5) for a list of sections and its parameters.
+Set a configuration parameter, see swayimgrc(5) for a list of sections and their parameters.
 .\" ****************************************************************************
 .\" SWAY integration
 .\" ****************************************************************************
 .SH "SWAY MODE"
-The Sway compatible mode is automatically enabled if the environment variable
+The Sway compatibility mode is automatically enabled if the environment variable
 \fISWAYSOCK\fR points to a valid Sway IPC socket file.
 This mode provides some features such as setting the window position and getting
 the workspace layout.
@@ -152,7 +152,7 @@ swayimgrc(5)
 .\" Home page
 .\" ****************************************************************************
 .SH BUGS
-For suggestions, comments, bug reports etc. visit the
+For suggestions, comments, bug reports, etc. visit the
 .UR https://github.com/artemsen/swayimg
 project homepage
 .UE .

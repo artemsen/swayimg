@@ -38,9 +38,9 @@ struct gallery {
     size_t curr_col;       ///< Selected image column
     size_t curr_row;       ///< Selected image row
 
-    size_t layout_columns; ///< Number of thumnail columns
-    size_t layout_rows;    ///< Number of thumnail rows
-    size_t layout_padding; ///< Space between thumnails
+    size_t layout_columns; ///< Number of thumbnail columns
+    size_t layout_rows;    ///< Number of thumbnail rows
+    size_t layout_padding; ///< Space between thumbnails
 
     pthread_t loader_tid; ///< Thumbnail loader thread id
     bool loader_active;   ///< Preload in progress flag
@@ -430,7 +430,7 @@ static bool select_next(enum action_type direction)
     }
 
     if (next) {
-        // set position od selected image
+        // set position of selected image
         if (next_col < 0) {
             next_col = ctx.layout_columns - 1;
             --next_row;

@@ -17,9 +17,9 @@
 struct wl_buffer* wndbuf_create(struct wl_shm* shm, size_t width,
                                 size_t height);
 /**
- * Get pixel map assiciated with the buffer.
+ * Get pixmap associated with the buffer.
  * @param buffer wayland buffer
- * @return pointer to pixel map assiciated with the buffer
+ * @return pointer to pixmap associated with the buffer
  */
 struct pixmap* wndbuf_pixmap(struct wl_buffer* buffer);
 

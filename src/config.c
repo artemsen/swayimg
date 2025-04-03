@@ -86,9 +86,9 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "Prior",            "prev_file"              },
     { CFG_KEYS_VIEWER,  "Next",             "next_file"              },
     { CFG_KEYS_VIEWER,  "Space",            "next_file"              },
+    { CFG_KEYS_VIEWER,  "Shift+r",          "rand_file"              },
     { CFG_KEYS_VIEWER,  "Shift+d",          "prev_dir"               },
     { CFG_KEYS_VIEWER,  "d",                "next_dir"               },
-    { CFG_KEYS_VIEWER,  "Shift+r",          "rand_file"              },
     { CFG_KEYS_VIEWER,  "Shift+o",          "prev_frame"             },
     { CFG_KEYS_VIEWER,  "o",                "next_frame"             },
     { CFG_KEYS_VIEWER,  "c",                "skip_file"              },
@@ -110,6 +110,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "0",                "zoom real"              },
     { CFG_KEYS_VIEWER,  "BackSpace",        "zoom optimal"           },
     { CFG_KEYS_VIEWER,  "Alt+z",            "keep_zoom"              },
+    { CFG_KEYS_VIEWER,  "Alt+s",            "scale"                  },
     { CFG_KEYS_VIEWER,  "bracketleft",      "rotate_left"            },
     { CFG_KEYS_VIEWER,  "bracketright",     "rotate_right"           },
     { CFG_KEYS_VIEWER,  "m",                "flip_vertical"          },
@@ -419,7 +420,7 @@ bool config_set(struct config* cfg, const char* section, const char* key,
     if (!value || !*value) {
         fprintf(stderr,
                 "WARNING: Empty config value for key \"%s\" in section \"%s\" "
-                "is not alowed\n",
+                "is not allowed\n",
                 key, section);
         return false;
     }
