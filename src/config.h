@@ -46,7 +46,6 @@ struct config {
 #define CFG_VIEW_SCALE     "scale"
 #define CFG_VIEW_KEEP_ZM   "keep_zoom"
 #define CFG_VIEW_POSITION  "position"
-#define CFG_VIEW_FIXED     "fixed"
 #define CFG_VIEW_AA        "antialiasing"
 #define CFG_VIEW_SSHOW     "slideshow"
 #define CFG_VIEW_SSHOW_TM  "slideshow_time"

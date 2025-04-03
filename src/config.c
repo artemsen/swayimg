@@ -35,7 +35,6 @@ static const struct config_default defaults[] = {
     { CFG_VIEWER,       CFG_VIEW_SCALE,     "optimal"                },
     { CFG_VIEWER,       CFG_VIEW_KEEP_ZM,   CFG_NO                   },
     { CFG_VIEWER,       CFG_VIEW_POSITION,  "center"                 },
-    { CFG_VIEWER,       CFG_VIEW_FIXED,     CFG_YES                  },
     { CFG_VIEWER,       CFG_VIEW_AA,        "mks13"                  },
     { CFG_VIEWER,       CFG_VIEW_SSHOW,     CFG_NO                   },
     { CFG_VIEWER,       CFG_VIEW_SSHOW_TM,  "3"                      },

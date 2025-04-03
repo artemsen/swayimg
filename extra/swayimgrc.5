@@ -103,7 +103,7 @@ Default image scale, valid modes are:
 Keep absolute zoom across images, \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBposition\fR = \fIPOSITION\fR"
-Initial image position, valid modes are:
+# Initial image position on the window, valid modes are:
 .nf
 \fItop\fR: move image to top and center by width;
 \fIcenter\fR: center by width and height (default);
@@ -113,10 +113,8 @@ Initial image position, valid modes are:
 \fItopleft\fR: move to top and left;
 \fItopright\fR: move to top and right;
 \fIbottomleft\fR: move to bottom and left;
-\fIbottomright\fR: move to bottom and right.
-.\" ----------------------------------------------------------------------------
-.IP "\fBfixed\fR = \fI[yes|no]\fR"
-Fix position of the image on the window surface, \fIyes\fR by default.
+\fIbottomright\fR: move to bottom and right;
+\fIfree\fR: like center, but freely movable (not fixed).
 .\" ----------------------------------------------------------------------------
 .IP "\fBantialiasing\fR = \fIMETHOD\fR"
 Scale method to use when anti-aliasing is enabled, valid choices are:

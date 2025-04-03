@@ -59,6 +59,7 @@ static const char* scale_names[] = {
 // clang-format on
 
 enum position {
+    position_free,
     position_top,
     position_center,
     position_bottom,
@@ -72,6 +73,7 @@ enum position {
 
 // clang-format off
 static const char* position_names[] = {
+    [position_free] = "free",
     [position_top] = "top",
     [position_center] = "center",
     [position_bottom] = "bottom",
@@ -100,7 +102,6 @@ struct viewer {
     argb_t image_bkg;     ///< Image background mode/color
     argb_t window_bkg;    ///< Window background mode/color
     enum aa_mode aa_mode; ///< Anti-aliasing mode
-    bool fixed;           ///< Fix image position
 
     enum fixed_scale scale_init; ///< Initial scale
     bool keep_zoom;              ///< Keep absolute zoom across images
@@ -233,8 +234,13 @@ static void fixup_position(bool force)
     const ssize_t img_width = ctx.scale * pm->width;
     const ssize_t img_height = ctx.scale * pm->height;
 
-    if (force || (ctx.fixed && img_width <= wnd_width)) {
+    if (img_width <= wnd_width) {
         switch (ctx.position) {
+            case position_free:
+                if (force) {
+                    ctx.img_x = wnd_width / 2 - img_width / 2;
+                }
+                break;
             case position_top:
                 ctx.img_x = wnd_width / 2 - img_width / 2;
                 break;
@@ -264,8 +270,13 @@ static void fixup_position(bool force)
                 break;
         }
     }
-    if (force || (ctx.fixed && img_height <= wnd_height)) {
+    if (img_height <= wnd_height) {
         switch (ctx.position) {
+            case position_free:
+                if (force) {
+                    ctx.img_y = wnd_height / 2 - img_height / 2;
+                }
+                break;
             case position_top:
                 ctx.img_y = 0;
                 break;
@@ -296,7 +307,7 @@ static void fixup_position(bool force)
         }
     }
 
-    if (ctx.fixed) {
+    if (ctx.position != position_free) {
         // bind to window border
         if (ctx.img_x > 0 && ctx.img_x + img_width > wnd_width) {
             ctx.img_x = 0;
@@ -939,7 +950,6 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     size_t cval_num;
     const char* cval_txt;
 
-    ctx.fixed = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_FIXED);
     ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
     ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
 
