@@ -69,7 +69,7 @@ struct task_nn_shared {
     uint8_t den_bits;         ///< Amount to shift for denominator
     ssize_t x;                ///< x offset in destination
     ssize_t y;                ///< y offset in destination
-    bool alpha;               ///< Use alpha blending?
+    bool alpha;               ///< Use alpha channel?
 };
 
 /** Per-thread information for a nearest-neighbor scale. */
@@ -89,7 +89,7 @@ struct task_sc_shared {
     struct kernel vk;         ///< Vertical kernel
     size_t yoff;              ///< y offset (for horizontal kernel)
     size_t xoff;              ///< x offset (for vertical kernel)
-    bool alpha;               ///< Use alpha blending?
+    bool alpha;               ///< Use alpha channel?
     size_t threads;           ///< Total number of threads
     size_t sync;              ///< Number of threads done with horizontal pass
     pthread_mutex_t m;        ///< Mutex to protect sync
@@ -339,42 +339,64 @@ static void apply_hk(const struct pixmap* src, struct pixmap* dst,
                      const struct kernel* kernel, size_t y_low, size_t y_high,
                      size_t yoff, bool alpha)
 {
-    for (size_t y = y_low; y < y_high; ++y) {
-        argb_t* dst_line = &dst->data[y * dst->width];
-        for (size_t x = 0; x < dst->width; ++x) {
-            const struct output* output = &kernel->outputs[x];
-            int64_t a = 0;
-            int64_t r = 0;
-            int64_t g = 0;
-            int64_t b = 0;
-            for (size_t i = 0; i < output->n; ++i) {
-                const argb_t c =
-                    src->data[(y + yoff) * src->width + output->first + i];
-                const int64_t wa =
-                    (int64_t)ARGB_GET_A(c) * kernel->weights[output->index + i];
-                a += wa;
-                r += ARGB_GET_R(c) * wa;
-                g += ARGB_GET_G(c) * wa;
-                b += ARGB_GET_B(c) * wa;
+    if (alpha) {
+        // Although this duplicates some code (the loop over y and x), doing the
+        // check for alpha outside gave better performance (likely due to fewer
+        // instructions in the loop body or fewer branch mispredictions)
+        for (size_t y = y_low; y < y_high; ++y) {
+            argb_t* dst_line = &dst->data[y * dst->width];
+            for (size_t x = 0; x < dst->width; ++x) {
+                const struct output* output = &kernel->outputs[x];
+                int64_t a = 0;
+                int64_t r = 0;
+                int64_t g = 0;
+                int64_t b = 0;
+                for (size_t i = 0; i < output->n; ++i) {
+                    const argb_t c =
+                        src->data[(y + yoff) * src->width + output->first + i];
+                    const int64_t wa = (int64_t)ARGB_GET_A(c) *
+                        kernel->weights[output->index + i];
+                    a += wa;
+                    r += ARGB_GET_R(c) * wa;
+                    g += ARGB_GET_G(c) * wa;
+                    b += ARGB_GET_B(c) * wa;
+                }
+                // XXX if we want more accuracy (without sacrificing speed), we
+                // could save more than 8 bits between the passes
+                const uint8_t ua = clamp(a >> FIXED_BITS, 0, 255);
+                if (a == 0) {
+                    a = (1 << FIXED_BITS);
+                }
+                // TODO irrespective of the above, saving the intermediate with
+                // premultiplied alpha would almost certainly improve
+                // performance
+                const uint8_t ur = clamp(r / a, 0, 255);
+                const uint8_t ug = clamp(g / a, 0, 255);
+                const uint8_t ub = clamp(b / a, 0, 255);
+                alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x]);
             }
-
-            // TODO the result would likely be more accurate (without
-            // sacrificing speed) if we saved more than 8 bits between
-            // the passes
-            const uint8_t ua = clamp(a >> FIXED_BITS, 0, 255);
-            if (a == 0) {
-                a = (1 << FIXED_BITS);
-            }
-            // TODO irrespective of the above, saving the intermediate with
-            // premultiplied alpha would almost certainly improve performance
-            const uint8_t ur = clamp(r / a, 0, 255);
-            const uint8_t ug = clamp(g / a, 0, 255);
-            const uint8_t ub = clamp(b / a, 0, 255);
-            const argb_t color = ARGB(ua, ur, ug, ub);
-            if (alpha) {
-                alpha_blend(color, &dst_line[x]);
-            } else {
-                dst_line[x] = color;
+        }
+    } else {
+        for (size_t y = y_low; y < y_high; ++y) {
+            argb_t* dst_line = &dst->data[y * dst->width];
+            for (size_t x = 0; x < dst->width; ++x) {
+                const struct output* output = &kernel->outputs[x];
+                int64_t r = 0;
+                int64_t g = 0;
+                int64_t b = 0;
+                for (size_t i = 0; i < output->n; ++i) {
+                    const argb_t c =
+                        src->data[(y + yoff) * src->width + output->first + i];
+                    const int64_t w =
+                        (int64_t)kernel->weights[output->index + i];
+                    r += ARGB_GET_R(c) * w;
+                    g += ARGB_GET_G(c) * w;
+                    b += ARGB_GET_B(c) * w;
+                }
+                const uint8_t ur = clamp(r >> FIXED_BITS, 0, 255);
+                const uint8_t ug = clamp(g >> FIXED_BITS, 0, 255);
+                const uint8_t ub = clamp(b >> FIXED_BITS, 0, 255);
+                dst_line[x] = ARGB(0xff, ur, ug, ub);
             }
         }
     }
@@ -386,39 +408,60 @@ static void apply_vk(const struct pixmap* src, struct pixmap* dst,
                      const struct kernel* kernel, size_t y_low, size_t y_high,
                      size_t xoff, bool alpha)
 {
-    for (size_t y = y_low; y < y_high; ++y) {
-        argb_t* dst_line = &dst->data[(y + kernel->start_out) * dst->width];
-        for (size_t x = 0; x < src->width; ++x) {
-            const struct output* output = &kernel->outputs[y];
-            int64_t a = 0;
-            int64_t r = 0;
-            int64_t g = 0;
-            int64_t b = 0;
-            for (size_t i = 0; i < output->n; ++i) {
-                const argb_t c =
-                    src->data[(output->first + i - kernel->start_in) *
-                                  src->width +
-                              x];
-                const int64_t wa =
-                    (int64_t)ARGB_GET_A(c) * kernel->weights[output->index + i];
-                a += wa;
-                r += ARGB_GET_R(c) * wa;
-                g += ARGB_GET_G(c) * wa;
-                b += ARGB_GET_B(c) * wa;
+    if (alpha) {
+        for (size_t y = y_low; y < y_high; ++y) {
+            argb_t* dst_line = &dst->data[(y + kernel->start_out) * dst->width];
+            for (size_t x = 0; x < src->width; ++x) {
+                const struct output* output = &kernel->outputs[y];
+                int64_t a = 0;
+                int64_t r = 0;
+                int64_t g = 0;
+                int64_t b = 0;
+                for (size_t i = 0; i < output->n; ++i) {
+                    const argb_t c =
+                        src->data[(output->first + i - kernel->start_in) *
+                                      src->width +
+                                  x];
+                    const int64_t wa = (int64_t)ARGB_GET_A(c) *
+                        kernel->weights[output->index + i];
+                    a += wa;
+                    r += ARGB_GET_R(c) * wa;
+                    g += ARGB_GET_G(c) * wa;
+                    b += ARGB_GET_B(c) * wa;
+                }
+                const uint8_t ua = clamp(a >> FIXED_BITS, 0, 255);
+                if (a == 0) {
+                    a = (1 << FIXED_BITS);
+                }
+                const uint8_t ur = clamp(r / a, 0, 255);
+                const uint8_t ug = clamp(g / a, 0, 255);
+                const uint8_t ub = clamp(b / a, 0, 255);
+                alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x + xoff]);
             }
-
-            const uint8_t ua = clamp(a >> FIXED_BITS, 0, 255);
-            if (a == 0) {
-                a = (1 << FIXED_BITS);
-            }
-            const uint8_t ur = clamp(r / a, 0, 255);
-            const uint8_t ug = clamp(g / a, 0, 255);
-            const uint8_t ub = clamp(b / a, 0, 255);
-            const argb_t color = ARGB(ua, ur, ug, ub);
-            if (alpha) {
-                alpha_blend(color, &dst_line[x + xoff]);
-            } else {
-                dst_line[x + xoff] = color;
+        }
+    } else {
+        for (size_t y = y_low; y < y_high; ++y) {
+            argb_t* dst_line = &dst->data[(y + kernel->start_out) * dst->width];
+            for (size_t x = 0; x < src->width; ++x) {
+                const struct output* output = &kernel->outputs[y];
+                int64_t r = 0;
+                int64_t g = 0;
+                int64_t b = 0;
+                for (size_t i = 0; i < output->n; ++i) {
+                    const argb_t c =
+                        src->data[(output->first + i - kernel->start_in) *
+                                      src->width +
+                                  x];
+                    const int64_t w =
+                        (int64_t)kernel->weights[output->index + i];
+                    r += ARGB_GET_R(c) * w;
+                    g += ARGB_GET_G(c) * w;
+                    b += ARGB_GET_B(c) * w;
+                }
+                const uint8_t ur = clamp(r >> FIXED_BITS, 0, 255);
+                const uint8_t ug = clamp(g >> FIXED_BITS, 0, 255);
+                const uint8_t ub = clamp(b >> FIXED_BITS, 0, 255);
+                dst_line[x + xoff] = ARGB(0xff, ur, ug, ub);
             }
         }
     }
@@ -438,7 +481,6 @@ static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
         for (size_t dst_x = x_low; dst_x < x_high; ++dst_x) {
             const size_t src_x = ((dst_x - x) * num) >> den_bits;
             const argb_t color = src_line[src_x];
-
             if (alpha) {
                 alpha_blend(color, &dst_line[dst_x]);
             } else {
@@ -468,7 +510,7 @@ static void* sc_task(void* arg)
     struct task_sc_shared* shared = priv->shared;
 
     apply_hk(shared->src, &shared->in, &shared->hk, priv->hy_low, priv->hy_high,
-             shared->yoff, false);
+             shared->yoff, shared->alpha);
 
     pthread_mutex_lock(&shared->m);
     ++shared->sync;
