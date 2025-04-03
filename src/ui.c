@@ -528,7 +528,7 @@ static void on_registry_global(void* data, struct wl_registry* registry,
         xdg_wm_base_add_listener(ctx.xdg.base, &xdg_base_listener, data);
 
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        // seat (keayboard and mouse)
+        // seat (keyboard and mouse)
         ctx.wl.seat = wl_registry_bind(registry, name, &wl_seat_interface,
                                        WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION);
         wl_seat_add_listener(ctx.wl.seat, &seat_listener, data);

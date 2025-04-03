@@ -39,11 +39,12 @@ app_id = swayimg
 window = #00000000
 # Background for transparent images (grid/RGBA)
 transparency = grid
-# Default image scale (optimal/fit/width/height/fill/real)
+# Default image scale (optimal/width/height/fit/fill/real)
 scale = optimal
 # Keep absolute zoom across images (yes/no)
 keep_zoom = no
 # Initial image position on the window
+# (top/center/bottom/left/right/topleft/topright/bottomleft/bottomright/free)
 position = center
 # Anti-aliasing mode (none/box/bilinear/bicubic/mks13)
 antialiasing = mks13
@@ -60,7 +61,7 @@ preload = 1
 # Gallery mode configuration
 ################################################################################
 [gallery]
-# Size of the thumbnail (pixels)
+# Height and width of each thumbnail (pixels)
 size = 200
 # Max number of thumbnails in memory cache, 0 for unlimited
 cache = 100
@@ -72,7 +73,7 @@ fill = yes
 antialiasing = mks13
 # Background color of the window (RGBA)
 window = #00000000
-# Background color of the tile (RGBA)
+# Background color of non-selected tiles (RGBA)
 background = #202020ff
 # Background color of the selected tile (RGBA)
 select = #404040ff
@@ -112,7 +113,7 @@ shadow = #000000d0
 background = #00000000
 
 ################################################################################
-# Image meta info scheme (format, size, EXIF, etc)
+# Image meta info scheme (format, size, EXIF, etc.)
 ################################################################################
 [info]
 # Show on startup (yes/no)
@@ -169,8 +170,8 @@ z = zoom fit
 Shift+z = zoom fill
 0 = zoom real
 BackSpace = zoom optimal
-Alt+s = scale
 Alt+z = keep_zoom
+Alt+s = scale
 bracketleft = rotate_left
 bracketright = rotate_right
 m = flip_vertical

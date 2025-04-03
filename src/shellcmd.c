@@ -18,7 +18,7 @@
  * @param fd stdout file descriptor
  * @param out pointer to stdout buffer, caller should free the buffer
  * @param sz size of output buffer
- * @return 0 on sucess or error code
+ * @return 0 on success or error code
  */
 static int read_stdout(int fd, uint8_t** out, size_t* sz)
 {
@@ -66,7 +66,7 @@ static int read_stdout(int fd, uint8_t** out, size_t* sz)
  * @param cmd command to execute
  * @param in_fd stdin file descriptor
  * @param out_fd stdout file descriptor
- * @return 0 on sucess or error code
+ * @return 0 on success or error code
  */
 static int execute(const char* cmd, int in_fd, int out_fd)
 {

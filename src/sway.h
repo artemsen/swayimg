@@ -34,7 +34,7 @@ void sway_disconnect(int ipc);
  * Get geometry for currently focused window.
  * @param ipc IPC context
  * @param wnd geometry of currently focused window
- * @param border size og window border in pixels
+ * @param border size of window border in pixels
  * @param fullscreen current full screen mode
  * @return true if operation completed successfully
  */

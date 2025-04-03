@@ -27,7 +27,7 @@ enum aa_mode aa_init(const struct config* cfg, const char* section,
 /**
  * Switch anti-aliasing mode.
  * @param curr current anti-aliasing mode
- * @param opt switch opration
+ * @param opt switch operation
  * @return new anti-aliasing mode or current if opt has invalid format
  */
 enum aa_mode aa_switch(enum aa_mode curr, const char* opt);
@@ -46,7 +46,7 @@ const char* aa_name(enum aa_mode aa);
  * @param dst destination pixmap
  * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
- * @param alpha flag to use alpha blending
+ * @param alpha flag to use alpha channel (ignore otherwise)
  */
 void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,

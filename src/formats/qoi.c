@@ -15,7 +15,7 @@
 #define QOI_OP_RGB   0xfe
 #define QOI_OP_RGBA  0xff
 
-// Mask of second byte in steram
+// Mask of second byte in stream
 #define QOI_MASK_2 0xc0
 
 // Size of color map

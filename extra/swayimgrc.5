@@ -43,19 +43,19 @@ line, for instance: `swayimg --config="general.mode=gallery"`.
 .\" ****************************************************************************
 .SH "SECTIONS"
 .SS "General"
-The general configuration is stored in the section \fB[general]\fR.
+General configuration (for the whole application) is in section \fB[general]\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBmode\fR = \fI[viewer|gallery]\fR"
 Mode used at startup, \fIviewer\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBposition\fR = \fI[parent|X,Y]\fR"
-Set initial position of the window (Sway only):
+Initial window position (Sway only):
 .nf
 \fIparent\fR: set position from parent (currently active) window (default);
 \fIX,Y\fR: absolute coordinates of the top left corner, e.g. 100,200.
 .\" ----------------------------------------------------------------------------
 .IP "\fBsize\fR = \fI[fullscreen|parent|image|W,H]\fR"
-Set initial size of the window:
+Initial window size:
 .nf
 \fIfullscreen\fR: use fullscreen mode;
 \fIparent\fR: set size from parent (currently active) window (Sway only, default);
@@ -66,22 +66,20 @@ Set initial size of the window:
 Use window decoration (borders and title), \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBsigusr1\fR = \fIACTION\fR"
-Set the action to be performed when the SIGUSR1 signal is triggered.
-Default value is \fIreload\fR.
+Action to be performed when the SIGUSR1 signal is triggered, \fIreload\fR by default.
 .IP "\fBsigusr2\fR = \fIACTION\fR"
-Set the action to be performed when the SIGUSR2 signal is triggered.
-Default value is \fInext_file\fR.
+Action to be performed when the SIGUSR2 signal is triggered, \fInext_file\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBapp_id\fR = \fINAME\fR"
-Application ID used as window class name.
+Application ID used as window class name, \fIswayimg\fR by default.
 .\" ****************************************************************************
 .\" Viewer config section
 .\" ****************************************************************************
 .SS "Viewer"
-Configuration is defined in the \fB[viewer]\fR section.
+Configuration specific to the viewer mode is in section \fB[viewer]\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBwindow\fR = \fI#COLOR\fR"
-Window background color in RGB or RGBA format, default is \fI#00000000\fR.
+Window background color in RGB or RGBA format, \fI#00000000\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBtransparency\fR = \fI[grid|#COLOR]\fR"
 Background for transparent images:
@@ -103,7 +101,7 @@ Default image scale, valid modes are:
 Keep absolute zoom across images, \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBposition\fR = \fIPOSITION\fR"
-# Initial image position on the window, valid modes are:
+Initial image position on the window, valid modes are:
 .nf
 \fItop\fR: move image to top and center by width;
 \fIcenter\fR: center by width and height (default);
@@ -117,13 +115,13 @@ Keep absolute zoom across images, \fIno\fR by default.
 \fIfree\fR: like center, but freely movable (not fixed).
 .\" ----------------------------------------------------------------------------
 .IP "\fBantialiasing\fR = \fIMETHOD\fR"
-Scale method to use when anti-aliasing is enabled, valid choices are:
+Anti-aliasing method when scaling images, valid options are:
 .nf
-\fInearest\fR: nearest-neighbor, equivalent to antialiasing = no;
+\fInone\fR: nearest-neighbor, or no anti-aliasing;
 \fIbox\fR: nearest-neighbor on upscale, average in a box on downscale;
 \fIbilinear\fR: bilinear;
 \fIbicubic\fR: bicubic with the Catmull-Rom spline;
-\fImks13\fR: Magic Kernel with the 2013 Sharp approximation (default);
+\fImks13\fR: Magic Kernel with the 2013 Sharp approximation (default).
 .nf
 In general, the methods improve in quality and decrease in performance from top to bottom.
 .\" ----------------------------------------------------------------------------
@@ -131,7 +129,7 @@ In general, the methods improve in quality and decrease in performance from top 
 Run slideshow at startup, \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBslideshow_time\fR = \fISECONDS\fR"
-Set slideshow image duration in seconds, default is \fI3\fR.
+Slideshow image duration in seconds, \fI3\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBhistory\fR = \fISIZE\fR"
 Number of previously viewed images to store in cache, \fI1\fR by default.
@@ -142,10 +140,13 @@ Number of images to preload in a separate thread, \fI1\fR by default.
 .\" Gallery config section
 .\" ****************************************************************************
 .SS "Gallery"
-Configuration is defined in the \fB[gallery]\fR section.
+Configuration specific to the gallery mode is in section \fB[gallery]\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBsize\fR = \fIPIXELS\fR"
-Size of the thumbnail in pixels, \fI200\fR by default.
+Height and width of each thumbnail in pixels, \fI200\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBcache\fR = \fISIZE\fR"
+Max number of thumbnails in cache, \fI0\fR for unlimited, \fI100\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBpstore\fR = \fI[yes|no]\fR"
 Enable/disable storing thumbnails in persistent storage, \fIno\fR by default.
@@ -153,41 +154,41 @@ Enable/disable storing thumbnails in persistent storage, \fIno\fR by default.
 .IP "\fBfill\fR = \fI[yes|no]\fR"
 Fill the entire tile with thumbnail, \fIyes\fR by default.
 .\" ----------------------------------------------------------------------------
-.IP "\fBcache\fR = \fISIZE\fR"
-Max number of thumbnails in cache, \fI0\fR for unlimited, \fI100\fR by default.
-.\" ----------------------------------------------------------------------------
 .IP "\fBantialiasing\fR = \fIMETHOD\fR"
-Scale method to use when anti-aliasing is enabled, valid choices are:
+Anti-aliasing method when scaling thumbnails, valid options are:
 .nf
-\fInearest\fR: nearest-neighbor, equivalent to antialiasing = no;
+\fInone\fR: nearest-neighbor, or no anti-aliasing;
 \fIbox\fR: nearest-neighbor on upscale, average in a box on downscale;
 \fIbilinear\fR: bilinear;
 \fIbicubic\fR: bicubic with the Catmull-Rom spline;
-\fImks13\fR: Magic Kernel with the 2013 Sharp approximation (default);
+\fImks13\fR: Magic Kernel with the 2013 Sharp approximation (default).
 .nf
 In general, the methods improve in quality and decrease in performance from top to bottom.
 .\" ----------------------------------------------------------------------------
 .IP "\fBwindow\fR = \fI#COLOR\fR"
-Background color of the window, default is \fI#00000000\fR.
+Background color of the window, \fI#00000000\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBbackground\fR = \fI#COLOR\fR"
-Background color of the tile, default is \fI#202020ff\fR.
+Background color of non-selected tiles, \fI#202020ff\fR by default.
+.\" ----------------------------------------------------------------------------
+.IP "\fBselect\fR = \fI#COLOR\fR"
+Background color of the selected tile, \fI#404040ff\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBborder\fR = \fI#COLOR\fR"
-Border color of the selected tile, default is \fI#000000ff\fR.
+Border color of the selected tile, \fI#000000ff\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBshadow\fR = \fI#COLOR\fR"
-Shadow color of the selected tile, default is \fI#000000ff\fR.
+Shadow color of the selected tile, \fI#000000ff\fR by default.
 .\" ****************************************************************************
 .\" Image list config section
 .\" ****************************************************************************
 .SS "Image list"
-The image list configuration is stored in the section \fB[list]\fR.
+Configuration of the image list is in section \fB[list]\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBorder\fR = \fIORDER\fR"
-Set order of the image list:
+Order of the image list:
 .nf
-\fInone\fR: unsorted, order is system depended;
+\fInone\fR: unsorted, order is system-dependent;
 \fIalpha\fR: sorted alphabetically (default);
 \fInumeric\fR: sorted numerically;
 \fImtime\fR: sorted by file modification time;
@@ -195,7 +196,7 @@ Set order of the image list:
 \fIrandom\fR: randomize list.
 .\" ----------------------------------------------------------------------------
 .IP "\fBreverse\fR\fR = \fI[yes|no]\fR"
-Reverse sort order, \fIno\fR by default. 
+Reverse sort order, \fIno\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBloop\fR\fR = \fI[yes|no]\fR"
 Looping file list mode, \fIyes\fR by default.
@@ -209,63 +210,64 @@ Open all files in the directory of the specified file, \fIno\fR by default.
 .\" Font config section
 .\" ****************************************************************************
 .SS "Font"
-The font configuration is stored in the section \fB[font]\fR.
+Font configuration is in section \fB[font]\fR.
 .\" ----------------------------------------------------------------------------
 .IP "\fBname\fR\fR = \fINAME\fR"
-Set the font name used for text, default is \fImonospace\fR.
+Font name, \fImonospace\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBsize\fR = \fISIZE\fR"
-Set the font size (in pt), default is \fI14\fR.
+Font size (in pt), \fI14\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBcolor\fR = \fI#COLOR\fR"
-Set text color in RGBA format, default is \fI#ccccccff\fR.
-.\" ----------------------------------------------------------------------------
-.IP "\fBbackground\fR = \fI#COLOR\fR"
-Text background color, default is \fI#00000000\fR (none).
+Text color, \fI#ccccccff\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBshadow\fR = \fI#COLOR\fR"
-Draw text shadow with specified color, default is \fI#000000d0\fR.
+Text shadow color, \fI#000000d0\fR by default.
+.nf
 To disable shadow use fully transparent color \fI#00000000\fR.
+.\" ----------------------------------------------------------------------------
+.IP "\fBbackground\fR = \fI#COLOR\fR"
+Text background color, \fI#00000000\fR (none) by default.
 .\" ****************************************************************************
 .\" Text info config section
 .\" ****************************************************************************
 .SS "Text info: common configuration"
-The section \fB[info]\fR describes how to display image meta data (file name,
-size, EXIF etc).
+Section \fB[info]\fR describes how to display image metadata (file name,
+size, EXIF, etc.) in general.
 .\" ----------------------------------------------------------------------------
 .IP "\fBshow\fR = \fI[yes|no]\fR"
 Enable or disable info text at startup, \fIyes\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBinfo_timeout\fR = \fISECONDS\fR"
-Timeout of image information displayed on the screen, 0 to always show, default is \fI5\fR.
+Timeout of image information displayed on the screen, 0 to always show, \fI5\fR by default.
 .\" ----------------------------------------------------------------------------
 .IP "\fBstatus_timeout\fR = \fISECONDS\fR"
-Timeout of the status message displayed on the screen, default is \fI3\fR.
+Timeout of the status message displayed on the screen, \fI3\fR by default.
 .\" ----------------------------------------------------------------------------
 .SS "Text info: viewer"
-The section \fB[info.viewer]\fR describes how to display image meta data (file
-name, size, EXIF etc) in viewer mode.
-Each key/value configures a set of fields and their format.
+Section \fB[info.viewer]\fR describes what image metadata to display in viewer mode.
+.nf
+Metadata may be displayed in any corner of the screen. This section defines
+the following keys, each of which describes the metadata to appear in that location:
 .IP "\fBtop_left\fR = \fILIST\fR"
-Set the display scheme for the upper left corner of the window.
+Default is \fI+name,+format,+filesize,+imagesize,+exif\fR.
 .IP "\fBtop_right\fR = \fILIST\fR"
-Set the display scheme for the upper right corner of the window.
+Default is \fIindex\fR.
 .IP "\fBbottom_left\fR = \fILIST\fR"
-Set the display scheme for the lower left corner of the window.
+Default is \fIscale,frame\fR.
 .IP "\fBbottom_right\fR = \fILIST\fR"
-Set the display scheme for the lower right corner of the window.
+Default is \fIstatus\fR.
 .PP
-\fILIST\fR can contain any number of fields separated by commas.
-Plus at the beginning of a field name adds the field title to the display.
-Available fields:
+\fILIST\fR may contain any number of the following fields, separated by commas.
+A plus sign preceding a field name adds the field title to the display.
 .IP "\fIname\fR"
 File name of the currently viewed/selected image.
 .IP "\fIdir\fR"
-Parent directory name the currently viewed/selected image.
+Parent directory name of the currently viewed/selected image.
 .IP "\fIpath\fR"
 Absolute path or special source string of the currently viewed/selected image.
 .IP "\fIfilesize\fR"
-File size in human readable format.
+File size in human-readable format.
 .IP "\fIformat\fR"
 Brief image format description.
 .IP "\fIimagesize\fR"
@@ -284,8 +286,17 @@ Status message.
 Empty field (ignored).
 .\" ----------------------------------------------------------------------------
 .SS "Text info: gallery"
-The section \fB[info.gallery]\fR describes how to display image meta data (file
-name, size, EXIF etc) in gallery mode, same format as for viewer mode.
+Section \fB[info.gallery]\fR describes what image metadata to display in gallery mode.
+.nf
+It follows the same format as \fB[info.viewer]\fR, with the following keys:
+.IP "\fBtop_left\fR = \fILIST\fR"
+Default is \fInone\fR.
+.IP "\fBtop_right\fR = \fILIST\fR"
+Default is \fInone\fR.
+.IP "\fBbottom_left\fR = \fILIST\fR"
+Default is \fInone\fR.
+.IP "\fBbottom_right\fR = \fILIST\fR"
+Default is \fIname,status\fR.
 .\" ****************************************************************************
 .\" Key bindings config section
 .\" ****************************************************************************
@@ -307,7 +318,7 @@ Predefined names for mouse scroll:
 .PP
 .\" ----------------------------------------------------------------------------
 .SS "Viewer mode actions"
-.IP "\fBnone\fR: can be used for removing built-in action;"
+.IP "\fBnone\fR: can be used to remove a built-in action;"
 .IP "\fBhelp\fR: show/hide help;"
 .IP "\fBfirst_file\fR: jump to the first file;"
 .IP "\fBlast_file\fR: jump to the last file;"
@@ -321,7 +332,7 @@ Predefined names for mouse scroll:
 .IP "\fBskip_file\fR: skip the current file (remove from the image list);"
 .IP "\fBanimation\fR: start/stop animation;"
 .IP "\fBslideshow\fR: start/stop slideshow;"
-.IP "\fBfullscreen\fR: switch full screen mode;"
+.IP "\fBfullscreen\fR: toggle full-screen mode;"
 .IP "\fBmode \fI[MODE]\fR\fR: switch between viewer and gallery;"
 .IP "\fBstep_left\fR \fI[PERCENT]\fR: move viewport left, default is 10%;"
 .IP "\fBstep_right\fR \fI[PERCENT]\fR: move viewport right, default is 10%;"
@@ -335,15 +346,15 @@ Predefined names for mouse scroll:
 .IP "\fBflip_vertical\fR: flip image vertically;"
 .IP "\fBflip_horizontal\fR: flip image horizontally;"
 .IP "\fBreload\fR: reset cache and reload current image;"
-.IP "\fBantialiasing\fR \fI[MODE]\fR: switch antialiasing mode or set specified one (\fInext\fR/\fIprev\fR or mode name);"
-.IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
+.IP "\fBantialiasing\fR \fI[MODE]\fR: set anti-aliasing mode or cycle through them (\fInext\fR/\fIprev\fR or mode name);"
+.IP "\fBinfo\fR \fI[MODE]\fR: set info mode or cycle through them (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBexport\fR \fIFILE\fR: export currently displayed image to PNG file;"
 .IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"
 .IP "\fBexit\fR: exit the application."
 .\" ----------------------------------------------------------------------------
 .SS "Gallery mode actions"
-.IP "\fBnone\fR: can be used for removing built-in action;"
+.IP "\fBnone\fR: can be used to remove a built-in action;"
 .IP "\fBhelp\fR: show/hide help;"
 .IP "\fBfirst_file\fR: jump to the first file;"
 .IP "\fBlast_file\fR: jump to the last file;"
@@ -356,11 +367,11 @@ Predefined names for mouse scroll:
 .IP "\fBpage_up\fR: scroll page up;"
 .IP "\fBpage_down\fR: scroll page down;"
 .IP "\fBskip_file\fR: skip the current file (remove from the image list);"
-.IP "\fBfullscreen\fR: switch full screen mode;"
+.IP "\fBfullscreen\fR: toggle full-screen mode;"
 .IP "\fBmode\fR: switch between viewer and gallery;"
 .IP "\fBreload\fR: reset cache and reload current image;"
-.IP "\fBantialiasing\fR \fI[MODE]\fR: switch antialiasing mode or set specified one (\fInext\fR/\fIprev\fR or mode name);"
-.IP "\fBinfo\fR \fI[MODE]\fR: switch text info mode or set specified one (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
+.IP "\fBantialiasing\fR \fI[MODE]\fR: set anti-aliasing mode or cycle through them (\fInext\fR/\fIprev\fR or mode name);"
+.IP "\fBinfo\fR \fI[MODE]\fR: set info mode or cycle through them (\fIoff\fR/\fIviewer\fR/\fIgallery\fR);"
 .IP "\fBexec\fR \fICOMMAND\fR: execute an external command, use % to substitute the path to the current image, %% to escape %;"
 .IP "\fBstatus\fR \fITEXT\fR: print message in the status field;"
 .IP "\fBexit\fR: exit the application."
@@ -388,7 +399,7 @@ swayimg(1)
 .\" Home page
 .\" ****************************************************************************
 .SH BUGS
-For suggestions, comments, bug reports etc. visit the
+For suggestions, comments, bug reports, etc. visit the
 .UR https://github.com/artemsen/swayimg
 project homepage
 .UE .

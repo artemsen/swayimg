@@ -47,7 +47,7 @@ struct pixmap {
 };
 
 /**
- * Allocate/reallocate pixel map.
+ * Allocate/reallocate pixmap.
  * @param pm pixmap context to create
  * @param width,height pixmap size
  * @return true pixmap was allocated
@@ -55,7 +55,7 @@ struct pixmap {
 bool pixmap_create(struct pixmap* pm, size_t width, size_t height);
 
 /**
- * Free pixel map created with `pixmap_create`.
+ * Free pixmap created with `pixmap_create`.
  * @param pm pixmap context to free
  */
 void pixmap_free(struct pixmap* pm);
@@ -85,7 +85,7 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
  * @param width,height region size
- * @param color color to set
+ * @param color color to blend
  */
 void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                   size_t height, argb_t color);
@@ -149,25 +149,25 @@ void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
  * @param src source pixmap
  * @param dst destination pixmap
  * @param x,y destination left top coordinates
- * @param alpha flag to use alpha blending
+ * @param alpha flag to use alpha channel (ignore otherwise)
  */
 void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
                  ssize_t y, bool alpha);
 
 /**
- * Flip pixel map vertically.
+ * Flip pixmap vertically.
  * @param pm pixmap context
  */
 void pixmap_flip_vertical(struct pixmap* pm);
 
 /**
- * Flip pixel map horizontally.
+ * Flip pixmap horizontally.
  * @param pm pixmap context
  */
 void pixmap_flip_horizontal(struct pixmap* pm);
 
 /**
- * Rotate pixel map.
+ * Rotate pixmap.
  * @param pm pixmap context
  * @param angle rotation angle (only 90, 180, or 270)
  */
