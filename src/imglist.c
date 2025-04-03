@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #ifdef HAVE_INOTIFY
@@ -160,7 +159,7 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
  * @param img new image entry to insert
  * @return image entry in the list that should be used as "before" position
  */
-static struct image* odered_position(const struct image* img)
+static struct image* ordered_position(const struct image* img)
 {
     struct image* pos = NULL;
 
@@ -186,11 +185,8 @@ static struct image* odered_position(const struct image* img)
                     const char* b = it->source;
                     while (cmp == 0 && *a && *b) {
                         if (isdigit(*a) && isdigit(*b)) {
-                            char* ap;
-                            char* bp;
-                            cmp = strtoull(a, &ap, 10) - strtoull(b, &bp, 10);
-                            a = ap;
-                            b = bp;
+                            cmp = strtoull(a, (char**)&a, 10) -
+                                strtoull(b, (char**)&b, 10);
                         } else {
                             cmp = *a - *b;
                             ++a;
@@ -248,7 +244,7 @@ static struct image* add_entry(const char* source, const struct stat* st)
     entry->index = ++ctx.size;
 
     // add entry to the list
-    pos = odered_position(entry);
+    pos = ordered_position(entry);
     if (pos) {
         ctx.images = list_insert(pos, entry);
     } else {

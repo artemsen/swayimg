@@ -63,7 +63,7 @@ static void clear_thumbnails(bool all)
         img = imglist_first();
         while (img) {
             image_free(img, IMGFREE_THUMB);
-            img = imglist_prev(img);
+            img = imglist_next(img);
         }
     } else {
         const ssize_t distance_bk =

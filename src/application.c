@@ -369,10 +369,6 @@ static struct image* create_imglist(const char** sources, size_t num)
             image = added;
         }
     }
-    if (!image) {
-        image = imglist_first();
-        force_first = false;
-    }
     if (imglist_size() == 0) {
         if (force_first) {
             fprintf(stderr, "%s: Unable to open\n", sources[0]);
@@ -380,6 +376,10 @@ static struct image* create_imglist(const char** sources, size_t num)
             fprintf(stderr, "No image files found to view, exit\n");
         }
         return NULL;
+    }
+    if (!image) {
+        image = imglist_first();
+        force_first = false;
     }
 
     imglist_reindex();
@@ -409,13 +409,8 @@ static struct image* create_imglist(const char** sources, size_t num)
     }
 
     // try to load first available image
-    while (image) {
-        struct image* skip;
-        const enum image_status status = image_load(image);
-        if (status == imgload_success) {
-            break;
-        }
-        skip = image;
+    while (image && image_load(image) != imgload_success) {
+        struct image* skip = image;
         image = imglist_next(skip);
         if (!image) {
             image = imglist_prev(skip);
