@@ -137,7 +137,7 @@ void font_init(const struct config* cfg)
 
     // set font size
     ctx.size = config_get_num(cfg, CFG_FONT, CFG_FONT_SIZE, 1, 256);
-    FT_Set_Char_Size(ctx.face, ctx.size * POINT_FACTOR, 0, 96, 0);
+    font_set_scale(1.0);
 
     // color/background/shadow parameters
     ctx.color = config_get_color(cfg, CFG_FONT, CFG_FONT_COLOR);

@@ -484,7 +484,7 @@ static void handle_scale(void* data, struct wp_fractional_scale_v1* scaler,
         ctx.wnd.scale = factor;
         if (recreate_buffers()) {
             font_set_scale((double)ctx.wnd.scale / FRACTION_SCALE_DEN);
-            info_on_scale();
+            info_reinit();
             app_on_resize();
             app_redraw();
         } else {
