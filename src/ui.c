@@ -43,9 +43,6 @@
 // Fractional scale denominator
 #define FRACTION_SCALE_DEN 120
 
-// Uncomment the following line to enable printing draw time
-// #define TRACE_DRAW_TIME
-
 /** UI context */
 struct ui {
     // wayland objects
@@ -82,9 +79,6 @@ struct ui {
         size_t width;
         size_t height;
         size_t scale;
-#ifdef TRACE_DRAW_TIME
-        struct timespec draw_time;
-#endif
     } wnd;
 
     // cross-desktop
@@ -798,24 +792,12 @@ struct pixmap* ui_draw_begin(void)
         ctx.wnd.current = ctx.wnd.buffer0;
     }
 
-#ifdef TRACE_DRAW_TIME
-    clock_gettime(CLOCK_MONOTONIC, &ctx.wnd.draw_time);
-#endif
-
     return wndbuf_pixmap(ctx.wnd.current);
 }
 
 void ui_draw_commit(void)
 {
     const struct pixmap* pm = wndbuf_pixmap(ctx.wnd.current);
-
-#ifdef TRACE_DRAW_TIME
-    struct timespec curr;
-    clock_gettime(CLOCK_MONOTONIC, &curr);
-    const double ns = (curr.tv_sec * 1000000000 + curr.tv_nsec) -
-        (ctx.wnd.draw_time.tv_sec * 1000000000 + ctx.wnd.draw_time.tv_nsec);
-    printf("Rendered in %.6f sec\n", ns / 1000000000);
-#endif
 
     wl_surface_attach(ctx.wl.surface, ctx.wnd.current, 0, 0);
     wl_surface_damage_buffer(ctx.wl.surface, 0, 0, pm->width, pm->height);
