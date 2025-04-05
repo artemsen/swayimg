@@ -4,13 +4,16 @@
 
 #include "cache.h"
 
+#include "imglist.h"
+
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 /** Cache entry. */
 struct cache_entry {
-    struct list list;    ///< Links to prev/next entry
-    struct image* image; ///< Image instance
+    struct list list; ///< Links to prev/next entry
+    char image[1];    ///< Image source (variable length)
 };
 
 /** Cache queue. */
@@ -53,8 +56,11 @@ void cache_trim(struct cache* cache, size_t size)
             if (size) {
                 --size;
             } else {
+                struct image* img = imglist_find(it->image);
+                if (img) {
+                    image_free(img, IMGFREE_FRAMES);
+                }
                 cache->queue = list_remove(it);
-                image_free(it->image, IMGFREE_FRAMES);
                 free(it);
             }
         }
@@ -63,39 +69,37 @@ void cache_trim(struct cache* cache, size_t size)
 
 bool cache_put(struct cache* cache, struct image* image)
 {
-    struct cache_entry* new_entry;
-    struct cache_entry* last_entry;
+    struct cache_entry* entry;
     size_t size;
 
     if (!cache) {
         return false;
     }
 
-    new_entry = malloc(sizeof(struct cache_entry));
-    if (!new_entry) {
+    // create new entry
+    size = strlen(image->source);
+    entry = malloc(sizeof(struct cache_entry) + size);
+    if (!entry) {
         return false;
     }
-    new_entry->image = image;
+    memcpy(entry->image, image->source, size + 1 /* last null */);
 
-    // get size and last entry
+    // remove last entry if queue size exceeds capacity
     size = 0;
-    last_entry = NULL;
     list_for_each(cache->queue, struct cache_entry, it) {
-        assert(it->image != image);
-        if (list_is_last(it)) {
-            last_entry = it;
+        assert(strcmp(it->image, image->source));
+        if (++size >= cache->capacity) {
+            struct image* img = imglist_find(it->image);
+            if (img) {
+                image_free(img, IMGFREE_FRAMES);
+            }
+            cache->queue = list_remove(it);
+            free(it);
+            break;
         }
-        ++size;
     }
 
-    // restrict queue size
-    if (size >= cache->capacity && last_entry) {
-        cache->queue = list_remove(last_entry);
-        image_free(last_entry->image, IMGFREE_FRAMES);
-        free(last_entry);
-    }
-
-    cache->queue = list_add(cache->queue, new_entry);
+    cache->queue = list_add(cache->queue, entry);
 
     return true;
 }
@@ -106,8 +110,10 @@ bool cache_out(struct cache* cache, struct image* image)
 
     if (cache) {
         list_for_each(cache->queue, struct cache_entry, it) {
-            found = (image == it->image);
+            found = strcmp(image->source, it->image) == 0;
             if (found) {
+                const struct image* img = imglist_find(it->image);
+                found = (img && image_has_frames(img));
                 cache->queue = list_remove(it);
                 free(it);
                 break;
