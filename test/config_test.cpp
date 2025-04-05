@@ -1,26 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-extern "C" {
-#include "config.h"
-}
-
-#include <gtest/gtest.h>
-
-class Config : public ::testing::Test {
-protected:
-    void SetUp() override
-    {
-        unsetenv("XDG_CONFIG_HOME");
-        unsetenv("XDG_CONFIG_DIRS");
-        unsetenv("HOME");
-        config = config_load();
-    }
-
-    void TearDown() override { config_free(config); }
-
-    struct config* config = nullptr;
-};
+#include "config_test.h"
 
 TEST(ConfigLoader, Load)
 {
@@ -38,7 +19,7 @@ TEST(ConfigLoader, Load)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, Set)
+TEST_F(ConfigTest, Set)
 {
     EXPECT_TRUE(config_set(config, CFG_GENERAL, CFG_GNRL_APP_ID, "test123"));
     EXPECT_STREQ(config_get(config, CFG_GENERAL, CFG_GNRL_APP_ID), "test123");
@@ -52,7 +33,7 @@ TEST_F(Config, Set)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, SetArg)
+TEST_F(ConfigTest, SetArg)
 {
     EXPECT_TRUE(
         config_set_arg(config, CFG_GENERAL "." CFG_GNRL_APP_ID "=test123"));
@@ -72,7 +53,7 @@ TEST_F(Config, SetArg)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, Add)
+TEST_F(ConfigTest, Add)
 {
     testing::internal::CaptureStderr();
     EXPECT_STREQ(config_get(config, CFG_KEYS_VIEWER, "F12"), "");
@@ -82,14 +63,14 @@ TEST_F(Config, Add)
     EXPECT_STREQ(config_get(config, CFG_KEYS_VIEWER, "F12"), "quit");
 }
 
-TEST_F(Config, Replace)
+TEST_F(ConfigTest, Replace)
 {
     EXPECT_STREQ(config_get(config, CFG_KEYS_VIEWER, "F1"), "help");
     EXPECT_TRUE(config_set(config, CFG_KEYS_VIEWER, "F1", "quit"));
     EXPECT_STREQ(config_get(config, CFG_KEYS_VIEWER, "F1"), "quit");
 }
 
-TEST_F(Config, GetDefault)
+TEST_F(ConfigTest, GetDefault)
 {
     EXPECT_TRUE(config_set(config, CFG_GENERAL, CFG_GNRL_APP_ID, "test123"));
     EXPECT_STREQ(config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID), "swayimg");
@@ -102,7 +83,7 @@ TEST_F(Config, GetDefault)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, Get)
+TEST_F(ConfigTest, Get)
 {
     EXPECT_STREQ(config_get(config, CFG_GENERAL, CFG_GNRL_APP_ID), "swayimg");
     testing::internal::CaptureStderr();
@@ -111,7 +92,7 @@ TEST_F(Config, Get)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, GetOneOf)
+TEST_F(ConfigTest, GetOneOf)
 {
     const char* possible[] = { "one", "two", "three" };
     EXPECT_TRUE(config_set(config, CFG_LIST, CFG_LIST_ORDER, "two"));
@@ -125,7 +106,7 @@ TEST_F(Config, GetOneOf)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, GetBool)
+TEST_F(ConfigTest, GetBool)
 {
     EXPECT_TRUE(config_set(config, CFG_GALLERY, CFG_GLRY_FILL, CFG_YES));
     EXPECT_TRUE(config_get_bool(config, CFG_GALLERY, CFG_GLRY_FILL));
@@ -133,7 +114,7 @@ TEST_F(Config, GetBool)
     EXPECT_FALSE(config_get_bool(config, CFG_GALLERY, CFG_GLRY_FILL));
 }
 
-TEST_F(Config, GetNum)
+TEST_F(ConfigTest, GetNum)
 {
     EXPECT_TRUE(config_set(config, CFG_FONT, CFG_FONT_SIZE, "123"));
     EXPECT_EQ(config_get_num(config, CFG_FONT, CFG_FONT_SIZE, 0, 1024), 123);
@@ -145,7 +126,7 @@ TEST_F(Config, GetNum)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
-TEST_F(Config, GetColor)
+TEST_F(ConfigTest, GetColor)
 {
     config_set(config, CFG_VIEWER, CFG_VIEW_WINDOW, "#010203");
     EXPECT_EQ(config_get_color(config, CFG_VIEWER, CFG_VIEW_WINDOW),

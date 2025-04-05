@@ -5,26 +5,11 @@ extern "C" {
 #include "imglist.h"
 }
 
-#include <gtest/gtest.h>
+#include "config_test.h"
 
-class ImageList : public ::testing::Test {
+class ImageList : public ConfigTest {
 protected:
-    void SetUp() override
-    {
-        unsetenv("XDG_CONFIG_HOME");
-        unsetenv("XDG_CONFIG_DIRS");
-        unsetenv("HOME");
-        config = config_load();
-        ASSERT_TRUE(config);
-    }
-
-    void TearDown() override
-    {
-        imglist_destroy();
-        config_free(config);
-    }
-
-    struct config* config;
+    void TearDown() override { imglist_destroy(); }
 };
 
 TEST_F(ImageList, Add)

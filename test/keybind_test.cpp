@@ -6,25 +6,11 @@ extern "C" {
 #include "keybind.h"
 }
 
-#include <gtest/gtest.h>
+#include "config_test.h"
 
-class Keybind : public ::testing::Test {
+class Keybind : public ConfigTest {
 protected:
-    void SetUp() override
-    {
-        unsetenv("XDG_CONFIG_HOME");
-        unsetenv("XDG_CONFIG_DIRS");
-        unsetenv("HOME");
-        config = config_load();
-    }
-
-    void TearDown() override
-    {
-        keybind_destroy();
-        config_free(config);
-    }
-
-    struct config* config;
+    void TearDown() override { keybind_destroy(); }
 };
 
 TEST_F(Keybind, Add)
