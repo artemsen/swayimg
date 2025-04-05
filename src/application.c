@@ -7,6 +7,7 @@
 #include "array.h"
 #include "buildcfg.h"
 #include "font.h"
+#include "fswatch.h"
 #include "gallery.h"
 #include "imglist.h"
 #include "info.h"
@@ -516,11 +517,13 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     struct sigaction sigact;
 
     load_config(cfg);
+    fswatch_init();
     imglist_init(cfg);
 
     first_image = create_imglist(sources, num);
     if (!first_image) {
         imglist_destroy();
+        fswatch_destroy();
         return false;
     }
 
@@ -542,6 +545,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
     if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height,
                  ctx.wnd_decor)) {
         imglist_destroy();
+        fswatch_destroy();
         return false;
     }
 
@@ -553,6 +557,7 @@ bool app_init(const struct config* cfg, const char** sources, size_t num)
         perror("Unable to create eventfd");
         imglist_destroy();
         ui_destroy();
+        fswatch_destroy();
         return false;
     }
     pthread_mutex_init(&ctx.events_lock, NULL);
@@ -588,6 +593,7 @@ void app_destroy(void)
     viewer_destroy();
     ui_destroy();
     imglist_destroy();
+    fswatch_destroy();
     info_destroy();
     keybind_destroy();
     font_destroy();

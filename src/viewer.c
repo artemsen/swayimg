@@ -8,6 +8,7 @@
 #include "array.h"
 #include "buildcfg.h"
 #include "cache.h"
+#include "fswatch.h"
 #include "imglist.h"
 #include "info.h"
 #include "pixmap_scale.h"
@@ -119,7 +120,8 @@ struct viewer {
 /** Global viewer context. */
 static struct viewer ctx;
 
-static void reload_file(void);
+// forward declaration
+static void handle_fs_event(const struct fswatch_event* event);
 
 /**
  * Preloader thread.
@@ -671,7 +673,7 @@ static bool next_file(enum action_type direction)
         }
         ctx.current = next;
         preloader_start();
-        imglist_watch(ctx.current, reload_file);
+        fswatch_set_file(ctx.current->source, handle_fs_event);
         reset_state();
     }
 
@@ -931,7 +933,7 @@ static void on_activate(struct image* image)
 
     reset_state();
     preloader_start();
-    imglist_watch(ctx.current, reload_file);
+    fswatch_set_file(ctx.current->source, handle_fs_event);
 }
 
 /** Mode handler: deactivate viewer. */
@@ -940,9 +942,19 @@ static struct image* on_deactivate(void)
     preloader_stop();
     animation_ctl(false);
     slideshow_ctl(false);
-    imglist_watch(NULL, NULL);
+    fswatch_set_file(NULL, NULL);
 
     return ctx.current;
+}
+
+/**
+ * File system event handler.
+ * @param event pointer to the event to handle
+ */
+static void handle_fs_event(__attribute__((unused))
+                            const struct fswatch_event* event)
+{
+    reload_file();
 }
 
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)

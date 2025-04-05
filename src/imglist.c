@@ -6,7 +6,7 @@
 
 #include "application.h"
 #include "array.h"
-#include "buildcfg.h"
+#include "fswatch.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -19,10 +19,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#ifdef HAVE_INOTIFY
-#include <sys/inotify.h>
-#endif
 
 /** Order of file list. */
 enum list_order {
@@ -57,23 +53,20 @@ struct image_list {
     bool loop;             ///< File list loop mode
     bool recursive;        ///< Read directories recursively
     bool all_files;        ///< Open all files from the same directory
-
-#ifdef HAVE_INOTIFY
-    int notify;                ///< inotify file descriptor
-    int watch;                 ///< Watch file descriptor
-    imglist_watch_cb callback; ///< Watcher callback
-#endif
 };
 
 /** Global image list instance. */
 static struct image_list ctx;
+
+// forward declaration
+static void handle_fs_event(const struct fswatch_event* event);
 
 /**
  * Get absolute path from relative source.
  * @param source relative file path
  * @param path output absolute path buffer
  * @param path_max size of the buffer
- * @return length of the absolute path including last null
+ * @return length of the absolute path without last null
  */
 static size_t absolute_path(const char* source, char* path, size_t path_max)
 {
@@ -149,7 +142,7 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
     if (pos + 1 >= path_max) {
         return 0;
     }
-    path[pos++] = 0;
+    path[pos] = 0;
 
     return pos;
 }
@@ -278,11 +271,26 @@ static void add_dir(const char* dir)
     DIR* dir_handle;
     struct dirent* dir_entry;
     char* path = NULL;
+    char abs_dir[PATH_MAX];
+    const size_t abs_len = absolute_path(dir, abs_dir, sizeof(abs_dir));
 
-    dir_handle = opendir(dir);
+    if (!abs_len) {
+        return;
+    }
+
+    // add laat slash for directories
+    if (abs_dir[abs_len - 1] != '/' && abs_len < sizeof(abs_dir) - 2) {
+        abs_dir[abs_len - 1] = '/';
+        abs_dir[abs_len] = 0;
+    }
+
+    dir_handle = opendir(abs_dir);
     if (!dir_handle) {
         return;
     }
+
+    // add dir to fs watcher
+    fswatch_add_dir(abs_dir, handle_fs_event);
 
     while ((dir_entry = readdir(dir_handle))) {
         const char* name = dir_entry->d_name;
@@ -311,6 +319,58 @@ static void add_dir(const char* dir)
 
     free(path);
     closedir(dir_handle);
+}
+
+/**
+ * File system event handler.
+ * @param event pointer to the event to handle
+ */
+static void handle_fs_event(const struct fswatch_event* event)
+{
+    char full_path[PATH_MAX];
+    strncpy(full_path, event->dir, sizeof(full_path) - 1);
+    if (event->name && *event->name) {
+        const size_t sz = sizeof(full_path) - strlen(full_path) - 1;
+        strncat(full_path, event->name, sz);
+    }
+
+    imglist_lock();
+
+    switch (event->type) {
+        case fswatch_create:
+            if (event->is_dir) {
+                if (ctx.recursive) {
+                    add_dir(full_path);
+                }
+            } else {
+                struct stat st;
+                if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
+                    add_file(full_path, &st);
+                }
+            }
+            break;
+        case fswatch_remove:
+            if (event->is_dir) {
+                const size_t len = strlen(full_path);
+                list_for_each(ctx.images, struct image, it) {
+                    if (strncmp(full_path, it->source, len) == 0) {
+                        imglist_remove(it);
+                    }
+                }
+            } else {
+                struct image* entry = imglist_find(full_path);
+                if (entry) {
+                    imglist_remove(entry);
+                }
+            }
+            break;
+        case fswatch_modify:
+        default:
+            assert(false && "unreachabe code");
+    }
+
+    imglist_reindex();
+    imglist_unlock();
 }
 
 /**
@@ -360,40 +420,6 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
     return next;
 }
 
-#ifdef HAVE_INOTIFY
-/** inotify handler. */
-static void on_inotify(__attribute__((unused)) void* data)
-{
-    while (true) {
-        bool updated = false;
-        uint8_t buffer[1024];
-        ssize_t pos = 0;
-        const ssize_t len = read(ctx.notify, buffer, sizeof(buffer));
-
-        if (len < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return; // something went wrong
-        }
-
-        while (pos + sizeof(struct inotify_event) <= (size_t)len) {
-            const struct inotify_event* event =
-                (struct inotify_event*)&buffer[pos];
-            if (event->mask & IN_IGNORED) {
-                ctx.watch = -1;
-            } else {
-                updated = true;
-            }
-            pos += sizeof(struct inotify_event) + event->len;
-        }
-        if (updated) {
-            ctx.callback();
-        }
-    }
-}
-#endif // HAVE_INOTIFY
-
 void imglist_init(const struct config* cfg)
 {
     pthread_mutex_init(&ctx.lock, NULL);
@@ -404,27 +430,10 @@ void imglist_init(const struct config* cfg)
     ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
-
-#ifdef HAVE_INOTIFY
-    ctx.watch = -1;
-    ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
-    if (ctx.notify >= 0) {
-        app_watch(ctx.notify, on_inotify, NULL);
-    }
-#endif // HAVE_INOTIFY
 }
 
 void imglist_destroy(void)
 {
-#ifdef HAVE_INOTIFY
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-        }
-        close(ctx.notify);
-    }
-#endif // HAVE_INOTIFY
-
     list_for_each(ctx.images, struct image, it) {
         image_free(it, IMGFREE_ALL);
     }
@@ -457,8 +466,9 @@ struct image* imglist_add(const char* source)
 
     // file from file system
     if (stat(source, &st) != 0) {
-        fprintf(stderr, "Unable to query file %s: [%i] %s\n", source, errno,
-                strerror(errno));
+        const int rc = errno;
+        fprintf(stderr, "Unable to query file %s: [%i] %s\n", source, rc,
+                strerror(rc));
         return NULL;
     }
     if (S_ISDIR(st.st_mode)) {
@@ -470,7 +480,10 @@ struct image* imglist_add(const char* source)
             const char* delim = strrchr(source, '/');
             const size_t len = delim ? delim - source : 0;
             if (len == 0) {
-                add_dir(".");
+                char cwd[PATH_MAX];
+                if (getcwd(cwd, sizeof(cwd) - 1)) {
+                    add_dir(cwd);
+                }
             } else {
                 char* dir = str_append(source, len, NULL);
                 if (dir) {
@@ -481,7 +494,7 @@ struct image* imglist_add(const char* source)
         }
         return added;
     } else {
-        fprintf(stderr, "Unable to open special file %s\n", source);
+        fprintf(stderr, "Ignore special file %s\n", source);
     }
 
     return NULL;
@@ -639,26 +652,4 @@ ssize_t imglist_distance(const struct image* start, const struct image* end)
     }
 
     return distance;
-}
-
-void imglist_watch(struct image* img, imglist_watch_cb callback)
-{
-#ifdef HAVE_INOTIFY
-    // register inotify watcher
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-            ctx.watch = -1;
-        }
-        if (img) {
-            ctx.callback = callback;
-            ctx.watch =
-                inotify_add_watch(ctx.notify, img->source,
-                                  IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF);
-        }
-    }
-#else
-    (void)img;
-    (void)callback;
-#endif
 }

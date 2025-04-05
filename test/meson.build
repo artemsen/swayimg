@@ -16,6 +16,7 @@ sources = [
   '../src/array.c',
   '../src/cache.c',
   '../src/config.c',
+  '../src/fswatch.c',
   '../src/image.c',
   '../src/imglist.c',
   '../src/keybind.c',
