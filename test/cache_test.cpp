@@ -15,10 +15,7 @@ protected:
     {
         config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
         imglist_init(config);
-        for (size_t i = 0; i < sizeof(image) / sizeof(image[0]); ++i) {
-            const std::string name = "exec://image" + std::to_string(i);
-            image[i] = imglist_add(name.c_str());
-        }
+        imglist_load(images, imgnum);
     }
 
     void TearDown() override
@@ -28,7 +25,11 @@ protected:
     }
 
     struct cache* cache = nullptr;
-    struct image* image[5];
+
+    static constexpr size_t imgnum = 5;
+    static constexpr const char* const images[imgnum] = {
+        "exec://1", "exec://2", "exec://3", "exec://4", "exec://5",
+    };
 };
 
 TEST_F(Cache, Init)
@@ -46,16 +47,25 @@ TEST_F(Cache, Put)
     cache = cache_init(3);
     ASSERT_TRUE(cache);
 
-    for (auto i : image) {
-        image_alloc_frame(i, 1, 1);
-        ASSERT_TRUE(cache_put(cache, i));
+    struct image* img = imglist_first();
+    ASSERT_TRUE(img);
+
+    for (size_t i = 0; i < imgnum; ++i) {
+        ASSERT_TRUE(image_alloc_frame(img, 1, 1));
+        ASSERT_TRUE(cache_put(cache, img));
+        img = imglist_next(img);
     }
 
-    EXPECT_FALSE(image_has_frames(image[0]));
-    EXPECT_FALSE(image_has_frames(image[1]));
-    EXPECT_TRUE(image_has_frames(image[2]));
-    EXPECT_TRUE(image_has_frames(image[3]));
-    EXPECT_TRUE(image_has_frames(image[4]));
+    img = imglist_first();
+    EXPECT_FALSE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_FALSE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
 }
 
 TEST_F(Cache, Trim)
@@ -63,18 +73,27 @@ TEST_F(Cache, Trim)
     cache = cache_init(5);
     ASSERT_TRUE(cache);
 
-    for (auto i : image) {
-        image_alloc_frame(i, 1, 1);
-        ASSERT_TRUE(cache_put(cache, i));
+    struct image* img = imglist_first();
+    ASSERT_TRUE(img);
+
+    for (size_t i = 0; i < imgnum; ++i) {
+        ASSERT_TRUE(image_alloc_frame(img, 1, 1));
+        ASSERT_TRUE(cache_put(cache, img));
+        img = imglist_next(img);
     }
 
     cache_trim(cache, 3);
 
-    EXPECT_FALSE(image_has_frames(image[0]));
-    EXPECT_FALSE(image_has_frames(image[1]));
-    EXPECT_TRUE(image_has_frames(image[2]));
-    EXPECT_TRUE(image_has_frames(image[3]));
-    EXPECT_TRUE(image_has_frames(image[4]));
+    img = imglist_first();
+    EXPECT_FALSE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_FALSE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
+    img = imglist_next(img);
+    EXPECT_TRUE(image_has_frames(img));
 }
 
 TEST_F(Cache, Out)
@@ -82,9 +101,12 @@ TEST_F(Cache, Out)
     cache = cache_init(3);
     ASSERT_TRUE(cache);
 
-    image_alloc_frame(image[0], 1, 1);
-    EXPECT_TRUE(cache_put(cache, image[0]));
+    struct image* img = imglist_first();
+    ASSERT_TRUE(img);
+    ASSERT_TRUE(image_alloc_frame(img, 1, 1));
 
-    EXPECT_TRUE(cache_out(cache, image[0]));
-    EXPECT_FALSE(cache_out(cache, image[1]));
+    EXPECT_TRUE(cache_put(cache, img));
+
+    EXPECT_TRUE(cache_out(cache, img));
+    EXPECT_FALSE(cache_out(cache, imglist_last()));
 }

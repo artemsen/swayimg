@@ -73,7 +73,7 @@ static struct image_list ctx;
  * @param source relative file path
  * @param path output absolute path buffer
  * @param path_max size of the buffer
- * @return length of the absolute path including last null
+ * @return length of the absolute path without last null
  */
 static size_t absolute_path(const char* source, char* path, size_t path_max)
 {
@@ -85,7 +85,7 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
     if (strcmp(source, LDRSRC_STDIN) == 0 ||
         strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
         strncpy(path, source, path_max - 1);
-        return strlen(path) + 1;
+        return strlen(path);
     }
 
     if (*source == '/') {
@@ -149,7 +149,7 @@ static size_t absolute_path(const char* source, char* path, size_t path_max)
     if (pos + 1 >= path_max) {
         return 0;
     }
-    path[pos++] = 0;
+    path[pos] = 0;
 
     return pos;
 }
@@ -255,62 +255,120 @@ static struct image* add_entry(const char* source, const struct stat* st)
 }
 
 /**
- * Add file to the list.
- * @param file path to the file
- * @param st file stat
- * @return created image entry
- */
-static struct image* add_file(const char* path, const struct stat* st)
-{
-    char abspath[PATH_MAX];
-    if (absolute_path(path, abspath, sizeof(abspath))) {
-        return add_entry(abspath, st);
-    }
-    return NULL;
-}
-
-/**
  * Add files from the directory to the list.
- * @param dir full path to the directory
+ * @param path absolute path to the directory
+ * @return the first image entry in the directory
  */
-static void add_dir(const char* dir)
+static struct image* add_dir(const char* path)
 {
-    DIR* dir_handle;
+    assert(path && path[strlen(path) - 1] == '/');
+
+    struct image* img = NULL;
+    char* full_path = NULL;
     struct dirent* dir_entry;
-    char* path = NULL;
+    DIR* dir_handle;
 
-    dir_handle = opendir(dir);
+    dir_handle = opendir(path);
     if (!dir_handle) {
-        return;
+        return NULL;
     }
-
     while ((dir_entry = readdir(dir_handle))) {
         const char* name = dir_entry->d_name;
         struct stat st;
 
         if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
-            continue; // skip link to self/parent dirs
+            continue; // skip link to self/parent
         }
 
         // compose full path
-        if (!str_dup(dir, &path) || !str_append("/", 1, &path) ||
-            !str_append(name, 0, &path)) {
+        if (!str_dup(path, &full_path) || !str_append(name, 0, &full_path)) {
             continue;
         }
 
-        if (stat(path, &st) == 0) {
+        if (stat(full_path, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
-                if (ctx.recursive) {
-                    add_dir(path);
+                if (ctx.recursive && str_append("/", 1, &full_path)) {
+                    img = add_dir(full_path);
                 }
             } else if (S_ISREG(st.st_mode)) {
-                add_file(path, &st);
+                img = add_entry(full_path, &st);
             }
         }
     }
 
-    free(path);
+    // get the first image in the directory
+    if (img) {
+        const size_t plen = strlen(path);
+        list_for_each_back(img, struct image, it) {
+            if (strncmp(path, it->source, plen) != 0) {
+                img = list_is_last(it) ? it : list_next(it);
+                break;
+            }
+        }
+    }
+
+    free(full_path);
     closedir(dir_handle);
+
+    return img;
+}
+
+/**
+ * Add image source to the list.
+ * @param source image source to add (file path or special prefix)
+ * @return created image entry or NULL on errors or if source is directory
+ */
+static struct image* add_source(const char* source)
+{
+    struct stat st;
+    char fspath[PATH_MAX];
+
+    // special url
+    if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
+        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        return add_entry(source, NULL);
+    }
+
+    // file from file system
+    if (stat(source, &st) != 0) {
+        const int rc = errno;
+        fprintf(stderr, "Ignore file %s: [%i] %s\n", source, rc, strerror(rc));
+        return NULL;
+    }
+
+    // get absolute path
+    if (!absolute_path(source, fspath, sizeof(fspath))) {
+        fprintf(stderr, "Ignore file %s: unknown absolute path\n", source);
+        return NULL;
+    }
+
+    // add directory to the list
+    if (S_ISDIR(st.st_mode)) {
+        const size_t len = strlen(fspath);
+        if (fspath[len - 1] != '/' && len + 1 < sizeof(fspath)) {
+            // append slash
+            fspath[len] = '/';
+            fspath[len + 1] = 0;
+        }
+        return add_dir(fspath);
+    }
+
+    // add file to the list
+    if (S_ISREG(st.st_mode)) {
+        return add_entry(fspath, &st);
+    }
+
+    fprintf(stderr, "Ignore special file %s\n", source);
+    return NULL;
+}
+
+/** Reindex the image list. */
+static void reindex(void)
+{
+    ctx.size = 0;
+    list_for_each(ctx.images, struct image, it) {
+        it->index = ++ctx.size;
+    }
 }
 
 /**
@@ -445,53 +503,51 @@ void imglist_unlock(void)
     pthread_mutex_unlock(&ctx.lock);
 }
 
-struct image* imglist_add(const char* source)
+struct image* imglist_load(const char* const* sources, size_t num)
 {
-    struct stat st;
+    assert(ctx.size == 0);
 
-    // special url
-    if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
-        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        return add_entry(source, NULL);
-    }
+    struct image* img = NULL;
 
-    // file from file system
-    if (stat(source, &st) != 0) {
-        fprintf(stderr, "Unable to query file %s: [%i] %s\n", source, errno,
-                strerror(errno));
-        return NULL;
-    }
-    if (S_ISDIR(st.st_mode)) {
-        add_dir(source);
-    } else if (S_ISREG(st.st_mode)) {
-        struct image* added = add_file(source, &st);
-        if (ctx.all_files) {
-            // add all files from the same directory
-            const char* delim = strrchr(source, '/');
-            const size_t len = delim ? delim - source : 0;
-            if (len == 0) {
-                add_dir(".");
-            } else {
-                char* dir = str_append(source, len, NULL);
-                if (dir) {
-                    add_dir(dir);
-                    free(dir);
+    // compose image list
+    if (num == 0) {
+        // no input files specified, use all from the current directory
+        img = add_source(".");
+    } else if (num == 1) {
+        if (strcmp(sources[0], "-") == 0) {
+            img = add_source(LDRSRC_STDIN);
+        } else {
+            img = add_source(sources[0]);
+            if (img && ctx.size == 1 && ctx.all_files) {
+                // add neighbors (all files from the same directory)
+                const char* delim = strrchr(img->source, '/');
+                if (delim) {
+                    const size_t len = delim - img->source + 1 /* last slash */;
+                    char* dir = str_append(img->source, len, NULL);
+                    if (dir) {
+                        add_dir(dir);
+                        free(dir);
+                    }
                 }
             }
         }
-        return added;
     } else {
-        fprintf(stderr, "Unable to open special file %s\n", source);
+        for (size_t i = 0; i < num; ++i) {
+            struct image* added = add_source(sources[i]);
+            if (!img && added) {
+                img = added;
+            }
+        }
     }
 
-    return NULL;
+    return img;
 }
 
 void imglist_remove(struct image* img)
 {
     ctx.images = list_remove(img);
     image_free(img, IMGFREE_ALL);
-    imglist_reindex();
+    reindex();
 }
 
 struct image* imglist_find(const char* source)
@@ -507,14 +563,6 @@ struct image* imglist_find(const char* source)
 size_t imglist_size(void)
 {
     return ctx.size;
-}
-
-void imglist_reindex(void)
-{
-    ctx.size = 0;
-    list_for_each(ctx.images, struct image, it) {
-        it->index = ++ctx.size;
-    }
 }
 
 struct image* imglist_first(void)

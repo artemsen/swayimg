@@ -344,68 +344,39 @@ static void on_signal(int signum)
  * @param num number of sources in the list
  * @return first image instance to show or NULL on errors
  */
-static struct image* create_imglist(const char** sources, size_t num)
+static struct image* create_imglist(const char* const* sources, size_t num)
 {
-    struct image* image = NULL;
-    bool force_first = false;
-
-    // compose image list
-    if (num == 0) {
-        // no input files specified, use all from the current directory
-        static const char* current_dir = ".";
-        sources = &current_dir;
-        num = 1;
-    } else if (num == 1) {
-        force_first = true;
-        if (strcmp(sources[0], "-") == 0) {
-            // load from stdin
-            static const char* stdin_name = LDRSRC_STDIN;
-            sources = &stdin_name;
-        }
-    }
-    for (size_t i = 0; i < num; ++i) {
-        struct image* added = imglist_add(sources[i]);
-        if (added && i == 0) {
-            image = added;
-        }
-    }
-    if (imglist_size() == 0) {
-        if (force_first) {
-            fprintf(stderr, "%s: Unable to open\n", sources[0]);
-        } else {
-            fprintf(stderr, "No image files found to view, exit\n");
-        }
+    struct image* image = imglist_load(sources, num);
+    if (!image) {
+        fprintf(stderr, "Image list is empty, no files to view\n");
         return NULL;
     }
-    if (!image) {
-        image = imglist_first();
-        force_first = false;
-    }
-
-    imglist_reindex();
 
     // load first image
-    if (force_first) {
-        const char* reason;
+    if (imglist_size() == 1) {
+        const char* fail = NULL;
         switch (image_load(image)) {
             case imgload_success:
-                return image;
+                break;
             case imgload_unsupported:
-                reason = "Unsupported format";
+                fail = "Unsupported format";
                 break;
             case imgload_fmterror:
-                reason = "Invalid format";
+                fail = "Invalid format";
                 break;
             case imgload_ioerror:
-                reason = "I/O error";
+                fail = "I/O error";
                 break;
             default:
-                reason = "Unknown error";
+                fail = "Unknown error";
                 break;
         }
-        fprintf(stderr, "%s: %s\n", image->source, reason);
-        imglist_remove(image);
-        return NULL;
+        if (fail) {
+            fprintf(stderr, "%s: %s\n", image->source, fail);
+            imglist_remove(image);
+            image = NULL;
+        }
+        return image;
     }
 
     // try to load first available image
@@ -418,7 +389,7 @@ static struct image* create_imglist(const char** sources, size_t num)
         imglist_remove(skip);
     }
     if (!image) {
-        fprintf(stderr, "No image files was loaded, exit\n");
+        fprintf(stderr, "Unable to load any images\n");
     }
 
     return image;
@@ -510,7 +481,7 @@ static void load_config(const struct config* cfg)
     str_dup(value, &ctx.app_id);
 }
 
-bool app_init(const struct config* cfg, const char** sources, size_t num)
+bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
     struct image* first_image;
     struct sigaction sigact;

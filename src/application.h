@@ -20,7 +20,7 @@ typedef void (*fd_callback)(void* data);
  * @param num number of sources in the list
  * @return true if application initialized successfully
  */
-bool app_init(const struct config* cfg, const char** sources, size_t num);
+bool app_init(const struct config* cfg, const char* const* sources, size_t num);
 
 /**
  * Destroy global application context.

@@ -12,30 +12,36 @@ protected:
     void TearDown() override { imglist_destroy(); }
 };
 
-TEST_F(ImageList, Add)
+TEST_F(ImageList, Load)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
     ASSERT_EQ(imglist_size(), static_cast<size_t>(0));
 
-    struct image* img[] = {
-        imglist_add("exec://1"),
-        imglist_add("exec://2"),
-        imglist_add("exec://3"),
+    const char* const img[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
     };
+    ASSERT_TRUE(imglist_load(img, sizeof(img) / sizeof(img[0])));
     ASSERT_EQ(imglist_size(), static_cast<size_t>(3));
 
-    EXPECT_EQ(imglist_first(), img[0]);
-    EXPECT_EQ(imglist_last(), img[2]);
+    EXPECT_STREQ(imglist_first()->source, img[0]);
+    EXPECT_STREQ(imglist_last()->source, img[2]);
 }
 
 TEST_F(ImageList, Duplicate)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
-    imglist_add("exec://1");
-    imglist_add("exec://1");
-    imglist_add("exec://2");
+
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://1",
+        "exec://2",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
+
     ASSERT_EQ(imglist_size(), static_cast<size_t>(2));
     EXPECT_STREQ(imglist_first()->source, "exec://1");
     EXPECT_STREQ(imglist_last()->source, "exec://2");
@@ -47,13 +53,18 @@ TEST_F(ImageList, SortAlpha)
     config_set(config, CFG_LIST, CFG_LIST_REVERSE, CFG_NO);
     imglist_init(config);
 
-    imglist_add("exec://3");
-    imglist_add("exec://1");
-    imglist_add("exec://2");
-    imglist_add("exec://4");
+    const char* const imglist[] = {
+        "exec://3",
+        "exec://1",
+        "exec://2",
+        "exec://4",
+    };
+    struct image* img =
+        imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
+    ASSERT_TRUE(img);
+    EXPECT_STREQ(img->source, "exec://3");
 
-    struct image* img = imglist_first();
-
+    img = imglist_first();
     for (size_t i = 1; i <= 4; ++i) {
         const std::string src = "exec://" + std::to_string(i);
         ASSERT_TRUE(img);
@@ -70,13 +81,18 @@ TEST_F(ImageList, SortAlphaReverse)
     config_set(config, CFG_LIST, CFG_LIST_REVERSE, CFG_YES);
     imglist_init(config);
 
-    imglist_add("exec://3");
-    imglist_add("exec://1");
-    imglist_add("exec://2");
-    imglist_add("exec://4");
+    const char* const imglist[] = {
+        "exec://3",
+        "exec://1",
+        "exec://2",
+        "exec://4",
+    };
+    struct image* img =
+        imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
+    ASSERT_TRUE(img);
+    EXPECT_STREQ(img->source, "exec://3");
 
-    struct image* img = imglist_first();
-
+    img = imglist_first();
     for (size_t i = 4; i >= 1; --i) {
         const std::string src = "exec://" + std::to_string(i);
         ASSERT_TRUE(img);
@@ -93,21 +109,34 @@ TEST_F(ImageList, SortNumeric)
     config_set(config, CFG_LIST, CFG_LIST_REVERSE, CFG_NO);
     imglist_init(config);
 
-    const struct image* img[7];
-    img[1] = imglist_add("exec://3");
-    img[5] = imglist_add("exec://a1");
-    img[3] = imglist_add("exec://10a10");
-    img[0] = imglist_add("exec://1");
-    img[4] = imglist_add("exec://20");
-    img[6] = imglist_add("exec://b0");
-    img[2] = imglist_add("exec://10a1");
+    // clang-format off
+    const char* const imglist[] = {
+        "exec://3",
+        "exec://a1",
+        "exec://10a10",
+        "exec://1",
+        "exec://20",
+        "exec://b0",
+        "exec://10a1",
+    };
+    const char* const etalon[] = {
+        "exec://1",
+        "exec://3",
+        "exec://10a1",
+        "exec://10a10",
+        "exec://20",
+        "exec://a1",
+        "exec://b0",
+    };
+    // clang-format on
 
-    struct image* next = imglist_first();
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    for (auto i : img) {
-        ASSERT_TRUE(next);
-        EXPECT_STREQ(i->source, next->source);
-        next = imglist_next(next);
+    struct image* img = imglist_first();
+    for (auto e : etalon) {
+        ASSERT_TRUE(img);
+        ASSERT_STREQ(img->source, e);
+        img = imglist_next(img);
     }
 }
 
@@ -117,27 +146,42 @@ TEST_F(ImageList, SortNumericReverse)
     config_set(config, CFG_LIST, CFG_LIST_REVERSE, CFG_YES);
     imglist_init(config);
 
-    const struct image* img[5];
-    img[3] = imglist_add("exec://3");
-    img[1] = imglist_add("exec://10a10");
-    img[4] = imglist_add("exec://1");
-    img[0] = imglist_add("exec://20");
-    img[2] = imglist_add("exec://10a1");
+    // clang-format off
+    const char* const imglist[] = {
+        "exec://3",
+        "exec://10a10",
+        "exec://1",
+        "exec://20",
+        "exec://10a1",
+    };
+    const char* const etalon[] = {
+        "exec://20",
+        "exec://10a10",
+        "exec://10a1",
+        "exec://3",
+        "exec://1",
+    };
+    // clang-format on
 
-    struct image* next = imglist_first();
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    for (auto i : img) {
-        ASSERT_TRUE(next);
-        EXPECT_STREQ(i->source, next->source);
-        next = imglist_next(next);
+    struct image* img = imglist_first();
+    for (auto e : etalon) {
+        ASSERT_TRUE(img);
+        ASSERT_STREQ(img->source, e);
+        img = imglist_next(img);
     }
 }
 
 TEST_F(ImageList, Find)
 {
     imglist_init(config);
-    imglist_add("exec://1");
-    imglist_add("exec://2");
+
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
     const struct image* img = imglist_find("exec://1");
     ASSERT_TRUE(img);
@@ -152,17 +196,20 @@ TEST_F(ImageList, Remove)
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    imglist_remove(img1);
+    imglist_remove(imglist_first());
     EXPECT_EQ(imglist_size(), static_cast<size_t>(2));
 
-    imglist_remove(img3);
+    imglist_remove(imglist_last());
     EXPECT_EQ(imglist_size(), static_cast<size_t>(1));
 
-    imglist_remove(img2);
+    imglist_remove(imglist_first());
     EXPECT_EQ(imglist_size(), static_cast<size_t>(0));
 }
 
@@ -171,11 +218,14 @@ TEST_F(ImageList, Next)
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next(img1), img2);
-    EXPECT_EQ(imglist_next(img2), nullptr);
+    EXPECT_EQ(imglist_next(imglist_find("exec://1")), imglist_find("exec://2"));
+    EXPECT_EQ(imglist_next(imglist_find("exec://2")), nullptr);
 }
 
 TEST_F(ImageList, Prev)
@@ -183,11 +233,14 @@ TEST_F(ImageList, Prev)
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev(img2), img1);
-    EXPECT_EQ(imglist_prev(img1), nullptr);
+    EXPECT_EQ(imglist_prev(imglist_find("exec://2")), imglist_find("exec://1"));
+    EXPECT_EQ(imglist_prev(imglist_find("exec://1")), nullptr);
 }
 
 TEST_F(ImageList, NextFile)
@@ -196,13 +249,22 @@ TEST_F(ImageList, NextFile)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next_file(img1), img2);
-    EXPECT_EQ(imglist_next_file(img2), img3);
-    EXPECT_EQ(imglist_next_file(img3), nullptr);
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
+
+    EXPECT_EQ(imglist_next_file(img[0]), img[1]);
+    EXPECT_EQ(imglist_next_file(img[1]), img[2]);
+    EXPECT_EQ(imglist_next_file(img[2]), nullptr);
 }
 
 TEST_F(ImageList, NextFileLoop)
@@ -211,13 +273,22 @@ TEST_F(ImageList, NextFileLoop)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next_file(img1), img2);
-    EXPECT_EQ(imglist_next_file(img2), img3);
-    EXPECT_EQ(imglist_next_file(img3), img1);
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
+
+    EXPECT_EQ(imglist_next_file(img[0]), img[1]);
+    EXPECT_EQ(imglist_next_file(img[1]), img[2]);
+    EXPECT_EQ(imglist_next_file(img[2]), img[0]);
 }
 
 TEST_F(ImageList, NextFileLoopSelf)
@@ -226,9 +297,12 @@ TEST_F(ImageList, NextFileLoopSelf)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img = imglist_add("exec://1");
+    const char* const imglist[] = { "exec://1" };
+    struct image* img =
+        imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
+    ASSERT_TRUE(img);
 
-    EXPECT_EQ(imglist_next_file(img), nullptr);
+    EXPECT_FALSE(imglist_next_file(img));
 }
 
 TEST_F(ImageList, PrevFile)
@@ -237,13 +311,21 @@ TEST_F(ImageList, PrevFile)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev_file(img1), nullptr);
-    EXPECT_EQ(imglist_prev_file(img3), img2);
-    EXPECT_EQ(imglist_prev_file(img2), img1);
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
+    EXPECT_EQ(imglist_prev_file(img[0]), nullptr);
+    EXPECT_EQ(imglist_prev_file(img[2]), img[1]);
+    EXPECT_EQ(imglist_prev_file(img[1]), img[0]);
 }
 
 TEST_F(ImageList, PrevFileLoop)
@@ -252,13 +334,21 @@ TEST_F(ImageList, PrevFileLoop)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev_file(img1), img3);
-    EXPECT_EQ(imglist_prev_file(img3), img2);
-    EXPECT_EQ(imglist_prev_file(img2), img1);
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
+    EXPECT_EQ(imglist_prev_file(img[0]), img[2]);
+    EXPECT_EQ(imglist_prev_file(img[2]), img[1]);
+    EXPECT_EQ(imglist_prev_file(img[1]), img[0]);
 }
 
 TEST_F(ImageList, PrevFileLoopSelf)
@@ -267,7 +357,10 @@ TEST_F(ImageList, PrevFileLoopSelf)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img = imglist_add("exec://1");
+    const char* const imglist[] = { "exec://1" };
+    struct image* img =
+        imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
+    ASSERT_TRUE(img);
 
     ASSERT_EQ(imglist_prev_file(img), nullptr);
 }
@@ -278,15 +371,24 @@ TEST_F(ImageList, NextDir)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
-    struct image* img11 = imglist_add("exec://123/dir1/image1");
-    struct image* img12 = imglist_add("exec://123/dir1/image2");
-    struct image* img23 = imglist_add("exec://123/dir2/image3");
-    struct image* img24 = imglist_add("exec://123/dir2/image4");
+    const char* const imglist[] = {
+        "exec://123/dir1/image1",
+        "exec://123/dir1/image2",
+        "exec://123/dir2/image3",
+        "exec://123/dir2/image4",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next_dir(img11), img23);
-    EXPECT_EQ(imglist_next_dir(img12), img23);
-    EXPECT_EQ(imglist_next_dir(img23), nullptr);
-    EXPECT_EQ(imglist_next_dir(img24), nullptr);
+    struct image* img[] = {
+        imglist_find("exec://123/dir1/image1"),
+        imglist_find("exec://123/dir1/image2"),
+        imglist_find("exec://123/dir2/image3"),
+        imglist_find("exec://123/dir2/image4"),
+    };
+    EXPECT_EQ(imglist_next_dir(img[0]), img[2]);
+    EXPECT_EQ(imglist_next_dir(img[1]), img[2]);
+    EXPECT_EQ(imglist_next_dir(img[2]), nullptr);
+    EXPECT_EQ(imglist_next_dir(img[3]), nullptr);
 }
 
 TEST_F(ImageList, NextDirLoop)
@@ -295,15 +397,24 @@ TEST_F(ImageList, NextDirLoop)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img11 = imglist_add("exec://123/dir1/image1");
-    struct image* img12 = imglist_add("exec://123/dir1/image2");
-    struct image* img23 = imglist_add("exec://123/dir2/image3");
-    struct image* img24 = imglist_add("exec://123/dir2/image4");
+    const char* const imglist[] = {
+        "exec://123/dir1/image1",
+        "exec://123/dir1/image2",
+        "exec://123/dir2/image3",
+        "exec://123/dir2/image4",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next_dir(img11), img23);
-    EXPECT_EQ(imglist_next_dir(img12), img23);
-    EXPECT_EQ(imglist_next_dir(img23), img11);
-    EXPECT_EQ(imglist_next_dir(img24), img11);
+    struct image* img[] = {
+        imglist_find("exec://123/dir1/image1"),
+        imglist_find("exec://123/dir1/image2"),
+        imglist_find("exec://123/dir2/image3"),
+        imglist_find("exec://123/dir2/image4"),
+    };
+    EXPECT_EQ(imglist_next_dir(img[0]), img[2]);
+    EXPECT_EQ(imglist_next_dir(img[1]), img[2]);
+    EXPECT_EQ(imglist_next_dir(img[2]), img[0]);
+    EXPECT_EQ(imglist_next_dir(img[3]), img[0]);
 }
 
 TEST_F(ImageList, PrevDir)
@@ -312,15 +423,24 @@ TEST_F(ImageList, PrevDir)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
-    struct image* img11 = imglist_add("exec://123/dir1/image1");
-    struct image* img12 = imglist_add("exec://123/dir1/image2");
-    struct image* img23 = imglist_add("exec://123/dir2/image3");
-    struct image* img24 = imglist_add("exec://123/dir2/image4");
+    const char* const imglist[] = {
+        "exec://123/dir1/image1",
+        "exec://123/dir1/image2",
+        "exec://123/dir2/image3",
+        "exec://123/dir2/image4",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev_dir(img11), nullptr);
-    EXPECT_EQ(imglist_prev_dir(img12), nullptr);
-    EXPECT_EQ(imglist_prev_dir(img23), img12);
-    EXPECT_EQ(imglist_prev_dir(img24), img12);
+    struct image* img[] = {
+        imglist_find("exec://123/dir1/image1"),
+        imglist_find("exec://123/dir1/image2"),
+        imglist_find("exec://123/dir2/image3"),
+        imglist_find("exec://123/dir2/image4"),
+    };
+    EXPECT_EQ(imglist_prev_dir(img[0]), nullptr);
+    EXPECT_EQ(imglist_prev_dir(img[1]), nullptr);
+    EXPECT_EQ(imglist_prev_dir(img[2]), img[1]);
+    EXPECT_EQ(imglist_prev_dir(img[3]), img[1]);
 }
 
 TEST_F(ImageList, PrevDirLoop)
@@ -329,25 +449,41 @@ TEST_F(ImageList, PrevDirLoop)
     config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
-    struct image* img11 = imglist_add("exec://123/dir1/image1");
-    struct image* img12 = imglist_add("exec://123/dir1/image2");
-    struct image* img23 = imglist_add("exec://123/dir2/image3");
-    struct image* img24 = imglist_add("exec://123/dir2/image4");
+    const char* const imglist[] = {
+        "exec://123/dir1/image1",
+        "exec://123/dir1/image2",
+        "exec://123/dir2/image3",
+        "exec://123/dir2/image4",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev_dir(img11), img24);
-    EXPECT_EQ(imglist_prev_dir(img12), img24);
-    EXPECT_EQ(imglist_prev_dir(img23), img12);
-    EXPECT_EQ(imglist_prev_dir(img24), img12);
+    struct image* img[] = {
+        imglist_find("exec://123/dir1/image1"),
+        imglist_find("exec://123/dir1/image2"),
+        imglist_find("exec://123/dir2/image3"),
+        imglist_find("exec://123/dir2/image4"),
+    };
+    EXPECT_EQ(imglist_prev_dir(img[0]), img[3]);
+    EXPECT_EQ(imglist_prev_dir(img[1]), img[3]);
+    EXPECT_EQ(imglist_prev_dir(img[2]), img[1]);
+    EXPECT_EQ(imglist_prev_dir(img[3]), img[1]);
 }
 
 TEST_F(ImageList, GetRandom)
 {
     imglist_init(config);
 
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
+
     struct image* img[] = {
-        imglist_add("exec://1"),
-        imglist_add("exec://2"),
-        imglist_add("exec://3"),
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
     };
 
     for (auto i : img) {
@@ -362,19 +498,28 @@ TEST_F(ImageList, Jump)
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_jump(img1, 0), img1);
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
 
-    EXPECT_EQ(imglist_jump(img1, 1), img2);
-    EXPECT_EQ(imglist_jump(img1, 2), img3);
-    EXPECT_EQ(imglist_jump(img1, 10), nullptr);
+    EXPECT_EQ(imglist_jump(img[0], 0), img[0]);
 
-    EXPECT_EQ(imglist_jump(img3, -1), img2);
-    EXPECT_EQ(imglist_jump(img3, -2), img1);
-    EXPECT_EQ(imglist_jump(img3, -10), nullptr);
+    EXPECT_EQ(imglist_jump(img[0], 1), img[1]);
+    EXPECT_EQ(imglist_jump(img[0], 2), img[2]);
+    EXPECT_EQ(imglist_jump(img[0], 10), nullptr);
+
+    EXPECT_EQ(imglist_jump(img[2], -1), img[1]);
+    EXPECT_EQ(imglist_jump(img[2], -2), img[0]);
+    EXPECT_EQ(imglist_jump(img[2], -10), nullptr);
 }
 
 TEST_F(ImageList, Distance)
@@ -382,17 +527,26 @@ TEST_F(ImageList, Distance)
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
     imglist_init(config);
 
-    struct image* img1 = imglist_add("exec://1");
-    struct image* img2 = imglist_add("exec://2");
-    struct image* img3 = imglist_add("exec://3");
+    const char* const imglist[] = {
+        "exec://1",
+        "exec://2",
+        "exec://3",
+    };
+    ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_distance(img1, img1), static_cast<ssize_t>(0));
+    struct image* img[] = {
+        imglist_find("exec://1"),
+        imglist_find("exec://2"),
+        imglist_find("exec://3"),
+    };
 
-    EXPECT_EQ(imglist_distance(img1, img2), static_cast<ssize_t>(1));
-    EXPECT_EQ(imglist_distance(img1, img3), static_cast<ssize_t>(2));
+    EXPECT_EQ(imglist_distance(img[0], img[0]), static_cast<ssize_t>(0));
 
-    EXPECT_EQ(imglist_distance(img3, img1), static_cast<ssize_t>(-2));
-    EXPECT_EQ(imglist_distance(img2, img1), static_cast<ssize_t>(-1));
+    EXPECT_EQ(imglist_distance(img[0], img[1]), static_cast<ssize_t>(1));
+    EXPECT_EQ(imglist_distance(img[0], img[2]), static_cast<ssize_t>(2));
+
+    EXPECT_EQ(imglist_distance(img[2], img[0]), static_cast<ssize_t>(-2));
+    EXPECT_EQ(imglist_distance(img[1], img[0]), static_cast<ssize_t>(-1));
 }
 
 TEST_F(ImageList, Lock)

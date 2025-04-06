@@ -29,11 +29,12 @@ void imglist_lock(void);
 void imglist_unlock(void);
 
 /**
- * Add image source to the list.
- * @param source image source to add (file path or special prefix)
- * @return created image entry or NULL on errors or if source is directory
+ * Load image list from specified sources.
+ * @param sources array of sources
+ * @param num number of sources in the array
+ * @return first image instance to show or NULL if list is empty
  */
-struct image* imglist_add(const char* source);
+struct image* imglist_load(const char* const* sources, size_t num);
 
 /**
  * Remove image source to the list.
@@ -53,11 +54,6 @@ struct image* imglist_find(const char* source);
  * @return total number of entries in the list
  */
 size_t imglist_size(void);
-
-/**
- * Reindex the image list.
- */
-void imglist_reindex(void);
 
 /**
  * Get the first image entry.
