@@ -6,6 +6,37 @@
 
 #include <stddef.h>
 
+/** File system event types. */
+enum fsevent {
+    fsevent_create,
+    fsevent_modify,
+    fsevent_remove,
+};
+
+/**
+ * File system event handler.
+ * @param event event type
+ * @param path absolute path, ends with "/" if it is a directory
+ */
+typedef void (*fs_callback)(enum fsevent type, const char* path);
+
+/**
+ * Initialize global file system context.
+ * @param handler event handler
+ */
+void fs_init(fs_callback handler);
+
+/**
+ * Destroy global file system context.
+ */
+void fs_destroy(void);
+
+/**
+ * Add file or directory to watch.
+ * @param path target path
+ */
+void fs_watch(const char* path);
+
 /**
  * Append subdir/file to the path.
  * @param file subdir/file name
