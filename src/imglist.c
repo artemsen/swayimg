@@ -213,10 +213,11 @@ static struct image* add_dir(const char* dir)
 
     // get the first image in the directory
     if (img) {
-        const size_t path_len = strlen(dir);
-        list_for_each_back(img, struct image, it) {
-            if (strncmp(dir, it->source, path_len) != 0) {
-                img = list_is_last(it) ? it : list_next(it);
+        const size_t dir_len = strlen(dir);
+        list_for_each_back(list_prev(img), struct image, it) {
+            if (strncmp(dir, it->source, dir_len) == 0) {
+                img = it;
+            } else {
                 break;
             }
         }
