@@ -7,6 +7,7 @@
 #include "application.h"
 #include "array.h"
 #include "buildcfg.h"
+#include "fs.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -67,92 +68,6 @@ struct image_list {
 
 /** Global image list instance. */
 static struct image_list ctx;
-
-/**
- * Get absolute path from relative source.
- * @param source relative file path
- * @param path output absolute path buffer
- * @param path_max size of the buffer
- * @return length of the absolute path without last null
- */
-static size_t absolute_path(const char* source, char* path, size_t path_max)
-{
-    char buffer[PATH_MAX];
-    struct str_slice dirs[1024];
-    size_t dirs_num;
-    size_t pos;
-
-    if (strcmp(source, LDRSRC_STDIN) == 0 ||
-        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        strncpy(path, source, path_max - 1);
-        return strlen(path);
-    }
-
-    if (*source == '/') {
-        strncpy(buffer, source, sizeof(buffer) - 1);
-    } else {
-        // relative to the current dir
-        size_t len;
-        if (!getcwd(buffer, sizeof(buffer) - 1)) {
-            return 0;
-        }
-        len = strlen(buffer);
-        if (buffer[len] != '/') {
-            buffer[len] = '/';
-            ++len;
-        }
-        if (len >= sizeof(buffer)) {
-            return 0;
-        }
-        strncpy(buffer + len, source, sizeof(buffer) - len - 1);
-    }
-
-    // split by component
-    dirs_num = str_split(buffer, '/', dirs, ARRAY_SIZE(dirs));
-
-    // remove "/../" and "/./"
-    for (size_t i = 0; i < dirs_num; ++i) {
-        if (dirs[i].len == 1 && dirs[i].value[0] == '.') {
-            dirs[i].len = 0;
-        } else if (dirs[i].len == 2 && dirs[i].value[0] == '.' &&
-                   dirs[i].value[1] == '.') {
-            dirs[i].len = 0;
-            for (ssize_t j = (ssize_t)i - 1; j >= 0; --j) {
-                if (dirs[j].len != 0) {
-                    dirs[j].len = 0;
-                    break;
-                }
-            }
-        }
-    }
-
-    // collect to the absolute path
-    path[0] = '/';
-    pos = 1;
-    for (size_t i = 0; i < dirs_num; ++i) {
-        if (dirs[i].len) {
-            if (pos + dirs[i].len + 1 >= path_max) {
-                return 0;
-            }
-            memcpy(path + pos, dirs[i].value, dirs[i].len);
-            pos += dirs[i].len;
-            if (i < dirs_num - 1) {
-                if (pos + 1 >= path_max) {
-                    return 0;
-                }
-                path[pos++] = '/';
-            }
-        }
-    }
-
-    // last null
-    if (pos + 1 >= path_max) {
-        return 0;
-    }
-    path[pos] = 0;
-
-    return pos;
-}
 
 /**
  * Search the right place to insert new entry according to sort order.
@@ -256,22 +171,21 @@ static struct image* add_entry(const char* source, const struct stat* st)
 
 /**
  * Add files from the directory to the list.
- * @param path absolute path to the directory
+ * @param dir absolute path to the directory
  * @return the first image entry in the directory
  */
-static struct image* add_dir(const char* path)
+static struct image* add_dir(const char* dir)
 {
-    assert(path && path[strlen(path) - 1] == '/');
-
     struct image* img = NULL;
-    char* full_path = NULL;
+    char path[PATH_MAX];
     struct dirent* dir_entry;
     DIR* dir_handle;
 
-    dir_handle = opendir(path);
+    dir_handle = opendir(dir);
     if (!dir_handle) {
         return NULL;
     }
+
     while ((dir_entry = readdir(dir_handle))) {
         const char* name = dir_entry->d_name;
         struct stat st;
@@ -279,35 +193,35 @@ static struct image* add_dir(const char* path)
         if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
             continue; // skip link to self/parent
         }
-
         // compose full path
-        if (!str_dup(path, &full_path) || !str_append(name, 0, &full_path)) {
-            continue;
+        strncpy(path, dir, sizeof(path) - 1);
+        if (!fs_append_path(name, path, sizeof(path))) {
+            continue; // buffer too small
         }
 
-        if (stat(full_path, &st) == 0) {
+        if (stat(path, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
-                if (ctx.recursive && str_append("/", 1, &full_path)) {
-                    img = add_dir(full_path);
+                if (ctx.recursive) {
+                    fs_append_path(NULL, path, sizeof(path)); // append slash
+                    img = add_dir(path);
                 }
             } else if (S_ISREG(st.st_mode)) {
-                img = add_entry(full_path, &st);
+                img = add_entry(path, &st);
             }
         }
     }
 
     // get the first image in the directory
     if (img) {
-        const size_t plen = strlen(path);
+        const size_t path_len = strlen(dir);
         list_for_each_back(img, struct image, it) {
-            if (strncmp(path, it->source, plen) != 0) {
+            if (strncmp(dir, it->source, path_len) != 0) {
                 img = list_is_last(it) ? it : list_next(it);
                 break;
             }
         }
     }
 
-    free(full_path);
     closedir(dir_handle);
 
     return img;
@@ -337,19 +251,14 @@ static struct image* add_source(const char* source)
     }
 
     // get absolute path
-    if (!absolute_path(source, fspath, sizeof(fspath))) {
+    if (!fs_abspath(source, fspath, sizeof(fspath))) {
         fprintf(stderr, "Ignore file %s: unknown absolute path\n", source);
         return NULL;
     }
 
     // add directory to the list
     if (S_ISDIR(st.st_mode)) {
-        const size_t len = strlen(fspath);
-        if (fspath[len - 1] != '/' && len + 1 < sizeof(fspath)) {
-            // append slash
-            fspath[len] = '/';
-            fspath[len + 1] = 0;
-        }
+        fs_append_path(NULL, fspath, sizeof(fspath)); // append slash
         return add_dir(fspath);
     }
 
@@ -518,15 +427,15 @@ struct image* imglist_load(const char* const* sources, size_t num)
             img = add_source(LDRSRC_STDIN);
         } else {
             img = add_source(sources[0]);
-            if (img && ctx.size == 1 && ctx.all_files) {
+            if (img && ctx.all_files) {
                 // add neighbors (all files from the same directory)
                 const char* delim = strrchr(img->source, '/');
                 if (delim) {
+                    char dir[PATH_MAX];
                     const size_t len = delim - img->source + 1 /* last slash */;
-                    char* dir = str_append(img->source, len, NULL);
-                    if (dir) {
+                    if (len < sizeof(dir)) {
+                        strncpy(dir, img->source, len);
                         add_dir(dir);
-                        free(dir);
                     }
                 }
             }

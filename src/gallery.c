@@ -100,9 +100,8 @@ static void clear_thumbnails(bool all)
  */
 static size_t pstore_path(const char* source, char* path, size_t path_max)
 {
-    const size_t source_len = strlen(source);
     char postfix[16];
-    int postfix_len;
+    int append_len;
     size_t len;
 
     if (strcmp(source, LDRSRC_STDIN) == 0 ||
@@ -115,23 +114,26 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
     if (!len) {
         len = fs_envpath("HOME", "/.cache/swayimg", path, path_max);
     }
-    if (!len || len + source_len + 1 >= path_max) {
+    if (!len) {
         return 0;
     }
 
     // append file name
-    memcpy(path + len, source, source_len + 1);
-    len += source_len;
-
-    // append postfix
-    postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
-                           (uint16_t)ctx.thumb_size, ctx.thumb_fill ? 1 : 0,
-                           ctx.thumb_aa);
-    if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
+    append_len = fs_append_path(source, path, path_max);
+    if (!append_len) {
         return 0;
     }
-    memcpy(path + len, postfix, postfix_len + 1);
-    len += postfix_len;
+    len += append_len;
+
+    // append postfix
+    append_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
+                          (uint16_t)ctx.thumb_size, ctx.thumb_fill ? 1 : 0,
+                          ctx.thumb_aa);
+    if (append_len <= 0 || len + append_len + 1 >= path_max) {
+        return 0;
+    }
+    memcpy(path + len, postfix, append_len + 1);
+    len += append_len;
 
     return len;
 }

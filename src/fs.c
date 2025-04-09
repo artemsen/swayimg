@@ -11,6 +11,32 @@
 #include <string.h>
 #include <unistd.h>
 
+size_t fs_append_path(const char* file, char* path, size_t path_max)
+{
+    size_t file_len = file ? strlen(file) : 0;
+    size_t path_len = strlen(path);
+
+    if (path_len + file_len + 2 /* slash + last null */ >= path_max) {
+        return 0;
+    }
+
+    if (path[path_len - 1] != '/') {
+        path[path_len] = '/';
+        path[++path_len] = 0;
+    }
+
+    if (file_len) {
+        while (*file == '/') {
+            ++file;
+            --file_len;
+        };
+        memcpy(&path[path_len], file, file_len + 1);
+        path_len += file_len;
+    }
+
+    return path_len;
+}
+
 size_t fs_abspath(const char* relative, char* path, size_t path_max)
 {
     char buffer[PATH_MAX];

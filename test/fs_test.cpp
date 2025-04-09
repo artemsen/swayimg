@@ -7,9 +7,37 @@ extern "C" {
 
 #include <gtest/gtest.h>
 
+TEST(FileSystem, AppendPath)
+{
+    char path[256] = { 0 };
+
+    EXPECT_FALSE(fs_append_path("123", path, 0));
+    EXPECT_FALSE(fs_append_path("123", path, 1));
+
+    strcpy(path, "/root");
+    EXPECT_EQ(fs_append_path("abc", path, sizeof(path)), strlen("/root/abc"));
+    EXPECT_STREQ(path, "/root/abc");
+
+    strcpy(path, "/root");
+    EXPECT_TRUE(fs_append_path("/abc", path, sizeof(path)));
+    EXPECT_STREQ(path, "/root/abc");
+
+    strcpy(path, "/root/");
+    EXPECT_TRUE(fs_append_path("/abc", path, sizeof(path)));
+    EXPECT_STREQ(path, "/root/abc");
+
+    strcpy(path, "/root");
+    EXPECT_TRUE(fs_append_path("", path, sizeof(path)));
+    EXPECT_STREQ(path, "/root/");
+
+    strcpy(path, "/root");
+    EXPECT_TRUE(fs_append_path(NULL, path, sizeof(path)));
+    EXPECT_STREQ(path, "/root/");
+}
+
 TEST(FileSystem, Absolute)
 {
-    char path[1024];
+    char path[256] = { 0 };
 
     EXPECT_FALSE(fs_abspath("/abs/path", path, 0));
     EXPECT_FALSE(fs_abspath("/abs/path", path, 1));
@@ -38,7 +66,7 @@ TEST(FileSystem, Absolute)
 
 TEST(FileSystem, EnvPath)
 {
-    char path[1024];
+    char path[256] = { 0 };
 
     const char* postfix = "/dir/file.ext";
     EXPECT_EQ(fs_envpath(NULL, postfix, path, 0), static_cast<size_t>(0));
