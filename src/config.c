@@ -5,9 +5,11 @@
 #include "config.h"
 
 #include "array.h"
+#include "fs.h"
 
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -390,10 +392,9 @@ struct config* config_load(void)
     // find and load first available config file
     for (size_t i = 0; i < ARRAY_SIZE(config_locations); ++i) {
         const struct location* cl = &config_locations[i];
-        char* path = config_expand_path(cl->prefix, cl->postfix);
-        const bool loaded = path && load(cfg, path);
-        free(path);
-        if (loaded) {
+        char path[PATH_MAX];
+        if (fs_envpath(cl->prefix, cl->postfix, path, sizeof(path)) &&
+            load(cfg, path)) {
             break;
         }
     }
@@ -638,28 +639,6 @@ argb_t config_get_color(const struct config* cfg, const char* section,
     }
 
     return color;
-}
-
-char* config_expand_path(const char* prefix_env, const char* postfix)
-{
-    char* path = NULL;
-
-    if (prefix_env) {
-        const char* delim;
-        size_t prefix_len = 0;
-        const char* prefix = getenv(prefix_env);
-        if (!prefix || !*prefix) {
-            return NULL;
-        }
-        // use only the first directory if prefix is a list
-        delim = strchr(prefix, ':');
-        prefix_len = delim ? (size_t)(delim - prefix) : strlen(prefix);
-        str_append(prefix, prefix_len, &path);
-    }
-
-    str_append(postfix, 0, &path);
-
-    return path;
 }
 
 void config_error_key(const char* section, const char* key)

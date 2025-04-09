@@ -174,14 +174,6 @@ argb_t config_get_color(const struct config* cfg, const char* section,
                         const char* key);
 
 /**
- * Expand path from environment variable.
- * @param prefix_env path prefix (var name)
- * @param postfix constant postfix
- * @return allocated buffer with path, caller should free it after use
- */
-char* config_expand_path(const char* prefix_env, const char* postfix);
-
-/**
  * Print error about invalid key format.
  * @param section section name
  * @param key configuration parameters

@@ -193,6 +193,7 @@ sources = [
   'src/cache.c',
   'src/config.c',
   'src/font.c',
+  'src/fs.c',
   'src/gallery.c',
   'src/image.c',
   'src/imglist.c',

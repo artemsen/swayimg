@@ -6,12 +6,14 @@
 
 #include "application.h"
 #include "array.h"
+#include "fs.h"
 #include "imglist.h"
 #include "info.h"
 #include "ui.h"
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,30 +94,46 @@ static void clear_thumbnails(bool all)
 /**
  * Get path for the thumbnail on persistent storage.
  * @param source original image source
- * @return path or NULL if not applicable or in case of errors
+ * @param path output buffer
+ * @param path_max size of the buffer
+ * @return length of the result path without last null
  */
-static char* pstore_path(const char* source)
+static size_t pstore_path(const char* source, char* path, size_t path_max)
 {
-    char* path = NULL;
+    const size_t source_len = strlen(source);
+    char postfix[16];
+    int postfix_len;
+    size_t len;
 
     if (strcmp(source, LDRSRC_STDIN) == 0 ||
         strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        return NULL;
+        return 0;
     }
 
-    path = config_expand_path("XDG_CACHE_HOME", "/swayimg");
-    if (!path) {
-        path = config_expand_path("HOME", "/.cache/swayimg");
+    // get directory to store thumbnails
+    len = fs_envpath("XDG_CACHE_HOME", "/swayimg", path, path_max);
+    if (!len) {
+        len = fs_envpath("HOME", "/.cache/swayimg", path, path_max);
     }
-    if (path) {
-        char state[16];
-        snprintf(state, sizeof(state), ".%04x%d%d", (uint16_t)ctx.thumb_size,
-                 ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
-        str_append(source, 0, &path);
-        str_append(state, 0, &path);
+    if (!len || len + source_len + 1 >= path_max) {
+        return 0;
     }
 
-    return path;
+    // append file name
+    memcpy(path + len, source, source_len + 1);
+    len += source_len;
+
+    // append postfix
+    postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
+                           (uint16_t)ctx.thumb_size, ctx.thumb_fill ? 1 : 0,
+                           ctx.thumb_aa);
+    if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
+        return 0;
+    }
+    memcpy(path + len, postfix, postfix_len + 1);
+    len += postfix_len;
+
+    return len;
 }
 
 /**
@@ -124,36 +142,32 @@ static char* pstore_path(const char* source)
  */
 void pstore_save(const struct image* img)
 {
-    char* th_path;
+    char path[PATH_MAX];
     char* delim;
 
     if (!image_has_thumb(img)) {
         return;
     }
 
-    th_path = pstore_path(img->source);
-    if (!th_path) {
+    if (!pstore_path(img->source, path, sizeof(path))) {
         return;
     }
 
     // create path
-    delim = th_path;
+    delim = path;
     while (true) {
         delim = strchr(delim + 1, '/');
         if (!delim) {
             break;
         }
         *delim = '\0';
-        if (mkdir(th_path, S_IRWXU | S_IRWXG) && errno != EEXIST) {
-            free(th_path);
+        if (mkdir(path, S_IRWXU | S_IRWXG) && errno != EEXIST) {
             return;
         }
         *delim = '/';
     }
 
-    image_thumb_save(img, th_path);
-
-    free(th_path);
+    image_thumb_save(img, path);
 }
 
 /**
@@ -163,28 +177,21 @@ void pstore_save(const struct image* img)
  */
 bool pstore_load(struct image* img)
 {
-    bool rc = false;
+    char path[PATH_MAX];
     struct stat st_image;
     struct stat st_thumb;
-    char* th_path;
 
-    th_path = pstore_path(img->source);
-    if (!th_path) {
+    if (!pstore_path(img->source, path, sizeof(path))) {
         return false;
     }
 
     // check modification time
-    if (stat(img->source, &st_image) == -1 || stat(th_path, &st_thumb) == -1 ||
+    if (stat(img->source, &st_image) == -1 || stat(path, &st_thumb) == -1 ||
         st_image.st_mtim.tv_sec > st_thumb.st_mtim.tv_sec) {
-        free(th_path);
         return false;
     }
 
-    rc = image_thumb_load(img, th_path);
-
-    free(th_path);
-
-    return rc;
+    return image_thumb_load(img, path);
 }
 
 /**
