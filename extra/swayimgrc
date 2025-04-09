@@ -94,7 +94,7 @@ reverse = no
 loop = yes
 # Read directories recursively (yes/no)
 recursive = no
-# Open all files in the directory of the specified file (yes/no)
+# Add files from the same directory as the first file (yes/no)
 all = no
 
 ################################################################################

@@ -422,10 +422,18 @@ struct image* imglist_load(const char* const* sources, size_t num)
     if (num == 0) {
         // no input files specified, use all from the current directory
         img = add_source(".");
+        ctx.all_files = false;
     } else if (num == 1) {
         if (strcmp(sources[0], "-") == 0) {
             img = add_source(LDRSRC_STDIN);
         } else {
+            if (ctx.all_files) {
+                // the "all files" mode is not applicable for directory
+                struct stat st;
+                if (stat(sources[0], &st) == 0 && S_ISDIR(st.st_mode)) {
+                    ctx.all_files = false;
+                }
+            }
             img = add_source(sources[0]);
             if (img && ctx.all_files) {
                 // add neighbors (all files from the same directory)
@@ -441,6 +449,7 @@ struct image* imglist_load(const char* const* sources, size_t num)
             }
         }
     } else {
+        ctx.all_files = false;
         for (size_t i = 0; i < num; ++i) {
             struct image* added = add_source(sources[i]);
             if (!img && added) {
