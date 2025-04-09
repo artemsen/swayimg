@@ -223,6 +223,8 @@ static struct image* add_dir(const char* dir)
         }
     }
 
+    fs_watch(dir);
+
     closedir(dir_handle);
 
     return img;
@@ -265,7 +267,11 @@ static struct image* add_source(const char* source)
 
     // add file to the list
     if (S_ISREG(st.st_mode)) {
-        return add_entry(fspath, &st);
+        struct image* img = add_entry(fspath, &st);
+        if (img && !ctx.all_files) {
+            fs_watch(img->source);
+        }
+        return img;
     }
 
     fprintf(stderr, "Ignore special file %s\n", source);
@@ -279,6 +285,57 @@ static void reindex(void)
     list_for_each(ctx.images, struct image, it) {
         it->index = ++ctx.size;
     }
+}
+
+/** File system event handler. */
+static void on_fsevent(enum fsevent type, const char* path)
+{
+    const bool is_dir = (path[strlen(path) - 1] == '/');
+
+    imglist_lock();
+
+    switch (type) {
+        case fsevent_create:
+            if (is_dir) {
+                if (ctx.recursive) {
+                    const struct image* img = add_dir(path);
+                    if (img) {
+                        app_on_imglist(img, type);
+                    }
+                }
+            } else {
+                struct stat st;
+                if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
+                    const struct image* img = add_entry(path, &st);
+                    if (img) {
+                        app_on_imglist(img, type);
+                    }
+                }
+            }
+            break;
+        case fsevent_remove:
+            if (!is_dir) {
+                struct image* img = imglist_find(path);
+                assert(img);
+                if (img) {
+                    app_on_imglist(img, type);
+                    imglist_remove(img);
+                }
+            }
+            break;
+        case fsevent_modify:
+            if (!is_dir) {
+                const struct image* img = imglist_find(path);
+                assert(img);
+                if (img) {
+                    app_on_imglist(img, type);
+                }
+            }
+            break;
+    }
+
+    reindex();
+    imglist_unlock();
 }
 
 /**
@@ -373,6 +430,8 @@ void imglist_init(const struct config* cfg)
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
 
+    fs_init(on_fsevent);
+
 #ifdef HAVE_INOTIFY
     ctx.watch = -1;
     ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
@@ -384,6 +443,8 @@ void imglist_init(const struct config* cfg)
 
 void imglist_destroy(void)
 {
+    fs_destroy();
+
 #ifdef HAVE_INOTIFY
     if (ctx.notify >= 0) {
         if (ctx.watch != -1) {
@@ -459,6 +520,9 @@ struct image* imglist_load(const char* const* sources, size_t num)
         }
     }
 
+    reindex();
+
+    assert(img);
     return img;
 }
 

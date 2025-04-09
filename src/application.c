@@ -675,6 +675,11 @@ void app_redraw(void)
     append_event(event_redraw, NULL);
 }
 
+void app_on_imglist(const struct image* image, enum fsevent event)
+{
+    ctx.mode_handlers[ctx.mode_current].imglist(image, event);
+}
+
 void app_on_resize(void)
 {
     ctx.mode_handlers[ctx.mode_current].resize();

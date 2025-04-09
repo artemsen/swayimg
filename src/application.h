@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "fs.h"
 #include "image.h"
 #include "keybind.h"
 
@@ -62,6 +63,13 @@ void app_reload(void);
  * Handler of external event: redraw window.
  */
 void app_redraw(void);
+
+/**
+ * Notify the current mode about changes in the image list.
+ * @param image updated image instance
+ * @param event operation type
+ */
+void app_on_imglist(const struct image* image, enum fsevent event);
 
 /**
  * Handler of external event: window resized.

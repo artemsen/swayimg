@@ -647,6 +647,13 @@ static void on_action(const struct action* action)
     }
 }
 
+/** Mode handler: image list update. */
+static void on_imglist(const struct image* image, enum fsevent event)
+{
+    (void)image;
+    (void)event;
+}
+
 /** Mode handler: get currently viewed image. */
 static struct image* on_current(void)
 {
@@ -694,6 +701,7 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->action = on_action;
     handlers->redraw = on_redraw;
     handlers->resize = on_resize;
+    handlers->imglist = on_imglist;
     handlers->current = on_current;
     handlers->activate = on_activate;
     handlers->deactivate = on_deactivate;

@@ -945,6 +945,29 @@ static struct image* on_deactivate(void)
     return ctx.current;
 }
 
+/** Mode handler: image list update. */
+static void on_imglist(const struct image* image, enum fsevent event)
+{
+    (void)image;
+    (void)event;
+    // if (image == ctx.current) {
+    //     switch (event) {
+    //         case fsevent_create:
+    //             break;
+    //         case fsevent_modify:
+    //             reload_file();
+    //             break;
+    //         case fsevent_remove:
+    //             if (!next_file(action_next_file) &&
+    //                 !next_file(action_prev_file)) {
+    //                 printf("No more images to view, exit\n");
+    //                 app_exit(0);
+    //             }
+    //             break;
+    //     }
+    // }
+}
+
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
 {
     size_t cval_num;
@@ -995,6 +1018,7 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->redraw = on_redraw;
     handlers->resize = on_resize;
     handlers->drag = on_drag;
+    handlers->imglist = on_imglist;
     handlers->current = on_current;
     handlers->activate = on_activate;
     handlers->deactivate = on_deactivate;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "action.h"
+#include "fs.h"
 #include "image.h"
 
 /** Mode types. */
@@ -39,6 +40,13 @@ struct mode_handlers {
      * @param dx,dy coordinates delta
      */
     void (*drag)(int dx, int dy);
+
+    /**
+     * Image list uptade handler.
+     * @param image updated image instance
+     * @param event operation type
+     */
+    void (*imglist)(const struct image* image, enum fsevent event);
 
     /**
      * Get currently showed/selected image.
