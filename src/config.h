@@ -66,6 +66,7 @@ struct config {
 #define CFG_LIST_LOOP      "loop"
 #define CFG_LIST_RECURSIVE "recursive"
 #define CFG_LIST_ALL       "all"
+#define CFG_LIST_FSMON     "fsmon"
 #define CFG_FONT_NAME      "name"
 #define CFG_FONT_SIZE      "size"
 #define CFG_FONT_COLOR     "color"

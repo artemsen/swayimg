@@ -19,11 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
-
-#ifdef HAVE_INOTIFY
-#include <sys/inotify.h>
-#endif
 
 /** Order of file list. */
 enum list_order {
@@ -58,12 +53,6 @@ struct image_list {
     bool loop;             ///< File list loop mode
     bool recursive;        ///< Read directories recursively
     bool all_files;        ///< Open all files from the same directory
-
-#ifdef HAVE_INOTIFY
-    int notify;                ///< inotify file descriptor
-    int watch;                 ///< Watch file descriptor
-    imglist_watch_cb callback; ///< Watcher callback
-#endif
 };
 
 /** Global image list instance. */
@@ -223,7 +212,7 @@ static struct image* add_dir(const char* dir)
         }
     }
 
-    fs_watch(dir);
+    fs_monitor_add(dir);
 
     closedir(dir_handle);
 
@@ -269,7 +258,7 @@ static struct image* add_source(const char* source)
     if (S_ISREG(st.st_mode)) {
         struct image* img = add_entry(fspath, &st);
         if (img && !ctx.all_files) {
-            fs_watch(img->source);
+            fs_monitor_add(img->source);
         }
         return img;
     }
@@ -290,7 +279,8 @@ static void reindex(void)
 /** File system event handler. */
 static void on_fsevent(enum fsevent type, const char* path)
 {
-    const bool is_dir = (path[strlen(path) - 1] == '/');
+    const size_t path_len = strlen(path);
+    const bool is_dir = (path[path_len - 1] == '/'); // ends with '/'
 
     imglist_lock();
 
@@ -385,40 +375,6 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
     return next;
 }
 
-#ifdef HAVE_INOTIFY
-/** inotify handler. */
-static void on_inotify(__attribute__((unused)) void* data)
-{
-    while (true) {
-        bool updated = false;
-        uint8_t buffer[1024];
-        ssize_t pos = 0;
-        const ssize_t len = read(ctx.notify, buffer, sizeof(buffer));
-
-        if (len < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return; // something went wrong
-        }
-
-        while (pos + sizeof(struct inotify_event) <= (size_t)len) {
-            const struct inotify_event* event =
-                (struct inotify_event*)&buffer[pos];
-            if (event->mask & IN_IGNORED) {
-                ctx.watch = -1;
-            } else {
-                updated = true;
-            }
-            pos += sizeof(struct inotify_event) + event->len;
-        }
-        if (updated) {
-            ctx.callback();
-        }
-    }
-}
-#endif // HAVE_INOTIFY
-
 void imglist_init(const struct config* cfg)
 {
     pthread_mutex_init(&ctx.lock, NULL);
@@ -430,29 +386,14 @@ void imglist_init(const struct config* cfg)
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
 
-    fs_init(on_fsevent);
-
-#ifdef HAVE_INOTIFY
-    ctx.watch = -1;
-    ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
-    if (ctx.notify >= 0) {
-        app_watch(ctx.notify, on_inotify, NULL);
+    if (config_get_bool(cfg, CFG_LIST, CFG_LIST_FSMON)) {
+        fs_monitor_init(on_fsevent);
     }
-#endif // HAVE_INOTIFY
 }
 
 void imglist_destroy(void)
 {
-    fs_destroy();
-
-#ifdef HAVE_INOTIFY
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-        }
-        close(ctx.notify);
-    }
-#endif // HAVE_INOTIFY
+    fs_monitor_destroy();
 
     list_for_each(ctx.images, struct image, it) {
         image_free(it, IMGFREE_ALL);
@@ -476,9 +417,9 @@ void imglist_unlock(void)
 
 struct image* imglist_load(const char* const* sources, size_t num)
 {
-    assert(ctx.size == 0);
-
     struct image* img = NULL;
+
+    assert(ctx.size == 0 && "already loaded");
 
     // compose image list
     if (num == 0) {
@@ -670,26 +611,4 @@ ssize_t imglist_distance(const struct image* start, const struct image* end)
     }
 
     return distance;
-}
-
-void imglist_watch(struct image* img, imglist_watch_cb callback)
-{
-#ifdef HAVE_INOTIFY
-    // register inotify watcher
-    if (ctx.notify >= 0) {
-        if (ctx.watch != -1) {
-            inotify_rm_watch(ctx.notify, ctx.watch);
-            ctx.watch = -1;
-        }
-        if (img) {
-            ctx.callback = callback;
-            ctx.watch =
-                inotify_add_watch(ctx.notify, img->source,
-                                  IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF);
-        }
-    }
-#else
-    (void)img;
-    (void)callback;
-#endif
 }

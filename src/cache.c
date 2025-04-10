@@ -104,7 +104,7 @@ bool cache_put(struct cache* cache, struct image* image)
     return true;
 }
 
-bool cache_out(struct cache* cache, struct image* image)
+bool cache_out(struct cache* cache, const struct image* image)
 {
     bool found = false;
 

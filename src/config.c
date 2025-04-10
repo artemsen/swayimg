@@ -59,6 +59,7 @@ static const struct config_default defaults[] = {
     { CFG_LIST,         CFG_LIST_LOOP,      CFG_YES                  },
     { CFG_LIST,         CFG_LIST_RECURSIVE, CFG_NO                   },
     { CFG_LIST,         CFG_LIST_ALL,       CFG_NO                   },
+    { CFG_LIST,         CFG_LIST_FSMON,     CFG_YES                  },
 
     { CFG_FONT,         CFG_FONT_NAME,      "monospace"              },
     { CFG_FONT,         CFG_FONT_SIZE,      "14"                     },

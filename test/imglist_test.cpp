@@ -555,9 +555,3 @@ TEST_F(ImageList, Lock)
     imglist_lock();
     imglist_unlock();
 }
-
-TEST_F(ImageList, Watch)
-{
-    imglist_init(config);
-    imglist_watch(nullptr, nullptr);
-}

@@ -31,15 +31,15 @@ struct watch {
     char path[1];     ///< Abolute path (variable length)
 };
 
-/** Context of the file system watcher. */
-struct fs {
-    int notify;          ///< inotify file descriptor
-    struct watch* watch; ///< Watched files/directories
-    fs_callback handler; ///< Event handler
+/** Context of the file system monitor. */
+struct fs_monitor {
+    int notify;            ///< inotify file descriptor
+    struct watch* watch;   ///< Watched files/directories
+    fs_monitor_cb handler; ///< Event handler
 };
 
-/** Global fs context instance. */
-static struct fs ctx;
+/** Global fs monitor context instance. */
+static struct fs_monitor ctx = { -1, NULL, NULL };
 
 /**
  * Handle inotify event.
@@ -51,6 +51,14 @@ static void handle_event(const struct inotify_event* event)
     char path[PATH_MAX];
 
     if (event->mask & IN_IGNORED) {
+        // remove from the watch list
+        list_for_each(ctx.watch, struct watch, it) {
+            if (it->id == event->wd) {
+                ctx.watch = list_remove(it);
+                free(it);
+                break;
+            }
+        }
         return;
     }
 
@@ -68,7 +76,7 @@ static void handle_event(const struct inotify_event* event)
     }
 
     // compose full path
-    if (*event->name) {
+    if (event->len) {
         if (!fs_append_path(event->name, path, sizeof(path))) {
             return; // buffer too small
         }
@@ -86,6 +94,7 @@ static void handle_event(const struct inotify_event* event)
     } else if (event->mask & IN_MODIFY) {
         et = fsevent_modify;
     } else {
+        assert(false && "unhandled event");
         return;
     }
 
@@ -116,16 +125,16 @@ static void on_inotify(__attribute__((unused)) void* data)
     }
 }
 
-void fs_init(fs_callback handler)
+void fs_monitor_init(fs_monitor_cb handler)
 {
-    ctx.notify = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+    ctx.notify = inotify_init1(IN_NONBLOCK);
     if (ctx.notify != -1) {
         ctx.handler = handler;
         app_watch(ctx.notify, on_inotify, NULL);
     }
 }
 
-void fs_destroy(void)
+void fs_monitor_destroy(void)
 {
     if (ctx.notify != -1) {
         list_for_each(ctx.watch, struct watch, it) {
@@ -138,7 +147,7 @@ void fs_destroy(void)
     }
 }
 
-void fs_watch(const char* path)
+void fs_monitor_add(const char* path)
 {
     struct watch* entry;
     size_t len;

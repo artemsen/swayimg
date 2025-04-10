@@ -18,24 +18,24 @@ enum fsevent {
  * @param event event type
  * @param path absolute path, ends with "/" if it is a directory
  */
-typedef void (*fs_callback)(enum fsevent type, const char* path);
+typedef void (*fs_monitor_cb)(enum fsevent type, const char* path);
 
 /**
- * Initialize global file system context.
+ * Initialize global file system monitor context.
  * @param handler event handler
  */
-void fs_init(fs_callback handler);
+void fs_monitor_init(fs_monitor_cb handler);
 
 /**
- * Destroy global file system context.
+ * Destroy global file system monitor context.
  */
-void fs_destroy(void);
+void fs_monitor_destroy(void);
 
 /**
- * Add file or directory to watch.
- * @param path target path
+ * Register file or directory in monitor.
+ * @param path watched path
  */
-void fs_watch(const char* path);
+void fs_monitor_add(const char* path);
 
 /**
  * Append subdir/file to the path.

@@ -119,7 +119,7 @@ struct viewer {
 /** Global viewer context. */
 static struct viewer ctx;
 
-static void reload_file(void);
+static void reload_current(void);
 
 /**
  * Preloader thread.
@@ -596,11 +596,52 @@ static void reset_state(void)
 }
 
 /**
+ * Load image and set it as the current.
+ * @param img image to open
+ * @param forward preferred direction after skipping file
+ * @return pointer to `ctx.current` or NULL if image list is empty
+ */
+static struct image* open_image(struct image* img, bool forward)
+{
+    while (img) {
+        struct image* next;
+
+        // get file form history/preload cache
+        if (cache_out(ctx.preload, img) || cache_out(ctx.history, img)) {
+            break;
+        }
+        if (image_load(img) == imgload_success) {
+            break;
+        }
+
+        // skip and jump to the nearest entry
+        next = forward ? imglist_next_file(img) : imglist_prev_file(img);
+        if (next == ctx.current) {
+            next = NULL;
+        } else {
+            imglist_remove(img);
+        }
+        img = next;
+    }
+
+    if (img) {
+        if (!cache_put(ctx.history, ctx.current)) {
+            image_free(ctx.current, IMGFREE_FRAMES);
+        }
+        ctx.current = img;
+        preloader_start();
+        reset_state();
+    }
+
+    return img;
+}
+
+/**
  * Switch to the next image.
  * @param direction next image position
  * @return true if next image was loaded
  */
-static bool next_file(enum action_type direction)
+static bool next_image(enum action_type direction)
 {
     struct image* next;
     bool forward = false; // preferred direction after skipping file
@@ -638,42 +679,7 @@ static bool next_file(enum action_type direction)
             break;
     }
 
-    // load next image
-    while (next) {
-        struct image* skip;
-
-        // get file form history/preload cache
-        if (cache_out(ctx.preload, next) || cache_out(ctx.history, next)) {
-            break;
-        }
-        if (image_load(next) == imgload_success) {
-            break;
-        }
-
-        // skip and jump to the nearest entry
-        skip = next;
-        next = forward ? imglist_next_file(skip) : imglist_prev_file(skip);
-        if (next == ctx.current) {
-            next = NULL;
-        }
-        if (!next) {
-            next = forward ? imglist_prev_file(skip) : imglist_next_file(skip);
-            if (next == ctx.current) {
-                next = NULL;
-            }
-        }
-        imglist_remove(skip);
-    }
-
-    if (next) {
-        if (!cache_put(ctx.history, ctx.current)) {
-            image_free(ctx.current, IMGFREE_FRAMES);
-        }
-        ctx.current = next;
-        preloader_start();
-        imglist_watch(ctx.current, reload_file);
-        reset_state();
-    }
+    next = open_image(next, forward);
 
     imglist_unlock();
 
@@ -719,13 +725,40 @@ static void on_animation_timer(__attribute__((unused)) void* data)
 /** Slideshow timer event handler. */
 static void on_slideshow_timer(__attribute__((unused)) void* data)
 {
-    slideshow_ctl(next_file(action_next_file));
+    slideshow_ctl(next_image(action_next_file));
+}
+
+/**
+ * Skip current image file.
+ * @param remove flag to remove current image from the image list
+ * @return true if next image opened
+ */
+static bool skip_current(bool remove)
+{
+    struct image* curr = ctx.current;
+    struct image* next;
+
+    next = imglist_next_file(ctx.current);
+    next = open_image(next, true);
+    if (!next) {
+        next = imglist_prev_file(ctx.current);
+        next = open_image(next, false);
+    }
+
+    if (!next) {
+        fprintf(stderr, "No more images to view, exit\n");
+        app_exit(0);
+    } else if (remove) {
+        imglist_remove(curr);
+    }
+
+    return next;
 }
 
 /**
  * Reload image file and reset state (position, scale, etc).
  */
-static void reload_file(void)
+static void reload_current(void)
 {
     image_free(ctx.current, IMGFREE_FRAMES | IMGFREE_THUMB);
     if (image_load(ctx.current) == imgload_success) {
@@ -733,26 +766,7 @@ static void reload_file(void)
         reset_state();
     } else {
         info_update(info_status, "Unable to reload file, open next one");
-        if (!next_file(action_next_file)) {
-            printf("No more images to view, exit\n");
-            app_exit(0);
-        }
-    }
-}
-
-/**
- * Skip current image file.
- */
-static void skip_file(void)
-{
-    struct image* skip = ctx.current;
-    if (next_file(action_next_file) || next_file(action_prev_file)) {
-        imglist_lock();
-        imglist_remove(skip);
-        imglist_unlock();
-    } else {
-        printf("No more images to view, exit\n");
-        app_exit(0);
+        skip_current(true);
     }
 }
 
@@ -804,6 +818,31 @@ static void on_resize(void)
     reset_state();
 }
 
+/** Mode handler: image list update. */
+static void on_imglist(const struct image* image, enum fsevent event)
+{
+    switch (event) {
+        case fsevent_create:
+            break;
+        case fsevent_modify:
+            if (image == ctx.current) {
+                reload_current();
+            } else {
+                cache_out(ctx.preload, image);
+                cache_out(ctx.history, image);
+            }
+            break;
+        case fsevent_remove:
+            if (image == ctx.current) {
+                skip_current(false);
+            } else {
+                cache_out(ctx.preload, image);
+                cache_out(ctx.history, image);
+            }
+            break;
+    }
+}
+
 /** Mode handler: mouse drag. */
 static void on_drag(int dx, int dy)
 {
@@ -830,10 +869,12 @@ static void on_action(const struct action* action)
         case action_prev_file:
         case action_next_file:
         case action_rand_file:
-            next_file(action->type);
+            next_image(action->type);
             break;
         case action_skip_file:
-            skip_file();
+            imglist_lock();
+            skip_current(true);
+            imglist_unlock();
             break;
         case action_prev_frame:
         case action_next_frame:
@@ -844,7 +885,8 @@ static void on_action(const struct action* action)
             animation_ctl(!ctx.animation_enable);
             break;
         case action_slideshow:
-            slideshow_ctl(!ctx.slideshow_enable && next_file(action_next_file));
+            slideshow_ctl(!ctx.slideshow_enable &&
+                          next_image(action_next_file));
             break;
         case action_step_left:
             move_image(true, true, action->params);
@@ -887,7 +929,9 @@ static void on_action(const struct action* action)
             app_redraw();
             break;
         case action_reload:
-            reload_file();
+            imglist_lock();
+            reload_current();
+            imglist_unlock();
             break;
         case action_export:
 #ifdef HAVE_LIBPNG
@@ -922,16 +966,11 @@ static void on_activate(struct image* image)
     cache_out(ctx.preload, ctx.current);
     cache_out(ctx.history, ctx.current);
 
-    if (!image_has_frames(ctx.current) &&
-        image_load(ctx.current) != imgload_success &&
-        !next_file(action_next_file)) {
-        printf("No more images to view, exit\n");
-        app_exit(0);
+    if (image_has_frames(ctx.current) ||
+        image_load(ctx.current) == imgload_success || skip_current(true)) {
+        reset_state();
+        preloader_start();
     }
-
-    reset_state();
-    preloader_start();
-    imglist_watch(ctx.current, reload_file);
 }
 
 /** Mode handler: deactivate viewer. */
@@ -940,32 +979,8 @@ static struct image* on_deactivate(void)
     preloader_stop();
     animation_ctl(false);
     slideshow_ctl(false);
-    imglist_watch(NULL, NULL);
 
     return ctx.current;
-}
-
-/** Mode handler: image list update. */
-static void on_imglist(const struct image* image, enum fsevent event)
-{
-    (void)image;
-    (void)event;
-    // if (image == ctx.current) {
-    //     switch (event) {
-    //         case fsevent_create:
-    //             break;
-    //         case fsevent_modify:
-    //             reload_file();
-    //             break;
-    //         case fsevent_remove:
-    //             if (!next_file(action_next_file) &&
-    //                 !next_file(action_prev_file)) {
-    //                 printf("No more images to view, exit\n");
-    //                 app_exit(0);
-    //             }
-    //             break;
-    //     }
-    // }
 }
 
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)

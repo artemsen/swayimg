@@ -96,6 +96,8 @@ loop = yes
 recursive = no
 # Add files from the same directory as the first file (yes/no)
 all = no
+# Enable file system monitoring for adding new images to the list (yes/no)
+fsmon = yes
 
 ################################################################################
 # Font configuration

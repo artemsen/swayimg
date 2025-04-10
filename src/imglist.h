@@ -130,15 +130,3 @@ struct image* imglist_jump(struct image* img, ssize_t distance);
  * @return number of entries in range [start,end]
  */
 ssize_t imglist_distance(const struct image* start, const struct image* end);
-
-/**
- * File watcher notification callback.
- */
-typedef void (*imglist_watch_cb)(void);
-
-/**
- * Add image file to watcher for update/delete.
- * @param img image instance to watch
- * @param callback change notification callback
- */
-void imglist_watch(struct image* img, imglist_watch_cb callback);

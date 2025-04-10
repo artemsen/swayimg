@@ -49,4 +49,4 @@ bool cache_put(struct cache* cache, struct image* image);
  * @param image image descriptor
  * @return false if image is not in the cache
  */
-bool cache_out(struct cache* cache, struct image* image);
+bool cache_out(struct cache* cache, const struct image* image);
