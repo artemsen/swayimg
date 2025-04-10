@@ -17,9 +17,9 @@
 #include <unistd.h>
 
 #ifndef HAVE_INOTIFY
-void fs_init(__attribute__((unused)) fs_callback handler) { }
-void fs_destroy(void) { }
-void fs_watch(__attribute__((unused)) const char* path) { }
+void fs_monitor_init(__attribute__((unused)) fs_monitor_cb handler) { }
+void fs_monitor_destroy(void) { }
+void fs_monitor_add(__attribute__((unused)) const char* path) { }
 #else
 
 #include <sys/inotify.h>
