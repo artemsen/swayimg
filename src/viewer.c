@@ -119,8 +119,6 @@ struct viewer {
 /** Global viewer context. */
 static struct viewer ctx;
 
-static void reload_current(void);
-
 /**
  * Preloader thread.
  */
