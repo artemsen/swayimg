@@ -29,6 +29,11 @@ void imglist_lock(void);
 void imglist_unlock(void);
 
 /**
+ * Check if image list is locked.
+ */
+bool imglist_is_locked(void);
+
+/**
  * Load image list from specified sources.
  * @param sources array of sources
  * @param num number of sources in the array

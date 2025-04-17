@@ -552,6 +552,9 @@ TEST_F(ImageList, Distance)
 TEST_F(ImageList, Lock)
 {
     imglist_init(config);
+    EXPECT_FALSE(imglist_is_locked());
     imglist_lock();
+    EXPECT_TRUE(imglist_is_locked());
     imglist_unlock();
+    EXPECT_FALSE(imglist_is_locked());
 }

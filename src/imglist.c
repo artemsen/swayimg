@@ -415,6 +415,15 @@ void imglist_unlock(void)
     pthread_mutex_unlock(&ctx.lock);
 }
 
+bool imglist_is_locked(void)
+{
+    if (pthread_mutex_trylock(&ctx.lock) == 0) {
+        pthread_mutex_unlock(&ctx.lock);
+        return false;
+    }
+    return true;
+}
+
 struct image* imglist_load(const char* const* sources, size_t num)
 {
     struct image* img = NULL;
