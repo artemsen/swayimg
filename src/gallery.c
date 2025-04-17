@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "imglist.h"
 #include "info.h"
+#include "layout.h"
 #include "ui.h"
 
 #include <assert.h>
@@ -24,7 +25,6 @@
 
 /** Gallery context. */
 struct gallery {
-    size_t thumb_size;     ///< Size of thumbnail
     size_t thumb_cache;    ///< Max number of thumbnails in cache
     enum aa_mode thumb_aa; ///< Anti-aliasing mode
     bool thumb_fill;       ///< Scale mode (fill/fit)
@@ -36,13 +36,7 @@ struct gallery {
     argb_t clr_border;     ///< Selected tile border
     argb_t clr_shadow;     ///< Selected tile shadow
 
-    struct image* current; ///< Currently selected image
-    size_t curr_col;       ///< Selected image column
-    size_t curr_row;       ///< Selected image row
-
-    size_t layout_columns; ///< Number of thumbnail columns
-    size_t layout_rows;    ///< Number of thumbnail rows
-    size_t layout_padding; ///< Space between thumbnails
+    struct layout layout; ///< Thumbnail layout
 
     pthread_t loader_tid; ///< Thumbnail loader thread id
     bool loader_active;   ///< Preload in progress flag
@@ -50,46 +44,6 @@ struct gallery {
 
 /** Global gallery context. */
 static struct gallery ctx;
-
-/**
- * Remove non-visible thumbnails to save memory.
- * @param all remove even visible thumbnails
- */
-static void clear_thumbnails(bool all)
-{
-    struct image* img;
-
-    imglist_lock();
-
-    if (all) {
-        img = imglist_first();
-        while (img) {
-            image_free(img, IMGFREE_THUMB);
-            img = imglist_next(img);
-        }
-    } else {
-        const ssize_t distance_bk =
-            -(ssize_t)(ctx.curr_row * ctx.layout_columns + ctx.curr_col);
-        const ssize_t distance_fw =
-            ctx.layout_columns * ctx.layout_rows + distance_bk;
-
-        // from the first visible and above
-        img = imglist_jump(ctx.current, distance_bk - ctx.thumb_cache / 2);
-        while (img) {
-            image_free(img, IMGFREE_THUMB);
-            img = imglist_prev(img);
-        }
-
-        // from the last visible and below
-        img = imglist_jump(ctx.current, distance_fw + ctx.thumb_cache / 2);
-        while (img) {
-            image_free(img, IMGFREE_THUMB);
-            img = imglist_next(img);
-        }
-    }
-
-    imglist_unlock();
-}
 
 /**
  * Get path for the thumbnail on persistent storage.
@@ -127,8 +81,8 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
 
     // append postfix
     append_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
-                          (uint16_t)ctx.thumb_size, ctx.thumb_fill ? 1 : 0,
-                          ctx.thumb_aa);
+                          (uint16_t)ctx.layout.thumb_size,
+                          ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
     if (append_len <= 0 || len + append_len + 1 >= path_max) {
         return 0;
     }
@@ -197,102 +151,121 @@ bool pstore_load(struct image* img)
 }
 
 /**
+ * Remove non-visible thumbnails to save memory.
+ * @param all remove even visible thumbnails
+ */
+static void clear_thumbnails(bool all)
+{
+    struct image* img;
+
+    imglist_lock();
+
+    if (all) {
+        img = imglist_first();
+        while (img) {
+            image_free(img, IMGFREE_THUMB);
+            img = imglist_next(img);
+        }
+    } else {
+        layout_update(&ctx.layout);
+
+        // from the first visible and above
+        img = ctx.layout.thumbs[0].img;
+        img = imglist_jump(img, -(ssize_t)(ctx.thumb_cache / 2));
+        while (img) {
+            image_free(img, IMGFREE_THUMB);
+            img = imglist_prev(img);
+        }
+
+        // from the last visible and below
+        img = ctx.layout.thumbs[ctx.layout.thumb_total - 1].img;
+        img = imglist_jump(img, ctx.thumb_cache / 2);
+        while (img) {
+            image_free(img, IMGFREE_THUMB);
+            img = imglist_next(img);
+        }
+    }
+
+    imglist_unlock();
+}
+
+/**
  * Thumbnail loader thread.
  */
-static void* loader_thread(__attribute__((unused)) void* data)
+static void* loader_thread(void* data)
 {
-    // number of thumbnails before and after the selected image
-    const ssize_t distance_bk =
-        -(ssize_t)(ctx.curr_row * ctx.layout_columns + ctx.curr_col);
-    const ssize_t distance_fw =
-        ctx.layout_columns * ctx.layout_rows + distance_bk;
+    struct image* queue = data;
 
-    ssize_t step_fw = -1; // include currently selected
-    ssize_t step_bk = 0;
-    bool forward = false;
-
-    while (ctx.loader_active &&
-           (step_fw < distance_fw || step_bk > distance_bk)) {
-        struct image* thumb;
+    list_for_each(queue, struct image, it) {
         struct image* origin;
 
-        // increment distance to get next image to load
-        forward = !forward;
-        if (forward) {
-            if (step_fw >= distance_fw) {
-                continue;
-            }
-            ++step_fw;
-        } else {
-            if (step_bk <= distance_bk) {
-                continue;
-            }
-            --step_bk;
-        }
-
+        // check if thumbnail is already loaded
         imglist_lock();
-
-        if (forward) {
-            thumb = imglist_jump(ctx.current, step_fw);
-        } else {
-            thumb = imglist_jump(ctx.current, step_bk);
-        }
-        if (!thumb || image_has_thumb(thumb)) {
+        if (!ctx.loader_active) {
             imglist_unlock();
-            continue; // end of list or already loaded
+            break;
         }
-        if (image_thumb_create(thumb, ctx.thumb_size, ctx.thumb_fill,
-                               ctx.thumb_aa)) {
-            app_redraw();
-            imglist_unlock();
-            continue; // loaded from exiting data
+        origin = imglist_find(it->source);
+        if (origin) {
+            if (image_has_thumb(origin)) {
+                origin = NULL; // already loaded
+            }
+            if (image_thumb_create(origin, ctx.layout.thumb_size,
+                                   ctx.thumb_fill, ctx.thumb_aa)) {
+                app_redraw();
+                origin = NULL; // loaded from frame data
+            }
         }
-
-        // create copy to unlock the list
-        thumb = image_create(thumb->source);
         imglist_unlock();
-        if (!thumb) {
-            break; // not enough memory
-        }
 
-        // load thumbnail
-        if (!ctx.thumb_pstore || !pstore_load(thumb)) {
-            if (image_load(thumb) == imgload_success) {
-                image_thumb_create(thumb, ctx.thumb_size, ctx.thumb_fill,
-                                   ctx.thumb_aa);
-                if (ctx.thumb_pstore) {
-                    // save to thumbnail to persistent storage
-                    const size_t width = thumb->frames[0].pm.width;
-                    const size_t height = thumb->frames[0].pm.height;
-                    if (width > ctx.thumb_size && height > ctx.thumb_size) {
-                        pstore_save(thumb);
-                    }
-                }
-                image_free(thumb, IMGFREE_FRAMES); // not needed anymore
-            }
-        }
-
-        imglist_lock();
-
-        origin = imglist_find(thumb->source);
         if (!origin) {
-            image_free(thumb, IMGFREE_ALL);
-            imglist_unlock();
             continue;
         }
 
-        if (image_has_thumb(thumb)) {
-            image_update(origin, thumb);
-        } else {
-            imglist_remove(origin);
+        // load thumbnail
+        if (!ctx.thumb_pstore || !pstore_load(it)) {
+            if (image_load(it) == imgload_success) {
+                if (image_thumb_create(it, ctx.layout.thumb_size,
+                                       ctx.thumb_fill, ctx.thumb_aa) &&
+                    ctx.thumb_pstore) {
+                    // save to thumbnail to persistent storage
+                    const size_t width = it->frames[0].pm.width;
+                    const size_t height = it->frames[0].pm.height;
+                    if (width > ctx.layout.thumb_size &&
+                        height > ctx.layout.thumb_size) {
+                        pstore_save(it);
+                    }
+                }
+                image_free(it, IMGFREE_FRAMES); // not needed anymore
+            }
         }
 
+        // put thumbnail to image list
+        imglist_lock();
+        if (!ctx.loader_active) {
+            imglist_unlock();
+            break;
+        }
+        origin = imglist_find(it->source);
+        if (origin) {
+            if (image_has_thumb(it)) {
+                image_update(origin, it);
+            } else {
+                imglist_remove(origin); // failed to load
+            }
+        }
         imglist_unlock();
-        image_free(thumb, IMGFREE_ALL);
+
         app_redraw();
     }
 
-    clear_thumbnails(false);
+    // free the queue
+    list_for_each(queue, struct image, it) {
+        image_free(it, IMGFREE_ALL);
+    }
+    if (ctx.loader_active) {
+        clear_thumbnails(false);
+    }
 
     ctx.loader_active = false;
     return NULL;
@@ -300,76 +273,17 @@ static void* loader_thread(__attribute__((unused)) void* data)
 
 /**
  * Start thumbnail loader thread.
+ * @param queue head of image list to load
  */
-static void loader_start(void)
-{
-    if (!ctx.loader_active) {
-        ctx.loader_active = true;
-        pthread_create(&ctx.loader_tid, NULL, loader_thread, NULL);
-    }
-}
-
-/**
- * Stop thumbnail loader thread.
- */
-static void loader_stop(void)
+static void loader_restart(struct image* queue)
 {
     if (ctx.loader_active) {
         ctx.loader_active = false;
         pthread_join(ctx.loader_tid, NULL);
     }
-}
-
-/** Update thumbnail layout info. */
-static void update_layout(void)
-{
-    const size_t width = ui_get_width();
-    const size_t height = ui_get_height();
-
-    ctx.layout_columns = width / ctx.thumb_size;
-    if (ctx.layout_columns == 0) {
-        ctx.layout_columns = 1;
-    }
-    ctx.layout_padding = (width - (ctx.layout_columns * ctx.thumb_size)) /
-        (ctx.layout_columns + 1);
-    ctx.layout_rows =
-        (height - ctx.layout_padding) / (ctx.thumb_size + ctx.layout_padding);
-    ++ctx.layout_rows; // partly visible row
-}
-
-/**
- * Fix up selected image position.
- */
-static void fixup_position(void)
-{
-    struct image* first;
-
-    if (ctx.curr_col >= ctx.layout_columns ||
-        ctx.curr_row >= ctx.layout_rows - 1) {
-        const size_t distance = imglist_distance(imglist_first(), ctx.current);
-        ctx.curr_col = distance % ctx.layout_columns;
-        ctx.curr_row = (ctx.layout_rows - 1) / 2;
-    }
-
-    // first visible image
-    first = imglist_jump(
-        ctx.current,
-        -(ssize_t)(ctx.curr_row * ctx.layout_columns + ctx.curr_col));
-
-    // fix top
-    if (!first) {
-        first = imglist_first();
-        const size_t distance = imglist_distance(first, ctx.current);
-        ctx.curr_col = distance % ctx.layout_columns;
-        ctx.curr_row = distance / ctx.layout_columns;
-    }
-
-    // fix bottom
-    if (first != imglist_first() && ctx.layout_rows > 2 &&
-        !imglist_jump(first, ctx.layout_columns * (ctx.layout_rows - 2))) {
-        const size_t distance = imglist_distance(imglist_first(), ctx.current);
-        ctx.curr_col = distance % ctx.layout_columns;
-        ctx.curr_row = ctx.layout_rows - 2;
+    if (queue) {
+        ctx.loader_active = true;
+        pthread_create(&ctx.loader_tid, NULL, loader_thread, queue);
     }
 }
 
@@ -380,101 +294,74 @@ static void fixup_position(void)
  */
 static bool select_next(enum action_type direction)
 {
-    struct image* next;
-    ssize_t next_col = ctx.curr_col;
-    ssize_t next_row = ctx.curr_row;
-
-    loader_stop();
-    imglist_lock();
+    bool rc = false;
+    struct image* load = NULL;
+    enum layout_dir dir;
 
     switch (direction) {
         case action_first_file:
-            next = imglist_first();
-            next_col = 0;
-            next_row = 0;
+            dir = layout_first;
             break;
         case action_last_file:
-            next = imglist_last();
-            next_col = (imglist_size() - 1) % ctx.layout_columns;
-            next_row = ctx.layout_rows - 1;
+            dir = layout_last;
             break;
         case action_prev_file:
         case action_step_left:
-            next = imglist_prev(ctx.current);
-            --next_col;
+            dir = layout_left;
             break;
         case action_next_file:
         case action_step_right:
-            next = imglist_next(ctx.current);
-            ++next_col;
+            dir = layout_right;
             break;
         case action_step_up:
-            next = imglist_jump(ctx.current, -(ssize_t)ctx.layout_columns);
-            --next_row;
+            dir = layout_up;
             break;
         case action_step_down:
-            next = imglist_jump(ctx.current, ctx.layout_columns);
-            ++next_row;
+            dir = layout_down;
             break;
         case action_page_up:
-            next = imglist_jump(ctx.current,
-                                -(ssize_t)ctx.layout_columns *
-                                    (ctx.layout_rows - 1));
-            if (!next) {
-                next = imglist_jump(imglist_first(), ctx.curr_col);
-            }
+            dir = layout_pgup;
             break;
         case action_page_down:
-            next = imglist_jump(ctx.current,
-                                ctx.layout_columns * (ctx.layout_rows - 1));
-            if (!next) {
-                next = imglist_last();
-                next_col = (imglist_size() - 1) % ctx.layout_columns;
-                next_row = ctx.layout_rows - 1;
-            }
+            dir = layout_pgdown;
             break;
         default:
-            next = NULL;
-            break;
+            assert(false && "unreachable code");
+            return false;
     }
 
-    if (next) {
-        // set position of selected image
-        if (next_col < 0) {
-            next_col = ctx.layout_columns - 1;
-            --next_row;
-        } else if (next_col >= (ssize_t)ctx.layout_columns) {
-            next_col = 0;
-            ++next_row;
+    imglist_lock();
+    rc = layout_select(&ctx.layout, dir);
+    if (rc) {
+        load = layout_ldqueue(&ctx.layout);
+    }
+    imglist_unlock();
+
+    if (rc) {
+        if (load) {
+            loader_restart(load);
         }
-        if (next_row < 0) {
-            next_row = 0;
-        } else if (next_row >= (ssize_t)ctx.layout_rows - 1) {
-            next_row = ctx.layout_rows - 2;
-        }
-
-        ctx.current = next;
-        ctx.curr_col = next_col;
-        ctx.curr_row = next_row;
-        fixup_position();
-
-        info_reset(ctx.current);
-
+        info_reset(ctx.layout.current);
         app_redraw();
     }
 
-    imglist_unlock();
-    return next;
+    return rc;
 }
 
-/** Skip current image file. */
-static void skip_current(void)
+/**
+ * Skip current image file.
+ * @param remove flag to remove current image from the image list
+ */
+static void skip_current(bool remove)
 {
-    struct image* skip = ctx.current;
-    if (select_next(action_next_file) || select_next(action_prev_file)) {
-        imglist_lock();
-        imglist_remove(skip);
-        imglist_unlock();
+    struct image* skip = ctx.layout.current;
+
+    if (layout_select(&ctx.layout, layout_right) ||
+        layout_select(&ctx.layout, layout_left)) {
+        if (remove) {
+            imglist_remove(skip);
+        }
+        app_redraw();
     } else {
         printf("No more images to view, exit\n");
         app_exit(0);
@@ -484,7 +371,7 @@ static void skip_current(void)
 /** Reload. */
 static void reload(void)
 {
-    loader_stop();
+    loader_restart(NULL);
     clear_thumbnails(true);
     app_redraw();
 }
@@ -492,28 +379,28 @@ static void reload(void)
 /**
  * Draw thumbnail.
  * @param window destination window
- * @param column,row position of the thumbnail in layout
- * @param img thumbnail image
+ * @param thumb thumbnail description
  */
-static void draw_thumbnail(struct pixmap* window, size_t column, size_t row,
-                           const struct image* img)
+static void draw_thumbnail(struct pixmap* window,
+                           const struct layout_thumb* lth)
 {
-    const struct pixmap* thumb = image_has_thumb(img) ? &img->thumbnail : NULL;
-    ssize_t x = column * ctx.thumb_size + ctx.layout_padding * (column + 1);
-    ssize_t y = row * ctx.thumb_size + ctx.layout_padding * (row + 1);
+    const struct pixmap* pm =
+        image_has_thumb(lth->img) ? &lth->img->thumbnail : NULL;
+    ssize_t x = lth->x;
+    ssize_t y = lth->y;
 
-    if (img != ctx.current) {
-        pixmap_fill(window, x, y, ctx.thumb_size, ctx.thumb_size,
+    if (lth != layout_current(&ctx.layout)) {
+        pixmap_fill(window, x, y, ctx.layout.thumb_size, ctx.layout.thumb_size,
                     ctx.clr_background);
-        if (thumb) {
-            x += ctx.thumb_size / 2 - thumb->width / 2;
-            y += ctx.thumb_size / 2 - thumb->height / 2;
-            pixmap_copy(thumb, window, x, y, img->alpha);
+        if (pm) {
+            x += ctx.layout.thumb_size / 2 - pm->width / 2;
+            y += ctx.layout.thumb_size / 2 - pm->height / 2;
+            pixmap_copy(pm, window, x, y, lth->img->alpha);
         }
     } else {
         // currently selected item
-        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.thumb_size;
-        const ssize_t thumb_offset = (thumb_size - ctx.thumb_size) / 2;
+        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.layout.thumb_size;
+        const ssize_t thumb_offset = (thumb_size - ctx.layout.thumb_size) / 2;
 
         x = max(0, x - thumb_offset);
         y = max(0, y - thumb_offset);
@@ -523,13 +410,13 @@ static void draw_thumbnail(struct pixmap* window, size_t column, size_t row,
 
         pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
 
-        if (thumb) {
-            const size_t thumb_w = thumb->width * THUMB_SELECTED_SCALE;
-            const size_t thumb_h = thumb->height * THUMB_SELECTED_SCALE;
+        if (pm) {
+            const size_t thumb_w = pm->width * THUMB_SELECTED_SCALE;
+            const size_t thumb_h = pm->height * THUMB_SELECTED_SCALE;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            pixmap_scale(ctx.thumb_aa, thumb, window, tx, ty,
-                         THUMB_SELECTED_SCALE, img->alpha);
+            pixmap_scale(ctx.thumb_aa, pm, window, tx, ty, THUMB_SELECTED_SCALE,
+                         lth->img->alpha);
         }
 
         // shadow
@@ -569,34 +456,32 @@ static void draw_thumbnail(struct pixmap* window, size_t column, size_t row,
  */
 static void draw_thumbnails(struct pixmap* window)
 {
-    struct image* img;
+    struct image* load = NULL;
+    bool all_loaded = true;
 
     imglist_lock();
+    layout_update(&ctx.layout);
 
-    fixup_position();
-
-    // first visible image
-    img = imglist_jump(
-        ctx.current,
-        -(ssize_t)(ctx.curr_row * ctx.layout_columns + ctx.curr_col));
-    assert(img);
-
-    // draw
-    for (size_t row = 0; img && row < ctx.layout_rows; ++row) {
-        for (size_t col = 0; img && col < ctx.layout_columns; ++col) {
-            if (!image_has_thumb(img)) {
-                loader_start();
-            }
-            if (img != ctx.current) {
-                draw_thumbnail(window, col, row, img);
-            }
-            img = imglist_next(img);
+    // draw all exclude the currently selected
+    for (size_t i = 0; i < ctx.layout.thumb_total; ++i) {
+        const struct layout_thumb* thumb = &ctx.layout.thumbs[i];
+        all_loaded &= image_has_thumb(thumb->img);
+        if (thumb != layout_current(&ctx.layout)) {
+            draw_thumbnail(window, thumb);
         }
+    }
+    // draw only currently selected
+    draw_thumbnail(window, layout_current(&ctx.layout));
+
+    if (!all_loaded && !ctx.loader_active) {
+        load = layout_ldqueue(&ctx.layout);
     }
 
     imglist_unlock();
 
-    draw_thumbnail(window, ctx.curr_col, ctx.curr_row, ctx.current);
+    if (load) {
+        loader_restart(load);
+    }
 }
 
 /** Mode handler: window redraw. */
@@ -610,8 +495,11 @@ static void on_redraw(struct pixmap* window)
 /** Mode handler: window resize. */
 static void on_resize(void)
 {
-    loader_stop();
-    update_layout();
+    loader_restart(NULL);
+
+    imglist_lock();
+    layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
+    imglist_unlock();
 }
 
 /** Mode handler: apply action. */
@@ -637,7 +525,9 @@ static void on_action(const struct action* action)
             select_next(action->type);
             break;
         case action_skip_file:
-            skip_current();
+            imglist_lock();
+            skip_current(true);
+            imglist_unlock();
             break;
         case action_reload:
             reload();
@@ -650,43 +540,60 @@ static void on_action(const struct action* action)
 /** Mode handler: image list update. */
 static void on_imglist(const struct image* image, enum fsevent event)
 {
-    (void)image;
-    (void)event;
+    switch (event) {
+        case fsevent_create:
+            break;
+        case fsevent_modify:
+            if (image == ctx.layout.current) {
+                reload();
+            }
+            break;
+        case fsevent_remove:
+            if (image == ctx.layout.current) {
+                skip_current(false);
+            }
+            break;
+    }
+    app_redraw();
 }
 
 /** Mode handler: get currently viewed image. */
 static struct image* on_current(void)
 {
-    return ctx.current;
+    return ctx.layout.current;
 }
 
 /** Mode handler: activate viewer. */
 static void on_activate(struct image* image)
 {
-    ctx.current = image;
-    ctx.curr_col = SIZE_MAX;
-    ctx.curr_row = SIZE_MAX;
+    imglist_lock();
 
-    if (!image_has_thumb(ctx.current)) {
-        image_thumb_create(ctx.current, ctx.thumb_size, ctx.thumb_fill,
+    ctx.layout.current = image;
+    layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
+
+    if (!image_has_thumb(image)) {
+        image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
                            ctx.thumb_aa);
     }
-    image_free(ctx.current, IMGFREE_FRAMES);
+    image_free(image, IMGFREE_FRAMES);
 
-    info_reset(ctx.current);
-    update_layout();
+    imglist_unlock();
+
+    info_reset(image);
 }
 
 /** Mode handler: deactivate viewer. */
 static struct image* on_deactivate(void)
 {
-    loader_stop();
-    return ctx.current;
+    loader_restart(NULL);
+    return ctx.layout.current;
 }
 
 void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
 {
-    ctx.thumb_size = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 4096);
+    const size_t ts = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 4096);
+    layout_init(&ctx.layout, ts);
+
     ctx.thumb_cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 4096);
     ctx.thumb_aa = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA);
     ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
@@ -709,5 +616,5 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
 
 void gallery_destroy(void)
 {
-    loader_stop();
+    loader_restart(NULL);
 }
