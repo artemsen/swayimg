@@ -199,6 +199,7 @@ sources = [
   'src/imglist.c',
   'src/info.c',
   'src/keybind.c',
+  'src/layout.c',
   'src/list.c',
   'src/main.c',
   'src/pixmap.c',
