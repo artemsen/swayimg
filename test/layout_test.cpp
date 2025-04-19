@@ -27,6 +27,10 @@ protected:
         layout_free(&layout);
         imglist_unlock();
         imglist_destroy();
+
+        list_for_each(queue, struct image, it) {
+            image_free(it, IMGFREE_ALL);
+        }
     }
 
     void InitLayout(size_t total, size_t current = 0, size_t width = 80,
@@ -51,7 +55,7 @@ protected:
     const char* SelectNext(enum layout_dir dir)
     {
         if (!layout_select(&layout, dir)) {
-            return NULL;
+            return "/NA";
         }
         return layout.current ? layout.current->source : "/ER";
     }
@@ -89,20 +93,21 @@ protected:
     }
 
     struct layout layout;
+    struct image* queue = nullptr;
     static constexpr const size_t thsize = 10;
 };
 
 TEST_F(Layout, BaseScheme)
 {
-    InitLayout(5);
+    InitLayout(30, 15);
 
     ASSERT_EQ(layout.columns, static_cast<size_t>(5));
     ASSERT_EQ(layout.rows, static_cast<size_t>(4));
     ASSERT_EQ(layout.current_col, static_cast<size_t>(0));
-    ASSERT_EQ(layout.current_row, static_cast<size_t>(0));
-    ASSERT_EQ(layout.thumb_total, static_cast<size_t>(5));
+    ASSERT_EQ(layout.current_row, static_cast<size_t>(2));
+    ASSERT_EQ(layout.thumb_total, static_cast<size_t>(20));
 
-    struct image* img = imglist_first();
+    struct image* img = imglist_find("exec://05");
     for (size_t i = 0; i < layout.thumb_total; ++i) {
         EXPECT_EQ(layout.thumbs[i].img, img);
         EXPECT_NE(layout.thumbs[i].x, static_cast<size_t>(0));
@@ -159,6 +164,7 @@ TEST_F(Layout, SchemeLast)
     InitLayout(7);
     ASSERT_STREQ(SelectNext(layout_last), "exec://06");
 
+    ASSERT_TRUE(layout.thumbs[0].img);
     ASSERT_STREQ(layout.thumbs[0].img->source, "exec://00");
     ASSERT_EQ(layout.current_col, static_cast<size_t>(1));
     ASSERT_EQ(layout.current_row, static_cast<size_t>(1));
@@ -262,26 +268,96 @@ TEST_F(Layout, Current)
     EXPECT_EQ(th->img, imglist_jump(imglist_first(), 2));
 }
 
-TEST_F(Layout, LoadingQueue)
+TEST_F(Layout, LdQueueVisibleOnly)
 {
-    InitLayout(5, 2);
+    InitLayout(30, 15);
 
-    struct image* queue = layout_ldqueue(&layout);
+    queue = layout_ldqueue(&layout, 0);
     ASSERT_TRUE(queue);
-    EXPECT_EQ(list_size(&queue->list), static_cast<size_t>(5));
 
+    ASSERT_EQ(list_size(&queue->list), static_cast<size_t>(20));
+
+    // clang-format off
+    const char* const etalon[] = {
+        "exec://15",
+        "exec://14",
+        "exec://16",
+        "exec://13",
+        "exec://17",
+    };
+    // clang-format on
     struct image* it = queue;
-    EXPECT_STREQ(it->source, "exec://02");
-    it = reinterpret_cast<struct image*>(it->list.next);
-    EXPECT_STREQ(it->source, "exec://01");
-    it = reinterpret_cast<struct image*>(it->list.next);
-    EXPECT_STREQ(it->source, "exec://03");
-    it = reinterpret_cast<struct image*>(it->list.next);
-    EXPECT_STREQ(it->source, "exec://00");
-    it = reinterpret_cast<struct image*>(it->list.next);
-    EXPECT_STREQ(it->source, "exec://04");
+    for (auto e : etalon) {
+        ASSERT_STREQ(it->source, e);
+        it = reinterpret_cast<struct image*>(it->list.next);
+    }
 
-    list_for_each(queue, struct image, it) {
-        image_free(it, IMGFREE_ALL);
+    struct image* last = reinterpret_cast<struct image*>(list_get_last(queue));
+    ASSERT_TRUE(last);
+    ASSERT_STREQ(last->source, "exec://05");
+}
+
+TEST_F(Layout, LdQueueUnimited)
+{
+    InitLayout(30, 15);
+
+    queue = layout_ldqueue(&layout, 999);
+    ASSERT_TRUE(queue);
+    ASSERT_EQ(list_size(&queue->list), static_cast<size_t>(30));
+
+    struct image* last = reinterpret_cast<struct image*>(list_get_last(queue));
+    ASSERT_TRUE(last);
+    ASSERT_STREQ(last->source, "exec://00");
+}
+
+TEST_F(Layout, ClearAllInvisible)
+{
+    InitLayout(30, 15);
+
+    struct image* img = imglist_first();
+    while (img) {
+        ASSERT_TRUE(pixmap_create(&img->thumbnail, 1, 1));
+        img = imglist_next(img);
+    }
+
+    layout_clear(&layout, 0);
+
+    img = imglist_first();
+    while (img) {
+        const bool loaded = image_has_thumb(img);
+        const bool expect = img->index > 5 && img->index <= 25;
+        if (loaded != expect) {
+            fprintf(stderr, "Image %s [%ld] thumb: %c, expected %c\n",
+                    img->source, img->index, loaded ? 'Y' : 'N',
+                    expect ? 'Y' : 'N');
+            FAIL();
+        }
+        img = imglist_next(img);
+    }
+}
+
+TEST_F(Layout, ClearLimited)
+{
+    InitLayout(50, 20);
+
+    struct image* img = imglist_first();
+    while (img) {
+        ASSERT_TRUE(pixmap_create(&img->thumbnail, 1, 1));
+        img = imglist_next(img);
+    }
+
+    layout_clear(&layout, 10);
+
+    img = imglist_first();
+    while (img) {
+        const bool loaded = image_has_thumb(img);
+        const bool expect = img->index > 5 && img->index <= 35;
+        if (loaded != expect) {
+            fprintf(stderr, "Image %s [%ld] thumb: %c, expected %c\n",
+                    img->source, img->index, loaded ? 'Y' : 'N',
+                    expect ? 'Y' : 'N');
+            FAIL();
+        }
+        img = imglist_next(img);
     }
 }

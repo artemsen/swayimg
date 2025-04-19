@@ -84,6 +84,14 @@ struct layout_thumb* layout_current(struct layout* lo);
 /**
  * Create loading queue: ordered list of images to load.
  * @param lo pointer to the thumbnail layout
+ * @param preload number of invisible images to add to queue
  * @return pointer to the list head, caller should free the list
  */
-struct image* layout_ldqueue(struct layout* lo);
+struct image* layout_ldqueue(struct layout* lo, size_t preload);
+
+/**
+ * Clear thumbnails.
+ * @param lo pointer to the thumbnail layout
+ * @param preserve number of invisible images to preserve
+ */
+void layout_clear(struct layout* lo, size_t preserve);

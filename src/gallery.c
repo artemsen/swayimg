@@ -25,7 +25,9 @@
 
 /** Gallery context. */
 struct gallery {
-    size_t thumb_cache;    ///< Max number of thumbnails in cache
+    size_t cache; ///< Max number of thumbnails in cache
+    bool preload; ///< Preload invisible thumbnails
+
     enum aa_mode thumb_aa; ///< Anti-aliasing mode
     bool thumb_fill;       ///< Scale mode (fill/fit)
     bool thumb_pstore;     ///< Use persistent storage for thumbnails
@@ -156,34 +158,17 @@ bool pstore_load(struct image* img)
  */
 static void clear_thumbnails(bool all)
 {
-    struct image* img;
-
     imglist_lock();
 
     if (all) {
-        img = imglist_first();
+        struct image* img = imglist_first();
         while (img) {
             image_free(img, IMGFREE_THUMB);
             img = imglist_next(img);
         }
-    } else {
+    } else if (ctx.cache) {
         layout_update(&ctx.layout);
-
-        // from the first visible and above
-        img = ctx.layout.thumbs[0].img;
-        img = imglist_jump(img, -(ssize_t)(ctx.thumb_cache / 2));
-        while (img) {
-            image_free(img, IMGFREE_THUMB);
-            img = imglist_prev(img);
-        }
-
-        // from the last visible and below
-        img = ctx.layout.thumbs[ctx.layout.thumb_total - 1].img;
-        img = imglist_jump(img, ctx.thumb_cache / 2);
-        while (img) {
-            image_free(img, IMGFREE_THUMB);
-            img = imglist_next(img);
-        }
+        layout_clear(&ctx.layout, ctx.cache);
     }
 
     imglist_unlock();
@@ -333,7 +318,11 @@ static bool select_next(enum action_type direction)
     imglist_lock();
     rc = layout_select(&ctx.layout, dir);
     if (rc) {
-        load = layout_ldqueue(&ctx.layout);
+        size_t preload = 0;
+        if (ctx.preload) {
+            preload = ctx.cache ? ctx.cache : SIZE_MAX;
+        }
+        load = layout_ldqueue(&ctx.layout, preload);
     }
     imglist_unlock();
 
@@ -474,7 +463,11 @@ static void draw_thumbnails(struct pixmap* window)
     draw_thumbnail(window, layout_current(&ctx.layout));
 
     if (!all_loaded && !ctx.loader_active) {
-        load = layout_ldqueue(&ctx.layout);
+        size_t preload = 0;
+        if (ctx.preload) {
+            preload = ctx.cache ? ctx.cache : SIZE_MAX;
+        }
+        load = layout_ldqueue(&ctx.layout, preload);
     }
 
     imglist_unlock();
@@ -593,7 +586,9 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     const size_t ts = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 4096);
     layout_init(&ctx.layout, ts);
 
-    ctx.thumb_cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, 4096);
+    ctx.cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, SSIZE_MAX);
+    ctx.preload = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PRELOAD);
+
     ctx.thumb_aa = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA);
     ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
     ctx.thumb_pstore = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PSTORE);

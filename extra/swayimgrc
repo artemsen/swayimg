@@ -65,6 +65,8 @@ preload = 1
 size = 200
 # Max number of thumbnails in memory cache, 0 for unlimited
 cache = 100
+# Load not only visible but also adjacent thumbnails
+preload = no
 # Enable/disable storing thumbnails in persistent storage (yes/no)
 pstore = no
 # Fill the entire tile with thumbnail (yes/no)

@@ -45,7 +45,7 @@ static struct image* rearrange(struct layout* lo, size_t* visible)
     }
 
     // get the last visible images
-    last = imglist_jump(first, max_thumb);
+    last = imglist_jump(first, max_thumb - 1);
     if (!last) {
         last = imglist_last();
         if (first != imglist_first()) {
@@ -218,7 +218,7 @@ struct layout_thumb* layout_current(struct layout* lo)
     return &lo->thumbs[idx];
 }
 
-struct image* layout_ldqueue(struct layout* lo)
+struct image* layout_ldqueue(struct layout* lo, size_t preload)
 {
     assert(imglist_is_locked());
 
@@ -227,6 +227,8 @@ struct image* layout_ldqueue(struct layout* lo)
     struct image* last = lo->thumbs[lo->thumb_total - 1].img;
     struct image* fwd = layout_current(lo)->img;
     struct image* back = imglist_prev(fwd);
+    bool fwd_visible = true;
+    bool back_visible = true;
     bool forward = true;
 
     while (fwd || back) {
@@ -245,12 +247,78 @@ struct image* layout_ldqueue(struct layout* lo)
         }
 
         if (forward && fwd) {
-            fwd = (fwd == last ? NULL : imglist_next(fwd));
+            if (fwd_visible) {
+                fwd_visible = (fwd != last);
+            }
+            fwd = imglist_next(fwd);
+            if (fwd && !fwd_visible) {
+                if (preload) {
+                    --preload;
+                } else {
+                    fwd = NULL;
+                }
+            }
         } else if (!forward && back) {
-            back = (back == first ? NULL : imglist_prev(back));
+            if (back_visible) {
+                back_visible = (back != first);
+            }
+            back = imglist_prev(back);
+            if (back && !fwd_visible) {
+                if (preload) {
+                    --preload;
+                } else {
+                    back = NULL;
+                }
+            }
         }
+
         forward = !forward;
     }
 
     return queue;
+}
+
+void layout_clear(struct layout* lo, size_t preserve)
+{
+    assert(imglist_is_locked());
+
+    struct image* fwd;
+    struct image* back;
+    bool forward = true;
+
+    fwd = imglist_next(lo->thumbs[lo->thumb_total - 1].img);
+    back = imglist_prev(lo->thumbs[0].img);
+
+    // get iterators out of cached range
+    while (preserve && (fwd || back)) {
+        if (forward && !fwd) {
+            forward = false;
+        } else if (!forward && !back) {
+            forward = true;
+        }
+
+        if (forward && fwd) {
+            fwd = imglist_next(fwd);
+            if (fwd) {
+                --preserve;
+            }
+        } else if (!forward && back) {
+            back = imglist_prev(back);
+            if (back) {
+                --preserve;
+            }
+        }
+
+        forward = !forward;
+    }
+
+    // free thumbnails
+    while (fwd) {
+        image_free(fwd, IMGFREE_THUMB);
+        fwd = imglist_next(fwd);
+    }
+    while (back) {
+        image_free(back, IMGFREE_THUMB);
+        back = imglist_prev(back);
+    }
 }
