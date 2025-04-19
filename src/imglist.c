@@ -306,7 +306,6 @@ static void on_fsevent(enum fsevent type, const char* path)
         case fsevent_remove:
             if (!is_dir) {
                 struct image* img = imglist_find(path);
-                assert(img);
                 if (img) {
                     app_on_imglist(img, type);
                     imglist_remove(img);
@@ -316,7 +315,6 @@ static void on_fsevent(enum fsevent type, const char* path)
         case fsevent_modify:
             if (!is_dir) {
                 const struct image* img = imglist_find(path);
-                assert(img);
                 if (img) {
                     app_on_imglist(img, type);
                 }

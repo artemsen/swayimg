@@ -575,7 +575,6 @@ static void on_activate(struct image* image)
         image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
                            ctx.thumb_aa);
     }
-    image_free(image, IMGFREE_FRAMES);
 
     imglist_unlock();
 

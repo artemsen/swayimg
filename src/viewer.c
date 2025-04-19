@@ -977,6 +977,7 @@ static struct image* on_deactivate(void)
     preloader_stop();
     animation_ctl(false);
     slideshow_ctl(false);
+    cache_put(ctx.history, ctx.current);
 
     return ctx.current;
 }
