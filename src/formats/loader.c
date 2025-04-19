@@ -296,6 +296,8 @@ enum image_status image_load(struct image* img)
 {
     enum image_status status;
 
+    image_free(img, IMGFREE_FRAMES | IMGFREE_THUMB);
+
     // decode image
     if (strcmp(img->source, LDRSRC_STDIN) == 0) {
         status = load_from_stream(img, STDIN_FILENO);

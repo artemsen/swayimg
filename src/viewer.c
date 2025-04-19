@@ -758,7 +758,6 @@ static bool skip_current(bool remove)
  */
 static void reload_current(void)
 {
-    image_free(ctx.current, IMGFREE_FRAMES | IMGFREE_THUMB);
     if (image_load(ctx.current) == imgload_success) {
         info_update(info_status, "Image reloaded");
         reset_state();
