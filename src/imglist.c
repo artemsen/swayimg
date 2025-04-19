@@ -303,6 +303,7 @@ static struct image* load_sources(const char* const* sources, size_t num)
                     const size_t len = delim - img->source + 1 /* last slash */;
                     if (len < sizeof(dir)) {
                         strncpy(dir, img->source, len);
+                        dir[len] = 0;
                         add_dir(dir);
                     }
                 }
