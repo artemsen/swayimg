@@ -10,6 +10,16 @@ extern "C" {
 class ImageList : public ConfigTest {
 protected:
     void TearDown() override { imglist_destroy(); }
+
+    void PrintList() const
+    {
+        printf("Image list (size=%ld):\n", imglist_size());
+        struct image* img = imglist_first();
+        while (img) {
+            printf("%ld: %s\n", img->index, img->source);
+            img = reinterpret_cast<struct image*>(list_next(&img->list));
+        }
+    }
 };
 
 TEST_F(ImageList, Load)
@@ -28,6 +38,24 @@ TEST_F(ImageList, Load)
 
     EXPECT_STREQ(imglist_first()->source, img[0]);
     EXPECT_STREQ(imglist_last()->source, img[2]);
+}
+
+TEST_F(ImageList, LoadFromFile)
+{
+    config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
+    config_set(config, CFG_LIST, CFG_LIST_FROMFILE, CFG_YES);
+    imglist_init(config);
+    ASSERT_EQ(imglist_size(), static_cast<size_t>(0));
+
+    const char* const img[] = {
+        TEST_DATA_DIR "/filelist.txt",
+    };
+    ASSERT_TRUE(imglist_load(img, sizeof(img) / sizeof(img[0])));
+
+    ASSERT_EQ(imglist_size(), static_cast<size_t>(3));
+    EXPECT_STREQ(imglist_first()->source, "exec://1");
+    EXPECT_STREQ(imglist_next(imglist_first())->source, "exec://2");
+    EXPECT_STREQ(imglist_last()->source, "exec://3");
 }
 
 TEST_F(ImageList, Duplicate)

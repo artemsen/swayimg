@@ -53,6 +53,7 @@ struct image_list {
     bool loop;             ///< File list loop mode
     bool recursive;        ///< Read directories recursively
     bool all_files;        ///< Open all files from the same directory
+    bool from_file;        ///< Interpret input files as lists
 };
 
 /** Global image list instance. */
@@ -267,6 +268,99 @@ static struct image* add_source(const char* source)
     return NULL;
 }
 
+/**
+ * Construct image list from specified sources.
+ * @param sources array of sources
+ * @param num number of sources in the array
+ * @return first image instance to show or NULL if list is empty
+ */
+static struct image* load_sources(const char* const* sources, size_t num)
+{
+    struct image* img = NULL;
+
+    // compose image list
+    if (num == 0) {
+        // no input files specified, use all from the current directory
+        img = add_source(".");
+        ctx.all_files = false;
+    } else if (num == 1) {
+        if (strcmp(sources[0], "-") == 0) {
+            img = add_source(LDRSRC_STDIN);
+        } else {
+            if (ctx.all_files) {
+                // the "all files" mode is not applicable for directory
+                struct stat st;
+                if (stat(sources[0], &st) == 0 && S_ISDIR(st.st_mode)) {
+                    ctx.all_files = false;
+                }
+            }
+            img = add_source(sources[0]);
+            if (img && ctx.all_files) {
+                // add neighbors (all files from the same directory)
+                const char* delim = strrchr(img->source, '/');
+                if (delim) {
+                    char dir[PATH_MAX];
+                    const size_t len = delim - img->source + 1 /* last slash */;
+                    if (len < sizeof(dir)) {
+                        strncpy(dir, img->source, len);
+                        add_dir(dir);
+                    }
+                }
+            }
+        }
+    } else {
+        ctx.all_files = false;
+        for (size_t i = 0; i < num; ++i) {
+            struct image* added = add_source(sources[i]);
+            if (!img && added) {
+                img = added;
+            }
+        }
+    }
+
+    return img;
+}
+
+/**
+ * Construct image list by loading text lists.
+ * @param files array of list files
+ * @param num number of sources in the array
+ * @return first image instance to show or NULL if list is empty
+ */
+static struct image* load_fromfile(const char* const* files, size_t num)
+{
+    ctx.all_files = false; // not applicable in this mode
+
+    for (size_t i = 0; i < num; ++i) {
+        char* line = NULL;
+        size_t line_sz = 0;
+        ssize_t rd;
+        FILE* fd;
+
+        fd = fopen(files[i], "r");
+        if (!fd) {
+            const int rc = errno;
+            fprintf(stderr, "Unable to open list file %s: [%i] %s\n", files[i],
+                    rc, strerror(rc));
+            continue;
+        }
+
+        while ((rd = getline(&line, &line_sz, fd)) > 0) {
+            while (rd && (line[rd - 1] == '\r' || line[rd - 1] == '\n')) {
+                line[--rd] = 0;
+            }
+            if (*line) {
+                add_source(line);
+            }
+        }
+
+        free(line);
+        fclose(fd);
+    }
+
+    return imglist_first();
+}
+
 /** Reindex the image list. */
 static void reindex(void)
 {
@@ -383,6 +477,7 @@ void imglist_init(const struct config* cfg)
     ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
     ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
+    ctx.from_file = config_get_bool(cfg, CFG_LIST, CFG_LIST_FROMFILE);
 
     if (config_get_bool(cfg, CFG_LIST, CFG_LIST_FSMON)) {
         fs_monitor_init(on_fsevent);
@@ -424,53 +519,18 @@ bool imglist_is_locked(void)
 
 struct image* imglist_load(const char* const* sources, size_t num)
 {
-    struct image* img = NULL;
+    struct image* img;
 
     assert(ctx.size == 0 && "already loaded");
 
-    // compose image list
-    if (num == 0) {
-        // no input files specified, use all from the current directory
-        img = add_source(".");
-        ctx.all_files = false;
-    } else if (num == 1) {
-        if (strcmp(sources[0], "-") == 0) {
-            img = add_source(LDRSRC_STDIN);
-        } else {
-            if (ctx.all_files) {
-                // the "all files" mode is not applicable for directory
-                struct stat st;
-                if (stat(sources[0], &st) == 0 && S_ISDIR(st.st_mode)) {
-                    ctx.all_files = false;
-                }
-            }
-            img = add_source(sources[0]);
-            if (img && ctx.all_files) {
-                // add neighbors (all files from the same directory)
-                const char* delim = strrchr(img->source, '/');
-                if (delim) {
-                    char dir[PATH_MAX];
-                    const size_t len = delim - img->source + 1 /* last slash */;
-                    if (len < sizeof(dir)) {
-                        strncpy(dir, img->source, len);
-                        add_dir(dir);
-                    }
-                }
-            }
-        }
+    if (ctx.from_file) {
+        img = load_fromfile(sources, num);
     } else {
-        ctx.all_files = false;
-        for (size_t i = 0; i < num; ++i) {
-            struct image* added = add_source(sources[i]);
-            if (!img && added) {
-                img = added;
-            }
-        }
+        img = load_sources(sources, num);
     }
 
     reindex();
 
-    assert(img);
     return img;
 }
 

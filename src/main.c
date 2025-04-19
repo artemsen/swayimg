@@ -26,12 +26,13 @@ struct cmdarg {
 // clang-format off
 static const struct cmdarg arguments[] = {
     { 'g', "gallery",    NULL,    "start in gallery mode" },
+    { 'F', "from-file",  NULL,    "interpret input files as text lists of image files" },
     { 'r', "recursive",  NULL,    "read directories recursively" },
-    { 'o', "order",      "ORDER", "set sort order for image list: none/alpha/numeric/mtime/size/random" },
-    { 's', "scale",      "SCALE", "set initial image scale: [optimal]/fit/width/height/fill/real" },
+    { 'o', "order",      "ORDER", "set sort order for image list" },
+    { 's', "scale",      "SCALE", "set initial image scale" },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup" },
-    { 'p', "position",   "POS",   "set window position [parent]/X,Y" },
-    { 'w', "size",       "SIZE",  "set window size: fullscreen/[parent]/image/W,H" },
+    { 'p', "position",   "POS",   "(SwayWM only) set window position" },
+    { 'w', "size",       "SIZE",  "set window size" },
     { 'f', "fullscreen", NULL,    "show image in full screen mode" },
     { 'a', "class",      "NAME",  "set window class/app_id" },
     { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value" },
@@ -109,6 +110,9 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
         switch (opt) {
             case 'g':
                 config_set(cfg, CFG_GENERAL, CFG_GNRL_MODE, CFG_MODE_GALLERY);
+                break;
+            case 'F':
+                config_set(cfg, CFG_LIST, CFG_LIST_FROMFILE, CFG_YES);
                 break;
             case 'r':
                 config_set(cfg, CFG_LIST, CFG_LIST_RECURSIVE, CFG_YES);

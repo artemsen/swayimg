@@ -5,9 +5,10 @@
 
 _arguments \
   '(-g --gallery)'{-g,--gallery}'[start in gallery mode]' \
+  '(-F --from-file)'{-F,--from-file}'[interpret input files as text lists of image files]' \
   '(-r --recursive)'{-r,--recursive}'[read directories recursively]' \
   '(-o --order)'{-o,--order=}'[set sort order for image list]:order:(none alpha numeric mtime size random)' \
-  '(-s --scale=SCALE)'{-s,--scale=}'[set initial image scale]:scale:(optimal width height fit fill real)' \
+  '(-s --scale)'{-s,--scale=}'[set initial image scale]:scale:(optimal width height fit fill real)' \
   '(-l --slideshow)'{-l,--slideshow}'[activate slideshow mode on startup]' \
   '(-f --fullscreen)'{-f,--fullscreen}'[show image in full screen mode]' \
   '(-p --position)'{-p,--position=}'[set window position]:position:(parent)' \
