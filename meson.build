@@ -37,7 +37,6 @@ endif
 
 # mandatory dependencies
 wlcln = dependency('wayland-client')
-json = dependency('json-c')
 xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
@@ -73,6 +72,7 @@ else
 endif
 
 # optional dependencies: other features
+json = dependency('json-c', required: get_option('sway'))
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
 
@@ -96,6 +96,7 @@ conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
+conf.set('HAVE_SWAYWM', json.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -205,7 +206,6 @@ sources = [
   'src/pixmap.c',
   'src/pixmap_scale.c',
   'src/shellcmd.c',
-  'src/sway.c',
   'src/ui.c',
   'src/viewer.c',
   'src/wndbuf.c',
@@ -218,6 +218,9 @@ sources = [
   'src/formats/tga.c',
   wl_protos_src,
 ]
+if json.found()
+  sources += 'src/sway.c'
+endif
 if exif.found()
   sources += 'src/exif.c'
 endif

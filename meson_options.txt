@@ -54,6 +54,12 @@ option('exif',
        value: 'auto',
        description: 'Enable EXIF reader support')
 
+# Sway WM support
+option('sway',
+       type: 'feature',
+       value: 'auto',
+       description: 'Enable Sway WM integration')
+
 # extra files to install
 option('bash',
        type: 'feature',

@@ -90,6 +90,7 @@ struct application {
 /** Global application context. */
 static struct application ctx;
 
+#ifdef HAVE_SWAYWM
 /**
  * Setup window position via Sway IPC.
  * @param cfg config instance
@@ -135,6 +136,7 @@ static void sway_setup(const struct config* cfg)
 
     sway_disconnect(ipc);
 }
+#endif // HAVE_SWAYWM
 
 /** Switch mode (viewer/gallery). */
 static void switch_mode(void)
@@ -496,9 +498,11 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     }
 
     // setup window position and size
+#ifdef HAVE_SWAYWM
     if (ctx.window.width != SIZE_FULLSCREEN) {
-        sway_setup(cfg); // try Sway integration
+        sway_setup(cfg);
     }
+#endif // HAVE_SWAYWM
     if (ctx.window.width == SIZE_FULLSCREEN) {
         ui_toggle_fullscreen();
     } else if (ctx.window.width == SIZE_FROM_IMAGE ||
