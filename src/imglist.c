@@ -167,7 +167,6 @@ static struct image* add_entry(const char* source, const struct stat* st)
 static struct image* add_dir(const char* dir)
 {
     struct image* img = NULL;
-    char path[PATH_MAX];
     struct dirent* dir_entry;
     DIR* dir_handle;
 
@@ -177,6 +176,7 @@ static struct image* add_dir(const char* dir)
     }
 
     while ((dir_entry = readdir(dir_handle))) {
+        char path[PATH_MAX] = { 0 };
         const char* name = dir_entry->d_name;
         struct stat st;
 
@@ -299,11 +299,10 @@ static struct image* load_sources(const char* const* sources, size_t num)
                 // add neighbors (all files from the same directory)
                 const char* delim = strrchr(img->source, '/');
                 if (delim) {
-                    char dir[PATH_MAX];
+                    char dir[PATH_MAX] = { 0 };
                     const size_t len = delim - img->source + 1 /* last slash */;
                     if (len < sizeof(dir)) {
                         strncpy(dir, img->source, len);
-                        dir[len] = 0;
                         add_dir(dir);
                     }
                 }

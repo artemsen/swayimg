@@ -48,7 +48,7 @@ static struct fs_monitor ctx = { -1, NULL, NULL };
 static void handle_event(const struct inotify_event* event)
 {
     enum fsevent et;
-    char path[PATH_MAX];
+    char path[PATH_MAX] = { 0 };
 
     if (event->mask & IN_IGNORED) {
         // remove from the watch list
@@ -66,7 +66,7 @@ static void handle_event(const struct inotify_event* event)
     *path = 0;
     list_for_each(ctx.watch, struct watch, it) {
         if (it->id == event->wd) {
-            strncpy(path, it->path, sizeof(path));
+            strncpy(path, it->path, sizeof(path) - 1);
             break;
         }
     }
@@ -208,7 +208,7 @@ size_t fs_append_path(const char* file, char* path, size_t path_max)
 
 size_t fs_abspath(const char* relative, char* path, size_t path_max)
 {
-    char buffer[PATH_MAX];
+    char buffer[PATH_MAX] = { 0 };
     struct str_slice dirs[1024];
     size_t dirs_num;
     size_t pos;

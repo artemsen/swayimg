@@ -57,7 +57,7 @@ static void print_help(void)
 
     for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
         const struct cmdarg* arg = &arguments[i];
-        char lopt[32];
+        char lopt[32] = { 0 };
         if (arg->format) {
             snprintf(lopt, sizeof(lopt), "%s=%s", arg->long_opt, arg->format);
         } else {

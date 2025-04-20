@@ -123,7 +123,7 @@ static size_t allocate_surface(const wchar_t* text,
 
 void font_init(const struct config* cfg)
 {
-    char font_file[256];
+    char font_file[PATH_MAX] = { 0 };
     const char* font_name;
 
     // load font
