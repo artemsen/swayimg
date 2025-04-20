@@ -638,3 +638,21 @@ TEST_F(Pixmap, ScaleCopyDownPos)
     const struct pixmap pm = { 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 1, 1);
 }
+
+/*
+TODO: This test crashes: https://github.com/artemsen/swayimg/issues/277
+
+TEST_F(Pixmap, ScaleCrash)
+{
+    struct pixmap src;
+    pixmap_create(&src, 2000, 2000);
+
+    struct pixmap dst;
+    pixmap_create(&dst, 1000, 700);
+
+    pixmap_scale(aa_mks13, &src, &dst, 0, -670, 0.3, false);
+
+    pixmap_free(&src);
+    pixmap_free(&dst);
+}
+*/
