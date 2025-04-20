@@ -645,30 +645,29 @@ void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
                   struct pixmap* dst, ssize_t x, ssize_t y, float scale,
                   bool alpha)
 {
-    // Do nothing if the scaled image won't appear on the destination pixmap
-    if (x >= (ssize_t)dst->width || (ssize_t)(x + src->width * scale) <= 0 ||
-        y >= (ssize_t)dst->height || (ssize_t)(y + src->height * scale) <= 0) {
-        return;
+    // get size of rendered area
+    const size_t width =
+        min((ssize_t)dst->width, x + scale * src->width) - max(0, x);
+    const size_t height =
+        min((ssize_t)dst->height, y + scale * src->height) - max(0, y);
+
+    if (width == 0 || height == 0) {
+        return; // out of destination
     }
 
-    // TODO in some cases (especially when scaling to small outputs), using
-    // threads is actually slower - it may be worth implementing some better
-    // heuristics here to avoid using as many (or any) threads in those cases.
-    // This is especially an issue with the gallery, which produces a lot of
-    // small images - it would probably be more efficient to spin up threads
-    // which each handle some thumbnails (on their own), rather than using
-    // multiple threads for each thumbnail
-
-    // get active CPUs
+    // get number of active CPUs
+    int32_t cpus = 1;
 #ifdef __FreeBSD__
-    uint32_t cpus = 0;
     size_t cpus_len = sizeof(cpus);
     sysctlbyname("hw.ncpu", &cpus, &cpus_len, 0, 0);
 #else
-    const long cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    cpus = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
-    // but limit background threads to at most 15
-    const size_t bthreads = clamp(cpus, 1, 16) - 1;
+    cpus = max(cpus, 1);
+
+    // get number of background rendering threads: 1 thread per 100,000 px
+    const size_t max_threads = width * height / 100000;
+    const size_t bthreads = clamp((size_t)cpus - 1, 0, max_threads);
 
     if (scaler == aa_nearest) {
         pixmap_scale_nn(bthreads, src, dst, x, y, scale, alpha);
