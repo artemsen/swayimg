@@ -63,7 +63,7 @@ preload = 1
 [gallery]
 # Height and width of each thumbnail (pixels)
 size = 200
-# Max number of thumbnails in memory cache, 0 for unlimited
+# Max number of invisible thumbnails stored in memory cache
 cache = 100
 # Load not only visible but also adjacent thumbnails
 preload = no

@@ -318,11 +318,7 @@ static bool select_next(enum action_type direction)
     imglist_lock();
     rc = layout_select(&ctx.layout, dir);
     if (rc) {
-        size_t preload = 0;
-        if (ctx.preload) {
-            preload = ctx.cache ? ctx.cache : SIZE_MAX;
-        }
-        load = layout_ldqueue(&ctx.layout, preload);
+        load = layout_ldqueue(&ctx.layout, ctx.cache);
     }
     imglist_unlock();
 
@@ -463,11 +459,7 @@ static void draw_thumbnails(struct pixmap* window)
     draw_thumbnail(window, layout_current(&ctx.layout));
 
     if (!all_loaded && !ctx.loader_active) {
-        size_t preload = 0;
-        if (ctx.preload) {
-            preload = ctx.cache ? ctx.cache : SIZE_MAX;
-        }
-        load = layout_ldqueue(&ctx.layout, preload);
+        load = layout_ldqueue(&ctx.layout, ctx.cache);
     }
 
     imglist_unlock();
