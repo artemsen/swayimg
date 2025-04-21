@@ -646,12 +646,13 @@ void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
                   bool alpha)
 {
     // get size of rendered area
-    const size_t width =
-        min((ssize_t)dst->width, x + scale * src->width) - max(0, x);
-    const size_t height =
-        min((ssize_t)dst->height, y + scale * src->height) - max(0, y);
+    const ssize_t width =
+        min((ssize_t)dst->width, (ssize_t)(x + scale * src->width)) - max(0, x);
+    const ssize_t height =
+        min((ssize_t)dst->height, (ssize_t)(y + scale * src->height)) -
+        max(0, y);
 
-    if (width == 0 || height == 0) {
+    if (width <= 0 || height <= 0) {
         return; // out of destination
     }
 
