@@ -639,20 +639,34 @@ TEST_F(Pixmap, ScaleCopyDownPos)
     ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 1, 1);
 }
 
-/*
-TODO: This test crashes: https://github.com/artemsen/swayimg/issues/277
-
-TEST_F(Pixmap, ScaleCrash)
+TEST_F(Pixmap, ScaleOutside)
 {
+    // Scale outside the destination in each direction
     struct pixmap src;
     pixmap_create(&src, 2000, 2000);
+    pixmap_fill(&src, 0, 0, 2000, 2000, ARGB(0xff, 0xff, 0, 0));
 
     struct pixmap dst;
     pixmap_create(&dst, 1000, 700);
+    pixmap_fill(&dst, 0, 0, 1000, 700, ARGB(0xff, 0, 0xff, 0));
+
+    struct pixmap expect;
+    pixmap_create(&expect, 1000, 700);
+    pixmap_copy(&dst, &expect, 0, 0, false);
 
     pixmap_scale(aa_mks13, &src, &dst, 0, -670, 0.3, false);
+    Compare(dst, expect.data);
+
+    pixmap_scale(aa_mks13, &src, &dst, 0, 700, 0.3, false);
+    Compare(dst, expect.data);
+
+    pixmap_scale(aa_mks13, &src, &dst, -670, 0, 0.3, false);
+    Compare(dst, expect.data);
+
+    pixmap_scale(aa_mks13, &src, &dst, 1000, 0, 0.3, false);
+    Compare(dst, expect.data);
 
     pixmap_free(&src);
     pixmap_free(&dst);
+    pixmap_free(&expect);
 }
-*/
