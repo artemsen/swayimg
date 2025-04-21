@@ -528,7 +528,7 @@ static void* sc_task(void* arg)
 
 static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
                             struct pixmap* dst, ssize_t x, ssize_t y,
-                            float scale, bool alpha)
+                            double scale, bool alpha)
 {
     const size_t left = max(0, x);
     const size_t top = max(0, y);
@@ -585,7 +585,7 @@ static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
 
 static void pixmap_scale_aa(enum aa_mode scaler, size_t threads,
                             const struct pixmap* src, struct pixmap* dst,
-                            ssize_t x, ssize_t y, float scale, bool alpha)
+                            ssize_t x, ssize_t y, double scale, bool alpha)
 {
     struct task_sc_shared task_shared = {
         .src = src,
