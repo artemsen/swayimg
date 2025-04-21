@@ -49,5 +49,5 @@ const char* aa_name(enum aa_mode aa);
  * @param alpha flag to use alpha channel (ignore otherwise)
  */
 void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
-                  struct pixmap* dst, ssize_t x, ssize_t y, float scale,
+                  struct pixmap* dst, ssize_t x, ssize_t y, double scale,
                   bool alpha);

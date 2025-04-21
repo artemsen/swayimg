@@ -642,7 +642,7 @@ static void pixmap_scale_aa(enum aa_mode scaler, size_t threads,
 }
 
 void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
-                  struct pixmap* dst, ssize_t x, ssize_t y, float scale,
+                  struct pixmap* dst, ssize_t x, ssize_t y, double scale,
                   bool alpha)
 {
     // get size of rendered area
