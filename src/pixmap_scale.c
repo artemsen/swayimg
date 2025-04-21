@@ -656,18 +656,21 @@ void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
     }
 
     // get number of active CPUs
-    int32_t cpus = 1;
+    static size_t cpu_num = 0;
+    if (cpu_num == 0) {
+        int32_t cpus = 0;
 #ifdef __FreeBSD__
-    size_t cpus_len = sizeof(cpus);
-    sysctlbyname("hw.ncpu", &cpus, &cpus_len, 0, 0);
+        size_t cpus_len = sizeof(cpus);
+        sysctlbyname("hw.ncpu", &cpus, &cpus_len, NULL, 0);
 #else
-    cpus = sysconf(_SC_NPROCESSORS_ONLN);
+        cpus = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
-    cpus = max(cpus, 1);
+        cpu_num = cpus > 0 ? cpus : 1;
+    }
 
     // get number of background rendering threads: 1 thread per 100,000 px
     const size_t max_threads = width * height / 100000;
-    const size_t bthreads = clamp((size_t)cpus - 1, 0, max_threads);
+    const size_t bthreads = clamp(cpu_num - 1, 0, max_threads);
 
     if (scaler == aa_nearest) {
         pixmap_scale_nn(bthreads, src, dst, x, y, scale, alpha);
