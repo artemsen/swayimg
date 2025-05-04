@@ -113,21 +113,21 @@ TEST_F(Image, LoadFromExec)
 #ifdef HAVE_LIBRSVG
 TEST_F(Image, RescaleSVG)
 {
-    Load(TEST_DATA_DIR "/image.svg");
+    image = image_create(TEST_DATA_DIR "/image.svg");
+    ASSERT_TRUE(image);
+    ASSERT_EQ(image_load(image), imgload_success);
     ASSERT_TRUE(image->frames[0].pm.height == 1024);
     ASSERT_TRUE(image->frames[0].pm.width == 1024);
 
     adjust_svg_render_size(1.5);
 
-    image_free(image, IMGFREE_FRAMES);
-    Load(TEST_DATA_DIR "/image.svg");
+    ASSERT_EQ(image_load(image), imgload_success);
     ASSERT_TRUE(image->frames[0].pm.height == 1536);
     ASSERT_TRUE(image->frames[0].pm.width == 1536);
 
     reset_svg_render_size();
 
-    image_free(image, IMGFREE_FRAMES);
-    Load(TEST_DATA_DIR "/image.svg");
+    ASSERT_EQ(image_load(image), imgload_success);
     ASSERT_TRUE(image->frames[0].pm.height == 1024);
     ASSERT_TRUE(image->frames[0].pm.width == 1024);
 }

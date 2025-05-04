@@ -34,7 +34,7 @@ void adjust_svg_render_size(double scale)
     }
 }
 
-void reset_svg_render_size()
+void reset_svg_render_size(void)
 {
     current_render_size = RENDER_SIZE_BASE;
 }
