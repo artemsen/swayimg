@@ -183,6 +183,7 @@ Shift+m = flip_horizontal
 a = antialiasing next
 Shift+a = antialiasing prev
 r = reload
+Alt+r = svg_rerender
 i = info
 Shift+Delete = exec rm -f '%' && echo "File removed: %"; skip_file
 Escape = exit

@@ -13,11 +13,31 @@
 #pragma GCC diagnostic pop
 
 // SVG uses physical units to store size,
-// these macro defines default viewbox dimension in pixels
-#define RENDER_SIZE 1024
+// this macro defines default viewbox dimension in pixels
+#define RENDER_SIZE_BASE 1024
+
+// Maximum sensible render size
+// -> 4 bytes per pixel * 1024 * 1024 * 10 = 40 MiB
+#define RENDER_SIZE_MAX (RENDER_SIZE_BASE * 10)
 
 // Max offset of the root svg node in xml file
 #define MAX_OFFSET 1024
+
+static double current_render_size = RENDER_SIZE_BASE;
+
+void adjust_svg_render_size(double scale)
+{
+    if (scale * current_render_size < RENDER_SIZE_MAX) {
+        current_render_size = scale * current_render_size;
+    } else {
+        current_render_size = RENDER_SIZE_MAX;
+    }
+}
+
+void reset_svg_render_size()
+{
+    current_render_size = RENDER_SIZE_BASE;
+}
 
 /**
  * Check if data is SVG.
@@ -79,15 +99,17 @@ enum image_status decode_svg(struct image* img, const uint8_t* data,
     vb_render.y = 0;
     if (has_vb_real) {
         if (vb_real.width < vb_real.height) {
-            vb_render.width = RENDER_SIZE * (vb_real.width / vb_real.height);
-            vb_render.height = RENDER_SIZE;
+            vb_render.width =
+                current_render_size * (vb_real.width / vb_real.height);
+            vb_render.height = current_render_size;
         } else {
-            vb_render.width = RENDER_SIZE;
-            vb_render.height = RENDER_SIZE * (vb_real.height / vb_real.width);
+            vb_render.width = current_render_size;
+            vb_render.height =
+                current_render_size * (vb_real.height / vb_real.width);
         }
     } else {
-        vb_render.width = RENDER_SIZE;
-        vb_render.height = RENDER_SIZE;
+        vb_render.width = current_render_size;
+        vb_render.height = current_render_size;
     }
 
     // allocate and bind buffer

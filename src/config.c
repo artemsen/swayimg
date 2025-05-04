@@ -123,6 +123,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "a",                "antialiasing next"      },
     { CFG_KEYS_VIEWER,  "Shift+a",          "antialiasing prev"      },
     { CFG_KEYS_VIEWER,  "r",                "reload"                 },
+    { CFG_KEYS_VIEWER,  "Alt+r",            "svg_rerender"           },
     { CFG_KEYS_VIEWER,  "i",                "info"                   },
     { CFG_KEYS_VIEWER,  "Shift+Delete",     RM_FILE_ACTION           },
     { CFG_KEYS_VIEWER,  "Escape",           "exit"                   },
