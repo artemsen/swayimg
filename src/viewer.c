@@ -838,6 +838,17 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->alpha);
     } else {
+#ifdef HAVE_LIBRSVG
+        if (strcmp(ctx.current->format, "SVG") == 0) {
+
+            enum image_status status = decode_svg_partial(
+                ctx.current, wnd, ctx.img_x, ctx.img_y, ctx.scale);
+
+            if (status == imgload_success) {
+                return;
+            }
+        }
+#endif
         pixmap_scale(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
                      ctx.current->alpha);
     }
