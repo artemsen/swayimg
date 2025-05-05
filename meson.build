@@ -5,6 +5,7 @@ project(
   'c', 'cpp',
   default_options: [
     'c_std=c99',
+    'cpp_std=c++20',
     'warning_level=3',
     'buildtype=release',
     'b_ndebug=if-release',
