@@ -169,34 +169,54 @@ static void switch_mode(void)
  */
 static void execute_cmd(const char* expr, const char* path)
 {
+    const size_t max_status = 60;
+    struct array* out = NULL;
+    char* msg = NULL;
+    char* cmd;
     int rc;
-    char* out = NULL;
 
-    rc = shellcmd_expr(expr, path, &out);
+    // contruct and execute command
+    cmd = shellcmd_expr(expr, path);
+    if (!cmd) {
+        info_update(info_status, "Error: no command to execute");
+        app_redraw();
+        return;
+    }
+    rc = shellcmd_exec(cmd, &out);
 
+    // duplicate output to stdout
     if (out) {
-        // duplicate output to stdout
-        printf("%s", out);
-
-        // trim long output text
-        const size_t max_len = 60;
-        if (strlen(out) > max_len) {
-            const char* ellipsis = "...";
-            const size_t ellipsis_len = strlen(ellipsis) + 1;
-            memcpy(&out[max_len - ellipsis_len], ellipsis, ellipsis_len);
-        }
+        fprintf(stdout, "%.*s", (int)out->size, out->data);
     }
 
     // show execution status
-    if (rc) {
-        info_update(info_status, "Error %d: %s", rc, out ? out : strerror(rc));
-    } else if (out) {
-        info_update(info_status, "%s", out);
+    if (rc == 0) {
+        if (!out) {
+            str_dup("Success: ", &msg);
+            str_append(cmd, 0, &msg);
+        }
     } else {
-        info_update(info_status, "Success: %s", expr);
+        char desc[256];
+        snprintf(desc, sizeof(desc), "Error %d: ", rc);
+        str_dup(desc, &msg);
+        if (!out) {
+            str_append(strerror(rc), 0, &msg);
+        }
+    }
+    if (out) {
+        str_append((const char*)out->data, out->size, &msg);
+    }
+    if (msg && strlen(msg) > max_status) {
+        // trim long output text
+        const char ellipsis[] = "...";
+        memcpy(msg + max_status - sizeof(ellipsis), ellipsis, sizeof(ellipsis));
     }
 
-    free(out);
+    info_update(info_status, "%s", msg);
+
+    free(cmd);
+    free(msg);
+    arr_free(out);
 
     app_redraw();
 }

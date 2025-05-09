@@ -7,46 +7,61 @@ extern "C" {
 
 #include <gtest/gtest.h>
 
-TEST(ShellCmd, ExecOk)
-{
-    char* out = nullptr;
+class ShellCmd : public ::testing::Test {
+protected:
+    void TearDown() override { free(cmd); }
+    char* cmd;
+};
 
-    EXPECT_EQ(shellcmd_expr("echo %/%%/%", "test123", &out), 0);
+TEST_F(ShellCmd, Expression)
+{
+    cmd = shellcmd_expr("Expression: %/%%/ < %", "test123");
+    EXPECT_STREQ(cmd, "Expression: test123/%/ < test123");
+}
+
+TEST_F(ShellCmd, ExpressionEmpty)
+{
+    cmd = shellcmd_expr("", "test123");
+    EXPECT_FALSE(cmd);
+}
+
+class ShellExec : public ::testing::Test {
+protected:
+    void TearDown() override { arr_free(out); }
+    struct array* out = nullptr;
+};
+
+TEST_F(ShellExec, Execute)
+{
+    const char last_null = 0;
+
+    EXPECT_EQ(shellcmd_exec("echo out && echo err >&2", &out), 0);
+
     ASSERT_TRUE(out);
-    EXPECT_STREQ(out, "test123/%/test123\n");
-
-    free(out);
-}
-
-TEST(ShellCmd, ExecFail)
-{
-    char* out = nullptr;
-
-    EXPECT_EQ(shellcmd_expr("echo -n % && exit 42", "test123", &out), 42);
+    out = arr_append(out, &last_null, 1);
     ASSERT_TRUE(out);
-    EXPECT_STREQ(out, "test123");
-
-    free(out);
+    EXPECT_STREQ(reinterpret_cast<const char*>(out->data), "out\n");
 }
 
-TEST(ShellCmd, ExecEmpty)
+TEST_F(ShellExec, Fail)
 {
-    char* out = nullptr;
-
-    EXPECT_EQ(shellcmd_expr("", "", &out), EINVAL);
-    ASSERT_FALSE(out);
-
-    free(out);
+    EXPECT_EQ(shellcmd_exec("exit 42", &out), 42);
+    EXPECT_FALSE(out);
 }
 
-TEST(ShellCmd, StdInRead)
+TEST_F(ShellExec, Empty)
 {
-    char* out = nullptr;
-    EXPECT_NE(shellcmd_expr("read", "", &out), 0); // should not hang
-    free(out);
+    EXPECT_EQ(shellcmd_exec("", &out), EINVAL);
+    EXPECT_FALSE(out);
 }
 
-class ShellCmdBad : public ::testing::Test {
+TEST_F(ShellExec, Stdin)
+{
+    // should not hang
+    EXPECT_NE(shellcmd_exec("read", &out), 0);
+}
+
+class ShellBad : public ShellExec {
 protected:
     void SetUp() override
     {
@@ -60,16 +75,12 @@ protected:
         } else {
             unsetenv("SHELL");
         }
+        ShellExec::TearDown();
     }
     const char* shell;
 };
 
-TEST_F(ShellCmdBad, BadShell)
+TEST_F(ShellBad, Execute)
 {
-    char* out = nullptr;
-
-    EXPECT_EQ(shellcmd_expr("echo %", "test123", &out), ENOENT);
-    EXPECT_FALSE(out);
-
-    free(out);
+    EXPECT_EQ(shellcmd_exec("echo test123", &out), ENOENT);
 }

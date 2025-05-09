@@ -4,23 +4,20 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#include "array.h"
 
 /**
  * Execute command in shell.
  * @param cmd command to execute
- * @param out pointer to stdout buffer, caller should free the buffer
- * @param sz size of output buffer
+ * @param out pointer to stdout buffer
  * @return subprocess exit code
  */
-int shellcmd_exec(const char* cmd, uint8_t** out, size_t* sz);
+int shellcmd_exec(const char* cmd, struct array** out);
 
 /**
- * Construct command from expression and execute it in shell.
+ * Compose command from expression.
  * @param expr command expression
  * @param path file path to substitute into expression
- * @param out pointer to stdout buffer, caller should free the buffer
- * @return subprocess exit code
+ * @return result command, caller should free the buffer
  */
-int shellcmd_expr(const char* expr, const char* path, char** out);
+char* shellcmd_expr(const char* expr, const char* path);

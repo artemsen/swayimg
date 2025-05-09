@@ -274,21 +274,18 @@ static enum image_status load_from_stream(struct image* img, int fd)
  */
 static enum image_status load_from_exec(struct image* img, const char* cmd)
 {
-    uint8_t* data = NULL;
-    size_t data_sz = 0;
+    struct array* out = NULL;
     enum image_status status;
     int rc;
 
-    rc = shellcmd_exec(cmd, &data, &data_sz);
-
-    if (rc == 0 && data) {
-        status = load_from_memory(img, data, data_sz);
+    rc = shellcmd_exec(cmd, &out);
+    if (rc == 0 && out) {
+        status = load_from_memory(img, out->data, out->size);
     } else {
         status = imgload_ioerror;
     }
 
-    free(data);
-
+    arr_free(out);
     return status;
 }
 

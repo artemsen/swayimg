@@ -14,21 +14,25 @@
 #include <unistd.h>
 
 /**
- * Read stdout from child process.
+ * Read stream from child process.
  * @param fd stdout file descriptor
- * @param out pointer to stdout buffer, caller should free the buffer
- * @param sz size of output buffer
+ * @param out pointer to output array
  * @return 0 on success or error code
  */
-static int read_stdout(int fd, uint8_t** out, size_t* sz)
+static int read_stream(int fd, struct array** out)
 {
     int rc = 0;
-    ssize_t read_sz;
-    uint8_t buf[4096];
-    uint8_t* tmp;
+
+    *out = arr_create(0, sizeof(uint8_t));
+    if (!*out) {
+        return ENOMEM;
+    }
 
     while (!rc) {
-        read_sz = read(fd, buf, sizeof(buf));
+        struct array* arr;
+        uint8_t buf[4096];
+        const ssize_t read_sz = read(fd, buf, sizeof(buf));
+
         if (read_sz == 0) {
             break;
         }
@@ -41,21 +45,17 @@ static int read_stdout(int fd, uint8_t** out, size_t* sz)
             }
         }
 
-        tmp = realloc(*out, *sz + read_sz);
-        if (!tmp) {
+        arr = arr_append(*out, buf, read_sz);
+        if (!arr) {
             rc = ENOMEM;
             break;
         }
-        memcpy(tmp + *sz, buf, read_sz);
-
-        *sz += read_sz;
-        *out = tmp;
+        *out = arr;
     }
 
-    if (rc && *sz) {
-        free(*out);
+    if (rc || (*out)->size == 0) {
+        arr_free(*out);
         *out = NULL;
-        *sz = 0;
     }
 
     return rc;
@@ -64,86 +64,83 @@ static int read_stdout(int fd, uint8_t** out, size_t* sz)
 /**
  * Execute command in child process.
  * @param cmd command to execute
- * @param in_fd stdin file descriptor
- * @param out_fd stdout file descriptor
+ * @param fd stdout file descriptor
  * @return 0 on success or error code
  */
-static int execute(const char* cmd, int in_fd, int out_fd)
+static int execute(const char* cmd, int fd)
 {
-    int null_fd;
+    int in_fd;
     const char* shell;
 
+    // redirect stdout
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+
+    // disable stdin to prevent interactive requests
+    in_fd = open("/dev/null", O_RDONLY);
+    if (in_fd != -1) {
+        dup2(in_fd, STDIN_FILENO);
+        close(in_fd);
+    }
+
+    // execute in shell
     shell = getenv("SHELL");
     if (!shell || !*shell) {
         shell = "/bin/sh";
     }
-
-    dup2(out_fd, STDOUT_FILENO);
-    dup2(out_fd, STDERR_FILENO);
-    close(out_fd);
-    close(in_fd);
-
-    // disable stdin to prevent interactive requests
-    null_fd = open("/dev/null", O_WRONLY);
-    if (null_fd != -1) {
-        dup2(null_fd, STDIN_FILENO);
-        close(null_fd);
-    }
-
     execlp(shell, shell, "-c", cmd, NULL);
 
     return errno;
 }
 
-int shellcmd_exec(const char* cmd, uint8_t** out, size_t* sz)
+int shellcmd_exec(const char* cmd, struct array** out)
 {
     int rc;
-    int pfd[2];
+    int fds[2];
     pid_t pid;
 
-    if (pipe(pfd) == -1) {
+    if (!cmd || !*cmd) {
+        return EINVAL;
+    }
+
+    if (pipe(fds) == -1) {
         return errno;
     }
 
     pid = fork();
-    if (pid == -1) {
-        rc = errno;
-        close(pfd[0]);
-        close(pfd[1]);
-        return rc;
+    switch (pid) {
+        case -1:
+            rc = errno;
+            close(fds[0]);
+            close(fds[1]);
+            break;
+        case 0: // child process
+            close(fds[0]);
+            rc = execute(cmd, fds[1]);
+            exit(rc);
+            break;
+        default: // parent process
+            close(fds[1]);
+            read_stream(fds[0], out);
+            close(fds[0]);
+            if (waitpid(pid, &rc, 0) != -1) {
+                rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : ECHILD;
+            } else {
+                rc = errno;
+            }
     }
 
-    if (pid == 0) {
-        // child process
-        rc = execute(cmd, pfd[0], pfd[1]);
-        exit(rc);
-    }
-
-    // parent process handling
-    close(pfd[1]);
-    read_stdout(pfd[0], out, sz);
-    close(pfd[0]);
-
-    if (waitpid(pid, &rc, 0) == -1) {
-        return errno;
-    }
-    if (WIFEXITED(rc)) {
-        return WEXITSTATUS(rc);
-    }
-
-    return ECHILD;
+    return rc;
 }
 
-int shellcmd_expr(const char* expr, const char* path, char** out)
+char* shellcmd_expr(const char* expr, const char* path)
 {
-    int rc;
     char* cmd;
-    size_t out_sz = 0;
 
     // reserve buffer for command
     cmd = malloc(strlen(expr) + strlen(path) + 1);
     if (!cmd) {
-        return ENOMEM;
+        return NULL;
     }
     *cmd = 0;
 
@@ -162,25 +159,8 @@ int shellcmd_expr(const char* expr, const char* path, char** out)
 
     if (!*cmd) {
         free(cmd);
-        return EINVAL;
+        cmd = NULL;
     }
 
-    rc = shellcmd_exec(cmd, (uint8_t**)out, &out_sz);
-
-    if (out_sz) {
-        // add last null
-        char* tmp = realloc(*out, out_sz + 1);
-        if (tmp) {
-            tmp[out_sz] = 0;
-            *out = tmp;
-        } else {
-            rc = ENOMEM;
-            free(*out);
-            *out = NULL;
-        }
-    }
-
-    free(cmd);
-
-    return rc;
+    return cmd;
 }
