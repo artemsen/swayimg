@@ -2,6 +2,7 @@
 
 sources = [
   'action_test.cpp',
+  'array_test.cpp',
   'cache_test.cpp',
   'config_test.cpp',
   'fs_test.cpp',
@@ -12,7 +13,6 @@ sources = [
   'list_test.cpp',
   'pixmap_test.cpp',
   'shellcmd_test.cpp',
-  'string_test.cpp',
   'stub.cpp',
   '../src/action.c',
   '../src/array.c',

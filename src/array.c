@@ -10,6 +10,70 @@
 #include <string.h>
 #include <wchar.h>
 
+struct array* arr_create(size_t size, size_t item_size)
+{
+    struct array* arr;
+    arr = calloc(1, sizeof(*arr) + size * item_size - sizeof(arr->data));
+    if (arr) {
+        arr->size = size;
+        arr->item_size = item_size;
+    }
+    return arr;
+}
+
+void arr_free(struct array* arr)
+{
+    free(arr);
+}
+
+struct array* arr_resize(struct array* arr, size_t size)
+{
+    const size_t len = sizeof(*arr) + size * arr->item_size - sizeof(arr->data);
+
+    if (!len) {
+        return arr; // one uint8 item
+    }
+
+    arr = realloc(arr, len);
+    if (arr) {
+        arr->size = size;
+    }
+
+    return arr;
+}
+
+struct array* arr_append(struct array* arr, const void* items, size_t num)
+{
+    const size_t old_size = arr->size;
+
+    arr = arr_resize(arr, arr->size + num);
+    if (arr) {
+        uint8_t* ptr = arr->data + old_size * arr->item_size;
+        memcpy(ptr, items, num * arr->item_size);
+    }
+
+    return arr;
+}
+
+void arr_remove(struct array* arr, size_t index)
+{
+    void* ptr_left = arr_nth(arr, index);
+    void* ptr_right = arr_nth(arr, index + 1);
+
+    if (ptr_left) {
+        --arr->size;
+        if (ptr_right) {
+            const size_t len = (arr->size - index) * arr->item_size;
+            memmove(ptr_left, ptr_right, len);
+        }
+    }
+}
+
+void* arr_nth(struct array* arr, size_t index)
+{
+    return index < arr->size ? arr->data + arr->item_size * index : NULL;
+}
+
 char* str_dup(const char* src, char** dst)
 {
     const size_t sz = strlen(src) + 1;
