@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "array.h"
 #include "list.h"
 #include "pixmap_scale.h"
 
@@ -44,6 +45,7 @@ struct image {
     struct image_info* info; ///< Image meta info
     bool alpha;              ///< Image has alpha channel
 
+    struct array* frames2;      ///< Image frames
     struct image_frame* frames; ///< Image frames
     size_t num_frames;          ///< Total number of frames
 
@@ -156,3 +158,16 @@ bool image_thumb_load(struct image* img, const char* path);
  * @return true if thumbnail saved
  */
 bool image_thumb_save(const struct image* img, const char* path);
+
+/**
+ * Create array with empty frames.
+ * @param num total number of frames
+ * @return array instance
+ */
+struct array* image_alloc_frames2(size_t num);
+
+/**
+ * Free frames.
+ * @param frames array with frames to free
+ */
+void image_free_frames(struct array* frames);

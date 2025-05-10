@@ -4,7 +4,6 @@
 
 #include "image.h"
 
-#include "array.h"
 #include "buildcfg.h"
 
 #ifdef HAVE_LIBPNG
@@ -203,4 +202,18 @@ bool image_thumb_save(const struct image* img, const char* path)
     (void)path;
     return false;
 #endif // HAVE_LIBPNG
+}
+
+struct array* image_alloc_frames2(size_t num)
+{
+    return arr_create(num, sizeof(struct image_frame));
+}
+
+void image_free_frames(struct array* frames)
+{
+    for (size_t i = 0; i < frames->size; ++i) {
+        struct image_frame* frame = arr_nth(frames, i);
+        pixmap_free(&frame->pm);
+    }
+    arr_free(frames);
 }
