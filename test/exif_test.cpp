@@ -33,7 +33,7 @@ TEST_F(Exif, Read)
         switch (i) {
             case 0:
                 expect_key = "DateTime";
-                expect_val = "2024:07:06 12:31:44";
+                expect_val = "2024:05:30 21:18:48";
                 break;
             case 1:
                 expect_key = "Camera";

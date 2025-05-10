@@ -166,7 +166,7 @@ void process_exif(struct image* img, const uint8_t* data, size_t size)
     if (exif) {
         fix_orientation(img, exif);
 
-        add_meta(img, exif, EXIF_TAG_DATE_TIME, "DateTime");
+        add_meta(img, exif, EXIF_TAG_DATE_TIME_ORIGINAL, "DateTime");
         add_meta(img, exif, EXIF_TAG_MAKE, "Camera");
         add_meta(img, exif, EXIF_TAG_MODEL, "Model");
         add_meta(img, exif, EXIF_TAG_SOFTWARE, "Software");
