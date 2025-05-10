@@ -182,6 +182,17 @@ static enum image_status load_from_memory(struct image* img,
         status = decoders[i](img, data, size);
     }
 
+    if (status == imgload_success) {
+        uint8_t* dest = malloc(size);
+        if (dest) {
+            memcpy(dest, data, size);
+            img->file_raw = dest;
+        } else {
+            status = imgload_ioerror;
+            img->file_raw = NULL;
+        }
+    }
+
     img->file_size = size;
 
     return status;

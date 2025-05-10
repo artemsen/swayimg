@@ -16,6 +16,9 @@
 #ifdef HAVE_LIBPNG
 #include "formats/png.h"
 #endif
+#ifdef HAVE_LIBRSVG
+#include "formats/svg.h"
+#endif
 
 #include <assert.h>
 #include <math.h>
@@ -601,6 +604,10 @@ static void reset_state(void)
  */
 static struct image* open_image(struct image* img, bool forward)
 {
+#ifdef HAVE_LIBRSVG
+    reset_svg_render_size();
+#endif // HAVE_LIBRSVG
+
     while (img) {
         struct image* next;
 
@@ -768,6 +775,41 @@ static void reload_current(void)
 }
 
 /**
+ * Rerender SVG at current ctx.scale.
+ */
+static void rerender_svg(void)
+{
+#ifdef HAVE_LIBRSVG
+    if (strcmp(ctx.current->format, "SVG") == 0) {
+        adjust_svg_render_size(ctx.scale);
+
+        if (image_load(ctx.current) == imgload_success) {
+            info_update(info_status, "SVG rerendered");
+
+            ctx.img_w = ctx.current->frames[0].pm.width;
+            ctx.img_h = ctx.current->frames[0].pm.height;
+            ctx.scale = 1;
+
+            info_reset(ctx.current);
+            info_update(info_scale, "%.0f%%", ctx.scale * 100);
+
+            fixup_position(true);
+
+            app_redraw();
+        } else {
+            info_update(info_status, "Unable to reload file, open next one");
+            skip_current(true);
+        }
+
+    } else {
+        info_update(info_status, "Error: can only rerender SVGs");
+    }
+#else
+    info_update(info_status, "Error: SVG rerender is not supported");
+#endif // HAVE_LIBRSVG
+}
+
+/**
  * Draw image.
  * @param wnd pixel map of target window
  */
@@ -796,6 +838,17 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->alpha);
     } else {
+#ifdef HAVE_LIBRSVG
+        if (strcmp(ctx.current->format, "SVG") == 0) {
+
+            enum image_status status = decode_svg_partial(
+                ctx.current, wnd, ctx.img_x, ctx.img_y, ctx.scale);
+
+            if (status == imgload_success) {
+                return;
+            }
+        }
+#endif
         pixmap_scale(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
                      ctx.current->alpha);
     }
@@ -924,6 +977,11 @@ static void on_action(const struct action* action)
             ctx.aa_mode = aa_switch(ctx.aa_mode, action->params);
             info_update(info_status, "Anti-aliasing: %s", aa_name(ctx.aa_mode));
             app_redraw();
+            break;
+        case action_svg_rerender:
+            imglist_lock();
+            rerender_svg();
+            imglist_unlock();
             break;
         case action_reload:
             imglist_lock();

@@ -40,6 +40,7 @@ enum action_type {
     action_flip_horizontal,
     action_reload,
     action_antialiasing,
+    action_svg_rerender,
     action_info,
     action_exec,
     action_export,

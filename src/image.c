@@ -96,6 +96,10 @@ void image_free(struct image* img, size_t dt)
             free(it);
         }
         img->info = NULL;
+
+        // free raw image data
+        free(img->file_raw);
+        img->file_raw = NULL;
     }
 
     if (dt == IMGFREE_ALL) {

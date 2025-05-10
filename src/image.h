@@ -32,9 +32,10 @@ struct image_info {
 struct image {
     struct list list; ///< Links to prev/next entry in the image list
 
-    char* source;     ///< Image source (e.g. path to the image file)
-    size_t file_size; ///< Size of the image file
-    time_t file_time; ///< File modification time
+    char* source;      ///< Image source (e.g. path to the image file)
+    uint8_t* file_raw; ///< Raw image file data
+    size_t file_size;  ///< Size of the image file
+    time_t file_time;  ///< File modification time
 
     size_t index;     ///< Index of the image
     const char* name; ///< Name of the image file

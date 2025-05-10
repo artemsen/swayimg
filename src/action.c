@@ -46,6 +46,7 @@ static const char* action_names[] = {
     [action_flip_horizontal] = "flip_horizontal",
     [action_reload] = "reload",
     [action_antialiasing] = "antialiasing",
+    [action_svg_rerender] = "svg_rerender",
     [action_info] = "info",
     [action_exec] = "exec",
     [action_export] = "export",
