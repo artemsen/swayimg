@@ -279,6 +279,39 @@ size_t fs_abspath(const char* relative, char* path, size_t path_max)
     return pos;
 }
 
+const char* fs_name(const char* path)
+{
+    const char* ptr = strrchr(path, '/');
+    return ptr ? ptr + 1 : path;
+}
+
+const char* fs_parent(const char* path, size_t* len)
+{
+    const char* parent = NULL;
+    size_t pos = strlen(path);
+
+    while (pos && path[--pos] != '/') { }
+
+    if (pos == 0) {
+        parent = NULL;
+        if (len) {
+            *len = 0;
+        }
+    } else {
+        const size_t end = pos;
+        while (pos && path[--pos] != '/') { }
+        if (path[pos] == '/') {
+            ++pos;
+        }
+        parent = path + pos;
+        if (len) {
+            *len = end - pos;
+        }
+    }
+
+    return parent;
+}
+
 size_t fs_envpath(const char* env_name, const char* postfix, char* path,
                   size_t path_max)
 {

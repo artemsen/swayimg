@@ -56,6 +56,21 @@ size_t fs_append_path(const char* file, char* path, size_t path_max);
 size_t fs_abspath(const char* relative, char* path, size_t path_max);
 
 /**
+ * Get file name from the path.
+ * @param path full path
+ * @return pointer to the file name
+ */
+const char* fs_name(const char* path);
+
+/**
+ * Get parent directory from the path.
+ * @param path full path
+ * @param len number of chars in parent name
+ * @return pointer to the parent directory name
+ */
+const char* fs_parent(const char* path, size_t* len);
+
+/**
  * Construct path started with environment variable.
  * @param env_name environment variable (path prefix)
  * @param postfix constant postfix

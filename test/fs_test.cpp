@@ -64,6 +64,40 @@ TEST(FileSystem, Absolute)
     EXPECT_EQ(path[0], '/');
 }
 
+TEST(FileSystem, Name)
+{
+    EXPECT_STREQ(fs_name("/root/parent/name"), "name");
+    EXPECT_STREQ(fs_name("/name"), "name");
+    EXPECT_STREQ(fs_name("/name/"), "");
+    EXPECT_STREQ(fs_name("/"), "");
+    EXPECT_STREQ(fs_name(""), "");
+    EXPECT_STREQ(fs_name("name_only"), "name_only");
+}
+
+TEST(FileSystem, Parent)
+{
+    size_t len;
+    const char* parent;
+
+    parent = fs_parent("/root/parent/name", &len);
+    ASSERT_TRUE(parent);
+    ASSERT_EQ(len, static_cast<size_t>(6));
+    EXPECT_EQ(std::string(parent, len), std::string("parent"));
+
+    parent = fs_parent("/root/parent/", &len);
+    ASSERT_TRUE(parent);
+    ASSERT_EQ(len, static_cast<size_t>(6));
+    EXPECT_EQ(std::string(parent, len), std::string("parent"));
+
+    parent = fs_parent("parent/name", &len);
+    ASSERT_TRUE(parent);
+    ASSERT_EQ(len, static_cast<size_t>(6));
+    EXPECT_EQ(std::string(parent, len), std::string("parent"));
+
+    EXPECT_FALSE(fs_parent("name_only", nullptr));
+    EXPECT_FALSE(fs_parent("", nullptr));
+}
+
 TEST(FileSystem, EnvPath)
 {
     char path[256] = { 0 };
