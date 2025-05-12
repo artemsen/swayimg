@@ -4,9 +4,6 @@
 
 #include "pixmap.h"
 
-#include "array.h"
-#include "pixmap_ablend.h"
-
 #include <stdlib.h>
 #include <string.h>
 
