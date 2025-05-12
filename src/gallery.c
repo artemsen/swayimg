@@ -57,7 +57,7 @@ static struct gallery ctx;
 static size_t pstore_path(const char* source, char* path, size_t path_max)
 {
     char postfix[16];
-    int append_len;
+    int postfix_len;
     size_t len;
 
     if (strcmp(source, LDRSRC_STDIN) == 0 ||
@@ -75,21 +75,21 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
     }
 
     // append file name
-    append_len = fs_append_path(source, path, path_max);
-    if (!append_len) {
+    len = fs_append_path(source, path, path_max);
+    if (!len) {
         return 0;
     }
-    len += append_len;
 
     // append postfix
-    append_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
-                          (uint16_t)ctx.layout.thumb_size,
-                          ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
-    if (append_len <= 0 || len + append_len + 1 >= path_max) {
+    postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
+                           (uint16_t)ctx.layout.thumb_size,
+                           ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
+    if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
         return 0;
     }
-    memcpy(path + len, postfix, append_len + 1);
-    len += append_len;
+
+    memcpy(path + len, postfix, postfix_len + 1);
+    len += postfix_len;
 
     return len;
 }
@@ -100,7 +100,7 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
  */
 void pstore_save(const struct image* img)
 {
-    char path[PATH_MAX];
+    char path[PATH_MAX] = { 0 };
     char* delim;
 
     if (!image_has_thumb(img)) {
@@ -135,7 +135,7 @@ void pstore_save(const struct image* img)
  */
 bool pstore_load(struct image* img)
 {
-    char path[PATH_MAX];
+    char path[PATH_MAX] = { 0 };
     struct stat st_image;
     struct stat st_thumb;
 
@@ -163,7 +163,7 @@ static void clear_thumbnails(bool all)
     if (all) {
         struct image* img = imglist_first();
         while (img) {
-            image_free(img, IMGFREE_THUMB);
+            image_free(img, IMGDATA_THUMB);
             img = imglist_next(img);
         }
     } else if (ctx.cache) {
@@ -214,14 +214,13 @@ static void* loader_thread(void* data)
                                        ctx.thumb_fill, ctx.thumb_aa) &&
                     ctx.thumb_pstore) {
                     // save to thumbnail to persistent storage
-                    const size_t width = it->frames[0].pm.width;
-                    const size_t height = it->frames[0].pm.height;
-                    if (width > ctx.layout.thumb_size &&
-                        height > ctx.layout.thumb_size) {
+                    struct imgframe* frame = arr_nth(it->data->frames, 0);
+                    if (frame->pm.width > ctx.layout.thumb_size &&
+                        frame->pm.height > ctx.layout.thumb_size) {
                         pstore_save(it);
                     }
                 }
-                image_free(it, IMGFREE_FRAMES); // not needed anymore
+                image_free(it, IMGDATA_FRAMES); // not needed anymore
             }
         }
 
@@ -234,7 +233,7 @@ static void* loader_thread(void* data)
         origin = imglist_find(it->source);
         if (origin) {
             if (image_has_thumb(it)) {
-                image_update(origin, it);
+                image_attach(origin, it);
             } else {
                 imglist_remove(origin); // failed to load
             }
@@ -246,7 +245,7 @@ static void* loader_thread(void* data)
 
     // free the queue
     list_for_each(queue, struct image, it) {
-        image_free(it, IMGFREE_ALL);
+        image_free(it, IMGDATA_SELF);
     }
     if (ctx.loader_active) {
         clear_thumbnails(false);
@@ -370,7 +369,7 @@ static void draw_thumbnail(struct pixmap* window,
                            const struct layout_thumb* lth)
 {
     const struct pixmap* pm =
-        image_has_thumb(lth->img) ? &lth->img->thumbnail : NULL;
+        image_has_thumb(lth->img) ? &lth->img->data->thumbnail : NULL;
     ssize_t x = lth->x;
     ssize_t y = lth->y;
 
@@ -380,7 +379,7 @@ static void draw_thumbnail(struct pixmap* window,
         if (pm) {
             x += ctx.layout.thumb_size / 2 - pm->width / 2;
             y += ctx.layout.thumb_size / 2 - pm->height / 2;
-            pixmap_copy(pm, window, x, y, lth->img->alpha);
+            pixmap_copy(pm, window, x, y, lth->img->data->alpha);
         }
     } else {
         // currently selected item
@@ -401,7 +400,7 @@ static void draw_thumbnail(struct pixmap* window,
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
             pixmap_scale(ctx.thumb_aa, pm, window, tx, ty, THUMB_SELECTED_SCALE,
-                         lth->img->alpha);
+                         lth->img->data->alpha);
         }
 
         // shadow

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "array.h"
 #include "list.h"
 #include "pixmap_scale.h"
 
@@ -16,16 +17,25 @@
 #define LDRSRC_EXEC_LEN (sizeof(LDRSRC_EXEC) - 1)
 
 /** Image frame. */
-struct image_frame {
+struct imgframe {
     struct pixmap pm; ///< Frame data
     size_t duration;  ///< Frame duration in milliseconds (animation)
 };
 
 /** Image meta info. */
-struct image_info {
-    struct list list; ///< Links to prev/next entry
-    char* key;        ///< Meta key name
-    char* value;      ///< Meta value
+struct imginfo {
+    char* key;   ///< Key name
+    char* value; ///< Value
+};
+
+/** Image data container. */
+struct imgdata {
+    char* parent;            ///< Parent directory name
+    char* format;            ///< Format description
+    bool alpha;              ///< Alpha channel
+    struct array* frames;    ///< Frames (RGBA pixmaps)
+    struct array* info;      ///< Meta info
+    struct pixmap thumbnail; ///< Image thumbnail
 };
 
 /** Image context. */
@@ -33,21 +43,13 @@ struct image {
     struct list list; ///< Links to prev/next entry in the image list
 
     char* source;     ///< Image source (e.g. path to the image file)
+    const char* name; ///< Name of the image file
+    size_t index;     ///< Index of the image
+
     size_t file_size; ///< Size of the image file
     time_t file_time; ///< File modification time
 
-    size_t index;     ///< Index of the image
-    const char* name; ///< Name of the image file
-    char* parent_dir; ///< Parent directory name
-
-    char* format;            ///< Format description
-    struct image_info* info; ///< Image meta info
-    bool alpha;              ///< Image has alpha channel
-
-    struct image_frame* frames; ///< Image frames
-    size_t num_frames;          ///< Total number of frames
-
-    struct pixmap thumbnail; ///< Image thumbnail
+    struct imgdata* data; ///< Image data container
 };
 
 /** Image loading status. */
@@ -55,13 +57,15 @@ enum image_status {
     imgload_success,     ///< Image was decoded successfully
     imgload_unsupported, ///< Unsupported format
     imgload_fmterror,    ///< Invalid data format
-    imgload_ioerror      ///< IO errors
+    imgload_unknown      ///< Unknown errors
 };
 
-/** Image data types (used as mask for freeing data). */
-#define IMGFREE_FRAMES 1
-#define IMGFREE_THUMB  2
-#define IMGFREE_ALL    7
+/** Image data types. */
+#define IMGDATA_FRAMES (1 << 0)
+#define IMGDATA_THUMB  (1 << 1)
+#define IMGDATA_INFO   (1 << 2)
+#define IMGDATA_ALL    (IMGDATA_FRAMES | IMGDATA_THUMB | IMGDATA_INFO)
+#define IMGDATA_SELF   (1 << 3 | IMGDATA_ALL)
 
 /**
  * Get list of supported image formats.
@@ -77,6 +81,20 @@ const char* image_formats(void);
 struct image* image_create(const char* source);
 
 /**
+ * Clear image data.
+ * @param img image context
+ * @param mask data type to clean (`IMGDATA_*`)
+ */
+bool image_clear(struct image* img, size_t mask);
+
+/**
+ * Free image data.
+ * @param img image context
+ * @param mask data type to free (`IMGDATA_*`)
+ */
+void image_free(struct image* img, size_t mask);
+
+/**
  * Load image from specified source.
  * @param img image context
  * @return loading status
@@ -84,18 +102,20 @@ struct image* image_create(const char* source);
 enum image_status image_load(struct image* img);
 
 /**
- * Update image data (move) from another instance.
+ * Attach image data container (move from another instance).
  * @param img target image instance
  * @param from adopted image instance
  */
-void image_update(struct image* img, struct image* from);
+void image_attach(struct image* img, struct image* from);
 
 /**
- * Free image instance.
+ * Export image to a file.
  * @param img image context
- * @param dt image data type to free (mask with `IMGFREE_*`)
+ * @param frame frame index
+ * @param path path to write the file
+ * @return true if image has frame data
  */
-void image_free(struct image* img, size_t dt);
+bool image_export(const struct image* img, size_t frame, const char* path);
 
 /**
  * Check if image has frame data.
@@ -110,6 +130,13 @@ bool image_has_frames(const struct image* img);
  * @return true if image has thumbnail
  */
 bool image_has_thumb(const struct image* img);
+
+/**
+ * Check if image has meta info data.
+ * @param img image context
+ * @return true if image has meta info
+ */
+bool image_has_info(const struct image* img);
 
 /**
  * Flip image vertically.
@@ -156,3 +183,37 @@ bool image_thumb_load(struct image* img, const char* path);
  * @return true if thumbnail saved
  */
 bool image_thumb_save(const struct image* img, const char* path);
+
+/**
+ * Set image format description.
+ * @param img image data container
+ * @param fmt format description
+ */
+void image_set_format(struct imgdata* img, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
+
+/**
+ * Add meta info property.
+ * @param img image data container
+ * @param key property name
+ * @param fmt value format
+ */
+void image_add_info(struct imgdata* img, const char* key, const char* fmt, ...)
+    __attribute__((format(printf, 3, 4)));
+
+/**
+ * Create multiple empty frames.
+ * @param img image data container
+ * @param num total number of frames
+ * @return pointer to the frame array or NULL on errors
+ */
+struct array* image_alloc_frames(struct imgdata* img, size_t num);
+
+/**
+ * Create single frame and allocate pixmap.
+ * @param img image data container
+ * @param width,height frame size in px
+ * @return pointer to the pixmap associated with the frame, or NULL on errors
+ */
+struct pixmap* image_alloc_frame(struct imgdata* img, size_t width,
+                                 size_t height);

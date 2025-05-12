@@ -127,18 +127,17 @@ static inline ssize_t mask_shift(uint32_t mask)
 
 /**
  * Decode bitmap with masked colors.
- * @param img decoded image context
+ * @param pm target pixmap
  * @param bmp bitmap info
  * @param mask channels mask
  * @param buffer input bitmap buffer
  * @param buffer_sz size of buffer
  * @return false if input buffer has errors
  */
-static bool decode_masked(struct image* img, const struct bmp_info* bmp,
+static bool decode_masked(struct pixmap* pm, const struct bmp_info* bmp,
                           const struct bmp_mask* mask, const uint8_t* buffer,
                           size_t buffer_sz)
 {
-    struct pixmap* pm = &img->frames[0].pm;
     const bool default_mask = !mask ||
         (mask->red == 0 && mask->green == 0 && mask->blue == 0 &&
          mask->alpha == 0);
@@ -196,18 +195,17 @@ static bool decode_masked(struct image* img, const struct bmp_info* bmp,
 
 /**
  * Decode RLE compressed bitmap.
- * @param img decoded image context
+ * @param pm target pixmap
  * @param bmp bitmap info
  * @param palette color palette
  * @param buffer input bitmap buffer
  * @param buffer_sz size of buffer
  * @return false if input buffer has errors
  */
-static bool decode_rle(struct image* img, const struct bmp_info* bmp,
+static bool decode_rle(struct pixmap* pm, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    struct pixmap* pm = &img->frames[0].pm;
     size_t x = 0, y = 0;
     size_t buffer_pos = 0;
 
@@ -304,18 +302,17 @@ static bool decode_rle(struct image* img, const struct bmp_info* bmp,
 
 /**
  * Decode uncompressed bitmap.
- * @param img decoded image context
+ * @param pm target pixmap
  * @param palette color palette
  * @param buffer input bitmap buffer
  * @param buffer_sz size of buffer
  * @param decoded output data buffer
  * @return false if input buffer has errors
  */
-static bool decode_rgb(struct image* img, const struct bmp_info* bmp,
+static bool decode_rgb(struct pixmap* pm, const struct bmp_info* bmp,
                        const struct bmp_palette* palette, const uint8_t* buffer,
                        size_t buffer_sz)
 {
-    struct pixmap* pm = &img->frames[0].pm;
     const size_t stride = 4 * ((bmp->width * bmp->bpp + 31) / 32);
 
     // check size of source buffer
@@ -356,9 +353,11 @@ static bool decode_rgb(struct image* img, const struct bmp_info* bmp,
 }
 
 // BMP loader implementation
-enum image_status decode_bmp(struct image* img, const uint8_t* data,
+enum image_status decode_bmp(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
+    const char* format;
+    struct pixmap* pm;
     const struct bmp_file* hdr;
     const struct bmp_info* bmp;
     const void* color_data;
@@ -383,7 +382,8 @@ enum image_status decode_bmp(struct image* img, const uint8_t* data,
         return imgload_fmterror;
     }
 
-    if (!image_alloc_frame(img, abs(bmp->width), abs(bmp->height))) {
+    pm = image_alloc_frame(img, abs(bmp->width), abs(bmp->height));
+    if (!pm) {
         return imgload_fmterror;
     }
 
@@ -412,28 +412,27 @@ enum image_status decode_bmp(struct image* img, const uint8_t* data,
 
     // decode bitmap
     if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
-        rc = decode_masked(img, bmp, &mask, data + hdr->offset,
+        rc = decode_masked(pm, bmp, &mask, data + hdr->offset,
                            size - hdr->offset);
-        image_set_format(img, "BMP %dbit masked", bmp->bpp);
+        format = "masked";
     } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
-        rc = decode_rle(img, bmp, &palette, data + hdr->offset,
+        rc = decode_rle(pm, bmp, &palette, data + hdr->offset,
                         size - hdr->offset);
-        image_set_format(img, "BMP %dbit RLE", bmp->bpp);
+        format = "RLE";
     } else if (bmp->compression == BI_RGB) {
-        rc = decode_rgb(img, bmp, &palette, data + hdr->offset,
+        rc = decode_rgb(pm, bmp, &palette, data + hdr->offset,
                         size - hdr->offset);
-        image_set_format(img, "BMP %dbit uncompressed", bmp->bpp);
+        format = "uncompressed";
     } else {
         rc = false;
     }
 
     if (rc) {
-        if (bmp->height > 0) {
-            image_flip_vertical(img);
-        }
+        image_set_format(img, "BMP %dbit %s", bmp->bpp, format);
         img->alpha = bmp->bpp == 32;
-    } else {
-        image_free(img, IMGFREE_FRAMES);
+        if (bmp->height > 0) {
+            pixmap_flip_vertical(pm);
+        }
     }
 
     return (rc ? imgload_success : imgload_fmterror);

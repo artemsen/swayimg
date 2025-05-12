@@ -12,7 +12,7 @@ extern "C" {
 class Exif : public ::testing::Test {
 protected:
     void SetUp() override { image = image_create("no_matter"); }
-    void TearDown() override { image_free(image, IMGFREE_ALL); }
+    void TearDown() override { image_free(image, IMGDATA_SELF); }
     struct image* image;
 };
 
@@ -22,58 +22,37 @@ TEST_F(Exif, Read)
     const std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)),
                                     (std::istreambuf_iterator<char>()));
 
-    process_exif(image, data.data(), data.size());
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
 
-    ASSERT_EQ(list_size(&image->info->list), static_cast<size_t>(7));
+    process_exif(image->data, data.data(), data.size());
 
-    size_t i = 0;
-    list_for_each(image->info, const struct image_info, it) {
-        const char* expect_key;
-        const char* expect_val;
-        switch (i) {
-            case 0:
-                expect_key = "DateTime";
-                expect_val = "2024:05:30 21:18:48";
-                break;
-            case 1:
-                expect_key = "Camera";
-                expect_val = "Google";
-                break;
-            case 2:
-                expect_key = "Model";
-                expect_val = "Pixel 7";
-                break;
-            case 3:
-                expect_key = "Software";
-                expect_val = "GIMP 2.99.16";
-                break;
-            case 4:
-                expect_key = "Exposure";
-                expect_val = "1/50 sec.";
-                break;
-            case 5:
-                expect_key = "F Number";
-                expect_val = "f/1.9";
-                break;
-            case 6:
-                expect_key = "Location";
-                expect_val = "55°44'28.41\"N, 37°37'25.46\"E";
-                break;
-            default:
-                GTEST_FAIL();
-                break;
-        }
-        EXPECT_STREQ(it->key, expect_key);
-        EXPECT_STREQ(it->value, expect_val);
-        ++i;
+    ASSERT_EQ(image->data->info->size, static_cast<size_t>(7));
+
+    const std::pair<const char*, const char*> etalon[] = {
+        { "DateTime", "2024:05:30 21:18:48"            },
+        { "Camera",   "Google"                         },
+        { "Model",    "Pixel 7"                        },
+        { "Software", "GIMP 2.99.16"                   },
+        { "Exposure", "1/50 sec."                      },
+        { "F Number", "f/1.9"                          },
+        { "Location", "55°44'28.41\"N, 37°37'25.46\"E" },
+    };
+
+    for (size_t i = 0; i < sizeof(etalon) / sizeof(etalon[0]); ++i) {
+        const struct imginfo* inf =
+            static_cast<struct imginfo*>(arr_nth(image->data->info, i));
+        EXPECT_STREQ(inf->key, etalon[i].first);
+        EXPECT_STREQ(inf->value, etalon[i].second);
     }
 }
 
 TEST_F(Exif, Fail)
 {
-    process_exif(image, nullptr, 0);
-    EXPECT_EQ(list_size(&image->info->list), static_cast<size_t>(0));
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
 
-    process_exif(image, reinterpret_cast<const uint8_t*>("abcd"), 4);
-    EXPECT_EQ(list_size(&image->info->list), static_cast<size_t>(0));
+    process_exif(image->data, nullptr, 0);
+    EXPECT_FALSE(image->data->info);
+
+    process_exif(image->data, reinterpret_cast<const uint8_t*>("abcd"), 4);
+    EXPECT_FALSE(image->data->info);
 }

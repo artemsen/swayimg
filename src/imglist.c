@@ -489,7 +489,7 @@ void imglist_destroy(void)
     fs_monitor_destroy();
 
     list_for_each(ctx.images, struct image, it) {
-        image_free(it, IMGFREE_ALL);
+        image_free(it, IMGDATA_SELF);
     }
 
     ctx.images = NULL;
@@ -537,7 +537,7 @@ struct image* imglist_load(const char* const* sources, size_t num)
 void imglist_remove(struct image* img)
 {
     ctx.images = list_remove(img);
-    image_free(img, IMGFREE_ALL);
+    image_free(img, IMGDATA_SELF);
     reindex();
 }
 

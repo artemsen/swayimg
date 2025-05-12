@@ -50,7 +50,7 @@ static bool is_svg(const uint8_t* data, size_t size)
 }
 
 // SVG loader implementation
-enum image_status decode_svg(struct image* img, const uint8_t* data,
+enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     RsvgHandle* svg;
@@ -95,7 +95,6 @@ enum image_status decode_svg(struct image* img, const uint8_t* data,
     if (!pm) {
         goto fail;
     }
-    memset(pm->data, 0, pm->width * pm->height * sizeof(argb_t));
     surface = cairo_image_surface_create_for_data(
         (uint8_t*)pm->data, CAIRO_FORMAT_ARGB32, pm->width, pm->height,
         pm->width * sizeof(argb_t));
@@ -112,7 +111,7 @@ enum image_status decode_svg(struct image* img, const uint8_t* data,
 
     image_set_format(img, "SVG");
     if (has_vb_real) {
-        image_add_meta(img, "Real size", "%0.2fx%0.2f", vb_real.width,
+        image_add_info(img, "Real size", "%0.2fx%0.2f", vb_real.width,
                        vb_real.height);
     }
     img->alpha = true;
@@ -130,7 +129,6 @@ fail:
     if (surface) {
         cairo_surface_destroy(surface);
     }
-    image_free(img, IMGFREE_FRAMES);
     g_object_unref(svg);
     return imgload_fmterror;
 }

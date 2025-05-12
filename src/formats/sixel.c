@@ -8,12 +8,13 @@
 #include <stdlib.h>
 
 // Sixel loader implementation
-enum image_status decode_sixel(struct image* img, const uint8_t* data,
+enum image_status decode_sixel(struct imgdata* img, const uint8_t* data,
                                size_t size)
 {
     uint8_t* pixels = NULL;
     uint8_t* palette = NULL;
     int width, height, ncolors;
+    struct pixmap* pm;
     SIXELSTATUS status;
 
     // sixel always starts with Esc code
@@ -28,7 +29,8 @@ enum image_status decode_sixel(struct image* img, const uint8_t* data,
         return imgload_unsupported;
     }
 
-    if (!image_alloc_frame(img, width, height)) {
+    pm = image_alloc_frame(img, width, height);
+    if (!pm) {
         free(pixels);
         free(palette);
         return imgload_fmterror;
@@ -38,7 +40,7 @@ enum image_status decode_sixel(struct image* img, const uint8_t* data,
     for (int y = 0; y < height; ++y) {
         const int y_offset = y * width;
         const uint8_t* src = &pixels[y_offset];
-        argb_t* dst = &img->frames[0].pm.data[y_offset];
+        argb_t* dst = &pm->data[y_offset];
         for (int x = 0; x < width; ++x) {
             if (src[x] >= ncolors) {
                 dst[x] = ARGB(0xff, 0, 0, 0);

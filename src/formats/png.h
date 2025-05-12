@@ -7,7 +7,7 @@
 #include "loader.h"
 
 // PNG decoder implementation
-enum image_status decode_png(struct image* img, const uint8_t* data,
+enum image_status decode_png(struct imgdata* img, const uint8_t* data,
                              size_t size);
 
 /**
@@ -17,5 +17,5 @@ enum image_status decode_png(struct image* img, const uint8_t* data,
  * @param path output file
  * @return true if image saved successfully
  */
-bool export_png(const struct pixmap* pm, const struct image_info* info,
+bool export_png(const struct pixmap* pm, const struct array* info,
                 const char* path);

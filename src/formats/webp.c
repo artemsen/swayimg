@@ -13,7 +13,7 @@
 static const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
 
 // WebP loader implementation
-enum image_status decode_webp(struct image* img, const uint8_t* data,
+enum image_status decode_webp(struct imgdata* img, const uint8_t* data,
                               size_t size)
 {
     const WebPData raw = { .bytes = data, .size = size };
@@ -51,10 +51,10 @@ enum image_status decode_webp(struct image* img, const uint8_t* data,
     }
 
     // decode every frame
-    for (size_t i = 0; i < img->num_frames; ++i) {
+    for (size_t i = 0; i < webp_info.frame_count; ++i) {
         uint8_t* buffer;
         int timestamp;
-        struct image_frame* frame = &img->frames[i];
+        struct imgframe* frame = arr_nth(img->frames, i);
         struct pixmap* pm = &frame->pm;
 
         if (!pixmap_create(pm, webp_info.canvas_width,
@@ -66,7 +66,7 @@ enum image_status decode_webp(struct image* img, const uint8_t* data,
         }
         memcpy(pm->data, buffer, pm->width * pm->height * sizeof(argb_t));
 
-        if (img->num_frames > 1) {
+        if (webp_info.frame_count > 1) {
             frame->duration = timestamp - prev_timestamp;
             prev_timestamp = timestamp;
             if (frame->duration <= 0) {

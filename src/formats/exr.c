@@ -319,7 +319,7 @@ done:
 }
 
 // EXR loader implementation
-enum image_status decode_exr(struct image* img, const uint8_t* data,
+enum image_status decode_exr(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     exr_result_t rc;
@@ -365,9 +365,6 @@ enum image_status decode_exr(struct image* img, const uint8_t* data,
         goto done;
     }
 
-    image_set_format(img, "EXR");
-    img->alpha = true;
-
     if (storage == EXR_STORAGE_SCANLINE) {
         rc = load_scanlined(exr, pm);
     } else if (storage == EXR_STORAGE_TILED) {
@@ -378,8 +375,10 @@ enum image_status decode_exr(struct image* img, const uint8_t* data,
 
 done:
     exr_finish(&exr);
-    if (rc != EXR_ERR_SUCCESS) {
-        image_free(img, IMGFREE_FRAMES);
+    if (rc == EXR_ERR_SUCCESS) {
+        img->alpha = true;
+        image_set_format(img, "EXR");
+    } else {
         return imgload_fmterror;
     }
     return imgload_success;

@@ -29,7 +29,7 @@ protected:
         imglist_destroy();
 
         list_for_each(queue, struct image, it) {
-            image_free(it, IMGFREE_ALL);
+            image_free(it, IMGDATA_SELF);
         }
     }
 
@@ -316,7 +316,9 @@ TEST_F(Layout, ClearAllInvisible)
 
     struct image* img = imglist_first();
     while (img) {
-        ASSERT_TRUE(pixmap_create(&img->thumbnail, 1, 1));
+        img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
+        ASSERT_TRUE(img->data);
+        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, 1, 1));
         img = imglist_next(img);
     }
 
@@ -342,7 +344,9 @@ TEST_F(Layout, ClearLimited)
 
     struct image* img = imglist_first();
     while (img) {
-        ASSERT_TRUE(pixmap_create(&img->thumbnail, 1, 1));
+        img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
+        ASSERT_TRUE(img->data);
+        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, 1, 1));
         img = imglist_next(img);
     }
 

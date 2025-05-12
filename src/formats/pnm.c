@@ -220,12 +220,13 @@ static int decode_raw(struct pixmap* pm, struct pnm_iter* it,
     return 0;
 }
 
-enum image_status decode_pnm(struct image* img, const uint8_t* data,
+enum image_status decode_pnm(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     struct pnm_iter it;
     bool plain;
     enum pnm_type type;
+    struct pixmap* pm;
     int width, height, maxval, ret;
 
     if (size < 2 || data[0] != 'P') {
@@ -291,14 +292,14 @@ enum image_status decode_pnm(struct image* img, const uint8_t* data,
         }
         ++it.pos;
     }
-    if (!image_alloc_frame(img, width, height)) {
+    pm = image_alloc_frame(img, width, height);
+    if (!pm) {
         return imgload_fmterror;
     }
 
-    ret = plain ? decode_plain(&img->frames[0].pm, &it, type, maxval)
-                : decode_raw(&img->frames[0].pm, &it, type, maxval);
+    ret = plain ? decode_plain(pm, &it, type, maxval)
+                : decode_raw(pm, &it, type, maxval);
     if (ret < 0) {
-        image_free(img, IMGFREE_FRAMES);
         return imgload_fmterror;
     }
 

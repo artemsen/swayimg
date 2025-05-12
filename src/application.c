@@ -386,9 +386,7 @@ static struct image* create_imglist(const char* const* sources, size_t num)
             case imgload_fmterror:
                 fail = "Invalid format";
                 break;
-            case imgload_ioerror:
-                fail = "I/O error";
-                break;
+            case imgload_unknown:
             default:
                 fail = "Unknown error";
                 break;
@@ -527,10 +525,10 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
         ui_toggle_fullscreen();
     } else if (ctx.window.width == SIZE_FROM_IMAGE ||
                ctx.window.width == SIZE_FROM_PARENT) {
-        // determine window size from the first image
-        const struct pixmap* pm = &first_image->frames[0].pm;
-        ctx.window.width = pm->width;
-        ctx.window.height = pm->height;
+        // determine window sipize from the first frame of the first image
+        struct imgframe* frame = arr_nth(first_image->data->frames, 0);
+        ctx.window.width = frame->pm.width;
+        ctx.window.height = frame->pm.height;
     }
 
     // user interface initialization

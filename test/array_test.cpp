@@ -50,14 +50,15 @@ TEST_F(Array, AppendOne)
     ASSERT_TRUE(arr);
     EXPECT_EQ(arr->size, static_cast<size_t>(0));
 
-    arr = arr_append(arr, &item, 1);
+    arr = arr_append(arr, nullptr, 1);
     ASSERT_TRUE(arr);
     EXPECT_EQ(arr->size, static_cast<size_t>(1));
-    EXPECT_EQ(arr->data[0], item);
+    EXPECT_EQ(arr->data[0], 0);
 
     arr = arr_append(arr, &item, 1);
     ASSERT_TRUE(arr);
     EXPECT_EQ(arr->size, static_cast<size_t>(2));
+    EXPECT_EQ(arr->data[0], 0);
     EXPECT_EQ(arr->data[sizeof(item)], item);
 }
 

@@ -37,7 +37,7 @@ struct __attribute__((__packed__)) qoi_header {
 };
 
 // QOI loader implementation
-enum image_status decode_qoi(struct image* img, const uint8_t* data,
+enum image_status decode_qoi(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     const struct qoi_header* qoi = (const struct qoi_header*)data;
@@ -88,14 +88,14 @@ enum image_status decode_qoi(struct image* img, const uint8_t* data,
 
             if (tag == QOI_OP_RGB) {
                 if (pos + 3 >= size) {
-                    goto fail;
+                    return imgload_fmterror;
                 }
                 r = data[pos++];
                 g = data[pos++];
                 b = data[pos++];
             } else if (tag == QOI_OP_RGBA) {
                 if (pos + 4 >= size) {
-                    goto fail;
+                    return imgload_fmterror;
                 }
                 r = data[pos++];
                 g = data[pos++];
@@ -115,7 +115,7 @@ enum image_status decode_qoi(struct image* img, const uint8_t* data,
                 uint8_t diff;
                 int8_t diff_green;
                 if (pos + 1 >= size) {
-                    goto fail;
+                    return imgload_fmterror;
                 }
                 diff = data[pos++];
                 diff_green = (int8_t)(tag & 0x3f) - 32;
@@ -133,8 +133,4 @@ enum image_status decode_qoi(struct image* img, const uint8_t* data,
     image_set_format(img, "QOI %dbpp", qoi->channels * 8);
     img->alpha = (qoi->channels == 4);
     return imgload_success;
-
-fail:
-    image_free(img, IMGFREE_FRAMES);
-    return imgload_fmterror;
 }

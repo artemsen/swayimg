@@ -53,7 +53,7 @@ static png_bytep* bind_pixmap(const struct pixmap* pm)
  * @param info png image info
  * @return false if decode failed
  */
-static bool decode_single(struct image* img, png_struct* png, png_info* info)
+static bool decode_single(struct imgdata* img, png_struct* png, png_info* info)
 {
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
@@ -90,7 +90,7 @@ static bool decode_single(struct image* img, png_struct* png, png_info* info)
  * @param index number of the frame to load
  * @return true if completed successfully
  */
-static bool decode_frame(struct image* img, png_struct* png, png_info* info,
+static bool decode_frame(struct imgdata* img, png_struct* png, png_info* info,
                          size_t index)
 {
     png_uint_32 width = 0;
@@ -103,7 +103,7 @@ static bool decode_frame(struct image* img, png_struct* png, png_info* info,
     png_byte blend = 0;
     png_bytep* bind;
     struct pixmap frame_png;
-    struct image_frame* frame_img = &img->frames[index];
+    struct imgframe* frame_img = arr_nth(img->frames, index);
 
     // get frame params
     if (png_get_valid(png, info, PNG_INFO_acTL)) {
@@ -151,9 +151,9 @@ static bool decode_frame(struct image* img, png_struct* png, png_info* info,
     if (dispose == PNG_DISPOSE_OP_PREVIOUS) {
         if (index == 0) {
             dispose = PNG_DISPOSE_OP_BACKGROUND;
-        } else if (index + 1 < img->num_frames) {
-            struct pixmap* next = &img->frames[index + 1].pm;
-            pixmap_copy(&frame_img->pm, next, 0, 0, false);
+        } else if (index + 1 < img->frames->size) {
+            struct imgframe* next = arr_nth(img->frames, index + 1);
+            pixmap_copy(&frame_img->pm, &next->pm, 0, 0, false);
         }
     }
 
@@ -162,9 +162,9 @@ static bool decode_frame(struct image* img, png_struct* png, png_info* info,
                 blend == PNG_BLEND_OP_OVER);
 
     // handle dispose
-    if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < img->num_frames) {
-        struct pixmap* next = &img->frames[index + 1].pm;
-        pixmap_copy(&frame_img->pm, next, 0, 0, false);
+    if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < img->frames->size) {
+        struct imgframe* next = arr_nth(img->frames, index + 1);
+        pixmap_copy(&frame_img->pm, &next->pm, 0, 0, false);
     }
 
     // calc frame duration in milliseconds
@@ -183,7 +183,8 @@ static bool decode_frame(struct image* img, png_struct* png, png_info* info,
  * @param info png image info
  * @return false if decode failed
  */
-static bool decode_multiple(struct image* img, png_struct* png, png_info* info)
+static bool decode_multiple(struct imgdata* img, png_struct* png,
+                            png_info* info)
 {
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
@@ -195,7 +196,7 @@ static bool decode_multiple(struct image* img, png_struct* png, png_info* info)
         return false;
     }
     for (index = 0; index < frames; ++index) {
-        struct image_frame* frame = &img->frames[index];
+        struct imgframe* frame = arr_nth(img->frames, index);
         if (!pixmap_create(&frame->pm, width, height)) {
             return false;
         }
@@ -210,16 +211,16 @@ static bool decode_multiple(struct image* img, png_struct* png, png_info* info)
     if (index != frames) {
         // not all frames were decoded, leave only the first
         for (index = 1; index < frames; ++index) {
-            pixmap_free(&img->frames[index].pm);
+            struct imgframe* frame = arr_nth(img->frames, index);
+            pixmap_free(&frame->pm);
         }
-        img->num_frames = 1;
+        arr_resize(img->frames, 1);
     }
 
-    if (png_get_first_frame_is_hidden(png, info) && img->num_frames > 1) {
-        --img->num_frames;
-        pixmap_free(&img->frames[0].pm);
-        memmove(&img->frames[0], &img->frames[1],
-                img->num_frames * sizeof(*img->frames));
+    if (png_get_first_frame_is_hidden(png, info) && img->frames->size > 1) {
+        struct imgframe* first = arr_nth(img->frames, 0);
+        pixmap_free(&first->pm);
+        arr_remove(img->frames, 0);
     }
 
     return true;
@@ -227,7 +228,7 @@ static bool decode_multiple(struct image* img, png_struct* png, png_info* info)
 #endif // PNG_APNG_SUPPORTED
 
 // PNG loader implementation
-enum image_status decode_png(struct image* img, const uint8_t* data,
+enum image_status decode_png(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     png_struct* png = NULL;
@@ -308,31 +309,26 @@ enum image_status decode_png(struct image* img, const uint8_t* data,
     rc = decode_single(img, png, info);
 #endif // PNG_APNG_SUPPORTED
 
-    // read text info
     if (rc) {
+        // read text info
         png_text* txt;
         int total;
         if (png_get_text(png, info, &txt, &total)) {
             for (int i = 0; i < total; ++i) {
-                image_add_meta(img, txt[i].key, "%s", txt[i].text);
+                image_add_info(img, txt[i].key, "%s", txt[i].text);
             }
         }
-    }
 
-    if (!rc) {
-        image_free(img, IMGFREE_FRAMES);
-    } else {
         image_set_format(img, "PNG %dbit", bit_depth * 4);
         img->alpha = true;
     }
 
-    // free resources
     png_destroy_read_struct(&png, &info, NULL);
 
     return rc ? imgload_success : imgload_fmterror;
 }
 
-bool export_png(const struct pixmap* pm, const struct image_info* info,
+bool export_png(const struct pixmap* pm, const struct array* info,
                 const char* path)
 {
     png_struct* png = NULL;
@@ -375,16 +371,14 @@ bool export_png(const struct pixmap* pm, const struct image_info* info,
 
     // save meta info as text
     if (info) {
-        const size_t info_sz = list_size(&info->list);
-        png_text* txt = calloc(1, info_sz * sizeof(png_text));
+        png_text* txt = calloc(1, info->size * sizeof(png_text));
         if (txt) {
-            size_t i = 0;
-            list_for_each(info, const struct image_info, it) {
-                txt[i].key = it->key;
-                txt[i].text = it->value;
-                ++i;
+            for (size_t i = 0; i < info->size; ++i) {
+                const struct imginfo* inf = arr_nth((struct array*)info, i);
+                txt[i].key = inf->key;
+                txt[i].text = inf->value;
             }
-            png_set_text(png, png_inf, txt, info_sz);
+            png_set_text(png, png_inf, txt, info->size);
             free(txt);
         }
     }

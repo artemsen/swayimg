@@ -4,8 +4,6 @@
 
 #include "exif.h"
 
-#include "formats/loader.h"
-
 #include <libexif/exif-data.h>
 #include <string.h>
 
@@ -14,34 +12,55 @@
  * @param img target image instance
  * @param exif instance of EXIF reader
  */
-static void fix_orientation(struct image* img, ExifData* exif)
+static void fix_orientation(struct imgdata* img, ExifData* exif)
 {
     const ExifEntry* entry = exif_data_get_entry(exif, EXIF_TAG_ORIENTATION);
     if (entry) {
         const ExifByteOrder byte_order = exif_data_get_byte_order(exif);
         switch (exif_get_short(entry->data, byte_order)) {
             case 2: // flipped back-to-front
-                image_flip_horizontal(img);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_flip_horizontal(&frame->pm);
+                }
                 break;
             case 3: // upside down
-                image_rotate(img, 180);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_rotate(&frame->pm, 180);
+                }
                 break;
             case 4: // flipped back-to-front and upside down
-                image_flip_vertical(img);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_flip_vertical(&frame->pm);
+                }
                 break;
             case 5: // flipped back-to-front and on its side
-                image_flip_horizontal(img);
-                image_rotate(img, 90);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_flip_horizontal(&frame->pm);
+                    pixmap_rotate(&frame->pm, 90);
+                }
                 break;
             case 6: // on its side
-                image_rotate(img, 90);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_rotate(&frame->pm, 90);
+                }
                 break;
             case 7: // flipped back-to-front and on its far side
-                image_flip_vertical(img);
-                image_rotate(img, 270);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_flip_vertical(&frame->pm);
+                    pixmap_rotate(&frame->pm, 270);
+                }
                 break;
             case 8: // on its far side
-                image_rotate(img, 270);
+                for (size_t i = 0; i < img->frames->size; ++i) {
+                    struct imgframe* frame = arr_nth(img->frames, i);
+                    pixmap_rotate(&frame->pm, 270);
+                }
                 break;
             default:
                 break;
@@ -51,12 +70,12 @@ static void fix_orientation(struct image* img, ExifData* exif)
 
 /**
  * Add meta info from EXIF tag.
- * @param img target image instance
+ * @param img target image container
  * @param exif instance of EXIF reader
  * @param tag EXIF tag
  * @param name EXIF tag name
  */
-static void add_meta(struct image* img, ExifData* exif, ExifTag tag,
+static void add_meta(struct imgdata* img, ExifData* exif, ExifTag tag,
                      const char* name)
 {
     char value[64];
@@ -64,7 +83,7 @@ static void add_meta(struct image* img, ExifData* exif, ExifTag tag,
     if (entry) {
         exif_entry_get_value(entry, value, sizeof(value));
         if (*value) {
-            image_add_meta(img, name, "%s", value);
+            image_add_info(img, name, "%s", value);
         }
     }
 }
@@ -145,7 +164,7 @@ static size_t read_coordinate(ExifData* exif, ExifTag tag, ExifTag ref,
  * @param img target image instance
  * @param exif instance of EXIF reader
  */
-static void read_location(struct image* img, ExifData* exif)
+static void read_location(struct imgdata* img, ExifData* exif)
 {
     char latitude[32], longitude[32];
 
@@ -155,12 +174,12 @@ static void read_location(struct image* img, ExifData* exif)
         read_coordinate(exif, EXIF_TAG_GPS_LONGITUDE,
                         EXIF_TAG_GPS_LONGITUDE_REF, longitude,
                         sizeof(longitude))) {
-        image_add_meta(img, "Location", "%s, %s", latitude, longitude);
+        image_add_info(img, "Location", "%s, %s", latitude, longitude);
     }
     // NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
 
-void process_exif(struct image* img, const uint8_t* data, size_t size)
+void process_exif(struct imgdata* img, const uint8_t* data, size_t size)
 {
     ExifData* exif = exif_data_new_from_data(data, (unsigned int)size);
     if (exif) {

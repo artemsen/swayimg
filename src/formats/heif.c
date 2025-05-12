@@ -12,10 +12,10 @@
 #ifdef HAVE_LIBEXIF
 /**
  * Read Exif info.
- * @param img image context
+ * @param img image data container
  * @param pih handle of HEIF/AVIF image
  */
-static void read_exif(struct image* img, struct heif_image_handle* pih)
+static void read_exif(struct imgdata* img, struct heif_image_handle* pih)
 {
     heif_item_id id;
     const int count =
@@ -37,7 +37,7 @@ static void read_exif(struct image* img, struct heif_image_handle* pih)
 #endif // HAVE_LIBEXIF
 
 // HEIF/AVIF loader implementation
-enum image_status decode_heif(struct image* img, const uint8_t* data,
+enum image_status decode_heif(struct imgdata* img, const uint8_t* data,
                               size_t size)
 {
     struct heif_context* heif = NULL;
@@ -101,9 +101,6 @@ enum image_status decode_heif(struct image* img, const uint8_t* data,
     status = imgload_success;
 
 done:
-    if (status != imgload_success) {
-        image_free(img, IMGFREE_FRAMES);
-    }
     if (him) {
         heif_image_release(him);
     }

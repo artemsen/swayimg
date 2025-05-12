@@ -190,7 +190,7 @@ static bool get_image(struct stream* stream, struct dicom_image* image)
 }
 
 // DICOM loader implementation
-enum image_status decode_dicom(struct image* img, const uint8_t* data,
+enum image_status decode_dicom(struct imgdata* img, const uint8_t* data,
                                size_t size)
 {
     struct dicom_image dicom;

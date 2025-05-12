@@ -13,10 +13,6 @@
 #include "pixmap_scale.h"
 #include "ui.h"
 
-#ifdef HAVE_LIBPNG
-#include "formats/png.h"
-#endif
-
 #include <assert.h>
 #include <math.h>
 #include <pthread.h>
@@ -170,7 +166,7 @@ static void* preloader_thread(__attribute__((unused)) void* data)
 
         origin = imglist_find(next->source);
         if (!origin || image_has_frames(origin)) {
-            image_free(next, IMGFREE_ALL);
+            image_free(next, IMGDATA_SELF);
             imglist_unlock();
             continue; // already skipped or loaded by main thread
         }
@@ -179,17 +175,17 @@ static void* preloader_thread(__attribute__((unused)) void* data)
             imglist_remove(origin);
         } else {
             // replace existing image data
-            image_update(origin, next);
+            image_attach(origin, next);
             if (!cache_put(ctx.preload, origin)) {
                 // not enough memory
-                image_free(origin, IMGFREE_FRAMES);
-                image_free(next, IMGFREE_ALL);
+                image_free(origin, IMGDATA_FRAMES);
+                image_free(next, IMGDATA_SELF);
                 break;
             }
             ++counter;
         }
 
-        image_free(next, IMGFREE_ALL);
+        image_free(next, IMGDATA_SELF);
         imglist_unlock();
     }
 
@@ -228,9 +224,10 @@ static void fixup_position(bool force)
     const ssize_t wnd_width = ui_get_width();
     const ssize_t wnd_height = ui_get_height();
 
-    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
-    const ssize_t img_width = ctx.scale * pm->width;
-    const ssize_t img_height = ctx.scale * pm->height;
+    const struct imgframe* frame =
+        arr_nth(ctx.current->data->frames, ctx.frame);
+    const ssize_t img_width = ctx.scale * frame->pm.width;
+    const ssize_t img_height = ctx.scale * frame->pm.height;
 
     if (img_width <= wnd_width) {
         switch (ctx.position) {
@@ -380,8 +377,9 @@ static void move_image(bool horizontal, bool positive, const char* params)
  */
 static void rotate_image(bool clockwise)
 {
-    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
-    const ssize_t diff = (ssize_t)pm->width - pm->height;
+    const struct imgframe* frame =
+        arr_nth(ctx.current->data->frames, ctx.frame);
+    const ssize_t diff = (ssize_t)frame->pm.width - frame->pm.height;
     const ssize_t shift = (ctx.scale * diff) / 2;
 
     image_rotate(ctx.current, clockwise ? 90 : 270);
@@ -398,11 +396,12 @@ static void rotate_image(bool clockwise)
  */
 static void set_scale(enum fixed_scale sc)
 {
-    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
+    const struct imgframe* frame =
+        arr_nth(ctx.current->data->frames, ctx.frame);
     const size_t wnd_width = ui_get_width();
     const size_t wnd_height = ui_get_height();
-    const float scale_w = 1.0 / ((float)pm->width / wnd_width);
-    const float scale_h = 1.0 / ((float)pm->height / wnd_height);
+    const double scale_w = 1.0 / ((double)frame->pm.width / wnd_width);
+    const double scale_h = 1.0 / ((double)frame->pm.height / wnd_height);
 
     switch (sc) {
         case scale_fit_optimal:
@@ -482,7 +481,7 @@ static void zoom_image(const char* params)
         // zoom in %
         const double wnd_half_w = (double)ui_get_width() / 2;
         const double wnd_half_h = (double)ui_get_height() / 2;
-        const float step = (ctx.scale / 100) * percent;
+        const double step = (ctx.scale / 100) * percent;
         const double center_x = wnd_half_w / ctx.scale - ctx.img_x / ctx.scale;
         const double center_y = wnd_half_h / ctx.scale - ctx.img_y / ctx.scale;
 
@@ -492,10 +491,11 @@ static void zoom_image(const char* params)
                 ctx.scale = MAX_SCALE;
             }
         } else {
-            const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
-            const float scale_w = (float)MIN_SCALE / pm->width;
-            const float scale_h = (float)MIN_SCALE / pm->height;
-            const float scale_min = max(scale_w, scale_h);
+            const struct imgframe* frame =
+                arr_nth(ctx.current->data->frames, ctx.frame);
+            const double scale_w = (double)MIN_SCALE / frame->pm.width;
+            const double scale_h = (double)MIN_SCALE / frame->pm.height;
+            const double scale_min = max(scale_w, scale_h);
             ctx.scale += step;
             if (ctx.scale < scale_min) {
                 ctx.scale = scale_min;
@@ -533,8 +533,10 @@ static void animation_ctl(bool enable)
     struct itimerspec ts = { 0 };
 
     if (enable) {
-        const size_t duration = ctx.current->frames[ctx.frame].duration;
-        enable = (ctx.current->num_frames > 1 && duration);
+        const struct imgframe* frame =
+            arr_nth(ctx.current->data->frames, ctx.frame);
+        const size_t duration = frame->duration;
+        enable = (ctx.current->data->frames->size > 1 && duration);
         if (enable) {
             ts.it_value.tv_sec = duration / 1000;
             ts.it_value.tv_nsec = (duration % 1000) * 1000000;
@@ -566,20 +568,21 @@ static void slideshow_ctl(bool enable)
  */
 static void reset_state(void)
 {
+    const struct imgframe* frame = arr_nth(ctx.current->data->frames, 0);
     ctx.frame = 0;
 
     if (!ctx.keep_zoom || ctx.scale == 0) {
         set_scale(ctx.scale_init);
     } else {
-        const ssize_t diff_w = ctx.img_w - ctx.current->frames[0].pm.width;
-        const ssize_t diff_h = ctx.img_h - ctx.current->frames[0].pm.height;
+        const ssize_t diff_w = ctx.img_w - frame->pm.width;
+        const ssize_t diff_h = ctx.img_h - frame->pm.height;
         ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
         ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
         fixup_position(true);
     }
 
-    ctx.img_w = ctx.current->frames[0].pm.width;
-    ctx.img_h = ctx.current->frames[0].pm.height;
+    ctx.img_w = frame->pm.width;
+    ctx.img_h = frame->pm.height;
 
     ui_set_title(ctx.current->name);
     animation_ctl(true);
@@ -624,7 +627,7 @@ static struct image* open_image(struct image* img, bool forward)
 
     if (img) {
         if (!cache_put(ctx.history, ctx.current)) {
-            image_free(ctx.current, IMGFREE_FRAMES);
+            image_free(ctx.current, IMGDATA_FRAMES);
         }
         ctx.current = img;
         preloader_start();
@@ -693,22 +696,23 @@ static void next_frame(bool forward)
     size_t index = ctx.frame;
 
     if (forward) {
-        if (++index >= ctx.current->num_frames) {
+        if (++index >= ctx.current->data->frames->size) {
             index = 0;
         }
     } else {
         if (index-- == 0) {
-            index = ctx.current->num_frames - 1;
+            index = ctx.current->data->frames->size - 1;
         }
     }
 
     if (index != ctx.frame) {
+        const struct imgframe* frame =
+            arr_nth(ctx.current->data->frames, ctx.frame);
         ctx.frame = index;
         info_update(info_frame, "%zu of %zu", ctx.frame + 1,
-                    ctx.current->num_frames);
-        info_update(info_image_size, "%zux%zu",
-                    ctx.current->frames[ctx.frame].pm.width,
-                    ctx.current->frames[ctx.frame].pm.height);
+                    ctx.current->data->frames->size);
+        info_update(info_image_size, "%zux%zu", frame->pm.width,
+                    frame->pm.height);
         app_redraw();
     }
 }
@@ -773,7 +777,9 @@ static void reload_current(void)
  */
 static void draw_image(struct pixmap* wnd)
 {
-    const struct pixmap* pm = &ctx.current->frames[ctx.frame].pm;
+    const struct imgframe* frame =
+        arr_nth(ctx.current->data->frames, ctx.frame);
+    const struct pixmap* pm = &frame->pm;
     const size_t width = ctx.scale * pm->width;
     const size_t height = ctx.scale * pm->height;
 
@@ -782,7 +788,7 @@ static void draw_image(struct pixmap* wnd)
                         ctx.window_bkg);
 
     // clear image background
-    if (ctx.current->alpha) {
+    if (ctx.current->data->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height, GRID_STEP,
                         GRID_COLOR1, GRID_COLOR2);
@@ -794,10 +800,10 @@ static void draw_image(struct pixmap* wnd)
 
     // put image on window surface
     if (ctx.scale == 1.0) {
-        pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->alpha);
+        pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->data->alpha);
     } else {
         pixmap_scale(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                     ctx.current->alpha);
+                     ctx.current->data->alpha);
     }
 }
 
@@ -931,18 +937,13 @@ static void on_action(const struct action* action)
             imglist_unlock();
             break;
         case action_export:
-#ifdef HAVE_LIBPNG
             if (!action->params || !*action->params) {
                 info_update(info_status, "Error: export path is not specified");
-            } else if (export_png(&ctx.current->frames[ctx.frame].pm, NULL,
-                                  action->params)) {
+            } else if (image_export(ctx.current, ctx.frame, action->params)) {
                 info_update(info_status, "Exported to %s", action->params);
             } else {
                 info_update(info_status, "Error: export failed");
             }
-#else
-            info_update(info_status, "Error: export to PNG is not supported");
-#endif // HAVE_LIBPNG
             app_redraw();
             break;
         default:

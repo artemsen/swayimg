@@ -58,7 +58,7 @@ void cache_trim(struct cache* cache, size_t size)
             } else {
                 struct image* img = imglist_find(it->image);
                 if (img) {
-                    image_free(img, IMGFREE_FRAMES);
+                    image_free(img, IMGDATA_FRAMES);
                 }
                 cache->queue = list_remove(it);
                 free(it);
@@ -91,7 +91,7 @@ bool cache_put(struct cache* cache, struct image* image)
         if (++size >= cache->capacity) {
             struct image* img = imglist_find(it->image);
             if (img) {
-                image_free(img, IMGFREE_FRAMES);
+                image_free(img, IMGDATA_FRAMES);
             }
             cache->queue = list_remove(it);
             free(it);

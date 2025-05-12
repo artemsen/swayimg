@@ -109,11 +109,8 @@ struct info_context {
     struct info_timeout info;   ///< Text info timeout
     struct info_timeout status; ///< Status message timeout
 
-    struct text_surface* help; ///< Help layer lines
-    size_t help_num;           ///< Number of lines in help
-
-    struct keyval* exif_lines; ///< EXIF data lines
-    size_t exif_num;           ///< Number of lines in EXIF data
+    struct array* help; ///< Help layer lines
+    struct array* meta; ///< Image meta data (EXIF etc)
 
     struct keyval fields[FIELDS_NUM];                    ///< Info data
     struct block_scheme scheme[MODES_NUM][POSITION_NUM]; ///< Info scheme
@@ -174,18 +171,46 @@ static void timeout_close(struct info_timeout* timeout)
     }
 }
 
+/** Free help buffer. */
+static void free_help(void)
+{
+    if (ctx.help) {
+        for (size_t i = 0; i < ctx.help->size; ++i) {
+            struct text_surface* line = arr_nth(ctx.help, i);
+            free(line->data);
+        }
+        arr_free(ctx.help);
+        ctx.help = NULL;
+    }
+}
+
+/** Free image meta info buffer. */
+static void free_meta(void)
+{
+    if (ctx.meta) {
+        for (size_t i = 0; i < ctx.meta->size; ++i) {
+            struct keyval* kv = arr_nth(ctx.meta, i);
+            free(kv->key.data);
+            free(kv->value.data);
+        }
+        arr_free(ctx.meta);
+        ctx.meta = NULL;
+    }
+}
+
 /**
  * Print centered text block.
  * @param wnd destination window
  */
 static void print_help(struct pixmap* window)
 {
-    const size_t line_height = ctx.help[0].height;
+    const size_t line_height =
+        ((struct text_surface*)arr_nth(ctx.help, 0))->height;
     const size_t row_max = (window->height - TEXT_PADDING * 2) / line_height;
     const size_t columns =
-        (ctx.help_num / row_max) + (ctx.help_num % row_max ? 1 : 0);
+        (ctx.help->size / row_max) + (ctx.help->size % row_max ? 1 : 0);
     const size_t rows =
-        (ctx.help_num / columns) + (ctx.help_num % columns ? 1 : 0);
+        (ctx.help->size / columns) + (ctx.help->size % columns ? 1 : 0);
     const size_t col_space = line_height;
     size_t total_width = 0;
     size_t top = 0;
@@ -195,12 +220,12 @@ static void print_help(struct pixmap* window)
     for (size_t col = 0; col < columns; ++col) {
         size_t max_width = 0;
         for (size_t row = 0; row < rows; ++row) {
-            const size_t index = row + col * rows;
-            if (index >= ctx.help_num) {
+            struct text_surface* line = arr_nth(ctx.help, row + col * rows);
+            if (!line) {
                 break;
             }
-            if (max_width < ctx.help[index].width) {
-                max_width = ctx.help[index].width;
+            if (max_width < line->width) {
+                max_width = line->width;
             }
         }
         total_width += max_width;
@@ -220,13 +245,13 @@ static void print_help(struct pixmap* window)
         size_t y = top;
         size_t col_width = 0;
         for (size_t row = 0; row < rows; ++row) {
-            const size_t index = row + col * rows;
-            if (index >= ctx.help_num) {
+            struct text_surface* line = arr_nth(ctx.help, row + col * rows);
+            if (!line) {
                 break;
             }
-            font_print(window, left, y, &ctx.help[index]);
-            if (col_width < ctx.help[index].width) {
-                col_width = ctx.help[index].width;
+            font_print(window, left, y, line);
+            if (col_width < line->width) {
+                col_width = line->width;
             }
             y += line_height;
         }
@@ -314,60 +339,50 @@ static void print_keyval(struct pixmap* wnd, enum block_position pos,
  * Import meta data from image.
  * @param image source image
  */
-static void import_meta(const struct image* image)
+static void import_meta(const struct image* img)
 {
-    struct keyval* lines;
-    const size_t num_entries = list_size(&image->info->list);
-    const size_t buf_size = num_entries * sizeof(*lines);
+    const struct array* info = img->data ? img->data->info : NULL;
 
-    // free previous lines
-    for (size_t i = 0; i < ctx.exif_num; ++i) {
-        free(ctx.exif_lines[i].key.data);
-        free(ctx.exif_lines[i].value.data);
-    }
-    ctx.exif_num = 0;
+    free_meta();
 
-    if (num_entries == 0) {
+    if (!info) {
         return;
     }
 
-    lines = realloc(ctx.exif_lines, buf_size);
-    if (!lines) {
+    ctx.meta = arr_create(info->size, sizeof(struct keyval));
+    if (!ctx.meta) {
         return;
     }
-    memset(lines, 0, buf_size);
 
-    ctx.exif_num = num_entries;
-    ctx.exif_lines = lines;
-
-    list_for_each(image->info, const struct image_info, it) {
+    for (size_t i = 0; i < info->size; ++i) {
+        const struct imginfo* md = arr_nth((struct array*)info, i);
+        struct keyval* kv = arr_nth(ctx.meta, i);
         char key[MAX_META_KEY_LEN];
         char value[MAX_META_VALUE_LEN];
         size_t len;
 
         // limit key
-        len = strlen(it->key);
+        len = strlen(md->key);
         if (len > sizeof(key) - 2 /* : and last null */) {
             len = sizeof(key) - 2;
         }
-        memcpy(key, it->key, len);
+        memcpy(key, md->key, len);
         key[len] = ':';
         key[len + 1] = 0;
 
         // limit value
-        len = strlen(it->value) + 1 /* last null */;
+        len = strlen(md->value) + 1 /* last null */;
         if (len <= sizeof(value)) {
-            memcpy(value, it->value, len);
+            memcpy(value, md->value, len);
         } else {
             const char elipsis[] = "...";
             len = sizeof(value) - sizeof(elipsis);
-            memcpy(value, it->value, len);
+            memcpy(value, md->value, len);
             memcpy(value + len, elipsis, sizeof(elipsis));
         }
 
-        font_render(key, &lines->key);
-        font_render(value, &lines->value);
-        ++lines;
+        font_render(key, &kv->key);
+        font_render(value, &kv->value);
     }
 }
 
@@ -476,10 +491,8 @@ void info_destroy(void)
     timeout_close(&ctx.info);
     timeout_close(&ctx.status);
 
-    for (size_t i = 0; i < ctx.exif_num; ++i) {
-        free(ctx.exif_lines[i].key.data);
-        free(ctx.exif_lines[i].value.data);
-    }
+    free_help();
+    free_meta();
 
     for (size_t i = 0; i < MODES_NUM; ++i) {
         for (size_t j = 0; j < POSITION_NUM; ++j) {
@@ -491,11 +504,6 @@ void info_destroy(void)
         free(ctx.fields[i].key.data);
         free(ctx.fields[i].value.data);
     }
-
-    for (size_t i = 0; i < ctx.help_num; i++) {
-        free(ctx.help[i].data);
-    }
-    free(ctx.help);
 }
 
 void info_switch(const char* mode)
@@ -521,12 +529,7 @@ void info_switch(const char* mode)
 void info_switch_help(void)
 {
     if (ctx.help) {
-        for (size_t i = 0; i < ctx.help_num; i++) {
-            free(ctx.help[i].data);
-        }
-        free(ctx.help);
-        ctx.help = NULL;
-        ctx.help_num = 0;
+        free_help(); // switch help off, free resources
     } else {
         // get number of bindings
         size_t num = 0;
@@ -540,14 +543,14 @@ void info_switch_help(void)
         }
 
         // create help layer in reverse order
-        ctx.help = calloc(1, num * sizeof(*ctx.help));
+        ctx.help = arr_create(num, sizeof(struct text_surface));
         if (!ctx.help) {
             return;
         }
-        ctx.help_num = num;
         list_for_each(keybind_get(), struct keybind, it) {
             if (it->help) {
-                font_render(it->help, &ctx.help[--num]);
+                struct text_surface* line = arr_nth(ctx.help, --num);
+                font_render(it->help, line);
             }
         }
     }
@@ -555,7 +558,7 @@ void info_switch_help(void)
 
 bool info_help_active(void)
 {
-    return ctx.help_num;
+    return ctx.help;
 }
 
 bool info_enabled(void)
@@ -563,34 +566,39 @@ bool info_enabled(void)
     return (ctx.mode != mode_off);
 }
 
-void info_reset(const struct image* image)
+void info_reset(const struct image* img)
 {
     const size_t mib = 1024 * 1024;
-    const char unit = image->file_size >= mib ? 'M' : 'K';
+    const char unit = img->file_size >= mib ? 'M' : 'K';
     const float sz =
-        (float)image->file_size / (image->file_size >= mib ? mib : 1024);
+        (float)img->file_size / (img->file_size >= mib ? mib : 1024);
     const size_t list_size = imglist_size();
 
-    font_render(image->name, &ctx.fields[info_file_name].value);
-    font_render(image->parent_dir, &ctx.fields[info_file_dir].value);
-    font_render(image->source, &ctx.fields[info_file_path].value);
-    font_render(image->format, &ctx.fields[info_image_format].value);
+    info_update(info_file_name, "%s", img->name);
+    info_update(info_file_path, "%s", img->source);
+    if (img->data) {
+        info_update(info_file_dir, "%s", img->data->parent);
+        info_update(info_image_format, "%s", img->data->format);
+    } else {
+        info_update(info_file_dir, NULL);
+        info_update(info_image_format, NULL);
+    }
 
     info_update(info_file_size, "%.02f %ciB", sz, unit);
 
-    if (image_has_frames(image)) {
-        info_update(info_image_size, "%zux%zu", image->frames[0].pm.width,
-                    image->frames[0].pm.height);
+    if (img->data && img->data->frames) {
+        struct imgframe* frame = arr_nth(img->data->frames, 0);
+        info_update(info_image_size, "%zux%zu", frame->pm.width,
+                    frame->pm.height);
     } else {
-        ctx.fields[info_image_size].value.width = 0;
-        ctx.fields[info_image_size].value.height = 0;
+        info_update(info_image_size, NULL);
     }
 
-    if (list_size) {
-        info_update(info_index, "%zu of %zu", image->index, list_size);
+    if (list_size > 1) {
+        info_update(info_index, "%zu of %zu", img->index, list_size);
     }
 
-    import_meta(image);
+    import_meta(img);
 
     info_update(info_frame, NULL);
     info_update(info_scale, NULL);
@@ -674,12 +682,15 @@ void info_print(struct pixmap* window)
 
             switch (field->type) {
                 case info_exif:
-                    for (size_t n = 0; n < ctx.exif_num; ++n) {
-                        if (lnum < ARRAY_SIZE(lines)) {
-                            if (field->title) {
-                                lines[lnum].key = ctx.exif_lines[n].key;
+                    if (ctx.meta) {
+                        for (size_t n = 0; n < ctx.meta->size; ++n) {
+                            if (lnum < ARRAY_SIZE(lines)) {
+                                struct keyval* kv = arr_nth(ctx.meta, n);
+                                if (field->title) {
+                                    lines[lnum].key = kv->key;
+                                }
+                                lines[lnum++].value = kv->value;
                             }
-                            lines[lnum++].value = ctx.exif_lines[n].value;
                         }
                     }
                     break;

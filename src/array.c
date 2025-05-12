@@ -49,7 +49,12 @@ struct array* arr_append(struct array* arr, const void* items, size_t num)
     arr = arr_resize(arr, arr->size + num);
     if (arr) {
         uint8_t* ptr = arr->data + old_size * arr->item_size;
-        memcpy(ptr, items, num * arr->item_size);
+        const size_t sz = num * arr->item_size;
+        if (items) {
+            memcpy(ptr, items, sz);
+        } else {
+            memset(ptr, 0, sz);
+        }
     }
 
     return arr;

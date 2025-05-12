@@ -4,15 +4,12 @@
 
 #include "loader.h"
 
-#include "../array.h"
+#include "../fs.h"
 #include "../shellcmd.h"
 #include "buildcfg.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -22,8 +19,8 @@
 // Construct function name of loader
 #define LOADER_FUNCTION(name) decode_##name
 // Declaration of loader function
-#define LOADER_DECLARE(name)                                    \
-    enum image_status LOADER_FUNCTION(name)(struct image * img, \
+#define LOADER_DECLARE(name)                                      \
+    enum image_status LOADER_FUNCTION(name)(struct imgdata * img, \
                                             const uint8_t* data, size_t size)
 
 // declaration of loaders
@@ -175,14 +172,50 @@ static enum image_status load_from_memory(struct image* img,
                                           const uint8_t* data, size_t size)
 {
     enum image_status status = imgload_unsupported;
-    size_t i;
+    const size_t dec_num = ARRAY_SIZE(decoders);
 
-    for (i = 0; i < ARRAY_SIZE(decoders) && status == imgload_unsupported;
-         ++i) {
-        status = decoders[i](img, data, size);
+    if (img->data) {
+        image_clear(img, IMGDATA_ALL);
+    } else {
+        img->data = calloc(1, sizeof(*img->data));
+        if (!img->data) {
+            return imgload_unknown;
+        }
     }
 
-    img->file_size = size;
+    for (size_t i = 0; i < dec_num && status == imgload_unsupported; ++i) {
+        status = decoders[i](img->data, data, size);
+        if (status != imgload_success) {
+            image_clear(img, IMGDATA_ALL);
+        }
+    }
+
+    if (status != imgload_success) {
+        image_free(img, IMGDATA_ALL);
+        img->data = NULL;
+    } else {
+        // set common image data parts
+        img->file_size = size;
+
+        // name and parent dir
+        if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
+            strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+            // special url
+            img->name = img->source;
+            str_dup("", &img->data->parent);
+        } else {
+            // filesystem path
+            size_t parent_len;
+            const char* parent;
+            img->name = fs_name(img->source);
+            parent = fs_parent(img->source, &parent_len);
+            if (parent) {
+                str_append(parent, parent_len, &img->data->parent);
+            } else {
+                str_dup("", &img->data->parent);
+            }
+        }
+    }
 
     return status;
 }
@@ -195,25 +228,25 @@ static enum image_status load_from_memory(struct image* img,
  */
 static enum image_status load_from_file(struct image* img, const char* file)
 {
-    enum image_status status = imgload_ioerror;
+    enum image_status status = imgload_unknown;
     void* data = MAP_FAILED;
     struct stat st;
     int fd;
 
     // check file type
     if (stat(file, &st) == -1 || !S_ISREG(st.st_mode)) {
-        return imgload_ioerror;
+        return imgload_unknown;
     }
 
     // open file and map it to memory
     fd = open(file, O_RDONLY);
     if (fd == -1) {
-        return imgload_ioerror;
+        return imgload_unknown;
     }
     data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
         close(fd);
-        return imgload_ioerror;
+        return imgload_unknown;
     }
 
     // load from mapped memory
@@ -233,7 +266,7 @@ static enum image_status load_from_file(struct image* img, const char* file)
  */
 static enum image_status load_from_stream(struct image* img, int fd)
 {
-    enum image_status status = imgload_ioerror;
+    enum image_status status = imgload_unknown;
     uint8_t* data = NULL;
     size_t size = 0;
     size_t capacity = 0;
@@ -282,7 +315,7 @@ static enum image_status load_from_exec(struct image* img, const char* cmd)
     if (rc == 0 && out) {
         status = load_from_memory(img, out->data, out->size);
     } else {
-        status = imgload_ioerror;
+        status = imgload_unknown;
     }
 
     arr_free(out);
@@ -293,9 +326,8 @@ enum image_status image_load(struct image* img)
 {
     enum image_status status;
 
-    image_free(img, IMGFREE_FRAMES | IMGFREE_THUMB);
+    image_free(img, IMGDATA_ALL);
 
-    // decode image
     if (strcmp(img->source, LDRSRC_STDIN) == 0) {
         status = load_from_stream(img, STDIN_FILENO);
     } else if (strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
@@ -304,125 +336,5 @@ enum image_status image_load(struct image* img)
         status = load_from_file(img, img->source);
     }
 
-    if (status == imgload_success) {
-        // set name and parent dir
-        if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
-            strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-            img->name = img->source;
-            str_dup("", &img->parent_dir);
-        } else {
-            // set name
-            if (!img->name) {
-                size_t pos = strlen(img->source) - 1;
-                while (pos && img->source[--pos] != '/') { }
-                img->name =
-                    img->source + pos + (img->source[pos] == '/' ? 1 : 0);
-            }
-            // set parent dir
-            if (!img->parent_dir) {
-                size_t pos = strlen(img->source) - 1;
-                while (pos && img->source[--pos] != '/') { }
-                if (pos == 0) {
-                    str_dup("", &img->parent_dir);
-                } else {
-                    const size_t end = pos;
-                    while (pos && img->source[--pos] != '/') { }
-                    if (img->source[pos] == '/') {
-                        ++pos;
-                    }
-                    str_append(img->source + pos, end - pos, &img->parent_dir);
-                }
-            }
-        }
-    }
-
     return status;
-}
-
-void image_set_format(struct image* img, const char* fmt, ...)
-{
-    va_list args;
-    int len;
-    char* buffer;
-
-    va_start(args, fmt);
-    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
-    }
-    ++len; // last null
-    buffer = realloc(img->format, len);
-    if (!buffer) {
-        return;
-    }
-    va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
-    va_end(args);
-    img->format = buffer;
-}
-
-void image_add_meta(struct image* img, const char* key, const char* fmt, ...)
-{
-    va_list args;
-    int len;
-    struct image_info* entry;
-    const size_t key_len = strlen(key) + 1 /* last null */;
-
-    // get value string size
-    va_start(args, fmt);
-    // NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized)
-    len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-    if (len <= 0) {
-        return;
-    }
-
-    // allocate new entry
-    len += sizeof(struct image_info) + key_len + 1 /* last null of value */;
-    entry = calloc(1, len);
-    if (!entry) {
-        return;
-    }
-
-    // fill entry
-    entry->key = (char*)entry + sizeof(struct image_info);
-    memcpy(entry->key, key, key_len);
-    entry->value = entry->key + key_len;
-    va_start(args, fmt);
-    vsprintf(entry->value, fmt, args);
-    va_end(args);
-
-    img->info = list_append(img->info, entry);
-}
-
-struct pixmap* image_alloc_frame(struct image* img, size_t width, size_t height)
-{
-    struct pixmap* pm = NULL;
-
-    if (image_alloc_frames(img, 1)) {
-        pm = &img->frames[0].pm;
-        if (!pixmap_create(pm, width, height)) {
-            image_free(img, IMGFREE_FRAMES);
-            pm = NULL;
-        }
-    }
-
-    return pm;
-}
-
-bool image_alloc_frames(struct image* img, size_t num)
-{
-    struct image_frame* frames;
-
-    assert(!img->frames && "already allocated");
-
-    frames = calloc(num, sizeof(struct image_frame));
-    if (frames) {
-        img->frames = frames;
-        img->num_frames = num;
-    }
-
-    return frames;
 }

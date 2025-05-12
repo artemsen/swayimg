@@ -14,7 +14,7 @@ protected:
     void TearDown() override
     {
         if (image) {
-            image_free(image, IMGFREE_ALL);
+            image_free(image, IMGDATA_SELF);
         }
     }
 
@@ -23,11 +23,18 @@ protected:
         image = image_create(file);
         ASSERT_TRUE(image);
         ASSERT_EQ(image_load(image), imgload_success);
+
         ASSERT_TRUE(image->name);
-        ASSERT_TRUE(image->parent_dir);
-        EXPECT_NE(image->frames[0].pm.width, static_cast<size_t>(0));
-        EXPECT_NE(image->frames[0].pm.height, static_cast<size_t>(0));
-        EXPECT_NE(image->frames[0].pm.data[0], static_cast<argb_t>(0));
+        ASSERT_TRUE(image->data);
+        ASSERT_TRUE(image->data->parent);
+        ASSERT_TRUE(image->data->format);
+        ASSERT_TRUE(image->data->frames);
+
+        const struct imgframe* frame = static_cast<const struct imgframe*>(
+            arr_nth(image->data->frames, 0));
+        EXPECT_NE(frame->pm.width, static_cast<size_t>(0));
+        EXPECT_NE(frame->pm.height, static_cast<size_t>(0));
+        EXPECT_NE(frame->pm.data[0], static_cast<argb_t>(0));
     }
 
     struct image* image = nullptr;
@@ -40,7 +47,7 @@ TEST_F(Image, Create)
     ASSERT_STREQ(image->source, "file123");
 }
 
-TEST_F(Image, Update)
+TEST_F(Image, Attach)
 {
     Load(TEST_DATA_DIR "/image.bmp");
     image->index = 123;
@@ -49,13 +56,14 @@ TEST_F(Image, Update)
     ASSERT_TRUE(new_img);
     new_img->index = 321;
 
-    image_update(new_img, image);
+    image_attach(new_img, image);
 
-    EXPECT_FALSE(image->frames);
-    EXPECT_TRUE(new_img->frames);
+    ASSERT_TRUE(new_img->data);
+    EXPECT_TRUE(new_img->data->frames);
     EXPECT_EQ(new_img->index, static_cast<size_t>(321));
+    EXPECT_FALSE(image->data->frames);
 
-    image_free(new_img, IMGFREE_ALL);
+    image_free(new_img, IMGDATA_SELF);
 }
 
 TEST_F(Image, Free)
@@ -65,14 +73,14 @@ TEST_F(Image, Free)
     EXPECT_FALSE(image_has_thumb(image));
     image_thumb_create(image, 1, true, aa_nearest);
     EXPECT_TRUE(image_has_thumb(image));
-    image_free(image, IMGFREE_THUMB);
+    image_free(image, IMGDATA_THUMB);
     EXPECT_FALSE(image_has_thumb(image));
 
     EXPECT_TRUE(image_has_frames(image));
-    image_free(image, IMGFREE_FRAMES);
+    image_free(image, IMGDATA_FRAMES);
     EXPECT_FALSE(image_has_frames(image));
 
-    EXPECT_FALSE(image->format);
+    EXPECT_FALSE(image->data);
 }
 
 TEST_F(Image, Transform)
@@ -89,14 +97,77 @@ TEST_F(Image, Thumbnail)
 {
     image = image_create("file");
     ASSERT_FALSE(image_thumb_create(image, 10, true, aa_nearest));
-    image_free(image, IMGFREE_ALL);
+    image_free(image, IMGDATA_SELF);
 
     Load(TEST_DATA_DIR "/image.bmp");
 
+    ASSERT_FALSE(image_has_thumb(image));
     ASSERT_TRUE(image_thumb_create(image, 10, true, aa_nearest));
-    EXPECT_TRUE(image->thumbnail.data);
-    EXPECT_EQ(image->thumbnail.width, static_cast<size_t>(10));
-    EXPECT_EQ(image->thumbnail.height, static_cast<size_t>(10));
+    ASSERT_TRUE(image_has_thumb(image));
+    ASSERT_TRUE(image->data);
+    EXPECT_TRUE(image->data->thumbnail.data);
+    EXPECT_EQ(image->data->thumbnail.width, static_cast<size_t>(10));
+    EXPECT_EQ(image->data->thumbnail.height, static_cast<size_t>(10));
+}
+
+TEST_F(Image, SetFormat)
+{
+    image = image_create("file");
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
+
+    image_set_format(image->data, "Test%d", 123);
+    ASSERT_STREQ(image->data->format, "Test123");
+}
+
+TEST_F(Image, AddMetaInfo)
+{
+    const struct imginfo* inf;
+
+    image = image_create("file");
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
+
+    ASSERT_FALSE(image->data->info);
+    image_add_info(image->data, "Key1", "InfoLine%d", 1);
+    ASSERT_TRUE(image->data->info);
+    ASSERT_EQ(image->data->info->size, static_cast<size_t>(1));
+
+    inf = static_cast<struct imginfo*>(arr_nth(image->data->info, 0));
+    EXPECT_STREQ(inf->key, "Key1");
+    EXPECT_STREQ(inf->value, "InfoLine1");
+
+    image_add_info(image->data, "Key2", "InfoLine%d", 2);
+    ASSERT_EQ(image->data->info->size, static_cast<size_t>(2));
+    inf = static_cast<struct imginfo*>(arr_nth(image->data->info, 0));
+    EXPECT_STREQ(inf->key, "Key1");
+    EXPECT_STREQ(inf->value, "InfoLine1");
+    inf = static_cast<struct imginfo*>(arr_nth(image->data->info, 1));
+    EXPECT_STREQ(inf->key, "Key2");
+    EXPECT_STREQ(inf->value, "InfoLine2");
+}
+
+TEST_F(Image, AllocFrame)
+{
+    image = image_create("file");
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
+
+    const struct pixmap* pm = image_alloc_frame(image->data, 123, 456);
+    ASSERT_TRUE(image->data->frames);
+    ASSERT_EQ(image->data->frames->size, static_cast<size_t>(1));
+    ASSERT_EQ(pm, arr_nth(image->data->frames, 0));
+
+    ASSERT_TRUE(pm);
+    ASSERT_EQ(pm->width, static_cast<size_t>(123));
+    ASSERT_EQ(pm->height, static_cast<size_t>(456));
+    ASSERT_TRUE(pm->data);
+}
+
+TEST_F(Image, AllocFrames)
+{
+    image = image_create("file");
+    image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
+
+    ASSERT_TRUE(image_alloc_frames(image->data, 5));
+    ASSERT_EQ(image->data->frames->size, static_cast<size_t>(5));
 }
 
 TEST_F(Image, LoadFromExec)

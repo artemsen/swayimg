@@ -314,11 +314,11 @@ void layout_clear(struct layout* lo, size_t preserve)
 
     // free thumbnails
     while (fwd) {
-        image_free(fwd, IMGFREE_THUMB);
+        image_free(fwd, IMGDATA_THUMB);
         fwd = imglist_next(fwd);
     }
     while (back) {
-        image_free(back, IMGFREE_THUMB);
+        image_free(back, IMGDATA_THUMB);
         back = imglist_prev(back);
     }
 }

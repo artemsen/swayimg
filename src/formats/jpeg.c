@@ -30,7 +30,7 @@ static void jpg_error_exit(j_common_ptr jpg)
 }
 
 // JPEG loader implementation
-enum image_status decode_jpeg(struct image* img, const uint8_t* data,
+enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
                               size_t size)
 {
     struct pixmap* pm;
@@ -46,7 +46,6 @@ enum image_status decode_jpeg(struct image* img, const uint8_t* data,
     jpg.err = jpeg_std_error(&err.mgr);
     err.mgr.error_exit = jpg_error_exit;
     if (setjmp(err.setjmp)) {
-        image_free(img, IMGFREE_FRAMES);
         jpeg_destroy_decompress(&jpg);
         return imgload_fmterror;
     }

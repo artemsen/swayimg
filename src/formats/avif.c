@@ -11,120 +11,52 @@
 static const uint32_t signature = 'f' | 't' << 8 | 'y' << 16 | 'p' << 24;
 #define SIGNATURE_OFFSET 4
 
-static int decode_frame(struct image* img, avifDecoder* decoder)
+/**
+ * Decode current frame.
+ * @param avif AVIF decoder context
+ * @param pm target pixmap
+ * @return error code, AVIF_RESULT_OK on success
+ */
+static avifResult decode_frame(avifDecoder* avif, struct pixmap* pm)
 {
-    avifRGBImage rgb;
+    avifRGBImage rgb = { 0 };
     avifResult rc;
-    struct pixmap* pm;
 
-    rc = avifDecoderNextImage(decoder);
-    if (rc != AVIF_RESULT_OK) {
-        goto decode_fail;
-    }
-
-    memset(&rgb, 0, sizeof(rgb));
-    avifRGBImageSetDefaults(&rgb, decoder->image);
+    avifRGBImageSetDefaults(&rgb, avif->image);
 
     rgb.depth = 8;
     rgb.format = AVIF_RGB_FORMAT_BGRA;
-#if AVIF_VERSION_MAJOR > 0
-    rc =
-#endif
-        avifRGBImageAllocatePixels(&rgb);
-#if AVIF_VERSION_MAJOR > 0
-    if (rc != AVIF_RESULT_OK) {
-        goto decode_fail;
-    }
-#endif
-
-    rc = avifImageYUVToRGB(decoder->image, &rgb);
-    if (rc != AVIF_RESULT_OK) {
-        goto fail_pixels;
-    }
-
-    pm = image_alloc_frame(img, decoder->image->width, decoder->image->height);
-    if (!pm) {
-        goto fail_pixels;
-    }
-
-    memcpy(pm->data, rgb.pixels, rgb.width * rgb.height * sizeof(argb_t));
-
-    avifRGBImageFreePixels(&rgb);
-    return 0;
-
-fail_pixels:
-    avifRGBImageFreePixels(&rgb);
-decode_fail:
-    return -1;
-}
-
-static int decode_frames(struct image* img, avifDecoder* decoder)
-{
-    avifImageTiming timing;
-    avifRGBImage rgb = { 0 };
-    avifResult rc = AVIF_RESULT_UNKNOWN_ERROR;
-
-    if (!image_alloc_frames(img, decoder->imageCount)) {
-        return AVIF_RESULT_UNKNOWN_ERROR;
-    }
-
-    for (size_t i = 0; i < img->num_frames; ++i) {
-        rc = avifDecoderNthImage(decoder, i);
-        if (rc != AVIF_RESULT_OK) {
-            break;
-        }
-
-        avifRGBImageSetDefaults(&rgb, decoder->image);
-        rgb.depth = 8;
-        rgb.format = AVIF_RGB_FORMAT_BGRA;
 
 #if AVIF_VERSION_MAJOR == 0
-        avifRGBImageAllocatePixels(&rgb);
+    avifRGBImageAllocatePixels(&rgb);
 #else
-        rc = avifRGBImageAllocatePixels(&rgb);
-        if (rc != AVIF_RESULT_OK) {
-            break;
-        }
+    rc = avifRGBImageAllocatePixels(&rgb);
+    if (rc != AVIF_RESULT_OK) {
+        return rc;
+    }
 #endif
 
-        rc = avifImageYUVToRGB(decoder->image, &rgb);
-        if (rc != AVIF_RESULT_OK) {
-            break;
+    rc = avifImageYUVToRGB(avif->image, &rgb);
+    if (rc == AVIF_RESULT_OK) {
+        if (!pixmap_create(pm, rgb.width, rgb.height)) {
+            rc = AVIF_RESULT_OUT_OF_MEMORY;
+        } else {
+            memcpy(pm->data, rgb.pixels,
+                   rgb.width * rgb.height * sizeof(argb_t));
         }
-
-        if (!pixmap_create(&img->frames[i].pm, rgb.width, rgb.height)) {
-            break;
-        }
-
-        rc = avifDecoderNthImageTiming(decoder, i, &timing);
-        if (rc != AVIF_RESULT_OK) {
-            break;
-        }
-
-        img->frames[i].duration = (size_t)(1000.0f / (float)timing.timescale *
-                                           (float)timing.durationInTimescales);
-
-        memcpy(img->frames[i].pm.data, rgb.pixels,
-               rgb.width * rgb.height * sizeof(argb_t));
-
-        avifRGBImageFreePixels(&rgb);
-        rgb.pixels = NULL;
     }
 
-    if (rgb.pixels) {
-        avifRGBImageFreePixels(&rgb);
-    }
+    avifRGBImageFreePixels(&rgb);
 
     return rc;
 }
 
 // AV1 loader implementation
-enum image_status decode_avif(struct image* img, const uint8_t* data,
+enum image_status decode_avif(struct imgdata* img, const uint8_t* data,
                               size_t size)
 {
+    avifDecoder* avif;
     avifResult rc;
-    avifDecoder* decoder = NULL;
-    int ret;
 
     // check signature
     if (size < SIGNATURE_OFFSET + sizeof(signature) ||
@@ -133,39 +65,62 @@ enum image_status decode_avif(struct image* img, const uint8_t* data,
     }
 
     // open file in decoder
-    decoder = avifDecoderCreate();
-    if (!decoder) {
+    avif = avifDecoderCreate();
+    if (!avif) {
         return imgload_fmterror;
     }
-    rc = avifDecoderSetIOMemory(decoder, data, size);
+    rc = avifDecoderSetIOMemory(avif, data, size);
     if (rc != AVIF_RESULT_OK) {
-        goto fail;
+        goto done;
     }
-    rc = avifDecoderParse(decoder);
+    rc = avifDecoderParse(avif);
     if (rc != AVIF_RESULT_OK) {
-        goto fail;
+        goto done;
     }
 
-    if (decoder->imageCount > 1) {
-        ret = decode_frames(img, decoder);
+    if (!image_alloc_frames(img, avif->imageCount)) {
+        goto done;
+    }
+
+    if (avif->imageCount == 1) {
+        // single image
+        struct imgframe* frame = arr_nth(img->frames, 0);
+        rc = avifDecoderNextImage(avif);
+        if (rc != AVIF_RESULT_OK) {
+            goto done;
+        }
+        rc = decode_frame(avif, &frame->pm);
     } else {
-        ret = decode_frame(img, decoder);
+        // multiple images
+        for (size_t i = 0; i < img->frames->size; ++i) {
+            struct imgframe* frame = arr_nth(img->frames, i);
+            avifImageTiming timing;
+
+            rc = avifDecoderNthImage(avif, i);
+            if (rc != AVIF_RESULT_OK) {
+                goto done;
+            }
+            rc = decode_frame(avif, &frame->pm);
+            if (rc != AVIF_RESULT_OK) {
+                goto done;
+            }
+
+            rc = avifDecoderNthImageTiming(avif, i, &timing);
+            if (rc != AVIF_RESULT_OK) {
+                goto done;
+            }
+            frame->duration = (size_t)(1000.0f / (float)timing.timescale *
+                                       (float)timing.durationInTimescales);
+        }
     }
 
-    if (ret != 0) {
-        goto fail;
+done:
+    if (rc == AVIF_RESULT_OK) {
+        img->alpha = avif->alphaPresent;
+        image_set_format(img, "AV1 %dbpc %s", avif->image->depth,
+                         avifPixelFormatToString(avif->image->yuvFormat));
     }
 
-    img->alpha = decoder->alphaPresent;
-
-    image_set_format(img, "AV1 %dbpc %s", decoder->image->depth,
-                     avifPixelFormatToString(decoder->image->yuvFormat));
-
-    avifDecoderDestroy(decoder);
-    return imgload_success;
-
-fail:
-    avifDecoderDestroy(decoder);
-    image_free(img, IMGFREE_FRAMES);
-    return imgload_fmterror;
+    avifDecoderDestroy(avif);
+    return rc == AVIF_RESULT_OK ? imgload_success : imgload_fmterror;
 }

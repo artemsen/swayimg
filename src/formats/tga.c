@@ -169,7 +169,7 @@ static bool decode_rle(struct pixmap* pm, const struct tga_header* tga,
 }
 
 // TGA loader implementation
-enum image_status decode_tga(struct image* img, const uint8_t* data,
+enum image_status decode_tga(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     const struct tga_header* tga = (const struct tga_header*)data;
@@ -225,7 +225,7 @@ enum image_status decode_tga(struct image* img, const uint8_t* data,
     // decode image
     pm = image_alloc_frame(img, tga->width, tga->height);
     if (!pm) {
-        return imgload_fmterror;
+        return imgload_unknown;
     }
     switch (tga->image_type) {
         case TGA_UNC_CM:
@@ -240,7 +240,6 @@ enum image_status decode_tga(struct image* img, const uint8_t* data,
             break;
     }
     if (!rc) {
-        image_free(img, IMGFREE_FRAMES);
         return imgload_fmterror;
     }
 
