@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Scaling pixmaps.
+// Multithreaded software renderer for raster images.
 // Copyright (C) 2024 Abe Wieland <abe.wieland@gmail.com>
 
 #pragma once
@@ -40,7 +40,7 @@ enum aa_mode aa_switch(enum aa_mode curr, const char* opt);
 const char* aa_name(enum aa_mode aa);
 
 /**
- * Draw scaled pixmap.
+ * Render scaled pixmap.
  * @param scaler scale filter to use
  * @param src source pixmap
  * @param dst destination pixmap
@@ -48,6 +48,6 @@ const char* aa_name(enum aa_mode aa);
  * @param scale scale of source pixmap
  * @param alpha flag to use alpha channel (ignore otherwise)
  */
-void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
-                  struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                  bool alpha);
+void software_render(enum aa_mode scaler, const struct pixmap* src,
+                     struct pixmap* dst, ssize_t x, ssize_t y, double scale,
+                     bool alpha);

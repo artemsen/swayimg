@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
+#pragma once
+
 extern "C" {
 #include "config.h"
 }

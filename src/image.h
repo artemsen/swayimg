@@ -6,7 +6,7 @@
 
 #include "array.h"
 #include "list.h"
-#include "pixmap_scale.h"
+#include "render.h"
 
 // File name used for image, that is read from stdin through pipe
 #define LDRSRC_STDIN     "stdin://"

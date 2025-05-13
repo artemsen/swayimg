@@ -205,7 +205,7 @@ sources = [
   'src/list.c',
   'src/main.c',
   'src/pixmap.c',
-  'src/pixmap_scale.c',
+  'src/render.c',
   'src/shellcmd.c',
   'src/ui.c',
   'src/viewer.c',

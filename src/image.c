@@ -236,8 +236,8 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
     }
 
     if (pixmap_create(&img->data->thumbnail, thumb_width, thumb_height)) {
-        pixmap_scale(aa_mode, full, &img->data->thumbnail, offset_x, offset_y,
-                     scale, img->data->alpha);
+        software_render(aa_mode, full, &img->data->thumbnail, offset_x,
+                        offset_y, scale, img->data->alpha);
     }
 
     return image_has_thumb(img);

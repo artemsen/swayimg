@@ -10,7 +10,7 @@
 #include "cache.h"
 #include "imglist.h"
 #include "info.h"
-#include "pixmap_scale.h"
+#include "render.h"
 #include "ui.h"
 
 #include <assert.h>
@@ -802,8 +802,8 @@ static void draw_image(struct pixmap* wnd)
     if (ctx.scale == 1.0) {
         pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->data->alpha);
     } else {
-        pixmap_scale(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                     ctx.current->data->alpha);
+        software_render(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
+                        ctx.current->data->alpha);
     }
 }
 

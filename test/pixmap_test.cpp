@@ -1,47 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-extern "C" {
-#include "pixmap.h"
-#include "pixmap_scale.h"
-}
+#include "pixmap_test.h"
 
-#include <gtest/gtest.h>
-
-class Pixmap : public ::testing::Test {
-protected:
-    void Compare(const struct pixmap& pm, const argb_t* expect) const
-    {
-        for (size_t y = 0; y < pm.height; ++y) {
-            for (size_t x = 0; x < pm.width; ++x) {
-                char expected[32], real[32];
-                snprintf(expected, sizeof(expected), "y=%ld,x=%ld,c=%08x", y, x,
-                         expect[y * pm.height + x]);
-                snprintf(real, sizeof(real), "y=%ld,x=%ld,c=%08x", y, x,
-                         pm.data[y * pm.height + x]);
-                EXPECT_STREQ(expected, real);
-            }
-        }
-    }
-
-    void ScaleCopy(enum aa_mode scaler, const struct pixmap& src, size_t w,
-                   size_t h, float scale, ssize_t x, ssize_t y)
-    {
-        struct pixmap full, dst1, dst2;
-        pixmap_create(&full, src.width * scale, src.height * scale);
-        pixmap_create(&dst1, w, h);
-        pixmap_create(&dst2, w, h);
-        pixmap_scale(scaler, &src, &full, 0, 0, scale, false);
-        pixmap_copy(&full, &dst1, x, y, false);
-        pixmap_scale(scaler, &src, &dst2, x, y, scale, false);
-        Compare(dst2, dst1.data);
-        pixmap_free(&full);
-        pixmap_free(&dst1);
-        pixmap_free(&dst2);
-    }
-};
-
-TEST_F(Pixmap, Create)
+TEST_F(PixmapTest, Create)
 {
     struct pixmap pm;
 
@@ -54,7 +16,7 @@ TEST_F(Pixmap, Create)
     pixmap_free(&pm);
 }
 
-TEST_F(Pixmap, Fill)
+TEST_F(PixmapTest, Fill)
 {
     const argb_t clr = 0x12345678;
 
@@ -79,7 +41,7 @@ TEST_F(Pixmap, Fill)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, FillOutsideTL)
+TEST_F(PixmapTest, FillOutsideTL)
 {
     const argb_t clr = 0x12345678;
 
@@ -103,7 +65,7 @@ TEST_F(Pixmap, FillOutsideTL)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, FillOutsideBR)
+TEST_F(PixmapTest, FillOutsideBR)
 {
     const argb_t clr = 0x12345678;
 
@@ -127,7 +89,7 @@ TEST_F(Pixmap, FillOutsideBR)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, InverseFill)
+TEST_F(PixmapTest, InverseFill)
 {
     const argb_t clr = 0x12345678;
 
@@ -151,7 +113,7 @@ TEST_F(Pixmap, InverseFill)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, InverseOutsideTL)
+TEST_F(PixmapTest, InverseOutsideTL)
 {
     const argb_t clr = 0x12345678;
 
@@ -175,7 +137,7 @@ TEST_F(Pixmap, InverseOutsideTL)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, InverseOutsideBR)
+TEST_F(PixmapTest, InverseOutsideBR)
 {
     const argb_t clr = 0x12345678;
 
@@ -199,7 +161,7 @@ TEST_F(Pixmap, InverseOutsideBR)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, Grid)
+TEST_F(PixmapTest, Grid)
 {
     const argb_t clr1 = 0x12345678;
     const argb_t clr2 = 0x87654321;
@@ -224,7 +186,7 @@ TEST_F(Pixmap, Grid)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, Mask)
+TEST_F(PixmapTest, Mask)
 {
     const argb_t clr = 0xffaaaaaa;
 
@@ -254,7 +216,7 @@ TEST_F(Pixmap, Mask)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, MaskOutsideTL)
+TEST_F(PixmapTest, MaskOutsideTL)
 {
     const argb_t clr = 0xffaaaaaa;
 
@@ -284,7 +246,7 @@ TEST_F(Pixmap, MaskOutsideTL)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, MaskOutsideBR)
+TEST_F(PixmapTest, MaskOutsideBR)
 {
     const argb_t clr = 0xffaaaaaa;
 
@@ -314,7 +276,7 @@ TEST_F(Pixmap, MaskOutsideBR)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, Copy)
+TEST_F(PixmapTest, Copy)
 {
     // clang-format off
     argb_t src[] = {
@@ -341,7 +303,7 @@ TEST_F(Pixmap, Copy)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, CopyOutsideTL)
+TEST_F(PixmapTest, CopyOutsideTL)
 {
     // clang-format off
     argb_t src[] = {
@@ -368,7 +330,7 @@ TEST_F(Pixmap, CopyOutsideTL)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, CopyOutsideBR)
+TEST_F(PixmapTest, CopyOutsideBR)
 {
     // clang-format off
     argb_t src[] = {
@@ -395,7 +357,7 @@ TEST_F(Pixmap, CopyOutsideBR)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, CopyAlpha)
+TEST_F(PixmapTest, CopyAlpha)
 {
     // clang-format off
     argb_t src[] = {
@@ -422,7 +384,7 @@ TEST_F(Pixmap, CopyAlpha)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, CopyAlphaOutsideTL)
+TEST_F(PixmapTest, CopyAlphaOutsideTL)
 {
     // clang-format off
     argb_t src[] = {
@@ -449,7 +411,7 @@ TEST_F(Pixmap, CopyAlphaOutsideTL)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, CopyAlphaOutsideBL)
+TEST_F(PixmapTest, CopyAlphaOutsideBL)
 {
     // clang-format off
     argb_t src[] = {
@@ -476,7 +438,7 @@ TEST_F(Pixmap, CopyAlphaOutsideBL)
     Compare(pm_dst, expect);
 }
 
-TEST_F(Pixmap, Rect)
+TEST_F(PixmapTest, Rect)
 {
     const argb_t clr = 0xff345678;
 
@@ -501,7 +463,7 @@ TEST_F(Pixmap, Rect)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, RectOutsideTL)
+TEST_F(PixmapTest, RectOutsideTL)
 {
     const argb_t clr = 0xff345678;
 
@@ -525,7 +487,7 @@ TEST_F(Pixmap, RectOutsideTL)
     Compare(pm, expect);
 }
 
-TEST_F(Pixmap, RectOutsideBR)
+TEST_F(PixmapTest, RectOutsideBR)
 {
     const argb_t clr = 0xff345678;
 
@@ -548,111 +510,3 @@ TEST_F(Pixmap, RectOutsideBR)
     pixmap_rect(&pm, 2, 2, 4, 4, clr);
     Compare(pm, expect);
 }
-
-TEST_F(Pixmap, ScaleCopyUp)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 0, 0);
-}
-
-TEST_F(Pixmap, ScaleCopyUpNeg)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, -1, -1);
-}
-
-TEST_F(Pixmap, ScaleCopyUpPos)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 1, 1);
-}
-
-TEST_F(Pixmap, ScaleCopyDown)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 0, 0);
-}
-
-TEST_F(Pixmap, ScaleCopyDownNeg)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, -1, -1);
-}
-
-TEST_F(Pixmap, ScaleCopyDownPos)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm = { 4, 4, src };
-    ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 1, 1);
-}
-
-/*
-TODO: This test crashes: https://github.com/artemsen/swayimg/issues/277
-
-TEST_F(Pixmap, ScaleCrash)
-{
-    struct pixmap src;
-    pixmap_create(&src, 2000, 2000);
-
-    struct pixmap dst;
-    pixmap_create(&dst, 1000, 700);
-
-    pixmap_scale(aa_mks13, &src, &dst, 0, -670, 0.3, false);
-
-    pixmap_free(&src);
-    pixmap_free(&dst);
-}
-*/

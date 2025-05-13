@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Scaling pixmaps.
+// Multithreaded software renderer for raster images.
 // Copyright (C) 2024 Abe Wieland <abe.wieland@gmail.com>
 
-#include "pixmap_scale.h"
+#include "render.h"
 
 #include "array.h"
 
@@ -525,9 +525,9 @@ static void* sc_task(void* arg)
     return NULL;
 }
 
-static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
-                            struct pixmap* dst, ssize_t x, ssize_t y,
-                            double scale, bool alpha)
+static void render_nn(size_t threads, const struct pixmap* src,
+                      struct pixmap* dst, ssize_t x, ssize_t y, double scale,
+                      bool alpha)
 {
     const size_t left = max(0, x);
     const size_t top = max(0, y);
@@ -582,9 +582,9 @@ static void pixmap_scale_nn(size_t threads, const struct pixmap* src,
     free(task_priv);
 }
 
-static void pixmap_scale_aa(enum aa_mode scaler, size_t threads,
-                            const struct pixmap* src, struct pixmap* dst,
-                            ssize_t x, ssize_t y, double scale, bool alpha)
+static void render_aa(enum aa_mode scaler, size_t threads,
+                      const struct pixmap* src, struct pixmap* dst, ssize_t x,
+                      ssize_t y, double scale, bool alpha)
 {
     struct task_sc_shared task_shared = {
         .src = src,
@@ -640,9 +640,9 @@ static void pixmap_scale_aa(enum aa_mode scaler, size_t threads,
     pixmap_free(&task_shared.in);
 }
 
-void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
-                  struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                  bool alpha)
+void software_render(enum aa_mode scaler, const struct pixmap* src,
+                     struct pixmap* dst, ssize_t x, ssize_t y, double scale,
+                     bool alpha)
 {
     // get size of rendered area
     const ssize_t width =
@@ -673,8 +673,8 @@ void pixmap_scale(enum aa_mode scaler, const struct pixmap* src,
     const size_t bthreads = clamp(cpu_num - 1, 0, max_threads);
 
     if (scaler == aa_nearest) {
-        pixmap_scale_nn(bthreads, src, dst, x, y, scale, alpha);
+        render_nn(bthreads, src, dst, x, y, scale, alpha);
     } else {
-        pixmap_scale_aa(scaler, bthreads, src, dst, x, y, scale, alpha);
+        render_aa(scaler, bthreads, src, dst, x, y, scale, alpha);
     }
 }
