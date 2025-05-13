@@ -90,6 +90,7 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     RsvgRectangle viewbox;
     gboolean viewbox_valid;
     size_t width, height;
+    struct pixmap* pm;
 
     if (!is_svg(data, size)) {
         return imgload_unsupported;
@@ -100,7 +101,7 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
         return imgload_fmterror;
     }
 
-    // create empty virtual image pixmap
+    // create virtual image pixmap
     rsvg_handle_get_intrinsic_dimensions(svg, NULL, NULL, NULL, NULL,
                                          &viewbox_valid, &viewbox);
     width = VIRTUAL_SIZE_PX;
@@ -112,7 +113,8 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
             height *= (double)viewbox.height / viewbox.width;
         }
     }
-    if (!image_alloc_frame(img, width, height)) {
+    pm = image_alloc_frame(img, width, height);
+    if (!pm) {
         g_object_unref(svg);
         return imgload_fmterror;
     }
@@ -128,6 +130,9 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     img->decoder.render = svg_render;
     img->decoder.free = svg_free;
     img->decoder.data = svg;
+
+    // render to virtual pixmap to use it in the export action
+    svg_render(img, 1.0, 0, 0, pm);
 
     return imgload_success;
 }
