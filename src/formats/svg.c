@@ -12,11 +12,23 @@
 #include <librsvg/rsvg.h>
 #pragma GCC diagnostic pop
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // SVG uses physical units for size, but we need size in pixels
 #define VIRTUAL_SIZE_PX 1000
 
 // Max offset of the root svg node in xml file
 #define MAX_OFFSET 1024
+
+/** SVG specific decoder data */
+struct svg_data {
+    RsvgHandle* rsvg_handle; ///< RSVG handle containing the image data
+    size_t rotation;         ///< rotation in °
+    bool flip_vertical;      ///< whether to flip the image vertically
+    bool flip_horizontal;    ///< whether to flip the image horizontally
+};
 
 /**
  * Check if data is SVG.
@@ -48,6 +60,41 @@ static bool is_svg(const uint8_t* data, size_t size)
     return false;
 }
 
+/**
+ * Rotate the SVG (update internal rotation variable)
+ * @param img image container
+ * @param angle rotation angle (only 90, 180, or 270)
+ */
+static void svg_rotate(struct imgdata* img, size_t angle)
+{
+    struct svg_data* data = (struct svg_data*)img->decoder.data;
+    struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
+
+    data->rotation += angle;
+    data->rotation %= 360;
+
+    pixmap_rotate(pm, angle);
+}
+
+/**
+ * Flip the SVG (set internal flip flag)
+ * @param img image container
+ * @param vertical true for vertical flip, false for horizontal
+ */
+static void svg_flip(struct imgdata* img, bool vertical)
+{
+    struct svg_data* data = (struct svg_data*)img->decoder.data;
+    struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
+
+    if (vertical) {
+        data->flip_vertical = !data->flip_vertical;
+        pixmap_flip_vertical(pm);
+    } else {
+        data->flip_horizontal = !data->flip_horizontal;
+        pixmap_flip_horizontal(pm);
+    }
+}
+
 /** Custom SVG renderer, see `struct image::decoder::renderer`. */
 static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
                        struct pixmap* dst)
@@ -59,7 +106,7 @@ static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
         .width = scale * pm->width,
         .height = scale * pm->height,
     };
-    RsvgHandle* svg = img->decoder.data;
+    struct svg_data* data = img->decoder.data;
     cairo_surface_t* surface;
 
     // render svg to cairo surface
@@ -68,8 +115,31 @@ static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
         dst->width * sizeof(argb_t));
     if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
         cairo_t* cairo = cairo_create(surface);
+
         if (cairo_status(cairo) == CAIRO_STATUS_SUCCESS) {
-            rsvg_handle_render_document(svg, cairo, &viewbox, NULL);
+
+            // apply rotation / flip
+            cairo_translate(cairo, viewbox.width / 2 + x,
+                            viewbox.height / 2 + y);
+            if (data->rotation) {
+                cairo_rotate(cairo, (double)data->rotation * M_PI / 180.0);
+            }
+            if (data->rotation == 90 || data->rotation == 270) {
+                // rescale to match landscape viewbox size
+                cairo_scale(cairo, (double)pm->height / pm->width,
+                            (double)pm->height / pm->width);
+            }
+            if (data->flip_horizontal) {
+                cairo_scale(cairo, -1.0, 1.0);
+            }
+            if (data->flip_vertical) {
+                cairo_scale(cairo, 1.0, -1.0);
+            }
+            cairo_translate(cairo, -viewbox.width / 2 - x,
+                            -viewbox.height / 2 - y);
+
+            rsvg_handle_render_document(data->rsvg_handle, cairo, &viewbox,
+                                        NULL);
         }
         cairo_destroy(cairo);
     }
@@ -79,7 +149,13 @@ static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
 /** Free SVG renderer, see `struct image::decoder::free`. */
 static void svg_free(struct imgdata* img)
 {
-    g_object_unref(img->decoder.data);
+    struct svg_data* data = img->decoder.data;
+
+    if (data->rsvg_handle) {
+        g_object_unref(data->rsvg_handle);
+    }
+
+    free(img->decoder.data);
 }
 
 // SVG loader implementation
@@ -127,9 +203,17 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     img->alpha = true;
 
     // use custom renderer
+    img->decoder.data = calloc(1, sizeof(struct svg_data));
+    if (!img->decoder.data) {
+        g_object_unref(svg);
+        return imgload_unknown;
+    }
+
     img->decoder.render = svg_render;
     img->decoder.free = svg_free;
-    img->decoder.data = svg;
+    img->decoder.flip = svg_flip;
+    img->decoder.rotate = svg_rotate;
+    ((struct svg_data*)img->decoder.data)->rsvg_handle = svg;
 
     // render to virtual pixmap to use it in the export action
     svg_render(img, 1.0, 0, 0, pm);

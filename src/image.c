@@ -210,29 +210,45 @@ bool image_has_info(const struct image* img)
 
 void image_flip_vertical(struct image* img)
 {
-    struct array* frames = img->data->frames;
-    for (size_t i = 0; i < frames->size; ++i) {
-        struct imgframe* frame = arr_nth(frames, i);
-        pixmap_flip_vertical(&frame->pm);
+    if (img->data->decoder.flip) {
+        // image specific flip
+        img->data->decoder.flip(img->data, true);
+    } else {
+        struct array* frames = img->data->frames;
+        for (size_t i = 0; i < frames->size; ++i) {
+            struct imgframe* frame = arr_nth(frames, i);
+            pixmap_flip_vertical(&frame->pm);
+        }
     }
 }
 
 void image_flip_horizontal(struct image* img)
 {
-    struct array* frames = img->data->frames;
-    for (size_t i = 0; i < frames->size; ++i) {
-        struct imgframe* frame = arr_nth(frames, i);
-        pixmap_flip_horizontal(&frame->pm);
+    if (img->data->decoder.flip) {
+        // image specific flip
+        img->data->decoder.flip(img->data, false);
+    } else {
+        struct array* frames = img->data->frames;
+        for (size_t i = 0; i < frames->size; ++i) {
+            struct imgframe* frame = arr_nth(frames, i);
+            pixmap_flip_horizontal(&frame->pm);
+        }
     }
 }
 
 void image_rotate(struct image* img, size_t angle)
 {
     assert(angle == 90 || angle == 180 || angle == 270);
-    struct array* frames = img->data->frames;
-    for (size_t i = 0; i < frames->size; ++i) {
-        struct imgframe* frame = arr_nth(frames, i);
-        pixmap_rotate(&frame->pm, angle);
+
+    if (img->data->decoder.rotate) {
+        // image specific rotate
+        img->data->decoder.rotate(img->data, angle);
+    } else {
+        struct array* frames = img->data->frames;
+        for (size_t i = 0; i < frames->size; ++i) {
+            struct imgframe* frame = arr_nth(frames, i);
+            pixmap_rotate(&frame->pm, angle);
+        }
     }
 }
 
