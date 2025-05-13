@@ -34,7 +34,7 @@ protected:
             arr_nth(image->data->frames, 0));
         EXPECT_NE(frame->pm.width, static_cast<size_t>(0));
         EXPECT_NE(frame->pm.height, static_cast<size_t>(0));
-        EXPECT_NE(frame->pm.data[0], static_cast<argb_t>(0));
+        EXPECT_TRUE(frame->pm.data);
     }
 
     struct image* image = nullptr;

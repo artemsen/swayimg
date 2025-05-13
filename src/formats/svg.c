@@ -12,9 +12,8 @@
 #include <librsvg/rsvg.h>
 #pragma GCC diagnostic pop
 
-// SVG uses physical units to store size,
-// these macro defines default viewbox dimension in pixels
-#define RENDER_SIZE 1024
+// SVG uses physical units for size, but we need size in pixels
+#define VIRTUAL_SIZE_PX 1000
 
 // Max offset of the root svg node in xml file
 #define MAX_OFFSET 1024
@@ -49,86 +48,86 @@ static bool is_svg(const uint8_t* data, size_t size)
     return false;
 }
 
+/** Custom SVG renderer, see `struct image::decoder::renderer`. */
+static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
+                       struct pixmap* dst)
+{
+    const struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
+    const RsvgRectangle viewbox = {
+        .x = x,
+        .y = y,
+        .width = scale * pm->width,
+        .height = scale * pm->height,
+    };
+    RsvgHandle* svg = img->decoder.data;
+    cairo_surface_t* surface;
+
+    // render svg to cairo surface
+    surface = cairo_image_surface_create_for_data(
+        (uint8_t*)dst->data, CAIRO_FORMAT_ARGB32, dst->width, dst->height,
+        dst->width * sizeof(argb_t));
+    if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
+        cairo_t* cairo = cairo_create(surface);
+        if (cairo_status(cairo) == CAIRO_STATUS_SUCCESS) {
+            rsvg_handle_render_document(svg, cairo, &viewbox, NULL);
+        }
+        cairo_destroy(cairo);
+    }
+    cairo_surface_destroy(surface);
+}
+
+/** Free SVG renderer, see `struct image::decoder::free`. */
+static void svg_free(struct imgdata* img)
+{
+    g_object_unref(img->decoder.data);
+}
+
 // SVG loader implementation
 enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
     RsvgHandle* svg;
-    gboolean has_vb_real;
-    RsvgRectangle vb_real;
-    RsvgRectangle vb_render;
-    GError* err = NULL;
-    cairo_surface_t* surface = NULL;
-    cairo_t* cr = NULL;
-    struct pixmap* pm;
-    cairo_status_t status;
+    RsvgRectangle viewbox;
+    gboolean viewbox_valid;
+    size_t width, height;
 
     if (!is_svg(data, size)) {
         return imgload_unsupported;
     }
 
-    svg = rsvg_handle_new_from_data(data, size, &err);
+    svg = rsvg_handle_new_from_data(data, size, NULL);
     if (!svg) {
         return imgload_fmterror;
     }
 
-    // define image size in pixels
+    // create empty virtual image pixmap
     rsvg_handle_get_intrinsic_dimensions(svg, NULL, NULL, NULL, NULL,
-                                         &has_vb_real, &vb_real);
-    vb_render.x = 0;
-    vb_render.y = 0;
-    if (has_vb_real) {
-        if (vb_real.width < vb_real.height) {
-            vb_render.width = RENDER_SIZE * (vb_real.width / vb_real.height);
-            vb_render.height = RENDER_SIZE;
+                                         &viewbox_valid, &viewbox);
+    width = VIRTUAL_SIZE_PX;
+    height = VIRTUAL_SIZE_PX;
+    if (viewbox_valid) {
+        if (viewbox.width < viewbox.height) {
+            width *= (double)viewbox.width / viewbox.height;
         } else {
-            vb_render.width = RENDER_SIZE;
-            vb_render.height = RENDER_SIZE * (vb_real.height / vb_real.width);
+            height *= (double)viewbox.height / viewbox.width;
         }
-    } else {
-        vb_render.width = RENDER_SIZE;
-        vb_render.height = RENDER_SIZE;
     }
-
-    // allocate and bind buffer
-    pm = image_alloc_frame(img, vb_render.width, vb_render.height);
-    if (!pm) {
-        goto fail;
-    }
-    surface = cairo_image_surface_create_for_data(
-        (uint8_t*)pm->data, CAIRO_FORMAT_ARGB32, pm->width, pm->height,
-        pm->width * sizeof(argb_t));
-    status = cairo_surface_status(surface);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        goto fail;
-    }
-
-    // render svg to surface
-    cr = cairo_create(surface);
-    if (!rsvg_handle_render_document(svg, cr, &vb_render, &err)) {
-        goto fail;
+    if (!image_alloc_frame(img, width, height)) {
+        g_object_unref(svg);
+        return imgload_fmterror;
     }
 
     image_set_format(img, "SVG");
-    if (has_vb_real) {
-        image_add_info(img, "Real size", "%0.2fx%0.2f", vb_real.width,
-                       vb_real.height);
+    if (viewbox_valid) {
+        image_add_info(img, "Real size", "%0.2fx%0.2f", viewbox.width,
+                       viewbox.height);
     }
     img->alpha = true;
 
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-    g_object_unref(svg);
+    // use custom renderer
+    img->decoder.render = svg_render;
+    img->decoder.free = svg_free;
+    img->decoder.data = svg;
 
     return imgload_success;
-
-fail:
-    if (cr) {
-        cairo_destroy(cr);
-    }
-    if (surface) {
-        cairo_surface_destroy(surface);
-    }
-    g_object_unref(svg);
-    return imgload_fmterror;
 }
