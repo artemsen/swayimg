@@ -36,7 +36,14 @@ bool image_clear(struct image* img, size_t mask)
     bool all_free;
 
     if ((mask & IMGDATA_FRAMES) && image_has_frames(img)) {
+        struct imgdec* decoder = &img->data->decoder;
         struct array* frames = img->data->frames;
+
+        if (decoder->data) {
+            decoder->free(img->data);
+        }
+        memset(decoder, 0, sizeof(*decoder));
+
         for (size_t i = 0; i < frames->size; ++i) {
             struct imgframe* frame = arr_nth(frames, i);
             pixmap_free(&frame->pm);
@@ -105,6 +112,14 @@ void image_attach(struct image* img, struct image* from)
         dst = img->data;
     }
 
+    if (src->decoder.data) {
+        if (dst->decoder.data) {
+            dst->decoder.free(img->data);
+        }
+        memcpy(&dst->decoder, &src->decoder, sizeof(dst->decoder));
+        memset(&src->decoder, 0, sizeof(src->decoder));
+    }
+
     if (src->frames) {
         image_clear(img, IMGDATA_FRAMES);
         dst->frames = src->frames;
@@ -157,6 +172,25 @@ bool image_export(const struct image* img, size_t frame, const char* path)
     (void)path;
     return false;
 #endif // HAVE_LIBPNG
+}
+
+void image_render(struct image* img, size_t frame, enum aa_mode scaler,
+                  double scale, ssize_t x, ssize_t y, struct pixmap* dst)
+{
+    if (img->data->decoder.render) {
+        // image specific renderer
+        img->data->decoder.render(img->data, scale, x, y, dst);
+    } else {
+        // generic software renderer
+        const struct imgframe* iframe = arr_nth(img->data->frames, frame);
+        assert(iframe);
+        if (scale == 1.0) {
+            pixmap_copy(&iframe->pm, dst, x, y, img->data->alpha);
+        } else {
+            software_render(scaler, &iframe->pm, dst, x, y, scale,
+                            img->data->alpha);
+        }
+    }
 }
 
 bool image_has_frames(const struct image* img)
@@ -236,8 +270,8 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
     }
 
     if (pixmap_create(&img->data->thumbnail, thumb_width, thumb_height)) {
-        software_render(aa_mode, full, &img->data->thumbnail, offset_x,
-                        offset_y, scale, img->data->alpha);
+        image_render(img, 0, aa_mode, scale, offset_x, offset_y,
+                     &img->data->thumbnail);
     }
 
     return image_has_thumb(img);

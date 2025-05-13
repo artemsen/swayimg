@@ -799,12 +799,8 @@ static void draw_image(struct pixmap* wnd)
     }
 
     // put image on window surface
-    if (ctx.scale == 1.0) {
-        pixmap_copy(pm, wnd, ctx.img_x, ctx.img_y, ctx.current->data->alpha);
-    } else {
-        software_render(ctx.aa_mode, pm, wnd, ctx.img_x, ctx.img_y, ctx.scale,
-                        ctx.current->data->alpha);
-    }
+    image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, ctx.img_x,
+                 ctx.img_y, wnd);
 }
 
 /** Mode handler: window redraw. */

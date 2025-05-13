@@ -28,6 +28,29 @@ struct imginfo {
     char* value; ///< Value
 };
 
+struct imgdata;
+
+/** Decoder specific handlers. */
+struct imgdec {
+    /**
+     * Custom rendering function.
+     * @param img image container
+     * @param scale scale of the image
+     * @param x,y destination left top coordinates
+     * @param dst destination pixmap
+     */
+    void (*render)(struct imgdata* img, double scale, ssize_t x, ssize_t y,
+                   struct pixmap* dst);
+    /**
+     * Free decoder internal data.
+     * @param img image container
+     */
+    void (*free)(struct imgdata* img);
+
+    /** Decoder internal data. */
+    void* data;
+};
+
 /** Image data container. */
 struct imgdata {
     char* parent;            ///< Parent directory name
@@ -36,6 +59,7 @@ struct imgdata {
     struct array* frames;    ///< Frames (RGBA pixmaps)
     struct array* info;      ///< Meta info
     struct pixmap thumbnail; ///< Image thumbnail
+    struct imgdec decoder;   ///< Decoder specific handlers
 };
 
 /** Image context. */
@@ -116,6 +140,18 @@ void image_attach(struct image* img, struct image* from);
  * @return true if image has frame data
  */
 bool image_export(const struct image* img, size_t frame, const char* path);
+
+/**
+ * Render image.
+ * @param img image context
+ * @param frame frame index
+ * @param scaler scale filter to use
+ * @param scale scale of the image
+ * @param x,y destination left top coordinates
+ * @param dst destination pixmap
+ */
+void image_render(struct image* img, size_t frame, enum aa_mode scaler,
+                  double scale, ssize_t x, ssize_t y, struct pixmap* dst);
 
 /**
  * Check if image has frame data.
