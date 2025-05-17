@@ -41,6 +41,21 @@ struct imgdec {
      */
     void (*render)(struct imgdata* img, double scale, ssize_t x, ssize_t y,
                    struct pixmap* dst);
+
+    /**
+     * Custom flip function.
+     * @param img image container
+     * @param vertical set to true for vertical flip, otherwise horizontal
+     */
+    void (*flip)(struct imgdata* img, bool vertical);
+
+    /**
+     * Custom rotate function.
+     * @param img image container
+     * @param angle rotation angle (only 90, 180, 270)
+     */
+    void (*rotate)(struct imgdata* img, size_t angle);
+
     /**
      * Free decoder internal data.
      * @param img image container
