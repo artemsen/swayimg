@@ -177,6 +177,16 @@ TEST_F(Image, LoadFromExec)
     ASSERT_EQ(image_load(image), imgload_success);
 }
 
+#ifdef HAVE_LIBRSVG
+TEST_F(Image, Load_svg)
+{
+    Load(TEST_DATA_DIR "/image.svg");
+    struct pixmap* pm =
+        &static_cast<struct imgframe*>(arr_nth(image->data->frames, 0))->pm;
+    image_render(image, 0, aa_nearest, 1.0, 0, 0, pm);
+}
+#endif
+
 #define TEST_LOADER(n)                    \
     TEST_F(Image, Load_##n)               \
     {                                     \
@@ -209,9 +219,6 @@ TEST_LOADER(jxl);
 #endif
 #ifdef HAVE_LIBPNG
 TEST_LOADER(png);
-#endif
-#ifdef HAVE_LIBRSVG
-TEST_LOADER(svg);
 #endif
 #ifdef HAVE_LIBTIFF
 TEST_LOADER(tiff);

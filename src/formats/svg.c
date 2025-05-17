@@ -24,10 +24,10 @@
 
 /** SVG specific decoder data */
 struct svg_data {
-    RsvgHandle* rsvg_handle; ///< RSVG handle containing the image data
-    size_t rotation;         ///< rotation in °
-    bool flip_vertical;      ///< whether to flip the image vertically
-    bool flip_horizontal;    ///< whether to flip the image horizontally
+    RsvgHandle* rsvg;     ///< RSVG handle containing the image data
+    size_t rotation;      ///< Rotation in degrees
+    bool flip_vertical;   ///< Whether to flip the image vertically
+    bool flip_horizontal; ///< Whether to flip the image horizontally
 };
 
 /**
@@ -61,37 +61,29 @@ static bool is_svg(const uint8_t* data, size_t size)
 }
 
 /**
- * Rotate the SVG (update internal rotation variable)
+ * Rotate the SVG (update internal rotation variable).
  * @param img image container
  * @param angle rotation angle (only 90, 180, or 270)
  */
 static void svg_rotate(struct imgdata* img, size_t angle)
 {
-    struct svg_data* data = (struct svg_data*)img->decoder.data;
-    struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
-
-    data->rotation += angle;
-    data->rotation %= 360;
-
-    pixmap_rotate(pm, angle);
+    struct svg_data* svg = (struct svg_data*)img->decoder.data;
+    svg->rotation += angle;
+    svg->rotation %= 360;
 }
 
 /**
- * Flip the SVG (set internal flip flag)
+ * Flip the SVG (set internal flip flag).
  * @param img image container
  * @param vertical true for vertical flip, false for horizontal
  */
 static void svg_flip(struct imgdata* img, bool vertical)
 {
-    struct svg_data* data = (struct svg_data*)img->decoder.data;
-    struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
-
+    struct svg_data* svg = (struct svg_data*)img->decoder.data;
     if (vertical) {
-        data->flip_vertical = !data->flip_vertical;
-        pixmap_flip_vertical(pm);
+        svg->flip_vertical = !svg->flip_vertical;
     } else {
-        data->flip_horizontal = !data->flip_horizontal;
-        pixmap_flip_horizontal(pm);
+        svg->flip_horizontal = !svg->flip_horizontal;
     }
 }
 
@@ -138,8 +130,7 @@ static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
             cairo_translate(cairo, -viewbox.width / 2 - x,
                             -viewbox.height / 2 - y);
 
-            rsvg_handle_render_document(data->rsvg_handle, cairo, &viewbox,
-                                        NULL);
+            rsvg_handle_render_document(data->rsvg, cairo, &viewbox, NULL);
         }
         cairo_destroy(cairo);
     }
@@ -149,12 +140,7 @@ static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
 /** Free SVG renderer, see `struct image::decoder::free`. */
 static void svg_free(struct imgdata* img)
 {
-    struct svg_data* data = img->decoder.data;
-
-    if (data->rsvg_handle) {
-        g_object_unref(data->rsvg_handle);
-    }
-
+    g_object_unref(((struct svg_data*)img->decoder.data)->rsvg);
     free(img->decoder.data);
 }
 
@@ -190,7 +176,8 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
         }
     }
     pm = image_alloc_frame(img, width, height);
-    if (!pm) {
+    img->decoder.data = calloc(1, sizeof(struct svg_data));
+    if (!pm || !img->decoder.data) {
         g_object_unref(svg);
         return imgload_fmterror;
     }
@@ -203,17 +190,11 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     img->alpha = true;
 
     // use custom renderer
-    img->decoder.data = calloc(1, sizeof(struct svg_data));
-    if (!img->decoder.data) {
-        g_object_unref(svg);
-        return imgload_unknown;
-    }
-
     img->decoder.render = svg_render;
     img->decoder.free = svg_free;
     img->decoder.flip = svg_flip;
     img->decoder.rotate = svg_rotate;
-    ((struct svg_data*)img->decoder.data)->rsvg_handle = svg;
+    ((struct svg_data*)img->decoder.data)->rsvg = svg;
 
     // render to virtual pixmap to use it in the export action
     svg_render(img, 1.0, 0, 0, pm);
