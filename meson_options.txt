@@ -1,91 +1,121 @@
 # format support
-option('exr',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable EXR format support')
-option('gif',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable GIF format support')
-option('heif',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable HEIF and AVIF format support')
-option('avif',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable AVIF and AVIFS format support')
-option('jpeg',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable JPEG format support')
-option('jxl',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable JPEG XL format support')
-option('png',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable PNG format support')
-option('svg',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable SVG format support')
-option('tiff',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable TIFF format support')
-option('sixel',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable Sixel format support')
-option('raw',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable raw format support')
-option('webp',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable WebP format support')
+option(
+    'exr',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable EXR format support',
+)
+option(
+    'gif',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable GIF format support',
+)
+option(
+    'heif',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable HEIF and AVIF format support',
+)
+option(
+    'avif',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable AVIF and AVIFS format support',
+)
+option(
+    'jpeg',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable JPEG format support',
+)
+option(
+    'jxl',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable JPEG XL format support',
+)
+option(
+    'png',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable PNG format support',
+)
+option(
+    'svg',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable SVG format support',
+)
+option(
+    'tiff',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable TIFF format support',
+)
+option(
+    'sixel',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable Sixel format support',
+)
+option(
+    'raw',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable raw format support',
+)
+option(
+    'webp',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable WebP format support',
+)
 
 # EXIF support
-option('exif',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable EXIF reader support')
+option(
+    'exif',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable EXIF reader support',
+)
 
 # Sway WM support
-option('sway',
-       type: 'feature',
-       value: 'auto',
-       description: 'Enable Sway WM integration')
+option(
+    'sway',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable Sway WM integration',
+)
 
 # extra files to install
-option('bash',
-       type: 'feature',
-       value: 'auto',
-       description: 'Install bash completion')
-option('zsh',
-       type: 'feature',
-       value: 'auto',
-       description: 'Install zsh completion')
-option('man',
-       type: 'boolean',
-       value: true,
-       description: 'Install man page')
-option('desktop',
-       type: 'boolean',
-       value: true,
-       description: 'Install desktop file with icon')
+option(
+    'bash',
+    type: 'feature',
+    value: 'auto',
+    description: 'Install bash completion',
+)
+option(
+    'zsh',
+    type: 'feature',
+    value: 'auto',
+    description: 'Install zsh completion',
+)
+option('man', type: 'boolean', value: true, description: 'Install man page')
+option(
+    'desktop',
+    type: 'boolean',
+    value: true,
+    description: 'Install desktop file with icon',
+)
 
 # project version
-option('version',
-       type : 'string',
-       value : '0.0.0',
-       description : 'Project version')
+option('version', type: 'string', value: '0.0.0', description: 'Project version')
 
 # unit tests
-option('tests',
-       type: 'feature',
-       value: 'disabled',
-       description: 'Build unit tests')
+option(
+    'tests',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Build unit tests',
+)
