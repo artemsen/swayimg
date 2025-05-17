@@ -103,7 +103,7 @@ void pstore_save(const struct image* img)
     char path[PATH_MAX] = { 0 };
     char* delim;
 
-    if (!image_has_thumb(img)) {
+    if (!image_thumb_get(img)) {
         return;
     }
 
@@ -192,7 +192,7 @@ static void* loader_thread(void* data)
         }
         origin = imglist_find(it->source);
         if (origin) {
-            if (image_has_thumb(origin)) {
+            if (image_thumb_get(origin)) {
                 origin = NULL; // already loaded
             }
             if (image_thumb_create(origin, ctx.layout.thumb_size,
@@ -232,7 +232,7 @@ static void* loader_thread(void* data)
         }
         origin = imglist_find(it->source);
         if (origin) {
-            if (image_has_thumb(it)) {
+            if (image_thumb_get(it)) {
                 image_attach(origin, it);
             } else {
                 imglist_remove(origin); // failed to load
@@ -368,8 +368,7 @@ static void reload(void)
 static void draw_thumbnail(struct pixmap* window,
                            const struct layout_thumb* lth)
 {
-    const struct pixmap* pm =
-        image_has_thumb(lth->img) ? &lth->img->data->thumbnail : NULL;
+    const struct pixmap* pm = image_thumb_get(lth->img);
     ssize_t x = lth->x;
     ssize_t y = lth->y;
 
@@ -449,7 +448,7 @@ static void draw_thumbnails(struct pixmap* window)
     // draw all exclude the currently selected
     for (size_t i = 0; i < ctx.layout.thumb_total; ++i) {
         const struct layout_thumb* thumb = &ctx.layout.thumbs[i];
-        all_loaded &= image_has_thumb(thumb->img);
+        all_loaded &= image_thumb_get(thumb->img) != NULL;
         if (thumb != layout_current(&ctx.layout)) {
             draw_thumbnail(window, thumb);
         }
@@ -555,7 +554,7 @@ static void on_activate(struct image* image)
     ctx.layout.current = image;
     layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
 
-    if (!image_has_thumb(image)) {
+    if (!image_thumb_get(image)) {
         image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
                            ctx.thumb_aa);
     }

@@ -326,7 +326,7 @@ TEST_F(Layout, ClearAllInvisible)
 
     img = imglist_first();
     while (img) {
-        const bool loaded = image_has_thumb(img);
+        const bool loaded = image_thumb_get(img);
         const bool expect = img->index > 5 && img->index <= 25;
         if (loaded != expect) {
             fprintf(stderr, "Image %s [%ld] thumb: %c, expected %c\n",
@@ -354,7 +354,7 @@ TEST_F(Layout, ClearLimited)
 
     img = imglist_first();
     while (img) {
-        const bool loaded = image_has_thumb(img);
+        const bool loaded = image_thumb_get(img);
         const bool expect = img->index > 5 && img->index <= 35;
         if (loaded != expect) {
             fprintf(stderr, "Image %s [%ld] thumb: %c, expected %c\n",

@@ -70,11 +70,11 @@ TEST_F(Image, Free)
 {
     Load(TEST_DATA_DIR "/image.bmp");
 
-    EXPECT_FALSE(image_has_thumb(image));
+    EXPECT_FALSE(image_thumb_get(image));
     image_thumb_create(image, 1, true, aa_nearest);
-    EXPECT_TRUE(image_has_thumb(image));
+    EXPECT_TRUE(image_thumb_get(image));
     image_free(image, IMGDATA_THUMB);
-    EXPECT_FALSE(image_has_thumb(image));
+    EXPECT_FALSE(image_thumb_get(image));
 
     EXPECT_TRUE(image_has_frames(image));
     image_free(image, IMGDATA_FRAMES);
@@ -101,9 +101,9 @@ TEST_F(Image, Thumbnail)
 
     Load(TEST_DATA_DIR "/image.bmp");
 
-    ASSERT_FALSE(image_has_thumb(image));
+    ASSERT_FALSE(image_thumb_get(image));
     ASSERT_TRUE(image_thumb_create(image, 10, true, aa_nearest));
-    ASSERT_TRUE(image_has_thumb(image));
+    ASSERT_TRUE(image_thumb_get(image));
     ASSERT_TRUE(image->data);
     EXPECT_TRUE(image->data->thumbnail.data);
     EXPECT_EQ(image->data->thumbnail.width, static_cast<size_t>(10));

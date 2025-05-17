@@ -242,7 +242,7 @@ struct image* layout_ldqueue(struct layout* lo, size_t preload)
         next = (forward ? fwd : back);
         assert(next);
 
-        if (!image_has_thumb(next)) {
+        if (!image_thumb_get(next)) {
             queue = list_append(queue, image_create(next->source));
         }
 

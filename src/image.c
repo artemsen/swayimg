@@ -54,13 +54,13 @@ bool image_clear(struct image* img, size_t mask)
         memset(decoder, 0, sizeof(*decoder));
     }
 
-    if ((mask & IMGDATA_THUMB) && image_has_thumb(img)) {
+    if ((mask & IMGDATA_THUMB) && image_thumb_get(img)) {
         pixmap_free(&img->data->thumbnail);
         img->data->thumbnail.data = NULL;
     }
 
     // automatically free info if there are no frames or thumbnail
-    if (!image_has_frames(img) && !image_has_thumb(img)) {
+    if (!image_has_frames(img) && !image_thumb_get(img)) {
         mask |= IMGDATA_INFO;
     }
     if ((mask & IMGDATA_INFO) && image_has_info(img)) {
@@ -74,7 +74,7 @@ bool image_clear(struct image* img, size_t mask)
     }
 
     all_free =
-        !image_has_frames(img) && !image_has_thumb(img) && !image_has_info(img);
+        !image_has_frames(img) && !image_thumb_get(img) && !image_has_info(img);
 
     if (all_free && img->data) {
         // rest part of data
@@ -200,11 +200,6 @@ bool image_has_frames(const struct image* img)
     return img && img->data && img->data->frames;
 }
 
-bool image_has_thumb(const struct image* img)
-{
-    return img && img->data && img->data->thumbnail.data;
-}
-
 bool image_has_info(const struct image* img)
 {
     return img && img->data && img->data->info;
@@ -254,7 +249,7 @@ void image_rotate(struct image* img, size_t angle)
 bool image_thumb_create(struct image* img, size_t size, bool fill,
                         enum aa_mode aa_mode)
 {
-    assert(!image_has_thumb(img));
+    assert(!image_thumb_get(img));
 
     if (!image_has_frames(img)) {
         return false;
@@ -289,12 +284,12 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
                      &img->data->thumbnail);
     }
 
-    return image_has_thumb(img);
+    return !!image_thumb_get(img);
 }
 
 bool image_thumb_load(struct image* img, const char* path)
 {
-    assert(!image_has_thumb(img));
+    assert(!image_thumb_get(img));
 
     struct image* thumb = image_create(path);
     if (thumb) {
@@ -312,19 +307,25 @@ bool image_thumb_load(struct image* img, const char* path)
         image_free(thumb, IMGDATA_SELF);
     }
 
-    return image_has_thumb(img);
+    return !!image_thumb_get(img);
 }
 
 bool image_thumb_save(const struct image* img, const char* path)
 {
 #ifdef HAVE_LIBPNG
-    assert(image_has_thumb(img));
+    assert(image_thumb_get(img));
     return export_png(&img->data->thumbnail, img->data->info, path);
 #else
     (void)img;
     (void)path;
     return false;
 #endif // HAVE_LIBPNG
+}
+
+const struct pixmap* image_thumb_get(const struct image* img)
+{
+    return img && img->data && img->data->thumbnail.data ? &img->data->thumbnail
+                                                         : NULL;
 }
 
 void image_set_format(struct imgdata* img, const char* fmt, ...)

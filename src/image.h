@@ -176,13 +176,6 @@ void image_render(struct image* img, size_t frame, enum aa_mode scaler,
 bool image_has_frames(const struct image* img);
 
 /**
- * Check if image has thumbnail.
- * @param img image context
- * @return true if image has thumbnail
- */
-bool image_has_thumb(const struct image* img);
-
-/**
  * Check if image has meta info data.
  * @param img image context
  * @return true if image has meta info
@@ -234,6 +227,13 @@ bool image_thumb_load(struct image* img, const char* path);
  * @return true if thumbnail saved
  */
 bool image_thumb_save(const struct image* img, const char* path);
+
+/**
+ * Get image thumbnail pixmap.
+ * @param img image context
+ * @return thumbnail pixmap or NULL if image doesn't have thumbnail
+ */
+const struct pixmap* image_thumb_get(const struct image* img);
 
 /**
  * Set image format description.
