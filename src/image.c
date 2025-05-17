@@ -36,14 +36,7 @@ bool image_clear(struct image* img, size_t mask)
     bool all_free;
 
     if ((mask & IMGDATA_FRAMES) && image_has_frames(img)) {
-        struct imgdec* decoder = &img->data->decoder;
         struct array* frames = img->data->frames;
-
-        if (decoder->data) {
-            decoder->free(img->data);
-        }
-        memset(decoder, 0, sizeof(*decoder));
-
         for (size_t i = 0; i < frames->size; ++i) {
             struct imgframe* frame = arr_nth(frames, i);
             pixmap_free(&frame->pm);
@@ -52,12 +45,21 @@ bool image_clear(struct image* img, size_t mask)
         img->data->frames = NULL;
     }
 
+    // automatically free decoder if there are no frames
+    if (!image_has_frames(img)) {
+        struct imgdec* decoder = &img->data->decoder;
+        if (decoder->data) {
+            decoder->free(img->data);
+        }
+        memset(decoder, 0, sizeof(*decoder));
+    }
+
     if ((mask & IMGDATA_THUMB) && image_has_thumb(img)) {
         pixmap_free(&img->data->thumbnail);
         img->data->thumbnail.data = NULL;
     }
 
-    // automatically free if there are no frames or thumbnail
+    // automatically free info if there are no frames or thumbnail
     if (!image_has_frames(img) && !image_has_thumb(img)) {
         mask |= IMGDATA_INFO;
     }
