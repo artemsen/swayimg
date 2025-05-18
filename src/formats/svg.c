@@ -16,15 +16,19 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// SVG uses physical units for size, but we need size in pixels
-#define VIRTUAL_SIZE_PX 1000
+// Canvas size
+#define CANVAS_SIZE_MIN     500
+#define CANVAS_SIZE_MAX     2000
+#define CANVAS_SIZE_DEFAULT 1000
 
 // Max offset of the root svg node in xml file
-#define MAX_OFFSET 1024
+#define MAX_SIGNATURE_OFFSET 1024
 
 /** SVG specific decoder data */
 struct svg_data {
     RsvgHandle* rsvg;     ///< RSVG handle containing the image data
+    double offset_x;      ///< Horizontal offset relative to canvas
+    double offset_y;      ///< Vertical offset relative to canvas
     size_t rotation;      ///< Rotation in degrees
     bool flip_vertical;   ///< Whether to flip the image vertically
     bool flip_horizontal; ///< Whether to flip the image horizontally
@@ -46,8 +50,8 @@ static bool is_svg(const uint8_t* data, size_t size)
     }
 
     max_pos = size - sizeof(svg_node);
-    if (max_pos > MAX_OFFSET) {
-        max_pos = MAX_OFFSET;
+    if (max_pos > MAX_SIGNATURE_OFFSET) {
+        max_pos = MAX_SIGNATURE_OFFSET;
     }
 
     // search for svg node
@@ -67,7 +71,7 @@ static bool is_svg(const uint8_t* data, size_t size)
  */
 static void svg_rotate(struct imgdata* img, size_t angle)
 {
-    struct svg_data* svg = (struct svg_data*)img->decoder.data;
+    struct svg_data* svg = img->decoder.data;
     svg->rotation += angle;
     svg->rotation %= 360;
 }
@@ -79,7 +83,7 @@ static void svg_rotate(struct imgdata* img, size_t angle)
  */
 static void svg_flip(struct imgdata* img, bool vertical)
 {
-    struct svg_data* svg = (struct svg_data*)img->decoder.data;
+    struct svg_data* svg = img->decoder.data;
     if (vertical) {
         svg->flip_vertical = !svg->flip_vertical;
     } else {
@@ -91,50 +95,56 @@ static void svg_flip(struct imgdata* img, bool vertical)
 static void svg_render(struct imgdata* img, double scale, ssize_t x, ssize_t y,
                        struct pixmap* dst)
 {
+    cairo_t* cairo = NULL;
+    cairo_surface_t* surface = NULL;
     const struct pixmap* pm = &((struct imgframe*)arr_nth(img->frames, 0))->pm;
+    struct svg_data* svg = img->decoder.data;
     const RsvgRectangle viewbox = {
-        .x = x,
-        .y = y,
+        .x = x + scale * svg->offset_x,
+        .y = y - scale * svg->offset_y,
         .width = scale * pm->width,
         .height = scale * pm->height,
     };
-    struct svg_data* data = img->decoder.data;
-    cairo_surface_t* surface;
 
-    // render svg to cairo surface
+    // prepare cairo surface
     surface = cairo_image_surface_create_for_data(
         (uint8_t*)dst->data, CAIRO_FORMAT_ARGB32, dst->width, dst->height,
         dst->width * sizeof(argb_t));
-    if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS) {
-        cairo_t* cairo = cairo_create(surface);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        goto done;
+    }
+    cairo = cairo_create(surface);
+    if (cairo_status(cairo) != CAIRO_STATUS_SUCCESS) {
+        goto done;
+    }
 
-        if (cairo_status(cairo) == CAIRO_STATUS_SUCCESS) {
-
-            // apply rotation / flip
-            cairo_translate(cairo, viewbox.width / 2 + x,
-                            viewbox.height / 2 + y);
-            if (data->rotation) {
-                cairo_rotate(cairo, (double)data->rotation * M_PI / 180.0);
-            }
-            if (data->rotation == 90 || data->rotation == 270) {
-                // rescale to match landscape viewbox size
-                cairo_scale(cairo, (double)pm->height / pm->width,
-                            (double)pm->height / pm->width);
-            }
-            if (data->flip_horizontal) {
-                cairo_scale(cairo, -1.0, 1.0);
-            }
-            if (data->flip_vertical) {
-                cairo_scale(cairo, 1.0, -1.0);
-            }
-            cairo_translate(cairo, -viewbox.width / 2 - x,
-                            -viewbox.height / 2 - y);
-
-            rsvg_handle_render_document(data->rsvg, cairo, &viewbox, NULL);
+    // render svg to cairo surface
+    cairo_translate(cairo, viewbox.width / 2 + x, viewbox.height / 2 + y);
+    if (svg->rotation) {
+        cairo_rotate(cairo, (double)svg->rotation * M_PI / 180.0);
+        if (svg->rotation == 90 || svg->rotation == 270) {
+            // rescale to match landscape viewbox size
+            const double scale = (double)pm->height / pm->width;
+            cairo_scale(cairo, scale, scale);
         }
+    }
+    if (svg->flip_horizontal) {
+        cairo_scale(cairo, -1.0, 1.0);
+    }
+    if (svg->flip_vertical) {
+        cairo_scale(cairo, 1.0, -1.0);
+    }
+    cairo_translate(cairo, -viewbox.width / 2 - x, -viewbox.height / 2 - y);
+
+    rsvg_handle_render_document(svg->rsvg, cairo, &viewbox, NULL);
+
+done:
+    if (cairo) {
         cairo_destroy(cairo);
     }
-    cairo_surface_destroy(surface);
+    if (surface) {
+        cairo_surface_destroy(surface);
+    }
 }
 
 /** Free SVG renderer, see `struct image::decoder::free`. */
@@ -144,60 +154,174 @@ static void svg_free(struct imgdata* img)
     free(img->decoder.data);
 }
 
+/**
+ * Get canvas size.
+ * @param rsvg SVG image handle
+ * @param canvas output canvas rectange
+ */
+static void get_canvas(RsvgHandle* rsvg, RsvgRectangle* canvas)
+{
+    RsvgLength svg_w, svg_h;
+    RsvgRectangle viewbox = { 0 };
+    gboolean width_ok = TRUE, height_ok = TRUE, viewbox_ok = TRUE;
+
+    rsvg_handle_get_intrinsic_dimensions(rsvg, &width_ok, &svg_w, &height_ok,
+                                         &svg_h, &viewbox_ok, &viewbox);
+    if (viewbox_ok) {
+        *canvas = viewbox;
+    } else if (width_ok && height_ok) {
+        canvas->width = svg_w.length;
+        canvas->height = svg_h.length;
+        if (svg_w.unit == RSVG_UNIT_PERCENT) {
+            canvas->width *= CANVAS_SIZE_DEFAULT;
+            canvas->height *= CANVAS_SIZE_DEFAULT;
+        }
+    } else {
+        canvas->width = CANVAS_SIZE_DEFAULT;
+        canvas->height = CANVAS_SIZE_DEFAULT;
+    }
+
+    if (canvas->width < CANVAS_SIZE_MIN || canvas->height < CANVAS_SIZE_MIN) {
+        const double scale = (double)CANVAS_SIZE_MIN /
+            (canvas->width > canvas->height ? canvas->width : canvas->height);
+        canvas->width *= scale;
+        canvas->height *= scale;
+    }
+    if (canvas->width > CANVAS_SIZE_MAX || canvas->height > CANVAS_SIZE_MAX) {
+        const double scale = (double)CANVAS_SIZE_MAX /
+            (canvas->width > canvas->height ? canvas->width : canvas->height);
+        canvas->width *= scale;
+        canvas->height *= scale;
+    }
+}
+
+/**
+ * Get description of real image size.
+ * @param rsvg SVG image handle
+ * @param width output buffer to store width
+ * @param max_w size of the `width` buffer
+ * @param height output buffer to store height
+ * @param max_h size of the `height` buffer
+ */
+static void get_real_size(RsvgHandle* rsvg, char* width, size_t max_w,
+                          char* height, size_t max_h)
+{
+    RsvgLength svg_w, svg_h;
+    RsvgRectangle viewbox;
+    gboolean width_ok = TRUE, height_ok = TRUE, viewbox_ok = TRUE;
+    const char* units;
+
+    rsvg_handle_get_intrinsic_dimensions(rsvg, &width_ok, &svg_w, &height_ok,
+                                         &svg_h, &viewbox_ok, &viewbox);
+
+    if (width_ok && height_ok && svg_w.length != 1.0 && svg_h.length != 1.0) {
+        switch (svg_w.unit) {
+            case RSVG_UNIT_PERCENT:
+                svg_w.length *= 100;
+                svg_h.length *= 100;
+                units = "%";
+                break;
+            case RSVG_UNIT_PX:
+                units = "px";
+                break;
+            case RSVG_UNIT_EM:
+                units = "em";
+                break;
+            case RSVG_UNIT_EX:
+                units = "ex";
+                break;
+            case RSVG_UNIT_IN:
+                units = "in";
+                break;
+            case RSVG_UNIT_CM:
+                units = "cm";
+                break;
+            case RSVG_UNIT_MM:
+                units = "mm";
+                break;
+            case RSVG_UNIT_PT:
+                units = "pt";
+                break;
+            case RSVG_UNIT_PC:
+                units = "pc";
+                break;
+            case RSVG_UNIT_CH:
+                units = "ch";
+                break;
+            default:
+                units = "";
+                break;
+        }
+    } else if (viewbox_ok) {
+        svg_w.length = viewbox.width;
+        svg_h.length = viewbox.height;
+        units = "px";
+    } else {
+        svg_w.length = 100;
+        svg_h.length = 100;
+        units = "%";
+    }
+
+    snprintf(width, max_w, "%0.2f%s", svg_w.length, units);
+    snprintf(height, max_h, "%0.2f%s", svg_h.length, units);
+}
+
 // SVG loader implementation
 enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
-    RsvgHandle* svg;
-    RsvgRectangle viewbox;
-    gboolean viewbox_valid;
-    size_t width, height;
+    struct imgdec* decoder = &img->decoder;
+    char real_width[64] = { 0 };
+    char real_height[64] = { 0 };
+    RsvgRectangle canvas = { 0 };
+    struct svg_data* svg;
     struct pixmap* pm;
+    RsvgHandle* rsvg;
 
     if (!is_svg(data, size)) {
         return imgload_unsupported;
     }
 
-    svg = rsvg_handle_new_from_data(data, size, NULL);
+    rsvg = rsvg_handle_new_from_data(data, size, NULL);
+    if (!rsvg) {
+        return imgload_fmterror;
+    }
+
+    // create decoder context for custom rendering
+    svg = calloc(1, sizeof(*svg));
     if (!svg) {
+        g_object_unref(rsvg);
         return imgload_fmterror;
     }
+    svg->rsvg = rsvg;
+    decoder->data = svg;
+    decoder->free = svg_free;
+    decoder->flip = svg_flip;
+    decoder->rotate = svg_rotate;
+    decoder->render = svg_render;
 
-    // create virtual image pixmap
-    rsvg_handle_get_intrinsic_dimensions(svg, NULL, NULL, NULL, NULL,
-                                         &viewbox_valid, &viewbox);
-    width = VIRTUAL_SIZE_PX;
-    height = VIRTUAL_SIZE_PX;
-    if (viewbox_valid) {
-        if (viewbox.width < viewbox.height) {
-            width *= (double)viewbox.width / viewbox.height;
-        } else {
-            height *= (double)viewbox.height / viewbox.width;
-        }
+    // get canvas size and offset
+    get_canvas(rsvg, &canvas);
+    if (canvas.x) {
+        svg->offset_x = canvas.width / canvas.x;
     }
-    pm = image_alloc_frame(img, width, height);
-    img->decoder.data = calloc(1, sizeof(struct svg_data));
-    if (!pm || !img->decoder.data) {
-        g_object_unref(svg);
+    if (canvas.y) {
+        svg->offset_y = canvas.height / canvas.y;
+    }
+
+    // render to pixmap that will be used in the export action
+    pm = image_alloc_frame(img, canvas.width, canvas.height);
+    if (!pm) {
         return imgload_fmterror;
     }
-
-    image_set_format(img, "SVG");
-    if (viewbox_valid) {
-        image_add_info(img, "Real size", "%0.2fx%0.2f", viewbox.width,
-                       viewbox.height);
-    }
-    img->alpha = true;
-
-    // use custom renderer
-    img->decoder.render = svg_render;
-    img->decoder.free = svg_free;
-    img->decoder.flip = svg_flip;
-    img->decoder.rotate = svg_rotate;
-    ((struct svg_data*)img->decoder.data)->rsvg = svg;
-
-    // render to virtual pixmap to use it in the export action
     svg_render(img, 1.0, 0, 0, pm);
+
+    // set image properties
+    image_set_format(img, "SVG");
+    get_real_size(rsvg, real_width, sizeof(real_width) - 1, real_height,
+                  sizeof(real_height) - 1);
+    image_add_info(img, "SVG size", "%s x %s", real_width, real_height);
+    img->alpha = true;
 
     return imgload_success;
 }
