@@ -317,7 +317,7 @@ static bool select_next(enum action_type direction)
     imglist_lock();
     rc = layout_select(&ctx.layout, dir);
     if (rc) {
-        load = layout_ldqueue(&ctx.layout, ctx.cache);
+        load = layout_ldqueue(&ctx.layout, ctx.preload ? ctx.cache : 0);
     }
     imglist_unlock();
 
@@ -457,7 +457,7 @@ static void draw_thumbnails(struct pixmap* window)
     draw_thumbnail(window, layout_current(&ctx.layout));
 
     if (!all_loaded && !ctx.loader_active) {
-        load = layout_ldqueue(&ctx.layout, ctx.cache);
+        load = layout_ldqueue(&ctx.layout, ctx.preload ? ctx.cache : 0);
     }
 
     imglist_unlock();
