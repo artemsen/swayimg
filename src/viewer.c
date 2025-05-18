@@ -783,10 +783,6 @@ static void draw_image(struct pixmap* wnd)
     const size_t width = ctx.scale * pm->width;
     const size_t height = ctx.scale * pm->height;
 
-    // clear window background
-    pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
-                        ctx.window_bkg);
-
     // clear image background
     if (ctx.current->data->alpha) {
         if (ctx.image_bkg == GRID_BKGID) {
@@ -801,6 +797,10 @@ static void draw_image(struct pixmap* wnd)
     // put image on window surface
     image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, ctx.img_x,
                  ctx.img_y, wnd);
+
+    // clear window background
+    pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
+                        ctx.window_bkg);
 }
 
 /** Mode handler: window redraw. */
