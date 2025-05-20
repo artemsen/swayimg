@@ -175,6 +175,26 @@ static void clear_thumbnails(bool all)
 }
 
 /**
+ * Skip current image file.
+ * @param remove flag to remove current image from the image list
+ */
+static void skip_current(bool remove)
+{
+    struct image* skip = ctx.layout.current;
+
+    if (layout_select(&ctx.layout, layout_right) ||
+        layout_select(&ctx.layout, layout_left)) {
+        if (remove) {
+            imglist_remove(skip);
+        }
+        app_redraw();
+    } else {
+        printf("No more images to view, exit\n");
+        app_exit(0);
+    }
+}
+
+/**
  * Thumbnail loader thread.
  */
 static void* loader_thread(void* data)
@@ -235,7 +255,12 @@ static void* loader_thread(void* data)
             if (image_thumb_get(it)) {
                 image_attach(origin, it);
             } else {
-                imglist_remove(origin); // failed to load
+                // failed to load
+                if (origin == ctx.layout.current) {
+                    skip_current(true);
+                } else {
+                    imglist_remove(origin);
+                }
             }
         }
         imglist_unlock();
@@ -330,26 +355,6 @@ static bool select_next(enum action_type direction)
     }
 
     return rc;
-}
-
-/**
- * Skip current image file.
- * @param remove flag to remove current image from the image list
- */
-static void skip_current(bool remove)
-{
-    struct image* skip = ctx.layout.current;
-
-    if (layout_select(&ctx.layout, layout_right) ||
-        layout_select(&ctx.layout, layout_left)) {
-        if (remove) {
-            imglist_remove(skip);
-        }
-        app_redraw();
-    } else {
-        printf("No more images to view, exit\n");
-        app_exit(0);
-    }
 }
 
 /** Reload. */
