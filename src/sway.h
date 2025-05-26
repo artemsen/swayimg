@@ -48,6 +48,8 @@ bool sway_current(int ipc, struct wndrect* wnd, int* border, bool* fullscreen);
  * @param ipc IPC context
  * @param x horizontal window position
  * @param v vertical window position
+ * @param absolute flag to use absolute position instead of relative to the
+ *                 current workspace
  * @return true if operation completed successfully
  */
-bool sway_add_rules(int ipc, int x, int y);
+bool sway_add_rules(int ipc, int x, int y, bool absolute);

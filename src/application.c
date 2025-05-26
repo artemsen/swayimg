@@ -132,7 +132,8 @@ static void sway_setup(const struct config* cfg)
     }
 
     // set window position via sway rules
-    sway_add_rules(ipc, ctx.window.x, ctx.window.y);
+    sway_add_rules(ipc, ctx.window.x, ctx.window.y,
+                   ctx.window.x != POS_FROM_PARENT);
 
     sway_disconnect(ipc);
 }
