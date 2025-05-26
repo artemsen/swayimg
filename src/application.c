@@ -101,6 +101,7 @@ static void sway_setup(const struct config* cfg)
     bool fullscreen;
     int border;
     int ipc;
+    const bool abs_coordinates = (ctx.window.x != POS_FROM_PARENT);
 
     ipc = sway_connect();
     if (ipc == INVALID_SWAY_IPC) {
@@ -121,7 +122,8 @@ static void sway_setup(const struct config* cfg)
     if (ctx.window.width == SIZE_FROM_PARENT) {
         ctx.window.width = parent.width;
         ctx.window.height = parent.height;
-        if (config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR)) {
+        if (!abs_coordinates &&
+            config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR)) {
             ctx.window.width -= border * 2;
             ctx.window.height -= border * 2;
         }
@@ -132,8 +134,7 @@ static void sway_setup(const struct config* cfg)
     }
 
     // set window position via sway rules
-    sway_add_rules(ipc, ctx.window.x, ctx.window.y,
-                   ctx.window.x != POS_FROM_PARENT);
+    sway_add_rules(ipc, ctx.window.x, ctx.window.y, abs_coordinates);
 
     sway_disconnect(ipc);
 }
