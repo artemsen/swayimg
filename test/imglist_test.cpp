@@ -24,7 +24,7 @@ protected:
 
 TEST_F(ImageList, Load)
 {
-    config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
+    config_set(config, CFG_LIST, CFG_LIST_ORDER, "none");
     imglist_init(config);
     ASSERT_EQ(imglist_size(), static_cast<size_t>(0));
 
@@ -101,6 +101,31 @@ TEST_F(ImageList, SortAlpha)
     }
 
     EXPECT_FALSE(img);
+}
+
+TEST_F(ImageList, Random)
+{
+    config_set(config, CFG_LIST, CFG_LIST_ORDER, "random");
+    config_set(config, CFG_LIST, CFG_LIST_REVERSE, CFG_NO);
+    imglist_init(config);
+
+    const char* const imglist[] = {
+        "exec://1", "exec://2", "exec://3", "exec://4", "exec://5", "exec://6",
+    };
+    struct image* img =
+        imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
+    ASSERT_TRUE(img);
+
+    bool ordered = true;
+    img = imglist_first();
+    for (size_t i = 1; i <= 6; ++i) {
+        const std::string src = "exec://" + std::to_string(i);
+        ASSERT_TRUE(img);
+        puts(img->source);
+        ordered &= src == img->source;
+        img = static_cast<struct image*>(list_next(img));
+    }
+    EXPECT_FALSE(ordered);
 }
 
 TEST_F(ImageList, SortAlphaReverse)

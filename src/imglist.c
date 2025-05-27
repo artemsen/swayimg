@@ -60,76 +60,130 @@ struct image_list {
 static struct image_list ctx;
 
 /**
- * Search the right place to insert new entry according to sort order.
- * @param img new image entry to insert
- * @return image entry in the list that should be used as "before" position
+ * Compare two image instances.
+ * @param ppi0,ppi1 pointers to pointers to image instances
+ * @return compare result
  */
-static struct image* ordered_position(const struct image* img)
+static int compare(const void* ppi0, const void* ppi1)
 {
-    struct image* pos = NULL;
+    const struct image* img0 = *(const struct image* const*)ppi0;
+    const struct image* img1 = *(const struct image* const*)ppi1;
+    int rc = 0;
 
-    if (ctx.order == order_none) {
-        // unsorted
-    } else if (ctx.order == order_random) {
-        size_t index = rand() % ctx.size;
-        list_for_each(ctx.images, struct image, it) {
-            if (!index--) {
-                pos = it;
-                break;
+    switch (ctx.order) {
+        case order_alpha:
+            rc = strcoll(img0->source, img1->source);
+            break;
+        case order_numeric: {
+            const char* src0 = img0->source;
+            const char* src1 = img1->source;
+            while (rc == 0 && *src0 && *src1) {
+                if (isdigit(*src0) && isdigit(*src1)) {
+                    rc = strtoull(src0, (char**)&src0, 10) -
+                        strtoull(src1, (char**)&src1, 10);
+                } else {
+                    rc = *src0 - *src1;
+                    ++src0;
+                    ++src1;
+                }
             }
-        }
-    } else {
-        list_for_each(ctx.images, struct image, it) {
-            ssize_t cmp = 0;
-            switch (ctx.order) {
-                case order_alpha:
-                    cmp = strcoll(img->source, it->source);
-                    break;
-                case order_numeric: {
-                    const char* a = img->source;
-                    const char* b = it->source;
-                    while (cmp == 0 && *a && *b) {
-                        if (isdigit(*a) && isdigit(*b)) {
-                            cmp = strtoull(a, (char**)&a, 10) -
-                                strtoull(b, (char**)&b, 10);
-                        } else {
-                            cmp = *a - *b;
-                            ++a;
-                            ++b;
-                        }
-                    }
-                } break;
-                case order_mtime:
-                    cmp = it->file_time - img->file_time;
-                    break;
-                case order_size:
-                    cmp = it->file_size - img->file_size;
-                    break;
-                case order_none:
-                case order_random:
-                    assert(false && "unreachable code");
-                    break;
-            }
-            if ((ctx.reverse && cmp > 0) || (!ctx.reverse && cmp < 0)) {
-                pos = it;
-                break;
-            }
-        }
+        } break;
+        case order_mtime:
+            rc = img1->file_time - img0->file_time;
+            break;
+        case order_size:
+            rc = img1->file_size - img0->file_size;
+            break;
+        case order_none:
+        case order_random:
+            assert(false && "cannot compare");
+            break;
     }
 
-    return pos;
+    if (ctx.reverse) {
+        rc = -rc;
+    }
+
+    return rc;
+}
+
+/**
+ * Sort image list considering image list config.
+ */
+static void sort(void)
+{
+    struct image* last;
+    struct array* arr;
+    size_t i;
+
+    // same as input or system dependent
+    if (ctx.order == order_none) {
+        if (!ctx.reverse) { // list is created in reverse order, reorder it
+            list_for_each(ctx.images, struct image, it) {
+                struct list* next = it->list.next;
+                it->list.next = it->list.prev;
+                it->list.prev = next;
+                if (!next) { // last entry
+                    ctx.images = it;
+                }
+            }
+        }
+        return;
+    }
+
+    // transform list to array with pointers
+    arr = arr_create(ctx.size, sizeof(struct image*));
+    if (!arr) {
+        return;
+    }
+    i = 0;
+    list_for_each(ctx.images, struct image, it) {
+        *(struct image**)arr_nth(arr, i++) = it;
+        it->list.next = NULL;
+        it->list.prev = NULL;
+    }
+
+    if (ctx.order == order_random) {
+        // shuffle
+        for (i = 0; i < arr->size; ++i) {
+            const size_t swap_index = rand() % arr->size;
+            if (i != swap_index) {
+                struct image** entry0 = arr_nth(arr, i);
+                struct image** entry1 = arr_nth(arr, swap_index);
+                struct image* tmp = *entry0;
+                *entry0 = *entry1;
+                *entry1 = tmp;
+            }
+        }
+    } else if (ctx.order == order_alpha || ctx.order == order_numeric ||
+               ctx.order == order_mtime || ctx.order == order_size) {
+        // sort in specific order
+        qsort(arr_nth(arr, 0), arr->size, arr->item_size, compare);
+    }
+
+    // transform array to list
+    ctx.images = *(struct image**)arr_nth(arr, 0);
+    last = ctx.images;
+    for (i = 1; i < arr->size; ++i) {
+        list_append(last, *(struct image**)arr_nth(arr, i));
+        last = list_next(last);
+    }
+
+    arr_free(arr);
 }
 
 /**
  * Add new entry to the list.
  * @param source image data source to add
  * @param st file stat (can be NULL)
+ * @param ordered flag to used ordered insert
  * @return created image entry
  */
-static struct image* add_entry(const char* source, const struct stat* st)
+static struct image* add_entry(const char* source, const struct stat* st,
+                               bool ordered)
 {
     struct image* entry;
-    struct image* pos;
+    struct image* pos = NULL;
 
     // search for duplicates
     entry = imglist_find(source);
@@ -148,12 +202,39 @@ static struct image* add_entry(const char* source, const struct stat* st)
     }
     entry->index = ++ctx.size;
 
+    // search the right place to insert new entry according to sort order
+    if (ordered) {
+        switch (ctx.order) {
+            case order_none:
+                break;
+            case order_alpha:
+            case order_numeric:
+            case order_mtime:
+            case order_size:
+                list_for_each(ctx.images, struct image, it) {
+                    if (compare(&entry, &it) > 0) {
+                        pos = it;
+                        break;
+                    }
+                }
+                break;
+            case order_random: {
+                size_t index = rand() % ctx.size;
+                list_for_each(ctx.images, struct image, it) {
+                    if (!index--) {
+                        pos = it;
+                        break;
+                    }
+                }
+            } break;
+        }
+    }
+
     // add entry to the list
-    pos = ordered_position(entry);
     if (pos) {
         ctx.images = list_insert(pos, entry);
     } else {
-        ctx.images = list_append(ctx.images, entry);
+        ctx.images = list_add(ctx.images, entry);
     }
 
     return entry;
@@ -162,9 +243,10 @@ static struct image* add_entry(const char* source, const struct stat* st)
 /**
  * Add files from the directory to the list.
  * @param dir absolute path to the directory
- * @return the first image entry in the directory
+ * @param ordered flag to used ordered insert
+ * @return image entry in the directory
  */
-static struct image* add_dir(const char* dir)
+static struct image* add_dir(const char* dir, bool ordered)
 {
     struct image* img = NULL;
     struct dirent* dir_entry;
@@ -193,22 +275,10 @@ static struct image* add_dir(const char* dir)
             if (S_ISDIR(st.st_mode)) {
                 if (ctx.recursive) {
                     fs_append_path(NULL, path, sizeof(path)); // append slash
-                    img = add_dir(path);
+                    img = add_dir(path, ordered);
                 }
             } else if (S_ISREG(st.st_mode)) {
-                img = add_entry(path, &st);
-            }
-        }
-    }
-
-    // get the first image in the directory
-    if (img) {
-        const size_t dir_len = strlen(dir);
-        list_for_each_back(list_prev(img), struct image, it) {
-            if (strncmp(dir, it->source, dir_len) == 0) {
-                img = it;
-            } else {
-                break;
+                img = add_entry(path, &st, ordered);
             }
         }
     }
@@ -233,7 +303,7 @@ static struct image* add_source(const char* source)
     // special url
     if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
         strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        return add_entry(source, NULL);
+        return add_entry(source, NULL, false);
     }
 
     // file from file system
@@ -252,12 +322,12 @@ static struct image* add_source(const char* source)
     // add directory to the list
     if (S_ISDIR(st.st_mode)) {
         fs_append_path(NULL, fspath, sizeof(fspath)); // append slash
-        return add_dir(fspath);
+        return add_dir(fspath, false);
     }
 
     // add file to the list
     if (S_ISREG(st.st_mode)) {
-        struct image* img = add_entry(fspath, &st);
+        struct image* img = add_entry(fspath, &st, false);
         if (img && !ctx.all_files) {
             fs_monitor_add(img->source);
         }
@@ -303,7 +373,7 @@ static struct image* load_sources(const char* const* sources, size_t num)
                     const size_t len = delim - img->source + 1 /* last slash */;
                     if (len < sizeof(dir)) {
                         strncpy(dir, img->source, len);
-                        add_dir(dir);
+                        add_dir(dir, false);
                     }
                 }
             }
@@ -382,7 +452,7 @@ static void on_fsevent(enum fsevent type, const char* path)
         case fsevent_create:
             if (is_dir) {
                 if (ctx.recursive) {
-                    const struct image* img = add_dir(path);
+                    const struct image* img = add_dir(path, true);
                     if (img) {
                         app_on_imglist(img, type);
                     }
@@ -390,7 +460,7 @@ static void on_fsevent(enum fsevent type, const char* path)
             } else {
                 struct stat st;
                 if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
-                    const struct image* img = add_entry(path, &st);
+                    const struct image* img = add_entry(path, &st, true);
                     if (img) {
                         app_on_imglist(img, type);
                     }
@@ -529,7 +599,10 @@ struct image* imglist_load(const char* const* sources, size_t num)
         img = load_sources(sources, num);
     }
 
-    reindex();
+    if (ctx.size) {
+        sort();
+        reindex();
+    }
 
     return img;
 }
