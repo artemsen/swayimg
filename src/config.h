@@ -44,7 +44,6 @@ struct config {
 #define CFG_VIEW_WINDOW    "window"
 #define CFG_VIEW_TRANSP    "transparency"
 #define CFG_VIEW_SCALE     "scale"
-#define CFG_VIEW_KEEP_ZM   "keep_zoom"
 #define CFG_VIEW_POSITION  "position"
 #define CFG_VIEW_AA        "antialiasing"
 #define CFG_VIEW_SSHOW     "slideshow"

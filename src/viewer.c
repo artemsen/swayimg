@@ -41,6 +41,7 @@ enum fixed_scale {
     scale_fit_height,  ///< Fit height to window height
     scale_fill_window, ///< Fill the window
     scale_real_size,   ///< Real image size (100%)
+    scale_keep_zoom,   ///< Keep absolute zoom across images
 };
 
 // clang-format off
@@ -51,6 +52,7 @@ static const char* scale_names[] = {
     [scale_fit_height] = "height",
     [scale_fill_window] = "fill",
     [scale_real_size] = "real",
+    [scale_keep_zoom] = "keep",
 };
 // clang-format on
 
@@ -100,7 +102,6 @@ struct viewer {
     enum aa_mode aa_mode; ///< Anti-aliasing mode
 
     enum fixed_scale scale_init; ///< Initial scale
-    bool keep_zoom;              ///< Keep absolute zoom across images
     enum position position;      ///< Initial position
     double scale;                ///< Current scale factor of the image
 
@@ -436,11 +437,10 @@ static void set_fixed_scale(enum fixed_scale mode)
 {
     const struct imgframe* frame =
         arr_nth(ctx.current->data->frames, ctx.frame);
-    const size_t wnd_width = ui_get_width();
-    const size_t wnd_height = ui_get_height();
-    // todo
-    const double scale_w = 1.0 / ((double)frame->pm.width / wnd_width);
-    const double scale_h = 1.0 / ((double)frame->pm.height / wnd_height);
+    const double wnd_width = ui_get_width();
+    const double wnd_height = ui_get_height();
+    const double scale_w = wnd_width / frame->pm.width;
+    const double scale_h = wnd_height / frame->pm.height;
     double scale = 1.0;
 
     switch (mode) {
@@ -465,6 +465,9 @@ static void set_fixed_scale(enum fixed_scale mode)
         case scale_real_size:
             scale = 1.0; // 100 %
             break;
+        case scale_keep_zoom:
+            app_redraw();
+            return;
     }
 
     set_absolute_scale(scale);
@@ -479,20 +482,12 @@ static void zoom_image(const char* params)
 {
     ssize_t scale_mode;
 
-    if (!params || !*params || strcmp(params, "switch") == 0) {
+    if (!params || !*params) {
         // switch to the next scale mode
         const size_t index = ctx.scale_init + 1 < ARRAY_SIZE(scale_names)
             ? ctx.scale_init + 1
             : 0;
         zoom_image(scale_names[index]);
-        return;
-    }
-
-    if (strcmp(params, "keep") == 0) {
-        // toggle "keep zoom" mode
-        ctx.keep_zoom = !ctx.keep_zoom;
-        info_update(info_status, "Keep zoom: %s", ctx.keep_zoom ? "ON" : "OFF");
-        app_redraw();
         return;
     }
 
@@ -577,14 +572,18 @@ static void reset_state(void)
     const struct imgframe* frame = arr_nth(ctx.current->data->frames, 0);
     ctx.frame = 0;
 
-    if (!ctx.keep_zoom || ctx.scale == 0) {
+    if (ctx.scale_init != scale_keep_zoom) {
         set_fixed_scale(ctx.scale_init);
     } else {
-        const ssize_t diff_w = ctx.img_w - frame->pm.width;
-        const ssize_t diff_h = ctx.img_h - frame->pm.height;
-        ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
-        ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
-        fixup_position(true);
+        if (ctx.scale == 0) {
+            set_fixed_scale(scale_fit_optimal);
+        } else {
+            const ssize_t diff_w = ctx.img_w - frame->pm.width;
+            const ssize_t diff_h = ctx.img_h - frame->pm.height;
+            ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
+            ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
+            fixup_position(true);
+        }
     }
 
     ctx.img_w = frame->pm.width;
@@ -997,7 +996,6 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     // initial scale and position
     ctx.scale_init = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_SCALE,
                                       scale_names, ARRAY_SIZE(scale_names));
-    ctx.keep_zoom = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_KEEP_ZM);
     ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
                                     position_names, ARRAY_SIZE(position_names));
 

@@ -39,10 +39,8 @@ app_id = swayimg
 window = #00000000
 # Background for transparent images (grid/RGBA)
 transparency = grid
-# Default image scale (optimal/width/height/fit/fill/real)
+# Default image scale (optimal/width/height/fit/fill/real/keep)
 scale = optimal
-# Keep absolute zoom across images (yes/no)
-keep_zoom = no
 # Initial image position on the window
 # (top/center/bottom/left/right/topleft/topright/bottomleft/bottomright/free)
 position = center
@@ -175,7 +173,7 @@ Shift+z = zoom fill
 0 = zoom real
 BackSpace = zoom optimal
 Alt+z = zoom keep
-Alt+s = zoom switch
+Alt+s = zoom
 bracketleft = rotate_left
 bracketright = rotate_right
 m = flip_vertical
