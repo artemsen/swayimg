@@ -391,137 +391,143 @@ static void rotate_image(bool clockwise)
 }
 
 /**
- * Set fixed scale for the image.
- * @param sc scale to set
+ * Set absolute scale.
+ * @param scale scale to set
  */
-static void set_scale(enum fixed_scale sc)
+static void set_absolute_scale(double scale)
+{
+    // save center
+    const double wnd_half_w = (double)ui_get_width() / 2;
+    const double wnd_half_h = (double)ui_get_height() / 2;
+    const double center_x = wnd_half_w / ctx.scale - ctx.img_x / ctx.scale;
+    const double center_y = wnd_half_h / ctx.scale - ctx.img_y / ctx.scale;
+
+    // check scale limits
+    if (scale > MAX_SCALE) {
+        scale = MAX_SCALE;
+    } else {
+        const struct imgframe* frame =
+            arr_nth(ctx.current->data->frames, ctx.frame);
+        const double scale_w = (double)MIN_SCALE / frame->pm.width;
+        const double scale_h = (double)MIN_SCALE / frame->pm.height;
+        const double scale_min = max(scale_w, scale_h);
+        if (scale < scale_min) {
+            scale = scale_min;
+        }
+    }
+
+    ctx.scale = scale;
+
+    // restore center
+    ctx.img_x = wnd_half_w - center_x * ctx.scale;
+    ctx.img_y = wnd_half_h - center_y * ctx.scale;
+
+    fixup_position(false);
+
+    info_update(info_scale, "%.0f%%", ctx.scale * 100);
+    app_redraw();
+}
+
+/**
+ * Set scale from one of the fixed modes.
+ * @param mode fixed scale mode to set
+ */
+static void set_fixed_scale(enum fixed_scale mode)
 {
     const struct imgframe* frame =
         arr_nth(ctx.current->data->frames, ctx.frame);
     const size_t wnd_width = ui_get_width();
     const size_t wnd_height = ui_get_height();
+    // todo
     const double scale_w = 1.0 / ((double)frame->pm.width / wnd_width);
     const double scale_h = 1.0 / ((double)frame->pm.height / wnd_height);
+    double scale = 1.0;
 
-    switch (sc) {
+    switch (mode) {
         case scale_fit_optimal:
-            ctx.scale = min(scale_w, scale_h);
-            if (ctx.scale > 1.0) {
-                ctx.scale = 1.0;
+            scale = min(scale_w, scale_h);
+            if (scale > 1.0) {
+                scale = 1.0;
             }
             break;
         case scale_fit_window:
-            ctx.scale = min(scale_w, scale_h);
+            scale = min(scale_w, scale_h);
             break;
         case scale_fit_width:
-            ctx.scale = scale_w;
+            scale = scale_w;
             break;
         case scale_fit_height:
-            ctx.scale = scale_h;
+            scale = scale_h;
             break;
         case scale_fill_window:
-            ctx.scale = max(scale_w, scale_h);
+            scale = max(scale_w, scale_h);
             break;
         case scale_real_size:
-            ctx.scale = 1.0; // 100 %
+            scale = 1.0; // 100 %
             break;
     }
 
-    fixup_position(true);
-    info_update(info_scale, "%.0f%%", ctx.scale * 100);
+    set_absolute_scale(scale);
+    fixup_position(true); // force reposition even in free moving mode
 }
 
 /**
- * Switch scale to one of fixed value.
- * @param params fixed scale to set
- */
-static void scale_image(const char* params)
-{
-    if (params && *params) {
-        ssize_t fixed_scale = str_index(scale_names, params, 0);
-
-        if (fixed_scale >= 0) {
-            ctx.scale_init = fixed_scale;
-        } else {
-            fprintf(stderr, "Invalid scale operation: \"%s\"\n", params);
-            return;
-        }
-    } else {
-        // toggle to the next scale
-        ctx.scale_init++;
-        if (ctx.scale_init >= ARRAY_SIZE(scale_names)) {
-            ctx.scale_init = 0;
-        }
-    }
-
-    info_update(info_status, "Scale %s", scale_names[ctx.scale_init]);
-    set_scale(ctx.scale_init);
-    app_redraw();
-}
-
-/**
- * Zoom in/out.
- * @param params zoom operation
+ * Zoom image: handle "zoom" action.
+ * @param params zoom action parameter
  */
 static void zoom_image(const char* params)
 {
-    ssize_t percent = 0;
-    ssize_t fixed_scale;
+    ssize_t scale_mode;
 
-    if (!params || !*params) {
+    if (!params || !*params || strcmp(params, "switch") == 0) {
+        // switch to the next scale mode
+        const size_t index = ctx.scale_init + 1 < ARRAY_SIZE(scale_names)
+            ? ctx.scale_init + 1
+            : 0;
+        zoom_image(scale_names[index]);
         return;
     }
 
-    // check for fixed scale type
-    fixed_scale = str_index(scale_names, params, 0);
-    if (fixed_scale >= 0) {
-        set_scale(fixed_scale);
-    } else if (str_to_num(params, 0, &percent, 0) && percent != 0 &&
-               percent > -1000 && percent < 1000) {
-        // zoom in %
-        const double wnd_half_w = (double)ui_get_width() / 2;
-        const double wnd_half_h = (double)ui_get_height() / 2;
-        const double step = (ctx.scale / 100) * percent;
-        const double center_x = wnd_half_w / ctx.scale - ctx.img_x / ctx.scale;
-        const double center_y = wnd_half_h / ctx.scale - ctx.img_y / ctx.scale;
+    if (strcmp(params, "keep") == 0) {
+        // toggle "keep zoom" mode
+        ctx.keep_zoom = !ctx.keep_zoom;
+        info_update(info_status, "Keep zoom: %s", ctx.keep_zoom ? "ON" : "OFF");
+        app_redraw();
+        return;
+    }
 
-        if (percent > 0) {
-            ctx.scale += step;
-            if (ctx.scale > MAX_SCALE) {
-                ctx.scale = MAX_SCALE;
+    // one of the fixed modes
+    scale_mode = str_index(scale_names, params, 0);
+    if (scale_mode >= 0) {
+        ctx.scale_init = scale_mode;
+        set_fixed_scale(scale_mode);
+        info_update(info_status, "Scale mode: %s", params);
+    } else {
+        double scale = 0;
+
+        if (params[0] == '+' || params[0] == '-') {
+            // relative
+            ssize_t delta;
+            if (str_to_num(params, 0, &delta, 0) && delta != 0 &&
+                delta > -1000 && delta < 1000) {
+                scale = ctx.scale + (ctx.scale / 100) * delta;
             }
         } else {
-            const struct imgframe* frame =
-                arr_nth(ctx.current->data->frames, ctx.frame);
-            const double scale_w = (double)MIN_SCALE / frame->pm.width;
-            const double scale_h = (double)MIN_SCALE / frame->pm.height;
-            const double scale_min = max(scale_w, scale_h);
-            ctx.scale += step;
-            if (ctx.scale < scale_min) {
-                ctx.scale = scale_min;
+            // percent
+            ssize_t percent;
+            if (str_to_num(params, 0, &percent, 0) && percent > 0 &&
+                percent < MAX_SCALE * 100) {
+                scale = (double)percent / 100;
             }
         }
 
-        // restore center
-        ctx.img_x = wnd_half_w - center_x * ctx.scale;
-        ctx.img_y = wnd_half_h - center_y * ctx.scale;
-        fixup_position(false);
-    } else {
-        fprintf(stderr, "Invalid zoom operation: \"%s\"\n", params);
+        if (scale != 0) {
+            set_absolute_scale(scale);
+        } else {
+            info_update(info_status, "Invalid zoom operation: %s", params);
+            app_redraw();
+        }
     }
-
-    info_update(info_scale, "%.0f%%", ctx.scale * 100);
-    app_redraw();
-}
-
-/**
- * Toggle zoom keeping mode.
- */
-static void toggle_keep_zoom(void)
-{
-    ctx.keep_zoom = !ctx.keep_zoom;
-    info_update(info_status, "Keep zoom %s", ctx.keep_zoom ? "ON" : "OFF");
-    app_redraw();
 }
 
 /**
@@ -572,7 +578,7 @@ static void reset_state(void)
     ctx.frame = 0;
 
     if (!ctx.keep_zoom || ctx.scale == 0) {
-        set_scale(ctx.scale_init);
+        set_fixed_scale(ctx.scale_init);
     } else {
         const ssize_t diff_w = ctx.img_w - frame->pm.width;
         const ssize_t diff_h = ctx.img_h - frame->pm.height;
@@ -901,12 +907,6 @@ static void on_action(const struct action* action)
             break;
         case action_zoom:
             zoom_image(action->params);
-            break;
-        case action_scale:
-            scale_image(action->params);
-            break;
-        case action_keep_zoom:
-            toggle_keep_zoom();
             break;
         case action_rotate_left:
             rotate_image(false);
