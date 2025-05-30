@@ -91,3 +91,37 @@ meson setup _build_dir
 meson compile -C _build_dir
 meson install -C _build_dir
 ```
+
+## Tips
+
+### Copy text from images using OCR
+
+Copying text from images can be done with [Tesseract OCR](https://github.com/tesseract-ocr/tesseract). Here's a practical configuration:
+
+```config
+Shift+y = exec tesseract "%" - | wl-copy
+```
+
+If you'd like to select a specific area of the screen to copy, you can combine [Grim](https://github.com/emersion/slurp) and [Slurp](https://github.com/emersion/slurp). This combination lets you interactively select an area of the image:
+
+```config
+Shift+y = exec grim -g "$(slurp)" - | tesseract - - | wl-copy;
+```
+
+### Mail image with Neomutt
+
+To send emails directly from Swayimg, you can configure keybindings to launch Neomutt in a terminal. Since Swayimg waits for child processes to complete _(introduced in version 3.9)_, it's advisable to use the window manager's process management capabilities to prevent potential issues with zombie processes.
+
+#### Sway
+
+```config
+Ctrl+m = exec swaymsg exec -- $TERMINAL -e neomutt -a "%";
+```
+
+
+#### Hyprland
+
+```config
+Ctrl+m = exec hyprctl dispatch exec "$TERMINAL -e neomutt -a '%'";
+```
+
