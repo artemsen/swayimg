@@ -118,10 +118,8 @@ To send emails directly from Swayimg, you can configure keybindings to launch Ne
 Ctrl+m = exec swaymsg exec -- $TERMINAL -e neomutt -a "%";
 ```
 
-
 #### Hyprland
 
 ```config
 Ctrl+m = exec hyprctl dispatch exec "$TERMINAL -e neomutt -a '%'";
 ```
-
