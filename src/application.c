@@ -173,6 +173,7 @@ static void execute_cmd(const char* expr, const char* path)
 {
     const size_t max_status = 60;
     struct array* out = NULL;
+    struct array* err = NULL;
     char* msg = NULL;
     char* cmd;
     int rc;
@@ -184,31 +185,40 @@ static void execute_cmd(const char* expr, const char* path)
         app_redraw();
         return;
     }
-    rc = shellcmd_exec(cmd, &out);
+    rc = shellcmd_exec(cmd, &out, &err);
 
-    // duplicate output to stdout
+    // duplicate output to stdout/stderr
     if (out) {
         fprintf(stdout, "%.*s", (int)out->size, out->data);
+    }
+    if (err) {
+        fprintf(stderr, "%.*s", (int)err->size, err->data);
     }
 
     // show execution status
     if (rc == 0) {
-        if (!out) {
+        if (out) {
+            str_append((const char*)out->data, out->size, &msg);
+        } else {
             str_dup("Success: ", &msg);
             str_append(cmd, 0, &msg);
         }
+    } else if (rc == SHELLCMD_TIMEOUT) {
+        str_dup("Child process timed out: ", &msg);
+        str_append(cmd, 0, &msg);
     } else {
         char desc[256];
         snprintf(desc, sizeof(desc), "Error %d: ", rc);
         str_dup(desc, &msg);
-        if (!out) {
+        if (err) {
+            str_append((const char*)err->data, err->size, &msg);
+        } else if (out) {
+            str_append((const char*)out->data, out->size, &msg);
+        } else {
             str_append(strerror(rc), 0, &msg);
         }
     }
-    if (out) {
-        str_append((const char*)out->data, out->size, &msg);
-    }
-    if (msg && strlen(msg) > max_status) {
+    if (strlen(msg) > max_status) {
         // trim long output text
         const char ellipsis[] = "...";
         memcpy(msg + max_status - sizeof(ellipsis), ellipsis, sizeof(ellipsis));
@@ -219,6 +229,7 @@ static void execute_cmd(const char* expr, const char* path)
     free(cmd);
     free(msg);
     arr_free(out);
+    arr_free(err);
 
     app_redraw();
 }

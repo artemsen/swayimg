@@ -10,6 +10,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -308,17 +309,22 @@ static enum image_status load_from_stream(struct image* img, int fd)
 static enum image_status load_from_exec(struct image* img, const char* cmd)
 {
     struct array* out = NULL;
+    struct array* err = NULL;
     enum image_status status;
     int rc;
 
-    rc = shellcmd_exec(cmd, &out);
+    rc = shellcmd_exec(cmd, &out, &err);
     if (rc == 0 && out) {
         status = load_from_memory(img, out->data, out->size);
     } else {
         status = imgload_unknown;
+        if (err) {
+            fprintf(stderr, "%.*s", (int)err->size, err->data);
+        }
     }
 
     arr_free(out);
+    arr_free(err);
     return status;
 }
 

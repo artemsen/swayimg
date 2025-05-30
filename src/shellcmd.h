@@ -6,13 +6,17 @@
 
 #include "array.h"
 
+// Special error code: child process timed out
+#define SHELLCMD_TIMEOUT 256
+
 /**
  * Execute command in shell.
  * @param cmd command to execute
  * @param out pointer to stdout buffer
- * @return subprocess exit code
+ * @param err pointer to stderr buffer
+ * @return child process exit code or negative number on errors
  */
-int shellcmd_exec(const char* cmd, struct array** out);
+int shellcmd_exec(const char* cmd, struct array** out, struct array** err);
 
 /**
  * Compose command from expression.
