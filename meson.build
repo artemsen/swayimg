@@ -245,7 +245,7 @@ if json.found()
     sources += 'src/sway.c'
 endif
 if exif.found()
-    sources += 'src/exif.c'
+    sources += 'src/formats/exif.c'
 endif
 if exr.found()
     sources += 'src/formats/exr.c'
@@ -299,8 +299,8 @@ executable(
         xkb,
         fontconfig,
         freetype,
-        exif,
         # image support
+        exif,
         exr,
         gif,
         heif,

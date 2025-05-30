@@ -2,8 +2,8 @@
 // JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../exif.h"
 #include "buildcfg.h"
+#include "exif.h"
 #include "loader.h"
 
 #include <setjmp.h>

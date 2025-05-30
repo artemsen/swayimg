@@ -2,7 +2,7 @@
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 extern "C" {
-#include "exif.h"
+#include "formats/exif.h"
 }
 
 #include <gtest/gtest.h>

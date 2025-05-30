@@ -37,7 +37,7 @@ sources = [
     '../src/formats/tga.c',
 ]
 if exif.found()
-    sources += ['exif_test.cpp', '../src/exif.c']
+    sources += ['exif_test.cpp', '../src/formats/exif.c']
 endif
 if exr.found()
     sources += '../src/formats/exr.c'

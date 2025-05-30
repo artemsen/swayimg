@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "image.h"
+#include "../image.h"
 
 /**
  * Read and handle EXIF data.

@@ -2,8 +2,8 @@
 // HEIF and AVIF formats decoder.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
-#include "../exif.h"
 #include "buildcfg.h"
+#include "exif.h"
 #include "loader.h"
 
 #include <libheif/heif.h>
