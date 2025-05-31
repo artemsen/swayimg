@@ -1034,8 +1034,6 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
 
 void viewer_destroy(void)
 {
-    preloader_stop();
-
     if (ctx.animation_fd != -1) {
         close(ctx.animation_fd);
     }

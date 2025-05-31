@@ -671,6 +671,8 @@ bool app_run(void)
         ui_event_done();
     }
 
+    ctx.mode_handlers[ctx.mode_current].deactivate();
+
     free(fds);
 
     return ctx.state != loop_error;
