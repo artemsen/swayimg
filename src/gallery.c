@@ -191,6 +191,12 @@ static void skip_current(bool remove)
     }
 }
 
+/** Thumbnail cleaner as a task in thread pool. */
+static void thumb_clear(__attribute__((unused)) void* data)
+{
+    clear_thumbnails(false);
+}
+
 /** Thumbnail loader as a task in thread pool. */
 static void thumb_load(void* data)
 {
@@ -268,6 +274,9 @@ static void thumb_requeue(void)
             tpool_add_task(thumb_load, thumb_free, it);
         }
     }
+
+    // add last task to limit stored thumbnails
+    tpool_add_task(thumb_clear, NULL, NULL);
 }
 
 /**
