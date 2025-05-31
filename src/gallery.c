@@ -10,12 +10,12 @@
 #include "imglist.h"
 #include "info.h"
 #include "layout.h"
+#include "tpool.h"
 #include "ui.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -39,9 +39,6 @@ struct gallery {
     argb_t clr_shadow;     ///< Selected tile shadow
 
     struct layout layout; ///< Thumbnail layout
-
-    pthread_t loader_tid; ///< Thumbnail loader thread id
-    bool loader_active;   ///< Preload in progress flag
 };
 
 /** Global gallery context. */
@@ -194,105 +191,82 @@ static void skip_current(bool remove)
     }
 }
 
-/**
- * Thumbnail loader thread.
- */
-static void* loader_thread(void* data)
+/** Thumbnail loader as a task in thread pool. */
+static void thumb_load(void* data)
 {
-    struct image* queue = data;
+    struct image* img = data;
+    struct image* origin;
 
-    list_for_each(queue, struct image, it) {
-        struct image* origin;
-
-        // check if thumbnail is already loaded
-        imglist_lock();
-        if (!ctx.loader_active) {
-            imglist_unlock();
-            break;
-        }
-        origin = imglist_find(it->source);
-        if (origin) {
-            if (image_thumb_get(origin)) {
-                origin = NULL; // already loaded
-            }
-            if (image_thumb_create(origin, ctx.layout.thumb_size,
-                                   ctx.thumb_fill, ctx.thumb_aa)) {
-                app_redraw();
-                origin = NULL; // loaded from frame data
-            }
-        }
+    // check if we can create thumbnail from exisiting origin
+    imglist_lock();
+    origin = imglist_find(img->source);
+    if (origin &&
+        (image_thumb_get(origin) ||
+         image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
+                            ctx.thumb_aa))) {
         imglist_unlock();
-
-        if (!origin) {
-            continue;
-        }
-
-        // load thumbnail
-        if (!ctx.thumb_pstore || !pstore_load(it)) {
-            if (image_load(it) == imgload_success) {
-                if (image_thumb_create(it, ctx.layout.thumb_size,
-                                       ctx.thumb_fill, ctx.thumb_aa) &&
-                    ctx.thumb_pstore) {
-                    // save to thumbnail to persistent storage
-                    struct imgframe* frame = arr_nth(it->data->frames, 0);
-                    if (frame->pm.width > ctx.layout.thumb_size &&
-                        frame->pm.height > ctx.layout.thumb_size) {
-                        pstore_save(it);
-                    }
-                }
-                image_free(it, IMGDATA_FRAMES); // not needed anymore
-            }
-        }
-
-        // put thumbnail to image list
-        imglist_lock();
-        if (!ctx.loader_active) {
-            imglist_unlock();
-            break;
-        }
-        origin = imglist_find(it->source);
-        if (origin) {
-            if (image_thumb_get(it)) {
-                image_attach(origin, it);
-            } else {
-                // failed to load
-                if (origin == ctx.layout.current) {
-                    skip_current(true);
-                } else {
-                    imglist_remove(origin);
-                }
-            }
-        }
-        imglist_unlock();
-
         app_redraw();
+        return;
+    }
+    imglist_unlock();
+
+    // load thumbnail
+    if (!ctx.thumb_pstore || !pstore_load(img)) {
+        if (image_load(img) == imgload_success) {
+            if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
+                                   ctx.thumb_aa) &&
+                ctx.thumb_pstore) {
+                // save to thumbnail to persistent storage
+                struct imgframe* frame = arr_nth(img->data->frames, 0);
+                if (frame->pm.width > ctx.layout.thumb_size &&
+                    frame->pm.height > ctx.layout.thumb_size) {
+                    pstore_save(img);
+                }
+            }
+            image_free(img, IMGDATA_FRAMES); // not needed anymore
+        }
     }
 
-    // free the queue
-    list_for_each(queue, struct image, it) {
-        image_free(it, IMGDATA_SELF);
+    // put thumbnail to image list
+    imglist_lock();
+    origin = imglist_find(img->source);
+    if (origin) {
+        if (image_thumb_get(img)) {
+            image_attach(origin, img);
+        } else {
+            // failed to load
+            if (origin == ctx.layout.current) {
+                skip_current(true);
+            } else {
+                imglist_remove(origin);
+            }
+        }
     }
-    if (ctx.loader_active) {
-        clear_thumbnails(false);
-    }
+    imglist_unlock();
 
-    ctx.loader_active = false;
-    return NULL;
+    app_redraw();
 }
 
-/**
- * Start thumbnail loader thread.
- * @param queue head of image list to load
- */
-static void loader_restart(struct image* queue)
+/** Image instance deleter for task in thread pool. */
+static void thumb_free(void* data)
 {
-    if (ctx.loader_active) {
-        ctx.loader_active = false;
-        pthread_join(ctx.loader_tid, NULL);
-    }
+    image_free(data, IMGDATA_SELF);
+}
+
+/** Recreate thumnail load queue. */
+static void thumb_requeue(void)
+{
+    struct image* queue;
+
+    assert(imglist_is_locked());
+
+    tpool_cancel();
+
+    queue = layout_ldqueue(&ctx.layout, ctx.preload ? ctx.cache : 0);
     if (queue) {
-        ctx.loader_active = true;
-        pthread_create(&ctx.loader_tid, NULL, loader_thread, queue);
+        list_for_each(queue, struct image, it) {
+            tpool_add_task(thumb_load, thumb_free, it);
+        }
     }
 }
 
@@ -304,7 +278,6 @@ static void loader_restart(struct image* queue)
 static bool select_next(enum action_type direction)
 {
     bool rc = false;
-    struct image* load = NULL;
     enum layout_dir dir;
 
     switch (direction) {
@@ -342,14 +315,11 @@ static bool select_next(enum action_type direction)
     imglist_lock();
     rc = layout_select(&ctx.layout, dir);
     if (rc) {
-        load = layout_ldqueue(&ctx.layout, ctx.preload ? ctx.cache : 0);
+        thumb_requeue();
     }
     imglist_unlock();
 
     if (rc) {
-        if (load) {
-            loader_restart(load);
-        }
         info_reset(ctx.layout.current);
         app_redraw();
     }
@@ -360,7 +330,8 @@ static bool select_next(enum action_type direction)
 /** Reload. */
 static void reload(void)
 {
-    loader_restart(NULL);
+    tpool_cancel();
+    tpool_wait();
     clear_thumbnails(true);
     app_redraw();
 }
@@ -444,7 +415,6 @@ static void draw_thumbnail(struct pixmap* window,
  */
 static void draw_thumbnails(struct pixmap* window)
 {
-    struct image* load = NULL;
     bool all_loaded = true;
 
     imglist_lock();
@@ -461,15 +431,11 @@ static void draw_thumbnails(struct pixmap* window)
     // draw only currently selected
     draw_thumbnail(window, layout_current(&ctx.layout));
 
-    if (!all_loaded && !ctx.loader_active) {
-        load = layout_ldqueue(&ctx.layout, ctx.preload ? ctx.cache : 0);
+    if (!all_loaded) {
+        thumb_requeue();
     }
 
     imglist_unlock();
-
-    if (load) {
-        loader_restart(load);
-    }
 }
 
 /** Mode handler: window redraw. */
@@ -483,7 +449,7 @@ static void on_redraw(struct pixmap* window)
 /** Mode handler: window resize. */
 static void on_resize(void)
 {
-    loader_restart(NULL);
+    tpool_cancel();
 
     imglist_lock();
     layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
@@ -572,7 +538,8 @@ static void on_activate(struct image* image)
 /** Mode handler: deactivate viewer. */
 static struct image* on_deactivate(void)
 {
-    loader_restart(NULL);
+    tpool_cancel();
+    tpool_wait();
     return ctx.layout.current;
 }
 
@@ -603,7 +570,4 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->deactivate = on_deactivate;
 }
 
-void gallery_destroy(void)
-{
-    loader_restart(NULL);
-}
+void gallery_destroy(void) { }
