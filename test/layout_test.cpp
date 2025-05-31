@@ -284,6 +284,21 @@ TEST_F(Layout, LdQueueVisibleOnly)
         "exec://16",
         "exec://13",
         "exec://17",
+        "exec://12",
+        "exec://18",
+        "exec://11",
+        "exec://19",
+        "exec://10",
+        "exec://20",
+        "exec://09",
+        "exec://21",
+        "exec://08",
+        "exec://22",
+        "exec://07",
+        "exec://23",
+        "exec://06",
+        "exec://24",
+        "exec://05",
     };
     // clang-format on
     struct image* it = queue;
@@ -291,10 +306,7 @@ TEST_F(Layout, LdQueueVisibleOnly)
         ASSERT_STREQ(it->source, e);
         it = reinterpret_cast<struct image*>(it->list.next);
     }
-
-    struct image* last = reinterpret_cast<struct image*>(list_get_last(queue));
-    ASSERT_TRUE(last);
-    ASSERT_STREQ(last->source, "exec://05");
+    EXPECT_FALSE(it);
 }
 
 TEST_F(Layout, LdQueueUnimited)

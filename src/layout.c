@@ -222,33 +222,21 @@ struct image* layout_ldqueue(struct layout* lo, size_t preload)
 {
     assert(imglist_is_locked());
 
-    struct image* queue = NULL;
-    struct image* first = lo->thumbs[0].img;
-    struct image* last = lo->thumbs[lo->thumb_total - 1].img;
+    const struct image* first = lo->thumbs[0].img;
+    const struct image* last = lo->thumbs[lo->thumb_total - 1].img;
     struct image* fwd = layout_current(lo)->img;
     struct image* back = imglist_prev(fwd);
     bool fwd_visible = true;
     bool back_visible = true;
-    bool forward = true;
+    struct image* queue = NULL;
 
     while (fwd || back) {
-        const struct image* next = NULL;
-
-        if (forward && !fwd) {
-            forward = false;
-        } else if (!forward && !back) {
-            forward = true;
-        }
-        next = (forward ? fwd : back);
-        assert(next);
-
-        if (!image_thumb_get(next)) {
-            queue = list_append(queue, image_create(next->source));
-        }
-
-        if (forward && fwd) {
-            if (fwd_visible) {
-                fwd_visible = (fwd != last);
+        if (fwd) {
+            if (!image_thumb_get(fwd)) {
+                queue = list_append(queue, image_create(fwd->source));
+            }
+            if (fwd == last) {
+                fwd_visible = false;
             }
             fwd = imglist_next(fwd);
             if (fwd && !fwd_visible) {
@@ -258,12 +246,16 @@ struct image* layout_ldqueue(struct layout* lo, size_t preload)
                     fwd = NULL;
                 }
             }
-        } else if (!forward && back) {
-            if (back_visible) {
-                back_visible = (back != first);
+        }
+        if (back) {
+            if (!image_thumb_get(back)) {
+                queue = list_append(queue, image_create(back->source));
+            }
+            if (back == first) {
+                back_visible = false;
             }
             back = imglist_prev(back);
-            if (back && !fwd_visible) {
+            if (back && !back_visible) {
                 if (preload) {
                     --preload;
                 } else {
@@ -271,8 +263,6 @@ struct image* layout_ldqueue(struct layout* lo, size_t preload)
                 }
             }
         }
-
-        forward = !forward;
     }
 
     return queue;
