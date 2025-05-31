@@ -12,6 +12,7 @@
 #include "info.h"
 #include "shellcmd.h"
 #include "sway.h"
+#include "tpool.h"
 #include "ui.h"
 #include "viewer.h"
 
@@ -564,6 +565,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     pthread_mutex_init(&ctx.events_lock, NULL);
 
     // initialize other subsystems
+    tpool_init();
     font_init(cfg);
     keybind_init(cfg);
     info_init(cfg);
@@ -597,6 +599,7 @@ void app_destroy(void)
     info_destroy();
     keybind_destroy();
     font_destroy();
+    tpool_destroy();
 
     for (size_t i = 0; i < ctx.wfds_num; ++i) {
         close(ctx.wfds[i].fd);
