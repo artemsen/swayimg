@@ -5,17 +5,13 @@
 #include "render.h"
 
 #include "array.h"
+#include "tpool.h"
 
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
-#ifdef __FreeBSD__
-#include <sys/sysctl.h>
-#endif
 
 #define clamp(a, low, high) (min((high), max((a), (low))))
 
@@ -76,7 +72,6 @@ struct task_nn_priv {
     struct task_nn_shared* shared; ///< Shared information
     size_t y_low;                  ///< Start row
     size_t y_high;                 ///< One beyond end row
-    pthread_t id;                  ///< Thread id
 };
 
 /** Values shared by all threads in all other scales. */
@@ -489,7 +484,7 @@ static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
     }
 }
 
-static void* nn_task(void* arg)
+static void nn_task(void* arg)
 {
     // Each thread simply handles a consecutive block of rows
     struct task_nn_priv* priv = arg;
@@ -497,10 +492,9 @@ static void* nn_task(void* arg)
     scale_nearest(shared->src, shared->dst, priv->y_low, priv->y_high,
                   shared->x_low, shared->x_high, shared->num, shared->den_bits,
                   shared->x, shared->y, shared->alpha);
-    return NULL;
 }
 
-static void* sc_task(void* arg)
+static void sc_task(void* arg)
 {
     // Each thread first handles a consecutive block of rows for the horizontal
     // scale, synchronizes with the others, then handles a consecutive block of
@@ -521,8 +515,6 @@ static void* sc_task(void* arg)
 
     apply_vk(&shared->in, shared->dst, &shared->vk, priv->vy_low, priv->vy_high,
              shared->xoff, shared->alpha);
-
-    return NULL;
 }
 
 static void render_nn(size_t threads, const struct pixmap* src,
@@ -565,7 +557,7 @@ static void render_nn(size_t threads, const struct pixmap* src,
         task_priv[i].y_low = row;
         row += len;
         task_priv[i].y_high = row;
-        pthread_create(&task_priv[i].id, NULL, nn_task, &task_priv[i]);
+        tpool_add_task(nn_task, &task_priv[i]);
     }
     struct task_nn_priv task_first = {
         .shared = &task_shared,
@@ -575,9 +567,7 @@ static void render_nn(size_t threads, const struct pixmap* src,
 
     nn_task(&task_first);
 
-    for (size_t i = 0; i < threads; ++i) {
-        pthread_join(task_priv[i].id, NULL);
-    }
+    tpool_wait();
 
     free(task_priv);
 }
@@ -618,7 +608,7 @@ static void render_aa(enum aa_mode scaler, size_t threads,
         vrow += vlen;
         task_priv[i].hy_high = hrow;
         task_priv[i].vy_high = vrow;
-        pthread_create(&task_priv[i].id, NULL, sc_task, &task_priv[i]);
+        tpool_add_task(sc_task, &task_priv[i]);
     }
     struct task_sc_priv task_first = {
         .shared = &task_shared,
@@ -630,9 +620,7 @@ static void render_aa(enum aa_mode scaler, size_t threads,
 
     sc_task(&task_first);
 
-    for (size_t i = 0; i < threads; ++i) {
-        pthread_join(task_priv[i].id, NULL);
-    }
+    tpool_wait();
 
     free(task_priv);
     free_kernel(&task_shared.hk);
@@ -655,22 +643,12 @@ void software_render(enum aa_mode scaler, const struct pixmap* src,
         return; // out of destination
     }
 
-    // get number of active CPUs
-    static size_t cpu_num = 0;
-    if (cpu_num == 0) {
-        int32_t cpus = 0;
-#ifdef __FreeBSD__
-        size_t cpus_len = sizeof(cpus);
-        sysctlbyname("hw.ncpu", &cpus, &cpus_len, NULL, 0);
-#else
-        cpus = sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-        cpu_num = cpus > 0 ? cpus : 1;
-    }
-
     // get number of background rendering threads: 1 thread per 100,000 px
     const size_t max_threads = width * height / 100000;
-    const size_t bthreads = clamp(cpu_num - 1, 0, max_threads);
+    size_t bthreads = tpool_threads();
+    if (bthreads) {
+        bthreads = clamp(bthreads - 1, 0, max_threads);
+    }
 
     if (scaler == aa_nearest) {
         render_nn(bthreads, src, dst, x, y, scale, alpha);
