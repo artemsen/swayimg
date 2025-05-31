@@ -47,7 +47,8 @@ const char* aa_name(enum aa_mode aa);
  * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
  * @param alpha flag to use alpha channel (ignore otherwise)
+ * @param mt flag to use multithreaded rendering
  */
 void software_render(enum aa_mode scaler, const struct pixmap* src,
                      struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                     bool alpha);
+                     bool alpha, bool mt);

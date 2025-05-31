@@ -800,8 +800,8 @@ static void draw_image(struct pixmap* wnd)
     }
 
     // put image on window surface
-    image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, ctx.img_x,
-                 ctx.img_y, wnd);
+    image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, true,
+                 ctx.img_x, ctx.img_y, wnd);
 
     // clear window background
     pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,

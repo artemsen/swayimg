@@ -162,11 +162,13 @@ bool image_export(const struct image* img, size_t frame, const char* path);
  * @param frame frame index
  * @param scaler scale filter to use
  * @param scale scale of the image
+ * @param mt flag to use multithreaded rendering
  * @param x,y destination left top coordinates
  * @param dst destination pixmap
  */
 void image_render(struct image* img, size_t frame, enum aa_mode scaler,
-                  double scale, ssize_t x, ssize_t y, struct pixmap* dst);
+                  double scale, bool mt, ssize_t x, ssize_t y,
+                  struct pixmap* dst);
 
 /**
  * Check if image has frame data.

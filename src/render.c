@@ -634,8 +634,10 @@ static void render_aa(enum aa_mode scaler, size_t threads,
 
 void software_render(enum aa_mode scaler, const struct pixmap* src,
                      struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                     bool alpha)
+                     bool alpha, bool mt)
 {
+    size_t threads = 0;
+
     // get size of rendered area
     const ssize_t width =
         min((ssize_t)dst->width, (ssize_t)(x + scale * src->width)) - max(0, x);
@@ -647,16 +649,18 @@ void software_render(enum aa_mode scaler, const struct pixmap* src,
         return; // out of destination
     }
 
-    // get number of background rendering threads: 1 thread per 100,000 px
-    const size_t max_threads = width * height / 100000;
-    size_t bthreads = tpool_threads();
-    if (bthreads) {
-        bthreads = clamp(bthreads - 1, 0, max_threads);
+    if (mt) {
+        threads = tpool_threads();
+        if (threads) {
+            // background rendering threads: 1 thread per 100,000 px
+            const size_t max_threads = width * height / 100000;
+            threads = clamp(threads - 1, 0, max_threads);
+        }
     }
 
     if (scaler == aa_nearest) {
-        render_nn(bthreads, src, dst, x, y, scale, alpha);
+        render_nn(threads, src, dst, x, y, scale, alpha);
     } else {
-        render_aa(scaler, bthreads, src, dst, x, y, scale, alpha);
+        render_aa(scaler, threads, src, dst, x, y, scale, alpha);
     }
 }

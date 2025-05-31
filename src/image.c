@@ -177,7 +177,8 @@ bool image_export(const struct image* img, size_t frame, const char* path)
 }
 
 void image_render(struct image* img, size_t frame, enum aa_mode scaler,
-                  double scale, ssize_t x, ssize_t y, struct pixmap* dst)
+                  double scale, bool mt, ssize_t x, ssize_t y,
+                  struct pixmap* dst)
 {
     if (img->data->decoder.render) {
         // image specific renderer
@@ -190,7 +191,7 @@ void image_render(struct image* img, size_t frame, enum aa_mode scaler,
             pixmap_copy(&iframe->pm, dst, x, y, img->data->alpha);
         } else {
             software_render(scaler, &iframe->pm, dst, x, y, scale,
-                            img->data->alpha);
+                            img->data->alpha, mt);
         }
     }
 }
@@ -280,7 +281,7 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
     }
 
     if (pixmap_create(&img->data->thumbnail, thumb_width, thumb_height)) {
-        image_render(img, 0, aa_mode, scale, offset_x, offset_y,
+        image_render(img, 0, aa_mode, scale, false, offset_x, offset_y,
                      &img->data->thumbnail);
     }
 

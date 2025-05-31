@@ -404,7 +404,7 @@ static void draw_thumbnail(struct pixmap* window,
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
             software_render(ctx.thumb_aa, pm, window, tx, ty,
-                            THUMB_SELECTED_SCALE, lth->img->data->alpha);
+                            THUMB_SELECTED_SCALE, lth->img->data->alpha, false);
         }
 
         // shadow

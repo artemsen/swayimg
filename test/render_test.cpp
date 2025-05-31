@@ -16,9 +16,9 @@ protected:
         pixmap_create(&full, src.width * scale, src.height * scale);
         pixmap_create(&dst1, w, h);
         pixmap_create(&dst2, w, h);
-        software_render(scaler, &src, &full, 0, 0, scale, false);
+        software_render(scaler, &src, &full, 0, 0, scale, false, false);
         pixmap_copy(&full, &dst1, x, y, false);
-        software_render(scaler, &src, &dst2, x, y, scale, false);
+        software_render(scaler, &src, &dst2, x, y, scale, false, false);
         Compare(dst2, dst1.data);
         pixmap_free(&full);
         pixmap_free(&dst1);

@@ -183,7 +183,7 @@ TEST_F(Image, Load_svg)
     Load(TEST_DATA_DIR "/image.svg");
     struct pixmap* pm =
         &static_cast<struct imgframe*>(arr_nth(image->data->frames, 0))->pm;
-    image_render(image, 0, aa_nearest, 1.0, 0, 0, pm);
+    image_render(image, 0, aa_nearest, 1.0, false, 0, 0, pm);
 }
 #endif
 
