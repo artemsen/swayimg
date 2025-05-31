@@ -7,10 +7,16 @@ extern "C" {
 
 #include <gtest/gtest.h>
 
-static size_t test_value = 42;
-static void callback(void* data)
+static size_t worker_value = 42;
+static void worker(void* data)
 {
-    test_value = data ? *reinterpret_cast<size_t*>(data) : 4242;
+    worker_value = data ? *reinterpret_cast<size_t*>(data) : 4242;
+}
+
+static size_t deleter_value = 24;
+static void deleter(void* data)
+{
+    deleter_value = data ? *reinterpret_cast<size_t*>(data) : 2424;
 }
 
 TEST(ThreadPool, Test)
@@ -19,13 +25,14 @@ TEST(ThreadPool, Test)
 
     EXPECT_GE(tpool_threads(), static_cast<size_t>(1));
 
-    size_t new_val = 1234567890;
-    tpool_add_task(&callback, &new_val);
+    size_t data = 1234567890;
+    tpool_add_task(&worker, &deleter, &data);
 
     tpool_wait();
     tpool_cancel();
 
-    EXPECT_EQ(test_value, new_val);
+    EXPECT_EQ(worker_value, data);
+    EXPECT_EQ(deleter_value, data);
 
     tpool_destroy();
 }

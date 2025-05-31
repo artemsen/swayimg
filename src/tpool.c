@@ -21,7 +21,8 @@
 
 struct tpool_task {
     struct list list; ///< Links to prev/next entry
-    tpool_fn fn;      ///< Task handler
+    tpool_worker wfn; ///< Task handler
+    tpool_free ffn;   ///< Task-specific data deleter
     void* data;       ///< Task-specific data
 };
 
@@ -55,12 +56,15 @@ static void* worker(__attribute__((unused)) void* data)
         ++ctx.work;
         pthread_mutex_unlock(&ctx.lock);
 
-        if (task->fn) {
-            task->fn(task->data);
+        if (task->wfn) {
+            task->wfn(task->data);
         } else {
             alive = false;
         }
 
+        if (task->ffn) {
+            task->ffn(task->data);
+        }
         free(task);
 
         pthread_mutex_lock(&ctx.lock);
@@ -114,7 +118,7 @@ void tpool_destroy(void)
 {
     // send exit notification
     for (size_t i = 0; i < ctx.size; ++i) {
-        tpool_add_task(NULL, NULL);
+        tpool_add_task(NULL, NULL, NULL);
     }
     // wait for threads exit
     for (size_t i = 0; i < ctx.size; ++i) {
@@ -132,11 +136,12 @@ size_t tpool_threads(void)
     return ctx.size;
 }
 
-void tpool_add_task(tpool_fn fn, void* data)
+void tpool_add_task(tpool_worker wfn, tpool_free ffn, void* data)
 {
     struct tpool_task* task = malloc(sizeof(struct tpool_task));
     if (task) {
-        task->fn = fn;
+        task->wfn = wfn;
+        task->ffn = ffn;
         task->data = data;
         pthread_mutex_lock(&ctx.lock);
         ctx.queue = list_append(ctx.queue, task);
@@ -147,12 +152,17 @@ void tpool_add_task(tpool_fn fn, void* data)
 
 void tpool_cancel(void)
 {
-    pthread_mutex_lock(&ctx.lock);
-    list_for_each(ctx.queue, struct tpool_task, it) {
-        free(it);
+    if (ctx.queue) {
+        pthread_mutex_lock(&ctx.lock);
+        list_for_each(ctx.queue, struct tpool_task, it) {
+            if (it->ffn) {
+                it->ffn(it->data);
+            }
+            free(it);
+        }
+        ctx.queue = NULL;
+        pthread_mutex_unlock(&ctx.lock);
     }
-    ctx.queue = NULL;
-    pthread_mutex_unlock(&ctx.lock);
 }
 
 void tpool_wait(void)

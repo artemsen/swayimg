@@ -10,7 +10,13 @@
  * Function to handle a task.
  * @param data pointer to task-specific data
  */
-typedef void (*tpool_fn)(void* data);
+typedef void (*tpool_worker)(void* data);
+
+/**
+ * Function to free task-specific data.
+ * @param data pointer to task-specific data
+ */
+typedef void (*tpool_free)(void* data);
 
 /**
  * Initialize global thread pool context.
@@ -30,10 +36,11 @@ size_t tpool_threads(void);
 
 /**
  * Add task to execution queue.
- * @param fn function to handle a task
+ * @param wfn work function to handle a task
+ * @param ffn function to free task-specific data
  * @param data pointer to task-specific data
  */
-void tpool_add_task(tpool_fn fn, void* data);
+void tpool_add_task(tpool_worker wfn, tpool_free ffn, void* data);
 
 /**
  * Cancel all pending tasks (clear execution queue).

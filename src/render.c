@@ -557,7 +557,7 @@ static void render_nn(size_t threads, const struct pixmap* src,
         task_priv[i].y_low = row;
         row += len;
         task_priv[i].y_high = row;
-        tpool_add_task(nn_task, &task_priv[i]);
+        tpool_add_task(nn_task, NULL, &task_priv[i]);
     }
     struct task_nn_priv task_first = {
         .shared = &task_shared,
@@ -567,7 +567,9 @@ static void render_nn(size_t threads, const struct pixmap* src,
 
     nn_task(&task_first);
 
-    tpool_wait();
+    if (threads) {
+        tpool_wait();
+    }
 
     free(task_priv);
 }
@@ -608,7 +610,7 @@ static void render_aa(enum aa_mode scaler, size_t threads,
         vrow += vlen;
         task_priv[i].hy_high = hrow;
         task_priv[i].vy_high = vrow;
-        tpool_add_task(sc_task, &task_priv[i]);
+        tpool_add_task(sc_task, NULL, &task_priv[i]);
     }
     struct task_sc_priv task_first = {
         .shared = &task_shared,
@@ -620,7 +622,9 @@ static void render_aa(enum aa_mode scaler, size_t threads,
 
     sc_task(&task_first);
 
-    tpool_wait();
+    if (threads) {
+        tpool_wait();
+    }
 
     free(task_priv);
     free_kernel(&task_shared.hk);
