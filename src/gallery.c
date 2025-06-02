@@ -212,25 +212,34 @@ static void thumb_load(void* data)
     struct image* img = data;
     struct image* origin;
 
-    // check if we can create thumbnail from exisiting origin
+    // check if thumbnail already loaded by another thread
     imglist_lock();
     origin = imglist_find(img->source);
-    if (origin &&
-        (image_thumb_get(origin) ||
-         image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
-                            ctx.thumb_aa))) {
+    if (!origin || image_thumb_get(origin)) {
+        imglist_unlock();
+        return;
+    }
+    // try to create from existing frame data
+    if (image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
+                           ctx.thumb_aa)) {
+        if (ctx.thumb_pstore) {
+            pstore_save(origin);
+        }
         imglist_unlock();
         app_redraw();
         return;
     }
     imglist_unlock();
 
-    // load thumbnail
-    if (!ctx.thumb_pstore || !pstore_load(img)) {
-        if (image_load(img) == imgload_success) {
-            if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
-                                   ctx.thumb_aa) &&
-                ctx.thumb_pstore) {
+    // try to load from persistent storage
+    if (ctx.thumb_pstore) {
+        pstore_load(img);
+    }
+    // load entire image and convert it to thumbnail
+    if (!image_thumb_get(img) && image_load(img) == imgload_success) {
+        if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
+                               ctx.thumb_aa)) {
+            if (ctx.thumb_pstore) {
                 // save to thumbnail to persistent storage
                 struct imgframe* frame = arr_nth(img->data->frames, 0);
                 if (frame->pm.width > ctx.layout.thumb_size &&
@@ -238,8 +247,8 @@ static void thumb_load(void* data)
                     pstore_save(img);
                 }
             }
-            image_free(img, IMGDATA_FRAMES); // not needed anymore
         }
+        image_free(img, IMGDATA_FRAMES); // not needed anymore
     }
 
     // put thumbnail to image list
