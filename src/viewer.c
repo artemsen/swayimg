@@ -230,74 +230,46 @@ static void fixup_position(bool force)
     const ssize_t img_width = ctx.scale * frame->pm.width;
     const ssize_t img_height = ctx.scale * frame->pm.height;
 
-    if (img_width <= wnd_width) {
+    if (force) {
         switch (ctx.position) {
             case position_free:
-                if (force) {
-                    ctx.img_x = wnd_width / 2 - img_width / 2;
-                }
+                ctx.img_x = wnd_width / 2 - img_width / 2;
+                ctx.img_y = wnd_height / 2 - img_height / 2;
                 break;
             case position_top:
                 ctx.img_x = wnd_width / 2 - img_width / 2;
-                break;
-            case position_center:
-                ctx.img_x = wnd_width / 2 - img_width / 2;
-                break;
-            case position_bottom:
-                ctx.img_x = wnd_width / 2 - img_width / 2;
-                break;
-            case position_left:
-                ctx.img_x = 0;
-                break;
-            case position_right:
-                ctx.img_x = wnd_width - img_width;
-                break;
-            case position_top_left:
-                ctx.img_x = 0;
-                break;
-            case position_top_right:
-                ctx.img_x = wnd_width - img_width;
-                break;
-            case position_bottom_left:
-                ctx.img_x = 0;
-                break;
-            case position_bottom_right:
-                ctx.img_x = wnd_width - img_width;
-                break;
-        }
-    }
-    if (img_height <= wnd_height) {
-        switch (ctx.position) {
-            case position_free:
-                if (force) {
-                    ctx.img_y = wnd_height / 2 - img_height / 2;
-                }
-                break;
-            case position_top:
                 ctx.img_y = 0;
                 break;
             case position_center:
+                ctx.img_x = wnd_width / 2 - img_width / 2;
                 ctx.img_y = wnd_height / 2 - img_height / 2;
                 break;
             case position_bottom:
+                ctx.img_x = wnd_width / 2 - img_width / 2;
                 ctx.img_y = wnd_height - img_height;
                 break;
             case position_left:
+                ctx.img_x = 0;
                 ctx.img_y = wnd_height / 2 - img_height / 2;
                 break;
             case position_right:
+                ctx.img_x = wnd_width - img_width;
                 ctx.img_y = wnd_height / 2 - img_height / 2;
                 break;
             case position_top_left:
+                ctx.img_x = 0;
                 ctx.img_y = 0;
                 break;
             case position_top_right:
+                ctx.img_x = wnd_width - img_width;
                 ctx.img_y = 0;
                 break;
             case position_bottom_left:
+                ctx.img_x = 0;
                 ctx.img_y = wnd_height - img_height;
                 break;
             case position_bottom_right:
+                ctx.img_x = wnd_width - img_width;
                 ctx.img_y = wnd_height - img_height;
                 break;
         }
