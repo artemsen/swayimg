@@ -98,7 +98,7 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
 void pstore_save(const struct image* img)
 {
     char path[PATH_MAX] = { 0 };
-    char* delim;
+    char* tmp;
 
     if (!image_thumb_get(img)) {
         return;
@@ -109,20 +109,29 @@ void pstore_save(const struct image* img)
     }
 
     // create path
-    delim = path;
+    tmp = path;
     while (true) {
-        delim = strchr(delim + 1, '/');
-        if (!delim) {
+        tmp = strchr(tmp + 1, '/');
+        if (!tmp) {
             break;
         }
-        *delim = '\0';
+        *tmp = '\0';
         if (mkdir(path, S_IRWXU | S_IRWXG) && errno != EEXIST) {
             return;
         }
-        *delim = '/';
+        *tmp = '/';
     }
 
-    image_thumb_save(img, path);
+    // export thumbnail to file, exporting to png is slow so we use a temporary
+    // file to prevent incomplete export from being used in other threads
+    tmp = str_dup(path, NULL);
+    if (tmp && str_append(".tmp", 0, &tmp)) {
+        image_thumb_save(img, tmp);
+        rename(tmp, path);
+    } else {
+        image_thumb_save(img, path);
+    }
+    free(tmp);
 }
 
 /**
