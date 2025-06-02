@@ -22,9 +22,10 @@ protected:
     {
         image = image_create(file);
         ASSERT_TRUE(image);
+        ASSERT_TRUE(image->name);
+        ASSERT_TRUE(image->source);
         ASSERT_EQ(image_load(image), imgload_success);
 
-        ASSERT_TRUE(image->name);
         ASSERT_TRUE(image->data);
         ASSERT_TRUE(image->data->parent);
         ASSERT_TRUE(image->data->format);

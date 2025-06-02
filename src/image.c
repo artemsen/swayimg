@@ -26,6 +26,14 @@ struct image* image_create(const char* source)
     if (img) {
         img->source = (char*)img + sizeof(struct image);
         memcpy(img->source, source, len);
+
+        // set name pointer
+        if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
+            strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+            img->name = img->source;
+        } else {
+            img->name = fs_name(img->source);
+        }
     }
 
     return img;
@@ -153,14 +161,6 @@ void image_attach(struct image* img, struct image* from)
     }
 
     dst->alpha = src->alpha;
-
-    // update name
-    if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
-        strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
-        img->name = img->source;
-    } else {
-        img->name = fs_name(img->source);
-    }
 }
 
 bool image_export(const struct image* img, size_t frame, const char* path)

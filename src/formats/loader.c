@@ -202,13 +202,11 @@ static enum image_status load_from_memory(struct image* img,
         if (strcmp(img->source, LDRSRC_STDIN) == 0 ||
             strncmp(img->source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
             // special url
-            img->name = img->source;
             str_dup("", &img->data->parent);
         } else {
             // filesystem path
             size_t parent_len;
             const char* parent;
-            img->name = fs_name(img->source);
             parent = fs_parent(img->source, &parent_len);
             if (parent) {
                 str_append(parent, parent_len, &img->data->parent);
