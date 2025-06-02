@@ -4,10 +4,15 @@
 
 #include "png.h"
 
+#include <errno.h>
+#include <fcntl.h>
 #include <png.h>
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // PNG memory reader
 struct mem_reader {
@@ -17,7 +22,7 @@ struct mem_reader {
 };
 
 // PNG reader callback, see `png_rw_ptr` in png.h
-static void png_reader(png_structp png, png_bytep buffer, size_t size)
+static void mem_reader(png_structp png, png_bytep buffer, size_t size)
 {
     struct mem_reader* reader = (struct mem_reader*)png_get_io_ptr(png);
     if (reader && reader->position + size < reader->size) {
@@ -26,6 +31,71 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
     } else {
         png_error(png, "No data in PNG reader");
     }
+}
+
+// PNG writer callback, see `png_rw_ptr` in png.h
+static void mem_writer(png_structp png, png_bytep buffer, size_t size)
+{
+    int fd = *(int*)png_get_io_ptr(png);
+    while (size) {
+        const ssize_t rcv = write(fd, buffer, size);
+        if (rcv == -1) {
+            if (errno != EINTR) {
+                return;
+            }
+            continue;
+        }
+        size -= rcv;
+        buffer = ((uint8_t*)buffer) + rcv;
+    }
+}
+
+// PNG flusher callback, see `png_flush_ptr` in png.h
+static void flush_stub(__attribute__((unused)) png_structp png) { }
+
+/**
+ * Create and lock file.
+ * @param path path to the file
+ * @return file descriptor or error code < 0
+ */
+static int create_locked(const char* path)
+{
+    const struct flock lock = {
+        .l_type = F_WRLCK,
+        .l_whence = SEEK_SET,
+        .l_pid = getpid(),
+    };
+    int fd;
+
+    // open and lock file
+    fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+    if (fd == -1) {
+        return -errno;
+    }
+
+    if (fcntl(fd, F_SETLK, &lock) == -1) {
+        const int rc = -errno;
+        close(fd);
+        fd = rc;
+    }
+
+    return fd;
+}
+
+/**
+ * Unlock and close file.
+ * @param fd file descriptor
+ */
+static void close_locked(int fd)
+{
+    const struct flock unlock = {
+        .l_type = F_UNLCK,
+        .l_whence = SEEK_SET,
+        .l_pid = getpid(),
+    };
+
+    fcntl(fd, F_SETLK, &unlock);
+    close(fd);
 }
 
 /**
@@ -231,8 +301,8 @@ static bool decode_multiple(struct imgdata* img, png_struct* png,
 enum image_status decode_png(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
-    png_struct* png = NULL;
-    png_info* info = NULL;
+    png_struct* png;
+    png_info* info;
     png_byte color_type, bit_depth;
     bool rc;
 
@@ -265,7 +335,7 @@ enum image_status decode_png(struct imgdata* img, const uint8_t* data,
     }
 
     // get general image info
-    png_set_read_fn(png, &reader, &png_reader);
+    png_set_read_fn(png, &reader, &mem_reader);
     png_read_info(png, info);
     color_type = png_get_color_type(png, info);
     bit_depth = png_get_bit_depth(png, info);
@@ -328,40 +398,48 @@ enum image_status decode_png(struct imgdata* img, const uint8_t* data,
     return rc ? imgload_success : imgload_fmterror;
 }
 
-bool export_png(const struct pixmap* pm, const struct array* info,
-                const char* path)
+int export_png(const struct pixmap* pm, const struct array* info,
+               const char* path)
 {
-    png_struct* png = NULL;
-    png_info* png_inf = NULL;
-    png_bytep* bind = NULL;
-    FILE* file;
+    png_struct* png;
+    png_info* png_inf;
+    png_bytep* bind;
+    int fd;
 
-    file = fopen(path, "wb");
-    if (!file) {
-        return false;
+    // open and lock file
+    fd = create_locked(path);
+    if (fd < 0) {
+        return -fd;
     }
 
     // create encoder
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fclose(file);
-        return false;
+        close_locked(fd);
+        return EFAULT;
     }
     png_inf = png_create_info_struct(png);
     if (!png_inf) {
+        close_locked(fd);
         png_destroy_write_struct(&png, NULL);
-        fclose(file);
-        return false;
+        return EFAULT;
+    }
+
+    // bind buffer with image
+    bind = bind_pixmap(pm);
+    if (!bind) {
+        close_locked(fd);
+        png_destroy_write_struct(&png, &png_inf);
+        return ENOMEM;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
+        close_locked(fd);
         png_destroy_write_struct(&png, &png_inf);
-        fclose(file);
-        return false;
+        free(bind);
+        return EILSEQ;
     }
-
-    png_init_io(png, file);
 
     // setup output: 8bit RGBA
     png_set_IHDR(png, png_inf, pm->width, pm->height, 8,
@@ -383,22 +461,16 @@ bool export_png(const struct pixmap* pm, const struct array* info,
         }
     }
 
+    // encode png
+    png_set_write_fn(png, &fd, &mem_writer, &flush_stub);
     png_write_info(png, png_inf);
-
-    // encode image
-    bind = bind_pixmap(pm);
-    if (!bind) {
-        png_destroy_write_struct(&png, &png_inf);
-        fclose(file);
-        return false;
-    }
     png_write_image(png, bind);
     png_write_end(png, NULL);
 
     // free resources
+    close_locked(fd);
     png_destroy_write_struct(&png, &png_inf);
     free(bind);
-    fclose(file);
 
-    return true;
+    return 0;
 }

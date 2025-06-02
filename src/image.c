@@ -167,7 +167,7 @@ bool image_export(const struct image* img, size_t frame, const char* path)
 {
 #ifdef HAVE_LIBPNG
     struct imgframe* fr = arr_nth(img->data->frames, frame);
-    return fr && export_png(&fr->pm, NULL, path);
+    return fr && export_png(&fr->pm, NULL, path) == 0;
 #else
     (void)img;
     (void)frame;
@@ -315,7 +315,7 @@ bool image_thumb_save(const struct image* img, const char* path)
 {
 #ifdef HAVE_LIBPNG
     assert(image_thumb_get(img));
-    return export_png(&img->data->thumbnail, img->data->info, path);
+    return export_png(&img->data->thumbnail, img->data->info, path) == 0;
 #else
     (void)img;
     (void)path;
