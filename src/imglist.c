@@ -60,6 +60,32 @@ struct image_list {
 static struct image_list ctx;
 
 /**
+ * Numeric compare.
+ * @param str0,str1 strings to compare
+ * @return compare result
+ */
+static inline int compare_numeric(const char* str0, const char* str1)
+{
+    int rc = 0;
+
+    while (rc == 0 && *str0 && *str1) {
+        if (isdigit(*str0) && isdigit(*str1)) {
+            char* end0;
+            char* end1;
+            rc = strtoull(str0, &end0, 10) - strtoull(str1, &end1, 10);
+            str0 = end0;
+            str1 = end1;
+        } else {
+            rc = *str0 - *str1;
+            ++str0;
+            ++str1;
+        }
+    }
+
+    return rc;
+}
+
+/**
  * Compare two image instances.
  * @param ppi0,ppi1 pointers to pointers to image instances
  * @return compare result
@@ -68,26 +94,43 @@ static int compare(const void* ppi0, const void* ppi1)
 {
     const struct image* img0 = *(const struct image* const*)ppi0;
     const struct image* img1 = *(const struct image* const*)ppi1;
+    const char* src0 = img0->source;
+    const char* src1 = img1->source;
+    const char* parent0 = strrchr(src0, '/');
+    const char* parent1 = strrchr(src1, '/');
+    const size_t plen0 = parent0 ? parent0 - src0 : 0;
+    const size_t plen1 = parent1 ? parent1 - src1 : 0;
+    char path0[PATH_MAX], path1[PATH_MAX];
     int rc = 0;
+
+    // compare parent directories to prevent mix with files
+    if (plen0 && plen0 < sizeof(path0) && plen1 && plen1 < sizeof(path1)) {
+        memcpy(path0, src0, plen0);
+        path0[plen0] = 0;
+        memcpy(path1, src1, plen1);
+        path1[plen1] = 0;
+
+        if (ctx.order == order_numeric) {
+            rc = compare_numeric(path0, path1);
+        } else {
+            rc = strcoll(path0, path1);
+        }
+        if (rc) {
+            return ctx.reverse ? -rc : rc;
+        }
+
+        // skip parent from compare
+        src0 += plen0;
+        src1 += plen1;
+    }
 
     switch (ctx.order) {
         case order_alpha:
-            rc = strcoll(img0->source, img1->source);
+            rc = strcoll(src0, src1);
             break;
-        case order_numeric: {
-            const char* src0 = img0->source;
-            const char* src1 = img1->source;
-            while (rc == 0 && *src0 && *src1) {
-                if (isdigit(*src0) && isdigit(*src1)) {
-                    rc = strtoull(src0, (char**)&src0, 10) -
-                        strtoull(src1, (char**)&src1, 10);
-                } else {
-                    rc = *src0 - *src1;
-                    ++src0;
-                    ++src1;
-                }
-            }
-        } break;
+        case order_numeric:
+            rc = compare_numeric(src0, src1);
+            break;
         case order_mtime:
             rc = img1->file_time - img0->file_time;
             break;
@@ -100,11 +143,7 @@ static int compare(const void* ppi0, const void* ppi1)
             break;
     }
 
-    if (ctx.reverse) {
-        rc = -rc;
-    }
-
-    return rc;
+    return ctx.reverse ? -rc : rc;
 }
 
 /**
