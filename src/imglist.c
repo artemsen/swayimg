@@ -287,7 +287,8 @@ static struct image* add_entry(const char* source, const struct stat* st,
  */
 static struct image* add_dir(const char* dir, bool ordered)
 {
-    struct image* img = NULL;
+    struct image* first = NULL;
+    struct image* subdir = NULL;
     struct dirent* dir_entry;
     DIR* dir_handle;
 
@@ -313,11 +314,19 @@ static struct image* add_dir(const char* dir, bool ordered)
         if (stat(path, &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
                 if (ctx.recursive) {
+                    struct image* added;
                     fs_append_path(NULL, path, sizeof(path)); // append slash
-                    img = add_dir(path, ordered);
+                    added = add_dir(path, ordered);
+                    if (!first && added &&
+                        (!subdir || compare(&added, &subdir) < 0)) {
+                        subdir = added;
+                    }
                 }
             } else if (S_ISREG(st.st_mode)) {
-                img = add_entry(path, &st, ordered);
+                struct image* added = add_entry(path, &st, ordered);
+                if (added && (!first || compare(&added, &first) < 0)) {
+                    first = added;
+                }
             }
         }
     }
@@ -326,7 +335,7 @@ static struct image* add_dir(const char* dir, bool ordered)
 
     closedir(dir_handle);
 
-    return img;
+    return first ? first : subdir;
 }
 
 /**
