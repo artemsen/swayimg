@@ -310,7 +310,7 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     }
 
     // render to pixmap that will be used in the export action
-    pm = image_alloc_frame(img, canvas.width, canvas.height);
+    pm = image_alloc_frame(img, pixmap_argb, canvas.width, canvas.height);
     if (!pm) {
         return imgload_fmterror;
     }
@@ -321,7 +321,6 @@ enum image_status decode_svg(struct imgdata* img, const uint8_t* data,
     get_real_size(rsvg, real_width, sizeof(real_width) - 1, real_height,
                   sizeof(real_height) - 1);
     image_add_info(img, "SVG size", "%s x %s", real_width, real_height);
-    img->alpha = true;
 
     return imgload_success;
 }

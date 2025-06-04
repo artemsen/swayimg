@@ -58,7 +58,8 @@ enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    pm = image_alloc_frame(img, jpg.output_width, jpg.output_height);
+    pm = image_alloc_frame(img, pixmap_xrgb, jpg.output_width,
+                           jpg.output_height);
     if (!pm) {
         jpeg_destroy_decompress(&jpg);
         return imgload_fmterror;

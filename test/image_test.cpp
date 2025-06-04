@@ -151,7 +151,8 @@ TEST_F(Image, AllocFrame)
     image = image_create("file");
     image->data = static_cast<struct imgdata*>(calloc(1, sizeof(*image->data)));
 
-    const struct pixmap* pm = image_alloc_frame(image->data, 123, 456);
+    const struct pixmap* pm =
+        image_alloc_frame(image->data, pixmap_argb, 123, 456);
     ASSERT_TRUE(image->data->frames);
     ASSERT_EQ(image->data->frames->size, static_cast<size_t>(1));
     ASSERT_EQ(pm, arr_nth(image->data->frames, 0));

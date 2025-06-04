@@ -29,7 +29,7 @@ enum image_status decode_sixel(struct imgdata* img, const uint8_t* data,
         return imgload_unsupported;
     }
 
-    pm = image_alloc_frame(img, width, height);
+    pm = image_alloc_frame(img, pixmap_xrgb, width, height);
     if (!pm) {
         free(pixels);
         free(palette);

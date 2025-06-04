@@ -41,14 +41,12 @@ const char* aa_name(enum aa_mode aa);
 
 /**
  * Render scaled pixmap.
- * @param scaler scale filter to use
  * @param src source pixmap
  * @param dst destination pixmap
  * @param x,y destination left top coordinates
  * @param scale scale of source pixmap
- * @param alpha flag to use alpha channel (ignore otherwise)
+ * @param scaler scale filter to use (anti-aliasing mode)
  * @param mt flag to use multithreaded rendering
  */
-void software_render(enum aa_mode scaler, const struct pixmap* src,
-                     struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                     bool alpha, bool mt);
+void software_render(const struct pixmap* src, struct pixmap* dst, ssize_t x,
+                     ssize_t y, double scale, enum aa_mode scaler, bool mt);

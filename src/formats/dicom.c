@@ -236,7 +236,7 @@ enum image_status decode_dicom(struct imgdata* img, const uint8_t* data,
     }
 
     // allocate image buffer
-    pm = image_alloc_frame(img, dicom.width, dicom.height);
+    pm = image_alloc_frame(img, pixmap_xrgb, dicom.width, dicom.height);
     if (!pm) {
         return imgload_fmterror;
     }

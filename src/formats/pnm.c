@@ -292,7 +292,7 @@ enum image_status decode_pnm(struct imgdata* img, const uint8_t* data,
         }
         ++it.pos;
     }
-    pm = image_alloc_frame(img, width, height);
+    pm = image_alloc_frame(img, pixmap_xrgb, width, height);
     if (!pm) {
         return imgload_fmterror;
     }

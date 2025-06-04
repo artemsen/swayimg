@@ -367,7 +367,7 @@ static void draw_thumbnail(struct pixmap* window,
         if (pm) {
             x += ctx.layout.thumb_size / 2 - pm->width / 2;
             y += ctx.layout.thumb_size / 2 - pm->height / 2;
-            pixmap_copy(pm, window, x, y, lth->img->data->alpha);
+            pixmap_copy(pm, window, x, y);
         }
     } else {
         // currently selected item
@@ -387,8 +387,8 @@ static void draw_thumbnail(struct pixmap* window,
             const size_t thumb_h = pm->height * THUMB_SELECTED_SCALE;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            software_render(ctx.thumb_aa, pm, window, tx, ty,
-                            THUMB_SELECTED_SCALE, lth->img->data->alpha, false);
+            software_render(pm, window, tx, ty, THUMB_SELECTED_SCALE,
+                            ctx.thumb_aa, false);
         }
 
         // shadow

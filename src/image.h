@@ -70,7 +70,6 @@ struct imgdec {
 struct imgdata {
     char* parent;            ///< Parent directory name
     char* format;            ///< Format description
-    bool alpha;              ///< Alpha channel
     struct array* frames;    ///< Frames (RGBA pixmaps)
     struct array* info;      ///< Meta info
     struct pixmap thumbnail; ///< Image thumbnail
@@ -265,8 +264,9 @@ struct array* image_alloc_frames(struct imgdata* img, size_t num);
 /**
  * Create single frame and allocate pixmap.
  * @param img image data container
+ * @param format pixmap format
  * @param width,height frame size in px
  * @return pointer to the pixmap associated with the frame, or NULL on errors
  */
-struct pixmap* image_alloc_frame(struct imgdata* img, size_t width,
-                                 size_t height);
+struct pixmap* image_alloc_frame(struct imgdata* img, enum pixmap_format format,
+                                 size_t width, size_t height);

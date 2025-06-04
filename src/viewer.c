@@ -761,7 +761,7 @@ static void draw_image(struct pixmap* wnd)
     const size_t height = ctx.scale * pm->height;
 
     // clear image background
-    if (ctx.current->data->alpha) {
+    if (frame->pm.format == pixmap_argb) {
         if (ctx.image_bkg == GRID_BKGID) {
             pixmap_grid(wnd, ctx.img_x, ctx.img_y, width, height, GRID_STEP,
                         GRID_COLOR1, GRID_COLOR2);

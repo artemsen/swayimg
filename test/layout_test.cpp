@@ -330,7 +330,7 @@ TEST_F(Layout, ClearAllInvisible)
     while (img) {
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(img->data);
-        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, 1, 1));
+        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, pixmap_argb, 1, 1));
         img = imglist_next(img);
     }
 
@@ -358,7 +358,7 @@ TEST_F(Layout, ClearLimited)
     while (img) {
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(img->data);
-        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, 1, 1));
+        ASSERT_TRUE(pixmap_create(&img->data->thumbnail, pixmap_argb, 1, 1));
         img = imglist_next(img);
     }
 

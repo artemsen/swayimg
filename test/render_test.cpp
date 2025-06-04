@@ -13,12 +13,13 @@ protected:
                    size_t h, float scale, ssize_t x, ssize_t y)
     {
         struct pixmap full, dst1, dst2;
-        pixmap_create(&full, src.width * scale, src.height * scale);
-        pixmap_create(&dst1, w, h);
-        pixmap_create(&dst2, w, h);
-        software_render(scaler, &src, &full, 0, 0, scale, false, false);
-        pixmap_copy(&full, &dst1, x, y, false);
-        software_render(scaler, &src, &dst2, x, y, scale, false, false);
+        pixmap_create(&full, pixmap_argb, src.width * scale,
+                      src.height * scale);
+        pixmap_create(&dst1, pixmap_argb, w, h);
+        pixmap_create(&dst2, pixmap_argb, w, h);
+        software_render(&src, &full, 0, 0, scale, scaler, false);
+        pixmap_copy(&full, &dst1, x, y);
+        software_render(&src, &dst2, x, y, scale, scaler, false);
         Compare(dst2, dst1.data);
         pixmap_free(&full);
         pixmap_free(&dst1);
@@ -37,7 +38,7 @@ TEST_F(RenderTest, ScaleCopyUp)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 0, 0);
 }
 
@@ -52,7 +53,7 @@ TEST_F(RenderTest, ScaleCopyUpNeg)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, -1, -1);
 }
 
@@ -67,7 +68,7 @@ TEST_F(RenderTest, ScaleCopyUpPos)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 2.0, 1, 1);
 }
 
@@ -82,7 +83,7 @@ TEST_F(RenderTest, ScaleCopyDown)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 0, 0);
 }
 
@@ -97,7 +98,7 @@ TEST_F(RenderTest, ScaleCopyDownNeg)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, -1, -1);
 }
 
@@ -112,6 +113,6 @@ TEST_F(RenderTest, ScaleCopyDownPos)
     };
     // clang-format on
 
-    const struct pixmap pm = { 4, 4, src };
+    const struct pixmap pm = { pixmap_argb, 4, 4, src };
     ScaleCopy(aa_bilinear, pm, 2, 2, 0.5, 1, 1);
 }

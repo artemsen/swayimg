@@ -64,7 +64,6 @@ struct task_nn_shared {
     uint8_t den_bits;         ///< Amount to shift for denominator
     ssize_t x;                ///< x offset in destination
     ssize_t y;                ///< y offset in destination
-    bool alpha;               ///< Use alpha channel?
 };
 
 /** Per-thread information for a nearest-neighbor scale. */
@@ -83,7 +82,6 @@ struct task_sc_shared {
     struct kernel vk;         ///< Vertical kernel
     size_t yoff;              ///< y offset (for horizontal kernel)
     size_t xoff;              ///< x offset (for vertical kernel)
-    bool alpha;               ///< Use alpha channel?
     size_t threads;           ///< Total number of threads
     size_t sync;              ///< Number of threads done with horizontal pass
     pthread_mutex_t m;        ///< Mutex to protect sync
@@ -331,9 +329,9 @@ static void new_named_kernel(enum aa_mode scaler, struct kernel* kernel,
 // needed by the vertical pass - yoff indicates where it begins in the source
 static void apply_hk(const struct pixmap* src, struct pixmap* dst,
                      const struct kernel* kernel, size_t y_low, size_t y_high,
-                     size_t yoff, bool alpha)
+                     size_t yoff)
 {
-    if (alpha) {
+    if (src->format == pixmap_argb) {
         // Although this duplicates some code (the loop over y and x), doing the
         // check for alpha outside gave better performance (likely due to fewer
         // instructions in the loop body or fewer branch mispredictions)
@@ -400,9 +398,9 @@ static void apply_hk(const struct pixmap* src, struct pixmap* dst,
 // needed - xoff indicates where it should go in the destination
 static void apply_vk(const struct pixmap* src, struct pixmap* dst,
                      const struct kernel* kernel, size_t y_low, size_t y_high,
-                     size_t xoff, bool alpha)
+                     size_t xoff)
 {
-    if (alpha) {
+    if (src->format == pixmap_argb) {
         for (size_t y = y_low; y < y_high; ++y) {
             argb_t* dst_line = &dst->data[(y + kernel->start_out) * dst->width];
             for (size_t x = 0; x < src->width; ++x) {
@@ -465,7 +463,7 @@ static void apply_vk(const struct pixmap* src, struct pixmap* dst,
 static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
                           size_t y_low, size_t y_high, size_t x_low,
                           size_t x_high, size_t num, uint8_t den_bits,
-                          ssize_t x, ssize_t y, bool alpha)
+                          ssize_t x, ssize_t y)
 {
     for (size_t dst_y = y_low; dst_y < y_high; ++dst_y) {
         const size_t src_y = ((dst_y - y) * num) >> den_bits;
@@ -475,7 +473,7 @@ static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
         for (size_t dst_x = x_low; dst_x < x_high; ++dst_x) {
             const size_t src_x = ((dst_x - x) * num) >> den_bits;
             const argb_t color = src_line[src_x];
-            if (alpha) {
+            if (src->format == pixmap_argb) {
                 alpha_blend(color, &dst_line[dst_x]);
             } else {
                 dst_line[dst_x] = ARGB_SET_A(0xff) | color;
@@ -491,7 +489,7 @@ static void nn_task(void* arg)
     struct task_nn_shared* shared = priv->shared;
     scale_nearest(shared->src, shared->dst, priv->y_low, priv->y_high,
                   shared->x_low, shared->x_high, shared->num, shared->den_bits,
-                  shared->x, shared->y, shared->alpha);
+                  shared->x, shared->y);
 }
 
 static void sc_task(void* arg)
@@ -503,7 +501,7 @@ static void sc_task(void* arg)
     struct task_sc_shared* shared = priv->shared;
 
     apply_hk(shared->src, &shared->in, &shared->hk, priv->hy_low, priv->hy_high,
-             shared->yoff, shared->alpha);
+             shared->yoff);
 
     pthread_mutex_lock(&shared->m);
     ++shared->sync;
@@ -514,12 +512,11 @@ static void sc_task(void* arg)
     pthread_mutex_unlock(&shared->m);
 
     apply_vk(&shared->in, shared->dst, &shared->vk, priv->vy_low, priv->vy_high,
-             shared->xoff, shared->alpha);
+             shared->xoff);
 }
 
 static void render_nn(size_t threads, const struct pixmap* src,
-                      struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                      bool alpha)
+                      struct pixmap* dst, ssize_t x, ssize_t y, double scale)
 {
     const size_t left = max(0, x);
     const size_t top = max(0, y);
@@ -544,7 +541,6 @@ static void render_nn(size_t threads, const struct pixmap* src,
         .den_bits = den_bits,
         .x = x,
         .y = y,
-        .alpha = alpha,
     };
 
     struct task_nn_priv* task_priv = NULL;
@@ -576,12 +572,11 @@ static void render_nn(size_t threads, const struct pixmap* src,
 
 static void render_aa(enum aa_mode scaler, size_t threads,
                       const struct pixmap* src, struct pixmap* dst, ssize_t x,
-                      ssize_t y, double scale, bool alpha)
+                      ssize_t y, double scale)
 {
     struct task_sc_shared task_shared = {
         .src = src,
         .dst = dst,
-        .alpha = alpha,
         .threads = threads + 1,
         .sync = 0,
         .m = PTHREAD_MUTEX_INITIALIZER,
@@ -590,7 +585,8 @@ static void render_aa(enum aa_mode scaler, size_t threads,
     new_named_kernel(scaler, &task_shared.hk, src->width, dst->width, x, scale);
     new_named_kernel(scaler, &task_shared.vk, src->height, dst->height, y,
                      scale);
-    pixmap_create(&task_shared.in, task_shared.hk.n_out, task_shared.vk.n_in);
+    pixmap_create(&task_shared.in, src->format, task_shared.hk.n_out,
+                  task_shared.vk.n_in);
     task_shared.yoff = task_shared.vk.start_in;
     task_shared.xoff = task_shared.hk.start_out;
 
@@ -632,9 +628,8 @@ static void render_aa(enum aa_mode scaler, size_t threads,
     pixmap_free(&task_shared.in);
 }
 
-void software_render(enum aa_mode scaler, const struct pixmap* src,
-                     struct pixmap* dst, ssize_t x, ssize_t y, double scale,
-                     bool alpha, bool mt)
+void software_render(const struct pixmap* src, struct pixmap* dst, ssize_t x,
+                     ssize_t y, double scale, enum aa_mode scaler, bool mt)
 {
     size_t threads = 0;
 
@@ -659,8 +654,8 @@ void software_render(enum aa_mode scaler, const struct pixmap* src,
     }
 
     if (scaler == aa_nearest) {
-        render_nn(threads, src, dst, x, y, scale, alpha);
+        render_nn(threads, src, dst, x, y, scale);
     } else {
-        render_aa(scaler, threads, src, dst, x, y, scale, alpha);
+        render_aa(scaler, threads, src, dst, x, y, scale);
     }
 }

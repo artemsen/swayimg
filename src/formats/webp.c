@@ -57,8 +57,8 @@ enum image_status decode_webp(struct imgdata* img, const uint8_t* data,
         struct imgframe* frame = arr_nth(img->frames, i);
         struct pixmap* pm = &frame->pm;
 
-        if (!pixmap_create(pm, webp_info.canvas_width,
-                           webp_info.canvas_height)) {
+        if (!pixmap_create(pm, prop.has_alpha ? pixmap_argb : pixmap_xrgb,
+                           webp_info.canvas_width, webp_info.canvas_height)) {
             goto fail;
         }
         if (!WebPAnimDecoderGetNext(webp_dec, &buffer, &timestamp)) {
@@ -91,7 +91,6 @@ enum image_status decode_webp(struct imgdata* img, const uint8_t* data,
     image_set_format(
         img, "WebP %s %s%s", prop.format == 1 ? "lossy" : "lossless",
         prop.has_alpha ? "+alpha" : "", prop.has_animation ? "+animation" : "");
-    img->alpha = prop.has_alpha;
 
     return imgload_success;
 

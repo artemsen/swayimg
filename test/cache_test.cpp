@@ -52,7 +52,7 @@ TEST_F(Cache, Put)
 
     for (size_t i = 0; i < imgnum; ++i) {
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
-        ASSERT_TRUE(image_alloc_frame(img->data, 1, 1));
+        ASSERT_TRUE(image_alloc_frame(img->data, pixmap_argb, 1, 1));
         ASSERT_TRUE(cache_put(cache, img));
         img = imglist_next(img);
     }
@@ -79,7 +79,7 @@ TEST_F(Cache, Trim)
 
     for (size_t i = 0; i < imgnum; ++i) {
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
-        ASSERT_TRUE(image_alloc_frame(img->data, 1, 1));
+        ASSERT_TRUE(image_alloc_frame(img->data, pixmap_argb, 1, 1));
         ASSERT_TRUE(cache_put(cache, img));
         img = imglist_next(img);
     }
@@ -106,7 +106,7 @@ TEST_F(Cache, Out)
     struct image* img = imglist_first();
     ASSERT_TRUE(img);
     img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
-    ASSERT_TRUE(image_alloc_frame(img->data, 1, 1));
+    ASSERT_TRUE(image_alloc_frame(img->data, pixmap_argb, 1, 1));
 
     EXPECT_TRUE(cache_put(cache, img));
 

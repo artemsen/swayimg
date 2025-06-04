@@ -57,7 +57,7 @@ static bool decode_frame(struct imgdata* img, GifFileType* gif, size_t index)
     if (ctl.DisposalMode == DISPOSE_PREVIOUS) {
         struct imgframe* next_frame = arr_nth(img->frames, index + 1);
         if (next_frame) {
-            pixmap_copy(&frame->pm, &next_frame->pm, 0, 0, false);
+            pixmap_copy(&frame->pm, &next_frame->pm, 0, 0);
         }
     }
 
@@ -81,7 +81,7 @@ static bool decode_frame(struct imgdata* img, GifFileType* gif, size_t index)
     if (ctl.DisposalMode == DISPOSE_DO_NOT) {
         struct imgframe* next_frame = arr_nth(img->frames, index + 1);
         if (next_frame) {
-            pixmap_copy(&frame->pm, &next_frame->pm, 0, 0, false);
+            pixmap_copy(&frame->pm, &next_frame->pm, 0, 0);
         }
     }
 
@@ -94,7 +94,7 @@ static bool decode_frame(struct imgdata* img, GifFileType* gif, size_t index)
     return true;
 }
 
-//  GIF loader implementation
+// GIF loader implementation
 enum image_status decode_gif(struct imgdata* img, const uint8_t* data,
                              size_t size)
 {
@@ -127,7 +127,8 @@ enum image_status decode_gif(struct imgdata* img, const uint8_t* data,
     }
     for (size_t i = 0; i < (size_t)gif->ImageCount; ++i) {
         struct imgframe* frame = arr_nth(img->frames, i);
-        if (!pixmap_create(&frame->pm, gif->SWidth, gif->SHeight)) {
+        if (!pixmap_create(&frame->pm, pixmap_argb, gif->SWidth,
+                           gif->SHeight)) {
             goto fail;
         }
     }
@@ -140,7 +141,6 @@ enum image_status decode_gif(struct imgdata* img, const uint8_t* data,
     }
 
     image_set_format(img, "GIF%s", gif->ImageCount > 1 ? " animation" : "");
-    img->alpha = true;
 
     DGifCloseFile(gif, NULL);
     return imgload_success;

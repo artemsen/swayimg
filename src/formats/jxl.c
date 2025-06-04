@@ -91,7 +91,9 @@ enum image_status decode_jxl(struct imgdata* img, const uint8_t* data,
                 img->frames = tmp;
                 frame = arr_nth(img->frames, img->frames->size - 1);
                 pm = &frame->pm;
-                if (!pixmap_create(pm, info.xsize, info.ysize)) {
+                if (!pixmap_create(pm,
+                                   info.alpha_bits ? pixmap_argb : pixmap_xrgb,
+                                   info.xsize, info.ysize)) {
                     status = JXL_DEC_ERROR;
                     goto done;
                 }
@@ -146,8 +148,6 @@ enum image_status decode_jxl(struct imgdata* img, const uint8_t* data,
     image_set_format(img, "JPEG XL %ubpp",
                      info.bits_per_sample * info.num_color_channels +
                          info.alpha_bits);
-    img->alpha = info.alpha_bits != 0;
-
 done:
     JxlDecoderDestroy(jxl);
     return status == JXL_DEC_SUCCESS ? imgload_success : imgload_fmterror;

@@ -119,7 +119,7 @@ enum image_status decode_tiff(struct imgdata* img, const uint8_t* data,
         goto fail;
     }
 
-    pm = image_alloc_frame(img, timg.width, timg.height);
+    pm = image_alloc_frame(img, pixmap_argb, timg.width, timg.height);
     if (!pm) {
         goto fail;
     }
@@ -138,7 +138,6 @@ enum image_status decode_tiff(struct imgdata* img, const uint8_t* data,
 
     image_set_format(img, "TIFF %dbpp",
                      timg.bitspersample * timg.samplesperpixel);
-    img->alpha = true;
 
     TIFFRGBAImageEnd(&timg);
     TIFFClose(tiff);

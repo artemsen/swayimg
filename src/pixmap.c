@@ -7,10 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool pixmap_create(struct pixmap* pm, size_t width, size_t height)
+bool pixmap_create(struct pixmap* pm, enum pixmap_format format, size_t width,
+                   size_t height)
 {
     argb_t* data = calloc(1, height * width * sizeof(argb_t));
     if (data) {
+        pm->format = format;
         pm->width = width;
         pm->height = height;
         pm->data = data;
@@ -186,7 +188,7 @@ void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
 }
 
 void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
-                 ssize_t y, bool alpha)
+                 ssize_t y)
 {
     const ssize_t left = max(0, x);
     const ssize_t top = max(0, y);
@@ -202,7 +204,7 @@ void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
         const argb_t* src_line = &src->data[src_y * src->width + delta_x];
         argb_t* dst_line = &dst->data[dst_y * dst->width + left];
 
-        if (alpha) {
+        if (src->format == pixmap_argb) {
             for (x = 0; x < dst_width; ++x) {
                 alpha_blend(src_line[x], &dst_line[x]);
             }

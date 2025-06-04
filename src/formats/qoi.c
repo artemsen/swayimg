@@ -60,7 +60,8 @@ enum image_status decode_qoi(struct imgdata* img, const uint8_t* data,
     }
 
     // allocate image buffer
-    pm = image_alloc_frame(img, htonl(qoi->width), htonl(qoi->height));
+    pm = image_alloc_frame(img, qoi->channels == 4 ? pixmap_argb : pixmap_xrgb,
+                           htonl(qoi->width), htonl(qoi->height));
     if (!pm) {
         return imgload_fmterror;
     }
@@ -131,6 +132,5 @@ enum image_status decode_qoi(struct imgdata* img, const uint8_t* data,
     }
 
     image_set_format(img, "QOI %dbpp", qoi->channels * 8);
-    img->alpha = (qoi->channels == 4);
     return imgload_success;
 }

@@ -38,7 +38,8 @@ static avifResult decode_frame(avifDecoder* avif, struct pixmap* pm)
 
     rc = avifImageYUVToRGB(avif->image, &rgb);
     if (rc == AVIF_RESULT_OK) {
-        if (!pixmap_create(pm, rgb.width, rgb.height)) {
+        if (!pixmap_create(pm, avif->alphaPresent ? pixmap_argb : pixmap_xrgb,
+                           rgb.width, rgb.height)) {
             rc = AVIF_RESULT_OUT_OF_MEMORY;
         } else {
             memcpy(pm->data, rgb.pixels,
@@ -116,7 +117,6 @@ enum image_status decode_avif(struct imgdata* img, const uint8_t* data,
 
 done:
     if (rc == AVIF_RESULT_OK) {
-        img->alpha = avif->alphaPresent;
         image_set_format(img, "AV1 %dbpc %s", avif->image->depth,
                          avifPixelFormatToString(avif->image->yuvFormat));
     }

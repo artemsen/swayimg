@@ -73,7 +73,7 @@ static bool decode_single(struct imgdata* img, png_struct* png, png_info* info)
 {
     const uint32_t width = png_get_image_width(png, info);
     const uint32_t height = png_get_image_height(png, info);
-    struct pixmap* pm = image_alloc_frame(img, width, height);
+    struct pixmap* pm = image_alloc_frame(img, pixmap_argb, width, height);
     png_bytep* bind;
 
     if (!pm) {
@@ -146,7 +146,7 @@ static bool decode_frame(struct imgdata* img, png_struct* png, png_info* info,
     }
 
     // allocate frame buffer and bind it to png reader
-    if (!pixmap_create(&frame_png, width, height)) {
+    if (!pixmap_create(&frame_png, pixmap_argb, width, height)) {
         return false;
     }
     bind = bind_pixmap(&frame_png);
@@ -169,18 +169,23 @@ static bool decode_frame(struct imgdata* img, png_struct* png, png_info* info,
             dispose = PNG_DISPOSE_OP_BACKGROUND;
         } else if (index + 1 < img->frames->size) {
             struct imgframe* next = arr_nth(img->frames, index + 1);
-            pixmap_copy(&frame_img->pm, &next->pm, 0, 0, false);
+            pixmap_copy(&frame_img->pm, &next->pm, 0, 0);
         }
     }
 
     // put frame on final pixmap
-    pixmap_copy(&frame_png, &frame_img->pm, offset_x, offset_y,
-                blend == PNG_BLEND_OP_OVER);
+    if (blend != PNG_BLEND_OP_OVER) {
+        frame_png.format = pixmap_xrgb;
+    }
+    pixmap_copy(&frame_png, &frame_img->pm, offset_x, offset_y);
+    if (blend != PNG_BLEND_OP_OVER) {
+        frame_png.format = pixmap_argb;
+    }
 
     // handle dispose
     if (dispose == PNG_DISPOSE_OP_NONE && index + 1 < img->frames->size) {
         struct imgframe* next = arr_nth(img->frames, index + 1);
-        pixmap_copy(&frame_img->pm, &next->pm, 0, 0, false);
+        pixmap_copy(&frame_img->pm, &next->pm, 0, 0);
     }
 
     // calc frame duration in milliseconds
@@ -213,7 +218,7 @@ static bool decode_multiple(struct imgdata* img, png_struct* png,
     }
     for (index = 0; index < frames; ++index) {
         struct imgframe* frame = arr_nth(img->frames, index);
-        if (!pixmap_create(&frame->pm, width, height)) {
+        if (!pixmap_create(&frame->pm, pixmap_argb, width, height)) {
             return false;
         }
     }
@@ -336,7 +341,6 @@ enum image_status decode_png(struct imgdata* img, const uint8_t* data,
         }
 
         image_set_format(img, "PNG %dbit", bit_depth * 4);
-        img->alpha = true;
     }
 
     png_destroy_read_struct(&png, &info, NULL);

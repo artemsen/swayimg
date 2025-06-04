@@ -223,7 +223,8 @@ enum image_status decode_tga(struct imgdata* img, const uint8_t* data,
     size -= data_offset;
 
     // decode image
-    pm = image_alloc_frame(img, tga->width, tga->height);
+    pm = image_alloc_frame(img, tga->bpp == 32 ? pixmap_argb : pixmap_xrgb,
+                           tga->width, tga->height);
     if (!pm) {
         return imgload_unknown;
     }
@@ -273,7 +274,6 @@ enum image_status decode_tga(struct imgdata* img, const uint8_t* data,
             break;
     }
     image_set_format(img, "TARGA %dbpp, %s", tga->bpp, type_name);
-    img->alpha = (tga->bpp == 32);
 
     return imgload_success;
 }

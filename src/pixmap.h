@@ -39,20 +39,28 @@ typedef uint32_t argb_t;
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+enum pixmap_format {
+    pixmap_argb, // with alpha channel
+    pixmap_xrgb, // without alpha channel
+};
+
 /** Pixel map. */
 struct pixmap {
-    size_t width;  ///< Width (px)
-    size_t height; ///< Height (px)
-    argb_t* data;  ///< Pixel data
+    enum pixmap_format format; ///< Format
+    size_t width;              ///< Width (px)
+    size_t height;             ///< Height (px)
+    argb_t* data;              ///< Pixel data
 };
 
 /**
  * Allocate/reallocate pixmap.
  * @param pm pixmap context to create
+ * @param format pixmap format
  * @param width,height pixmap size
  * @return true pixmap was allocated
  */
-bool pixmap_create(struct pixmap* pm, size_t width, size_t height);
+bool pixmap_create(struct pixmap* pm, enum pixmap_format format, size_t width,
+                   size_t height);
 
 /**
  * Free pixmap created with `pixmap_create`.
@@ -149,10 +157,9 @@ void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
  * @param src source pixmap
  * @param dst destination pixmap
  * @param x,y destination left top coordinates
- * @param alpha flag to use alpha channel (ignore otherwise)
  */
 void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
-                 ssize_t y, bool alpha);
+                 ssize_t y);
 
 /**
  * Flip pixmap vertically.

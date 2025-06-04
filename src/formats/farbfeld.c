@@ -43,7 +43,7 @@ enum image_status decode_farbfeld(struct imgdata* img, const uint8_t* data,
     // create pixmap
     width = htonl(header->width);
     height = htonl(header->height);
-    pm = image_alloc_frame(img, width, height);
+    pm = image_alloc_frame(img, pixmap_argb, width, height);
     if (!pm) {
         return imgload_fmterror;
     }
@@ -62,7 +62,6 @@ enum image_status decode_farbfeld(struct imgdata* img, const uint8_t* data,
     }
 
     image_set_format(img, "Farbfeld");
-    img->alpha = true;
 
     return imgload_success;
 }

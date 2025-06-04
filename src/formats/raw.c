@@ -55,7 +55,7 @@ enum image_status decode_raw(struct imgdata* img, const uint8_t* data,
         goto done;
     }
 
-    pm = image_alloc_frame(img, raw_img->width, raw_img->height);
+    pm = image_alloc_frame(img, pixmap_xrgb, raw_img->width, raw_img->height);
     if (!pm) {
         rc = LIBRAW_UNSUFFICIENT_MEMORY;
         goto done;

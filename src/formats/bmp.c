@@ -382,7 +382,8 @@ enum image_status decode_bmp(struct imgdata* img, const uint8_t* data,
         return imgload_fmterror;
     }
 
-    pm = image_alloc_frame(img, abs(bmp->width), abs(bmp->height));
+    pm = image_alloc_frame(img, bmp->bpp == 32 ? pixmap_argb : pixmap_xrgb,
+                           abs(bmp->width), abs(bmp->height));
     if (!pm) {
         return imgload_fmterror;
     }
@@ -429,7 +430,6 @@ enum image_status decode_bmp(struct imgdata* img, const uint8_t* data,
 
     if (rc) {
         image_set_format(img, "BMP %dbit %s", bmp->bpp, format);
-        img->alpha = bmp->bpp == 32;
         if (bmp->height > 0) {
             pixmap_flip_vertical(pm);
         }

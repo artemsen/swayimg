@@ -86,7 +86,6 @@ bool image_clear(struct image* img, size_t mask)
 
     if (all_free && img->data) {
         // rest part of data
-        img->data->alpha = false;
         free(img->data->parent);
         img->data->parent = NULL;
         free(img->data->format);
@@ -159,8 +158,6 @@ void image_attach(struct image* img, struct image* from)
         dst->format = src->format;
         src->format = NULL;
     }
-
-    dst->alpha = src->alpha;
 }
 
 bool image_export(const struct image* img, size_t frame, const char* path)
@@ -197,10 +194,9 @@ void image_render(struct image* img, size_t frame, enum aa_mode scaler,
         const struct imgframe* iframe = arr_nth(img->data->frames, frame);
         assert(iframe);
         if (scale == 1.0) {
-            pixmap_copy(&iframe->pm, dst, x, y, img->data->alpha);
+            pixmap_copy(&iframe->pm, dst, x, y);
         } else {
-            software_render(scaler, &iframe->pm, dst, x, y, scale,
-                            img->data->alpha, mt);
+            software_render(&iframe->pm, dst, x, y, scale, scaler, mt);
         }
     }
 }
@@ -289,7 +285,8 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
         offset_y = 0;
     }
 
-    if (pixmap_create(&img->data->thumbnail, thumb_width, thumb_height)) {
+    if (pixmap_create(&img->data->thumbnail, pixmap_argb, thumb_width,
+                      thumb_height)) {
         image_render(img, 0, aa_mode, scale, false, offset_x, offset_y,
                      &img->data->thumbnail);
     }
@@ -309,7 +306,6 @@ bool image_thumb_load(struct image* img, const char* path)
             }
             if (img->data) {
                 struct imgframe* frame = arr_nth(thumb->data->frames, 0);
-                img->data->alpha = thumb->data->alpha;
                 img->data->thumbnail = frame->pm;
                 frame->pm.data = NULL;
             }
@@ -419,8 +415,8 @@ struct array* image_alloc_frames(struct imgdata* img, size_t num)
     return img->frames;
 }
 
-struct pixmap* image_alloc_frame(struct imgdata* img, size_t width,
-                                 size_t height)
+struct pixmap* image_alloc_frame(struct imgdata* img, enum pixmap_format format,
+                                 size_t width, size_t height)
 {
     struct pixmap* pm = NULL;
     struct array* frames;
@@ -428,7 +424,7 @@ struct pixmap* image_alloc_frame(struct imgdata* img, size_t width,
     frames = image_alloc_frames(img, 1);
     if (frames) {
         pm = arr_nth(frames, 0);
-        if (!pixmap_create(pm, width, height)) {
+        if (!pixmap_create(pm, format, width, height)) {
             return NULL;
         }
     }

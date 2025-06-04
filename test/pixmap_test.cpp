@@ -7,9 +7,10 @@ TEST_F(PixmapTest, Create)
 {
     struct pixmap pm;
 
-    ASSERT_TRUE(pixmap_create(&pm, 123, 456));
+    ASSERT_TRUE(pixmap_create(&pm, pixmap_argb, 123, 456));
     EXPECT_NE(pm.data, nullptr);
     EXPECT_EQ(pm.data[0], static_cast<size_t>(0));
+    EXPECT_EQ(pm.format, pixmap_argb);
     EXPECT_EQ(pm.width, static_cast<size_t>(123));
     EXPECT_EQ(pm.height, static_cast<size_t>(456));
 
@@ -35,7 +36,7 @@ TEST_F(PixmapTest, Fill)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
 
     pixmap_fill(&pm, 1, 1, 2, 2, clr);
     Compare(pm, expect);
@@ -60,7 +61,7 @@ TEST_F(PixmapTest, FillOutsideTL)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_fill(&pm, -2, -2, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -84,7 +85,7 @@ TEST_F(PixmapTest, FillOutsideBR)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_fill(&pm, 2, 2, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -108,7 +109,7 @@ TEST_F(PixmapTest, InverseFill)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_inverse_fill(&pm, 1, 1, 2, 2, clr);
     Compare(pm, expect);
 }
@@ -132,7 +133,7 @@ TEST_F(PixmapTest, InverseOutsideTL)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_inverse_fill(&pm, -2, -2, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -156,7 +157,7 @@ TEST_F(PixmapTest, InverseOutsideBR)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_inverse_fill(&pm, 2, 2, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -181,7 +182,7 @@ TEST_F(PixmapTest, Grid)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_grid(&pm, -10, -10, 20, 20, 2, clr1, clr2);
     Compare(pm, expect);
 }
@@ -211,7 +212,7 @@ TEST_F(PixmapTest, Mask)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_apply_mask(&pm, 0, 0, mask, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -241,7 +242,7 @@ TEST_F(PixmapTest, MaskOutsideTL)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_apply_mask(&pm, -2, -2, mask, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -271,7 +272,7 @@ TEST_F(PixmapTest, MaskOutsideBR)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_apply_mask(&pm, 2, 2, mask, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -297,9 +298,9 @@ TEST_F(PixmapTest, Copy)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 1, 1, false);
+    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 1, 1);
     Compare(pm_dst, expect);
 }
 
@@ -324,9 +325,9 @@ TEST_F(PixmapTest, CopyOutsideTL)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, -1, -1, false);
+    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, -1, -1);
     Compare(pm_dst, expect);
 }
 
@@ -351,9 +352,9 @@ TEST_F(PixmapTest, CopyOutsideBR)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 3, 3, false);
+    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 3, 3);
     Compare(pm_dst, expect);
 }
 
@@ -378,9 +379,9 @@ TEST_F(PixmapTest, CopyAlpha)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 1, 1, true);
+    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 1, 1);
     Compare(pm_dst, expect);
 }
 
@@ -405,9 +406,9 @@ TEST_F(PixmapTest, CopyAlphaOutsideTL)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, -1, -1, false);
+    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, -1, -1);
     Compare(pm_dst, expect);
 }
 
@@ -432,9 +433,9 @@ TEST_F(PixmapTest, CopyAlphaOutsideBL)
     };
     // clang-format on
 
-    const struct pixmap pm_src = { 2, 2, src };
-    struct pixmap pm_dst = { 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 3, 3, true);
+    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
+    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
+    pixmap_copy(&pm_src, &pm_dst, 3, 3);
     Compare(pm_dst, expect);
 }
 
@@ -457,7 +458,7 @@ TEST_F(PixmapTest, Rect)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
 
     pixmap_rect(&pm, 0, 0, 4, 4, clr);
     Compare(pm, expect);
@@ -482,7 +483,7 @@ TEST_F(PixmapTest, RectOutsideTL)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_rect(&pm, -2, -2, 4, 4, clr);
     Compare(pm, expect);
 }
@@ -506,7 +507,7 @@ TEST_F(PixmapTest, RectOutsideBR)
     };
     // clang-format on
 
-    struct pixmap pm = { 4, 4, src };
+    struct pixmap pm = { pixmap_argb, 4, 4, src };
     pixmap_rect(&pm, 2, 2, 4, 4, clr);
     Compare(pm, expect);
 }

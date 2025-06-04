@@ -76,8 +76,10 @@ enum image_status decode_heif(struct imgdata* img, const uint8_t* data,
         goto done;
     }
 
-    pm = image_alloc_frame(img, heif_image_get_primary_width(him),
-                           heif_image_get_primary_height(him));
+    pm = image_alloc_frame(
+        img,
+        heif_image_handle_has_alpha_channel(pih) ? pixmap_argb : pixmap_xrgb,
+        heif_image_get_primary_width(him), heif_image_get_primary_height(him));
     if (!pm) {
         goto done;
     }
@@ -91,7 +93,6 @@ enum image_status decode_heif(struct imgdata* img, const uint8_t* data,
         }
     }
 
-    img->alpha = heif_image_handle_has_alpha_channel(pih);
     image_set_format(img, "HEIF/AVIF %dbpp",
                      heif_image_handle_get_luma_bits_per_pixel(pih));
 #ifdef HAVE_LIBEXIF

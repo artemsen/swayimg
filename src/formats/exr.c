@@ -353,7 +353,7 @@ enum image_status decode_exr(struct imgdata* img, const uint8_t* data,
         goto done;
     }
 
-    pm = image_alloc_frame(img, dwnd.max.x - dwnd.min.x + 1,
+    pm = image_alloc_frame(img, pixmap_argb, dwnd.max.x - dwnd.min.x + 1,
                            dwnd.max.y - dwnd.min.y + 1);
     if (!pm) {
         rc = EXR_ERR_OUT_OF_MEMORY;
@@ -373,13 +373,11 @@ enum image_status decode_exr(struct imgdata* img, const uint8_t* data,
         rc = EXR_ERR_FEATURE_NOT_IMPLEMENTED;
     }
 
+    if (rc == EXR_ERR_SUCCESS) {
+        image_set_format(img, "EXR");
+    }
+
 done:
     exr_finish(&exr);
-    if (rc == EXR_ERR_SUCCESS) {
-        img->alpha = true;
-        image_set_format(img, "EXR");
-    } else {
-        return imgload_fmterror;
-    }
-    return imgload_success;
+    return rc == EXR_ERR_SUCCESS ? imgload_success : imgload_fmterror;
 }
