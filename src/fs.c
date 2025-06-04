@@ -14,6 +14,8 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifndef HAVE_INOTIFY
@@ -179,6 +181,55 @@ void fs_monitor_add(const char* path)
 }
 
 #endif // HAVE_INOTIFY
+
+int fs_write_file(const char* path, const void* data, size_t size)
+{
+    int fd;
+    char* mkdir_path;
+
+    // create path
+    mkdir_path = str_dup(path, NULL);
+    if (mkdir_path) {
+        char* delim = mkdir_path;
+        while (true) {
+            delim = strchr(delim + 1, '/');
+            if (!delim) {
+                break;
+            }
+            *delim = '\0';
+            if (mkdir(mkdir_path, S_IRWXU | S_IRWXG) && errno != EEXIST) {
+                const int rc = errno;
+                free(mkdir_path);
+                return rc;
+            }
+            *delim = '/';
+        }
+        free(mkdir_path);
+    }
+
+    // open and lock file
+    fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+    if (fd == -1) {
+        return -errno;
+    }
+
+    // write file
+    while (size) {
+        const ssize_t written = write(fd, data, size);
+        if (written == -1) {
+            if (errno != EINTR) {
+                return errno;
+            }
+            continue;
+        }
+        size -= written;
+        data = (const uint8_t*)data + written;
+    }
+
+    close(fd);
+
+    return 0;
+}
 
 size_t fs_append_path(const char* file, char* path, size_t path_max)
 {

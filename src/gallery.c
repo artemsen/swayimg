@@ -108,20 +108,6 @@ void pstore_save(const struct image* img)
         return;
     }
 
-    // create path
-    tmp = path;
-    while (true) {
-        tmp = strchr(tmp + 1, '/');
-        if (!tmp) {
-            break;
-        }
-        *tmp = '\0';
-        if (mkdir(path, S_IRWXU | S_IRWXG) && errno != EEXIST) {
-            return;
-        }
-        *tmp = '/';
-    }
-
     // export thumbnail to file, exporting to png is slow so we use a temporary
     // file to prevent incomplete export from being used in other threads
     tmp = str_dup(path, NULL);

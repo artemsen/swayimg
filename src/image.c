@@ -165,15 +165,24 @@ void image_attach(struct image* img, struct image* from)
 
 bool image_export(const struct image* img, size_t frame, const char* path)
 {
+    bool rc = false;
+
 #ifdef HAVE_LIBPNG
     struct imgframe* fr = arr_nth(img->data->frames, frame);
-    return fr && export_png(&fr->pm, NULL, path) == 0;
+    if (fr) {
+        struct array* enc = export_png(&fr->pm, NULL);
+        if (enc) {
+            rc = (fs_write_file(path, enc->data, enc->size) == 0);
+            arr_free(enc);
+        }
+    }
 #else
     (void)img;
     (void)frame;
     (void)path;
-    return false;
 #endif // HAVE_LIBPNG
+
+    return rc;
 }
 
 void image_render(struct image* img, size_t frame, enum aa_mode scaler,
@@ -313,14 +322,21 @@ bool image_thumb_load(struct image* img, const char* path)
 
 bool image_thumb_save(const struct image* img, const char* path)
 {
-#ifdef HAVE_LIBPNG
+    bool rc = false;
     assert(image_thumb_get(img));
-    return export_png(&img->data->thumbnail, img->data->info, path) == 0;
+
+#ifdef HAVE_LIBPNG
+    struct array* enc = export_png(&img->data->thumbnail, img->data->info);
+    if (enc) {
+        rc = (fs_write_file(path, enc->data, enc->size) == 0);
+        arr_free(enc);
+    }
 #else
     (void)img;
     (void)path;
-    return false;
 #endif // HAVE_LIBPNG
+
+    return rc;
 }
 
 const struct pixmap* image_thumb_get(const struct image* img)

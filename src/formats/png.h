@@ -14,8 +14,6 @@ enum image_status decode_png(struct imgdata* img, const uint8_t* data,
  * Export pixel map to PNG file.
  * @param pm source image instance
  * @param info meta data to add to the file
- * @param path output file
- * @return error code or 0 on success
+ * @return array with encoded data, NULL on errors
  */
-int export_png(const struct pixmap* pm, const struct array* info,
-               const char* path);
+struct array* export_png(const struct pixmap* pm, const struct array* info);

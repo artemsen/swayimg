@@ -4,15 +4,10 @@
 
 #include "png.h"
 
-#include <errno.h>
-#include <fcntl.h>
 #include <png.h>
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 // PNG memory reader
 struct mem_reader {
@@ -36,67 +31,18 @@ static void mem_reader(png_structp png, png_bytep buffer, size_t size)
 // PNG writer callback, see `png_rw_ptr` in png.h
 static void mem_writer(png_structp png, png_bytep buffer, size_t size)
 {
-    int fd = *(int*)png_get_io_ptr(png);
-    while (size) {
-        const ssize_t rcv = write(fd, buffer, size);
-        if (rcv == -1) {
-            if (errno != EINTR) {
-                return;
-            }
-            continue;
+    struct array** out = png_get_io_ptr(png);
+    if (*out) {
+        struct array* tmp = arr_append(*out, buffer, size);
+        if (!tmp) {
+            arr_free(*out);
         }
-        size -= rcv;
-        buffer = ((uint8_t*)buffer) + rcv;
+        *out = tmp;
     }
 }
 
 // PNG flusher callback, see `png_flush_ptr` in png.h
 static void flush_stub(__attribute__((unused)) png_structp png) { }
-
-/**
- * Create and lock file.
- * @param path path to the file
- * @return file descriptor or error code < 0
- */
-static int create_locked(const char* path)
-{
-    const struct flock lock = {
-        .l_type = F_WRLCK,
-        .l_whence = SEEK_SET,
-        .l_pid = getpid(),
-    };
-    int fd;
-
-    // open and lock file
-    fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
-    if (fd == -1) {
-        return -errno;
-    }
-
-    if (fcntl(fd, F_SETLK, &lock) == -1) {
-        const int rc = -errno;
-        close(fd);
-        fd = rc;
-    }
-
-    return fd;
-}
-
-/**
- * Unlock and close file.
- * @param fd file descriptor
- */
-static void close_locked(int fd)
-{
-    const struct flock unlock = {
-        .l_type = F_UNLCK,
-        .l_whence = SEEK_SET,
-        .l_pid = getpid(),
-    };
-
-    fcntl(fd, F_SETLK, &unlock);
-    close(fd);
-}
 
 /**
  * Bind pixmap with PNG line-reading decoder.
@@ -398,47 +344,45 @@ enum image_status decode_png(struct imgdata* img, const uint8_t* data,
     return rc ? imgload_success : imgload_fmterror;
 }
 
-int export_png(const struct pixmap* pm, const struct array* info,
-               const char* path)
+struct array* export_png(const struct pixmap* pm, const struct array* info)
 {
+    struct array* enc;
     png_struct* png;
     png_info* png_inf;
     png_bytep* bind;
-    int fd;
-
-    // open and lock file
-    fd = create_locked(path);
-    if (fd < 0) {
-        return -fd;
-    }
 
     // create encoder
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        close_locked(fd);
-        return EFAULT;
+        return NULL;
     }
     png_inf = png_create_info_struct(png);
     if (!png_inf) {
-        close_locked(fd);
         png_destroy_write_struct(&png, NULL);
-        return EFAULT;
+        return NULL;
     }
 
     // bind buffer with image
     bind = bind_pixmap(pm);
     if (!bind) {
-        close_locked(fd);
         png_destroy_write_struct(&png, &png_inf);
-        return ENOMEM;
+        return NULL;
+    }
+
+    // create output array
+    enc = arr_create(0, sizeof(png_byte));
+    if (!enc) {
+        free(bind);
+        png_destroy_write_struct(&png, &png_inf);
+        return NULL;
     }
 
     // setup error handling
     if (setjmp(png_jmpbuf(png))) {
-        close_locked(fd);
-        png_destroy_write_struct(&png, &png_inf);
+        arr_free(enc);
         free(bind);
-        return EILSEQ;
+        png_destroy_write_struct(&png, &png_inf);
+        return NULL;
     }
 
     // setup output: 8bit RGBA
@@ -462,15 +406,14 @@ int export_png(const struct pixmap* pm, const struct array* info,
     }
 
     // encode png
-    png_set_write_fn(png, &fd, &mem_writer, &flush_stub);
+    png_set_write_fn(png, &enc, &mem_writer, &flush_stub);
     png_write_info(png, png_inf);
     png_write_image(png, bind);
     png_write_end(png, NULL);
 
     // free resources
-    close_locked(fd);
     png_destroy_write_struct(&png, &png_inf);
     free(bind);
 
-    return 0;
+    return enc;
 }

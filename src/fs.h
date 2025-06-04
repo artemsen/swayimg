@@ -38,6 +38,15 @@ void fs_monitor_destroy(void);
 void fs_monitor_add(const char* path);
 
 /**
+ * Write file.
+ * @param path path to the file
+ * @param data buffer to write
+ * @param size number of bytes to write
+ * @return error code, 0 on success
+ */
+int fs_write_file(const char* path, const void* data, size_t size);
+
+/**
  * Append subdir/file to the path.
  * @param file subdir/file name
  * @param path output buffer
