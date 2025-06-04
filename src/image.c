@@ -136,16 +136,16 @@ void image_attach(struct image* img, struct image* from)
         src->frames = NULL;
     }
 
-    if (src->info) {
-        image_clear(img, IMGDATA_INFO);
-        dst->info = src->info;
-        src->info = NULL;
-    }
-
     if (src->thumbnail.data) {
         image_clear(img, IMGDATA_THUMB);
         dst->thumbnail = src->thumbnail;
         src->thumbnail.data = NULL;
+    }
+
+    if (src->info) {
+        image_clear(img, IMGDATA_INFO);
+        dst->info = src->info;
+        src->info = NULL;
     }
 
     if (src->parent) {
