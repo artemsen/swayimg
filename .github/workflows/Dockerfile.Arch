@@ -19,6 +19,7 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     meson \
     openexr \
     pkgconf \
+    scdoc \
     wayland \
     wayland-protocols
 

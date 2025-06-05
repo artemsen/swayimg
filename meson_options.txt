@@ -101,13 +101,13 @@ option(
     value: 'auto',
     description: 'Install zsh completion',
 )
-option('man', type: 'boolean', value: true, description: 'Install man page')
 option(
     'desktop',
     type: 'boolean',
     value: true,
     description: 'Install desktop file with icon',
 )
+option('man', type: 'boolean', value: true, description: 'Install man page')
 
 # project version
 option('version', type: 'string', value: '0.0.0', description: 'Project version')

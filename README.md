@@ -37,7 +37,7 @@ the image directly in a terminal window.
 
 `swayimg [OPTIONS]... [FILE]...`
 
-See `man swayimg` for details.
+See [man page](https://github.com/artemsen/swayimg/blob/master/extra/swayimg.1.scd?plain=1) for details.
 
 Examples:
 - View multiple files:
@@ -73,7 +73,7 @@ following directories:
 
 Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) or locally `/usr/share/swayimg/swayimgrc`.
 
-See `man swayimgrc` for details.
+See [man page](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc.5.scd?plain=1) for details.
 
 ## Install
 

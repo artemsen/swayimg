@@ -147,8 +147,28 @@ install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
 
 # man installation
 if get_option('man')
-    install_man('extra/swayimg.1')
-    install_man('extra/swayimgrc.5')
+    scdoc = find_program('scdoc', native: true, required: false)
+    if scdoc.found()
+        mandir = get_option('mandir')
+        foreach filename : ['extra/swayimg.1.scd', 'extra/swayimgrc.5.scd']
+            topic = filename.split('.')[-3].split('/')[-1]
+            section = filename.split('.')[-2]
+            output = '@0@.@1@'.format(topic, section)
+            custom_target(
+                output,
+                input: filename,
+                output: output,
+                command: scdoc,
+                install: true,
+                feed: true,
+                capture: true,
+                install_dir: '@0@/man@1@'.format(mandir, section),
+            )
+        endforeach
+    else
+        install_man('extra/swayimg.1')
+        install_man('extra/swayimgrc.5')
+    endif
 endif
 
 # desktop file + icon
