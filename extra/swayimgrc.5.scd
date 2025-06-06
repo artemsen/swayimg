@@ -302,7 +302,7 @@ The format is the same as _[info.viewer]_:
 
 ## Key bindings
 
-Key bindings configuations are stored in sections _[keys.viewer]_ and
+Key bindings configurations are stored in sections _[keys.viewer]_ and
 _[keys.gallery]_.
 Each line associates a key with a list of actions and optional parameters.
 Actions are separated by semicolons. One or more key modifiers (_Ctrl_, _Alt_,
@@ -378,7 +378,7 @@ Predefined names for mouse scroll:
 	(Viewer mode only) Manage scaling, _SCALE_ is:
 	- one of the *viewer.scale* modes (_fit_/_fill_/etc);
 	- percentage number with + or - sign (e.g. _+10_) to zoom in or out;
-	- absolute value in percentage to set the scale, e.g. _200_.
+	- absolute value in percentage to set the scale, e.g. _200_;
 	- empty value to switch to the next available scaling mode.
 
 *rotate_left* (Viewer mode only) Rotate image anticlockwise.
@@ -389,12 +389,17 @@ Predefined names for mouse scroll:
 
 *flip_horizontal* (Viewer mode only) Flip image horizontally.
 
+*thumb* SIZE
+	(Gallery mode only) Resize thumbnails, _SIZE_ is:
+	- delta in pixels with + or - sign (e.g. _+10_);
+	- absolute size in pixels, e.g. _200_.
+
 *reload* Reset cache and reload current image.
 
 *antialiasing* [MODE]
 	Set anti-aliasing mode or cycle through them, _MODE_ is:
 	- one of the *viewer.antialiasing* modes (_none_/_mks13_/etc);
-	- _next_ or emtpy value: switch to next mode;
+	- _next_ or empty value: switch to next mode;
 	- _prev_: switch to previous mode.
 
 *info* [MODE]

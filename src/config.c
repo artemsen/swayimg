@@ -153,6 +153,9 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_GALLERY, "Shift+a",          "antialiasing prev"      },
     { CFG_KEYS_GALLERY, "r",                "reload"                 },
     { CFG_KEYS_GALLERY, "i",                "info"                   },
+    { CFG_KEYS_GALLERY, "Equal",            "thumb +20"              },
+    { CFG_KEYS_GALLERY, "Plus",             "thumb +20"              },
+    { CFG_KEYS_GALLERY, "Minus",            "thumb -20"              },
     { CFG_KEYS_GALLERY, "Shift+Delete",     RM_FILE_ACTION           },
     { CFG_KEYS_GALLERY, "Escape",           "exit"                   },
     { CFG_KEYS_GALLERY, "q",                "exit"                   },
@@ -160,6 +163,8 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_GALLERY, "ScrollRight",      "step_left"              },
     { CFG_KEYS_GALLERY, "ScrollUp",         "step_up"                },
     { CFG_KEYS_GALLERY, "ScrollDown",       "step_down"              },
+    { CFG_KEYS_GALLERY, "Ctrl+ScrollUp",    "thumb +20"              },
+    { CFG_KEYS_GALLERY, "Ctrl+ScrollDown",  "thumb -20"              },
 };
 // clang-format on
 

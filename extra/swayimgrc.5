@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-05" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-06" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -484,7 +484,7 @@ Default is \fIname,status\fR.\&
 .RE
 .SS Key bindings
 .PP
-Key bindings configuations are stored in sections \fI[keys.\&viewer]\fR and
+Key bindings configurations are stored in sections \fI[keys.\&viewer]\fR and
 \fI[keys.\&gallery]\fR.\&
 Each line associates a key with a list of actions and optional parameters.\&
 Actions are separated by semicolons.\& One or more key modifiers (\fICtrl\fR, \fIAlt\fR,
@@ -581,7 +581,7 @@ one of the \fBviewer.\&scale\fR modes (\fIfit\fR/\fIfill\fR/etc);
 .IP \(bu 4
 percentage number with + or - sign (e.\&g.\& \fI+10\fR) to zoom in or out;
 .IP \(bu 4
-absolute value in percentage to set the scale, e.\&g.\& \fI200\fR.\&
+absolute value in percentage to set the scale, e.\&g.\& \fI200\fR;
 .IP \(bu 4
 empty value to switch to the next available scaling mode.\&
 .PD
@@ -595,6 +595,17 @@ empty value to switch to the next available scaling mode.\&
 .PP
 \fBflip_horizontal\fR (Viewer mode only) Flip image horizontally.\&
 .PP
+\fBthumb\fR SIZE
+.RS 4
+(Gallery mode only) Resize thumbnails, \fISIZE\fR is:
+.PD 0
+.IP \(bu 4
+delta in pixels with + or - sign (e.\&g.\& \fI+10\fR);
+.IP \(bu 4
+absolute size in pixels, e.\&g.\& \fI200\fR.\&
+.PD
+.PP
+.RE
 \fBreload\fR Reset cache and reload current image.\&
 .PP
 \fBantialiasing\fR [MODE]
@@ -604,7 +615,7 @@ Set anti-aliasing mode or cycle through them, \fIMODE\fR is:
 .IP \(bu 4
 one of the \fBviewer.\&antialiasing\fR modes (\fInone\fR/\fImks13\fR/etc);
 .IP \(bu 4
-\fInext\fR or emtpy value: switch to next mode;
+\fInext\fR or empty value: switch to next mode;
 .IP \(bu 4
 \fIprev\fR: switch to previous mode.\&
 .PD

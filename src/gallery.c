@@ -23,6 +23,10 @@
 // Scale for selected thumbnail
 #define THUMB_SELECTED_SCALE 1.15f
 
+// Limits for thumbnail size
+#define THIMB_SIZE_MIN 50
+#define THIMB_SIZE_MAX 1000
+
 /** Gallery context. */
 struct gallery {
     size_t cache; ///< Max number of thumbnails in cache
@@ -350,6 +354,49 @@ static void reload(void)
 }
 
 /**
+ * Set thumbnail size: handle "thumb" action.
+ * @param params zoom action parameter
+ */
+static void thumb_resize(const char* params)
+{
+    bool valid;
+    ssize_t size = ctx.layout.thumb_size;
+
+    if (!params || !*params) {
+        valid = false;
+    } else if (params[0] == '+' || params[0] == '-') {
+        // relative
+        ssize_t delta;
+        valid = str_to_num(params, 0, &delta, 0);
+        if (valid) {
+            size += delta;
+        }
+    } else {
+        // absolute
+        valid = str_to_num(params, 0, &size, 0);
+    }
+
+    if (!valid) {
+        info_update(info_status, "Invalid thumb resize operation: %s", params);
+        app_redraw();
+        return;
+    }
+
+    if (size < THIMB_SIZE_MIN) {
+        size = THIMB_SIZE_MIN;
+    } else if (size > THIMB_SIZE_MAX) {
+        size = THIMB_SIZE_MAX;
+    }
+    if (size != (ssize_t)ctx.layout.thumb_size) {
+        imglist_lock();
+        ctx.layout.thumb_size = size;
+        layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
+        imglist_unlock();
+        reload();
+    }
+}
+
+/**
  * Draw thumbnail.
  * @param window destination window
  * @param thumb thumbnail description
@@ -498,6 +545,9 @@ static void on_action(const struct action* action)
             break;
         case action_reload:
             reload();
+            break;
+        case action_thumb:
+            thumb_resize(action->params);
             break;
         default:
             break;
