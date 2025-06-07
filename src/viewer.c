@@ -578,7 +578,7 @@ static void reset_state(void)
             const ssize_t diff_h = ctx.img_h - frame->pm.height;
             ctx.img_x += floor(ctx.scale * diff_w) / 2.0;
             ctx.img_y += floor(ctx.scale * diff_h) / 2.0;
-            fixup_position(true);
+            fixup_position(false);
         }
     }
 
