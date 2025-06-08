@@ -26,9 +26,10 @@ Fully customizable and lightweight image viewer for Wayland based display server
 - Gallery and viewer modes with slideshow and animation support;
 - Preload images in a separate thread;
 - Cache in memory, no data is written to permanent storage (HDD/SSD);
-- [Sway](https://swaywm.org) integration mode: the application creates an "overlay"
-above the currently active window, which gives the illusion that you are opening
-the image directly in a terminal window.
+- [Sway](https://swaywm.org) and [Hyprland](https://hyprland.org/) integration
+mode: the application creates an "overlay" above the currently active window,
+which gives the illusion that you are opening the image directly in a terminal
+window.
 
 ![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
 ![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)

@@ -203,7 +203,11 @@ static json_object* hyprland_request(const char* req)
         char buffer[MAX_RESPONSE_LEN];
         if (sock_write(fd, req, strlen(req)) &&
             sock_read(fd, buffer, sizeof(buffer))) {
-            response = json_tokener_parse(buffer);
+            if (buffer[0] == '[' || buffer[0] == '{') {
+                response = json_tokener_parse(buffer);
+            } else if (strncmp(buffer, "ok", 2) == 0) {
+                response = json_tokener_parse("{}");
+            }
         }
         close(fd);
     }
@@ -214,58 +218,61 @@ static json_object* hyprland_request(const char* req)
 /** Hyprland: get geometry of currently focused window. */
 static bool hyprland_get_focus(struct wndrect* wnd)
 {
-    json_object* json;
+    json_object* response;
+    json_object* focus;
     int32_t monitor_id;
     bool rc = false;
 
     // get currently focused window
-    json = hyprland_request("j/clients");
-    if (!json) {
+    response = hyprland_request("j/clients");
+    if (!response) {
         return false;
-    } else {
-        json_object* focus = find_jnode(json, "focusHistoryID", 0);
-        if (focus) {
-            int32_t x, y, width, height;
-            json_object* obj;
-            // get window position and size
-            if (json_object_object_get_ex(focus, "at", &obj) &&
-                read_jint(json_object_array_get_idx(obj, 0), NULL, &x) &&
-                read_jint(json_object_array_get_idx(obj, 1), NULL, &y) &&
-                json_object_object_get_ex(focus, "size", &obj) &&
-                read_jint(json_object_array_get_idx(obj, 0), NULL, &width) &&
-                read_jint(json_object_array_get_idx(obj, 1), NULL, &height) &&
-                width > 0 && height > 0 &&
-                read_jint(focus, "monitor", &monitor_id)) {
-                wnd->x = x;
-                wnd->y = y;
-                wnd->width = width;
-                wnd->height = height;
-                rc = true;
-            }
-        }
-        json_object_put(json);
     }
+
+    focus = find_jnode(response, "focusHistoryID", 0);
+    if (focus) {
+        // get window position and size
+        int32_t x, y, width, height;
+        json_object* obj;
+        // get window position and size
+        rc = json_object_object_get_ex(focus, "at", &obj) &&
+            read_jint(json_object_array_get_idx(obj, 0), NULL, &x) &&
+            read_jint(json_object_array_get_idx(obj, 1), NULL, &y) &&
+            json_object_object_get_ex(focus, "size", &obj) &&
+            read_jint(json_object_array_get_idx(obj, 0), NULL, &width) &&
+            read_jint(json_object_array_get_idx(obj, 1), NULL, &height) &&
+            width > 0 && height > 0 && read_jint(focus, "monitor", &monitor_id);
+        if (rc) {
+            wnd->x = x;
+            wnd->y = y;
+            wnd->width = width;
+            wnd->height = height;
+        }
+    }
+
+    json_object_put(response);
 
     if (rc) {
         // TODO: test with multi display
-        json = hyprland_request("j/monitors");
-        if (json) {
+        response = hyprland_request("j/monitors");
+        if (response) {
             int32_t x, y;
-            json_object* mon = find_jnode(json, "id", monitor_id);
+            json_object* mon = find_jnode(response, "id", monitor_id);
             if (mon && read_jint(mon, "x", &x) && read_jint(mon, "y", &y)) {
                 wnd->x -= x;
                 wnd->y -= y;
             }
-            json_object_put(json);
+            json_object_put(response);
         }
     }
 
-    return true;
+    return rc;
 }
 
 /** Hyprland: Set rules to create overlay window. */
 static bool hyprland_overlay(const struct wndrect* wnd, char** app_id)
 {
+    json_object* response;
     char buf[128];
 
     // hyprland doesn't support "pid:" in window rules, so we have to use
@@ -277,12 +284,20 @@ static bool hyprland_overlay(const struct wndrect* wnd, char** app_id)
 
     // set floating
     snprintf(buf, sizeof(buf), "keyword windowrule float,class:%s", *app_id);
-    hyprland_request(buf);
+    response = hyprland_request(buf);
+    if (!response) {
+        return false;
+    }
+    json_object_put(response);
 
     // set position
     snprintf(buf, sizeof(buf), "keyword windowrule move %zd %zd,class:%s",
              wnd->x, wnd->y, *app_id);
-    hyprland_request(buf);
+    response = hyprland_request(buf);
+    if (!response) {
+        return false;
+    }
+    json_object_put(response);
 
     return true;
 }
