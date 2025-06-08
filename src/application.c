@@ -6,12 +6,12 @@
 
 #include "array.h"
 #include "buildcfg.h"
+#include "compositor.h"
 #include "font.h"
 #include "gallery.h"
 #include "imglist.h"
 #include "info.h"
 #include "shellcmd.h"
-#include "sway.h"
 #include "tpool.h"
 #include "ui.h"
 #include "viewer.h"
@@ -82,64 +82,10 @@ struct application {
 
     enum mode_type mode_current; ///< Currently active mode (viewer/gallery)
     struct mode_handlers mode_handlers[2]; ///< Mode handlers
-
-    struct wndrect window; ///< Preferable window position and size
-    bool wnd_decor;        ///< Window decoration: borders and title
-    char* app_id;          ///< Application id (app_id name)
 };
 
 /** Global application context. */
 static struct application ctx;
-
-#ifdef HAVE_SWAYWM
-/**
- * Setup window position via Sway IPC.
- * @param cfg config instance
- */
-static void sway_setup(const struct config* cfg)
-{
-    struct wndrect parent;
-    bool fullscreen;
-    int border;
-    int ipc;
-    const bool abs_coordinates = (ctx.window.x != POS_FROM_PARENT);
-
-    ipc = sway_connect();
-    if (ipc == INVALID_SWAY_IPC) {
-        return; // sway not available
-    }
-    if (!sway_current(ipc, &parent, &border, &fullscreen)) {
-        sway_disconnect(ipc);
-        return;
-    }
-
-    if (fullscreen) {
-        ctx.window.width = SIZE_FULLSCREEN;
-        ctx.window.height = SIZE_FULLSCREEN;
-        sway_disconnect(ipc);
-        return;
-    }
-
-    if (ctx.window.width == SIZE_FROM_PARENT) {
-        ctx.window.width = parent.width;
-        ctx.window.height = parent.height;
-        if (!abs_coordinates &&
-            config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR)) {
-            ctx.window.width -= border * 2;
-            ctx.window.height -= border * 2;
-        }
-    }
-    if (ctx.window.x == POS_FROM_PARENT) {
-        ctx.window.x = parent.x;
-        ctx.window.y = parent.y;
-    }
-
-    // set window position via sway rules
-    sway_add_rules(ipc, ctx.window.x, ctx.window.y, abs_coordinates);
-
-    sway_disconnect(ipc);
-}
-#endif // HAVE_SWAYWM
 
 /** Switch mode (viewer/gallery). */
 static void switch_mode(void)
@@ -375,6 +321,37 @@ static void on_signal(int signum)
 }
 
 /**
+ * Setup signal handlers.
+ * @param cfg config instance
+ */
+static void setup_signals(const struct config* cfg)
+{
+    struct sigaction sigact;
+    const char* value;
+
+    // get signal actions
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
+    if (!action_create(value, &ctx.sigusr1)) {
+        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR1);
+        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR1);
+        action_create(value, &ctx.sigusr1);
+    }
+    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR2);
+    if (!action_create(value, &ctx.sigusr2)) {
+        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR2);
+        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR2);
+        action_create(value, &ctx.sigusr2);
+    }
+
+    // set handlers
+    sigact.sa_handler = on_signal;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigaction(SIGUSR1, &sigact, NULL);
+    sigaction(SIGUSR2, &sigact, NULL);
+}
+
+/**
  * Create image list and load the first image.
  * @param sources list of sources
  * @param num number of sources in the list
@@ -430,25 +407,21 @@ static struct image* create_imglist(const char* const* sources, size_t num)
 }
 
 /**
- * Load config.
+ * Create window.
  * @param cfg config instance
+ * @param img first image instance
+ * @return true if operation completed successfully
  */
-static void load_config(const struct config* cfg)
+static bool create_window(const struct config* cfg, const struct image* img)
 {
+    char* app_id = NULL;
+    struct wndrect wnd;
+    bool decoration;
     const char* value;
 
-    // startup mode
-    static const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
-    if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
-                         ARRAY_SIZE(modes)) == 1) {
-        ctx.mode_current = mode_gallery;
-    } else {
-        ctx.mode_current = mode_viewer;
-    }
-
     // initial window position
-    ctx.window.x = POS_FROM_PARENT;
-    ctx.window.y = POS_FROM_PARENT;
+    wnd.x = POS_FROM_PARENT;
+    wnd.y = POS_FROM_PARENT;
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_POSITION);
     if (strcmp(value, CFG_FROM_PARENT) != 0) {
         struct str_slice slices[2];
@@ -456,8 +429,8 @@ static void load_config(const struct config* cfg)
         if (str_split(value, ',', slices, 2) == 2 &&
             str_to_num(slices[0].value, slices[0].len, &x, 0) &&
             str_to_num(slices[1].value, slices[1].len, &y, 0)) {
-            ctx.window.x = (ssize_t)x;
-            ctx.window.y = (ssize_t)y;
+            wnd.x = x;
+            wnd.y = y;
         } else {
             config_error_val(CFG_GENERAL, CFG_GNRL_POSITION);
         }
@@ -466,14 +439,14 @@ static void load_config(const struct config* cfg)
     // initial window size
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIZE);
     if (strcmp(value, CFG_FROM_PARENT) == 0) {
-        ctx.window.width = SIZE_FROM_PARENT;
-        ctx.window.height = SIZE_FROM_PARENT;
+        wnd.width = SIZE_FROM_PARENT;
+        wnd.height = SIZE_FROM_PARENT;
     } else if (strcmp(value, CFG_FROM_IMAGE) == 0) {
-        ctx.window.width = SIZE_FROM_IMAGE;
-        ctx.window.height = SIZE_FROM_IMAGE;
+        wnd.width = SIZE_FROM_IMAGE;
+        wnd.height = SIZE_FROM_IMAGE;
     } else if (strcmp(value, CFG_FULLSCREEN) == 0) {
-        ctx.window.width = SIZE_FULLSCREEN;
-        ctx.window.height = SIZE_FULLSCREEN;
+        wnd.width = SIZE_FULLSCREEN;
+        wnd.height = SIZE_FULLSCREEN;
     } else {
         ssize_t width, height;
         struct str_slice slices[2];
@@ -481,75 +454,104 @@ static void load_config(const struct config* cfg)
             str_to_num(slices[0].value, slices[0].len, &width, 0) &&
             str_to_num(slices[1].value, slices[1].len, &height, 0) &&
             width > 0 && width < 100000 && height > 0 && height < 100000) {
-            ctx.window.width = width;
-            ctx.window.height = height;
+            wnd.width = width;
+            wnd.height = height;
         } else {
-            ctx.window.width = SIZE_FROM_PARENT;
-            ctx.window.height = SIZE_FROM_PARENT;
+            wnd.width = SIZE_FROM_PARENT;
+            wnd.height = SIZE_FROM_PARENT;
             config_error_val(CFG_GENERAL, CFG_GNRL_SIZE);
         }
     }
 
-    ctx.wnd_decor = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR);
-
-    // signal actions
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
-    if (!action_create(value, &ctx.sigusr1)) {
-        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR1);
-        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR1);
-        action_create(value, &ctx.sigusr1);
-    }
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR2);
-    if (!action_create(value, &ctx.sigusr2)) {
-        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR2);
-        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR2);
-        action_create(value, &ctx.sigusr2);
-    }
-
-    // app id
+    // app id (class name)
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_APP_ID);
     if (!*value) {
         config_error_val(CFG_GENERAL, CFG_GNRL_APP_ID);
         value = config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID);
     }
-    str_dup(value, &ctx.app_id);
+    str_dup(value, &app_id);
+
+    // window decoration (title/borders/...)
+    decoration = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR);
+
+    // setup window position and size
+    if (wnd.width == SIZE_FULLSCREEN) {
+        ui_toggle_fullscreen();
+    } else {
+#ifdef HAVE_COMPOSITOR
+        bool compositor = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_WC);
+        if (compositor) {
+            struct wndrect focus;
+            compositor = compositor_get_focus(&focus);
+            if (compositor) {
+                if (wnd.x == POS_FROM_PARENT && wnd.y == POS_FROM_PARENT) {
+                    wnd.x = focus.x;
+                    wnd.y = focus.y;
+                }
+                if (wnd.width == SIZE_FROM_PARENT &&
+                    wnd.height == SIZE_FROM_PARENT) {
+                    wnd.width = focus.width;
+                    wnd.height = focus.height;
+                }
+            }
+        }
+#else
+        bool compositor = false;
+#endif // HAVE_COMPOSITOR
+
+        if (wnd.width == SIZE_FROM_PARENT && wnd.height == SIZE_FROM_PARENT) {
+            // fallback if compositor not available
+            wnd.width = SIZE_FROM_IMAGE;
+            wnd.height = SIZE_FROM_IMAGE;
+        }
+        if (wnd.width == SIZE_FROM_IMAGE && wnd.height == SIZE_FROM_IMAGE) {
+            // determine window size from the first frame of the first image
+            struct imgframe* frame = arr_nth(img->data->frames, 0);
+            wnd.width = frame->pm.width;
+            wnd.height = frame->pm.height;
+        }
+
+#ifdef HAVE_COMPOSITOR
+        if (compositor) {
+            compositor_overlay(&wnd, &app_id);
+        }
+#endif // HAVE_COMPOSITOR
+    }
+
+    if (!ui_init(app_id, wnd.width, wnd.height, decoration)) {
+        free(app_id);
+        return false;
+    }
+
+    free(app_id);
+    return true;
 }
 
 bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
+    const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
     struct image* first_image;
-    struct sigaction sigact;
 
-    load_config(cfg);
+    // create image list
     imglist_init(cfg);
-
     first_image = create_imglist(sources, num);
     if (!first_image) {
         imglist_destroy();
         return false;
     }
 
-    // setup window position and size
-#ifdef HAVE_SWAYWM
-    if (ctx.window.width != SIZE_FULLSCREEN) {
-        sway_setup(cfg);
-    }
-#endif // HAVE_SWAYWM
-    if (ctx.window.width == SIZE_FULLSCREEN) {
-        ui_toggle_fullscreen();
-    } else if (ctx.window.width == SIZE_FROM_IMAGE ||
-               ctx.window.width == SIZE_FROM_PARENT) {
-        // determine window sipize from the first frame of the first image
-        struct imgframe* frame = arr_nth(first_image->data->frames, 0);
-        ctx.window.width = frame->pm.width;
-        ctx.window.height = frame->pm.height;
-    }
-
-    // user interface initialization
-    if (!ui_init(ctx.app_id, ctx.window.width, ctx.window.height,
-                 ctx.wnd_decor)) {
+    // create ui window
+    if (!create_window(cfg, first_image)) {
         imglist_destroy();
         return false;
+    }
+
+    // set initial mode
+    if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
+                         ARRAY_SIZE(modes)) == 1) {
+        ctx.mode_current = mode_gallery;
+    } else {
+        ctx.mode_current = mode_viewer;
     }
 
     // create event queue notification
@@ -579,11 +581,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     }
 
     // set signal handler
-    sigact.sa_handler = on_signal;
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigaction(SIGUSR1, &sigact, NULL);
-    sigaction(SIGUSR2, &sigact, NULL);
+    setup_signals(cfg);
 
     ctx.mode_handlers[ctx.mode_current].activate(first_image);
 

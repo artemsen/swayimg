@@ -80,12 +80,12 @@ option(
     description: 'Enable EXIF reader support',
 )
 
-# Sway WM support
+# Integration with Wayland compositors
 option(
-    'sway',
+    'compositor',
     type: 'feature',
     value: 'auto',
-    description: 'Enable Sway WM integration',
+    description: 'Enable integration with compositors',
 )
 
 # extra files to install

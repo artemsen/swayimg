@@ -74,7 +74,7 @@ else
 endif
 
 # optional dependencies: other features
-json = dependency('json-c', required: get_option('sway'))
+json = dependency('json-c', required: get_option('compositor'))
 exif = dependency('libexif', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
 
@@ -98,7 +98,7 @@ conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
-conf.set('HAVE_SWAYWM', json.found())
+conf.set('HAVE_COMPOSITOR', json.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -263,7 +263,7 @@ sources = [
     wl_protos_src,
 ]
 if json.found()
-    sources += 'src/sway.c'
+    sources += 'src/compositor.c'
 endif
 if exif.found()
     sources += 'src/formats/exif.c'

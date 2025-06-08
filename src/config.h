@@ -40,6 +40,7 @@ struct config {
 #define CFG_GNRL_DECOR     "decoration"
 #define CFG_GNRL_SIGUSR1   "sigusr1"
 #define CFG_GNRL_SIGUSR2   "sigusr2"
+#define CFG_GNRL_WC        "compositor"
 #define CFG_GNRL_APP_ID    "app_id"
 #define CFG_VIEW_WINDOW    "window"
 #define CFG_VIEW_TRANSP    "transparency"

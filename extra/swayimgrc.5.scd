@@ -70,6 +70,12 @@ General configuration for the entire application: _[general]_.
 	Action to be performed when the SIGUSR2 signal is triggered, _next_file_ by
 	default.
 
+*compositor* = _yes_|_no_
+	Sway only: Enable or disable integration with the compositor,
+	_yes_ by default. This feature provides some features such as setting the
+	window position, this allows to create an "overlay" above the currently
+	active window.
+
 *app_id* = NAME
 	Application ID used as window class name, _swayimg_ by default.
 
