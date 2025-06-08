@@ -338,8 +338,9 @@ static bool select_next(enum action_type direction)
 
     if (rc) {
         info_reset(ctx.layout.current);
-        app_redraw();
     }
+    info_update_index(ctx.layout.current->index, imglist_size());
+    app_redraw();
 
     return rc;
 }
@@ -596,6 +597,7 @@ static void on_activate(struct image* image)
     imglist_unlock();
 
     info_reset(image);
+    info_update_index(ctx.layout.current->index, imglist_size());
 }
 
 /** Mode handler: deactivate viewer. */

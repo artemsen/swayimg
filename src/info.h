@@ -76,6 +76,13 @@ void info_update(enum info_field field, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 
 /**
+ * Update index and position in the image list.
+ * @param field info field id
+ * @param fmt text string to set, NULL to clear
+ */
+void info_update_index(size_t current, size_t total);
+
+/**
  * Print info text.
  * @param window target window surface
  */

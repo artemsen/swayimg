@@ -590,6 +590,7 @@ static void reset_state(void)
     slideshow_ctl(ctx.slideshow_enable);
 
     info_reset(ctx.current);
+    info_update_index(ctx.current->index, imglist_size());
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
 
     ui_set_content_type_animated(ctx.animation_enable);
@@ -633,6 +634,9 @@ static struct image* open_image(struct image* img, bool forward)
         ctx.current = img;
         preloader_start();
         reset_state();
+    } else {
+        info_update_index(ctx.current->index, imglist_size());
+        app_redraw();
     }
 
     return img;

@@ -7,7 +7,6 @@
 #include "application.h"
 #include "array.h"
 #include "font.h"
-#include "imglist.h"
 #include "keybind.h"
 #include "ui.h"
 
@@ -572,7 +571,6 @@ void info_reset(const struct image* img)
     const char unit = img->file_size >= mib ? 'M' : 'K';
     const float sz =
         (float)img->file_size / (img->file_size >= mib ? mib : 1024);
-    const size_t list_size = imglist_size();
 
     info_update(info_file_name, "%s", img->name);
     info_update(info_file_path, "%s", img->source);
@@ -592,10 +590,6 @@ void info_reset(const struct image* img)
                     frame->pm.height);
     } else {
         info_update(info_image_size, NULL);
-    }
-
-    if (list_size > 1) {
-        info_update(info_index, "%zu of %zu", img->index, list_size);
     }
 
     import_meta(img);
@@ -640,6 +634,15 @@ void info_update(enum info_field field, const char* fmt, ...)
 
     if (field == info_status) {
         timeout_reset(&ctx.status);
+    }
+}
+
+void info_update_index(size_t current, size_t total)
+{
+    if (total > 1) {
+        info_update(info_index, "%zd of %zd", current, total);
+    } else {
+        info_update(info_index, NULL);
     }
 }
 
