@@ -71,7 +71,7 @@ General configuration for the entire application: _[general]_.
 	default.
 
 *compositor* = _yes_|_no_
-	Sway only: Enable or disable integration with the compositor,
+	Only Sway and Hyprland: Enable or disable integration with the compositor,
 	_yes_ by default. This feature provides some features such as setting the
 	window position, this allows to create an "overlay" above the currently
 	active window.

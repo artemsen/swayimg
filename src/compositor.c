@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Integration with Wayland compositor (Sway only).
+// Integration with Wayland compositor (Sway and Hyprland only).
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
 #include "compositor.h"
@@ -17,6 +17,9 @@
 
 // Invalid socket handle
 #define INVALID_SOCKET -1
+
+// Max response size (bytes)
+#define MAX_RESPONSE_LEN 16384
 
 /** Sway IPC magic header value */
 static const uint8_t sway_magic[] = { 'i', '3', '-', 'i', 'p', 'c' };
@@ -145,9 +148,142 @@ static bool read_jint(json_object* node, const char* name, int32_t* value)
     }
     *value = json_object_get_int(node);
     if (*value == 0 && errno == EINVAL) {
-        fprintf(stderr, "JSON scheme error: field %s not a number\n", name);
+        fprintf(stderr, "JSON scheme error: field %s not a number\n",
+                name ? name : "^");
         return false;
     }
+    return true;
+}
+
+/**
+ * Find node in array, where child property is set to specifed value.
+ * @param node JSON parent node
+ * @param name name of the child node
+ * @param value value of the child node
+ * @return JSON node or NULL if not found
+ */
+static json_object* find_jnode(json_object* parent, const char* name,
+                               int32_t value)
+{
+    const size_t size = json_object_array_length(parent);
+
+    for (size_t i = 0; i < size; ++i) {
+        int32_t child_value;
+        json_object* obj = json_object_array_get_idx(parent, i);
+        if (read_jint(obj, name, &child_value) && child_value == value) {
+            return obj;
+        }
+    }
+
+    fprintf(stderr, "JSON node with name %s and value %d not found\n", name,
+            value);
+    return NULL;
+}
+
+/**
+ * Hyprland IPC message exchange.
+ * @param req request to send
+ * @return response as JSON object, NULL on errors
+ */
+static json_object* hyprland_request(const char* req)
+{
+    const char* his = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+    const char* rd = getenv("XDG_RUNTIME_DIR");
+    char path[sizeof(((struct sockaddr_un*)NULL)->sun_path)] = { 0 };
+    json_object* response = NULL;
+    int fd;
+
+    if (!his || !*his || !rd || !*rd) {
+        return NULL;
+    }
+    snprintf(path, sizeof(path) - 1, "%s/hypr/%s/.socket.sock", rd, his);
+    fd = sock_connect(path);
+
+    if (fd != INVALID_SOCKET) {
+        char buffer[MAX_RESPONSE_LEN];
+        if (sock_write(fd, req, strlen(req)) &&
+            sock_read(fd, buffer, sizeof(buffer))) {
+            response = json_tokener_parse(buffer);
+        }
+        close(fd);
+    }
+
+    return response;
+}
+
+/** Hyprland: get geometry of currently focused window. */
+static bool hyprland_get_focus(struct wndrect* wnd)
+{
+    json_object* json;
+    int32_t monitor_id;
+    bool rc = false;
+
+    // get currently focused window
+    json = hyprland_request("j/clients");
+    if (!json) {
+        return false;
+    } else {
+        json_object* focus = find_jnode(json, "focusHistoryID", 0);
+        if (focus) {
+            int32_t x, y, width, height;
+            json_object* obj;
+            // get window position and size
+            if (json_object_object_get_ex(focus, "at", &obj) &&
+                read_jint(json_object_array_get_idx(obj, 0), NULL, &x) &&
+                read_jint(json_object_array_get_idx(obj, 1), NULL, &y) &&
+                json_object_object_get_ex(focus, "size", &obj) &&
+                read_jint(json_object_array_get_idx(obj, 0), NULL, &width) &&
+                read_jint(json_object_array_get_idx(obj, 1), NULL, &height) &&
+                width > 0 && height > 0 &&
+                read_jint(focus, "monitor", &monitor_id)) {
+                wnd->x = x;
+                wnd->y = y;
+                wnd->width = width;
+                wnd->height = height;
+                rc = true;
+            }
+        }
+        json_object_put(json);
+    }
+
+    if (rc) {
+        // TODO: test with multi display
+        json = hyprland_request("j/monitors");
+        if (json) {
+            int32_t x, y;
+            json_object* mon = find_jnode(json, "id", monitor_id);
+            if (mon && read_jint(mon, "x", &x) && read_jint(mon, "y", &y)) {
+                wnd->x -= x;
+                wnd->y -= y;
+            }
+            json_object_put(json);
+        }
+    }
+
+    return true;
+}
+
+/** Hyprland: Set rules to create overlay window. */
+static bool hyprland_overlay(const struct wndrect* wnd, char** app_id)
+{
+    char buf[128];
+
+    // hyprland doesn't support "pid:" in window rules, so we have to use
+    // dynamic app id
+    snprintf(buf, sizeof(buf), "_%d", getpid());
+    if (!str_append(buf, 0, app_id)) {
+        return false;
+    }
+
+    // set floating
+    snprintf(buf, sizeof(buf), "keyword windowrule float,class:%s", *app_id);
+    hyprland_request(buf);
+
+    // set position
+    snprintf(buf, sizeof(buf), "keyword windowrule move %zd %zd,class:%s",
+             wnd->x, wnd->y, *app_id);
+    hyprland_request(buf);
+
     return true;
 }
 
@@ -322,11 +458,10 @@ done:
 
 bool compositor_get_focus(struct wndrect* wnd)
 {
-    return sway_get_focus(wnd);
+    return sway_get_focus(wnd) || hyprland_get_focus(wnd);
 }
 
 bool compositor_overlay(const struct wndrect* wnd, char** app_id)
 {
-    (void)app_id;
-    return sway_overlay(wnd);
+    return sway_overlay(wnd) || hyprland_overlay(wnd, app_id);
 }
