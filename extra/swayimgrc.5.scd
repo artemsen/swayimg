@@ -83,8 +83,11 @@ General configuration for the entire application: _[general]_.
 
 Configuration specific to the viewer mode: _[viewer]_.
 
-*window* = #COLOR
-	Window background color in RGB or RGBA format, _#00000000_ by default.
+*window* = _blur_|#COLOR
+	Window background:
+	- _blur_: fill window with the current image and blur it, can be useful for
+	  slideshow mode;
+	- #COLOR: solid color in RGB or RGBA, _#00000000_ by default;
 
 *transparency* = _grid_|#COLOR
 	Background for transparent images:
@@ -415,6 +418,11 @@ Predefined names for mouse scroll:
 *exec* COMMAND
 	Execute an external command, use % to substitute the full path to the
 	current image, %% to escape %.
+	Swayimg waits for child processes to complete, to "detach" the child process
+	from Swayimg, call any another launcher, for example:
+	- Sway: `swaymsg exec ...`;
+	- Hyprland: `hyprctl dispatch exec ...`;
+	- Niri: `niri msg action spawn ...`.
 
 *export* FILE
 	Export currently displayed image to PNG file.

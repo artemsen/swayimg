@@ -22,6 +22,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+// Window background
+#define BLUR_NAME  "blur"
+#define BLUR_BKGID 0x00f1f2f3
+
 // Background grid parameters
 #define GRID_NAME   "grid"
 #define GRID_BKGID  0x00f1f2f3
@@ -803,9 +807,13 @@ static void draw_image(struct pixmap* wnd)
     image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, true,
                  ctx.img_x, ctx.img_y, wnd);
 
-    // clear window background
-    pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
-                        ctx.window_bkg);
+    // set window background
+    if (ctx.window_bkg == BLUR_BKGID) {
+        pixmap_inverse_blur(pm, wnd, ctx.img_x, ctx.img_y, width, height);
+    } else {
+        pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
+                            ctx.window_bkg);
+    }
 }
 
 /** Mode handler: window redraw. */
@@ -983,7 +991,14 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     const char* cval_txt;
 
     ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
-    ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
+
+    // window background
+    cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
+    if (strcmp(cval_txt, BLUR_NAME) == 0) {
+        ctx.window_bkg = BLUR_BKGID;
+    } else {
+        ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
+    }
 
     // background for transparent images
     cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);

@@ -4,8 +4,92 @@
 
 #include "pixmap.h"
 
+#include "tpool.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+// Size of blur box
+#define BLUR_SZ 16
+
+/** Blur operation parameters. */
+struct blur_params {
+    const struct pixmap* src; ///< Source pixmap
+    struct pixmap* dst;       ///< Destination pixmap
+    size_t x1, y1;            ///< Coordinates of top left corner
+    size_t x2, y2;            ///< Coordinates of bottom right corner
+    double scale;             ///< Source pixmap scale
+};
+
+/** Fill destination pixmap with source pixmap and blur it. */
+static void blur_worker(void* data)
+{
+    struct blur_params* params = data;
+    const size_t delta_y =
+        (params->scale * params->src->height - params->dst->height) / 2;
+    const size_t delta_x =
+        (params->scale * params->src->width - params->dst->width) / 2;
+
+    for (size_t y = params->y1; y < params->y2; ++y) {
+        argb_t* dst_line = &params->dst->data[y * params->dst->width];
+
+        for (size_t x = params->x1; x < params->x2; ++x) {
+            argb_t r = 0, g = 0, b = 0;
+            size_t total = 0;
+
+            for (ssize_t dy = -BLUR_SZ / 2; dy <= BLUR_SZ / 2; ++dy) {
+                const ssize_t sy =
+                    ((ssize_t)y + dy * 5 + delta_y) / params->scale;
+                if (sy < 0 || sy >= (ssize_t)params->src->height) {
+                    continue;
+                }
+
+                for (ssize_t dx = -BLUR_SZ / 2; dx <= BLUR_SZ / 2; ++dx) {
+                    const ssize_t sx =
+                        ((ssize_t)x + dx * 5 + delta_x) / params->scale;
+                    if (sx >= 0 && sx < (ssize_t)params->src->width) {
+                        const argb_t pixel =
+                            params->src->data[sy * params->src->width + sx];
+                        r += ARGB_GET_R(pixel);
+                        g += ARGB_GET_G(pixel);
+                        b += ARGB_GET_B(pixel);
+                        ++total;
+                    }
+                }
+            }
+
+            r /= total;
+            g /= total;
+            b /= total;
+            dst_line[x] = ARGB(0xff, r, g, b);
+        }
+    }
+}
+
+/**
+ * Add task to perform the blur operation.
+ * @param src source pixmap context
+ * @param dst destination pixmap context
+ * @param x1,y2 coordinates of top left corner
+ * @param x2,y2 coordinates of bottom right corner
+ * @param scale source pixmap scale
+ */
+static inline void add_blur_task(const struct pixmap* src, struct pixmap* dst,
+                                 size_t x1, size_t y1, size_t x2, size_t y2,
+                                 double scale)
+{
+    struct blur_params* params = malloc(sizeof(struct blur_params));
+    if (params) {
+        params->src = src;
+        params->dst = dst;
+        params->x1 = x1;
+        params->y1 = y1;
+        params->x2 = x2;
+        params->y2 = y2;
+        params->scale = scale;
+        tpool_add_task(blur_worker, free, params);
+    }
+}
 
 bool pixmap_create(struct pixmap* pm, enum pixmap_format format, size_t width,
                    size_t height)
@@ -71,6 +155,33 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     if (bottom < (ssize_t)pm->height) {
         pixmap_fill(pm, 0, bottom, pm->width, pm->height - bottom, color);
     }
+}
+
+void pixmap_inverse_blur(const struct pixmap* src, struct pixmap* dst,
+                         ssize_t x, ssize_t y, size_t width, size_t height)
+{
+    const ssize_t left = max(0, x);
+    const ssize_t top = max(0, y);
+    const ssize_t right = min((ssize_t)dst->width, (ssize_t)width + x);
+    const ssize_t bottom = min((ssize_t)dst->height, (ssize_t)height + y);
+
+    const double scale_w = (double)dst->width / src->width;
+    const double scale_h = (double)dst->height / src->height;
+    const double scale = max(scale_w, scale_h);
+
+    if (left > 0) {
+        add_blur_task(src, dst, 0, top, left, bottom, scale);
+    }
+    if (right < (ssize_t)dst->width) {
+        add_blur_task(src, dst, right, top, dst->width, bottom, scale);
+    }
+    if (top > 0) {
+        add_blur_task(src, dst, 0, 0, dst->width, top, scale);
+    }
+    if (bottom < (ssize_t)dst->height) {
+        add_blur_task(src, dst, 0, bottom, dst->width, dst->height, scale);
+    }
+    tpool_wait();
 }
 
 void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,

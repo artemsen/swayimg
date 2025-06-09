@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-08" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-09" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -122,9 +122,16 @@ Application ID used as window class name, \fIswayimg\fR by default.\&
 .PP
 Configuration specific to the viewer mode: \fI[viewer]\fR.\&
 .PP
-\fBwindow\fR = #COLOR
+\fBwindow\fR = \fIblur\fR|#COLOR
 .RS 4
-Window background color in RGB or RGBA format, \fI#00000000\fR by default.\&
+Window background:
+.PD 0
+.IP \(bu 4
+\fIblur\fR: fill window with the current image and blur it, can be useful for
+slideshow mode;
+.IP \(bu 4
+#COLOR: solid color in RGB or RGBA, \fI#00000000\fR by default;
+.PD
 .PP
 .RE
 \fBtransparency\fR = \fIgrid\fR|#COLOR
@@ -639,6 +646,16 @@ Set text info mode or cycle through them, \fIMODE\fR is on of
 .RS 4
 Execute an external command, use % to substitute the full path to the
 current image, %% to escape %.\&
+Swayimg waits for child processes to complete, to "detach" the child process
+from Swayimg, call any another launcher, for example:
+.PD 0
+.IP \(bu 4
+Sway: `swaymsg exec .\&.\&.\&`;
+.IP \(bu 4
+Hyprland: `hyprctl dispatch exec .\&.\&.\&`;
+.IP \(bu 4
+Niri: `niri msg action spawn .\&.\&.\&`.\&
+.PD
 .PP
 .RE
 \fBexport\fR FILE
