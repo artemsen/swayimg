@@ -31,7 +31,7 @@ static const struct cmdarg arguments[] = {
     { 'o', "order",      "ORDER", "set sort order for image list" },
     { 's', "scale",      "SCALE", "set initial image scale" },
     { 'l', "slideshow",  NULL,    "activate slideshow mode on startup" },
-#ifdef HAVE_SWAYWM
+#ifdef HAVE_COMPOSITOR
     { 'p', "position",   "POS",   "(SwayWM only) set window position" },
 #endif
     { 'w', "size",       "SIZE",  "set window size" },
@@ -128,7 +128,7 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
             case 'l':
                 config_set(cfg, CFG_VIEWER, CFG_VIEW_SSHOW, CFG_YES);
                 break;
-#ifdef HAVE_SWAYWM
+#ifdef HAVE_COMPOSITOR
             case 'p':
                 config_set(cfg, CFG_GENERAL, CFG_GNRL_POSITION, optarg);
                 break;
