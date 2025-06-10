@@ -145,6 +145,9 @@ static int execute(const char* cmd, int fd_in, int fd_out, int fd_err)
     if (!shell || !*shell) {
         shell = "/bin/sh";
     }
+
+    // skip clang-tidy check: we trust users's command
+    // NOLINTNEXTLINE(clang-analyzer-optin.taint.GenericTaint)
     execlp(shell, shell, "-c", cmd, NULL);
 
     return errno;
