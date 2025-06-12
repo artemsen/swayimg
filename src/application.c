@@ -46,24 +46,10 @@ struct watchfd {
     fd_callback callback;
 };
 
-/** Event types. */
-enum event_type {
-    event_action, ///< Apply action
-    event_redraw, ///< Redraw window request
-    event_drag,   ///< Mouse or touch drag operation
-};
-
 /* Event queue. */
-struct event_queue {
-    struct list list;     ///< Links to prev/next entry
-    enum event_type type; ///< Event type
-    union event_params {  ///< Event parameters
-        const struct action* action;
-        struct drag {
-            int dx;
-            int dy;
-        } drag;
-    } param;
+struct event {
+    struct list list;            ///< Links to prev/next entry
+    const struct action* action; ///< Action to perform
 };
 
 /** Application context */
@@ -73,7 +59,7 @@ struct application {
     struct watchfd* wfds; ///< FD polling descriptors
     size_t wfds_num;      ///< Number of polling FD
 
-    struct event_queue* events;  ///< Event queue
+    struct event* events;        ///< Event queue
     pthread_mutex_t events_lock; ///< Event queue lock
     int event_signal;            ///< Queue change notification
 
@@ -184,109 +170,114 @@ static void execute_cmd(const char* expr, const char* path)
 /** Notification callback: handle event queue. */
 static void handle_event_queue(__attribute__((unused)) void* data)
 {
-    // reset notification
-    uint64_t value;
-    ssize_t len;
-    do {
-        len = read(ctx.event_signal, &value, sizeof(value));
-    } while (len == -1 && errno == EINTR);
+    struct event* entry = NULL;
 
-    while (ctx.events && ctx.state == loop_run) {
-        struct event_queue* entry = NULL;
-        pthread_mutex_lock(&ctx.events_lock);
-        if (ctx.events) {
-            entry = ctx.events;
-            ctx.events = list_remove(entry);
-        }
-        pthread_mutex_unlock(&ctx.events_lock);
-        if (!entry) {
-            continue;
-        }
-
-        switch (entry->type) {
-            case event_action: {
-                const struct action* action = entry->param.action;
-                switch (action->type) {
-                    case action_info:
-                        info_switch(action->params);
-                        app_redraw();
-                        break;
-                    case action_status:
-                        info_update(info_status, "%s", action->params);
-                        app_redraw();
-                        break;
-                    case action_fullscreen:
-                        ui_toggle_fullscreen();
-                        break;
-                    case action_mode:
-                        switch_mode();
-                        break;
-                    case action_exec:
-                        execute_cmd(action->params,
-                                    ctx.mode_handlers[ctx.mode_current]
-                                        .current()
-                                        ->source);
-                        break;
-                    case action_help:
-                        info_switch_help();
-                        app_redraw();
-                        break;
-                    case action_exit:
-                        if (info_help_active()) {
-                            info_switch_help(); // remove help overlay
-                            app_redraw();
-                        } else {
-                            app_exit(0);
-                        }
-                        break;
-                    default:
-                        ctx.mode_handlers[ctx.mode_current].action(action);
-                        break;
-                }
-            } break;
-            case event_redraw: {
-                struct pixmap* window = ui_draw_begin();
-                if (window) {
-                    ctx.mode_handlers[ctx.mode_current].redraw(window);
-                    ui_draw_commit();
-                }
-            } break;
-            case event_drag:
-                if (ctx.mode_handlers[ctx.mode_current].drag) {
-                    ctx.mode_handlers[ctx.mode_current].drag(
-                        entry->param.drag.dx, entry->param.drag.dy);
-                }
-                break;
-        }
-
-        free(entry);
+    pthread_mutex_lock(&ctx.events_lock);
+    if (ctx.events) {
+        entry = ctx.events;
+        ctx.events = list_remove(entry);
     }
+    pthread_mutex_unlock(&ctx.events_lock);
+
+    if (!ctx.events) {
+        // reset notification
+        uint64_t value;
+        ssize_t len;
+        do {
+            len = read(ctx.event_signal, &value, sizeof(value));
+        } while (len == -1 && errno == EINTR);
+    }
+
+    if (!entry) {
+        return;
+    }
+
+    const struct action* action = entry->action;
+    switch (action->type) {
+        case action_info:
+            info_switch(action->params);
+            app_redraw();
+            break;
+        case action_status:
+            info_update(info_status, "%s", action->params);
+            app_redraw();
+            break;
+        case action_fullscreen:
+            ui_toggle_fullscreen();
+            break;
+        case action_mode:
+            switch_mode();
+            break;
+        case action_redraw: {
+            struct pixmap* window = ui_draw_begin();
+            if (window) {
+                ctx.mode_handlers[ctx.mode_current].redraw(window);
+                ui_draw_commit();
+            }
+        } break;
+        case action_exec:
+            execute_cmd(action->params,
+                        ctx.mode_handlers[ctx.mode_current].current()->source);
+            break;
+        case action_help:
+            info_switch_help();
+            app_redraw();
+            break;
+        case action_exit:
+            if (info_help_active()) {
+                info_switch_help(); // remove help overlay
+                app_redraw();
+            } else {
+                app_exit(0);
+            }
+            break;
+        default:
+            ctx.mode_handlers[ctx.mode_current].action(action);
+            break;
+    }
+
+    free(entry);
 }
 
 /**
  * Append event to queue.
- * @param evt event type
- * @param evp event parameters
+ * @param action pointer to the action
  */
-static void append_event(enum event_type evt, const union event_params* evp)
+static void append_event(const struct action* action)
 {
-    struct event_queue* entry;
+    struct event* event = NULL;
     const uint64_t value = 1;
     ssize_t len;
 
-    // create new entry
-    entry = calloc(1, sizeof(*entry));
-    if (!entry) {
-        return;
+    pthread_mutex_lock(&ctx.events_lock);
+
+    if (action->type == action_redraw) {
+        // remove the same event to append new one to the tail
+        list_for_each(ctx.events, struct event, it) {
+            if (it->action->type == action_redraw) {
+                if (list_is_last(it)) {
+                    pthread_mutex_unlock(&ctx.events_lock);
+                    return;
+                }
+                ctx.events = list_remove(it);
+                event = it;
+                break;
+            }
+        }
     }
-    entry->type = evt;
-    if (evp) {
-        memcpy(&entry->param, evp, sizeof(*evp));
+
+    if (!event) {
+        // create new entry
+        event = malloc(sizeof(*event));
+        if (!event) {
+            return;
+        }
+        event->action = action;
     }
 
     // add to queue tail
-    pthread_mutex_lock(&ctx.events_lock);
-    ctx.events = list_append(ctx.events, entry);
+    ctx.events = list_append(ctx.events, event);
+
     pthread_mutex_unlock(&ctx.events_lock);
 
     // raise notification
@@ -315,8 +306,7 @@ static void on_signal(int signum)
     }
 
     for (size_t i = 0; i < sigact->num; ++i) {
-        const union event_params evp = { .action = &sigact->sequence[i] };
-        append_event(event_action, &evp);
+        append_event(&sigact->sequence[i]);
     }
 }
 
@@ -611,7 +601,7 @@ void app_destroy(void)
     }
     free(ctx.wfds);
 
-    list_for_each(ctx.events, struct event_queue, it) {
+    list_for_each(ctx.events, struct event, it) {
         free(it);
     }
 
@@ -696,28 +686,13 @@ bool app_is_viewer(void)
 void app_reload(void)
 {
     static const struct action action = { .type = action_reload };
-    const union event_params evp = { .action = &action };
-    append_event(event_action, &evp);
+    append_event(&action);
 }
 
 void app_redraw(void)
 {
-    // remove the same event to append new one to tail
-    pthread_mutex_lock(&ctx.events_lock);
-    list_for_each(ctx.events, struct event_queue, it) {
-        if (it->type == event_redraw) {
-            if (list_is_last(it)) {
-                pthread_mutex_unlock(&ctx.events_lock);
-                return;
-            }
-            ctx.events = list_remove(it);
-            free(it);
-            break;
-        }
-    }
-    pthread_mutex_unlock(&ctx.events_lock);
-
-    append_event(event_redraw, NULL);
+    static const struct action action = { .type = action_redraw };
+    append_event(&action);
 }
 
 void app_on_imglist(const struct image* image, enum fsevent event)
@@ -736,10 +711,7 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 
     if (kb) {
         for (size_t i = 0; i < kb->actions.num; ++i) {
-            const union event_params evp = {
-                .action = &kb->actions.sequence[i],
-            };
-            append_event(event_action, &evp);
+            append_event(&kb->actions.sequence[i]);
         }
     } else {
         char* name = keybind_name(key, mods);
@@ -753,21 +725,7 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 
 void app_on_drag(int dx, int dy)
 {
-    union event_params evp;
-
-    // try to merge with existing event
-    pthread_mutex_lock(&ctx.events_lock);
-    list_for_each(ctx.events, struct event_queue, it) {
-        if (it->type == event_drag) {
-            it->param.drag.dx += dx;
-            it->param.drag.dy += dy;
-            pthread_mutex_unlock(&ctx.events_lock);
-            return;
-        }
+    if (ctx.mode_handlers[ctx.mode_current].drag) {
+        ctx.mode_handlers[ctx.mode_current].drag(dx, dy);
     }
-    pthread_mutex_unlock(&ctx.events_lock);
-
-    evp.drag.dx = dx;
-    evp.drag.dy = dy;
-    append_event(event_drag, &evp);
 }

@@ -38,6 +38,7 @@ enum action_type {
     action_flip_vertical,
     action_flip_horizontal,
     action_reload,
+    action_redraw,
     action_antialiasing,
     action_info,
     action_exec,
