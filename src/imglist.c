@@ -741,16 +741,22 @@ struct image* imglist_prev_dir(struct image* img)
 
 struct image* imglist_rand(struct image* img)
 {
-    size_t offset = 1 + rand() % (ctx.size - 1);
+    struct image* next = img;
+    ssize_t offset;
 
-    while (offset--) {
-        img = list_next(img);
-        if (!img) {
-            img = ctx.images;
+    if (ctx.size == 1) {
+        return NULL;
+    }
+
+    offset = rand() % (ctx.size + 1);
+    while (--offset > 0 || next == img) {
+        next = list_next(next);
+        if (!next) {
+            next = ctx.images;
         }
     }
 
-    return img;
+    return next;
 }
 
 struct image* imglist_jump(struct image* img, ssize_t distance)
