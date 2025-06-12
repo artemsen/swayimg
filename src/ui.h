@@ -6,6 +6,12 @@
 
 #include "pixmap.h"
 
+// Window size
+#define UI_WINDOW_MIN            10         // pixels per side
+#define UI_WINDOW_MAX            0x20000000 // total pixels, ~23000x23000
+#define UI_WINDOW_DEFAULT_WIDTH  800
+#define UI_WINDOW_DEFAULT_HEIGHT 600
+
 /**
  * Create global UI context.
  */

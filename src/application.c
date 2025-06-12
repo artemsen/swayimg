@@ -511,6 +511,13 @@ static bool create_window(const struct config* cfg, const struct image* img)
             wnd.height = frame->pm.height;
         }
 
+        // limit window size
+        if (wnd.width < UI_WINDOW_MIN || wnd.height < UI_WINDOW_MIN ||
+            wnd.width * wnd.height > UI_WINDOW_MAX) {
+            wnd.width = UI_WINDOW_DEFAULT_WIDTH;
+            wnd.height = UI_WINDOW_DEFAULT_HEIGHT;
+        }
+
 #ifdef HAVE_COMPOSITOR
         if (compositor) {
             compositor_overlay(&wnd, &app_id);

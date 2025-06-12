@@ -25,12 +25,6 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-// Window size
-#define WINDOW_MIN            10
-#define WINDOW_MAX            100000
-#define WINDOW_DEFAULT_WIDTH  800
-#define WINDOW_DEFAULT_HEIGHT 600
-
 // Mouse buttons, from <linux/input-event-codes.h>
 #ifndef BTN_LEFT
 #define BTN_LEFT   0x110
@@ -591,11 +585,6 @@ bool ui_init(const char* app_id, size_t width, size_t height, bool decor)
 {
     ctx.wnd.width = width;
     ctx.wnd.height = height;
-    if (ctx.wnd.width < WINDOW_MIN || ctx.wnd.height < WINDOW_MIN ||
-        ctx.wnd.width > WINDOW_MAX || ctx.wnd.height > WINDOW_MAX) {
-        ctx.wnd.width = WINDOW_DEFAULT_WIDTH;
-        ctx.wnd.height = WINDOW_DEFAULT_HEIGHT;
-    }
 
     ctx.wl.display = wl_display_connect(NULL);
     if (!ctx.wl.display) {
