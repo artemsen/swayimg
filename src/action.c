@@ -55,110 +55,100 @@ static const char* action_names[] = {
 
 /**
  * Parse config line and fill the action.
- * @param action target action instance
  * @param source action command with parameters as text string
  * @param len length of the source string
- * @return true if action loaded
+ * @return parsed action, NULL if format error
  */
-static bool parse(struct action* action, const char* source, size_t len)
+static struct action* parse(const char* source, size_t len)
 {
+    struct action* action;
     ssize_t action_type;
     const char* action_name;
-    size_t action_len;
-    const char* params;
-    size_t params_len;
-    size_t pos = 0;
 
-    // skip spaces
-    while (pos < len && isspace(source[pos])) {
-        ++pos;
+    // trim spaces
+    while (len && isspace(*source)) {
+        --len;
+        ++source;
     }
-
-    action_name = &source[pos];
+    while (len && isspace(source[len - 1])) {
+        --len;
+    }
 
     // get action type
-    action_len = pos;
-    while (pos < len && !isspace(source[pos])) {
-        ++pos;
+    action_name = source;
+    while (len && !isspace(*source)) {
+        --len;
+        ++source;
     }
-    action_len = pos - action_len;
-    action_type = str_index(action_names, action_name, action_len);
+    action_type = str_index(action_names, action_name, source - action_name);
     if (action_type < 0) {
-        return false;
+        return NULL;
     }
-    action->type = action_type;
 
     // skip spaces
-    while (pos < len && isspace(source[pos])) {
-        ++pos;
+    while (len && isspace(*source)) {
+        --len;
+        ++source;
     }
 
-    // rest part: parameters
-    params = &source[pos];
-    params_len = len - pos;
-    if (params_len) {
-        action->params = str_append(params, params_len, NULL);
-        if (!action->params) {
-            return false;
+    // create action
+    action = malloc(sizeof(struct action) + len);
+    if (action) {
+        action->next = NULL;
+        action->type = action_type;
+        if (len) {
+            memcpy(action->params, source, len);
         }
-    } else {
-        action->params = NULL;
+        action->params[len] = 0;
     }
-
-    return true;
+    return action;
 }
 
-bool action_create(const char* text, struct action_seq* actions)
+struct action* action_create(const char* text)
 {
-    struct action load[ACTION_SEQ_MAX] = { 0 };
-    struct str_slice slices[ARRAY_SIZE(load)];
+    struct action* actions = NULL;
+    struct str_slice slices[ACTION_SEQ_MAX];
     size_t seq_len;
-    struct action* buf;
-    size_t buf_sz;
 
     // split line, one slice per action
     seq_len = str_split(text, ';', slices, ARRAY_SIZE(slices));
     if (seq_len == 0) {
-        return false;
+        return NULL;
     }
     if (seq_len > ARRAY_SIZE(slices)) {
         seq_len = ARRAY_SIZE(slices);
     }
 
-    // load actions
+    // load sequence of actions
     for (size_t i = 0; i < seq_len; ++i) {
         const struct str_slice* s = &slices[i];
-        if (!parse(&load[i], s->value, s->len)) {
-            while (i) {
-                free(load[--i].params);
+        struct action* action = parse(s->value, s->len);
+        if (action) {
+            if (actions) {
+                struct action* last = actions;
+                while (last->next) {
+                    last = last->next;
+                }
+                last->next = action;
+            } else {
+                actions = action;
             }
-            return false;
+        } else {
+            action_free(actions);
+            actions = NULL;
+            break;
         }
     }
 
-    // put loaded action to output sequence
-    buf_sz = seq_len * sizeof(struct action);
-    buf = realloc(actions->sequence, buf_sz);
-    if (!buf) {
-        for (size_t i = 0; i < ARRAY_SIZE(load); ++i) {
-            free(load[i].params);
-        }
-        return false;
-    }
-    memcpy(buf, load, buf_sz);
-    actions->num = seq_len;
-    actions->sequence = buf;
-
-    return seq_len;
+    return actions;
 }
 
-void action_free(struct action_seq* actions)
+void action_free(struct action* actions)
 {
-    if (actions) {
-        for (size_t i = 0; i < actions->num; ++i) {
-            free(actions->sequence[i].params);
-        }
-        free(actions->sequence);
+    while (actions) {
+        struct action* entry = actions;
+        actions = actions->next;
+        free(entry);
     }
 }
 

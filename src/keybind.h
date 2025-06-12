@@ -27,11 +27,11 @@
 
 /** Key binding list entry. */
 struct keybind {
-    struct list list;          ///< Links to prev/next entry
-    xkb_keysym_t key;          ///< Keyboard key
-    uint8_t mods;              ///< Key modifiers
-    struct action_seq actions; ///< Sequence of action
-    char* help;                ///< Help line with binding description
+    struct list list;       ///< Links to prev/next entry
+    xkb_keysym_t key;       ///< Keyboard key
+    uint8_t mods;           ///< Key modifiers
+    struct action* actions; ///< Sequence of action
+    char* help;             ///< Help line with binding description
 };
 
 /**

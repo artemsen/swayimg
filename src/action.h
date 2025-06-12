@@ -49,29 +49,24 @@ enum action_type {
 
 /** Single action. */
 struct action {
+    struct action* next;   ///< Pinter to the next action in the sequence
     enum action_type type; ///< Action type
-    char* params;          ///< Custom parameters for the action
-};
-
-/** Action sequence. */
-struct action_seq {
-    struct action* sequence; ///< Array of actions
-    size_t num;              ///< Number of actions in array
+    char params[1];        ///< Custom parameters for the action (variable len)
 };
 
 /**
  * Create action sequence from config string.
  * @param text source config text
  * @param actions destination sequence of actions
- * @return false if format error
+ * @return parsed sequence of actions, NULL if format error
  */
-bool action_create(const char* text, struct action_seq* actions);
+struct action* action_create(const char* text);
 
 /**
  * Free actions sequence.
  * @param actions sequence to free
  */
-void action_free(struct action_seq* actions);
+void action_free(struct action* actions);
 
 /**
  * Get action's type name.

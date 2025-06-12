@@ -940,7 +940,7 @@ static void on_action(const struct action* action)
             imglist_unlock();
             break;
         case action_export:
-            if (!action->params || !*action->params) {
+            if (!*action->params) {
                 info_update(info_status, "Error: export path is not specified");
             } else if (image_export(ctx.current, ctx.frame, action->params)) {
                 info_update(info_status, "Exported to %s", action->params);

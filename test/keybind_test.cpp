@@ -19,11 +19,13 @@ TEST_F(Keybind, Add)
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);
-    ASSERT_NE(kb, nullptr);
+    ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    EXPECT_EQ(kb->actions.sequence[0].type, action_exit);
+    ASSERT_TRUE(kb->actions);
+    EXPECT_EQ(kb->actions->type, action_exit);
+    EXPECT_STREQ(kb->actions->params, "");
+    EXPECT_FALSE(kb->actions->next);
     EXPECT_STREQ(kb->help, "a: exit");
 }
 
@@ -33,11 +35,12 @@ TEST_F(Keybind, Replace)
     keybind_init(config);
 
     const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
-    ASSERT_NE(kb, nullptr);
+    ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>(XKB_KEY_Escape));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    EXPECT_EQ(kb->actions.sequence[0].type, action_info);
+    EXPECT_EQ(kb->actions->type, action_info);
+    EXPECT_STREQ(kb->actions->params, "");
+    EXPECT_FALSE(kb->actions->next);
 }
 
 TEST_F(Keybind, Mods)
@@ -63,12 +66,12 @@ TEST_F(Keybind, ActionParams)
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);
-    ASSERT_NE(kb, nullptr);
+    ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(1));
-    EXPECT_EQ(kb->actions.sequence[0].type, action_status);
-    EXPECT_STREQ(kb->actions.sequence[0].params, "params 1 2 3");
+    EXPECT_EQ(kb->actions->type, action_status);
+    EXPECT_STREQ(kb->actions->params, "params 1 2 3");
+    EXPECT_FALSE(kb->actions->next);
     EXPECT_STREQ(kb->help, "a: status params 1 2 3");
 }
 
@@ -78,12 +81,24 @@ TEST_F(Keybind, Multiaction)
     keybind_init(config);
 
     const struct keybind* kb = keybind_find('a', 0);
-    ASSERT_NE(kb, nullptr);
+    ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
-    ASSERT_EQ(kb->actions.num, static_cast<size_t>(3));
-    EXPECT_EQ(kb->actions.sequence[0].type, action_exec);
-    EXPECT_EQ(kb->actions.sequence[1].type, action_reload);
-    EXPECT_EQ(kb->actions.sequence[2].type, action_exit);
-    EXPECT_STREQ(kb->help, "a: exec cmd; ...");
+
+    struct action* it = kb->actions;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_exec);
+    EXPECT_STREQ(it->params, "cmd");
+
+    it = it->next;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_reload);
+    EXPECT_STREQ(it->params, "");
+
+    it = it->next;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_exit);
+    EXPECT_STREQ(it->params, "");
+
+    EXPECT_FALSE(it->next);
 }

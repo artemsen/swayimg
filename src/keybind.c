@@ -87,7 +87,7 @@ static bool parse_keymod(const char* name, xkb_keysym_t* key, uint8_t* mods)
  * @param actions sequence of actions
  */
 static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
-                                      struct action_seq* actions)
+                                      struct action* actions)
 {
     struct keybind* kb = calloc(1, sizeof(struct keybind));
     if (!kb) {
@@ -96,23 +96,22 @@ static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
 
     kb->key = key;
     kb->mods = mods;
-    kb->actions = *actions;
+    kb->actions = actions;
 
     // construct help description
-    if (kb->actions.sequence[0].type != action_none) {
+    if (kb->actions->type != action_none) {
         size_t max_len = 30;
         char* key_name = keybind_name(kb->key, kb->mods);
         if (key_name) {
-            const struct action* action =
-                &kb->actions.sequence[0]; // first only
+            const struct action* action = kb->actions; // first only
             str_append(key_name, 0, &kb->help);
             str_append(": ", 0, &kb->help);
             str_append(action_typename(action), 0, &kb->help);
-            if (action->params) {
+            if (*action->params) {
                 str_append(" ", 0, &kb->help);
                 str_append(action->params, 0, &kb->help);
             }
-            if (kb->actions.num > 1) {
+            if (kb->actions->next) {
                 str_append("; ...", 0, &kb->help);
             }
             if (strlen(kb->help) > max_len) {
@@ -135,7 +134,7 @@ static struct keybind* create_binding(xkb_keysym_t key, uint8_t mods,
 static void free_binding(struct keybind* kb)
 {
     if (kb) {
-        action_free(&kb->actions);
+        action_free(kb->actions);
         free(kb->help);
         free(kb);
     }
@@ -149,7 +148,7 @@ static void free_binding(struct keybind* kb)
  * @param actions sequence of actions
  */
 static void set_binding(struct keybind** head, xkb_keysym_t key, uint8_t mods,
-                        struct action_seq* actions)
+                        struct action* actions)
 {
     struct keybind* kb;
 
@@ -184,7 +183,7 @@ static void load_binding(struct keybind** head, const struct config* cfg,
     list_for_each(cfg, const struct config, cs) {
         if (strcmp(section, cs->name) == 0) {
             list_for_each(cs->params, const struct config_keyval, kv) {
-                struct action_seq actions = { 0 };
+                struct action* actions;
                 xkb_keysym_t keysym;
                 uint8_t mods;
 
@@ -194,12 +193,13 @@ static void load_binding(struct keybind** head, const struct config* cfg,
                     continue;
                 }
                 // parse actions
-                if (!action_create(kv->value, &actions)) {
+                actions = action_create(kv->value);
+                if (!actions) {
                     config_error_val(section, kv->value);
                     continue;
                 }
 
-                set_binding(head, keysym, mods, &actions);
+                set_binding(head, keysym, mods, actions);
             }
             break;
         }

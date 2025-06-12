@@ -63,8 +63,8 @@ struct application {
     pthread_mutex_t events_lock; ///< Event queue lock
     int event_signal;            ///< Queue change notification
 
-    struct action_seq sigusr1; ///< Actions applied by USR1 signal
-    struct action_seq sigusr2; ///< Actions applied by USR2 signal
+    struct action* sigusr1; ///< Actions applied by USR1 signal
+    struct action* sigusr2; ///< Actions applied by USR2 signal
 
     enum mode_type mode_current; ///< Currently active mode (viewer/gallery)
     struct mode_handlers mode_handlers[2]; ///< Mode handlers
@@ -292,21 +292,22 @@ static void append_event(const struct action* action)
  */
 static void on_signal(int signum)
 {
-    const struct action_seq* sigact;
+    const struct action* sigact;
 
     switch (signum) {
         case SIGUSR1:
-            sigact = &ctx.sigusr1;
+            sigact = ctx.sigusr1;
             break;
         case SIGUSR2:
-            sigact = &ctx.sigusr2;
+            sigact = ctx.sigusr2;
             break;
         default:
             return;
     }
 
-    for (size_t i = 0; i < sigact->num; ++i) {
-        append_event(&sigact->sequence[i]);
+    while (sigact) {
+        append_event(sigact);
+        sigact = sigact->next;
     }
 }
 
@@ -321,16 +322,18 @@ static void setup_signals(const struct config* cfg)
 
     // get signal actions
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
-    if (!action_create(value, &ctx.sigusr1)) {
+    ctx.sigusr1 = action_create(value);
+    if (!ctx.sigusr1) {
         config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR1);
         value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR1);
-        action_create(value, &ctx.sigusr1);
+        ctx.sigusr1 = action_create(value);
     }
     value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR2);
-    if (!action_create(value, &ctx.sigusr2)) {
+    ctx.sigusr2 = action_create(value);
+    if (!ctx.sigusr2) {
         config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR2);
         value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR2);
-        action_create(value, &ctx.sigusr2);
+        ctx.sigusr2 = action_create(value);
     }
 
     // set handlers
@@ -610,8 +613,8 @@ void app_destroy(void)
     }
     pthread_mutex_destroy(&ctx.events_lock);
 
-    action_free(&ctx.sigusr1);
-    action_free(&ctx.sigusr2);
+    action_free(ctx.sigusr1);
+    action_free(ctx.sigusr2);
 }
 
 void app_watch(int fd, fd_callback cb, void* data)
@@ -710,8 +713,10 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
     const struct keybind* kb = keybind_find(key, mods);
 
     if (kb) {
-        for (size_t i = 0; i < kb->actions.num; ++i) {
-            append_event(&kb->actions.sequence[i]);
+        const struct action* action = kb->actions;
+        while (action) {
+            append_event(action);
+            action = action->next;
         }
     } else {
         char* name = keybind_name(key, mods);

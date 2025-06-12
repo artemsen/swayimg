@@ -9,61 +9,63 @@ extern "C" {
 
 class Action : public ::testing::Test {
 protected:
-    void TearDown() override { action_free(&actions); }
-    struct action_seq actions = { nullptr, 0 };
+    void TearDown() override { action_free(actions); }
+    struct action* actions = nullptr;
 };
 
 TEST_F(Action, Create)
 {
-    ASSERT_TRUE(action_create("info", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(1));
-    ASSERT_NE(actions.sequence, nullptr);
-    ASSERT_EQ(actions.sequence[0].type, action_info);
-    ASSERT_EQ(actions.sequence[0].params, nullptr);
+    actions = action_create("info");
+    ASSERT_TRUE(actions);
+    EXPECT_FALSE(actions->next);
+    EXPECT_STREQ(actions->params, "");
+    EXPECT_EQ(actions->type, action_info);
 }
 
 TEST_F(Action, Fail)
 {
-    ASSERT_FALSE(action_create("", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(0));
-    ASSERT_EQ(actions.sequence, nullptr);
-
-    ASSERT_FALSE(action_create("invalid", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(0));
-    ASSERT_EQ(actions.sequence, nullptr);
-
-    ASSERT_FALSE(action_create("info123 exec", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(0));
-    ASSERT_EQ(actions.sequence, nullptr);
+    EXPECT_FALSE(action_create(""));
+    EXPECT_FALSE(action_create("invalid"));
+    EXPECT_FALSE(action_create("info123 exec"));
 }
 
 TEST_F(Action, Params)
 {
-    ASSERT_TRUE(action_create("exec \t  param 123 ", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(1));
-    ASSERT_NE(actions.sequence, nullptr);
-    ASSERT_EQ(actions.sequence[0].type, action_exec);
-    ASSERT_STREQ(actions.sequence[0].params, "param 123");
+    actions = action_create("exec \t  param 123 ");
+    ASSERT_TRUE(actions);
+    EXPECT_FALSE(actions->next);
+    EXPECT_EQ(actions->type, action_exec);
+    EXPECT_STREQ(actions->params, "param 123");
 }
 
 TEST_F(Action, Sequence)
 {
-    ASSERT_TRUE(action_create("exec cmd;\nreload;\t exit;status ok", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(4));
-    ASSERT_NE(actions.sequence, nullptr);
-    ASSERT_EQ(actions.sequence[0].type, action_exec);
-    ASSERT_STREQ(actions.sequence[0].params, "cmd");
-    ASSERT_EQ(actions.sequence[1].type, action_reload);
-    ASSERT_EQ(actions.sequence[1].params, nullptr);
-    ASSERT_EQ(actions.sequence[2].type, action_exit);
-    ASSERT_EQ(actions.sequence[2].params, nullptr);
-    ASSERT_EQ(actions.sequence[3].type, action_status);
-    ASSERT_STREQ(actions.sequence[3].params, "ok");
+    actions = action_create("exec cmd;\nreload ;\t exit;status ok");
+
+    struct action* it = actions;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_exec);
+    EXPECT_STREQ(it->params, "cmd");
+
+    it = it->next;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_reload);
+    EXPECT_STREQ(it->params, "");
+
+    it = it->next;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_exit);
+    EXPECT_STREQ(it->params, "");
+
+    it = it->next;
+    ASSERT_TRUE(it);
+    EXPECT_EQ(it->type, action_status);
+    EXPECT_STREQ(it->params, "ok");
+
+    EXPECT_FALSE(it->next);
 }
 
 TEST_F(Action, FailSequence)
 {
-    ASSERT_FALSE(action_create("exec cmd;\nreload;invalid", &actions));
-    ASSERT_EQ(actions.num, static_cast<size_t>(0));
-    ASSERT_EQ(actions.sequence, nullptr);
+    ASSERT_FALSE(action_create("exec cmd;\nreload;invalid"));
 }
