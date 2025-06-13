@@ -106,6 +106,7 @@ struct ui {
 
     // mouse state
     struct mouse {
+        enum ui_cursor shape;
         uint32_t button;
         int x;
         int y;
@@ -273,6 +274,10 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
     const int dx = x - ctx.mouse.x;
     const int dy = y - ctx.mouse.y;
 
+    if (ctx.mouse.shape == ui_cursor_hide) {
+        ui_set_cursor(ui_cursor_default);
+    }
+
     if (dx || dy) {
         ctx.mouse.x = x;
         ctx.mouse.y = y;
@@ -358,10 +363,7 @@ static void on_idle_begin(void* data, struct ext_idle_notification_v1* notify)
     ui_set_cursor(ui_cursor_hide);
 }
 
-static void on_idle_end(void* data, struct ext_idle_notification_v1* notify)
-{
-    ui_set_cursor(ui_cursor_default);
-}
+static void on_idle_end(void* data, struct ext_idle_notification_v1* notify) { }
 
 static const struct ext_idle_notification_v1_listener idle_listener = {
     .idled = on_idle_begin,
@@ -392,9 +394,12 @@ static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
     }
 
     // register idle listener
-    ctx.wp.idle = ext_idle_notifier_v1_get_input_idle_notification(
-        ctx.wp.idle_manager, CURSOR_HIDE_TIMEOUT * 1000, ctx.wl.seat);
-    ext_idle_notification_v1_add_listener(ctx.wp.idle, &idle_listener, NULL);
+    if (ctx.wp.idle_manager) {
+        ctx.wp.idle = ext_idle_notifier_v1_get_idle_notification(
+            ctx.wp.idle_manager, CURSOR_HIDE_TIMEOUT * 1000, ctx.wl.seat);
+        ext_idle_notification_v1_add_listener(ctx.wp.idle, &idle_listener,
+                                              NULL);
+    }
 }
 
 static const struct wl_seat_listener seat_listener = {
@@ -530,9 +535,9 @@ static void on_registry_global(void* data, struct wl_registry* registry,
 
     } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
         // idle notifier
-        ctx.wp.idle_manager = wl_registry_bind(
-            registry, name, &ext_idle_notifier_v1_interface,
-            EXT_IDLE_NOTIFIER_V1_GET_INPUT_IDLE_NOTIFICATION_SINCE_VERSION);
+        ctx.wp.idle_manager =
+            wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface,
+                             EXT_IDLE_NOTIFIER_V1_GET_IDLE_NOTIFICATION);
 
     } else if (strcmp(interface, wp_content_type_manager_v1_interface.name) ==
                0) {
@@ -688,6 +693,12 @@ void ui_destroy(void)
         }
         wp_viewporter_destroy(ctx.wp.viewporter);
     }
+    if (ctx.wp.idle_manager) {
+        if (ctx.wp.idle) {
+            ext_idle_notification_v1_destroy(ctx.wp.idle);
+        }
+        ext_idle_notifier_v1_destroy(ctx.wp.idle_manager);
+    }
     if (ctx.wp.ctype_manager) {
         if (ctx.wp.ctype) {
             wp_content_type_v1_destroy(ctx.wp.ctype);
@@ -828,6 +839,8 @@ void ui_set_cursor(enum ui_cursor shape)
         return;
     }
 
+    ctx.mouse.shape = shape;
+
     switch (shape) {
         case ui_cursor_hide:
             wl_pointer_set_cursor(ctx.wl.pointer, 0, NULL, 0, 0);
@@ -840,6 +853,7 @@ void ui_set_cursor(enum ui_cursor shape)
             wlshape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
             break;
     }
+
     dev = wp_cursor_shape_manager_v1_get_pointer(ctx.wp.cursor, ctx.wl.pointer);
     wp_cursor_shape_device_v1_set_shape(dev, 0, wlshape);
     wp_cursor_shape_device_v1_destroy(dev);
