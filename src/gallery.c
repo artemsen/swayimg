@@ -601,6 +601,7 @@ static void on_activate(struct image* image)
     info_reset(image);
     info_update_index(ctx.layout.current->index, imglist_size());
     ui_set_title(ctx.layout.current->name);
+    ui_set_ctype(false);
 }
 
 /** Mode handler: deactivate viewer. */

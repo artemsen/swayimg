@@ -12,6 +12,12 @@
 #define UI_WINDOW_DEFAULT_WIDTH  800
 #define UI_WINDOW_DEFAULT_HEIGHT 600
 
+/** Cursor shapes. */
+enum ui_cursor {
+    ui_cursor_default,
+    ui_cursor_drag,
+};
+
 /**
  * Create global UI context.
  */
@@ -59,9 +65,16 @@ void ui_draw_commit(void);
 void ui_set_title(const char* name);
 
 /**
- * Change surface content type to photo or animation
+ * Set mouse pointer shape.
+ * @param shape cursor shape to set
  */
-void ui_set_content_type_animated(bool animated);
+void ui_set_cursor(enum ui_cursor shape);
+
+/**
+ * Set surface content type.
+ * @param animated true to set animation, false for static image
+ */
+void ui_set_ctype(bool animated);
 
 /**
  * Get window width.

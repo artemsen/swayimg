@@ -36,13 +36,23 @@ struct mode_handlers {
     void (*resize)(void);
 
     /**
-     * Mouse or touch drag operation.
-     * @param dx,dy coordinates delta
+     * Mouse move handler.
+     * @param mods key modifiers (ctrl/alt/shift)
+     * @param btn mask with mouse buttons state
+     * @param dx,dy delta between old and new position
      */
-    void (*drag)(int dx, int dy);
+    void (*mouse_move)(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy);
 
     /**
-     * Image list uptade handler.
+     * Mouse click/scroll handler.
+     * @param mods key modifiers (ctrl/alt/shift)
+     * @param btn mask with mouse buttons state
+     * @param x,y mouse pointer position
+     */
+    void (*mouse_click)(uint8_t mods, uint32_t btn, size_t x, size_t y);
+
+    /**
+     * Image list update handler.
      * @param image updated image instance
      * @param event operation type
      */

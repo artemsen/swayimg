@@ -44,13 +44,15 @@ static const char* action_names[] = {
     [action_flip_vertical] = "flip_vertical",
     [action_flip_horizontal] = "flip_horizontal",
     [action_reload] = "reload",
-    [action_redraw] = "redraw",
     [action_antialiasing] = "antialiasing",
     [action_info] = "info",
     [action_exec] = "exec",
-    [action_export] = "export",
+    [action_drag] = "drag",
     [action_status] = "status",
     [action_exit] = "exit",
+    // internal usage only
+    [action_redraw] = "redraw",
+    [action_export] = "export",
 };
 
 /**

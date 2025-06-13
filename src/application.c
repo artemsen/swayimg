@@ -721,16 +721,25 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
     } else {
         char* name = keybind_name(key, mods);
         if (name) {
-            info_update(info_status, "Key %s is not bound", name);
+            info_update(info_status, "%s is not bound", name);
             free(name);
             app_redraw();
         }
     }
 }
 
-void app_on_drag(int dx, int dy)
+void app_on_mmove(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy)
 {
-    if (ctx.mode_handlers[ctx.mode_current].drag) {
-        ctx.mode_handlers[ctx.mode_current].drag(dx, dy);
+    if (ctx.mode_handlers[ctx.mode_current].mouse_move) {
+        ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, dx, dy);
+    }
+}
+
+void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
+{
+    if (ctx.mode_handlers[ctx.mode_current].mouse_click) {
+        ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y);
+    } else {
+        app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }

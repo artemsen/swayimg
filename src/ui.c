@@ -98,9 +98,9 @@ struct ui {
         uint32_t delay;
     } repeat;
 
-    // mouse drag
+    // mouse state
     struct mouse {
-        bool active;
+        uint32_t button;
         int x;
         int y;
     } mouse;
@@ -246,29 +246,11 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
     }
 }
 
-/**
- * Set mouse pointer shape.
- * @param wl_pointer wayland pointer instance
- * @param grabbing true to set grabbing shape, false to use default
- */
-static void set_pointer_shape(struct wl_pointer* wl_pointer, bool grabbing)
-{
-    if (ctx.wp.cursor) {
-        const uint32_t shape = grabbing
-            ? WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING
-            : WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
-        struct wp_cursor_shape_device_v1* cursor_device =
-            wp_cursor_shape_manager_v1_get_pointer(ctx.wp.cursor, wl_pointer);
-        wp_cursor_shape_device_v1_set_shape(cursor_device, 0, shape);
-        wp_cursor_shape_device_v1_destroy(cursor_device);
-    }
-}
-
 static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
                              uint32_t serial, struct wl_surface* surface,
                              wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
-    set_pointer_shape(wl_pointer, false);
+    ui_set_cursor(ui_cursor_default);
 }
 
 static void on_pointer_leave(void* data, struct wl_pointer* wl_pointer,
@@ -282,55 +264,51 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
 {
     const int x = wl_fixed_to_int(surface_x);
     const int y = wl_fixed_to_int(surface_y);
+    const int dx = x - ctx.mouse.x;
+    const int dy = y - ctx.mouse.y;
 
-    if (ctx.mouse.active) {
-        const int dx = x - ctx.mouse.x;
-        const int dy = y - ctx.mouse.y;
-        if (dx || dy) {
-            app_on_drag(dx, dy);
-        }
+    if (dx || dy) {
+        ctx.mouse.x = x;
+        ctx.mouse.y = y;
+        app_on_mmove(keybind_mods(ctx.xkb.state), ctx.mouse.button, dx, dy);
     }
-
-    ctx.mouse.x = x;
-    ctx.mouse.y = y;
 }
 
 static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
                               uint32_t serial, uint32_t time, uint32_t button,
                               uint32_t state)
 {
-    const bool pressed = (state == WL_POINTER_BUTTON_STATE_PRESSED);
+    uint32_t btn;
 
-    if (button == BTN_LEFT) {
-        ctx.mouse.active = pressed;
-        set_pointer_shape(wl_pointer, pressed);
+    switch (button) {
+        case BTN_LEFT:
+            btn = MOUSE_BTN_LEFT;
+            break;
+        case BTN_RIGHT:
+            btn = MOUSE_BTN_RIGHT;
+            break;
+        case BTN_MIDDLE:
+            btn = MOUSE_BTN_MIDDLE;
+            break;
+        case BTN_SIDE:
+            btn = MOUSE_BTN_SIDE;
+            break;
+        case BTN_EXTRA:
+            btn = MOUSE_BTN_EXTRA;
+            break;
+        default:
+            btn = 0;
+            break;
     }
 
-    if (pressed) {
-        xkb_keysym_t key;
-        switch (button) {
-            // TODO: Configurable drag
-            // case BTN_LEFT:
-            //     key = VKEY_MOUSE_LEFT;
-            //     break;
-            case BTN_RIGHT:
-                key = VKEY_MOUSE_RIGHT;
-                break;
-            case BTN_MIDDLE:
-                key = VKEY_MOUSE_MIDDLE;
-                break;
-            case BTN_SIDE:
-                key = VKEY_MOUSE_SIDE;
-                break;
-            case BTN_EXTRA:
-                key = VKEY_MOUSE_EXTRA;
-                break;
-            default:
-                key = XKB_KEY_NoSymbol;
-                break;
-        }
-        if (key != XKB_KEY_NoSymbol) {
-            app_on_keyboard(key, keybind_mods(ctx.xkb.state));
+    if (btn) {
+        if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            ctx.mouse.button &= ~btn;
+            ui_set_cursor(ui_cursor_default);
+        } else {
+            const uint8_t mods = keybind_mods(ctx.xkb.state);
+            ctx.mouse.button |= btn;
+            app_on_mclick(mods, ctx.mouse.button, ctx.mouse.x, ctx.mouse.y);
         }
     }
 }
@@ -338,15 +316,15 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
 static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
                             uint32_t time, uint32_t axis, wl_fixed_t value)
 {
-    xkb_keysym_t key;
+    uint32_t key;
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
-        key = value > 0 ? VKEY_SCROLL_RIGHT : VKEY_SCROLL_LEFT;
+        key = value > 0 ? MOUSE_SCR_RIGHT : MOUSE_SCR_LEFT;
     } else {
-        key = value > 0 ? VKEY_SCROLL_DOWN : VKEY_SCROLL_UP;
+        key = value > 0 ? MOUSE_SCR_DOWN : MOUSE_SCR_UP;
     }
 
-    app_on_keyboard(key, keybind_mods(ctx.xkb.state));
+    app_on_mclick(keybind_mods(ctx.xkb.state), key, ctx.mouse.x, ctx.mouse.y);
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -806,7 +784,21 @@ void ui_set_title(const char* name)
     }
 }
 
-void ui_set_content_type_animated(bool animated)
+void ui_set_cursor(enum ui_cursor shape)
+{
+    if (ctx.wl.pointer && ctx.wp.cursor) {
+        struct wp_cursor_shape_device_v1* dev;
+        const uint32_t shape_id = shape == ui_cursor_default
+            ? WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT
+            : WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING;
+        dev = wp_cursor_shape_manager_v1_get_pointer(ctx.wp.cursor,
+                                                     ctx.wl.pointer);
+        wp_cursor_shape_device_v1_set_shape(dev, 0, shape_id);
+        wp_cursor_shape_device_v1_destroy(dev);
+    }
+}
+
+void ui_set_ctype(bool animated)
 {
     if (ctx.wp.ctype) {
         if (animated) {

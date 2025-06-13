@@ -10,21 +10,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Names of virtual keys
-struct virtual_keys {
-    xkb_keysym_t key;
+// Names of virtual mouse buttons/scroll
+struct mouse_keys {
+    uint16_t btn;
     const char* name;
 };
-static const struct virtual_keys virtual_keys[] = {
-    { VKEY_SCROLL_UP,    "ScrollUp"    },
-    { VKEY_SCROLL_DOWN,  "ScrollDown"  },
-    { VKEY_SCROLL_LEFT,  "ScrollLeft"  },
-    { VKEY_SCROLL_RIGHT, "ScrollRight" },
-    { VKEY_MOUSE_LEFT,   "MouseLeft"   },
-    { VKEY_MOUSE_RIGHT,  "MouseRight"  },
-    { VKEY_MOUSE_MIDDLE, "MouseMiddle" },
-    { VKEY_MOUSE_SIDE,   "MouseSide"   },
-    { VKEY_MOUSE_EXTRA,  "MouseExtra"  },
+static const struct mouse_keys mause_keys[] = {
+    { MOUSE_BTN_LEFT,   "MouseLeft"   },
+    { MOUSE_BTN_RIGHT,  "MouseRight"  },
+    { MOUSE_BTN_MIDDLE, "MouseMiddle" },
+    { MOUSE_BTN_SIDE,   "MouseSide"   },
+    { MOUSE_BTN_EXTRA,  "MouseExtra"  },
+    { MOUSE_SCR_UP,     "ScrollUp"    },
+    { MOUSE_SCR_DOWN,   "ScrollDown"  },
+    { MOUSE_SCR_LEFT,   "ScrollLeft"  },
+    { MOUSE_SCR_RIGHT,  "ScrollRight" },
 };
 
 /** Head of global key binding list. */
@@ -63,9 +63,9 @@ static bool parse_keymod(const char* name, xkb_keysym_t* key, uint8_t* mods)
                                 XKB_KEYSYM_CASE_INSENSITIVE);
     // check for virtual keys
     if (*key == XKB_KEY_NoSymbol) {
-        for (size_t i = 0; i < ARRAY_SIZE(virtual_keys); ++i) {
-            if (strcmp(slices[snum - 1].value, virtual_keys[i].name) == 0) {
-                *key = virtual_keys[i].key;
+        for (size_t i = 0; i < ARRAY_SIZE(mause_keys); ++i) {
+            if (strcmp(slices[snum - 1].value, mause_keys[i].name) == 0) {
+                *key = MOUSE_TO_XKB(mause_keys[i].btn);
                 break;
             }
         }
@@ -275,20 +275,25 @@ char* keybind_name(xkb_keysym_t key, uint8_t mods)
     }
 
     // key name
-    if (xkb_keysym_get_name(key, key_name, sizeof(key_name)) > 0) {
-        str_append(key_name, 0, &name);
-    } else {
-        // search in virtual keys
-        bool found = false;
-        for (size_t i = 0; !found && i < ARRAY_SIZE(virtual_keys); ++i) {
-            found = (virtual_keys[i].key == key);
-            if (found) {
-                str_append(virtual_keys[i].name, 0, &name);
+    if ((MOUSE_XKB_BASE & key) == MOUSE_XKB_BASE) {
+        const uint32_t btn = XKB_TO_MOUSE(key);
+        for (size_t i = 0; i < ARRAY_SIZE(mause_keys); ++i) {
+            if (mause_keys[i].btn & btn) {
+                if (name && name[strlen(name) - 1] != '+') {
+                    str_append("+", 0, &name);
+                }
+                str_append(mause_keys[i].name, 0, &name);
             }
         }
-        if (!found) {
-            str_append("<UNKNOWN>", 0, &name);
+    } else {
+        key = xkb_keysym_to_lower(key);
+        if (xkb_keysym_get_name(key, key_name, sizeof(key_name)) > 0) {
+            str_append(key_name, 0, &name);
         }
+    }
+
+    if (!name) {
+        name = str_dup("<UNKNOWN>", NULL);
     }
 
     return name;

@@ -14,16 +14,19 @@
 #define KEYMOD_ALT   (1 << 1)
 #define KEYMOD_SHIFT (1 << 2)
 
-// Virtual keys used for scrolling (mouse wheel, touchpad etc)
-#define VKEY_SCROLL_UP    0x42000001
-#define VKEY_SCROLL_DOWN  0x42000002
-#define VKEY_SCROLL_LEFT  0x42000003
-#define VKEY_SCROLL_RIGHT 0x42000004
-#define VKEY_MOUSE_LEFT   0x42000005
-#define VKEY_MOUSE_RIGHT  0x42000006
-#define VKEY_MOUSE_MIDDLE 0x42000007
-#define VKEY_MOUSE_SIDE   0x42000008
-#define VKEY_MOUSE_EXTRA  0x42000009
+// Virtual mouse keys
+#define MOUSE_BTN_LEFT   (1UL << 0)
+#define MOUSE_BTN_RIGHT  (1UL << 1)
+#define MOUSE_BTN_MIDDLE (1UL << 2)
+#define MOUSE_BTN_SIDE   (1UL << 3)
+#define MOUSE_BTN_EXTRA  (1UL << 4)
+#define MOUSE_SCR_UP     (1UL << 5)
+#define MOUSE_SCR_DOWN   (1UL << 6)
+#define MOUSE_SCR_LEFT   (1UL << 7)
+#define MOUSE_SCR_RIGHT  (1UL << 8)
+#define MOUSE_XKB_BASE   0xffff0000
+#define MOUSE_TO_XKB(m)  (MOUSE_XKB_BASE | (m))
+#define XKB_TO_MOUSE(x)  ((x) & ~MOUSE_XKB_BASE)
 
 /** Key binding list entry. */
 struct keybind {

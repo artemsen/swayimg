@@ -137,6 +137,9 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "Shift+ScrollDown", "next_file"              },
     { CFG_KEYS_VIEWER,  "Alt+ScrollUp",     "prev_frame"             },
     { CFG_KEYS_VIEWER,  "Alt+ScrollDown",   "next_frame"             },
+    { CFG_KEYS_VIEWER,  "MouseLeft",        "drag"                   },
+    { CFG_KEYS_VIEWER,  "MouseSide",        "prev_file"              },
+    { CFG_KEYS_VIEWER,  "MouseExtra",       "next_file"              },
 
     { CFG_KEYS_GALLERY, "F1",               "help"                   },
     { CFG_KEYS_GALLERY, "Home",             "first_file"             },

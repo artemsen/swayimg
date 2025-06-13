@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-09" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-13" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -506,8 +506,18 @@ Actions are separated by semicolons.\& One or more key modifiers (\fICtrl\fR, \f
 \fIShift\fR) can be specified in the key name.\&
 The key name can be obtained with the xkbcli tool: \fBxkbcli interactive-wayland\fR.\&
 .PP
-Predefined names for mouse scroll:
+Predefined names for mouse buttons/scroll:
 .PD 0
+.IP \(bu 4
+\fIMouseLeft\fR: Left button;
+.IP \(bu 4
+\fIMouseRight\fR: Right button;
+.IP \(bu 4
+\fIMouseMiddle\fR: Middle button;
+.IP \(bu 4
+\fIMouseSide\fR: Side button;
+.IP \(bu 4
+\fIMouseExtra\fR: Extra button;
 .IP \(bu 4
 \fIScrollUp\fR: Mouse wheel up;
 .IP \(bu 4
@@ -656,6 +666,11 @@ Hyprland: `hyprctl dispatch exec .\&.\&.\&`;
 .IP \(bu 4
 Niri: `niri msg action spawn .\&.\&.\&`.\&
 .PD
+.PP
+.RE
+\fBdrag\fR
+.RS 4
+(Mouse buttons in viewer mode only) Set the button for drag operation.\&
 .PP
 .RE
 \fBexport\fR FILE

@@ -597,7 +597,7 @@ static void reset_state(void)
     info_update_index(ctx.current->index, imglist_size());
     info_update(info_scale, "%.0f%%", ctx.scale * 100);
 
-    ui_set_content_type_animated(ctx.animation_enable);
+    ui_set_ctype(ctx.animation_enable);
 
     app_redraw();
 }
@@ -855,18 +855,36 @@ static void on_imglist(const struct image* image, enum fsevent event)
     }
 }
 
-/** Mode handler: mouse drag. */
-static void on_drag(int dx, int dy)
+/** Mode handler: mouse move. */
+static void on_mouse_move(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy)
 {
-    const ssize_t old_x = ctx.img_x;
-    const ssize_t old_y = ctx.img_y;
+    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
 
-    ctx.img_x += dx;
-    ctx.img_y += dy;
+    if (kb && kb->actions->type == action_drag) {
+        const ssize_t old_x = ctx.img_x;
+        const ssize_t old_y = ctx.img_y;
 
-    if (ctx.img_x != old_x || ctx.img_y != old_y) {
-        fixup_position(false);
-        app_redraw();
+        ctx.img_x += dx;
+        ctx.img_y += dy;
+
+        if (ctx.img_x != old_x || ctx.img_y != old_y) {
+            fixup_position(false);
+            app_redraw();
+        }
+    }
+}
+
+/** Mode handler: mouse click/scroll. */
+static void on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
+{
+    (void)x; // unused
+    (void)y; // unused
+
+    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
+    if (kb && kb->actions->type == action_drag) {
+        ui_set_cursor(ui_cursor_drag);
+    } else {
+        app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }
 
@@ -1040,7 +1058,8 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->action = on_action;
     handlers->redraw = on_redraw;
     handlers->resize = on_resize;
-    handlers->drag = on_drag;
+    handlers->mouse_move = on_mouse_move;
+    handlers->mouse_click = on_mouse_click;
     handlers->imglist = on_imglist;
     handlers->current = on_current;
     handlers->activate = on_activate;

@@ -318,7 +318,12 @@ Actions are separated by semicolons. One or more key modifiers (_Ctrl_, _Alt_,
 _Shift_) can be specified in the key name.
 The key name can be obtained with the xkbcli tool: *xkbcli interactive-wayland*.
 
-Predefined names for mouse scroll:
+Predefined names for mouse buttons/scroll:
+- _MouseLeft_: Left button;
+- _MouseRight_: Right button;
+- _MouseMiddle_: Middle button;
+- _MouseSide_: Side button;
+- _MouseExtra_: Extra button;
 - _ScrollUp_: Mouse wheel up;
 - _ScrollDown_: Mouse wheel down;
 - _ScrollLeft_: Mouse scroll left;
@@ -423,6 +428,9 @@ Predefined names for mouse scroll:
 	- Sway: `swaymsg exec ...`;
 	- Hyprland: `hyprctl dispatch exec ...`;
 	- Niri: `niri msg action spawn ...`.
+
+*drag*
+	(Mouse buttons in viewer mode only) Set the button for drag operation.
 
 *export* FILE
 	Export currently displayed image to PNG file.
