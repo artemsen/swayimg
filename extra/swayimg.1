@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMG" "1" "2025-06-05" "swayimg" "Swayimg manual"
+.TH "SWAYIMG" "1" "2025-06-13" "swayimg" "Swayimg manual"
 .PP
 .SH NAME
 .PP
@@ -139,23 +139,26 @@ Override configuration parameter, see \fIswayimgrc\fR(5) for a list of sections
 and their parameters.\&
 .PP
 .RE
-.SH SWAY MODE
-.RS 4
-The Sway compatibility mode is automatically enabled if the environment
-variable SWAYSOCK points to a valid Sway IPC socket file.\&
+.SH SWAY/HYPRLAND INTEGRATION
+.PP
+Sway/Hyprland integration mode is automatically enabled if IPC for these
+compositors is present in the system.\&
 This mode provides some features such as setting the window position and
 getting the workspace layout.\&
 By default, the application creates an "overlay" above the currently active
 window, which gives the illusion that the image is opened directly inside
 the terminal window.\&
 .PP
-.RE
 .SH ENVIRONMENT
 .PP
 \fISWAYSOCK\fR
 .RS 4
-Path to the socket file used for Sway IPC.\& Unset it or set it to \fI/dev/null\fR
-to  disable integration with Sway WM.\&
+Path to the socket file used for Sway IPC.\&
+.PP
+.RE
+\fIHYPRLAND_INSTANCE_SIGNATURE\fR, \fIXDG_RUNTIME_DIR\fR
+.RS 4
+Path to the socket file used for Hyprland IPC.\&
 .PP
 .RE
 \fIXDG_CONFIG_HOME\fR, \fIXDG_CONFIG_DIRS\fR, \fIHOME\fR
@@ -182,11 +185,10 @@ Perform the actions specified in the config file.\&
 .PP
 .RE
 .SH EXIT STATUS
-.RS 4
+.PP
 The exit status is 0 if the program completed successfully and 1 if an
 error occurred.\&
 .PP
-.RE
 .SH EXAMPLES
 .PP
 View multiple files:

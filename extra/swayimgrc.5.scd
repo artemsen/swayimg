@@ -47,15 +47,15 @@ General configuration for the entire application: _[general]_.
 	Mode used at startup, _viewer_ by default.
 
 *position* = _parent_|X,Y
-	Initial window position, this option valid only in Sway WM:
+	Initial window position, this option valid only in Sway/Hyprland:
 	- _parent_: set position from parent (currently active) window (default);
 	- X,Y: absolute coordinates of the top left corner, e.g. _100,200_.
 
 *size* = _fullscreen_|_parent_|_image_|W,H
 	Initial window size:
 	- _fullscreen_: use full screen mode;
-	- _parent_: [Only in Sway WM] set size from parent (currently active) window
-	  (default);
+	- _parent_: [Only in Sway/Hyprland] set size from parent (currently active)
+	  window (default);
 	- _image_: set size from the first loaded image;
 	- W,H: absolute size of the window in pixels, e.g. _320,240_.
 

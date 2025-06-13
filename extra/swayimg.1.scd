@@ -79,10 +79,10 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 	Override configuration parameter, see _swayimgrc_(5) for a list of sections
 	and their parameters.
 
-# SWAY MODE
+# SWAY/HYPRLAND INTEGRATION
 
-The Sway compatibility mode is automatically enabled if the environment
-variable SWAYSOCK points to a valid Sway IPC socket file.
+Sway/Hyprland integration mode is automatically enabled if IPC for these
+compositors is present in the system.
 This mode provides some features such as setting the window position and
 getting the workspace layout.
 By default, the application creates an "overlay" above the currently active
@@ -92,8 +92,10 @@ the terminal window.
 # ENVIRONMENT
 
 _SWAYSOCK_
-	Path to the socket file used for Sway IPC. Unset it or set it to _/dev/null_
-	to  disable integration with Sway WM.
+	Path to the socket file used for Sway IPC.
+
+_HYPRLAND_INSTANCE_SIGNATURE_, _XDG_RUNTIME_DIR_
+	Path to the socket file used for Hyprland IPC.
 
 _XDG_CONFIG_HOME_, _XDG_CONFIG_DIRS_, _HOME_
 	Prefix of the path to the application config file, see _swayimgrc_(5) for
