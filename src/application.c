@@ -469,6 +469,8 @@ static bool create_window(const struct config* cfg, const struct image* img)
 
     // setup window position and size
     if (wnd.width == SIZE_FULLSCREEN) {
+        wnd.width = UI_WINDOW_DEFAULT_WIDTH;
+        wnd.height = UI_WINDOW_DEFAULT_HEIGHT;
         ui_toggle_fullscreen();
     } else {
 #ifdef HAVE_COMPOSITOR
