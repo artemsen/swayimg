@@ -183,6 +183,7 @@ static void skip_current(bool remove)
         if (remove) {
             imglist_remove(skip);
         }
+        ui_set_title(ctx.layout.current->name);
         app_redraw();
     } else {
         printf("No more images to view, exit\n");
@@ -339,6 +340,7 @@ static bool select_next(enum action_type direction)
     if (rc) {
         info_reset(ctx.layout.current);
     }
+    ui_set_title(ctx.layout.current->name);
     info_update_index(ctx.layout.current->index, imglist_size());
     app_redraw();
 
@@ -598,6 +600,7 @@ static void on_activate(struct image* image)
 
     info_reset(image);
     info_update_index(ctx.layout.current->index, imglist_size());
+    ui_set_title(ctx.layout.current->name);
 }
 
 /** Mode handler: deactivate viewer. */
