@@ -104,7 +104,7 @@ conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
 
 # Wayland protocols
-wlproto = dependency('wayland-protocols', version: '>=1.35')
+wlproto = dependency('wayland-protocols', version: '>=1.40')
 wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
 wlscan = dependency('wayland-scanner', required: false, native: true)
 if wlscan.found()
@@ -122,6 +122,7 @@ protocols = [
     wlproto_dir / 'stable/viewporter/viewporter.xml',
     wlproto_dir / 'staging/content-type/content-type-v1.xml',
     wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
+    wlproto_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
     wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
     wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
 ]
