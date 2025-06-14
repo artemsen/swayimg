@@ -77,24 +77,26 @@ void app_on_imglist(const struct image* image, enum fsevent event);
 void app_on_resize(void);
 
 /**
- * Handler of external event: key/mouse press.
- * @param key code of key pressed
- * @param mods key modifiers (ctrl/alt/shift)
- */
-void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
-
-/**
  * Handler of external event: mouse move.
  * @param mods key modifiers (ctrl/alt/shift)
  * @param btn mask with mouse buttons state
+ * @param x,y window coordinates of mouse pointer
  * @param dx,dy delta between old and new position
  */
-void app_on_mmove(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy);
+void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
+                  ssize_t dy);
 
 /**
  * Handler of external event: mouse clock/scroll.
  * @param mods key modifiers (ctrl/alt/shift)
  * @param btn mask with mouse buttons state
- * @param x,y mouse pointer position
+ * @param x,y window coordinates of mouse pointer
  */
 void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y);
+
+/**
+ * Handler of external event: key/mouse press.
+ * @param key code of key pressed
+ * @param mods key modifiers (ctrl/alt/shift)
+ */
+void app_on_keyboard(xkb_keysym_t key, uint8_t mods);

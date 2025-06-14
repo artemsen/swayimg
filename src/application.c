@@ -710,6 +710,19 @@ void app_on_resize(void)
     ctx.mode_handlers[ctx.mode_current].resize();
 }
 
+void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
+                  ssize_t dy)
+{
+    ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, x, y, dx, dy);
+}
+
+void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
+{
+    if (!ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y)) {
+        app_on_keyboard(MOUSE_TO_XKB(btn), mods);
+    }
+}
+
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
     const struct keybind* kb = keybind_find(key, mods);
@@ -727,21 +740,5 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
             free(name);
             app_redraw();
         }
-    }
-}
-
-void app_on_mmove(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy)
-{
-    if (ctx.mode_handlers[ctx.mode_current].mouse_move) {
-        ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, dx, dy);
-    }
-}
-
-void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
-{
-    if (ctx.mode_handlers[ctx.mode_current].mouse_click) {
-        ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y);
-    } else {
-        app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }
