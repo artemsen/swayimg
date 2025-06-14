@@ -856,36 +856,31 @@ static void on_imglist(const struct image* image, enum fsevent event)
 }
 
 /** Mode handler: mouse move. */
-static void on_mouse_move(uint8_t mods, uint32_t btn, ssize_t dx, ssize_t dy)
+static void on_mouse_move(uint8_t mods, uint32_t btn,
+                          __attribute__((unused)) size_t x,
+                          __attribute__((unused)) size_t y, ssize_t dx,
+                          ssize_t dy)
 {
     const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
-
     if (kb && kb->actions->type == action_drag) {
-        const ssize_t old_x = ctx.img_x;
-        const ssize_t old_y = ctx.img_y;
-
         ctx.img_x += dx;
         ctx.img_y += dy;
-
-        if (ctx.img_x != old_x || ctx.img_y != old_y) {
-            fixup_position(false);
-            app_redraw();
-        }
+        fixup_position(false);
+        app_redraw();
     }
 }
 
 /** Mode handler: mouse click/scroll. */
-static void on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
+static bool on_mouse_click(uint8_t mods, uint32_t btn,
+                           __attribute__((unused)) size_t x,
+                           __attribute__((unused)) size_t y)
 {
-    (void)x; // unused
-    (void)y; // unused
-
     const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_drag) {
         ui_set_cursor(ui_cursor_drag);
-    } else {
-        app_on_keyboard(MOUSE_TO_XKB(btn), mods);
+        return true;
     }
+    return false;
 }
 
 /** Mode handler: apply action. */

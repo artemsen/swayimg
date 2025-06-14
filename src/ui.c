@@ -274,15 +274,14 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
     const int dx = x - ctx.mouse.x;
     const int dy = y - ctx.mouse.y;
 
+    ctx.mouse.x = x;
+    ctx.mouse.y = y;
+
     if (ctx.mouse.shape == ui_cursor_hide) {
         ui_set_cursor(ui_cursor_default);
     }
 
-    if (dx || dy) {
-        ctx.mouse.x = x;
-        ctx.mouse.y = y;
-        app_on_mmove(keybind_mods(ctx.xkb.state), ctx.mouse.button, dx, dy);
-    }
+    app_on_mmove(keybind_mods(ctx.xkb.state), ctx.mouse.button, x, y, dx, dy);
 }
 
 static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
