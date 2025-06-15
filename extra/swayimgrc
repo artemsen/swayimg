@@ -37,7 +37,7 @@ app_id = swayimg
 # Viewer mode configuration
 ################################################################################
 [viewer]
-# Window background color (blur/RGBA)
+# Window background color (auto/extend/mirror/RGBA)
 window = #00000000
 # Background for transparent images (grid/RGBA)
 transparency = grid

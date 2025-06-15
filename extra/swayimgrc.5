@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-13" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-15" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -122,13 +122,17 @@ Application ID used as window class name, \fIswayimg\fR by default.\&
 .PP
 Configuration specific to the viewer mode: \fI[viewer]\fR.\&
 .PP
-\fBwindow\fR = \fIblur\fR|#COLOR
+\fBwindow\fR = \fIauto\fR|\fIextend\fR|\fImirror\fR|#COLOR
 .RS 4
 Window background:
 .PD 0
 .IP \(bu 4
-\fIblur\fR: fill window with the current image and blur it, can be useful for
-slideshow mode;
+\fIauto\fR: fill the window background in \fIextend\fR or \fImirror\fR mode depending
+on the image aspect ratio;
+.IP \(bu 4
+\fIextend\fR: fill window with the current image and blur it;
+.IP \(bu 4
+\fImirror\fR: fill window with the mirrored current image and blur it;
 .IP \(bu 4
 #COLOR: solid color in RGB or RGBA, \fI#00000000\fR by default;
 .PD

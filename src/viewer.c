@@ -22,9 +22,13 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-// Window background
-#define BLUR_NAME  "blur"
-#define BLUR_BKGID 0x00f1f2f3
+// Window background modes
+#define BKGMODE_ID_AUTO     0x00f1f2f3
+#define BKGMODE_NAME_AUTO   "auto"
+#define BKGMODE_ID_EXTEND   0x00f1f2f4
+#define BKGMODE_NAME_EXTEND "extend"
+#define BKGMODE_ID_MIRROR   0x00f1f2f5
+#define BKGMODE_NAME_MIRROR "mirror"
 
 // Background grid parameters
 #define GRID_NAME   "grid"
@@ -60,6 +64,7 @@ static const char* scale_names[] = {
 };
 // clang-format on
 
+/** Image position. */
 enum position {
     position_free,
     position_top,
@@ -73,7 +78,6 @@ enum position {
     position_bottom_right,
 };
 
-// clang-format off
 static const char* position_names[] = {
     [position_free] = "free",
     [position_top] = "top",
@@ -86,7 +90,6 @@ static const char* position_names[] = {
     [position_bottom_left] = "bottomleft",
     [position_bottom_right] = "bottomright",
 };
-// clang-format on
 
 /** Viewer context. */
 struct viewer {
@@ -808,11 +811,23 @@ static void draw_image(struct pixmap* wnd)
                  ctx.img_x, ctx.img_y, wnd);
 
     // set window background
-    if (ctx.window_bkg == BLUR_BKGID) {
-        pixmap_inverse_blur(pm, wnd, ctx.img_x, ctx.img_y, width, height);
-    } else {
-        pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
-                            ctx.window_bkg);
+    switch (ctx.window_bkg) {
+        case BKGMODE_ID_AUTO:
+            if (width > height) {
+                pixmap_bkg_mirror(wnd, ctx.img_x, ctx.img_y, width, height);
+            } else {
+                pixmap_bkg_extend(wnd, ctx.img_x, ctx.img_y, width, height);
+            }
+            break;
+        case BKGMODE_ID_EXTEND:
+            pixmap_bkg_extend(wnd, ctx.img_x, ctx.img_y, width, height);
+            break;
+        case BKGMODE_ID_MIRROR:
+            pixmap_bkg_mirror(wnd, ctx.img_x, ctx.img_y, width, height);
+            break;
+        default:
+            pixmap_inverse_fill(wnd, ctx.img_x, ctx.img_y, width, height,
+                                ctx.window_bkg);
     }
 }
 
@@ -1007,8 +1022,12 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
 
     // window background
     cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
-    if (strcmp(cval_txt, BLUR_NAME) == 0) {
-        ctx.window_bkg = BLUR_BKGID;
+    if (strcmp(cval_txt, BKGMODE_NAME_AUTO) == 0) {
+        ctx.window_bkg = BKGMODE_ID_AUTO;
+    } else if (strcmp(cval_txt, BKGMODE_NAME_EXTEND) == 0) {
+        ctx.window_bkg = BKGMODE_ID_EXTEND;
+    } else if (strcmp(cval_txt, BKGMODE_NAME_MIRROR) == 0) {
+        ctx.window_bkg = BKGMODE_ID_MIRROR;
     } else {
         ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
     }
