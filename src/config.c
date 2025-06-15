@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RM_FILE_ACTION "exec rm '%' && echo \"File removed: %\"; skip_file"
+#define RM_FILE_ACTION "exec rm '%' && echo \"File removed: %\""
 
 /** Default configuration. */
 struct config_default {
