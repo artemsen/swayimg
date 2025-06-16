@@ -558,15 +558,21 @@ static void on_action(const struct action* action)
 }
 
 /** Mode handler: mouse move. */
-static void on_mouse_move(uint8_t mods, uint32_t btn, size_t x, size_t y,
-                          __attribute__((unused)) ssize_t dx,
+static void on_mouse_move(__attribute__((unused)) uint8_t mods,
+                          __attribute__((unused)) uint32_t btn, size_t x,
+                          size_t y, __attribute__((unused)) ssize_t dx,
                           __attribute__((unused)) ssize_t dy)
 {
-    // todo: implement #294
-    (void)mods;
-    (void)btn;
-    (void)x;
-    (void)y;
+    if (layout_select_at(&ctx.layout, x, y)) {
+        imglist_lock();
+        layout_update(&ctx.layout);
+        thumb_requeue();
+        imglist_unlock();
+        info_reset(ctx.layout.current);
+        ui_set_title(ctx.layout.current->name);
+        info_update_index(ctx.layout.current->index, imglist_size());
+        app_redraw();
+    }
 }
 
 /** Mode handler: image list update. */

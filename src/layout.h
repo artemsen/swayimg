@@ -74,6 +74,14 @@ void layout_resize(struct layout* lo, size_t width, size_t height);
 bool layout_select(struct layout* lo, enum layout_dir dir);
 
 /**
+ * Set selection on thumbnail at specified coordinates.
+ * @param lo pointer to the thumbnail layout
+ * @param x,y coordinates
+ * @return true if selection was changed
+ */
+bool layout_select_at(struct layout* lo, size_t x, size_t y);
+
+/**
  * Get currently selected thumbnail from layout.
  * @param lo pointer to the thumbnail layout
  * @return pointer to the currently selected thumbnail

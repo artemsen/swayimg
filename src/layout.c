@@ -209,6 +209,27 @@ bool layout_select(struct layout* lo, enum layout_dir dir)
     return next;
 }
 
+bool layout_select_at(struct layout* lo, size_t x, size_t y)
+{
+    bool rc = false;
+
+    for (size_t i = 0; i < lo->thumb_total; ++i) {
+        const struct layout_thumb* thumb = &lo->thumbs[i];
+        if (x >= thumb->x && x < thumb->x + lo->thumb_size && y >= thumb->y &&
+            y < thumb->y + lo->thumb_size) {
+            if (lo->current != thumb->img) {
+                lo->current = thumb->img;
+                lo->current_col = i % lo->columns;
+                lo->current_row = i / lo->columns;
+                rc = true;
+            }
+            break;
+        }
+    }
+
+    return rc;
+}
+
 struct layout_thumb* layout_current(struct layout* lo)
 {
     const size_t idx = lo->current_row * lo->columns + lo->current_col;
