@@ -89,16 +89,6 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                          size_t height, argb_t color);
 
 /**
- * Fill whole pixmap except specified area with source pixmap and blur it.
- * @param src source pixmap context
- * @param dst destination pixmap context
- * @param x,y top left corner of excluded area
- * @param width,height excluded area size
- */
-void pixmap_inverse_blur(const struct pixmap* src, struct pixmap* dst,
-                         ssize_t x, ssize_t y, size_t width, size_t height);
-
-/**
  * Blend area with specified color.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
@@ -189,6 +179,24 @@ void pixmap_flip_horizontal(struct pixmap* pm);
  * @param angle rotation angle (only 90, 180, or 270)
  */
 void pixmap_rotate(struct pixmap* pm, size_t angle);
+
+/**
+ * Extend image to fill entire pixmap (zoom to fill and blur).
+ * @param pm pixmap context
+ * @param x,y top left coordinates of existing image on pixmap surface
+ * @param width,height size of existing image on pixmap surface
+ */
+void pixmap_bkg_extend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                       size_t height);
+
+/**
+ * Extend image to fill entire pixmap (mirror and blur).
+ * @param pm pixmap context
+ * @param x,y top left coordinates of existing image on pixmap surface
+ * @param width,height size of existing image on pixmap surface
+ */
+void pixmap_bkg_mirror(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                       size_t height);
 
 /**
  * Alpha blending.

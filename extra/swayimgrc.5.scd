@@ -83,10 +83,12 @@ General configuration for the entire application: _[general]_.
 
 Configuration specific to the viewer mode: _[viewer]_.
 
-*window* = _blur_|#COLOR
+*window* = _auto_|_extend_|_mirror_|#COLOR
 	Window background:
-	- _blur_: fill window with the current image and blur it, can be useful for
-	  slideshow mode;
+	- _auto_: fill the window background in _extend_ or _mirror_ mode depending
+	  on the image aspect ratio;
+	- _extend_: fill window with the current image and blur it;
+	- _mirror_: fill window with the mirrored current image and blur it;
 	- #COLOR: solid color in RGB or RGBA, _#00000000_ by default;
 
 *transparency* = _grid_|#COLOR

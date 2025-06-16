@@ -6,89 +6,240 @@
 
 #include "tpool.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Size of blur box
-#define BLUR_SZ 16
+// Background blur parameters
+#define BLUR_SIZE   16
+#define BLUR_FACTOR 2
 
-/** Blur operation parameters. */
-struct blur_params {
-    const struct pixmap* src; ///< Source pixmap
-    struct pixmap* dst;       ///< Destination pixmap
-    size_t x1, y1;            ///< Coordinates of top left corner
-    size_t x2, y2;            ///< Coordinates of bottom right corner
-    double scale;             ///< Source pixmap scale
+/** Pixmap slice. */
+struct pm_slice {
+    struct pixmap* pm;    ///< Parent pixmap
+    size_t x, y;          ///< Top left coordinates on parent pixmap
+    size_t width, height; ///< Size of the slice
 };
 
-/** Fill destination pixmap with source pixmap and blur it. */
-static void blur_worker(void* data)
+/** Parameters for background threads. */
+struct bkg_params {
+    const struct pm_slice* image; ///< Image area
+    struct pm_slice fill;         ///< Work area to fill
+};
+
+/**
+ * Get pointer to the pixel at specified coordinates.
+ * @param slice pixmap slice
+ * @param x,y coordinates of target pixel
+ * @return pointer to ARGB pixel
+ */
+static inline argb_t* slice_ptr(const struct pm_slice* slice, size_t x,
+                                size_t y)
 {
-    struct blur_params* params = data;
-    const size_t delta_y =
-        (params->scale * params->src->height - params->dst->height) / 2;
-    const size_t delta_x =
-        (params->scale * params->src->width - params->dst->width) / 2;
+    assert(x < slice->width);
+    assert(y < slice->height);
+    const size_t offset = (slice->y + y) * slice->pm->width + slice->x + x;
+    return &slice->pm->data[offset];
+}
 
-    for (size_t y = params->y1; y < params->y2; ++y) {
-        argb_t* dst_line = &params->dst->data[y * params->dst->width];
+/**
+ * Get average color.
+ * @param slice pixmap slice
+ * @param x,y starting coordinates to calculate average color
+ * @return average color
+ */
+static inline argb_t slice_average(const struct pm_slice* slice, size_t x,
+                                   size_t y)
+{
+    argb_t r = 0, g = 0, b = 0;
+    size_t total = 0;
 
-        for (size_t x = params->x1; x < params->x2; ++x) {
-            argb_t r = 0, g = 0, b = 0;
-            size_t total = 0;
+    for (ssize_t dy = -BLUR_SIZE / 2; dy <= BLUR_SIZE / 2; ++dy) {
+        const ssize_t off_y = (ssize_t)y + dy * BLUR_FACTOR;
+        if (off_y < 0 || off_y >= (ssize_t)slice->height) {
+            continue;
+        }
 
-            for (ssize_t dy = -BLUR_SZ / 2; dy <= BLUR_SZ / 2; ++dy) {
-                const ssize_t sy =
-                    ((ssize_t)y + dy * 5 + delta_y) / params->scale;
-                if (sy < 0 || sy >= (ssize_t)params->src->height) {
-                    continue;
-                }
+        for (ssize_t dx = -BLUR_SIZE / 2; dx <= BLUR_SIZE / 2; ++dx) {
+            const ssize_t off_x = (ssize_t)x + dx * BLUR_FACTOR;
+            if (off_x >= 0 && off_x < (ssize_t)slice->width) {
+                const argb_t pixel = *slice_ptr(slice, off_x, off_y);
+                r += ARGB_GET_R(pixel);
+                g += ARGB_GET_G(pixel);
+                b += ARGB_GET_B(pixel);
+                ++total;
+            }
+        }
+    }
 
-                for (ssize_t dx = -BLUR_SZ / 2; dx <= BLUR_SZ / 2; ++dx) {
-                    const ssize_t sx =
-                        ((ssize_t)x + dx * 5 + delta_x) / params->scale;
-                    if (sx >= 0 && sx < (ssize_t)params->src->width) {
-                        const argb_t pixel =
-                            params->src->data[sy * params->src->width + sx];
-                        r += ARGB_GET_R(pixel);
-                        g += ARGB_GET_G(pixel);
-                        b += ARGB_GET_B(pixel);
-                        ++total;
-                    }
-                }
+    r /= total;
+    g /= total;
+    b /= total;
+
+    return ARGB(0xff, r, g, b);
+}
+
+/** Working thread callback: extend/blur background. */
+static void bkg_extend(void* data)
+{
+    struct bkg_params* bkg = data;
+    const struct pixmap* parent = bkg->image->pm;
+
+    const double scale_w = (double)parent->width / bkg->image->width;
+    const double scale_h = (double)parent->height / bkg->image->height;
+    const double scale = max(scale_w, scale_h);
+
+    const size_t diff_w = (scale * bkg->image->width - parent->width) / 2;
+    const size_t diff_h = (scale * bkg->image->height - parent->height) / 2;
+    const size_t diff_x = diff_w + bkg->fill.x;
+    const size_t diff_y = diff_h + bkg->fill.y;
+
+    for (size_t y = 0; y < bkg->fill.height; ++y) {
+        const size_t img_y = (diff_y + y) / scale;
+
+        for (size_t x = 0; x < bkg->fill.width; ++x) {
+            const size_t img_x = (diff_x + x) / scale;
+
+            argb_t* dst = slice_ptr(&bkg->fill, x, y);
+            *dst = slice_average(bkg->image, img_x, img_y);
+        }
+    }
+}
+
+/** Working thread callback: mirror/blur background. */
+static void bkg_mirror(void* data)
+{
+    struct bkg_params* bkg = data;
+
+    const bool left = bkg->fill.x + bkg->fill.width == bkg->image->x;
+    const bool right = bkg->fill.x == bkg->image->x + bkg->image->width;
+    const bool top = bkg->fill.y + bkg->fill.height == bkg->image->y;
+    const bool bottom = bkg->fill.y == bkg->image->y + bkg->image->height;
+
+    // corners to fill
+    size_t left_fill = 0, right_fill = 0;
+    if (top || bottom) {
+        left_fill = bkg->image->x;
+        right_fill = bkg->fill.width - left_fill - bkg->image->width;
+    }
+
+    for (size_t y = 0; y < bkg->fill.height; ++y) {
+        argb_t r = 0, g = 0, b = 0; // average color of the line
+        size_t img_y;
+
+        if (top) {
+            img_y = (bkg->fill.height - y) % bkg->image->height;
+        } else if (bottom) {
+            img_y = bkg->image->height - (y % bkg->image->height);
+        } else {
+            img_y = y;
+        }
+
+        for (size_t x = left_fill; x < bkg->fill.width - right_fill; ++x) {
+            argb_t* dst;
+            argb_t average;
+            size_t img_x;
+
+            if (left) {
+                img_x = (bkg->fill.width - x) % bkg->image->width;
+            } else if (right) {
+                img_x = bkg->image->width - (x % bkg->image->width);
+            } else {
+                img_x = x - left_fill;
             }
 
-            r /= total;
-            g /= total;
-            b /= total;
-            dst_line[x] = ARGB(0xff, r, g, b);
+            average = slice_average(bkg->image, img_x, img_y);
+            if (top || bottom) {
+                r += ARGB_GET_R(average);
+                g += ARGB_GET_G(average);
+                b += ARGB_GET_B(average);
+            }
+
+            dst = slice_ptr(&bkg->fill, x, y);
+            *dst = average;
+        }
+
+        if (top || bottom) {
+            // fill corners with line's average color
+            argb_t average;
+
+            r /= bkg->image->width;
+            g /= bkg->image->width;
+            b /= bkg->image->width;
+            average = ARGB(0xff, r, g, b);
+
+            for (size_t x = 0; x < left_fill; ++x) {
+                argb_t* dst = slice_ptr(&bkg->fill, x, y);
+                *dst = average;
+            }
+            for (size_t x = bkg->fill.width - right_fill; x < bkg->fill.width;
+                 ++x) {
+                argb_t* dst = slice_ptr(&bkg->fill, x, y);
+                *dst = average;
+            }
         }
     }
 }
 
 /**
- * Add task to perform the blur operation.
- * @param src source pixmap context
- * @param dst destination pixmap context
- * @param x1,y2 coordinates of top left corner
- * @param x2,y2 coordinates of bottom right corner
- * @param scale source pixmap scale
+ * Create background.
+ * @param pm pixmap context
+ * @param x,y top left coordinates of existing image on pixmap surface
+ * @param width,height size of existing image on pixmap surface
+ * @param wfn filter to apply
  */
-static inline void add_blur_task(const struct pixmap* src, struct pixmap* dst,
-                                 size_t x1, size_t y1, size_t x2, size_t y2,
-                                 double scale)
+static void bkg_create(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                       size_t height, tpool_worker wfn)
 {
-    struct blur_params* params = malloc(sizeof(struct blur_params));
-    if (params) {
-        params->src = src;
-        params->dst = dst;
-        params->x1 = x1;
-        params->y1 = y1;
-        params->x2 = x2;
-        params->y2 = y2;
-        params->scale = scale;
-        tpool_add_task(blur_worker, free, params);
+    const struct pm_slice img = {
+        .pm = pm,
+        .x = max(0, x),
+        .y = max(0, y),
+        .width = min((ssize_t)pm->width, (ssize_t)width + x) - max(0, x),
+        .height = min((ssize_t)pm->height, (ssize_t)height + y) - max(0, y),
+    };
+
+    struct bkg_params tasks[4]; // left/right/top/bottom
+    size_t tid = 0;
+
+    if (img.x > 0) {
+        tasks[tid].image = &img;
+        tasks[tid].fill.pm = img.pm;
+        tasks[tid].fill.x = 0;
+        tasks[tid].fill.y = img.y;
+        tasks[tid].fill.width = img.x;
+        tasks[tid].fill.height = img.height;
+        tpool_add_task(wfn, NULL, &tasks[tid++]);
     }
+    if (img.x + img.width < img.pm->width) {
+        tasks[tid].image = &img;
+        tasks[tid].fill.pm = img.pm;
+        tasks[tid].fill.x = img.x + img.width;
+        tasks[tid].fill.y = img.y;
+        tasks[tid].fill.width = img.pm->width - (img.x + img.width);
+        tasks[tid].fill.height = img.height;
+        tpool_add_task(wfn, NULL, &tasks[tid++]);
+    }
+    if (img.y > 0) {
+        tasks[tid].image = &img;
+        tasks[tid].fill.pm = img.pm;
+        tasks[tid].fill.x = 0;
+        tasks[tid].fill.y = 0;
+        tasks[tid].fill.width = img.pm->width;
+        tasks[tid].fill.height = img.y;
+        tpool_add_task(wfn, NULL, &tasks[tid++]);
+    }
+    if (img.y + img.height < img.pm->height) {
+        tasks[tid].image = &img;
+        tasks[tid].fill.pm = img.pm;
+        tasks[tid].fill.x = 0;
+        tasks[tid].fill.y = img.y + img.height;
+        tasks[tid].fill.width = img.pm->width;
+        tasks[tid].fill.height = img.pm->height - (img.y + img.height);
+        tpool_add_task(wfn, NULL, &tasks[tid++]);
+    }
+
+    tpool_wait();
 }
 
 bool pixmap_create(struct pixmap* pm, enum pixmap_format format, size_t width,
@@ -155,33 +306,6 @@ void pixmap_inverse_fill(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     if (bottom < (ssize_t)pm->height) {
         pixmap_fill(pm, 0, bottom, pm->width, pm->height - bottom, color);
     }
-}
-
-void pixmap_inverse_blur(const struct pixmap* src, struct pixmap* dst,
-                         ssize_t x, ssize_t y, size_t width, size_t height)
-{
-    const ssize_t left = max(0, x);
-    const ssize_t top = max(0, y);
-    const ssize_t right = min((ssize_t)dst->width, (ssize_t)width + x);
-    const ssize_t bottom = min((ssize_t)dst->height, (ssize_t)height + y);
-
-    const double scale_w = (double)dst->width / src->width;
-    const double scale_h = (double)dst->height / src->height;
-    const double scale = max(scale_w, scale_h);
-
-    if (left > 0) {
-        add_blur_task(src, dst, 0, top, left, bottom, scale);
-    }
-    if (right < (ssize_t)dst->width) {
-        add_blur_task(src, dst, right, top, dst->width, bottom, scale);
-    }
-    if (top > 0) {
-        add_blur_task(src, dst, 0, 0, dst->width, top, scale);
-    }
-    if (bottom < (ssize_t)dst->height) {
-        add_blur_task(src, dst, 0, bottom, dst->width, dst->height, scale);
-    }
-    tpool_wait();
 }
 
 void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
@@ -391,4 +515,16 @@ void pixmap_rotate(struct pixmap* pm, size_t angle)
             pm->data = data;
         }
     }
+}
+
+void pixmap_bkg_extend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                       size_t height)
+{
+    bkg_create(pm, x, y, width, height, bkg_extend);
+}
+
+void pixmap_bkg_mirror(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
+                       size_t height)
+{
+    bkg_create(pm, x, y, width, height, bkg_mirror);
 }
