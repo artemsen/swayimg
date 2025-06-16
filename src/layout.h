@@ -15,9 +15,8 @@ struct layout_thumb {
 
 /** Thumbnail layout scheme. */
 struct layout {
-    size_t columns; ///< Number of thumbnails horizontally
-    size_t rows;    ///< Number of thumbnails vertically
-    size_t padding; ///< Padding between thumbnails
+    size_t width, height; ///< Size of the layout in pixels
+    size_t columns, rows; ///< Size of the layout in thumbnails
 
     struct image* current; ///< Currently selected image
     size_t current_col;    ///< Currently selected column

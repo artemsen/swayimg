@@ -100,7 +100,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_VIEWER,  "Shift+s",          "slideshow"              },
     { CFG_KEYS_VIEWER,  "s",                "animation"              },
     { CFG_KEYS_VIEWER,  "f",                "fullscreen"             },
-    { CFG_KEYS_VIEWER,  "Return",           "mode"                   },
+    { CFG_KEYS_VIEWER,  "Return",           "mode gallery"           },
     { CFG_KEYS_VIEWER,  "Left",             "step_left 10"           },
     { CFG_KEYS_VIEWER,  "Right",            "step_right 10"          },
     { CFG_KEYS_VIEWER,  "Up",               "step_up 10"             },
@@ -152,7 +152,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_GALLERY, "Next",             "page_down"              },
     { CFG_KEYS_GALLERY, "c",                "skip_file"              },
     { CFG_KEYS_GALLERY, "f",                "fullscreen"             },
-    { CFG_KEYS_GALLERY, "Return",           "mode"                   },
+    { CFG_KEYS_GALLERY, "Return",           "mode viewer"            },
     { CFG_KEYS_GALLERY, "a",                "antialiasing next"      },
     { CFG_KEYS_GALLERY, "Shift+a",          "antialiasing prev"      },
     { CFG_KEYS_GALLERY, "r",                "reload"                 },
@@ -169,6 +169,7 @@ static const struct config_default defaults[] = {
     { CFG_KEYS_GALLERY, "ScrollDown",       "step_down"              },
     { CFG_KEYS_GALLERY, "Ctrl+ScrollUp",    "thumb +20"              },
     { CFG_KEYS_GALLERY, "Ctrl+ScrollDown",  "thumb -20"              },
+    { CFG_KEYS_GALLERY, "MouseLeft",        "mode gallery"           },
 };
 // clang-format on
 

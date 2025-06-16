@@ -149,14 +149,14 @@ TEST_F(Layout, SchemeScrollDown)
     ASSERT_EQ(layout.current_row, static_cast<size_t>(2));
 
     ASSERT_STREQ(SelectNext(layout_down), "exec://22");
-    ASSERT_STREQ(layout.thumbs[0].img->source, "exec://10");
+    ASSERT_STREQ(layout.thumbs[0].img->source, "exec://05");
     ASSERT_EQ(layout.current_col, static_cast<size_t>(2));
-    ASSERT_EQ(layout.current_row, static_cast<size_t>(2));
+    ASSERT_EQ(layout.current_row, static_cast<size_t>(3));
 
     ASSERT_STREQ(SelectNext(layout_down), "exec://27");
-    ASSERT_STREQ(layout.thumbs[0].img->source, "exec://15");
+    ASSERT_STREQ(layout.thumbs[0].img->source, "exec://10");
     ASSERT_EQ(layout.current_col, static_cast<size_t>(2));
-    ASSERT_EQ(layout.current_row, static_cast<size_t>(2));
+    ASSERT_EQ(layout.current_row, static_cast<size_t>(3));
 }
 
 TEST_F(Layout, SchemeLast)
@@ -179,7 +179,7 @@ TEST_F(Layout, SelectFirstLast)
 
     ASSERT_TRUE(layout_select(&layout, layout_last));
     ASSERT_EQ(layout.current_col, static_cast<size_t>(4));
-    ASSERT_EQ(layout.current_row, static_cast<size_t>(2));
+    ASSERT_EQ(layout.current_row, static_cast<size_t>(3));
     ASSERT_EQ(layout.current, imglist_last());
 
     ASSERT_FALSE(layout_select(&layout, layout_last));

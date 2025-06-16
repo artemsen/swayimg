@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Minimal space between thumbnails */
-#define MIN_PADDING 5
+// Space between thumbnails
+#define PADDING 5
 
 /**
  * Recalculate thumbnails scheme.
@@ -33,8 +33,8 @@ static struct image* rearrange(struct layout* lo, size_t* visible)
     lo->current_col = distance % lo->columns;
     if (lo->current_row == SIZE_MAX) {
         lo->current_row = lo->rows / 2;
-    } else if (lo->current_row >= lo->rows - 1) {
-        lo->current_row = lo->rows >= 2 ? lo->rows - 2 : 0;
+    } else if (lo->current_row >= lo->rows) {
+        lo->current_row = lo->rows - 1;
     }
 
     // get the first visible images
@@ -60,13 +60,6 @@ static struct image* rearrange(struct layout* lo, size_t* visible)
     }
 
     lo->current_row = imglist_distance(first, lo->current) / lo->columns;
-
-    // don't use the last row (usually it's only partially visible)
-    if (lo->current_row >= lo->rows - 1) {
-        lo->current_row = lo->rows >= 2 ? lo->rows - 2 : 0;
-        distance = lo->current_row * lo->columns + lo->current_col;
-        first = imglist_jump(lo->current, -distance);
-    }
 
     assert(first);
     assert(last);
@@ -97,6 +90,7 @@ void layout_update(struct layout* lo)
 {
     assert(imglist_is_locked());
 
+    size_t offset_x, offset_y;
     size_t total;
     struct image* img;
 
@@ -114,12 +108,14 @@ void layout_update(struct layout* lo)
 
     // fill thumbnails map
     lo->thumb_total = total;
+    offset_x = (lo->width - lo->columns * (lo->thumb_size + PADDING)) / 2;
+    offset_y = (lo->height - lo->rows * (lo->thumb_size + PADDING)) / 2;
     for (size_t i = 0; i < lo->thumb_total; ++i) {
         struct layout_thumb* thumb = &lo->thumbs[i];
         const size_t col = i % lo->columns;
         const size_t row = i / lo->columns;
-        thumb->x = col * lo->thumb_size + lo->padding * (col + 1);
-        thumb->y = row * lo->thumb_size + lo->padding * (row + 1);
+        thumb->x = offset_x + col * lo->thumb_size + PADDING * (col + 1);
+        thumb->y = offset_y + row * lo->thumb_size + PADDING * (row + 1);
         thumb->img = img;
         img = imglist_next(img);
     }
@@ -130,14 +126,17 @@ void layout_update(struct layout* lo)
 
 void layout_resize(struct layout* lo, size_t width, size_t height)
 {
-    // calculate number of columns/rows and padding size between thumbnails
-    lo->columns = width / (lo->thumb_size + MIN_PADDING);
+    lo->width = width;
+    lo->height = height;
+
+    lo->columns = lo->width / (lo->thumb_size + PADDING);
     if (lo->columns == 0) {
         lo->columns = 1;
     }
-    lo->padding = (width - (lo->columns * lo->thumb_size)) / (lo->columns + 1);
-    lo->rows = (height - lo->padding) / (lo->thumb_size + lo->padding);
-    ++lo->rows; // partially visible row
+    lo->rows = lo->height / (lo->thumb_size + PADDING);
+    if (lo->rows == 0) {
+        lo->rows = 1;
+    }
 
     layout_update(lo);
 }
