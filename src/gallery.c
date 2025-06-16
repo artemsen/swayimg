@@ -569,17 +569,6 @@ static void on_mouse_move(uint8_t mods, uint32_t btn, size_t x, size_t y,
     (void)y;
 }
 
-/** Mode handler: mouse click/scroll. */
-static bool on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
-{
-    // todo: implement #294
-    (void)mods;
-    (void)btn;
-    (void)x;
-    (void)y;
-    return false;
-}
-
 /** Mode handler: image list update. */
 static void on_imglist(const struct image* image, enum fsevent event)
 {
@@ -657,7 +646,6 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->redraw = on_redraw;
     handlers->resize = on_resize;
     handlers->mouse_move = on_mouse_move;
-    handlers->mouse_click = on_mouse_click;
     handlers->imglist = on_imglist;
     handlers->current = on_current;
     handlers->activate = on_activate;

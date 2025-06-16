@@ -886,9 +886,7 @@ static void on_mouse_move(uint8_t mods, uint32_t btn,
 }
 
 /** Mode handler: mouse click/scroll. */
-static bool on_mouse_click(uint8_t mods, uint32_t btn,
-                           __attribute__((unused)) size_t x,
-                           __attribute__((unused)) size_t y)
+static bool on_mouse_click(uint8_t mods, uint32_t btn)
 {
     const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_drag) {

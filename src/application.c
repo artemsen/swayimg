@@ -716,9 +716,10 @@ void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
     ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, x, y, dx, dy);
 }
 
-void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
+void app_on_mclick(uint8_t mods, uint32_t btn)
 {
-    if (!ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y)) {
+    if (!ctx.mode_handlers[ctx.mode_current].mouse_click ||
+        !ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn)) {
         app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }

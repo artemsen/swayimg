@@ -318,7 +318,7 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
         } else {
             const uint8_t mods = keybind_mods(ctx.xkb.state);
             ctx.mouse.button |= btn;
-            app_on_mclick(mods, ctx.mouse.button, ctx.mouse.x, ctx.mouse.y);
+            app_on_mclick(mods, ctx.mouse.button);
         }
     }
 }
@@ -334,7 +334,7 @@ static void on_pointer_axis(void* data, struct wl_pointer* wl_pointer,
         key = value > 0 ? MOUSE_SCR_DOWN : MOUSE_SCR_UP;
     }
 
-    app_on_mclick(keybind_mods(ctx.xkb.state), key, ctx.mouse.x, ctx.mouse.y);
+    app_on_mclick(keybind_mods(ctx.xkb.state), key);
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
