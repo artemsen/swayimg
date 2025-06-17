@@ -73,8 +73,7 @@ struct application {
 /** Global application context. */
 static struct application ctx;
 
-/** Switch mode (viewer/gallery). */
-static void switch_mode(void)
+void app_switch_mode(void)
 {
     struct image* current = ctx.mode_handlers[ctx.mode_current].deactivate();
 
@@ -206,7 +205,7 @@ static void handle_event_queue(__attribute__((unused)) void* data)
             ui_toggle_fullscreen();
             break;
         case action_mode:
-            switch_mode();
+            app_switch_mode();
             break;
         case action_redraw: {
             struct pixmap* window = ui_draw_begin();
@@ -713,13 +712,15 @@ void app_on_resize(void)
 void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
                   ssize_t dy)
 {
-    ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, x, y, dx, dy);
+    if (ctx.mode_handlers[ctx.mode_current].mouse_move) {
+        ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, x, y, dx, dy);
+    }
 }
 
-void app_on_mclick(uint8_t mods, uint32_t btn)
+void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
 {
     if (!ctx.mode_handlers[ctx.mode_current].mouse_click ||
-        !ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn)) {
+        !ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y)) {
         app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }

@@ -575,6 +575,19 @@ static void on_mouse_move(__attribute__((unused)) uint8_t mods,
     }
 }
 
+/** Mode handler: mouse click/scroll. */
+static bool on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
+{
+    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
+    if (kb && kb->actions->type == action_mode) {
+        if (layout_get_at(&ctx.layout, x, y)) {
+            app_switch_mode();
+        }
+        return true;
+    }
+    return false;
+}
+
 /** Mode handler: image list update. */
 static void on_imglist(const struct image* image, enum fsevent event)
 {
@@ -652,6 +665,7 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->redraw = on_redraw;
     handlers->resize = on_resize;
     handlers->mouse_move = on_mouse_move;
+    handlers->mouse_click = on_mouse_click;
     handlers->imglist = on_imglist;
     handlers->current = on_current;
     handlers->activate = on_activate;

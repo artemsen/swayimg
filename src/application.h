@@ -54,6 +54,9 @@ void app_exit(int rc);
  */
 bool app_is_viewer(void);
 
+/** Switch mode (viewer/gallery). */
+void app_switch_mode(void);
+
 /**
  * Handler of external event: reload image / reset state.
  */
@@ -90,8 +93,9 @@ void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
  * Handler of external event: mouse clock/scroll.
  * @param mods key modifiers (ctrl/alt/shift)
  * @param btn mask with mouse buttons state
+ * @param x,y window coordinates of mouse pointer
  */
-void app_on_mclick(uint8_t mods, uint32_t btn);
+void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y);
 
 /**
  * Handler of external event: key/mouse press.

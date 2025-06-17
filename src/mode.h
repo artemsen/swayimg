@@ -49,9 +49,10 @@ struct mode_handlers {
      * Mouse click/scroll handler.
      * @param mods key modifiers (ctrl/alt/shift)
      * @param btn mask with mouse buttons state
+     * @param x,y window coordinates of mouse pointer
      * @return true if click was handled
      */
-    bool (*mouse_click)(uint8_t mods, uint32_t btn);
+    bool (*mouse_click)(uint8_t mods, uint32_t btn, size_t x, size_t y);
 
     /**
      * Image list update handler.

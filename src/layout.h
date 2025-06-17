@@ -8,9 +8,9 @@
 
 /** Thumbnail instance with coordinates. */
 struct layout_thumb {
-    struct image* img;
-    size_t x;
-    size_t y;
+    struct image* img; ///< Linked image instance
+    size_t x, y;       ///< Window coordinates
+    size_t col, row;   ///< Column and row
 };
 
 /** Thumbnail layout scheme. */
@@ -87,6 +87,14 @@ bool layout_select_at(struct layout* lo, size_t x, size_t y);
  * @return pointer to the currently selected thumbnail
  */
 struct layout_thumb* layout_current(struct layout* lo);
+
+/**
+ * Get thumbnail at specified coordinates.
+ * @param lo pointer to the thumbnail layout
+ * @param x,y coordinates
+ * @return thumbnail instance or NULL if not thumbnail not exists
+ */
+struct layout_thumb* layout_get_at(struct layout* lo, size_t x, size_t y);
 
 /**
  * Create loading queue: ordered list of images to load.

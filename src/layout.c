@@ -112,10 +112,12 @@ void layout_update(struct layout* lo)
     offset_y = (lo->height - lo->rows * (lo->thumb_size + PADDING)) / 2;
     for (size_t i = 0; i < lo->thumb_total; ++i) {
         struct layout_thumb* thumb = &lo->thumbs[i];
-        const size_t col = i % lo->columns;
-        const size_t row = i / lo->columns;
-        thumb->x = offset_x + col * lo->thumb_size + PADDING * (col + 1);
-        thumb->y = offset_y + row * lo->thumb_size + PADDING * (row + 1);
+        thumb->col = i % lo->columns;
+        thumb->row = i / lo->columns;
+        thumb->x = offset_x + thumb->col * lo->thumb_size;
+        thumb->x += PADDING * (thumb->col + 1);
+        thumb->y = offset_y + thumb->row * lo->thumb_size;
+        thumb->y += PADDING * (thumb->row + 1);
         thumb->img = img;
         img = imglist_next(img);
     }
@@ -211,23 +213,16 @@ bool layout_select(struct layout* lo, enum layout_dir dir)
 
 bool layout_select_at(struct layout* lo, size_t x, size_t y)
 {
-    bool rc = false;
+    struct layout_thumb* thumb = layout_get_at(lo, x, y);
 
-    for (size_t i = 0; i < lo->thumb_total; ++i) {
-        const struct layout_thumb* thumb = &lo->thumbs[i];
-        if (x >= thumb->x && x < thumb->x + lo->thumb_size && y >= thumb->y &&
-            y < thumb->y + lo->thumb_size) {
-            if (lo->current != thumb->img) {
-                lo->current = thumb->img;
-                lo->current_col = i % lo->columns;
-                lo->current_row = i / lo->columns;
-                rc = true;
-            }
-            break;
-        }
+    if (thumb && thumb->img != lo->current) {
+        lo->current = thumb->img;
+        lo->current_col = thumb->col;
+        lo->current_row = thumb->row;
+        return true;
     }
 
-    return rc;
+    return false;
 }
 
 struct layout_thumb* layout_current(struct layout* lo)
@@ -236,6 +231,18 @@ struct layout_thumb* layout_current(struct layout* lo)
     assert(idx < lo->thumb_total && lo->thumbs[idx].img);
     assert(lo->thumbs[idx].img == lo->current);
     return &lo->thumbs[idx];
+}
+
+struct layout_thumb* layout_get_at(struct layout* lo, size_t x, size_t y)
+{
+    for (size_t i = 0; i < lo->thumb_total; ++i) {
+        struct layout_thumb* thumb = &lo->thumbs[i];
+        if (x >= thumb->x && x < thumb->x + lo->thumb_size && y >= thumb->y &&
+            y < thumb->y + lo->thumb_size) {
+            return thumb;
+        }
+    }
+    return NULL;
 }
 
 struct image* layout_ldqueue(struct layout* lo, size_t preload)
