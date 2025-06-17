@@ -43,6 +43,8 @@ struct gallery {
     argb_t clr_shadow;     ///< Selected tile shadow
 
     struct layout layout; ///< Thumbnail layout
+
+    struct keybind* kb; ///< Key bindings
 };
 
 /** Global gallery context. */
@@ -502,7 +504,7 @@ static void draw_thumbnails(struct pixmap* window)
 }
 
 /** Mode handler: window redraw. */
-static void on_redraw(struct pixmap* window)
+static void redraw(struct pixmap* window)
 {
     pixmap_fill(window, 0, 0, window->width, window->height, ctx.clr_window);
     draw_thumbnails(window);
@@ -520,7 +522,7 @@ static void on_resize(void)
 }
 
 /** Mode handler: apply action. */
-static void on_action(const struct action* action)
+static void handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
@@ -578,7 +580,7 @@ static void on_mouse_move(__attribute__((unused)) uint8_t mods,
 /** Mode handler: mouse click/scroll. */
 static bool on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
 {
-    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
+    const struct keybind* kb = keybind_find(ctx.kb, MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_mode) {
         if (layout_get_at(&ctx.layout, x, y)) {
             app_switch_mode();
@@ -609,9 +611,15 @@ static void on_imglist(const struct image* image, enum fsevent event)
 }
 
 /** Mode handler: get currently viewed image. */
-static struct image* on_current(void)
+static struct image* get_current(void)
 {
     return ctx.layout.current;
+}
+
+/** Mode handler: get key bindings. */
+static struct keybind* get_keybinds(void)
+{
+    return ctx.kb;
 }
 
 /** Mode handler: activate viewer. */
@@ -636,11 +644,10 @@ static void on_activate(struct image* image)
 }
 
 /** Mode handler: deactivate viewer. */
-static struct image* on_deactivate(void)
+static void on_deactivate(void)
 {
     tpool_cancel();
     tpool_wait();
-    return ctx.layout.current;
 }
 
 void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
@@ -661,15 +668,22 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     ctx.clr_border = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BORDER);
     ctx.clr_shadow = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SHADOW);
 
-    handlers->action = on_action;
-    handlers->redraw = on_redraw;
-    handlers->resize = on_resize;
-    handlers->mouse_move = on_mouse_move;
-    handlers->mouse_click = on_mouse_click;
-    handlers->imglist = on_imglist;
-    handlers->current = on_current;
-    handlers->activate = on_activate;
-    handlers->deactivate = on_deactivate;
+    // load key bindings
+    ctx.kb = keybind_load(cfg, CFG_KEYS_GALLERY);
+
+    handlers->on_activate = on_activate;
+    handlers->on_deactivate = on_deactivate;
+    handlers->on_resize = on_resize;
+    handlers->on_mouse_move = on_mouse_move;
+    handlers->on_mouse_click = on_mouse_click;
+    handlers->on_imglist = on_imglist;
+    handlers->handle_action = handle_action;
+    handlers->redraw = redraw;
+    handlers->get_current = get_current;
+    handlers->get_keybinds = get_keybinds;
 }
 
-void gallery_destroy(void) { }
+void gallery_destroy(void)
+{
+    keybind_free(ctx.kb);
+}

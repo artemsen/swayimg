@@ -28,9 +28,9 @@
 #define MOUSE_TO_XKB(m)  (MOUSE_XKB_BASE | (m))
 #define XKB_TO_MOUSE(x)  ((x) & ~MOUSE_XKB_BASE)
 
-/** Key binding list entry. */
+/** Key binding list. */
 struct keybind {
-    struct list list;       ///< Links to prev/next entry
+    struct keybind* next;   ///< Pointer to the next keybind
     xkb_keysym_t key;       ///< Keyboard key
     uint8_t mods;           ///< Key modifiers
     struct action* actions; ///< Sequence of action
@@ -38,29 +38,28 @@ struct keybind {
 };
 
 /**
- * Initialize global default key binding scheme.
+ * Load key binding list from configuration.
  * @param cfg config instance
+ * @param section name of the config section
+ * @return pointer to list head or NULL on errors
  */
-void keybind_init(const struct config* cfg);
+struct keybind* keybind_load(const struct config* cfg, const char* section);
 
 /**
- * Destroy global key binding scheme.
+ * Free key binding list.
+ * @param kb head of key binding list
  */
-void keybind_destroy(void);
+void keybind_free(struct keybind* kb);
 
 /**
- * Get head of the global binding list.
- * @return pointer to the list head
- */
-struct keybind* keybind_get(void);
-
-/**
- * Find binding for the key.
+ * Find binding for the key/mods.
+ * @param kb head of key binding list
  * @param key keyboard key
  * @param mods key modifiers (ctrl/alt/shift)
  * @return pointer to key binding or NULL if not found
  */
-struct keybind* keybind_find(xkb_keysym_t key, uint8_t mods);
+const struct keybind* keybind_find(const struct keybind* kb, xkb_keysym_t key,
+                                   uint8_t mods);
 
 /**
  * Get key name.

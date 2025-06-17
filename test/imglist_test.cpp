@@ -121,7 +121,6 @@ TEST_F(ImageList, Random)
     for (size_t i = 1; i <= 6; ++i) {
         const std::string src = "exec://" + std::to_string(i);
         ASSERT_TRUE(img);
-        puts(img->source);
         ordered &= src == img->source;
         img = static_cast<struct image*>(list_next(img));
     }

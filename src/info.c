@@ -5,9 +5,7 @@
 #include "info.h"
 
 #include "application.h"
-#include "array.h"
 #include "font.h"
-#include "keybind.h"
 #include "ui.h"
 
 #include <stdarg.h>
@@ -525,41 +523,6 @@ void info_switch(const char* mode)
     }
 }
 
-void info_switch_help(void)
-{
-    if (ctx.help) {
-        free_help(); // switch help off, free resources
-    } else {
-        // get number of bindings
-        size_t num = 0;
-        list_for_each(keybind_get(), struct keybind, it) {
-            if (it->help) {
-                ++num;
-            }
-        }
-        if (num == 0) {
-            return;
-        }
-
-        // create help layer in reverse order
-        ctx.help = arr_create(num, sizeof(struct text_surface));
-        if (!ctx.help) {
-            return;
-        }
-        list_for_each(keybind_get(), struct keybind, it) {
-            if (it->help) {
-                struct text_surface* line = arr_nth(ctx.help, --num);
-                font_render(it->help, line);
-            }
-        }
-    }
-}
-
-bool info_help_active(void)
-{
-    return ctx.help;
-}
-
 bool info_enabled(void)
 {
     return (ctx.mode != mode_off);
@@ -648,7 +611,7 @@ void info_update_index(size_t current, size_t total)
 
 void info_print(struct pixmap* window)
 {
-    if (info_help_active()) {
+    if (help_active()) {
         print_help(window);
     }
 
@@ -723,4 +686,46 @@ void info_print(struct pixmap* window)
             print_keyval(window, i, lines, lnum);
         }
     }
+}
+
+void help_show(const struct keybind* kb)
+{
+    const struct keybind* it;
+    size_t lines;
+
+    free_help();
+
+    // get number of help lines
+    lines = 0;
+    it = kb;
+    while (it) {
+        if (it->help) {
+            ++lines;
+        }
+        it = it->next;
+    }
+
+    // create help layer
+    ctx.help = arr_create(lines, sizeof(struct text_surface));
+    if (!ctx.help) {
+        return;
+    }
+    it = kb;
+    while (it) {
+        if (it->help) {
+            struct text_surface* line = arr_nth(ctx.help, --lines);
+            font_render(it->help, line);
+        }
+        it = it->next;
+    }
+}
+
+void help_hide(void)
+{
+    free_help();
+}
+
+bool help_active(void)
+{
+    return ctx.help;
 }

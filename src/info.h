@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "config.h"
 #include "image.h"
+#include "keybind.h"
 
 /** Available info fields. */
 enum info_field {
@@ -45,17 +45,6 @@ void info_destroy(void);
 void info_switch(const char* mode);
 
 /**
- * Enable/disable help layer.
- */
-void info_switch_help(void);
-
-/**
- * Check if help layer is enabled.
- * @return true if help layer is visible
- */
-bool info_help_active(void);
-
-/**
  * Check if info enabled.
  * @param true if info text layer is enabled
  */
@@ -87,3 +76,20 @@ void info_update_index(size_t current, size_t total);
  * @param window target window surface
  */
 void info_print(struct pixmap* window);
+
+/**
+ * Show help layer.
+ * @param kb head of keybinding list
+ */
+void help_show(const struct keybind* kb);
+
+/**
+ * Hide help layer.
+ */
+void help_hide(void);
+
+/**
+ * Check if help layer is displayed.
+ * @return true if help layer is displayed
+ */
+bool help_active(void);

@@ -10,15 +10,16 @@ extern "C" {
 
 class Keybind : public ConfigTest {
 protected:
-    void TearDown() override { keybind_destroy(); }
+    void TearDown() override { keybind_free(keybind); }
+    struct keybind* keybind = nullptr;
 };
 
 TEST_F(Keybind, Add)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "exit");
-    keybind_init(config);
+    keybind = keybind_load(config, CFG_KEYS_VIEWER);
 
-    const struct keybind* kb = keybind_find('a', 0);
+    const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
@@ -32,9 +33,9 @@ TEST_F(Keybind, Add)
 TEST_F(Keybind, Replace)
 {
     config_set(config, CFG_KEYS_VIEWER, "Escape", "info");
-    keybind_init(config);
+    keybind = keybind_load(config, CFG_KEYS_VIEWER);
 
-    const struct keybind* kb = keybind_find(XKB_KEY_Escape, 0);
+    const struct keybind* kb = keybind_find(keybind, XKB_KEY_Escape, 0);
     ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>(XKB_KEY_Escape));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
@@ -50,22 +51,23 @@ TEST_F(Keybind, Mods)
     config_set(config, CFG_KEYS_VIEWER, "Shift+c", "exit");
     config_set(config, CFG_KEYS_VIEWER, "Alt+Ctrl+d", "exit");
     config_set(config, CFG_KEYS_VIEWER, "Ctrl+Shift+Alt+e", "exit");
-    keybind_init(config);
+    keybind = keybind_load(config, CFG_KEYS_VIEWER);
 
-    EXPECT_NE(keybind_find('a', KEYMOD_CTRL), nullptr);
-    EXPECT_NE(keybind_find('b', KEYMOD_ALT), nullptr);
-    EXPECT_NE(keybind_find('c', KEYMOD_SHIFT), nullptr);
-    EXPECT_NE(keybind_find('d', KEYMOD_CTRL | KEYMOD_ALT), nullptr);
-    EXPECT_NE(keybind_find('e', KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT),
-              nullptr);
+    EXPECT_NE(keybind_find(keybind, 'a', KEYMOD_CTRL), nullptr);
+    EXPECT_NE(keybind_find(keybind, 'b', KEYMOD_ALT), nullptr);
+    EXPECT_NE(keybind_find(keybind, 'c', KEYMOD_SHIFT), nullptr);
+    EXPECT_NE(keybind_find(keybind, 'd', KEYMOD_CTRL | KEYMOD_ALT), nullptr);
+    EXPECT_NE(
+        keybind_find(keybind, 'e', KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT),
+        nullptr);
 }
 
 TEST_F(Keybind, ActionParams)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "status  \t params 1 2 3\t");
-    keybind_init(config);
+    keybind = keybind_load(config, CFG_KEYS_VIEWER);
 
-    const struct keybind* kb = keybind_find('a', 0);
+    const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));
@@ -78,9 +80,9 @@ TEST_F(Keybind, ActionParams)
 TEST_F(Keybind, Multiaction)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "exec cmd;reload;exit");
-    keybind_init(config);
+    keybind = keybind_load(config, CFG_KEYS_VIEWER);
 
-    const struct keybind* kb = keybind_find('a', 0);
+    const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);
     EXPECT_EQ(kb->key, static_cast<xkb_keysym_t>('a'));
     EXPECT_EQ(kb->mods, static_cast<uint8_t>(0));

@@ -28,10 +28,11 @@ struct config {
 #define CFG_LIST         "list"
 #define CFG_FONT         "font"
 #define CFG_INFO         "info"
-#define CFG_INFO_VIEWER  "info.viewer"
-#define CFG_INFO_GALLERY "info.gallery"
-#define CFG_KEYS_VIEWER  "keys.viewer"
-#define CFG_KEYS_GALLERY "keys.gallery"
+#define CFG_INFO_VIEWER  CFG_INFO "." CFG_VIEWER
+#define CFG_INFO_GALLERY CFG_INFO "." CFG_GALLERY
+#define CFG_KEYS         "keys"
+#define CFG_KEYS_VIEWER  CFG_KEYS "." CFG_VIEWER
+#define CFG_KEYS_GALLERY CFG_KEYS "." CFG_GALLERY
 
 // Configuration parameters
 #define CFG_GNRL_MODE      "mode"

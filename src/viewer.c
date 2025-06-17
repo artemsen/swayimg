@@ -118,6 +118,8 @@ struct viewer {
     bool slideshow_enable; ///< Slideshow enable/disable
     int slideshow_fd;      ///< Slideshow timer
     size_t slideshow_time; ///< Slideshow image display time (seconds)
+
+    struct keybind* kb; ///< Key bindings
 };
 
 /** Global viewer context. */
@@ -832,7 +834,7 @@ static void draw_image(struct pixmap* wnd)
 }
 
 /** Mode handler: window redraw. */
-static void on_redraw(struct pixmap* window)
+static void redraw(struct pixmap* window)
 {
     draw_image(window);
     info_print(window);
@@ -876,7 +878,7 @@ static void on_mouse_move(uint8_t mods, uint32_t btn,
                           __attribute__((unused)) size_t y, ssize_t dx,
                           ssize_t dy)
 {
-    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
+    const struct keybind* kb = keybind_find(ctx.kb, MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_drag) {
         ctx.img_x += dx;
         ctx.img_y += dy;
@@ -890,7 +892,7 @@ static bool on_mouse_click(uint8_t mods, uint32_t btn,
                            __attribute__((unused)) size_t x,
                            __attribute__((unused)) size_t y)
 {
-    const struct keybind* kb = keybind_find(MOUSE_TO_XKB(btn), mods);
+    const struct keybind* kb = keybind_find(ctx.kb, MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_drag) {
         ui_set_cursor(ui_cursor_drag);
         return true;
@@ -899,7 +901,7 @@ static bool on_mouse_click(uint8_t mods, uint32_t btn,
 }
 
 /** Mode handler: apply action. */
-static void on_action(const struct action* action)
+static void handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_first_file:
@@ -983,7 +985,7 @@ static void on_action(const struct action* action)
 }
 
 /** Mode handler: get currently viewed image. */
-static struct image* on_current(void)
+static struct image* get_current(void)
 {
     return ctx.current;
 }
@@ -1003,14 +1005,18 @@ static void on_activate(struct image* image)
 }
 
 /** Mode handler: deactivate viewer. */
-static struct image* on_deactivate(void)
+static void on_deactivate(void)
 {
     preloader_stop();
     animation_ctl(false);
     slideshow_ctl(false);
     cache_put(ctx.history, ctx.current);
+}
 
-    return ctx.current;
+/** Mode handler: get key bindings. */
+static struct keybind* get_keybinds(void)
+{
+    return ctx.kb;
 }
 
 void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
@@ -1069,15 +1075,19 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
         app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
     }
 
-    handlers->action = on_action;
-    handlers->redraw = on_redraw;
-    handlers->resize = on_resize;
-    handlers->mouse_move = on_mouse_move;
-    handlers->mouse_click = on_mouse_click;
-    handlers->imglist = on_imglist;
-    handlers->current = on_current;
-    handlers->activate = on_activate;
-    handlers->deactivate = on_deactivate;
+    // load key bindings
+    ctx.kb = keybind_load(cfg, CFG_KEYS_VIEWER);
+
+    handlers->on_activate = on_activate;
+    handlers->on_deactivate = on_deactivate;
+    handlers->on_resize = on_resize;
+    handlers->on_mouse_move = on_mouse_move;
+    handlers->on_mouse_click = on_mouse_click;
+    handlers->on_imglist = on_imglist;
+    handlers->handle_action = handle_action;
+    handlers->redraw = redraw;
+    handlers->get_current = get_current;
+    handlers->get_keybinds = get_keybinds;
 }
 
 void viewer_destroy(void)
@@ -1088,6 +1098,7 @@ void viewer_destroy(void)
     if (ctx.slideshow_fd != -1) {
         close(ctx.slideshow_fd);
     }
+    keybind_free(ctx.kb);
 
     cache_free(ctx.history);
     cache_free(ctx.preload);

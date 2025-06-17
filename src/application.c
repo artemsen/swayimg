@@ -75,7 +75,9 @@ static struct application ctx;
 
 void app_switch_mode(void)
 {
-    struct image* current = ctx.mode_handlers[ctx.mode_current].deactivate();
+    struct image* current = ctx.mode_handlers[ctx.mode_current].get_current();
+
+    ctx.mode_handlers[ctx.mode_current].on_deactivate();
 
     if (ctx.mode_current == mode_viewer) {
         ctx.mode_current = mode_gallery;
@@ -83,14 +85,14 @@ void app_switch_mode(void)
         ctx.mode_current = mode_viewer;
     }
 
-    ctx.mode_handlers[ctx.mode_current].activate(current);
+    ctx.mode_handlers[ctx.mode_current].on_activate(current);
 
     if (info_enabled()) {
         info_switch(ctx.mode_current == mode_viewer ? CFG_MODE_VIEWER
                                                     : CFG_MODE_GALLERY);
     }
-    if (info_help_active()) {
-        info_switch_help();
+    if (help_active()) {
+        help_hide();
     }
 
     app_redraw();
@@ -215,23 +217,28 @@ static void handle_event_queue(__attribute__((unused)) void* data)
             }
         } break;
         case action_exec:
-            execute_cmd(action->params,
-                        ctx.mode_handlers[ctx.mode_current].current()->source);
+            execute_cmd(
+                action->params,
+                ctx.mode_handlers[ctx.mode_current].get_current()->source);
             break;
         case action_help:
-            info_switch_help();
+            if (help_active()) {
+                help_hide();
+            } else {
+                help_show(ctx.mode_handlers[ctx.mode_current].get_keybinds());
+            }
             app_redraw();
             break;
         case action_exit:
-            if (info_help_active()) {
-                info_switch_help(); // remove help overlay
+            if (help_active()) {
+                help_hide();
                 app_redraw();
             } else {
                 app_exit(0);
             }
             break;
         default:
-            ctx.mode_handlers[ctx.mode_current].action(action);
+            ctx.mode_handlers[ctx.mode_current].handle_action(action);
             break;
     }
 
@@ -570,7 +577,6 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // initialize other subsystems
     tpool_init();
     font_init(cfg);
-    keybind_init(cfg);
     info_init(cfg);
     viewer_init(cfg, &ctx.mode_handlers[mode_viewer]);
     gallery_init(cfg, &ctx.mode_handlers[mode_gallery]);
@@ -584,7 +590,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // set signal handler
     setup_signals(cfg);
 
-    ctx.mode_handlers[ctx.mode_current].activate(first_image);
+    ctx.mode_handlers[ctx.mode_current].on_activate(first_image);
 
     return true;
 }
@@ -596,7 +602,6 @@ void app_destroy(void)
     ui_destroy();
     imglist_destroy();
     info_destroy();
-    keybind_destroy();
     font_destroy();
     tpool_destroy();
 
@@ -670,7 +675,7 @@ bool app_run(void)
         ui_event_done();
     }
 
-    ctx.mode_handlers[ctx.mode_current].deactivate();
+    ctx.mode_handlers[ctx.mode_current].on_deactivate();
 
     free(fds);
 
@@ -701,33 +706,35 @@ void app_redraw(void)
 
 void app_on_imglist(const struct image* image, enum fsevent event)
 {
-    ctx.mode_handlers[ctx.mode_current].imglist(image, event);
+    ctx.mode_handlers[ctx.mode_current].on_imglist(image, event);
 }
 
 void app_on_resize(void)
 {
-    ctx.mode_handlers[ctx.mode_current].resize();
+    ctx.mode_handlers[ctx.mode_current].on_resize();
 }
 
 void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
                   ssize_t dy)
 {
-    if (ctx.mode_handlers[ctx.mode_current].mouse_move) {
-        ctx.mode_handlers[ctx.mode_current].mouse_move(mods, btn, x, y, dx, dy);
+    if (ctx.mode_handlers[ctx.mode_current].on_mouse_move) {
+        ctx.mode_handlers[ctx.mode_current].on_mouse_move(mods, btn, x, y, dx,
+                                                          dy);
     }
 }
 
 void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
 {
-    if (!ctx.mode_handlers[ctx.mode_current].mouse_click ||
-        !ctx.mode_handlers[ctx.mode_current].mouse_click(mods, btn, x, y)) {
+    if (!ctx.mode_handlers[ctx.mode_current].on_mouse_click ||
+        !ctx.mode_handlers[ctx.mode_current].on_mouse_click(mods, btn, x, y)) {
         app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }
 
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
-    const struct keybind* kb = keybind_find(key, mods);
+    const struct keybind* kb = keybind_find(
+        ctx.mode_handlers[ctx.mode_current].get_keybinds(), key, mods);
 
     if (kb) {
         const struct action* action = kb->actions;
