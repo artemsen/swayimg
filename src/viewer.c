@@ -833,11 +833,15 @@ static void draw_image(struct pixmap* wnd)
     }
 }
 
-/** Mode handler: window redraw. */
-static void redraw(struct pixmap* window)
+/** Redraw window. */
+static void redraw(void)
 {
-    draw_image(window);
-    info_print(window);
+    struct pixmap* wnd = ui_draw_begin();
+    if (wnd) {
+        draw_image(wnd);
+        info_print(wnd);
+        ui_draw_commit();
+    }
 }
 
 /** Mode handler: window resize. */
@@ -964,6 +968,9 @@ static void handle_action(const struct action* action)
             info_update(info_status, "Anti-aliasing: %s", aa_name(ctx.aa_mode));
             app_redraw();
             break;
+        case action_redraw:
+            redraw();
+            break;
         case action_reload:
             imglist_lock();
             reload_current();
@@ -1019,7 +1026,7 @@ static struct keybind* get_keybinds(void)
     return ctx.kb;
 }
 
-void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
+void viewer_init(const struct config* cfg, struct mode* handlers)
 {
     size_t cval_num;
     const char* cval_txt;
@@ -1085,7 +1092,6 @@ void viewer_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->on_mouse_click = on_mouse_click;
     handlers->on_imglist = on_imglist;
     handlers->handle_action = handle_action;
-    handlers->redraw = redraw;
     handlers->get_current = get_current;
     handlers->get_keybinds = get_keybinds;
 }

@@ -66,8 +66,8 @@ struct application {
     struct action* sigusr1; ///< Actions applied by USR1 signal
     struct action* sigusr2; ///< Actions applied by USR2 signal
 
-    enum mode_type mode_current; ///< Currently active mode (viewer/gallery)
-    struct mode_handlers mode_handlers[2]; ///< Mode handlers
+    enum mode_type mcurr; ///< Currently active mode
+    struct mode modes[2]; ///< Mode handlers (viewer/gallery)
 };
 
 /** Global application context. */
@@ -75,95 +75,25 @@ static struct application ctx;
 
 void app_switch_mode(void)
 {
-    struct image* current = ctx.mode_handlers[ctx.mode_current].get_current();
+    struct image* current = ctx.modes[ctx.mcurr].get_current();
 
-    ctx.mode_handlers[ctx.mode_current].on_deactivate();
+    ctx.modes[ctx.mcurr].on_deactivate();
 
-    if (ctx.mode_current == mode_viewer) {
-        ctx.mode_current = mode_gallery;
+    if (ctx.mcurr == mode_viewer) {
+        ctx.mcurr = mode_gallery;
     } else {
-        ctx.mode_current = mode_viewer;
+        ctx.mcurr = mode_viewer;
     }
 
-    ctx.mode_handlers[ctx.mode_current].on_activate(current);
+    ctx.modes[ctx.mcurr].on_activate(current);
 
     if (info_enabled()) {
-        info_switch(ctx.mode_current == mode_viewer ? CFG_MODE_VIEWER
-                                                    : CFG_MODE_GALLERY);
+        info_switch(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
+                                             : CFG_MODE_GALLERY);
     }
     if (help_active()) {
         help_hide();
     }
-
-    app_redraw();
-}
-
-/**
- * Execute system command for the specified image.
- * @param expr command expression
- * @param path file path to substitute into expression
- */
-static void execute_cmd(const char* expr, const char* path)
-{
-    const size_t max_status = 60;
-    struct array* out = NULL;
-    struct array* err = NULL;
-    char* msg = NULL;
-    char* cmd;
-    int rc;
-
-    // contruct and execute command
-    cmd = shellcmd_expr(expr, path);
-    if (!cmd) {
-        info_update(info_status, "Error: no command to execute");
-        app_redraw();
-        return;
-    }
-    rc = shellcmd_exec(cmd, &out, &err);
-
-    // duplicate output to stdout/stderr
-    if (out) {
-        fprintf(stdout, "%.*s", (int)out->size, out->data);
-    }
-    if (err) {
-        fprintf(stderr, "%.*s", (int)err->size, err->data);
-    }
-
-    // show execution status
-    if (rc == 0) {
-        if (out) {
-            str_append((const char*)out->data, out->size, &msg);
-        } else {
-            str_dup("Success: ", &msg);
-            str_append(cmd, 0, &msg);
-        }
-    } else if (rc == SHELLCMD_TIMEOUT) {
-        str_dup("Child process timed out: ", &msg);
-        str_append(cmd, 0, &msg);
-    } else {
-        char desc[256];
-        snprintf(desc, sizeof(desc), "Error %d: ", rc);
-        str_dup(desc, &msg);
-        if (err) {
-            str_append((const char*)err->data, err->size, &msg);
-        } else if (out) {
-            str_append((const char*)out->data, out->size, &msg);
-        } else {
-            str_append(strerror(rc), 0, &msg);
-        }
-    }
-    if (strlen(msg) > max_status) {
-        // trim long output text
-        const char ellipsis[] = "...";
-        memcpy(msg + max_status - sizeof(ellipsis), ellipsis, sizeof(ellipsis));
-    }
-
-    info_update(info_status, "%s", msg);
-
-    free(cmd);
-    free(msg);
-    arr_free(out);
-    arr_free(err);
 
     app_redraw();
 }
@@ -189,60 +119,10 @@ static void handle_event_queue(__attribute__((unused)) void* data)
         } while (len == -1 && errno == EINTR);
     }
 
-    if (!entry) {
-        return;
+    if (entry) {
+        mode_action(&ctx.modes[ctx.mcurr], entry->action);
+        free(entry);
     }
-
-    const struct action* action = entry->action;
-    switch (action->type) {
-        case action_info:
-            info_switch(action->params);
-            app_redraw();
-            break;
-        case action_status:
-            info_update(info_status, "%s", action->params);
-            app_redraw();
-            break;
-        case action_fullscreen:
-            ui_toggle_fullscreen();
-            break;
-        case action_mode:
-            app_switch_mode();
-            break;
-        case action_redraw: {
-            struct pixmap* window = ui_draw_begin();
-            if (window) {
-                ctx.mode_handlers[ctx.mode_current].redraw(window);
-                ui_draw_commit();
-            }
-        } break;
-        case action_exec:
-            execute_cmd(
-                action->params,
-                ctx.mode_handlers[ctx.mode_current].get_current()->source);
-            break;
-        case action_help:
-            if (help_active()) {
-                help_hide();
-            } else {
-                help_show(ctx.mode_handlers[ctx.mode_current].get_keybinds());
-            }
-            app_redraw();
-            break;
-        case action_exit:
-            if (help_active()) {
-                help_hide();
-                app_redraw();
-            } else {
-                app_exit(0);
-            }
-            break;
-        default:
-            ctx.mode_handlers[ctx.mode_current].handle_action(action);
-            break;
-    }
-
-    free(entry);
 }
 
 /**
@@ -557,9 +437,9 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // set initial mode
     if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
                          ARRAY_SIZE(modes)) == 1) {
-        ctx.mode_current = mode_gallery;
+        ctx.mcurr = mode_gallery;
     } else {
-        ctx.mode_current = mode_viewer;
+        ctx.mcurr = mode_viewer;
     }
 
     // create event queue notification
@@ -578,19 +458,19 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     tpool_init();
     font_init(cfg);
     info_init(cfg);
-    viewer_init(cfg, &ctx.mode_handlers[mode_viewer]);
-    gallery_init(cfg, &ctx.mode_handlers[mode_gallery]);
+    viewer_init(cfg, &ctx.modes[mode_viewer]);
+    gallery_init(cfg, &ctx.modes[mode_gallery]);
 
     // set mode for text info
     if (info_enabled()) {
-        info_switch(ctx.mode_current == mode_viewer ? CFG_MODE_VIEWER
-                                                    : CFG_MODE_GALLERY);
+        info_switch(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
+                                             : CFG_MODE_GALLERY);
     }
 
     // set signal handler
     setup_signals(cfg);
 
-    ctx.mode_handlers[ctx.mode_current].on_activate(first_image);
+    ctx.modes[ctx.mcurr].on_activate(first_image);
 
     return true;
 }
@@ -675,7 +555,7 @@ bool app_run(void)
         ui_event_done();
     }
 
-    ctx.mode_handlers[ctx.mode_current].on_deactivate();
+    ctx.modes[ctx.mcurr].on_deactivate();
 
     free(fds);
 
@@ -689,7 +569,7 @@ void app_exit(int rc)
 
 bool app_is_viewer(void)
 {
-    return ctx.mode_current == mode_viewer;
+    return ctx.mcurr == mode_viewer;
 }
 
 void app_reload(void)
@@ -706,35 +586,34 @@ void app_redraw(void)
 
 void app_on_imglist(const struct image* image, enum fsevent event)
 {
-    ctx.mode_handlers[ctx.mode_current].on_imglist(image, event);
+    ctx.modes[ctx.mcurr].on_imglist(image, event);
 }
 
 void app_on_resize(void)
 {
-    ctx.mode_handlers[ctx.mode_current].on_resize();
+    ctx.modes[ctx.mcurr].on_resize();
 }
 
 void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,
                   ssize_t dy)
 {
-    if (ctx.mode_handlers[ctx.mode_current].on_mouse_move) {
-        ctx.mode_handlers[ctx.mode_current].on_mouse_move(mods, btn, x, y, dx,
-                                                          dy);
+    if (ctx.modes[ctx.mcurr].on_mouse_move) {
+        ctx.modes[ctx.mcurr].on_mouse_move(mods, btn, x, y, dx, dy);
     }
 }
 
 void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y)
 {
-    if (!ctx.mode_handlers[ctx.mode_current].on_mouse_click ||
-        !ctx.mode_handlers[ctx.mode_current].on_mouse_click(mods, btn, x, y)) {
+    if (!ctx.modes[ctx.mcurr].on_mouse_click ||
+        !ctx.modes[ctx.mcurr].on_mouse_click(mods, btn, x, y)) {
         app_on_keyboard(MOUSE_TO_XKB(btn), mods);
     }
 }
 
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 {
-    const struct keybind* kb = keybind_find(
-        ctx.mode_handlers[ctx.mode_current].get_keybinds(), key, mods);
+    const struct keybind* kb =
+        keybind_find(ctx.modes[ctx.mcurr].get_keybinds(), key, mods);
 
     if (kb) {
         const struct action* action = kb->actions;

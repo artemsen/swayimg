@@ -17,7 +17,7 @@ enum mode_type {
 /**
  * Set of event handlers used to communicate with viewer and gallery.
  */
-struct mode_handlers {
+struct mode {
 
     /**
      * Activate mode (viewer/gallery switch).
@@ -62,16 +62,10 @@ struct mode_handlers {
     void (*on_imglist)(const struct image* image, enum fsevent event);
 
     /**
-     * Apply action.
+     * Handle action.
      * @param action action to apply
      */
     void (*handle_action)(const struct action* action);
-
-    /**
-     * Redraw window.
-     * @param window target window
-     */
-    void (*redraw)(struct pixmap* window);
 
     /**
      * Get currently showed/selected image.
@@ -85,3 +79,10 @@ struct mode_handlers {
      */
     struct keybind* (*get_keybinds)(void);
 };
+
+/**
+ * Handle action.
+ * @param mode mode handlers
+ * @param action action to apply
+ */
+void mode_action(struct mode* mode, const struct action* action);

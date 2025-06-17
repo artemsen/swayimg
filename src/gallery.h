@@ -12,7 +12,7 @@
  * @param cfg config instance
  * @param handlers mode handlers
  */
-void gallery_init(const struct config* cfg, struct mode_handlers* handlers);
+void gallery_init(const struct config* cfg, struct mode* handlers);
 
 /**
  * Destroy global gallery context.

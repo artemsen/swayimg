@@ -503,12 +503,16 @@ static void draw_thumbnails(struct pixmap* window)
     imglist_unlock();
 }
 
-/** Mode handler: window redraw. */
-static void redraw(struct pixmap* window)
+/** Redraw window. */
+static void redraw(void)
 {
-    pixmap_fill(window, 0, 0, window->width, window->height, ctx.clr_window);
-    draw_thumbnails(window);
-    info_print(window);
+    struct pixmap* wnd = ui_draw_begin();
+    if (wnd) {
+        pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
+        draw_thumbnails(wnd);
+        info_print(wnd);
+        ui_draw_commit();
+    }
 }
 
 /** Mode handler: window resize. */
@@ -547,6 +551,9 @@ static void handle_action(const struct action* action)
             imglist_lock();
             skip_current(true);
             imglist_unlock();
+            break;
+        case action_redraw:
+            redraw();
             break;
         case action_reload:
             reload();
@@ -650,7 +657,7 @@ static void on_deactivate(void)
     tpool_wait();
 }
 
-void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
+void gallery_init(const struct config* cfg, struct mode* handlers)
 {
     const size_t ts = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 4096);
     layout_init(&ctx.layout, ts);
@@ -678,7 +685,6 @@ void gallery_init(const struct config* cfg, struct mode_handlers* handlers)
     handlers->on_mouse_click = on_mouse_click;
     handlers->on_imglist = on_imglist;
     handlers->handle_action = handle_action;
-    handlers->redraw = redraw;
     handlers->get_current = get_current;
     handlers->get_keybinds = get_keybinds;
 }

@@ -247,6 +247,7 @@ sources = [
     'src/layout.c',
     'src/list.c',
     'src/main.c',
+    'src/mode.c',
     'src/pixmap.c',
     'src/render.c',
     'src/shellcmd.c',
