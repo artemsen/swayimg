@@ -419,8 +419,8 @@ Predefined names for mouse buttons/scroll:
 	- _prev_: switch to previous mode.
 
 *info* [MODE]
-	Set text info mode or cycle through them, _MODE_ is on of
-	_off_/_viewer_/_gallery_ or empty value to switch to next mode.
+	Set text info mode or cycle through them, _MODE_ is one of the configured
+	schemes: _off_/_viewer_/_gallery_ or empty value to switch to the next mode.
 
 *exec* COMMAND
 	Execute an external command, use % to substitute the full path to the

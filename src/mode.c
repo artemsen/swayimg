@@ -82,7 +82,7 @@ static void execute_cmd(const char* expr, const char* path)
     app_redraw();
 }
 
-void mode_action(struct mode* mode, const struct action* action)
+void mode_handle(struct mode* mode, const struct action* action)
 {
     switch (action->type) {
         case action_info:
@@ -103,7 +103,7 @@ void mode_action(struct mode* mode, const struct action* action)
             execute_cmd(action->params, mode->get_current()->source);
             break;
         case action_help:
-            if (help_active()) {
+            if (help_visible()) {
                 help_hide();
             } else {
                 help_show(mode->get_keybinds());
@@ -111,7 +111,7 @@ void mode_action(struct mode* mode, const struct action* action)
             app_redraw();
             break;
         case action_exit:
-            if (help_active()) {
+            if (help_visible()) {
                 help_hide();
                 app_redraw();
             } else {

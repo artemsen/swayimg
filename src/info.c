@@ -19,20 +19,8 @@
 #define MAX_META_KEY_LEN   32
 #define MAX_META_VALUE_LEN 128
 
-/** Display modes. */
-enum info_mode {
-    mode_viewer,
-    mode_gallery,
-    mode_off,
-};
-static const char* mode_names[] = {
-    [mode_viewer] = CFG_MODE_VIEWER,
-    [mode_gallery] = CFG_MODE_GALLERY,
-    [mode_off] = "off",
-};
-#define MODES_NUM 2
-
 // clang-format off
+
 /** Field names. */
 static const char* field_names[] = {
     [info_file_name] = "name",
@@ -47,38 +35,30 @@ static const char* field_names[] = {
     [info_scale] = "scale",
     [info_status] = "status",
 };
-#define FIELDS_NUM ARRAY_SIZE(field_names)
 
 /** Positions of text info block. */
-enum block_position {
-    pos_center,
+enum position {
     pos_top_left,
     pos_top_right,
     pos_bottom_left,
     pos_bottom_right,
 };
+
 /** Block position names. */
 static const char* position_names[] = {
-    [pos_center] = CFG_INFO_CN,
     [pos_top_left] = CFG_INFO_TL,
     [pos_top_right] = CFG_INFO_TR,
     [pos_bottom_left] = CFG_INFO_BL,
     [pos_bottom_right] = CFG_INFO_BR,
 };
-#define POSITION_NUM ARRAY_SIZE(position_names)
+
 // clang-format on
 
 // Max number of lines in one positioned block
-#define MAX_LINES (FIELDS_NUM + 10 /* EXIF and duplicates */)
+#define MAX_LINES (ARRAY_SIZE(field_names) + 10 /* EXIF and duplicates */)
 
 // Space between text layout and window edge
 #define TEXT_PADDING 10
-
-/** Scheme of displayed field (line(s) of text). */
-struct field_scheme {
-    enum info_field type; ///< Field type
-    bool title;           ///< Print/hide field title
-};
 
 /** Key/value text surface. */
 struct keyval {
@@ -86,14 +66,21 @@ struct keyval {
     struct text_surface value;
 };
 
-/** Info scheme: set of fields in one of screen positions. */
-struct block_scheme {
-    struct field_scheme* fields; ///< Array of fields
-    size_t fields_num;           ///< Size of array
+/** Single field of the scheme. */
+struct field {
+    enum info_field type; ///< Field type
+    bool title;           ///< Print/hide field title
+};
+
+/** Info scheme: set of fields in each corners. */
+struct scheme {
+    struct scheme* next;     ///< Pointer to the next scheme
+    struct array* fields[4]; ///< Fields in each corners
+    char name[1];            ///< Scheme name (viewer/gallery/...)
 };
 
 /** Info timeout description. */
-struct info_timeout {
+struct timeout {
     int fd;         ///< Timer FD
     size_t timeout; ///< Timeout duration in seconds
     bool active;    ///< Current state
@@ -101,16 +88,17 @@ struct info_timeout {
 
 /** Info data context. */
 struct info_context {
-    enum info_mode mode; ///< Currently active mode
+    bool show; ///< Show/hide flag
 
-    struct info_timeout info;   ///< Text info timeout
-    struct info_timeout status; ///< Status message timeout
+    struct timeout info;   ///< Text info timeout
+    struct timeout status; ///< Status message timeout
+
+    struct scheme* schemes; ///< List of available schemes
+    struct scheme* current; ///< Currently active scheme
 
     struct array* help; ///< Help layer lines
     struct array* meta; ///< Image meta data (EXIF etc)
-
-    struct keyval fields[FIELDS_NUM];                    ///< Info data
-    struct block_scheme scheme[MODES_NUM][POSITION_NUM]; ///< Info scheme
+    struct keyval fields[ARRAY_SIZE(field_names)]; ///< Info data
 };
 
 /** Global info context. */
@@ -119,7 +107,7 @@ static struct info_context ctx;
 /** Notification callback: handle timer event. */
 static void on_timeout(void* data)
 {
-    struct info_timeout* timeout = data;
+    struct timeout* timeout = data;
     struct itimerspec ts = { 0 };
 
     timeout->active = false;
@@ -131,7 +119,7 @@ static void on_timeout(void* data)
  * Initialize timer.
  * @param timeout timer instance
  */
-static void timeout_init(struct info_timeout* timeout)
+static void timeout_init(struct timeout* timeout)
 {
     timeout->fd = -1;
     timeout->active = true;
@@ -148,7 +136,7 @@ static void timeout_init(struct info_timeout* timeout)
  * Reset/restart timer.
  * @param timeout timer instance
  */
-static void timeout_reset(struct info_timeout* timeout)
+static void timeout_reset(struct timeout* timeout)
 {
     timeout->active = true;
     if (timeout->fd != -1) {
@@ -161,7 +149,7 @@ static void timeout_reset(struct info_timeout* timeout)
  * Close timer FD.
  * @param timeout timer instance
  */
-static void timeout_close(struct info_timeout* timeout)
+static void timeout_close(struct timeout* timeout)
 {
     if (timeout->fd != -1) {
         close(timeout->fd);
@@ -263,7 +251,7 @@ static void print_help(struct pixmap* window)
  * @param lines array of key/value lines to print
  * @param lines_num total number of lines
  */
-static void print_keyval(struct pixmap* wnd, enum block_position pos,
+static void print_keyval(struct pixmap* wnd, enum position pos,
                          const struct keyval* lines, size_t lines_num)
 {
     size_t max_key_width = 0;
@@ -287,8 +275,6 @@ static void print_keyval(struct pixmap* wnd, enum block_position pos,
 
         // calculate line position
         switch (pos) {
-            case pos_center:
-                return; // not supported (not used anywhere)
             case pos_top_left:
                 y = TEXT_PADDING + i * height;
                 if (key->data) {
@@ -329,6 +315,58 @@ static void print_keyval(struct pixmap* wnd, enum block_position pos,
             font_print(wnd, x_key, y, key);
         }
         font_print(wnd, x_val, y, value);
+    }
+}
+
+/**
+ * Print info block with key/value text.
+ * @param wnd destination window
+ * @param pos block position
+ * @param fields array of fields to print
+ */
+static void print_block(struct pixmap* wnd, enum position pos,
+                        struct array* fields)
+{
+    struct keyval lines[MAX_LINES] = { 0 };
+    size_t lnum;
+
+    if (!fields) {
+        return; // nothing to show
+    }
+
+    lnum = 0;
+    for (size_t i = 0; i < fields->size && lnum < ARRAY_SIZE(lines); ++i) {
+        const struct field* field = arr_nth(fields, i);
+        const struct keyval* origin = &ctx.fields[field->type];
+
+        if (field->type == info_status && !ctx.status.active) {
+            continue;
+        }
+
+        if (field->type == info_exif) {
+            if (ctx.meta) {
+                for (size_t j = 0;
+                     j < ctx.meta->size && lnum < ARRAY_SIZE(lines); ++j) {
+                    const struct keyval* kv = arr_nth(ctx.meta, j);
+                    if (field->title) {
+                        lines[lnum].key = kv->key;
+                    }
+                    lines[lnum++].value = kv->value;
+                }
+            }
+            continue;
+        }
+
+        if (origin->value.width) {
+            if (field->title) {
+                lines[lnum].key = origin->key;
+            }
+            lines[lnum++].value = origin->value;
+        }
+    }
+
+    if (lnum) {
+        print_keyval(wnd, pos, lines, lnum);
     }
 }
 
@@ -384,33 +422,34 @@ static void import_meta(const struct image* img)
 }
 
 /**
- * Parse and load scheme from config line.
+ * Parse fields from config line.
  * @param config line to parse
- * @param scheme destination scheme description
- * @return true if config parsed successfully
+ * @return array with set of fields
  */
-static bool parse_scheme(const char* config, struct block_scheme* scheme)
+static struct array* parse_fields(const char* conf)
 {
+    const char* none = "none";
+    const size_t nlen = strlen(none);
+    struct array* fields;
     struct str_slice slices[MAX_LINES];
     size_t slices_num;
-    struct field_scheme* fields;
+    size_t index;
 
-    // split into fields slices
-    slices_num = str_split(config, ',', slices, ARRAY_SIZE(slices));
+    // split config line into fields slices
+    slices_num = str_split(conf, ',', slices, ARRAY_SIZE(slices));
     if (slices_num > ARRAY_SIZE(slices)) {
         slices_num = ARRAY_SIZE(slices);
     }
 
-    fields = realloc(scheme->fields, slices_num * sizeof(*fields));
+    fields = arr_create(slices_num, sizeof(struct field));
     if (!fields) {
-        return false;
+        return NULL;
     }
-    scheme->fields = fields;
-    scheme->fields_num = 0;
 
+    index = 0;
     for (size_t i = 0; i < slices_num; ++i) {
-        struct field_scheme* field = &scheme->fields[scheme->fields_num];
-        ssize_t field_idx;
+        struct field* field = arr_nth(fields, index);
+        ssize_t field_type;
         struct str_slice* sl = &slices[i];
 
         // title show/hide ('+' at the beginning)
@@ -420,44 +459,82 @@ static bool parse_scheme(const char* config, struct block_scheme* scheme)
             --sl->len;
         }
 
-        // field type
-        field_idx = str_index(field_names, sl->value, sl->len);
-        if (field_idx >= 0) {
-            field->type = field_idx;
-            scheme->fields_num++;
-        } else if (sl->len == 4 && strncmp(sl->value, "none", sl->len) == 0) {
-            continue; // special value, just skip
-        } else {
-            return false; // invalid field name
+        // handle "none"
+        if (sl->len == nlen && strncmp(sl->value, none, nlen) == 0) {
+            continue;
         }
+
+        // field type
+        field_type = str_index(field_names, sl->value, sl->len);
+        if (field_type < 0) {
+            fprintf(stderr, "Invalid info field: %.*s\n", (int)sl->len,
+                    sl->value);
+            continue;
+        }
+
+        field->type = field_type;
+        ++index;
     }
 
-    if (scheme->fields_num == 0) {
-        free(scheme->fields);
-        scheme->fields = NULL;
+    if (index == 0) {
+        arr_free(fields);
+        fields = NULL;
+    } else if (index != fields->size) {
+        arr_resize(fields, index);
     }
 
-    return true;
+    return fields;
+}
+
+/**
+ * Load scheme from configuration.
+ * @param name name of the scheme
+ * @param params list of config parameters
+ * @return pointer to constructed scheme or NULL on errors
+ */
+static struct scheme* create_scheme(const char* name,
+                                    const struct config_keyval* params)
+{
+    const size_t name_len = strlen(name);
+    struct scheme* scheme = calloc(1, sizeof(struct scheme) + name_len);
+    if (!scheme) {
+        return NULL;
+    }
+
+    memcpy(scheme->name, name, name_len);
+
+    list_for_each(params, const struct config_keyval, kv) {
+        const ssize_t bpos = str_index(position_names, kv->key, 0);
+        if (bpos < 0) {
+            fprintf(stderr, "Invalid info position: %s\n", kv->key);
+            continue;
+        }
+        scheme->fields[bpos] = parse_fields(kv->value);
+    }
+
+    return scheme;
 }
 
 void info_init(const struct config* cfg)
 {
-    for (size_t i = 0; i < MODES_NUM; ++i) {
-        const char* section;
-        section = (i == mode_viewer ? CFG_INFO_VIEWER : CFG_INFO_GALLERY);
-        for (size_t j = 0; j < POSITION_NUM; ++j) {
-            const char* position = position_names[j];
-            const char* format = config_get(cfg, section, position);
-            if (!parse_scheme(format, &ctx.scheme[i][j])) {
-                config_error_val(section, format);
-                format = config_get_default(section, position);
-                parse_scheme(format, &ctx.scheme[i][j]);
-            }
+    const char* cprefix = CFG_INFO ".";
+    const size_t cprefix_len = strlen(cprefix);
+    struct scheme* scheme;
+
+    list_for_each(cfg, const struct config, cs) {
+        if (strncmp(cs->name, cprefix, cprefix_len) != 0) {
+            continue;
+        }
+        scheme = create_scheme(cs->name + cprefix_len, cs->params);
+        if (scheme) {
+            scheme->next = ctx.schemes;
+            ctx.schemes = scheme;
         }
     }
+    ctx.current = ctx.schemes;
 
-    ctx.mode =
-        config_get_bool(cfg, CFG_INFO, CFG_INFO_SHOW) ? mode_viewer : mode_off;
+    ctx.show = config_get_bool(cfg, CFG_INFO, CFG_INFO_SHOW);
+
     ctx.info.timeout =
         config_get_num(cfg, CFG_INFO, CFG_INFO_ITIMEOUT, 0, 1024);
     timeout_init(&ctx.info);
@@ -491,41 +568,54 @@ void info_destroy(void)
     free_help();
     free_meta();
 
-    for (size_t i = 0; i < MODES_NUM; ++i) {
-        for (size_t j = 0; j < POSITION_NUM; ++j) {
-            free(ctx.scheme[i][j].fields);
-        }
-    }
-
-    for (size_t i = 0; i < FIELDS_NUM; ++i) {
+    for (size_t i = 0; i < ARRAY_SIZE(ctx.fields); ++i) {
         free(ctx.fields[i].key.data);
         free(ctx.fields[i].value.data);
     }
+
+    while (ctx.schemes) {
+        struct scheme* next = ctx.schemes->next;
+        for (size_t i = 0; i < ARRAY_SIZE(ctx.schemes->fields); ++i) {
+            arr_free(ctx.schemes->fields[i]);
+        }
+        free(ctx.schemes);
+        ctx.schemes = next;
+    }
 }
 
-void info_switch(const char* mode)
+void info_switch(const char* name)
 {
     timeout_reset(&ctx.info);
 
-    if (!ctx.info.active) {
-        return;
-    }
-    if (mode && *mode) {
-        const ssize_t mode_num = str_index(mode_names, mode, 0);
-        if (mode_num >= 0) {
-            ctx.mode = mode_num;
+    if (name && *name) {
+        if (strcmp(name, "off")) {
+            ctx.show = false;
+        } else {
+            info_set_default(name);
+            ctx.show = true;
         }
+    } else if (!ctx.show) {
+        ctx.show = true;
     } else {
-        ++ctx.mode;
-        if (ctx.mode > mode_off) {
-            ctx.mode = mode_viewer;
+        ctx.current = ctx.current->next;
+        if (!ctx.current) {
+            ctx.show = false;
+            ctx.current = ctx.schemes;
         }
     }
 }
 
-bool info_enabled(void)
+void info_set_default(const char* name)
 {
-    return (ctx.mode != mode_off);
+    struct scheme* it = ctx.schemes;
+    while (it && strcmp(name, it->name) != 0) {
+        it = it->next;
+    }
+    if (it) {
+        ctx.current = it;
+    } else {
+        fprintf(stderr, "Invalid info scheme: %s\n", name);
+    }
 }
 
 void info_reset(const struct image* img)
@@ -611,80 +701,13 @@ void info_update_index(size_t current, size_t total)
 
 void info_print(struct pixmap* window)
 {
-    if (help_active()) {
+    if (ctx.show) {
+        for (size_t i = 0; i < ARRAY_SIZE(ctx.current->fields); ++i) {
+            print_block(window, i, ctx.current->fields[i]);
+        }
+    }
+    if (help_visible()) {
         print_help(window);
-    }
-
-    if (ctx.mode == mode_off || !ctx.info.active) {
-        // print only status
-        if (ctx.fields[info_status].value.width && ctx.status.active) {
-            const size_t btype = app_is_viewer() ? mode_viewer : mode_gallery;
-            for (size_t i = 0; i < POSITION_NUM; ++i) {
-                const struct block_scheme* block = &ctx.scheme[btype][i];
-                for (size_t j = 0; j < block->fields_num; ++j) {
-                    const struct field_scheme* field = &block->fields[j];
-                    if (field->type == info_status) {
-                        struct keyval status = ctx.fields[info_status];
-                        if (!field->title) {
-                            memset(&status.key, 0, sizeof(status.key));
-                        }
-                        print_keyval(window, i, &status, 1);
-                        break;
-                    }
-                }
-            }
-        }
-        return;
-    }
-
-    for (size_t i = 0; i < POSITION_NUM; ++i) {
-        struct keyval lines[MAX_LINES] = { 0 };
-        const struct block_scheme* block = &ctx.scheme[ctx.mode][i];
-        size_t lnum = 0;
-
-        for (size_t j = 0; j < block->fields_num; ++j) {
-            const struct field_scheme* field = &block->fields[j];
-            const struct keyval* origin = &ctx.fields[field->type];
-
-            switch (field->type) {
-                case info_exif:
-                    if (ctx.meta) {
-                        for (size_t n = 0; n < ctx.meta->size; ++n) {
-                            if (lnum < ARRAY_SIZE(lines)) {
-                                struct keyval* kv = arr_nth(ctx.meta, n);
-                                if (field->title) {
-                                    lines[lnum].key = kv->key;
-                                }
-                                lines[lnum++].value = kv->value;
-                            }
-                        }
-                    }
-                    break;
-                case info_status:
-                    if (origin->value.width && ctx.status.active) {
-                        if (field->title) {
-                            lines[lnum].key = origin->key;
-                        }
-                        lines[lnum++].value = origin->value;
-                    }
-                    break;
-                default:
-                    if (origin->value.width) {
-                        if (field->title) {
-                            lines[lnum].key = origin->key;
-                        }
-                        lines[lnum++].value = origin->value;
-                    }
-                    break;
-            }
-            if (lnum >= ARRAY_SIZE(lines)) {
-                break;
-            }
-        }
-
-        if (lnum) {
-            print_keyval(window, i, lines, lnum);
-        }
     }
 }
 
@@ -725,7 +748,7 @@ void help_hide(void)
     free_help();
 }
 
-bool help_active(void)
+bool help_visible(void)
 {
     return ctx.help;
 }

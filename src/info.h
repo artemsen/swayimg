@@ -5,7 +5,7 @@
 #pragma once
 
 #include "image.h"
-#include "keybind.h"
+#include "mode.h"
 
 /** Available info fields. */
 enum info_field {
@@ -39,16 +39,16 @@ void info_reinit(void);
 void info_destroy(void);
 
 /**
- * Switch display mode.
- * @param mode display mode name
+ * Switch info scheme.
+ * @param name scheme name
  */
-void info_switch(const char* mode);
+void info_switch(const char* name);
 
 /**
- * Check if info enabled.
- * @param true if info text layer is enabled
+ * Set info scheme.
+ * @param name scheme name
  */
-bool info_enabled(void);
+void info_set_default(const char* name);
 
 /**
  * Compose info data from image.
@@ -92,4 +92,4 @@ void help_hide(void);
  * Check if help layer is displayed.
  * @return true if help layer is displayed
  */
-bool help_active(void);
+bool help_visible(void);

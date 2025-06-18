@@ -14,11 +14,8 @@ enum mode_type {
     mode_gallery,
 };
 
-/**
- * Set of event handlers used to communicate with viewer and gallery.
- */
+/** Mode handlers. */
 struct mode {
-
     /**
      * Activate mode (viewer/gallery switch).
      * @param image image to show/select
@@ -85,4 +82,4 @@ struct mode {
  * @param mode mode handlers
  * @param action action to apply
  */
-void mode_action(struct mode* mode, const struct action* action);
+void mode_handle(struct mode* mode, const struct action* action);

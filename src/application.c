@@ -87,11 +87,9 @@ void app_switch_mode(void)
 
     ctx.modes[ctx.mcurr].on_activate(current);
 
-    if (info_enabled()) {
-        info_switch(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
-                                             : CFG_MODE_GALLERY);
-    }
-    if (help_active()) {
+    info_set_default(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
+                                              : CFG_MODE_GALLERY);
+    if (help_visible()) {
         help_hide();
     }
 
@@ -120,7 +118,7 @@ static void handle_event_queue(__attribute__((unused)) void* data)
     }
 
     if (entry) {
-        mode_action(&ctx.modes[ctx.mcurr], entry->action);
+        mode_handle(&ctx.modes[ctx.mcurr], entry->action);
         free(entry);
     }
 }
@@ -462,10 +460,8 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     gallery_init(cfg, &ctx.modes[mode_gallery]);
 
     // set mode for text info
-    if (info_enabled()) {
-        info_switch(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
-                                             : CFG_MODE_GALLERY);
-    }
+    info_set_default(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
+                                              : CFG_MODE_GALLERY);
 
     // set signal handler
     setup_signals(cfg);
