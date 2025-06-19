@@ -4,21 +4,20 @@
 
 #pragma once
 
-#include "list.h"
 #include "pixmap.h"
 
-/* Key/value config option. */
+/* Config parameter: list of key/value. */
 struct config_keyval {
-    struct list list; ///< Links to prev/next entry
-    char* key;        ///< Key
-    char* value;      ///< Value
+    struct config_keyval* next; ///< Links to next entry
+    char* value;                ///< Value
+    char key[1];                ///< Key (variable lenght)
 };
 
 /** Config instance: list of sections with key/values */
 struct config {
-    struct list list;             ///< Links to prev/next entry
-    char* name;                   ///< Section name
+    struct config* next;          ///< Links to next section
     struct config_keyval* params; ///< List of key/value for this section
+    char name[1];                 ///< Section name (variable lenght)
 };
 
 // Section names
@@ -78,7 +77,6 @@ struct config {
 #define CFG_INFO_SHOW      "show"
 #define CFG_INFO_ITIMEOUT  "info_timeout"
 #define CFG_INFO_STIMEOUT  "status_timeout"
-#define CFG_INFO_CN        "center"
 #define CFG_INFO_TL        "top_left"
 #define CFG_INFO_TR        "top_right"
 #define CFG_INFO_BL        "bottom_left"

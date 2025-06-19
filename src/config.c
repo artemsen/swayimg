@@ -14,164 +14,200 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RM_FILE_ACTION "exec rm '%' && echo \"File removed: %\""
-
-/** Default configuration. */
-struct config_default {
-    const char* section;
+/** Default key/value parameter. */
+struct configdef_kv {
     const char* key;
     const char* value;
 };
+
 // clang-format off
-static const struct config_default defaults[] = {
-    { CFG_GENERAL,      CFG_GNRL_MODE,      "viewer"                 },
-    { CFG_GENERAL,      CFG_GNRL_POSITION,  "parent"                 },
-    { CFG_GENERAL,      CFG_GNRL_SIZE,      "parent"                 },
-    { CFG_GENERAL,      CFG_GNRL_DECOR,     CFG_NO                   },
-    { CFG_GENERAL,      CFG_GNRL_SIGUSR1,   "reload"                 },
-    { CFG_GENERAL,      CFG_GNRL_SIGUSR2,   "next_file"              },
-    { CFG_GENERAL,      CFG_GNRL_WC,        CFG_YES                  },
-    { CFG_GENERAL,      CFG_GNRL_APP_ID,    "swayimg"                },
+static const struct configdef_kv def_general[] = {
+    { CFG_GNRL_MODE,      "viewer"    },
+    { CFG_GNRL_POSITION,  "parent"    },
+    { CFG_GNRL_SIZE,      "parent"    },
+    { CFG_GNRL_DECOR,     CFG_NO      },
+    { CFG_GNRL_SIGUSR1,   "reload"    },
+    { CFG_GNRL_SIGUSR2,   "next_file" },
+    { CFG_GNRL_WC,        CFG_YES     },
+    { CFG_GNRL_APP_ID,    "swayimg"   },
+};
 
-    { CFG_VIEWER,       CFG_VIEW_WINDOW,    "#00000000"              },
-    { CFG_VIEWER,       CFG_VIEW_TRANSP,    "grid"                   },
-    { CFG_VIEWER,       CFG_VIEW_SCALE,     "optimal"                },
-    { CFG_VIEWER,       CFG_VIEW_POSITION,  "center"                 },
-    { CFG_VIEWER,       CFG_VIEW_AA,        "mks13"                  },
-    { CFG_VIEWER,       CFG_VIEW_SSHOW,     CFG_NO                   },
-    { CFG_VIEWER,       CFG_VIEW_SSHOW_TM,  "3"                      },
-    { CFG_VIEWER,       CFG_VIEW_HISTORY,   "1"                      },
-    { CFG_VIEWER,       CFG_VIEW_PRELOAD,   "1"                      },
+static const struct configdef_kv def_viewer[] = {
+    { CFG_VIEW_WINDOW,    "#00000000" },
+    { CFG_VIEW_TRANSP,    "grid"      },
+    { CFG_VIEW_SCALE,     "optimal"   },
+    { CFG_VIEW_POSITION,  "center"    },
+    { CFG_VIEW_AA,        "mks13"     },
+    { CFG_VIEW_SSHOW,     CFG_NO      },
+    { CFG_VIEW_SSHOW_TM,  "3"         },
+    { CFG_VIEW_HISTORY,   "1"         },
+    { CFG_VIEW_PRELOAD,   "1"         },
+};
 
-    { CFG_GALLERY,      CFG_GLRY_SIZE,      "200"                    },
-    { CFG_GALLERY,      CFG_GLRY_CACHE,     "100"                    },
-    { CFG_GALLERY,      CFG_GLRY_PRELOAD,   CFG_NO                   },
-    { CFG_GALLERY,      CFG_GLRY_PSTORE,    CFG_NO                   },
-    { CFG_GALLERY,      CFG_GLRY_FILL,      CFG_YES                  },
-    { CFG_GALLERY,      CFG_GLRY_AA,        "mks13"                  },
-    { CFG_GALLERY,      CFG_GLRY_WINDOW,    "#00000000"              },
-    { CFG_GALLERY,      CFG_GLRY_BKG,       "#202020ff"              },
-    { CFG_GALLERY,      CFG_GLRY_SELECT,    "#404040ff"              },
-    { CFG_GALLERY,      CFG_GLRY_BORDER,    "#000000ff"              },
-    { CFG_GALLERY,      CFG_GLRY_SHADOW,    "#000000ff"              },
+static const struct configdef_kv def_gallery[] = {
+    { CFG_GLRY_SIZE,      "200"       },
+    { CFG_GLRY_CACHE,     "100"       },
+    { CFG_GLRY_PRELOAD,   CFG_NO      },
+    { CFG_GLRY_PSTORE,    CFG_NO      },
+    { CFG_GLRY_FILL,      CFG_YES     },
+    { CFG_GLRY_AA,        "mks13"     },
+    { CFG_GLRY_WINDOW,    "#00000000" },
+    { CFG_GLRY_BKG,       "#202020ff" },
+    { CFG_GLRY_SELECT,    "#404040ff" },
+    { CFG_GLRY_BORDER,    "#000000ff" },
+    { CFG_GLRY_SHADOW,    "#000000ff" },
+};
 
-    { CFG_LIST,         CFG_LIST_FROMFILE,  CFG_NO                   },
-    { CFG_LIST,         CFG_LIST_ORDER,     "alpha"                  },
-    { CFG_LIST,         CFG_LIST_REVERSE,   CFG_NO                   },
-    { CFG_LIST,         CFG_LIST_LOOP,      CFG_YES                  },
-    { CFG_LIST,         CFG_LIST_RECURSIVE, CFG_NO                   },
-    { CFG_LIST,         CFG_LIST_ALL,       CFG_NO                   },
-    { CFG_LIST,         CFG_LIST_FSMON,     CFG_YES                  },
+static const struct configdef_kv def_list[] = {
+    { CFG_LIST_FROMFILE,  CFG_NO      },
+    { CFG_LIST_ORDER,     "alpha"     },
+    { CFG_LIST_REVERSE,   CFG_NO      },
+    { CFG_LIST_LOOP,      CFG_YES     },
+    { CFG_LIST_RECURSIVE, CFG_NO      },
+    { CFG_LIST_ALL,       CFG_NO      },
+    { CFG_LIST_FSMON,     CFG_YES     },
+};
 
-    { CFG_FONT,         CFG_FONT_NAME,      "monospace"              },
-    { CFG_FONT,         CFG_FONT_SIZE,      "14"                     },
-    { CFG_FONT,         CFG_FONT_COLOR,     "#ccccccff"              },
-    { CFG_FONT,         CFG_FONT_SHADOW,    "#000000d0"              },
-    { CFG_FONT,         CFG_FONT_BKG,       "#00000000"              },
+static const struct configdef_kv def_font[] = {
+    { CFG_FONT_NAME,      "monospace" },
+    { CFG_FONT_SIZE,      "14"        },
+    { CFG_FONT_COLOR,     "#ccccccff" },
+    { CFG_FONT_SHADOW,    "#000000d0" },
+    { CFG_FONT_BKG,       "#00000000" },
+};
 
-    { CFG_INFO,         CFG_INFO_SHOW,      CFG_YES                  },
-    { CFG_INFO,         CFG_INFO_ITIMEOUT,  "5"                      },
-    { CFG_INFO,         CFG_INFO_STIMEOUT,  "3"                      },
+static const struct configdef_kv def_info[] = {
+    { CFG_INFO_SHOW,      CFG_YES     },
+    { CFG_INFO_ITIMEOUT,  "5"         },
+    { CFG_INFO_STIMEOUT,  "3"         },
+};
 
-    { CFG_INFO_VIEWER,  CFG_INFO_CN,        "none"                   },
-    { CFG_INFO_VIEWER,  CFG_INFO_TL,        "+name,+format,+filesize,+imagesize,+exif" },
-    { CFG_INFO_VIEWER,  CFG_INFO_TR,        "index"                  },
-    { CFG_INFO_VIEWER,  CFG_INFO_BL,        "scale,frame"            },
-    { CFG_INFO_VIEWER,  CFG_INFO_BR,        "status"                 },
+static const struct configdef_kv def_infov[] = {
+    { CFG_INFO_TL,        "+name,+format,+filesize,+imagesize,+exif" },
+    { CFG_INFO_TR,        "index"                                    },
+    { CFG_INFO_BL,        "scale,frame"                              },
+    { CFG_INFO_BR,        "status"                                   },
+};
 
-    { CFG_INFO_GALLERY, CFG_INFO_CN,        "none"                   },
-    { CFG_INFO_GALLERY, CFG_INFO_TL,        "none"                   },
-    { CFG_INFO_GALLERY, CFG_INFO_TR,        "none"                   },
-    { CFG_INFO_GALLERY, CFG_INFO_BL,        "none"                   },
-    { CFG_INFO_GALLERY, CFG_INFO_BR,        "name,status"            },
+static const struct configdef_kv def_infog[] = {
+    { CFG_INFO_TL,        "none"                                     },
+    { CFG_INFO_TR,        "none"                                     },
+    { CFG_INFO_BL,        "none"                                     },
+    { CFG_INFO_BR,        "name,status"                              },
+};
 
-    { CFG_KEYS_VIEWER,  "F1",               "help"                   },
-    { CFG_KEYS_VIEWER,  "Home",             "first_file"             },
-    { CFG_KEYS_VIEWER,  "End",              "last_file"              },
-    { CFG_KEYS_VIEWER,  "Prior",            "prev_file"              },
-    { CFG_KEYS_VIEWER,  "Next",             "next_file"              },
-    { CFG_KEYS_VIEWER,  "Space",            "next_file"              },
-    { CFG_KEYS_VIEWER,  "Shift+r",          "rand_file"              },
-    { CFG_KEYS_VIEWER,  "Shift+d",          "prev_dir"               },
-    { CFG_KEYS_VIEWER,  "d",                "next_dir"               },
-    { CFG_KEYS_VIEWER,  "Shift+o",          "prev_frame"             },
-    { CFG_KEYS_VIEWER,  "o",                "next_frame"             },
-    { CFG_KEYS_VIEWER,  "c",                "skip_file"              },
-    { CFG_KEYS_VIEWER,  "Shift+s",          "slideshow"              },
-    { CFG_KEYS_VIEWER,  "s",                "animation"              },
-    { CFG_KEYS_VIEWER,  "f",                "fullscreen"             },
-    { CFG_KEYS_VIEWER,  "Return",           "mode gallery"           },
-    { CFG_KEYS_VIEWER,  "Left",             "step_left 10"           },
-    { CFG_KEYS_VIEWER,  "Right",            "step_right 10"          },
-    { CFG_KEYS_VIEWER,  "Up",               "step_up 10"             },
-    { CFG_KEYS_VIEWER,  "Down",             "step_down 10"           },
-    { CFG_KEYS_VIEWER,  "Equal",            "zoom +10"               },
-    { CFG_KEYS_VIEWER,  "Plus",             "zoom +10"               },
-    { CFG_KEYS_VIEWER,  "Minus",            "zoom -10"               },
-    { CFG_KEYS_VIEWER,  "w",                "zoom width"             },
-    { CFG_KEYS_VIEWER,  "Shift+w",          "zoom height"            },
-    { CFG_KEYS_VIEWER,  "z",                "zoom fit"               },
-    { CFG_KEYS_VIEWER,  "Shift+z",          "zoom fill"              },
-    { CFG_KEYS_VIEWER,  "0",                "zoom real"              },
-    { CFG_KEYS_VIEWER,  "BackSpace",        "zoom optimal"           },
-    { CFG_KEYS_VIEWER,  "Alt+z",            "zoom keep"              },
-    { CFG_KEYS_VIEWER,  "Alt+s",            "zoom"                   },
-    { CFG_KEYS_VIEWER,  "bracketleft",      "rotate_left"            },
-    { CFG_KEYS_VIEWER,  "bracketright",     "rotate_right"           },
-    { CFG_KEYS_VIEWER,  "m",                "flip_vertical"          },
-    { CFG_KEYS_VIEWER,  "Shift+m",          "flip_horizontal"        },
-    { CFG_KEYS_VIEWER,  "a",                "antialiasing next"      },
-    { CFG_KEYS_VIEWER,  "Shift+a",          "antialiasing prev"      },
-    { CFG_KEYS_VIEWER,  "r",                "reload"                 },
-    { CFG_KEYS_VIEWER,  "i",                "info"                   },
-    { CFG_KEYS_VIEWER,  "Shift+Delete",     RM_FILE_ACTION           },
-    { CFG_KEYS_VIEWER,  "Escape",           "exit"                   },
-    { CFG_KEYS_VIEWER,  "q",                "exit"                   },
-    { CFG_KEYS_VIEWER,  "ScrollLeft",       "step_right 5"           },
-    { CFG_KEYS_VIEWER,  "ScrollRight",      "step_left 5"            },
-    { CFG_KEYS_VIEWER,  "ScrollUp",         "step_up 5"              },
-    { CFG_KEYS_VIEWER,  "ScrollDown",       "step_down 5"            },
-    { CFG_KEYS_VIEWER,  "Ctrl+ScrollUp",    "zoom +10"               },
-    { CFG_KEYS_VIEWER,  "Ctrl+ScrollDown",  "zoom -10"               },
-    { CFG_KEYS_VIEWER,  "Shift+ScrollUp",   "prev_file"              },
-    { CFG_KEYS_VIEWER,  "Shift+ScrollDown", "next_file"              },
-    { CFG_KEYS_VIEWER,  "Alt+ScrollUp",     "prev_frame"             },
-    { CFG_KEYS_VIEWER,  "Alt+ScrollDown",   "next_frame"             },
-    { CFG_KEYS_VIEWER,  "MouseLeft",        "drag"                   },
-    { CFG_KEYS_VIEWER,  "MouseSide",        "prev_file"              },
-    { CFG_KEYS_VIEWER,  "MouseExtra",       "next_file"              },
+static const struct configdef_kv def_keysv[] = {
+    { "F1",               "help"                                     },
+    { "Home",             "first_file"                               },
+    { "End",              "last_file"                                },
+    { "Prior",            "prev_file"                                },
+    { "Next",             "next_file"                                },
+    { "Space",            "next_file"                                },
+    { "Shift+r",          "rand_file"                                },
+    { "Shift+d",          "prev_dir"                                 },
+    { "d",                "next_dir"                                 },
+    { "Shift+o",          "prev_frame"                               },
+    { "o",                "next_frame"                               },
+    { "c",                "skip_file"                                },
+    { "Shift+s",          "slideshow"                                },
+    { "s",                "animation"                                },
+    { "f",                "fullscreen"                               },
+    { "Return",           "mode gallery"                             },
+    { "Left",             "step_left 10"                             },
+    { "Right",            "step_right 10"                            },
+    { "Up",               "step_up 10"                               },
+    { "Down",             "step_down 10"                             },
+    { "Equal",            "zoom +10"                                 },
+    { "Plus",             "zoom +10"                                 },
+    { "Minus",            "zoom -10"                                 },
+    { "w",                "zoom width"                               },
+    { "Shift+w",          "zoom height"                              },
+    { "z",                "zoom fit"                                 },
+    { "Shift+z",          "zoom fill"                                },
+    { "0",                "zoom real"                                },
+    { "BackSpace",        "zoom optimal"                             },
+    { "Alt+z",            "zoom keep"                                },
+    { "Alt+s",            "zoom"                                     },
+    { "bracketleft",      "rotate_left"                              },
+    { "bracketright",     "rotate_right"                             },
+    { "m",                "flip_vertical"                            },
+    { "Shift+m",          "flip_horizontal"                          },
+    { "a",                "antialiasing next"                        },
+    { "Shift+a",          "antialiasing prev"                        },
+    { "r",                "reload"                                   },
+    { "i",                "info"                                     },
+    { "Shift+Delete",     "exec rm '%' && echo \"File removed: %\""  },
+    { "Escape",           "exit"                                     },
+    { "q",                "exit"                                     },
+    { "ScrollLeft",       "step_right 5"                             },
+    { "ScrollRight",      "step_left 5"                              },
+    { "ScrollUp",         "step_up 5"                                },
+    { "ScrollDown",       "step_down 5"                              },
+    { "Ctrl+ScrollUp",    "zoom +10"                                 },
+    { "Ctrl+ScrollDown",  "zoom -10"                                 },
+    { "Shift+ScrollUp",   "prev_file"                                },
+    { "Shift+ScrollDown", "next_file"                                },
+    { "Alt+ScrollUp",     "prev_frame"                               },
+    { "Alt+ScrollDown",   "next_frame"                               },
+    { "MouseLeft",        "drag"                                     },
+    { "MouseSide",        "prev_file"                                },
+    { "MouseExtra",       "next_file"                                },
+};
 
-    { CFG_KEYS_GALLERY, "F1",               "help"                   },
-    { CFG_KEYS_GALLERY, "Home",             "first_file"             },
-    { CFG_KEYS_GALLERY, "End",              "last_file"              },
-    { CFG_KEYS_GALLERY, "Left",             "step_left"              },
-    { CFG_KEYS_GALLERY, "Right",            "step_right"             },
-    { CFG_KEYS_GALLERY, "Up",               "step_up"                },
-    { CFG_KEYS_GALLERY, "Down",             "step_down"              },
-    { CFG_KEYS_GALLERY, "Prior",            "page_up"                },
-    { CFG_KEYS_GALLERY, "Next",             "page_down"              },
-    { CFG_KEYS_GALLERY, "c",                "skip_file"              },
-    { CFG_KEYS_GALLERY, "f",                "fullscreen"             },
-    { CFG_KEYS_GALLERY, "Return",           "mode viewer"            },
-    { CFG_KEYS_GALLERY, "a",                "antialiasing next"      },
-    { CFG_KEYS_GALLERY, "Shift+a",          "antialiasing prev"      },
-    { CFG_KEYS_GALLERY, "r",                "reload"                 },
-    { CFG_KEYS_GALLERY, "i",                "info"                   },
-    { CFG_KEYS_GALLERY, "Equal",            "thumb +20"              },
-    { CFG_KEYS_GALLERY, "Plus",             "thumb +20"              },
-    { CFG_KEYS_GALLERY, "Minus",            "thumb -20"              },
-    { CFG_KEYS_GALLERY, "Shift+Delete",     RM_FILE_ACTION           },
-    { CFG_KEYS_GALLERY, "Escape",           "exit"                   },
-    { CFG_KEYS_GALLERY, "q",                "exit"                   },
-    { CFG_KEYS_GALLERY, "ScrollLeft",       "step_right"             },
-    { CFG_KEYS_GALLERY, "ScrollRight",      "step_left"              },
-    { CFG_KEYS_GALLERY, "ScrollUp",         "step_up"                },
-    { CFG_KEYS_GALLERY, "ScrollDown",       "step_down"              },
-    { CFG_KEYS_GALLERY, "Ctrl+ScrollUp",    "thumb +20"              },
-    { CFG_KEYS_GALLERY, "Ctrl+ScrollDown",  "thumb -20"              },
-    { CFG_KEYS_GALLERY, "MouseLeft",        "mode gallery"           },
+static const struct configdef_kv def_keysg[] = {
+    { "F1",               "help"                                     },
+    { "Home",             "first_file"                               },
+    { "End",              "last_file"                                },
+    { "Left",             "step_left"                                },
+    { "Right",            "step_right"                               },
+    { "Up",               "step_up"                                  },
+    { "Down",             "step_down"                                },
+    { "Prior",            "page_up"                                  },
+    { "Next",             "page_down"                                },
+    { "c",                "skip_file"                                },
+    { "f",                "fullscreen"                               },
+    { "Return",           "mode viewer"                              },
+    { "a",                "antialiasing next"                        },
+    { "Shift+a",          "antialiasing prev"                        },
+    { "r",                "reload"                                   },
+    { "i",                "info"                                     },
+    { "Equal",            "thumb +20"                                },
+    { "Plus",             "thumb +20"                                },
+    { "Minus",            "thumb -20"                                },
+    { "Shift+Delete",     "exec rm '%' && echo \"File removed: %\""  },
+    { "Escape",           "exit"                                     },
+    { "q",                "exit"                                     },
+    { "ScrollLeft",       "step_right"                               },
+    { "ScrollRight",      "step_left"                                },
+    { "ScrollUp",         "step_up"                                  },
+    { "ScrollDown",       "step_down"                                },
+    { "Ctrl+ScrollUp",    "thumb +20"                                },
+    { "Ctrl+ScrollDown",  "thumb -20"                                },
+    { "MouseLeft",        "mode gallery"                             },
 };
 // clang-format on
+
+/** Default section. */
+struct configdef_section {
+    const char* name;
+    const struct configdef_kv* params;
+    size_t params_num;
+};
+
+#define CONFIGDEF_SECTION(n, p) { n, p, sizeof(p) / sizeof(p[0]) }
+
+static const struct configdef_section default_config[] = {
+    CONFIGDEF_SECTION(CFG_GENERAL, def_general),
+    CONFIGDEF_SECTION(CFG_VIEWER, def_viewer),
+    CONFIGDEF_SECTION(CFG_GALLERY, def_gallery),
+    CONFIGDEF_SECTION(CFG_LIST, def_list),
+    CONFIGDEF_SECTION(CFG_FONT, def_font),
+    CONFIGDEF_SECTION(CFG_INFO, def_info),
+    CONFIGDEF_SECTION(CFG_INFO_VIEWER, def_infov),
+    CONFIGDEF_SECTION(CFG_INFO_GALLERY, def_infog),
+    CONFIGDEF_SECTION(CFG_KEYS_VIEWER, def_keysv),
+    CONFIGDEF_SECTION(CFG_KEYS_GALLERY, def_keysg),
+};
 
 /** Config file location. */
 struct location {
@@ -290,35 +326,28 @@ static bool load(struct config* cfg, const char* path)
  */
 static struct config_keyval* create_keyval(const char* key, const char* value)
 {
-    const size_t key_sz = strlen(key) + 1 /*last null*/;
-    const size_t value_sz = strlen(value) + 1 /*last null*/;
-
-    struct config_keyval* kv =
-        calloc(1, sizeof(struct config_keyval) + key_sz + value_sz);
+    const size_t key_sz = strlen(key);
+    struct config_keyval* kv = calloc(1, sizeof(struct config_keyval) + key_sz);
     if (kv) {
-        kv->key = (char*)kv + sizeof(struct config_keyval);
         memcpy(kv->key, key, key_sz);
-        kv->value = (char*)kv + sizeof(struct config_keyval) + key_sz;
-        memcpy(kv->value, value, value_sz);
+        kv->value = str_dup(value, NULL);
     }
-
     return kv;
 }
 
 /**
  * Create section in the config instance.
- * @param cfg config instance
  * @param name section name
+ * @return section instance
  */
-static void create_section(struct config** cfg, const char* name)
+static struct config* create_section(const char* name)
 {
-    const size_t sz = strlen(name) + 1 /*last null*/;
+    const size_t sz = strlen(name);
     struct config* section = calloc(1, sizeof(struct config) + sz);
     if (section) {
-        section->name = (char*)section + sizeof(struct config);
         memcpy(section->name, name, sz);
-        *cfg = list_add(*cfg, section);
     }
+    return section;
 }
 
 /**
@@ -375,30 +404,23 @@ struct config* config_load(void)
 {
     struct config* cfg = NULL;
 
-    // create sections
-    create_section(&cfg, CFG_GENERAL);
-    create_section(&cfg, CFG_VIEWER);
-    create_section(&cfg, CFG_GALLERY);
-    create_section(&cfg, CFG_LIST);
-    create_section(&cfg, CFG_FONT);
-    create_section(&cfg, CFG_INFO);
-    create_section(&cfg, CFG_INFO_VIEWER);
-    create_section(&cfg, CFG_INFO_GALLERY);
-    create_section(&cfg, CFG_KEYS_VIEWER);
-    create_section(&cfg, CFG_KEYS_GALLERY);
-
     // load default config
-    for (size_t i = 0; i < ARRAY_SIZE(defaults); ++i) {
-        const struct config_default* def = &defaults[i];
-        list_for_each(cfg, struct config, section) {
-            if (strcmp(def->section, section->name) == 0) {
-                struct config_keyval* kv = create_keyval(def->key, def->value);
-                if (kv) {
-                    section->params = list_add(section->params, kv);
-                }
-                break;
+    for (size_t i = 0; i < ARRAY_SIZE(default_config); ++i) {
+        const struct configdef_section* ds = &default_config[i];
+        struct config* cs = create_section(ds->name);
+        if (!cs) {
+            continue;
+        }
+        for (size_t j = 0; j < ds->params_num; ++j) {
+            const struct configdef_kv* defkv = &ds->params[j];
+            struct config_keyval* kv = create_keyval(defkv->key, defkv->value);
+            if (kv) {
+                kv->next = cs->params;
+                cs->params = kv;
             }
         }
+        cs->next = cfg;
+        cfg = cs;
     }
 
     // find and load first available config file
@@ -416,19 +438,24 @@ struct config* config_load(void)
 
 void config_free(struct config* cfg)
 {
-    list_for_each(cfg, struct config, section) {
-        list_for_each(section->params, struct config_keyval, kv) {
-            free(kv);
+    while (cfg) {
+        struct config* next_section = cfg->next;
+        while (cfg->params) {
+            struct config_keyval* next_kv = cfg->params->next;
+            free(cfg->params->value);
+            free(cfg->params);
+            cfg->params = next_kv;
         }
-        free(section);
+        free(cfg);
+        cfg = next_section;
     }
 }
 
 bool config_set(struct config* cfg, const char* section, const char* key,
                 const char* value)
 {
-    struct config_keyval* kv = NULL;
-    struct config* cs = NULL;
+    struct config_keyval* kv;
+    struct config* cs;
 
     if (!value || !*value) {
         fprintf(stderr,
@@ -439,44 +466,40 @@ bool config_set(struct config* cfg, const char* section, const char* key,
     }
 
     // search for config section
-    list_for_each(cfg, struct config, it) {
-        if (strcmp(section, it->name) == 0) {
-            cs = it;
-            break;
-        }
+    cs = cfg;
+    while (cs && strcmp(section, cs->name) != 0) {
+        cs = cs->next;
     }
     if (!cs) {
         fprintf(stderr, "WARNING: Unknown config section \"%s\"\n", section);
         return false;
     }
 
-    // search for existing key/value
-    list_for_each(cs->params, struct config_keyval, it) {
-        if (strcmp(key, it->key) == 0) {
-            kv = it;
-            break;
+    // search for existing key/value to replace
+    kv = cs->params;
+    while (kv) {
+        if (strcmp(key, kv->key) == 0) {
+            free(kv->value);
+            kv->value = str_dup(value, NULL);
+            return true;
         }
+        kv = kv->next;
     }
 
-    // check if config key is valid for the current section
+    // only key bindings can have their own config keys
     if (strcmp(section, CFG_KEYS_VIEWER) != 0 &&
-        strcmp(section, CFG_KEYS_GALLERY) != 0 && !kv) {
+        strcmp(section, CFG_KEYS_GALLERY) != 0) {
         fprintf(stderr,
                 "WARNING: Unknown config key \"%s\" in section \"%s\"\n", key,
                 section);
         return false;
     }
 
-    // remove existing key/value
-    if (kv) {
-        cs->params = list_remove(kv);
-        free(kv);
-    }
-
     // add new key/value
     kv = create_keyval(key, value);
     if (kv) {
-        cs->params = list_add(cs->params, kv);
+        kv->next = cs->params;
+        cs->params = kv;
     }
 
     return true;
@@ -530,40 +553,39 @@ bool config_set_arg(struct config* cfg, const char* arg)
 
 const char* config_get_default(const char* section, const char* key)
 {
-    for (size_t i = 0; i < ARRAY_SIZE(defaults); ++i) {
-        const struct config_default* def = &defaults[i];
-        if (strcmp(section, def->section) == 0 && strcmp(key, def->key) == 0) {
-            return def->value;
+    for (size_t i = 0; i < ARRAY_SIZE(default_config); ++i) {
+        const struct configdef_section* ds = &default_config[i];
+        if (strcmp(section, ds->name) == 0) {
+            for (size_t j = 0; j < ds->params_num; ++j) {
+                const struct configdef_kv* kv = &ds->params[j];
+                if (strcmp(key, kv->key) == 0) {
+                    return kv->value;
+                }
+            }
         }
     }
-
-    fprintf(
-        stderr,
-        "WARNING: Default value for key \"%s\" in section \"%s\" not found\n",
-        key, section);
+    fprintf(stderr,
+            "WARNING: Default value for key \"%s\" in section \"%s\" "
+            "not found\n",
+            key, section);
     return "";
 }
 
 const char* config_get(const struct config* cfg, const char* section,
                        const char* key)
 {
-    list_for_each(cfg, const struct config, cs) {
-        if (strcmp(section, cs->name) == 0) {
-            list_for_each(cs->params, const struct config_keyval, kv) {
-                if (strcmp(key, kv->key) == 0) {
-                    const char* value = kv->value;
-                    if (!*kv->value) {
-                        value = config_get_default(section, key);
-                        fprintf(stderr,
-                                "WARNING: "
-                                "Empty value for the key \"%s\" in section "
-                                "\"%s\" is not allowed, "
-                                "the default value \"%s\" will be used\n",
-                                key, section, value);
-                    }
-                    return value;
-                }
+    const struct config* cs = cfg;
+    while (cs && strcmp(section, cs->name) != 0) {
+        cs = cs->next;
+    }
+
+    if (cs) {
+        const struct config_keyval* kv = cs->params;
+        while (kv) {
+            if (strcmp(key, kv->key) == 0) {
+                return kv->value;
             }
+            kv = kv->next;
         }
     }
 

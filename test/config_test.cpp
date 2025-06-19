@@ -19,6 +19,12 @@ TEST(ConfigLoader, Load)
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 
+TEST_F(ConfigTest, Defaults)
+{
+    EXPECT_STREQ(config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID), "swayimg");
+    EXPECT_STREQ(config_get(config, CFG_GENERAL, CFG_GNRL_APP_ID), "swayimg");
+}
+
 TEST_F(ConfigTest, Set)
 {
     EXPECT_TRUE(config_set(config, CFG_GENERAL, CFG_GNRL_APP_ID, "test123"));

@@ -519,17 +519,19 @@ void info_init(const struct config* cfg)
 {
     const char* cprefix = CFG_INFO ".";
     const size_t cprefix_len = strlen(cprefix);
+    const struct config* cs = cfg;
     struct scheme* scheme;
 
-    list_for_each(cfg, const struct config, cs) {
-        if (strncmp(cs->name, cprefix, cprefix_len) != 0) {
-            continue;
+    // load all schemes
+    while (cs) {
+        if (strncmp(cs->name, cprefix, cprefix_len) == 0) {
+            scheme = create_scheme(cs->name + cprefix_len, cs->params);
+            if (scheme) {
+                scheme->next = ctx.schemes;
+                ctx.schemes = scheme;
+            }
         }
-        scheme = create_scheme(cs->name + cprefix_len, cs->params);
-        if (scheme) {
-            scheme->next = ctx.schemes;
-            ctx.schemes = scheme;
-        }
+        cs = cs->next;
     }
     ctx.current = ctx.schemes;
 

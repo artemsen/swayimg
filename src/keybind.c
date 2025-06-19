@@ -184,34 +184,40 @@ static struct keybind* set_binding(const struct keybind* kb,
 struct keybind* keybind_load(const struct config* cfg, const char* section)
 {
     struct keybind* head = NULL;
+    const struct config_keyval* kv;
 
-    list_for_each(cfg, const struct config, cs) {
-        if (strcmp(section, cs->name) != 0) {
-            continue;
-        }
-        list_for_each(cs->params, const struct config_keyval, kv) {
+    // search for scheme section
+    while (cfg && strcmp(section, cfg->name) != 0) {
+        cfg = cfg->next;
+    }
+    if (!cfg) {
+        return NULL;
+    }
+
+    // load scheme
+    kv = cfg->params;
+    while (kv) {
+        struct keybind kb = {
+            .key = parse_key(kv->key),
+            .mods = parse_mod(kv->key),
+            .actions = action_create(kv->value),
+        };
+
+        if (!kb.actions) {
+            config_error_val(section, kv->value);
+        } else if (kb.key == XKB_KEY_NoSymbol || kb.mods == KEYMOD_INVALID) {
+            action_free(kb.actions);
+            config_error_key(section, kv->key);
+        } else {
             struct keybind* new;
-            struct keybind kb = {
-                .key = parse_key(kv->key),
-                .mods = parse_mod(kv->key),
-                .actions = action_create(kv->value),
-            };
-            if (!kb.actions) {
-                config_error_val(section, kv->value);
-                continue;
-            }
-            if (kb.key == XKB_KEY_NoSymbol || kb.mods == KEYMOD_INVALID) {
-                action_free(kb.actions);
-                config_error_key(section, kv->key);
-                continue;
-            }
             kb.help = help_line(kb.key, kb.mods, kb.actions);
             new = set_binding(&kb, head);
             if (!head) {
                 head = new;
             }
         }
-        break;
+
+        kv = kv->next;
     }
 
     return head;
