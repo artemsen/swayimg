@@ -16,21 +16,30 @@ enum aa_mode {
     aa_mks13,    ///< Magic Kernel with 2013 Sharp approximation
 };
 
+struct aa_state {
+    enum aa_mode
+        when_enabled;  //< Anti-aliasing mode when anti-aliasing is enabled
+    enum aa_mode curr; //< Current anti-aliasing mode
+};
+
 /**
- * Get anti-aliasing mode from config.
+ * Get anti-aliasing state from config.
  * @param cfg config instance
- * @param section,key section name and key
- * @return anti-aliasing mode
+ * @param section section name
+ * @param aa_on_key key name for the anti-aliasing mode when it is on
+ * @param aa_start_key key name for whether anti-aliasing should be on by
+ * default
+ * @return anti-aliasing state
  */
-enum aa_mode aa_init(const struct config* cfg, const char* section,
-                     const char* key);
+struct aa_state aa_init(const struct config* cfg, const char* section,
+                        const char* aa_on_key, const char* aa_start_key);
+
 /**
  * Switch anti-aliasing mode.
- * @param curr current anti-aliasing mode
+ * @param state Current anti-aliasing state to be modified
  * @param opt switch operation
- * @return new anti-aliasing mode or current if opt has invalid format
  */
-enum aa_mode aa_switch(enum aa_mode curr, const char* opt);
+void aa_switch(struct aa_state* curr, const char* opt);
 
 /**
  * Get human readable anti-aliasing mode name.

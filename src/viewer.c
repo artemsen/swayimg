@@ -103,10 +103,10 @@ struct viewer {
     ssize_t img_x, img_y; ///< Top left corner of the image
     ssize_t img_w, img_h; ///< Image width and height
 
-    size_t frame;         ///< Index of the current frame
-    argb_t image_bkg;     ///< Image background mode/color
-    argb_t window_bkg;    ///< Window background mode/color
-    enum aa_mode aa_mode; ///< Anti-aliasing mode
+    size_t frame;             ///< Index of the current frame
+    argb_t image_bkg;         ///< Image background mode/color
+    argb_t window_bkg;        ///< Window background mode/color
+    struct aa_state aa_state; ///< Anti-aliasing mode
 
     enum fixed_scale scale_init; ///< Initial scale
     enum position position;      ///< Initial position
@@ -809,7 +809,7 @@ static void draw_image(struct pixmap* wnd)
     }
 
     // put image on window surface
-    image_render(ctx.current, ctx.frame, ctx.aa_mode, ctx.scale, true,
+    image_render(ctx.current, ctx.frame, ctx.aa_state.curr, ctx.scale, true,
                  ctx.img_x, ctx.img_y, wnd);
 
     // set window background
@@ -964,8 +964,9 @@ static void handle_action(const struct action* action)
             app_redraw();
             break;
         case action_antialiasing:
-            ctx.aa_mode = aa_switch(ctx.aa_mode, action->params);
-            info_update(info_status, "Anti-aliasing: %s", aa_name(ctx.aa_mode));
+            aa_switch(&ctx.aa_state, action->params);
+            info_update(info_status, "Anti-aliasing: %s",
+                        aa_name(ctx.aa_state.curr));
             app_redraw();
             break;
         case action_redraw:
@@ -1031,7 +1032,7 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
     size_t cval_num;
     const char* cval_txt;
 
-    ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
+    ctx.aa_state = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA_ON, CFG_VIEW_AA_START);
 
     // window background
     cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);

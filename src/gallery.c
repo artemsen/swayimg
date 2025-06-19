@@ -32,9 +32,9 @@ struct gallery {
     size_t cache; ///< Max number of thumbnails in cache
     bool preload; ///< Preload invisible thumbnails
 
-    enum aa_mode thumb_aa; ///< Anti-aliasing mode
-    bool thumb_fill;       ///< Scale mode (fill/fit)
-    bool thumb_pstore;     ///< Use persistent storage for thumbnails
+    struct aa_state thumb_aa; ///< Anti-aliasing mode
+    bool thumb_fill;          ///< Scale mode (fill/fit)
+    bool thumb_pstore;        ///< Use persistent storage for thumbnails
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -86,7 +86,7 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
     // append postfix
     postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
                            (uint16_t)ctx.layout.thumb_size,
-                           ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
+                           ctx.thumb_fill ? 1 : 0, ctx.thumb_aa.curr);
     if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
         return 0;
     }
@@ -214,7 +214,7 @@ static void thumb_load(void* data)
     }
     // try to create from existing frame data
     if (image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
-                           ctx.thumb_aa)) {
+                           ctx.thumb_aa.curr)) {
         if (ctx.thumb_pstore) {
             pstore_save(origin);
         }
@@ -231,7 +231,7 @@ static void thumb_load(void* data)
     // load entire image and convert it to thumbnail
     if (!image_thumb_get(img) && image_load(img) == imgload_success) {
         if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
-                               ctx.thumb_aa)) {
+                               ctx.thumb_aa.curr)) {
             if (ctx.thumb_pstore) {
                 // save to thumbnail to persistent storage
                 struct imgframe* frame = arr_nth(img->data->frames, 0);
@@ -440,7 +440,7 @@ static void draw_thumbnail(struct pixmap* window,
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
             software_render(pm, window, tx, ty, THUMB_SELECTED_SCALE,
-                            ctx.thumb_aa, false);
+                            ctx.thumb_aa.curr, false);
         }
 
         // shadow
@@ -530,9 +530,9 @@ static void handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
-            ctx.thumb_aa = aa_switch(ctx.thumb_aa, action->params);
+            aa_switch(&ctx.thumb_aa, action->params);
             info_update(info_status, "Anti-aliasing: %s",
-                        aa_name(ctx.thumb_aa));
+                        aa_name(ctx.thumb_aa.curr));
             reload();
             break;
         case action_first_file:
@@ -639,7 +639,7 @@ static void on_activate(struct image* image)
 
     if (!image_thumb_get(image)) {
         image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
-                           ctx.thumb_aa);
+                           ctx.thumb_aa.curr);
     }
 
     imglist_unlock();
@@ -665,7 +665,7 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, SSIZE_MAX);
     ctx.preload = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PRELOAD);
 
-    ctx.thumb_aa = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA);
+    ctx.thumb_aa = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA_ON, CFG_GLRY_AA_START);
     ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
     ctx.thumb_pstore = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PSTORE);
 

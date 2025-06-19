@@ -109,41 +109,65 @@ const char* aa_names[] = {
 };
 // clang-format on
 
-enum aa_mode aa_init(const struct config* cfg, const char* section,
-                     const char* key)
+struct aa_state aa_init(const struct config* cfg, const char* section,
+                        const char* aa_on_key, const char* aa_start_key)
 {
-    return config_get_oneof(cfg, section, key, aa_names, ARRAY_SIZE(aa_names));
+    struct aa_state state = { 0 };
+    state.when_enabled = config_get_oneof(cfg, section, aa_on_key, &aa_names[1],
+                                          ARRAY_SIZE(aa_names)) +
+        1;
+
+    const bool enabled = config_get_bool(cfg, section, aa_start_key);
+    if (enabled) {
+        state.curr = state.when_enabled;
+    } else {
+        state.curr = aa_nearest;
+    }
+
+    return state;
 }
 
-enum aa_mode aa_switch(enum aa_mode curr, const char* opt)
+void aa_switch(struct aa_state* state, const char* opt)
 {
     ssize_t index;
 
     if (!opt || !*opt) {
-        opt = "next";
+        opt = "toggle";
     }
 
     index = str_index(aa_names, opt, 0);
     if (index < 0) {
         if (strcmp(opt, "next") == 0) {
-            index = curr;
+            index = state->curr;
             if (++index >= (ssize_t)ARRAY_SIZE(aa_names)) {
                 index = 0;
             }
         } else if (strcmp(opt, "prev") == 0) {
-            index = curr;
+            index = state->curr;
             if (--index < 0) {
                 index = ARRAY_SIZE(aa_names) - 1;
+            }
+        } else if (strcmp(opt, "on") == 0) {
+            index = state->when_enabled;
+        } else if (strcmp(opt, "off") == 0) {
+            index = aa_nearest;
+        } else if (strcmp(opt, "toggle") == 0) {
+            if (state->curr == aa_nearest) {
+                index = state->when_enabled;
+            } else {
+                index = aa_nearest;
             }
         }
     }
 
     if (index < 0) {
         fprintf(stderr, "Invalid AA mode: \"%s\"\n", opt);
-        return curr;
+        return;
+    } else if (index != 0) {
+        state->when_enabled = index;
     }
 
-    return index;
+    state->curr = index;
 }
 
 const char* aa_name(enum aa_mode aa)
