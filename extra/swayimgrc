@@ -137,7 +137,7 @@ bottom_right = status
 # Display scheme for gallery mode (position = content)
 [info.gallery]
 top_left = none
-top_right = none
+top_right = index
 bottom_left = none
 bottom_right = name,status
 

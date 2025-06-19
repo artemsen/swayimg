@@ -91,7 +91,7 @@ static const struct configdef_kv def_infov[] = {
 
 static const struct configdef_kv def_infog[] = {
     { CFG_INFO_TL,        "none"                                     },
-    { CFG_INFO_TR,        "none"                                     },
+    { CFG_INFO_TR,        "index"                                    },
     { CFG_INFO_BL,        "none"                                     },
     { CFG_INFO_BR,        "name,status"                              },
 };

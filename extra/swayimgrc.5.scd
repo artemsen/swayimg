@@ -301,7 +301,7 @@ The format is the same as _[info.viewer]_:
 
 *top_right* = LIST
 	Top right corner of the window.
-	Default is _none_.
+	Default is _index_.
 
 *bottom_left* = LIST
 	Bottom left corner of the window.
