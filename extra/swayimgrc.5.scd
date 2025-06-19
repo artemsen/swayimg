@@ -108,16 +108,16 @@ Configuration specific to the viewer mode: _[viewer]_.
 
 *position* = POSITION
 	Initial image position on the window:
-	- _top_: move image to top and center by width;
-	- _center_: center by width and height (default);
-	- _bottom_: move to bottom and center by width;
-	- _left_: move to left and center by height;
-	- _right_: move to right and center by height;
-	- _topleft_: move to top and left;
-	- _topright_: move to top and right;
-	- _bottomleft_: move to bottom and left;
-	- _bottomright_: move to bottom and right;
-	- _free_: like center, but freely movable (not fixed).
+	- _center_: center of the window (default);
+	- _top_: top and center horizontally;
+	- _bottom_: bottom and center horizontally;
+	- _left_: left and center vertically;
+	- _right_: right and center vertically;
+	- _top_left_: upper left corner of the window;
+	- _top_right_: upper right corner of the window;
+	- _bottom_left_: lower left corner of the window;
+	- _bottom_right_: lower right corner of the window;
+	- _free_: like _center_, but freely movable (not fixed).
 
 *antialiasing* = METHOD
 	Anti-aliasing method when scaling images.

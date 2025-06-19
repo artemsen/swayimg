@@ -67,29 +67,31 @@ static const char* scale_names[] = {
 /** Image position. */
 enum position {
     position_free,
-    position_top,
     position_center,
+    position_top,
     position_bottom,
     position_left,
     position_right,
-    position_top_left,
-    position_top_right,
-    position_bottom_left,
-    position_bottom_right,
+    position_tl,
+    position_tr,
+    position_bl,
+    position_br,
 };
 
+// clang-format off
 static const char* position_names[] = {
     [position_free] = "free",
-    [position_top] = "top",
     [position_center] = "center",
+    [position_top] = "top",
     [position_bottom] = "bottom",
     [position_left] = "left",
     [position_right] = "right",
-    [position_top_left] = "topleft",
-    [position_top_right] = "topright",
-    [position_bottom_left] = "bottomleft",
-    [position_bottom_right] = "bottomright",
+    [position_tl] = "top_left",
+    [position_tr] = "top_right",
+    [position_bl] = "bottom_left",
+    [position_br] = "bottom_right",
 };
+// clang-format on
 
 /** Viewer context. */
 struct viewer {
@@ -259,16 +261,16 @@ static void fixup_position(bool force)
             case position_right:
                 ctx.img_x = wnd_width - img_width;
                 break;
-            case position_top_left:
+            case position_tl:
                 ctx.img_x = 0;
                 break;
-            case position_top_right:
+            case position_tr:
                 ctx.img_x = wnd_width - img_width;
                 break;
-            case position_bottom_left:
+            case position_bl:
                 ctx.img_x = 0;
                 break;
-            case position_bottom_right:
+            case position_br:
                 ctx.img_x = wnd_width - img_width;
                 break;
         }
@@ -293,16 +295,16 @@ static void fixup_position(bool force)
             case position_right:
                 ctx.img_y = wnd_height / 2 - img_height / 2;
                 break;
-            case position_top_left:
+            case position_tl:
                 ctx.img_y = 0;
                 break;
-            case position_top_right:
+            case position_tr:
                 ctx.img_y = 0;
                 break;
-            case position_bottom_left:
+            case position_bl:
                 ctx.img_y = wnd_height - img_height;
                 break;
-            case position_bottom_right:
+            case position_br:
                 ctx.img_y = wnd_height - img_height;
                 break;
         }
