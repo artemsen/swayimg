@@ -181,21 +181,18 @@ static struct keybind* set_binding(const struct keybind* kb,
     return new;
 }
 
-struct keybind* keybind_load(const struct config* cfg, const char* section)
+struct keybind* keybind_load(const struct config* section)
 {
-    struct keybind* head = NULL;
+    struct keybind* head;
     const struct config_keyval* kv;
 
-    // search for scheme section
-    while (cfg && strcmp(section, cfg->name) != 0) {
-        cfg = cfg->next;
-    }
-    if (!cfg) {
+    if (!section) {
         return NULL;
     }
 
     // load scheme
-    kv = cfg->params;
+    head = NULL;
+    kv = section->params;
     while (kv) {
         struct keybind kb = {
             .key = parse_key(kv->key),
@@ -204,10 +201,10 @@ struct keybind* keybind_load(const struct config* cfg, const char* section)
         };
 
         if (!kb.actions) {
-            config_error_val(section, kv->value);
+            config_error_val(section->name, kv->value);
         } else if (kb.key == XKB_KEY_NoSymbol || kb.mods == KEYMOD_INVALID) {
             action_free(kb.actions);
-            config_error_key(section, kv->key);
+            config_error_key(section->name, kv->key);
         } else {
             struct keybind* new;
             kb.help = help_line(kb.key, kb.mods, kb.actions);

@@ -104,6 +104,14 @@ struct config* config_load(void);
 void config_free(struct config* cfg);
 
 /**
+ * Get section.
+ * @param cfg config instance
+ * @param name section name
+ * @return config section or NULL if not found
+ */
+const struct config* config_section(const struct config* cfg, const char* name);
+
+/**
  * Set config option.
  * @param cfg config instance
  * @param section section name
@@ -131,49 +139,46 @@ const char* config_get_default(const char* section, const char* key);
 
 /**
  * Get config option.
- * @param cfg config instance
- * @param section section name
+ * @param section config section
  * @param key,value configuration parameters
  * @return value from the config or default value
  */
-const char* config_get(const struct config* cfg, const char* section,
-                       const char* key);
+const char* config_get(const struct config* section, const char* key);
 
 /**
  * Get config parameter as string value restricted by specified array.
- * @param cfg config instance
- * @param section,key section name and key
+ * @param section config section
+ * @param key property key
  * @param array array of possible values
  * @param array_sz number of strings in possible values array
  * @return index of the value or default value
  */
-ssize_t config_get_oneof(const struct config* cfg, const char* section,
-                         const char* key, const char** array, size_t array_sz);
+ssize_t config_get_oneof(const struct config* section, const char* key,
+                         const char** array, size_t array_sz);
 
 /**
  * Get config parameter as boolean value.
- * @param cfg config instance
- * @param section,key section name and key
+ * @param section config section
+ * @param key property key
  * @return value or default value if user defined value is invalid
  */
-bool config_get_bool(const struct config* cfg, const char* section,
-                     const char* key);
+bool config_get_bool(const struct config* section, const char* key);
+
 /**
  * Get config parameter as integer value.
- * @param cfg config instance
- * @param section,key section name and key
+ * @param section config section
+ * @param key property key
  * @return value or default value if user defined value is invalid
  */
-ssize_t config_get_num(const struct config* cfg, const char* section,
-                       const char* key, ssize_t min_val, ssize_t max_val);
+ssize_t config_get_num(const struct config* section, const char* key,
+                       ssize_t min_val, ssize_t max_val);
 /**
  * Get config parameter as ARGB color value.
- * @param cfg config instance
- * @param section,key section name and key
+ * @param section config section
+ * @param key property key
  * @return value or default value if user defined value is invalid
  */
-argb_t config_get_color(const struct config* cfg, const char* section,
-                        const char* key);
+argb_t config_get_color(const struct config* section, const char* key);
 
 /**
  * Print error about invalid key format.

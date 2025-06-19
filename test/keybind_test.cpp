@@ -17,7 +17,7 @@ protected:
 TEST_F(Keybind, Add)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "exit");
-    keybind = keybind_load(config, CFG_KEYS_VIEWER);
+    keybind = keybind_load(config_section(config, CFG_KEYS_VIEWER));
 
     const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);
@@ -33,7 +33,7 @@ TEST_F(Keybind, Add)
 TEST_F(Keybind, Replace)
 {
     config_set(config, CFG_KEYS_VIEWER, "Escape", "info");
-    keybind = keybind_load(config, CFG_KEYS_VIEWER);
+    keybind = keybind_load(config_section(config, CFG_KEYS_VIEWER));
 
     const struct keybind* kb = keybind_find(keybind, XKB_KEY_Escape, 0);
     ASSERT_TRUE(kb);
@@ -51,7 +51,7 @@ TEST_F(Keybind, Mods)
     config_set(config, CFG_KEYS_VIEWER, "Shift+c", "exit");
     config_set(config, CFG_KEYS_VIEWER, "Alt+Ctrl+d", "exit");
     config_set(config, CFG_KEYS_VIEWER, "Ctrl+Shift+Alt+e", "exit");
-    keybind = keybind_load(config, CFG_KEYS_VIEWER);
+    keybind = keybind_load(config_section(config, CFG_KEYS_VIEWER));
 
     EXPECT_NE(keybind_find(keybind, 'a', KEYMOD_CTRL), nullptr);
     EXPECT_NE(keybind_find(keybind, 'b', KEYMOD_ALT), nullptr);
@@ -65,7 +65,7 @@ TEST_F(Keybind, Mods)
 TEST_F(Keybind, ActionParams)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "status  \t params 1 2 3\t");
-    keybind = keybind_load(config, CFG_KEYS_VIEWER);
+    keybind = keybind_load(config_section(config, CFG_KEYS_VIEWER));
 
     const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);
@@ -80,7 +80,7 @@ TEST_F(Keybind, ActionParams)
 TEST_F(Keybind, Multiaction)
 {
     config_set(config, CFG_KEYS_VIEWER, "a", "exec cmd;reload;exit");
-    keybind = keybind_load(config, CFG_KEYS_VIEWER);
+    keybind = keybind_load(config_section(config, CFG_KEYS_VIEWER));
 
     const struct keybind* kb = keybind_find(keybind, 'a', 0);
     ASSERT_TRUE(kb);

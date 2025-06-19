@@ -659,24 +659,26 @@ static void on_deactivate(void)
 
 void gallery_init(const struct config* cfg, struct mode* handlers)
 {
-    const size_t ts = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_SIZE, 1, 4096);
+    const struct config* section = config_section(cfg, CFG_GALLERY);
+
+    const size_t ts = config_get_num(section, CFG_GLRY_SIZE, 1, 4096);
     layout_init(&ctx.layout, ts);
 
-    ctx.cache = config_get_num(cfg, CFG_GALLERY, CFG_GLRY_CACHE, 0, SSIZE_MAX);
-    ctx.preload = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PRELOAD);
+    ctx.cache = config_get_num(section, CFG_GLRY_CACHE, 0, SSIZE_MAX);
+    ctx.preload = config_get_bool(section, CFG_GLRY_PRELOAD);
 
-    ctx.thumb_aa = aa_init(cfg, CFG_GALLERY, CFG_GLRY_AA);
-    ctx.thumb_fill = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_FILL);
-    ctx.thumb_pstore = config_get_bool(cfg, CFG_GALLERY, CFG_GLRY_PSTORE);
+    ctx.thumb_aa = aa_init(section, CFG_GLRY_AA);
+    ctx.thumb_fill = config_get_bool(section, CFG_GLRY_FILL);
+    ctx.thumb_pstore = config_get_bool(section, CFG_GLRY_PSTORE);
 
-    ctx.clr_window = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_WINDOW);
-    ctx.clr_background = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BKG);
-    ctx.clr_select = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SELECT);
-    ctx.clr_border = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_BORDER);
-    ctx.clr_shadow = config_get_color(cfg, CFG_GALLERY, CFG_GLRY_SHADOW);
+    ctx.clr_window = config_get_color(section, CFG_GLRY_WINDOW);
+    ctx.clr_background = config_get_color(section, CFG_GLRY_BKG);
+    ctx.clr_select = config_get_color(section, CFG_GLRY_SELECT);
+    ctx.clr_border = config_get_color(section, CFG_GLRY_BORDER);
+    ctx.clr_shadow = config_get_color(section, CFG_GLRY_SHADOW);
 
     // load key bindings
-    ctx.kb = keybind_load(cfg, CFG_KEYS_GALLERY);
+    ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_GALLERY));
 
     handlers->on_activate = on_activate;
     handlers->on_deactivate = on_deactivate;

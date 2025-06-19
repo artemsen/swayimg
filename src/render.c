@@ -109,10 +109,9 @@ const char* aa_names[] = {
 };
 // clang-format on
 
-enum aa_mode aa_init(const struct config* cfg, const char* section,
-                     const char* key)
+enum aa_mode aa_init(const struct config* section, const char* key)
 {
-    return config_get_oneof(cfg, section, key, aa_names, ARRAY_SIZE(aa_names));
+    return config_get_oneof(section, key, aa_names, ARRAY_SIZE(aa_names));
 }
 
 enum aa_mode aa_switch(enum aa_mode curr, const char* opt)

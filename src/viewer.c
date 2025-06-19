@@ -1030,13 +1030,14 @@ static struct keybind* get_keybinds(void)
 
 void viewer_init(const struct config* cfg, struct mode* handlers)
 {
+    const struct config* section = config_section(cfg, CFG_VIEWER);
     size_t cval_num;
     const char* cval_txt;
 
-    ctx.aa_mode = aa_init(cfg, CFG_VIEWER, CFG_VIEW_AA);
+    ctx.aa_mode = aa_init(section, CFG_VIEW_AA);
 
     // window background
-    cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
+    cval_txt = config_get(section, CFG_VIEW_WINDOW);
     if (strcmp(cval_txt, BKGMODE_NAME_AUTO) == 0) {
         ctx.window_bkg = BKGMODE_ID_AUTO;
     } else if (strcmp(cval_txt, BKGMODE_NAME_EXTEND) == 0) {
@@ -1044,27 +1045,27 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
     } else if (strcmp(cval_txt, BKGMODE_NAME_MIRROR) == 0) {
         ctx.window_bkg = BKGMODE_ID_MIRROR;
     } else {
-        ctx.window_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_WINDOW);
+        ctx.window_bkg = config_get_color(section, CFG_VIEW_WINDOW);
     }
 
     // background for transparent images
-    cval_txt = config_get(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
+    cval_txt = config_get(section, CFG_VIEW_TRANSP);
     if (strcmp(cval_txt, GRID_NAME) == 0) {
         ctx.image_bkg = GRID_BKGID;
     } else {
-        ctx.image_bkg = config_get_color(cfg, CFG_VIEWER, CFG_VIEW_TRANSP);
+        ctx.image_bkg = config_get_color(section, CFG_VIEW_TRANSP);
     }
 
     // initial scale and position
-    ctx.scale_init = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_SCALE,
-                                      scale_names, ARRAY_SIZE(scale_names));
-    ctx.position = config_get_oneof(cfg, CFG_VIEWER, CFG_VIEW_POSITION,
-                                    position_names, ARRAY_SIZE(position_names));
+    ctx.scale_init = config_get_oneof(section, CFG_VIEW_SCALE, scale_names,
+                                      ARRAY_SIZE(scale_names));
+    ctx.position = config_get_oneof(section, CFG_VIEW_POSITION, position_names,
+                                    ARRAY_SIZE(position_names));
 
     // history and preloads caches
-    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_HISTORY, 0, 1024);
+    cval_num = config_get_num(section, CFG_VIEW_HISTORY, 0, 1024);
     ctx.history = cache_init(cval_num);
-    cval_num = config_get_num(cfg, CFG_VIEWER, CFG_VIEW_PRELOAD, 0, 1024);
+    cval_num = config_get_num(section, CFG_VIEW_PRELOAD, 0, 1024);
     ctx.preload = cache_init(cval_num);
 
     // setup animation timer
@@ -1075,9 +1076,8 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
         app_watch(ctx.animation_fd, on_animation_timer, NULL);
     }
     // setup slideshow timer
-    ctx.slideshow_enable = config_get_bool(cfg, CFG_VIEWER, CFG_VIEW_SSHOW);
-    ctx.slideshow_time =
-        config_get_num(cfg, CFG_VIEWER, CFG_VIEW_SSHOW_TM, 1, 86400);
+    ctx.slideshow_enable = config_get_bool(section, CFG_VIEW_SSHOW);
+    ctx.slideshow_time = config_get_num(section, CFG_VIEW_SSHOW_TM, 1, 86400);
     ctx.slideshow_fd =
         timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (ctx.slideshow_fd != -1) {
@@ -1085,7 +1085,7 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
     }
 
     // load key bindings
-    ctx.kb = keybind_load(cfg, CFG_KEYS_VIEWER);
+    ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_VIEWER));
 
     handlers->on_activate = on_activate;
     handlers->on_deactivate = on_deactivate;

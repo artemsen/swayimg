@@ -18,12 +18,12 @@ enum aa_mode {
 
 /**
  * Get anti-aliasing mode from config.
- * @param cfg config instance
+ * @param section config section
  * @param section,key section name and key
  * @return anti-aliasing mode
  */
-enum aa_mode aa_init(const struct config* cfg, const char* section,
-                     const char* key);
+enum aa_mode aa_init(const struct config* section, const char* key);
+
 /**
  * Switch anti-aliasing mode.
  * @param curr current anti-aliasing mode

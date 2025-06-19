@@ -125,9 +125,10 @@ void font_init(const struct config* cfg)
 {
     char font_file[PATH_MAX] = { 0 };
     const char* font_name;
+    const struct config* section = config_section(cfg, CFG_FONT);
 
     // load font
-    font_name = config_get(cfg, CFG_FONT, CFG_FONT_NAME);
+    font_name = config_get(section, CFG_FONT_NAME);
     if (!search_font_file(font_name, font_file, sizeof(font_file)) ||
         FT_Init_FreeType(&ctx.lib) != 0 ||
         FT_New_Face(ctx.lib, font_file, 0, &ctx.face) != 0) {
@@ -136,13 +137,13 @@ void font_init(const struct config* cfg)
     }
 
     // set font size
-    ctx.size = config_get_num(cfg, CFG_FONT, CFG_FONT_SIZE, 1, 256);
+    ctx.size = config_get_num(section, CFG_FONT_SIZE, 1, 256);
     font_set_scale(1.0);
 
     // color/background/shadow parameters
-    ctx.color = config_get_color(cfg, CFG_FONT, CFG_FONT_COLOR);
-    ctx.background = config_get_color(cfg, CFG_FONT, CFG_FONT_BKG);
-    ctx.shadow = config_get_color(cfg, CFG_FONT, CFG_FONT_SHADOW);
+    ctx.color = config_get_color(section, CFG_FONT_COLOR);
+    ctx.background = config_get_color(section, CFG_FONT_BKG);
+    ctx.shadow = config_get_color(section, CFG_FONT_SHADOW);
 }
 
 void font_set_scale(double scale)

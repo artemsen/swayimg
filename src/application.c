@@ -197,26 +197,26 @@ static void on_signal(int signum)
 
 /**
  * Setup signal handlers.
- * @param cfg config instance
+ * @param section general config section
  */
-static void setup_signals(const struct config* cfg)
+static void setup_signals(const struct config* section)
 {
     struct sigaction sigact;
     const char* value;
 
     // get signal actions
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR1);
+    value = config_get(section, CFG_GNRL_SIGUSR1);
     ctx.sigusr1 = action_create(value);
     if (!ctx.sigusr1) {
-        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR1);
-        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR1);
+        config_error_val(section->name, CFG_GNRL_SIGUSR1);
+        value = config_get_default(section->name, CFG_GNRL_SIGUSR1);
         ctx.sigusr1 = action_create(value);
     }
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIGUSR2);
+    value = config_get(section, CFG_GNRL_SIGUSR2);
     ctx.sigusr2 = action_create(value);
     if (!ctx.sigusr2) {
-        config_error_val(CFG_GENERAL, CFG_GNRL_SIGUSR2);
-        value = config_get_default(CFG_GENERAL, CFG_GNRL_SIGUSR2);
+        config_error_val(section->name, CFG_GNRL_SIGUSR2);
+        value = config_get_default(section->name, CFG_GNRL_SIGUSR2);
         ctx.sigusr2 = action_create(value);
     }
 
@@ -285,11 +285,11 @@ static struct image* create_imglist(const char* const* sources, size_t num)
 
 /**
  * Create window.
- * @param cfg config instance
+ * @param section general config section
  * @param img first image instance
  * @return true if operation completed successfully
  */
-static bool create_window(const struct config* cfg, const struct image* img)
+static bool create_window(const struct config* section, const struct image* img)
 {
     char* app_id = NULL;
     struct wndrect wnd;
@@ -299,7 +299,7 @@ static bool create_window(const struct config* cfg, const struct image* img)
     // initial window position
     wnd.x = POS_FROM_PARENT;
     wnd.y = POS_FROM_PARENT;
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_POSITION);
+    value = config_get(section, CFG_GNRL_POSITION);
     if (strcmp(value, CFG_FROM_PARENT) != 0) {
         struct str_slice slices[2];
         ssize_t x, y;
@@ -309,12 +309,12 @@ static bool create_window(const struct config* cfg, const struct image* img)
             wnd.x = x;
             wnd.y = y;
         } else {
-            config_error_val(CFG_GENERAL, CFG_GNRL_POSITION);
+            config_error_val(section->name, CFG_GNRL_POSITION);
         }
     }
 
     // initial window size
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_SIZE);
+    value = config_get(section, CFG_GNRL_SIZE);
     if (strcmp(value, CFG_FROM_PARENT) == 0) {
         wnd.width = SIZE_FROM_PARENT;
         wnd.height = SIZE_FROM_PARENT;
@@ -336,12 +336,12 @@ static bool create_window(const struct config* cfg, const struct image* img)
         } else {
             wnd.width = SIZE_FROM_PARENT;
             wnd.height = SIZE_FROM_PARENT;
-            config_error_val(CFG_GENERAL, CFG_GNRL_SIZE);
+            config_error_val(section->name, CFG_GNRL_SIZE);
         }
     }
 
     // app id (class name)
-    value = config_get(cfg, CFG_GENERAL, CFG_GNRL_APP_ID);
+    value = config_get(section, CFG_GNRL_APP_ID);
     if (!*value) {
         config_error_val(CFG_GENERAL, CFG_GNRL_APP_ID);
         value = config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID);
@@ -349,7 +349,7 @@ static bool create_window(const struct config* cfg, const struct image* img)
     str_dup(value, &app_id);
 
     // window decoration (title/borders/...)
-    decoration = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_DECOR);
+    decoration = config_get_bool(section, CFG_GNRL_DECOR);
 
     // setup window position and size
     if (wnd.width == SIZE_FULLSCREEN) {
@@ -358,7 +358,7 @@ static bool create_window(const struct config* cfg, const struct image* img)
         ui_toggle_fullscreen();
     } else {
 #ifdef HAVE_COMPOSITOR
-        bool compositor = config_get_bool(cfg, CFG_GENERAL, CFG_GNRL_WC);
+        bool compositor = config_get_bool(section, CFG_GNRL_WC);
         if (compositor) {
             struct wndrect focus;
             compositor = compositor_get_focus(&focus);
@@ -415,6 +415,7 @@ static bool create_window(const struct config* cfg, const struct image* img)
 
 bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
+    const struct config* general = config_section(cfg, CFG_GENERAL);
     const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
     struct image* first_image;
 
@@ -427,14 +428,14 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     }
 
     // create ui window
-    if (!create_window(cfg, first_image)) {
+    if (!create_window(general, first_image)) {
         imglist_destroy();
         return false;
     }
 
     // set initial mode
-    if (config_get_oneof(cfg, CFG_GENERAL, CFG_GNRL_MODE, modes,
-                         ARRAY_SIZE(modes)) == 1) {
+    if (config_get_oneof(general, CFG_GNRL_MODE, modes, ARRAY_SIZE(modes)) ==
+        1) {
         ctx.mcurr = mode_gallery;
     } else {
         ctx.mcurr = mode_viewer;
@@ -464,7 +465,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
                                               : CFG_MODE_GALLERY);
 
     // set signal handler
-    setup_signals(cfg);
+    setup_signals(general);
 
     ctx.modes[ctx.mcurr].on_activate(first_image);
 

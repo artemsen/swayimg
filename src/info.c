@@ -517,32 +517,29 @@ static struct scheme* create_scheme(const char* name,
 
 void info_init(const struct config* cfg)
 {
-    const char* cprefix = CFG_INFO ".";
-    const size_t cprefix_len = strlen(cprefix);
-    const struct config* cs = cfg;
-    struct scheme* scheme;
+    const struct config* section;
 
     // load all schemes
-    while (cs) {
-        if (strncmp(cs->name, cprefix, cprefix_len) == 0) {
-            scheme = create_scheme(cs->name + cprefix_len, cs->params);
-            if (scheme) {
-                scheme->next = ctx.schemes;
-                ctx.schemes = scheme;
-            }
+    const char* modes[] = { CFG_VIEWER, CFG_GALLERY };
+    for (size_t i = 0; i < ARRAY_SIZE(modes); ++i) {
+        struct scheme* scheme;
+        char name[16] = { 0 };
+        snprintf(name, sizeof(name), CFG_INFO ".%s", modes[i]);
+        section = config_section(cfg, name);
+        scheme = create_scheme(modes[i], section->params);
+        if (scheme) {
+            scheme->next = ctx.schemes;
+            ctx.schemes = scheme;
         }
-        cs = cs->next;
     }
+
     ctx.current = ctx.schemes;
 
-    ctx.show = config_get_bool(cfg, CFG_INFO, CFG_INFO_SHOW);
-
-    ctx.info.timeout =
-        config_get_num(cfg, CFG_INFO, CFG_INFO_ITIMEOUT, 0, 1024);
+    section = config_section(cfg, CFG_INFO);
+    ctx.show = config_get_bool(section, CFG_INFO_SHOW);
+    ctx.info.timeout = config_get_num(section, CFG_INFO_ITIMEOUT, 0, 1024);
     timeout_init(&ctx.info);
-
-    ctx.status.timeout =
-        config_get_num(cfg, CFG_INFO, CFG_INFO_STIMEOUT, 0, 1024);
+    ctx.status.timeout = config_get_num(section, CFG_INFO_STIMEOUT, 0, 1024);
     timeout_init(&ctx.status);
 
     info_reinit();

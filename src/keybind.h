@@ -39,11 +39,10 @@ struct keybind {
 
 /**
  * Load key binding list from configuration.
- * @param cfg config instance
- * @param section name of the config section
+ * @param section config section with key biniding description
  * @return pointer to list head or NULL on errors
  */
-struct keybind* keybind_load(const struct config* cfg, const char* section);
+struct keybind* keybind_load(const struct config* section);
 
 /**
  * Free key binding list.

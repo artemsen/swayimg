@@ -587,17 +587,19 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
 
 void imglist_init(const struct config* cfg)
 {
+    const struct config* section = config_section(cfg, CFG_LIST);
+
     pthread_mutex_init(&ctx.lock, NULL);
 
-    ctx.order = config_get_oneof(cfg, CFG_LIST, CFG_LIST_ORDER, order_names,
+    ctx.order = config_get_oneof(section, CFG_LIST_ORDER, order_names,
                                  ARRAY_SIZE(order_names));
-    ctx.reverse = config_get_bool(cfg, CFG_LIST, CFG_LIST_REVERSE);
-    ctx.loop = config_get_bool(cfg, CFG_LIST, CFG_LIST_LOOP);
-    ctx.recursive = config_get_bool(cfg, CFG_LIST, CFG_LIST_RECURSIVE);
-    ctx.all_files = config_get_bool(cfg, CFG_LIST, CFG_LIST_ALL);
-    ctx.from_file = config_get_bool(cfg, CFG_LIST, CFG_LIST_FROMFILE);
+    ctx.reverse = config_get_bool(section, CFG_LIST_REVERSE);
+    ctx.loop = config_get_bool(section, CFG_LIST_LOOP);
+    ctx.recursive = config_get_bool(section, CFG_LIST_RECURSIVE);
+    ctx.all_files = config_get_bool(section, CFG_LIST_ALL);
+    ctx.from_file = config_get_bool(section, CFG_LIST_FROMFILE);
 
-    if (config_get_bool(cfg, CFG_LIST, CFG_LIST_FSMON)) {
+    if (config_get_bool(section, CFG_LIST_FSMON)) {
         fs_monitor_init(on_fsevent);
     }
 }

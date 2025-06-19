@@ -451,6 +451,14 @@ void config_free(struct config* cfg)
     }
 }
 
+const struct config* config_section(const struct config* cfg, const char* name)
+{
+    while (cfg && strcmp(name, cfg->name) != 0) {
+        cfg = cfg->next;
+    }
+    return cfg;
+}
+
 bool config_set(struct config* cfg, const char* section, const char* key,
                 const char* value)
 {
@@ -571,34 +579,26 @@ const char* config_get_default(const char* section, const char* key)
     return "";
 }
 
-const char* config_get(const struct config* cfg, const char* section,
-                       const char* key)
+const char* config_get(const struct config* section, const char* key)
 {
-    const struct config* cs = cfg;
-    while (cs && strcmp(section, cs->name) != 0) {
-        cs = cs->next;
-    }
-
-    if (cs) {
-        const struct config_keyval* kv = cs->params;
-        while (kv) {
-            if (strcmp(key, kv->key) == 0) {
-                return kv->value;
-            }
-            kv = kv->next;
+    const struct config_keyval* kv = section->params;
+    while (kv) {
+        if (strcmp(key, kv->key) == 0) {
+            return kv->value;
         }
+        kv = kv->next;
     }
 
     fprintf(stderr,
             "WARNING: Value for key \"%s\" in section \"%s\" not found\n", key,
-            section);
+            section->name);
     return "";
 }
 
-ssize_t config_get_oneof(const struct config* cfg, const char* section,
-                         const char* key, const char** array, size_t array_sz)
+ssize_t config_get_oneof(const struct config* section, const char* key,
+                         const char** array, size_t array_sz)
 {
-    const char* value = config_get(cfg, section, key);
+    const char* value = config_get(section, key);
     ssize_t index = str_search_index(array, array_sz, value, 0);
 
     if (index == -1) {
@@ -606,11 +606,11 @@ ssize_t config_get_oneof(const struct config* cfg, const char* section,
                 "WARNING: "
                 "Invalid config value \"%s = %s\" in section \"%s\": "
                 "expected one of: ",
-                key, value, section);
+                key, value, section->name);
         for (size_t i = 0; i < array_sz; ++i) {
             fprintf(stderr, "%s, ", array[i]);
         }
-        value = config_get_default(section, key);
+        value = config_get_default(section->name, key);
         fprintf(stderr, "the default value \"%s\" will be used\n", value);
         index = str_search_index(array, array_sz, value, 0);
     }
@@ -618,58 +618,56 @@ ssize_t config_get_oneof(const struct config* cfg, const char* section,
     return index >= 0 ? index : 0;
 }
 
-bool config_get_bool(const struct config* cfg, const char* section,
-                     const char* key)
+bool config_get_bool(const struct config* section, const char* key)
 {
     bool boolean = false;
-    const char* value = config_get(cfg, section, key);
+    const char* value = config_get(section, key);
 
     if (!text_to_bool(value, &boolean)) {
-        text_to_bool(config_get_default(section, key), &boolean);
+        text_to_bool(config_get_default(section->name, key), &boolean);
         fprintf(stderr,
                 "WARNING: "
                 "Invalid config value \"%s = %s\" in section \"%s\": "
                 "expected \"" CFG_YES "\" or \"" CFG_NO "\", "
                 "the default value \"%s\" will be used\n",
-                key, value, section, boolean ? CFG_YES : CFG_NO);
+                key, value, section->name, boolean ? CFG_YES : CFG_NO);
     }
 
     return boolean;
 }
 
-ssize_t config_get_num(const struct config* cfg, const char* section,
-                       const char* key, ssize_t min_val, ssize_t max_val)
+ssize_t config_get_num(const struct config* section, const char* key,
+                       ssize_t min_val, ssize_t max_val)
 {
     ssize_t num = 0;
-    const char* value = config_get(cfg, section, key);
+    const char* value = config_get(section, key);
 
     if (!str_to_num(value, 0, &num, 0) || num < min_val || num > max_val) {
-        str_to_num(config_get_default(section, key), 0, &num, 0);
+        str_to_num(config_get_default(section->name, key), 0, &num, 0);
         fprintf(stderr,
                 "WARNING: "
                 "Invalid config value \"%s = %s\" in section \"%s\": "
                 "expected integer in range %zd-%zd, "
                 "the default value %zd will be used\n",
-                key, value, section, min_val, max_val, num);
+                key, value, section->name, min_val, max_val, num);
     }
 
     return num;
 }
 
-argb_t config_get_color(const struct config* cfg, const char* section,
-                        const char* key)
+argb_t config_get_color(const struct config* section, const char* key)
 {
     argb_t color = 0;
-    const char* value = config_get(cfg, section, key);
+    const char* value = config_get(section, key);
 
     if (!text_to_color(value, &color)) {
-        text_to_color(config_get_default(section, key), &color);
+        text_to_color(config_get_default(section->name, key), &color);
         fprintf(stderr,
                 "WARNING: "
                 "Invalid color value \"%s = %s\" in section \"%s\": "
                 "expected RGB(A) format (e.g. #11223344), "
                 "the default value #%08x will be used\n",
-                key, value, section, color);
+                key, value, section->name, color);
     }
 
     return color;
