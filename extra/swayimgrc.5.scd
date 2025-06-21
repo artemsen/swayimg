@@ -413,10 +413,9 @@ Predefined names for mouse buttons/scroll:
 *reload* Reset cache and reload current image.
 
 *antialiasing* [MODE]
-	Set anti-aliasing mode or cycle through them, _MODE_ is:
+	Set anti-aliasing mode or switch if on/off, _MODE_ is:
 	- one of the *viewer.antialiasing* modes (_none_/_mks13_/etc);
-	- _next_ or empty value: switch to next mode;
-	- _prev_: switch to previous mode.
+	- empty value to toggle AA on/off.
 
 *info* [MODE]
 	Set text info mode or cycle through them, _MODE_ is one of the configured

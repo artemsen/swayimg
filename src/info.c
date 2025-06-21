@@ -689,12 +689,12 @@ void info_update(enum info_field field, const char* fmt, ...)
     }
 }
 
-void info_update_index(size_t current, size_t total)
+void info_update_index(enum info_field field, size_t current, size_t total)
 {
     if (total > 1) {
-        info_update(info_index, "%zd of %zd", current, total);
+        info_update(field, "%zd of %zd", current, total);
     } else {
-        info_update(info_index, NULL);
+        info_update(field, NULL);
     }
 }
 

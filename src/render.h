@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "config.h"
 #include "pixmap.h"
 
 /** Scale filters (anti-aliasing mode). */
@@ -17,27 +16,12 @@ enum aa_mode {
 };
 
 /**
- * Get anti-aliasing mode from config.
- * @param section config section
- * @param section,key section name and key
- * @return anti-aliasing mode
+ * Get anti-aliasing mode from its name.
+ * @param name aa mode name
+ * @param aa pointer to destination mode var
+ * @return false if name is unknown
  */
-enum aa_mode aa_init(const struct config* section, const char* key);
-
-/**
- * Switch anti-aliasing mode.
- * @param curr current anti-aliasing mode
- * @param opt switch operation
- * @return new anti-aliasing mode or current if opt has invalid format
- */
-enum aa_mode aa_switch(enum aa_mode curr, const char* opt);
-
-/**
- * Get human readable anti-aliasing mode name.
- * @param aa anti-aliasing mode
- * @return anti-aliasing mode name
- */
-const char* aa_name(enum aa_mode aa);
+bool aa_from_name(const char* name, enum aa_mode* aa);
 
 /**
  * Render scaled pixmap.

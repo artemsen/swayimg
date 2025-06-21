@@ -109,45 +109,14 @@ const char* aa_names[] = {
 };
 // clang-format on
 
-enum aa_mode aa_init(const struct config* section, const char* key)
+bool aa_from_name(const char* name, enum aa_mode* aa)
 {
-    return config_get_oneof(section, key, aa_names, ARRAY_SIZE(aa_names));
-}
-
-enum aa_mode aa_switch(enum aa_mode curr, const char* opt)
-{
-    ssize_t index;
-
-    if (!opt || !*opt) {
-        opt = "next";
+    const ssize_t index = str_index(aa_names, name, 0);
+    const bool rc = (index >= 0);
+    if (rc) {
+        *aa = index;
     }
-
-    index = str_index(aa_names, opt, 0);
-    if (index < 0) {
-        if (strcmp(opt, "next") == 0) {
-            index = curr;
-            if (++index >= (ssize_t)ARRAY_SIZE(aa_names)) {
-                index = 0;
-            }
-        } else if (strcmp(opt, "prev") == 0) {
-            index = curr;
-            if (--index < 0) {
-                index = ARRAY_SIZE(aa_names) - 1;
-            }
-        }
-    }
-
-    if (index < 0) {
-        fprintf(stderr, "Invalid AA mode: \"%s\"\n", opt);
-        return curr;
-    }
-
-    return index;
-}
-
-const char* aa_name(enum aa_mode aa)
-{
-    return aa_names[aa];
+    return rc;
 }
 
 // Get the first and last input for a given output

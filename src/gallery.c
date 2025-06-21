@@ -32,9 +32,11 @@ struct gallery {
     size_t cache; ///< Max number of thumbnails in cache
     bool preload; ///< Preload invisible thumbnails
 
+    bool thumb_aa_en;      ///< Enable/disable anti-aliasing mode
     enum aa_mode thumb_aa; ///< Anti-aliasing mode
-    bool thumb_fill;       ///< Scale mode (fill/fit)
-    bool thumb_pstore;     ///< Use persistent storage for thumbnails
+
+    bool thumb_fill;   ///< Scale mode (fill/fit)
+    bool thumb_pstore; ///< Use persistent storage for thumbnails
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -84,9 +86,9 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
     }
 
     // append postfix
-    postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
-                           (uint16_t)ctx.layout.thumb_size,
-                           ctx.thumb_fill ? 1 : 0, ctx.thumb_aa);
+    postfix_len = snprintf(
+        postfix, sizeof(postfix), ".%04x%d%d", (uint16_t)ctx.layout.thumb_size,
+        ctx.thumb_fill ? 1 : 0, ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest);
     if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
         return 0;
     }
@@ -214,7 +216,7 @@ static void thumb_load(void* data)
     }
     // try to create from existing frame data
     if (image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
-                           ctx.thumb_aa)) {
+                           ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest)) {
         if (ctx.thumb_pstore) {
             pstore_save(origin);
         }
@@ -231,7 +233,7 @@ static void thumb_load(void* data)
     // load entire image and convert it to thumbnail
     if (!image_thumb_get(img) && image_load(img) == imgload_success) {
         if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
-                               ctx.thumb_aa)) {
+                               ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest)) {
             if (ctx.thumb_pstore) {
                 // save to thumbnail to persistent storage
                 struct imgframe* frame = arr_nth(img->data->frames, 0);
@@ -343,7 +345,7 @@ static bool select_next(enum action_type direction)
         info_reset(ctx.layout.current);
     }
     ui_set_title(ctx.layout.current->name);
-    info_update_index(ctx.layout.current->index, imglist_size());
+    info_update_index(info_index, ctx.layout.current->index, imglist_size());
     app_redraw();
 
     return rc;
@@ -356,6 +358,26 @@ static void reload(void)
     tpool_wait();
     clear_thumbnails(true);
     app_redraw();
+}
+
+/**
+ * Switch antialiasing mode: handle "antialiasing" action.
+ * @param params action parameter
+ */
+static void switch_antialiasing(const char* params)
+{
+    if (*params) {
+        if (aa_from_name(params, &ctx.thumb_aa)) {
+            info_update(info_status, "Anti-aliasing: %s", params);
+        } else {
+            info_update(info_status, "Invalid anti-aliasing: %s", params);
+        }
+    } else {
+        ctx.thumb_aa_en = !ctx.thumb_aa_en;
+        info_update(info_status, "Anti-aliasing: %s",
+                    ctx.thumb_aa_en ? "ON" : "OFF");
+    }
+    reload();
 }
 
 /**
@@ -440,7 +462,7 @@ static void draw_thumbnail(struct pixmap* window,
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
             software_render(pm, window, tx, ty, THUMB_SELECTED_SCALE,
-                            ctx.thumb_aa, false);
+                            ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest, false);
         }
 
         // shadow
@@ -530,10 +552,7 @@ static void handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
-            ctx.thumb_aa = aa_switch(ctx.thumb_aa, action->params);
-            info_update(info_status, "Anti-aliasing: %s",
-                        aa_name(ctx.thumb_aa));
-            reload();
+            switch_antialiasing(action->params);
             break;
         case action_first_file:
         case action_last_file:
@@ -579,7 +598,8 @@ static void on_mouse_move(__attribute__((unused)) uint8_t mods,
         imglist_unlock();
         info_reset(ctx.layout.current);
         ui_set_title(ctx.layout.current->name);
-        info_update_index(ctx.layout.current->index, imglist_size());
+        info_update_index(info_index, ctx.layout.current->index,
+                          imglist_size());
         app_redraw();
     }
 }
@@ -639,13 +659,13 @@ static void on_activate(struct image* image)
 
     if (!image_thumb_get(image)) {
         image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
-                           ctx.thumb_aa);
+                           ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest);
     }
 
     imglist_unlock();
 
     info_reset(image);
-    info_update_index(ctx.layout.current->index, imglist_size());
+    info_update_index(info_index, ctx.layout.current->index, imglist_size());
     ui_set_title(ctx.layout.current->name);
     ui_set_ctype(false);
 }
@@ -667,7 +687,14 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.cache = config_get_num(section, CFG_GLRY_CACHE, 0, SSIZE_MAX);
     ctx.preload = config_get_bool(section, CFG_GLRY_PRELOAD);
 
-    ctx.thumb_aa = aa_init(section, CFG_GLRY_AA);
+    ctx.thumb_aa_en = true;
+    ctx.thumb_aa = aa_mks13;
+    if (aa_from_name(config_get(section, CFG_GLRY_AA), &ctx.thumb_aa)) {
+        const char* def = config_get_default(section->name, CFG_GLRY_AA);
+        aa_from_name(def, &ctx.thumb_aa);
+        config_error_val(section->name, CFG_GLRY_AA);
+    }
+
     ctx.thumb_fill = config_get_bool(section, CFG_GLRY_FILL);
     ctx.thumb_pstore = config_get_bool(section, CFG_GLRY_PSTORE);
 
