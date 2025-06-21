@@ -49,12 +49,6 @@ bool app_run(void);
 void app_exit(int rc);
 
 /**
- * Get active mode.
- * @return true if current mode is viewer, false for gallery
- */
-bool app_is_viewer(void);
-
-/**
  * Switch mode (viewer/slideshow/gallery).
  * @param name name of the mode to set
  */

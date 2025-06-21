@@ -307,8 +307,10 @@ void viewport_resize(struct viewport* vp, size_t width, size_t height)
 {
     vp->width = width;
     vp->height = height;
-    scale_fixed(vp, vp->def_scale);
-    fixup_position(vp, false);
+    if (vp->image) {
+        scale_fixed(vp, vp->def_scale);
+        fixup_position(vp, false);
+    }
 }
 
 void viewport_frame(struct viewport* vp, bool forward)

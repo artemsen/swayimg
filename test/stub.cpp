@@ -15,8 +15,4 @@ void app_on_drag(int, int) { }
 void app_exit(int) { }
 void app_on_load(struct image*, size_t) { }
 
-bool app_is_viewer()
-{
-    return true;
-}
-}
+} // extern "C"

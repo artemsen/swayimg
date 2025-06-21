@@ -152,6 +152,7 @@ static struct image* get_current(void)
 static void on_activate(struct image* image)
 {
     if (image_has_frames(image) || image_load(image) == imgload_success) {
+        on_resize();
         viewport_reset(&ctx.vp, image);
         tpool_add_task(preloader, NULL, NULL);
         viewport_anim_ctl(&ctx.vp, vp_actl_start);

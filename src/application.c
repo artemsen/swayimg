@@ -570,11 +570,6 @@ void app_exit(int rc)
     ctx.state = rc ? loop_error : loop_stop;
 }
 
-bool app_is_viewer(void)
-{
-    return ctx.mcurr == mode_viewer;
-}
-
 void app_reload(void)
 {
     static const struct action action = { .type = action_reload };
