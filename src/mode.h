@@ -11,6 +11,7 @@
 /** Mode types. */
 enum mode_type {
     mode_viewer,
+    mode_slideshow,
     mode_gallery,
 };
 

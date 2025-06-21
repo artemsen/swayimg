@@ -610,7 +610,7 @@ static bool on_mouse_click(uint8_t mods, uint32_t btn, size_t x, size_t y)
     const struct keybind* kb = keybind_find(ctx.kb, MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_mode) {
         if (layout_get_at(&ctx.layout, x, y)) {
-            app_switch_mode();
+            app_switch_mode(kb->actions->params);
         }
         return true;
     }
@@ -689,7 +689,7 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
 
     ctx.thumb_aa_en = true;
     ctx.thumb_aa = aa_mks13;
-    if (aa_from_name(config_get(section, CFG_GLRY_AA), &ctx.thumb_aa)) {
+    if (!aa_from_name(config_get(section, CFG_GLRY_AA), &ctx.thumb_aa)) {
         const char* def = config_get_default(section->name, CFG_GLRY_AA);
         aa_from_name(def, &ctx.thumb_aa);
         config_error_val(section->name, CFG_GLRY_AA);

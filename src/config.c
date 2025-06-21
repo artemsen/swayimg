@@ -22,7 +22,7 @@ struct configdef_kv {
 
 // clang-format off
 static const struct configdef_kv def_general[] = {
-    { CFG_GNRL_MODE,      "viewer"    },
+    { CFG_GNRL_MODE,      CFG_VIEWER  },
     { CFG_GNRL_POSITION,  "parent"    },
     { CFG_GNRL_SIZE,      "parent"    },
     { CFG_GNRL_DECOR,     CFG_NO      },
@@ -38,10 +38,17 @@ static const struct configdef_kv def_viewer[] = {
     { CFG_VIEW_SCALE,     "optimal"   },
     { CFG_VIEW_POSITION,  "center"    },
     { CFG_VIEW_AA,        "mks13"     },
-    { CFG_VIEW_SSHOW,     CFG_NO      },
-    { CFG_VIEW_SSHOW_TM,  "3"         },
     { CFG_VIEW_HISTORY,   "1"         },
     { CFG_VIEW_PRELOAD,   "1"         },
+};
+
+static const struct configdef_kv def_slideshow[] = {
+    { CFG_VIEW_SSHOW_TM,  "3"         },
+    { CFG_VIEW_WINDOW,    "auto"      },
+    { CFG_VIEW_TRANSP,    "#000000ff" },
+    { CFG_VIEW_SCALE,     "fit"       },
+    { CFG_VIEW_POSITION,  "center"    },
+    { CFG_VIEW_AA,        "mks13"     },
 };
 
 static const struct configdef_kv def_gallery[] = {
@@ -96,6 +103,13 @@ static const struct configdef_kv def_infog[] = {
     { CFG_INFO_BR,        "name,status"                              },
 };
 
+static const struct configdef_kv def_infos[] = {
+    { CFG_INFO_TL,        "none"                                     },
+    { CFG_INFO_TR,        "none"                                     },
+    { CFG_INFO_BL,        "none"                                     },
+    { CFG_INFO_BR,        "dir,status"                               },
+};
+
 static const struct configdef_kv def_keysv[] = {
     { "F1",               "help"                                     },
     { "Home",             "first_file"                               },
@@ -109,8 +123,8 @@ static const struct configdef_kv def_keysv[] = {
     { "Shift+o",          "prev_frame"                               },
     { "o",                "next_frame"                               },
     { "c",                "skip_file"                                },
-    { "Shift+s",          "slideshow"                                },
-    { "s",                "animation"                                },
+    { "s",                "mode slideshow"                           },
+    { "n",                "animation"                                },
     { "f",                "fullscreen"                               },
     { "Return",           "mode gallery"                             },
     { "Left",             "step_left 10"                             },
@@ -126,7 +140,7 @@ static const struct configdef_kv def_keysv[] = {
     { "Shift+z",          "zoom fill"                                },
     { "0",                "zoom real"                                },
     { "BackSpace",        "zoom optimal"                             },
-    { "Alt+z",            "zoom keep"                                },
+    { "k",                "zoom keep"                                },
     { "Alt+s",            "zoom"                                     },
     { "bracketleft",      "rotate_left"                              },
     { "bracketright",     "rotate_right"                             },
@@ -151,6 +165,14 @@ static const struct configdef_kv def_keysv[] = {
     { "MouseLeft",        "drag"                                     },
     { "MouseSide",        "prev_file"                                },
     { "MouseExtra",       "next_file"                                },
+};
+
+static const struct configdef_kv def_keyss[] = {
+    { "F1",               "help"                                     },
+    { "f",                "fullscreen"                               },
+    { "Return",           "mode gallery"                             },
+    { "Escape",           "exit"                                     },
+    { "q",                "exit"                                     },
 };
 
 static const struct configdef_kv def_keysg[] = {
@@ -181,7 +203,7 @@ static const struct configdef_kv def_keysg[] = {
     { "ScrollDown",       "step_down"                                },
     { "Ctrl+ScrollUp",    "thumb +20"                                },
     { "Ctrl+ScrollDown",  "thumb -20"                                },
-    { "MouseLeft",        "mode gallery"                             },
+    { "MouseLeft",        "mode viewer"                              },
 };
 // clang-format on
 
@@ -197,13 +219,16 @@ struct configdef_section {
 static const struct configdef_section default_config[] = {
     CONFIGDEF_SECTION(CFG_GENERAL, def_general),
     CONFIGDEF_SECTION(CFG_VIEWER, def_viewer),
+    CONFIGDEF_SECTION(CFG_SLIDESHOW, def_slideshow),
     CONFIGDEF_SECTION(CFG_GALLERY, def_gallery),
     CONFIGDEF_SECTION(CFG_LIST, def_list),
     CONFIGDEF_SECTION(CFG_FONT, def_font),
     CONFIGDEF_SECTION(CFG_INFO, def_info),
     CONFIGDEF_SECTION(CFG_INFO_VIEWER, def_infov),
+    CONFIGDEF_SECTION(CFG_INFO_SLIDESHOW, def_infos),
     CONFIGDEF_SECTION(CFG_INFO_GALLERY, def_infog),
     CONFIGDEF_SECTION(CFG_KEYS_VIEWER, def_keysv),
+    CONFIGDEF_SECTION(CFG_KEYS_SLIDESHOW, def_keyss),
     CONFIGDEF_SECTION(CFG_KEYS_GALLERY, def_keysg),
 };
 

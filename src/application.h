@@ -54,8 +54,11 @@ void app_exit(int rc);
  */
 bool app_is_viewer(void);
 
-/** Switch mode (viewer/gallery). */
-void app_switch_mode(void);
+/**
+ * Switch mode (viewer/slideshow/gallery).
+ * @param name name of the mode to set
+ */
+void app_switch_mode(const char* name);
 
 /**
  * Handler of external event: reload image / reset state.

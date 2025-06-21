@@ -22,7 +22,6 @@ enum action_type {
     action_prev_frame,
     action_next_frame,
     action_animation,
-    action_slideshow,
     action_fullscreen,
     action_mode,
     action_step_left,

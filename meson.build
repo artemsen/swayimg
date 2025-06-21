@@ -251,6 +251,7 @@ sources = [
     'src/pixmap.c',
     'src/render.c',
     'src/shellcmd.c',
+    'src/slideshow.c',
     'src/tpool.c',
     'src/ui.c',
     'src/viewer.c',

@@ -25,8 +25,9 @@ enum info_field {
 /**
  * Initialize global info context.
  * @param cfg config instance
+ * @param mode name of initial mode to set
  */
-void info_init(const struct config* cfg);
+void info_init(const struct config* cfg, const char* mode);
 
 /**
  * Reinitialize info (change scale).

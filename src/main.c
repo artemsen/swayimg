@@ -26,11 +26,11 @@ struct cmdarg {
 // clang-format off
 static const struct cmdarg arguments[] = {
     { 'g', "gallery",    NULL,    "start in gallery mode" },
+    { 'l', "slideshow",  NULL,    "start in slideshow mode" },
     { 'F', "from-file",  NULL,    "interpret input files as text lists of image files" },
     { 'r', "recursive",  NULL,    "read directories recursively" },
     { 'o', "order",      "ORDER", "set sort order for image list" },
     { 's', "scale",      "SCALE", "set initial image scale" },
-    { 'l', "slideshow",  NULL,    "activate slideshow mode on startup" },
 #ifdef HAVE_COMPOSITOR
     { 'p', "position",   "POS",   "(SwayWM only) set window position" },
 #endif
@@ -111,7 +111,10 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
             case 'g':
-                config_set(cfg, CFG_GENERAL, CFG_GNRL_MODE, CFG_MODE_GALLERY);
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_MODE, CFG_GALLERY);
+                break;
+            case 'l':
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_MODE, CFG_SLIDESHOW);
                 break;
             case 'F':
                 config_set(cfg, CFG_LIST, CFG_LIST_FROMFILE, CFG_YES);
@@ -124,9 +127,6 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 's':
                 config_set(cfg, CFG_VIEWER, CFG_VIEW_SCALE, optarg);
-                break;
-            case 'l':
-                config_set(cfg, CFG_VIEWER, CFG_VIEW_SSHOW, CFG_YES);
                 break;
 #ifdef HAVE_COMPOSITOR
             case 'p':

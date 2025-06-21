@@ -12,6 +12,7 @@
 #include "imglist.h"
 #include "info.h"
 #include "shellcmd.h"
+#include "slideshow.h"
 #include "tpool.h"
 #include "ui.h"
 #include "viewer.h"
@@ -31,6 +32,9 @@
 #define SIZE_FROM_IMAGE  (SIZE_MAX - 1)
 #define SIZE_FROM_PARENT (SIZE_MAX - 2)
 #define POS_FROM_PARENT  SSIZE_MAX
+
+/** Mode names. */
+static const char* mode_names[] = { CFG_VIEWER, CFG_SLIDESHOW, CFG_GALLERY };
 
 /** Main loop state */
 enum loop_state {
@@ -66,29 +70,37 @@ struct application {
     struct action* sigusr1; ///< Actions applied by USR1 signal
     struct action* sigusr2; ///< Actions applied by USR2 signal
 
-    enum mode_type mcurr; ///< Currently active mode
-    struct mode modes[2]; ///< Mode handlers (viewer/gallery)
+    enum mode_type mcurr;                      ///< Currently active mode
+    enum mode_type mprev;                      ///< Previous mode
+    struct mode modes[ARRAY_SIZE(mode_names)]; ///< Mode handlers
 };
 
 /** Global application context. */
 static struct application ctx;
 
-void app_switch_mode(void)
+void app_switch_mode(const char* name)
 {
-    struct image* current = ctx.modes[ctx.mcurr].get_current();
+    struct image* img;
+    enum mode_type next = ctx.mprev;
 
-    ctx.modes[ctx.mcurr].on_deactivate();
-
-    if (ctx.mcurr == mode_viewer) {
-        ctx.mcurr = mode_gallery;
-    } else {
-        ctx.mcurr = mode_viewer;
+    if (*name) {
+        const ssize_t index = str_index(mode_names, name, 0);
+        if (index >= 0) {
+            next = index;
+        } else {
+            info_update(info_status, "Invalid mode: %s", name);
+            app_redraw();
+            return;
+        }
     }
 
-    ctx.modes[ctx.mcurr].on_activate(current);
+    // switch mode
+    img = ctx.modes[ctx.mcurr].get_current();
+    ctx.modes[ctx.mcurr].on_deactivate();
+    ctx.mcurr = next;
+    ctx.modes[ctx.mcurr].on_activate(img);
 
-    info_set_default(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
-                                              : CFG_MODE_GALLERY);
+    info_set_default(mode_names[ctx.mcurr]);
     if (help_visible()) {
         help_hide();
     }
@@ -416,7 +428,6 @@ static bool create_window(const struct config* section, const struct image* img)
 bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
     const struct config* general = config_section(cfg, CFG_GENERAL);
-    const char* modes[] = { CFG_MODE_VIEWER, CFG_MODE_GALLERY };
     struct image* first_image;
 
     // create image list
@@ -434,12 +445,9 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     }
 
     // set initial mode
-    if (config_get_oneof(general, CFG_GNRL_MODE, modes, ARRAY_SIZE(modes)) ==
-        1) {
-        ctx.mcurr = mode_gallery;
-    } else {
-        ctx.mcurr = mode_viewer;
-    }
+    ctx.mcurr = config_get_oneof(general, CFG_GNRL_MODE, mode_names,
+                                 ARRAY_SIZE(mode_names));
+    ctx.mprev = ctx.mcurr;
 
     // create event queue notification
     ctx.event_signal = eventfd(0, 0);
@@ -456,13 +464,10 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // initialize other subsystems
     tpool_init();
     font_init(cfg);
-    info_init(cfg);
+    info_init(cfg, mode_names[ctx.mcurr]);
     viewer_init(cfg, &ctx.modes[mode_viewer]);
+    slideshow_init(cfg, &ctx.modes[mode_slideshow]);
     gallery_init(cfg, &ctx.modes[mode_gallery]);
-
-    // set mode for text info
-    info_set_default(ctx.mcurr == mode_viewer ? CFG_MODE_VIEWER
-                                              : CFG_MODE_GALLERY);
 
     // set signal handler
     setup_signals(general);
@@ -475,6 +480,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 void app_destroy(void)
 {
     gallery_destroy();
+    slideshow_destroy();
     viewer_destroy();
     ui_destroy();
     imglist_destroy();
@@ -583,7 +589,9 @@ void app_redraw(void)
 
 void app_on_imglist(const struct image* image, enum fsevent event)
 {
-    ctx.modes[ctx.mcurr].on_imglist(image, event);
+    if (ctx.modes[ctx.mcurr].on_imglist) {
+        ctx.modes[ctx.mcurr].on_imglist(image, event);
+    }
 }
 
 void app_on_resize(void)

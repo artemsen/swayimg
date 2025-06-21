@@ -21,17 +21,20 @@ struct config {
 };
 
 // Section names
-#define CFG_GENERAL      "general"
-#define CFG_VIEWER       "viewer"
-#define CFG_GALLERY      "gallery"
-#define CFG_LIST         "list"
-#define CFG_FONT         "font"
-#define CFG_INFO         "info"
-#define CFG_INFO_VIEWER  CFG_INFO "." CFG_VIEWER
-#define CFG_INFO_GALLERY CFG_INFO "." CFG_GALLERY
-#define CFG_KEYS         "keys"
-#define CFG_KEYS_VIEWER  CFG_KEYS "." CFG_VIEWER
-#define CFG_KEYS_GALLERY CFG_KEYS "." CFG_GALLERY
+#define CFG_GENERAL        "general"
+#define CFG_VIEWER         "viewer"
+#define CFG_SLIDESHOW      "slideshow"
+#define CFG_GALLERY        "gallery"
+#define CFG_LIST           "list"
+#define CFG_FONT           "font"
+#define CFG_INFO           "info"
+#define CFG_INFO_VIEWER    CFG_INFO "." CFG_VIEWER
+#define CFG_INFO_SLIDESHOW CFG_INFO "." CFG_SLIDESHOW
+#define CFG_INFO_GALLERY   CFG_INFO "." CFG_GALLERY
+#define CFG_KEYS           "keys"
+#define CFG_KEYS_VIEWER    CFG_KEYS "." CFG_VIEWER
+#define CFG_KEYS_SLIDESHOW CFG_KEYS "." CFG_SLIDESHOW
+#define CFG_KEYS_GALLERY   CFG_KEYS "." CFG_GALLERY
 
 // Configuration parameters
 #define CFG_GNRL_MODE      "mode"
@@ -47,10 +50,9 @@ struct config {
 #define CFG_VIEW_SCALE     "scale"
 #define CFG_VIEW_POSITION  "position"
 #define CFG_VIEW_AA        "antialiasing"
-#define CFG_VIEW_SSHOW     "slideshow"
-#define CFG_VIEW_SSHOW_TM  "slideshow_time"
 #define CFG_VIEW_HISTORY   "history"
 #define CFG_VIEW_PRELOAD   "preload"
+#define CFG_VIEW_SSHOW_TM  "time"
 #define CFG_GLRY_SIZE      "size"
 #define CFG_GLRY_CACHE     "cache"
 #define CFG_GLRY_PRELOAD   "preload"
@@ -83,13 +85,11 @@ struct config {
 #define CFG_INFO_BR        "bottom_right"
 
 // Some configuration values
-#define CFG_YES          "yes"
-#define CFG_NO           "no"
-#define CFG_MODE_VIEWER  "viewer"
-#define CFG_MODE_GALLERY "gallery"
-#define CFG_FROM_PARENT  "parent"
-#define CFG_FROM_IMAGE   "image"
-#define CFG_FULLSCREEN   "fullscreen"
+#define CFG_YES         "yes"
+#define CFG_NO          "no"
+#define CFG_FROM_PARENT "parent"
+#define CFG_FROM_IMAGE  "image"
+#define CFG_FULLSCREEN  "fullscreen"
 
 /**
  * Load configuration from file.

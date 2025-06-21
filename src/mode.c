@@ -97,7 +97,7 @@ void mode_handle(struct mode* mode, const struct action* action)
             ui_toggle_fullscreen();
             break;
         case action_mode:
-            app_switch_mode();
+            app_switch_mode(action->params);
             break;
         case action_exec:
             execute_cmd(action->params, mode->get_current()->source);

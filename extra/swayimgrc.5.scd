@@ -43,7 +43,7 @@ for instance: *swayimg  --config="general.mode=gallery"*.
 
 General configuration for the entire application: _[general]_.
 
-*mode* = _viewer_|_gallery_
+*mode* = _viewer_|_slideshow_|_gallery_
 	Mode used at startup, _viewer_ by default.
 
 *position* = _parent_|X,Y
@@ -140,6 +140,28 @@ Configuration specific to the viewer mode: _[viewer]_.
 
 *preload* = SIZE
 	Number of images to preload in a separate thread, _1_ by default.
+
+## Sleide show
+
+Configuration specific to the slide show mode: _[slideshow]_.
+
+*time* = SECONDS
+	Slideshow image duration in seconds, _3_ by default.
+
+*window*
+	Same format as for *viewer.window*.
+
+*transparency*
+	Same format as for *viewer.transparency*.
+
+*scale*
+	Same format as for *viewer.scale*.
+
+*position*
+	Same format as for *viewer.position*.
+
+*antialiasing*
+	Same format as for *viewer.antialiasing*.
 
 ## Gallery
 
@@ -290,31 +312,20 @@ Avalable fields:
 - _status_: Status message.
 - _none_: Empty field (ignored).
 
+## Text info: slide show mode
+
+Layout of fields for displaying text info in slide show mode:
+_[info.slideshow]_. The format is the same as _[info.viewer]_.
+
 ## Text info: gallery mode
 
 Layout of fields for displaying text info in gallery mode: _[info.gallery]_.
-The format is the same as _[info.viewer]_:
-
-*top_left* = LIST
-	Top left corner of the window.
-	Default is _none_.
-
-*top_right* = LIST
-	Top right corner of the window.
-	Default is _index_.
-
-*bottom_left* = LIST
-	Bottom left corner of the window.
-	Default is _none_.
-
-*bottom_right* = LIST
-	Bottom right corner of the window.
-	Default is _name,status_.
+The format is the same as _[info.viewer]_.
 
 ## Key bindings
 
-Key bindings configurations are stored in sections _[keys.viewer]_ and
-_[keys.gallery]_.
+Key bindings configurations are stored in sections _[keys.viewer]_,
+_[keys.slideshow]_ and _[keys.gallery]_.
 Each line associates a key with a list of actions and optional parameters.
 Actions are separated by semicolons. One or more key modifiers (_Ctrl_, _Alt_,
 _Shift_) can be specified in the key name.
@@ -375,8 +386,8 @@ Predefined names for mouse buttons/scroll:
 
 *fullscreen* Toggle full-screen mode.
 
-*mode* [_viewer_|_gallery_]
-	Switch between viewer and gallery modes.
+*mode* [_viewer_|_slideshow_|_gallery_]
+	Switch between modes. Empty value to switch to previous mode.
 
 *step_left* [PERCENT]
 	(Viewer mode only) Move viewport left, default is _10%_.

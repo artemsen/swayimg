@@ -13,8 +13,6 @@
 #include "viewport.h"
 
 #include <pthread.h>
-#include <sys/timerfd.h>
-#include <unistd.h>
 
 /** Viewer context. */
 struct viewer {
@@ -25,10 +23,6 @@ struct viewer {
     struct cache* preload; ///< Preloaded images
     pthread_t preload_tid; ///< Preload thread id
     bool preload_active;   ///< Preload in progress flag
-
-    bool slideshow_enable; ///< Slideshow enable/disable
-    int slideshow_fd;      ///< Slideshow timer
-    size_t slideshow_time; ///< Slideshow image display time (seconds)
 };
 
 /** Global viewer context. */
@@ -135,28 +129,10 @@ static void preloader_stop(void)
 }
 
 /**
- * Start/stop slide show.
- * @param enable state to set
- */
-static void slideshow_ctl(bool enable)
-{
-    struct itimerspec ts = { 0 };
-
-    ctx.slideshow_enable = enable;
-    if (enable) {
-        ts.it_value.tv_sec = ctx.slideshow_time;
-    }
-
-    timerfd_settime(ctx.slideshow_fd, 0, &ts, NULL);
-}
-
-/**
  * Reset state to defaults.
  */
 static void reset_state(void)
 {
-    slideshow_ctl(ctx.slideshow_enable);
-
     info_reset(ctx.vp.image);
     info_update_index(info_index, ctx.vp.image->index, imglist_size());
     info_update(info_scale, "%.0f%%", ctx.vp.scale * 100);
@@ -289,12 +265,6 @@ static void on_animation(void)
     info_update_index(info_frame, ctx.vp.frame + 1, max_frames);
     info_update(info_image_size, "%zux%zu", pm->width, pm->height);
     app_redraw();
-}
-
-/** Slideshow timer event handler. */
-static void on_slideshow_timer(__attribute__((unused)) void* data)
-{
-    slideshow_ctl(next_image(action_next_file));
 }
 
 /**
@@ -561,10 +531,6 @@ static void handle_action(const struct action* action)
                                                           : vp_actl_start);
             ui_set_ctype(viewport_anim_stat(&ctx.vp));
             break;
-        case action_slideshow:
-            slideshow_ctl(!ctx.slideshow_enable &&
-                          next_image(action_next_file));
-            break;
         case action_step_left:
             move_image(vp_move_left, action->params);
             break;
@@ -654,7 +620,6 @@ static void on_deactivate(void)
     preloader_stop();
     viewport_anim_ctl(&ctx.vp, vp_actl_stop);
     ui_set_ctype(false);
-    slideshow_ctl(false);
     cache_put(ctx.history, ctx.vp.image);
 }
 
@@ -679,15 +644,6 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
     value = config_get_num(section, CFG_VIEW_PRELOAD, 0, 1024);
     ctx.preload = cache_init(value);
 
-    // setup slideshow timer
-    ctx.slideshow_enable = config_get_bool(section, CFG_VIEW_SSHOW);
-    ctx.slideshow_time = config_get_num(section, CFG_VIEW_SSHOW_TM, 1, 86400);
-    ctx.slideshow_fd =
-        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (ctx.slideshow_fd != -1) {
-        app_watch(ctx.slideshow_fd, on_slideshow_timer, NULL);
-    }
-
     // load key bindings
     ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_VIEWER));
 
@@ -704,11 +660,6 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
 
 void viewer_destroy(void)
 {
-    if (ctx.slideshow_fd != -1) {
-        close(ctx.slideshow_fd);
-    }
-    keybind_free(ctx.kb);
-
     cache_free(ctx.history);
     cache_free(ctx.preload);
     viewport_free(&ctx.vp);

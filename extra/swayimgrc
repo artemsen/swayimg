@@ -16,7 +16,7 @@
 # General configuration
 ################################################################################
 [general]
-# Mode at startup (viewer/gallery)
+# Mode at startup (viewer/slideshow/gallery)
 mode = viewer
 # Window position (parent or absolute coordinates, e.g. 100,200)
 position = parent
@@ -43,19 +43,31 @@ window = #00000000
 transparency = grid
 # Default image scale (optimal/width/height/fit/fill/real/keep)
 scale = optimal
-# Initial image position on the window
-# (top/center/bottom/left/right/topleft/topright/bottomleft/bottomright/free)
+# Initial image position on the window (center/top/bottom/free/...)
 position = center
 # Anti-aliasing mode (none/box/bilinear/bicubic/mks13)
 antialiasing = mks13
-# Run slideshow at startup (yes/no)
-slideshow = no
-# Slideshow image display time (seconds)
-slideshow_time = 3
 # Number of previously viewed images to store in cache
 history = 1
 # Number of preloaded images (read ahead)
 preload = 1
+
+################################################################################
+# Slideshow mode configuration
+################################################################################
+[slideshow]
+# Slideshow image display time (seconds)
+time = 3
+# Window background color (auto/extend/mirror/RGBA)
+window = auto
+# Background for transparent images (grid/RGBA)
+transparency = #000000ff
+# Default image scale (optimal/width/height/fit/fill/real)
+scale = fit
+# Initial image position on the window (center/top/bottom/free/...)
+position = center
+# Anti-aliasing mode (none/box/bilinear/bicubic/mks13)
+antialiasing = mks13
 
 ################################################################################
 # Gallery mode configuration
@@ -134,6 +146,13 @@ top_right = index
 bottom_left = scale,frame
 bottom_right = status
 
+# Display scheme for slideshow mode (position = content)
+[info.slideshow]
+top_left = none
+top_right = none
+bottom_left = none
+bottom_right = dir,status
+
 # Display scheme for gallery mode (position = content)
 [info.gallery]
 top_left = none
@@ -157,8 +176,8 @@ d = next_dir
 Shift+o = prev_frame
 o = next_frame
 c = skip_file
-Shift+s = slideshow
-s = animation
+s = mode slideshow
+n = animation
 f = fullscreen
 Return = mode gallery
 Left = step_left 10
@@ -174,7 +193,7 @@ z = zoom fit
 Shift+z = zoom fill
 0 = zoom real
 BackSpace = zoom optimal
-Alt+z = zoom keep
+k = zoom keep
 Alt+s = zoom
 bracketleft = rotate_left
 bracketright = rotate_right
@@ -200,6 +219,16 @@ Alt+ScrollDown = next_frame
 MouseLeft = drag
 MouseSide = prev_file
 MouseExtra = next_file
+
+################################################################################
+# Slideshow mode key binding configuration: key = action [parameters]
+################################################################################
+[keys.slideshow]
+F1 = help
+f = fullscreen
+Return = mode gallery
+Escape = exit
+q = exit
 
 ################################################################################
 # Gallery mode key binding configuration: key = action [parameters]

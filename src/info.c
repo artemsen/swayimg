@@ -515,12 +515,12 @@ static struct scheme* create_scheme(const char* name,
     return scheme;
 }
 
-void info_init(const struct config* cfg)
+void info_init(const struct config* cfg, const char* mode)
 {
     const struct config* section;
 
     // load all schemes
-    const char* modes[] = { CFG_VIEWER, CFG_GALLERY };
+    const char* modes[] = { CFG_VIEWER, CFG_SLIDESHOW, CFG_GALLERY };
     for (size_t i = 0; i < ARRAY_SIZE(modes); ++i) {
         struct scheme* scheme;
         char name[16] = { 0 };
@@ -542,6 +542,7 @@ void info_init(const struct config* cfg)
     ctx.status.timeout = config_get_num(section, CFG_INFO_STIMEOUT, 0, 1024);
     timeout_init(&ctx.status);
 
+    info_set_default(mode);
     info_reinit();
 }
 

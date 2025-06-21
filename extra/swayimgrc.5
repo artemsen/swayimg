@@ -56,7 +56,7 @@ for instance: \fBswayimg  --config="general.\&mode=gallery"\fR.\&
 .PP
 General configuration for the entire application: \fI[general]\fR.\&
 .PP
-\fBmode\fR = \fIviewer\fR|\fIgallery\fR
+\fBmode\fR = \fIviewer\fR|\fIslideshow\fR|\fIgallery\fR
 .RS 4
 Mode used at startup, \fIviewer\fR by default.\&
 .PP
@@ -234,6 +234,40 @@ Number of previously viewed images to store in cache, \fI1\fR by default.\&
 \fBpreload\fR = SIZE
 .RS 4
 Number of images to preload in a separate thread, \fI1\fR by default.\&
+.PP
+.RE
+.SS Sleide show
+.PP
+Configuration specific to the slide show mode: \fI[slideshow]\fR.\&
+.PP
+\fBtime\fR = SECONDS
+.RS 4
+Slideshow image duration in seconds, \fI3\fR by default.\&
+.PP
+.RE
+\fBwindow\fR
+.RS 4
+Same format as for \fBviewer.\&window\fR.\&
+.PP
+.RE
+\fBtransparency\fR
+.RS 4
+Same format as for \fBviewer.\&transparency\fR.\&
+.PP
+.RE
+\fBscale\fR
+.RS 4
+Same format as for \fBviewer.\&scale\fR.\&
+.PP
+.RE
+\fBposition\fR
+.RS 4
+Same format as for \fBviewer.\&position\fR.\&
+.PP
+.RE
+\fBantialiasing\fR
+.RS 4
+Same format as for \fBviewer.\&antialiasing\fR.\&
 .PP
 .RE
 .SS Gallery
@@ -472,39 +506,20 @@ viewed/selected image.\&
 \fInone\fR: Empty field (ignored).\&
 .PD
 .PP
+.SS Text info: slide show mode
+.PP
+Layout of fields for displaying text info in slide show mode:
+\fI[info.\&slideshow]\fR.\& The format is the same as \fI[info.\&viewer]\fR.\&
+.PP
 .SS Text info: gallery mode
 .PP
 Layout of fields for displaying text info in gallery mode: \fI[info.\&gallery]\fR.\&
-The format is the same as \fI[info.\&viewer]\fR:
+The format is the same as \fI[info.\&viewer]\fR.\&
 .PP
-\fBtop_left\fR = LIST
-.RS 4
-Top left corner of the window.\&
-Default is \fInone\fR.\&
-.PP
-.RE
-\fBtop_right\fR = LIST
-.RS 4
-Top right corner of the window.\&
-Default is \fIindex\fR.\&
-.PP
-.RE
-\fBbottom_left\fR = LIST
-.RS 4
-Bottom left corner of the window.\&
-Default is \fInone\fR.\&
-.PP
-.RE
-\fBbottom_right\fR = LIST
-.RS 4
-Bottom right corner of the window.\&
-Default is \fIname,status\fR.\&
-.PP
-.RE
 .SS Key bindings
 .PP
-Key bindings configurations are stored in sections \fI[keys.\&viewer]\fR and
-\fI[keys.\&gallery]\fR.\&
+Key bindings configurations are stored in sections \fI[keys.\&viewer]\fR,
+\fI[keys.\&slideshow]\fR and \fI[keys.\&gallery]\fR.\&
 Each line associates a key with a list of actions and optional parameters.\&
 Actions are separated by semicolons.\& One or more key modifiers (\fICtrl\fR, \fIAlt\fR,
 \fIShift\fR) can be specified in the key name.\&
@@ -576,9 +591,9 @@ Predefined names for mouse buttons/scroll:
 .PP
 \fBfullscreen\fR Toggle full-screen mode.\&
 .PP
-\fBmode\fR [\fIviewer\fR|\fIgallery\fR]
+\fBmode\fR [\fIviewer\fR|\fIslideshow\fR|\fIgallery\fR]
 .RS 4
-Switch between viewer and gallery modes.\&
+Switch between modes.\& Empty value to switch to previous mode.\&
 .PP
 .RE
 \fBstep_left\fR [PERCENT]

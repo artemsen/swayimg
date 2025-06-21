@@ -28,7 +28,6 @@ static const char* action_names[] = {
     [action_prev_frame] = "prev_frame",
     [action_next_frame] = "next_frame",
     [action_animation] = "animation",
-    [action_slideshow] = "slideshow",
     [action_fullscreen] = "fullscreen",
     [action_mode] = "mode",
     [action_step_left] = "step_left",

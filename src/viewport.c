@@ -227,7 +227,7 @@ void viewport_init(struct viewport* vp, const struct config* section)
 
     vp->aa_en = true;
     vp->aa = aa_mks13;
-    if (aa_from_name(config_get(section, CFG_VIEW_AA), &vp->aa)) {
+    if (!aa_from_name(config_get(section, CFG_VIEW_AA), &vp->aa)) {
         const char* def = config_get_default(section->name, CFG_VIEW_AA);
         aa_from_name(def, &vp->aa);
         config_error_val(section->name, CFG_VIEW_AA);
