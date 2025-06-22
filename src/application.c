@@ -451,7 +451,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // set initial mode
     ctx.mcurr = config_get_oneof(general, CFG_GNRL_MODE, mode_names,
                                  ARRAY_SIZE(mode_names));
-    ctx.mprev = ctx.mcurr;
+    ctx.mprev = mode_viewer;
 
     // create event queue notification
     ctx.event_signal = eventfd(0, 0);

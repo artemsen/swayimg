@@ -276,38 +276,44 @@ void viewport_free(struct viewport* vp)
 
 void viewport_reset(struct viewport* vp, struct image* img)
 {
-    const struct pixmap* pm = viewport_pixmap(vp);
-    const size_t prev_w = pm ? pm->width : 0;
-    const size_t prev_h = pm ? pm->height : 0;
-
-    vp->image = img;
-    vp->frame = 0;
-
-    pm = viewport_pixmap(vp);
-    if (vp->def_scale != vp_scale_keep_zoom) {
-        scale_fixed(vp, vp->def_scale);
-        fixup_position(vp, true);
+    if (!img) {
+        vp->image = NULL;
+        vp->frame = 0;
+        viewport_anim_ctl(vp, vp_actl_stop);
     } else {
-        if (vp->scale == 0) {
-            scale_fixed(vp, vp_scale_fit_optimal);
+        const struct pixmap* prev_pm = viewport_pixmap(vp);
+        const size_t prev_w = prev_pm ? prev_pm->width : 0;
+        const size_t prev_h = prev_pm ? prev_pm->height : 0;
+
+        vp->image = img;
+        vp->frame = 0;
+
+        prev_pm = viewport_pixmap(vp);
+        if (vp->def_scale != vp_scale_keep_zoom) {
+            scale_fixed(vp, vp->def_scale);
             fixup_position(vp, true);
         } else {
-            const ssize_t diff_w = prev_w - pm->width;
-            const ssize_t diff_h = prev_h - pm->height;
-            vp->x += floor(vp->scale * diff_w) / 2.0;
-            vp->y += floor(vp->scale * diff_h) / 2.0;
-            fixup_position(vp, false);
+            if (prev_w == 0 || prev_h == 0) {
+                scale_fixed(vp, vp_scale_fit_optimal);
+                fixup_position(vp, true);
+            } else {
+                const ssize_t diff_w = prev_w - prev_pm->width;
+                const ssize_t diff_h = prev_h - prev_pm->height;
+                vp->x += floor(vp->scale * diff_w) / 2.0;
+                vp->y += floor(vp->scale * diff_h) / 2.0;
+                fixup_position(vp, false);
+            }
         }
-    }
 
-    viewport_anim_ctl(vp, vp_actl_start); // restart animation
+        viewport_anim_ctl(vp, vp_actl_start); // restart animation
+    }
 }
 
 void viewport_resize(struct viewport* vp, size_t width, size_t height)
 {
     vp->width = width;
     vp->height = height;
-    if (vp->image) {
+    if (image_has_frames(vp->image)) {
         scale_fixed(vp, vp->def_scale);
         fixup_position(vp, false);
     }
@@ -442,7 +448,7 @@ bool viewport_anim_stat(const struct viewport* vp)
 const struct pixmap* viewport_pixmap(const struct viewport* vp)
 {
     const struct pixmap* pm = NULL;
-    if (vp->image) {
+    if (image_has_frames(vp->image)) {
         assert(vp->frame < vp->image->data->frames->size);
         const struct imgframe* frame =
             arr_nth(vp->image->data->frames, vp->frame);

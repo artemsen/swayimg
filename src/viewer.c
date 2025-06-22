@@ -603,6 +603,7 @@ static void on_activate(struct image* image)
     cache_out(ctx.preload, image);
     cache_out(ctx.history, image);
 
+    viewport_resize(&ctx.vp, ui_get_width(), ui_get_height());
     if (image_has_frames(image) || image_load(image) == imgload_success) {
         viewport_reset(&ctx.vp, image);
         reset_state();
@@ -618,9 +619,9 @@ static void on_activate(struct image* image)
 static void on_deactivate(void)
 {
     preloader_stop();
-    viewport_anim_ctl(&ctx.vp, vp_actl_stop);
-    ui_set_ctype(false);
     cache_put(ctx.history, ctx.vp.image);
+    viewport_reset(&ctx.vp, NULL);
+    ui_set_ctype(false);
 }
 
 /** Mode handler: get key bindings. */

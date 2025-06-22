@@ -71,36 +71,55 @@ static void preloader(__attribute__((unused)) void* data)
     imglist_unlock();
 }
 
-/** Open next image. */
-static void next_image(void)
+/**
+ * Switch to the next image.
+ * @param img next image to show
+ */
+static void switch_image(struct image* img)
 {
-    struct image* img;
-    tpool_wait();
+    struct image* curr = ctx.vp.image;
 
-    imglist_lock();
-    assert(ctx.next);
-    img = ctx.vp.image;
-    viewport_reset(&ctx.vp, ctx.next);
-    image_free(img, IMGDATA_FRAMES);
-    ctx.next = NULL;
-    imglist_unlock();
+    assert(ctx.vp.image != img);
+    assert(image_has_frames(img));
 
+    // switch image
+    viewport_reset(&ctx.vp, img);
+    if (curr) {
+        image_free(curr, IMGDATA_FRAMES);
+    }
+
+    // update info
     info_reset(ctx.vp.image);
     info_update_index(info_index, ctx.vp.image->index, imglist_size());
     info_update(info_scale, "%.0f%%", ctx.vp.scale * 100);
 
+    // update window props
     ui_set_title(ctx.vp.image->name);
     ui_set_ctype(viewport_anim_stat(&ctx.vp));
 
+    // add task to load next image
+    assert(!ctx.next);
     tpool_add_task(preloader, NULL, NULL);
+
+    // restart timer
+    timer_ctl(true);
 }
 
 /** Slideshow timer event handler. */
 static void on_slideshow_timer(__attribute__((unused)) void* data)
 {
-    next_image();
-    app_redraw();
-    timer_ctl(true);
+    if (!ctx.next) {
+        tpool_wait();
+    }
+    if (ctx.next) {
+        struct image* img = ctx.next;
+        ctx.next = NULL;
+        switch_image(img);
+        app_redraw();
+    } else {
+        fprintf(stderr, "No more images to view, exit\n");
+        app_exit(0);
+    }
 }
 
 /** Animation frame switch handler. */
@@ -153,28 +172,22 @@ static void on_activate(struct image* image)
 {
     if (image_has_frames(image) || image_load(image) == imgload_success) {
         on_resize();
-        viewport_reset(&ctx.vp, image);
-        tpool_add_task(preloader, NULL, NULL);
-        viewport_anim_ctl(&ctx.vp, vp_actl_start);
-        ui_set_ctype(viewport_anim_stat(&ctx.vp));
-        timer_ctl(true);
-
-        info_reset(ctx.vp.image);
-        info_update_index(info_index, ctx.vp.image->index, imglist_size());
-        info_update(info_scale, "%.0f%%", ctx.vp.scale * 100);
-
-        ui_set_title(ctx.vp.image->name);
-        ui_set_ctype(viewport_anim_stat(&ctx.vp));
+        switch_image(image);
     }
 }
 
 /** Mode handler: deactivate viewer. */
 static void on_deactivate(void)
 {
-    tpool_wait();
-    viewport_anim_ctl(&ctx.vp, vp_actl_stop);
-    ui_set_ctype(false);
+    viewport_reset(&ctx.vp, NULL);
     timer_ctl(false);
+    ui_set_ctype(false);
+
+    tpool_wait();
+    if (ctx.next) {
+        image_free(ctx.next, IMGDATA_FRAMES);
+        ctx.next = NULL;
+    }
 }
 
 /** Mode handler: get key bindings. */
