@@ -532,7 +532,11 @@ static void redraw(void)
     if (wnd) {
         pixmap_fill(wnd, 0, 0, wnd->width, wnd->height, ctx.clr_window);
         draw_thumbnails(wnd);
+
+        info_update_index(info_index, ctx.layout.current->index,
+                          imglist_size());
         info_print(wnd);
+
         ui_draw_commit();
     }
 }
