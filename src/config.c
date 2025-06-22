@@ -520,6 +520,7 @@ bool config_set(struct config* cfg, const char* section, const char* key,
 
     // only key bindings can have their own config keys
     if (strcmp(section, CFG_KEYS_VIEWER) != 0 &&
+        strcmp(section, CFG_KEYS_SLIDESHOW) != 0 &&
         strcmp(section, CFG_KEYS_GALLERY) != 0) {
         fprintf(stderr,
                 "WARNING: Unknown config key \"%s\" in section \"%s\"\n", key,
