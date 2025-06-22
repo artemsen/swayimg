@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-21" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-22" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -46,6 +46,9 @@ characters.\&
 Keys are grouped into named sections.\& The section name appears on a line by
 itself, in square brackets.\& All keys after the section declaration are
 associated with that section.\&
+.PP
+Special directive \fBinclude\fR allows to load another config file.\& The directive
+must contain the path or name of the file to load the configuration.\&
 .PP
 Any option can be overridden using the \fB--config\fR argument in the command line,
 for instance: \fBswayimg  --config="general.\&mode=gallery"\fR.\&
@@ -236,7 +239,7 @@ Number of previously viewed images to store in cache, \fI1\fR by default.\&
 Number of images to preload in a separate thread, \fI1\fR by default.\&
 .PP
 .RE
-.SS Sleide show
+.SS Slide show
 .PP
 Configuration specific to the slide show mode: \fI[slideshow]\fR.\&
 .PP

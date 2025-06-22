@@ -239,11 +239,11 @@ struct location {
     const char* postfix; ///< Constant postfix
 };
 
-static const struct location config_locations[] = {
-    { "XDG_CONFIG_HOME", "/swayimg/config"         },
-    { "HOME",            "/.config/swayimg/config" },
-    { "XDG_CONFIG_DIRS", "/swayimg/config"         },
-    { NULL,              "/etc/xdg/swayimg/config" }
+static const struct location config_dir[] = {
+    { "XDG_CONFIG_HOME", "/swayimg/"         },
+    { "HOME",            "/.config/swayimg/" },
+    { "XDG_CONFIG_DIRS", "/swayimg/"         },
+    { NULL,              "/etc/xdg/swayimg/" }
 };
 
 /**
@@ -254,6 +254,8 @@ static const struct location config_locations[] = {
  */
 static bool load(struct config* cfg, const char* path)
 {
+    static const char* inc_directive = "include";
+    const size_t inc_len = strlen(inc_directive);
     FILE* fd = NULL;
     char* buff = NULL;
     size_t buff_sz = 0;
@@ -286,28 +288,39 @@ static bool load(struct config* cfg, const char* path)
             continue;
         }
 
-        // check for section beginning
-        if (*line == '[') {
-            ssize_t len;
-            char* new_section;
-            ++line;
-            delim = strchr(line, ']');
-            if (!delim || line + 1 == delim) {
-                fprintf(stderr, "WARNING: Invalid config line in %s:%zu\n",
-                        path, line_num);
-                continue;
+        // check for include
+        if (strncmp(line, inc_directive, inc_len) == 0) {
+            line += inc_len;
+            while (*line && isspace(*line)) {
+                ++line;
             }
-            *delim = 0;
-            len = delim - line + 1;
-            new_section = realloc(section, len);
-            if (new_section) {
-                section = new_section;
-                memcpy(section, line, len);
+            if (!config_load(cfg, line)) {
+                fprintf(stderr, "WARNING: Unable to load config file \"%s\"\n",
+                        line);
+            }
+            if (section) {
+                *section = 0;
             }
             continue;
         }
 
-        if (!section) {
+        // check for section beginning
+        if (*line == '[') {
+            ++line;
+            delim = strchr(line, ']');
+            if (delim && delim != line /* not empty */) {
+                *delim = 0;
+                if (!str_dup(line, &section)) {
+                    break;
+                }
+            } else {
+                fprintf(stderr, "WARNING: Invalid config line in %s:%zu\n",
+                        path, line_num);
+            }
+            continue;
+        }
+
+        if (!section || !*section) {
             fprintf(stderr,
                     "WARNING: Config parameter without section in %s:%zu\n",
                     path, line_num);
@@ -424,7 +437,7 @@ static bool text_to_color(const char* text, argb_t* value)
     return false;
 }
 
-struct config* config_load(void)
+struct config* config_create(void)
 {
     struct config* cfg = NULL;
 
@@ -447,16 +460,6 @@ struct config* config_load(void)
         cfg = cs;
     }
 
-    // find and load first available config file
-    for (size_t i = 0; i < ARRAY_SIZE(config_locations); ++i) {
-        const struct location* cl = &config_locations[i];
-        char path[PATH_MAX];
-        if (fs_envpath(cl->prefix, cl->postfix, path, sizeof(path)) &&
-            load(cfg, path)) {
-            break;
-        }
-    }
-
     return cfg;
 }
 
@@ -473,6 +476,33 @@ void config_free(struct config* cfg)
         free(cfg);
         cfg = next_section;
     }
+}
+
+bool config_load(struct config* cfg, const char* name)
+{
+    if (!name || !*name) { // empty
+        return false;
+    }
+
+    // absolute or relative path started with "."
+    static const char* prefixes[] = { "/", "./", "../" };
+    for (size_t i = 0; i < ARRAY_SIZE(prefixes); ++i) {
+        if (strncmp(name, prefixes[i], strlen(prefixes[i])) == 0) {
+            return load(cfg, name);
+        }
+    }
+
+    // relative to default locations
+    for (size_t i = 0; i < ARRAY_SIZE(config_dir); ++i) {
+        const struct location* dir = &config_dir[i];
+        char path[PATH_MAX];
+        if (fs_envpath(dir->prefix, dir->postfix, path, sizeof(path)) &&
+            fs_append_path(name, path, sizeof(path)) && load(cfg, path)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 const struct config* config_section(const struct config* cfg, const char* name)

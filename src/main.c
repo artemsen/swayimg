@@ -25,21 +25,22 @@ struct cmdarg {
 
 // clang-format off
 static const struct cmdarg arguments[] = {
-    { 'g', "gallery",    NULL,    "start in gallery mode" },
-    { 'l', "slideshow",  NULL,    "start in slideshow mode" },
-    { 'F', "from-file",  NULL,    "interpret input files as text lists of image files" },
-    { 'r', "recursive",  NULL,    "read directories recursively" },
-    { 'o', "order",      "ORDER", "set sort order for image list" },
-    { 's', "scale",      "SCALE", "set initial image scale" },
+    { 'g', "gallery",     NULL,    "start in gallery mode" },
+    { 'l', "slideshow",   NULL,    "start in slideshow mode" },
+    { 'F', "from-file",   NULL,    "interpret input files as text lists of image files" },
+    { 'r', "recursive",   NULL,    "read directories recursively" },
+    { 'o', "order",       "ORDER", "set sort order for image list" },
+    { 's', "scale",       "SCALE", "set initial image scale" },
 #ifdef HAVE_COMPOSITOR
-    { 'p', "position",   "POS",   "(SwayWM only) set window position" },
+    { 'p', "position",    "POS",   "(Sway/Hyprland only) set window position" },
 #endif
-    { 'w', "size",       "SIZE",  "set window size" },
-    { 'f', "fullscreen", NULL,    "show image in full screen mode" },
-    { 'a', "class",      "NAME",  "set window class/app_id" },
-    { 'c', "config",     "S.K=V", "set configuration parameter: section.key=value" },
-    { 'v', "version",    NULL,    "print version info and exit" },
-    { 'h', "help",       NULL,    "print this help and exit" },
+    { 'w', "size",        "SIZE",  "set window size" },
+    { 'f', "fullscreen",  NULL,    "show image in full screen mode" },
+    { 'a', "class",       "NAME",  "set window class/app_id" },
+    { 'c', "config",      "S.K=V", "set configuration parameter: section.key=value" },
+    { 'C', "config-file", "FILE",  "load config from file" },
+    { 'v', "version",     NULL,    "print version info and exit" },
+    { 'h', "help",        NULL,    "print this help and exit" },
 };
 // clang-format on
 
@@ -63,7 +64,7 @@ static void print_help(void)
         } else {
             strncpy(lopt, arg->long_opt, sizeof(lopt) - 1);
         }
-        printf("  -%c, --%-14s %s\n", arg->short_opt, lopt, arg->help);
+        printf("  -%c, --%-16s %s\n", arg->short_opt, lopt, arg->help);
     }
 }
 
@@ -85,10 +86,15 @@ static void print_version(void)
  */
 static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
 {
+    bool defconfig = true;
     struct option options[1 + ARRAY_SIZE(arguments)];
     char short_opts[ARRAY_SIZE(arguments) * 2];
     char* short_opts_ptr = short_opts;
     int opt;
+
+    if (!cfg) {
+        exit(EXIT_FAILURE);
+    }
 
     // compose array of option structs
     for (size_t i = 0; i < ARRAY_SIZE(arguments); ++i) {
@@ -107,7 +113,23 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
     *short_opts_ptr = 0;
     memset(&options[ARRAY_SIZE(arguments)], 0, sizeof(struct option));
 
+    // load custom config
+    while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
+        if (opt == 'C') {
+            if (!config_load(cfg, optarg)) {
+                fprintf(stderr, "Unable to load config file \"%s\"\n", optarg);
+                exit(EXIT_FAILURE);
+            }
+            defconfig = false;
+            break;
+        }
+    }
+    if (defconfig) {
+        config_load(cfg, CFG_DEF_FILE);
+    }
+
     // parse arguments
+    optind = 1;
     while ((opt = getopt_long(argc, argv, short_opts, options, NULL)) != -1) {
         switch (opt) {
             case 'g':
@@ -147,6 +169,8 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                     exit(EXIT_FAILURE);
                 }
                 break;
+            case 'C':
+                break;
             case 'v':
                 print_version();
                 exit(EXIT_SUCCESS);
@@ -174,7 +198,7 @@ int main(int argc, char* argv[])
 
     setlocale(LC_ALL, "");
 
-    cfg = config_load();
+    cfg = config_create();
     argn = parse_cmdargs(argc, argv, cfg);
 
     srand(getpid());

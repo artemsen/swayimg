@@ -34,6 +34,9 @@ Keys are grouped into named sections. The section name appears on a line by
 itself, in square brackets. All keys after the section declaration are
 associated with that section.
 
+Special directive *include* allows to load another config file. The directive
+must contain the path or name of the file to load the configuration.
+
 Any option can be overridden using the *--config* argument in the command line,
 for instance: *swayimg  --config="general.mode=gallery"*.
 
@@ -141,7 +144,7 @@ Configuration specific to the viewer mode: _[viewer]_.
 *preload* = SIZE
 	Number of images to preload in a separate thread, _1_ by default.
 
-## Sleide show
+## Slide show
 
 Configuration specific to the slide show mode: _[slideshow]_.
 

@@ -7,17 +7,17 @@ TEST(ConfigLoader, Load)
 {
     testing::internal::CaptureStderr();
 
-    setenv("XDG_CONFIG_HOME", TEST_DATA_DIR, 1);
+    struct config* config = config_create();
+    ASSERT_TRUE(config);
+    ASSERT_TRUE(config_load(config, TEST_DATA_DIR "/config"));
 
-    struct config* config = config_load();
-    ASSERT_NE(config, nullptr);
     const struct config* general = config_section(config, CFG_GENERAL);
     ASSERT_NE(general, nullptr);
     EXPECT_STREQ(config_get(general, CFG_GNRL_MODE), "s p a c e s");
     EXPECT_STREQ(config_get(general, CFG_GNRL_APP_ID), "my_ap_id");
+
     config_free(config);
 
-    unsetenv("XDG_CONFIG_HOME");
     EXPECT_FALSE(testing::internal::GetCapturedStderr().empty());
 }
 

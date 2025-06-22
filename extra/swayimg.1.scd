@@ -79,6 +79,9 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 	Override configuration parameter, see _swayimgrc_(5) for a list of sections
 	and their parameters.
 
+*-C, --config-file*=_FILE_
+	Load configuration from specified _FILE_.
+
 # SWAY/HYPRLAND INTEGRATION
 
 Sway/Hyprland integration mode is automatically enabled if IPC for these

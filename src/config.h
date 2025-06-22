@@ -20,6 +20,9 @@ struct config {
     char name[1];                 ///< Section name (variable lenght)
 };
 
+// Name of default config file to load
+#define CFG_DEF_FILE "config"
+
 // Section names
 #define CFG_GENERAL        "general"
 #define CFG_VIEWER         "viewer"
@@ -92,16 +95,24 @@ struct config {
 #define CFG_FULLSCREEN  "fullscreen"
 
 /**
- * Load configuration from file.
+ * Create default configuration instance.
  * @return loaded config instance
  */
-struct config* config_load(void);
+struct config* config_create(void);
 
 /**
  * Free configuration instance.
  * @param cfg config instance
  */
 void config_free(struct config* cfg);
+
+/**
+ * Load configuration from file.
+ * @param cfg config instance
+ * @param name config file name or absolute/relative path to the file
+ * @return true if file was loaded
+ */
+bool config_load(struct config* cfg, const char* name);
 
 /**
  * Get section.

@@ -15,6 +15,7 @@ _arguments \
   '(-w --size)'{-w,--size=}'[set window size]:size:(parent image)' \
   '(-a --class)'{-a,--class=}'[set window class/app_id]:class' \
   '(-c --config)'{-c,--config=}'[set configuration parameter]:config' \
+  '(-C --config-file)'{-C,--config-file=}'[load config from file]' \
   '(-v --version)'{-v,--version}'[print version info and exit]' \
   '(-h --help)'{-h,--help}'[print help and exit]' \
   '*:file:_files'

@@ -13,10 +13,7 @@ class ConfigTest : public ::testing::Test {
 protected:
     ConfigTest()
     {
-        unsetenv("XDG_CONFIG_HOME");
-        unsetenv("XDG_CONFIG_DIRS");
-        unsetenv("HOME");
-        config = config_load();
+        config = config_create();
         EXPECT_TRUE(config);
     }
 
