@@ -123,9 +123,9 @@ static const struct configdef_kv def_keysv[] = {
     { "Shift+o",          "prev_frame"                               },
     { "o",                "next_frame"                               },
     { "c",                "skip_file"                                },
-    { "s",                "mode slideshow"                           },
     { "n",                "animation"                                },
     { "f",                "fullscreen"                               },
+    { "s",                "mode slideshow"                           },
     { "Return",           "mode gallery"                             },
     { "Left",             "step_left 10"                             },
     { "Right",            "step_right 10"                            },
@@ -170,7 +170,7 @@ static const struct configdef_kv def_keysv[] = {
 static const struct configdef_kv def_keyss[] = {
     { "F1",               "help"                                     },
     { "f",                "fullscreen"                               },
-    { "Return",           "mode gallery"                             },
+    { "Return",           "mode"                                     },
     { "Escape",           "exit"                                     },
     { "q",                "exit"                                     },
 };
@@ -187,6 +187,7 @@ static const struct configdef_kv def_keysg[] = {
     { "Next",             "page_down"                                },
     { "c",                "skip_file"                                },
     { "f",                "fullscreen"                               },
+    { "s",                "mode slideshow"                           },
     { "Return",           "mode viewer"                              },
     { "a",                "antialiasing"                             },
     { "r",                "reload"                                   },

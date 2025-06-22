@@ -226,7 +226,7 @@ MouseExtra = next_file
 [keys.slideshow]
 F1 = help
 f = fullscreen
-Return = mode gallery
+Return = mode
 Escape = exit
 q = exit
 
@@ -244,6 +244,7 @@ Down = step_down
 Prior = page_up
 Next = page_down
 c = skip_file
+s = mode slideshow
 f = fullscreen
 Return = mode viewer
 a = antialiasing

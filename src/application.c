@@ -93,10 +93,14 @@ void app_switch_mode(const char* name)
             return;
         }
     }
+    if (next == ctx.mcurr) {
+        return;
+    }
 
     // switch mode
     img = ctx.modes[ctx.mcurr].get_current();
     ctx.modes[ctx.mcurr].on_deactivate();
+    ctx.mprev = ctx.mcurr;
     ctx.mcurr = next;
     ctx.modes[ctx.mcurr].on_activate(img);
 
