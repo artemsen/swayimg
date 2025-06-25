@@ -158,6 +158,9 @@ bool layout_select(struct layout* lo, enum layout_dir dir)
             break;
         case layout_down:
             next = imglist_jump(lo->current, lo->columns);
+            if (!next) {
+                next = imglist_last();
+            }
             ++row;
             break;
         case layout_left:
