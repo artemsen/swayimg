@@ -54,7 +54,7 @@ TEST_F(ImageList, LoadFromFile)
 
     ASSERT_EQ(imglist_size(), static_cast<size_t>(3));
     EXPECT_STREQ(imglist_first()->source, "exec://1");
-    EXPECT_STREQ(imglist_next(imglist_first())->source, "exec://2");
+    EXPECT_STREQ(imglist_next(imglist_first(), false)->source, "exec://2");
     EXPECT_STREQ(imglist_last()->source, "exec://3");
 }
 
@@ -188,7 +188,7 @@ TEST_F(ImageList, SortNumeric)
     for (auto e : etalon) {
         ASSERT_TRUE(img);
         ASSERT_STREQ(img->source, e);
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 }
 
@@ -221,7 +221,7 @@ TEST_F(ImageList, SortNumericReverse)
     for (auto e : etalon) {
         ASSERT_TRUE(img);
         ASSERT_STREQ(img->source, e);
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 }
 
@@ -276,8 +276,9 @@ TEST_F(ImageList, Next)
     };
     ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_next(imglist_find("exec://1")), imglist_find("exec://2"));
-    EXPECT_EQ(imglist_next(imglist_find("exec://2")), nullptr);
+    EXPECT_EQ(imglist_next(imglist_find("exec://1"), false),
+              imglist_find("exec://2"));
+    EXPECT_EQ(imglist_next(imglist_find("exec://2"), false), nullptr);
 }
 
 TEST_F(ImageList, Prev)
@@ -291,14 +292,14 @@ TEST_F(ImageList, Prev)
     };
     ASSERT_TRUE(imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0])));
 
-    EXPECT_EQ(imglist_prev(imglist_find("exec://2")), imglist_find("exec://1"));
-    EXPECT_EQ(imglist_prev(imglist_find("exec://1")), nullptr);
+    EXPECT_EQ(imglist_prev(imglist_find("exec://2"), false),
+              imglist_find("exec://1"));
+    EXPECT_EQ(imglist_prev(imglist_find("exec://1"), false), nullptr);
 }
 
 TEST_F(ImageList, NextFile)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -314,15 +315,14 @@ TEST_F(ImageList, NextFile)
         imglist_find("exec://3"),
     };
 
-    EXPECT_EQ(imglist_next_file(img[0]), img[1]);
-    EXPECT_EQ(imglist_next_file(img[1]), img[2]);
-    EXPECT_EQ(imglist_next_file(img[2]), nullptr);
+    EXPECT_EQ(imglist_next(img[0], false), img[1]);
+    EXPECT_EQ(imglist_next(img[1], false), img[2]);
+    EXPECT_EQ(imglist_next(img[2], false), nullptr);
 }
 
 TEST_F(ImageList, NextFileLoop)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -338,15 +338,14 @@ TEST_F(ImageList, NextFileLoop)
         imglist_find("exec://3"),
     };
 
-    EXPECT_EQ(imglist_next_file(img[0]), img[1]);
-    EXPECT_EQ(imglist_next_file(img[1]), img[2]);
-    EXPECT_EQ(imglist_next_file(img[2]), img[0]);
+    EXPECT_EQ(imglist_next(img[0], true), img[1]);
+    EXPECT_EQ(imglist_next(img[1], true), img[2]);
+    EXPECT_EQ(imglist_next(img[2], true), img[0]);
 }
 
 TEST_F(ImageList, NextFileLoopSelf)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = { "exec://1" };
@@ -354,13 +353,12 @@ TEST_F(ImageList, NextFileLoopSelf)
         imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
     ASSERT_TRUE(img);
 
-    EXPECT_FALSE(imglist_next_file(img));
+    EXPECT_FALSE(imglist_next(img, false));
 }
 
 TEST_F(ImageList, PrevFile)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -375,15 +373,14 @@ TEST_F(ImageList, PrevFile)
         imglist_find("exec://2"),
         imglist_find("exec://3"),
     };
-    EXPECT_EQ(imglist_prev_file(img[0]), nullptr);
-    EXPECT_EQ(imglist_prev_file(img[2]), img[1]);
-    EXPECT_EQ(imglist_prev_file(img[1]), img[0]);
+    EXPECT_EQ(imglist_prev(img[0], false), nullptr);
+    EXPECT_EQ(imglist_prev(img[2], false), img[1]);
+    EXPECT_EQ(imglist_prev(img[1], false), img[0]);
 }
 
 TEST_F(ImageList, PrevFileLoop)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -398,15 +395,14 @@ TEST_F(ImageList, PrevFileLoop)
         imglist_find("exec://2"),
         imglist_find("exec://3"),
     };
-    EXPECT_EQ(imglist_prev_file(img[0]), img[2]);
-    EXPECT_EQ(imglist_prev_file(img[2]), img[1]);
-    EXPECT_EQ(imglist_prev_file(img[1]), img[0]);
+    EXPECT_EQ(imglist_prev(img[0], true), img[2]);
+    EXPECT_EQ(imglist_prev(img[2], true), img[1]);
+    EXPECT_EQ(imglist_prev(img[1], true), img[0]);
 }
 
 TEST_F(ImageList, PrevFileLoopSelf)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = { "exec://1" };
@@ -414,13 +410,12 @@ TEST_F(ImageList, PrevFileLoopSelf)
         imglist_load(imglist, sizeof(imglist) / sizeof(imglist[0]));
     ASSERT_TRUE(img);
 
-    ASSERT_EQ(imglist_prev_file(img), nullptr);
+    ASSERT_EQ(imglist_prev(img, false), nullptr);
 }
 
 TEST_F(ImageList, NextDir)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -437,16 +432,15 @@ TEST_F(ImageList, NextDir)
         imglist_find("exec://123/dir2/image3"),
         imglist_find("exec://123/dir2/image4"),
     };
-    EXPECT_EQ(imglist_next_dir(img[0]), img[2]);
-    EXPECT_EQ(imglist_next_dir(img[1]), img[2]);
-    EXPECT_EQ(imglist_next_dir(img[2]), nullptr);
-    EXPECT_EQ(imglist_next_dir(img[3]), nullptr);
+    EXPECT_EQ(imglist_next_parent(img[0], false), img[2]);
+    EXPECT_EQ(imglist_next_parent(img[1], false), img[2]);
+    EXPECT_EQ(imglist_next_parent(img[2], false), nullptr);
+    EXPECT_EQ(imglist_next_parent(img[3], false), nullptr);
 }
 
 TEST_F(ImageList, NextDirLoop)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -463,16 +457,15 @@ TEST_F(ImageList, NextDirLoop)
         imglist_find("exec://123/dir2/image3"),
         imglist_find("exec://123/dir2/image4"),
     };
-    EXPECT_EQ(imglist_next_dir(img[0]), img[2]);
-    EXPECT_EQ(imglist_next_dir(img[1]), img[2]);
-    EXPECT_EQ(imglist_next_dir(img[2]), img[0]);
-    EXPECT_EQ(imglist_next_dir(img[3]), img[0]);
+    EXPECT_EQ(imglist_next_parent(img[0], true), img[2]);
+    EXPECT_EQ(imglist_next_parent(img[1], true), img[2]);
+    EXPECT_EQ(imglist_next_parent(img[2], true), img[0]);
+    EXPECT_EQ(imglist_next_parent(img[3], true), img[0]);
 }
 
 TEST_F(ImageList, PrevDir)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_NO);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -489,16 +482,15 @@ TEST_F(ImageList, PrevDir)
         imglist_find("exec://123/dir2/image3"),
         imglist_find("exec://123/dir2/image4"),
     };
-    EXPECT_EQ(imglist_prev_dir(img[0]), nullptr);
-    EXPECT_EQ(imglist_prev_dir(img[1]), nullptr);
-    EXPECT_EQ(imglist_prev_dir(img[2]), img[1]);
-    EXPECT_EQ(imglist_prev_dir(img[3]), img[1]);
+    EXPECT_EQ(imglist_prev_parent(img[0], false), nullptr);
+    EXPECT_EQ(imglist_prev_parent(img[1], false), nullptr);
+    EXPECT_EQ(imglist_prev_parent(img[2], false), img[1]);
+    EXPECT_EQ(imglist_prev_parent(img[3], false), img[1]);
 }
 
 TEST_F(ImageList, PrevDirLoop)
 {
     config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
-    config_set(config, CFG_LIST, CFG_LIST_LOOP, CFG_YES);
     imglist_init(config);
 
     const char* const imglist[] = {
@@ -515,10 +507,10 @@ TEST_F(ImageList, PrevDirLoop)
         imglist_find("exec://123/dir2/image3"),
         imglist_find("exec://123/dir2/image4"),
     };
-    EXPECT_EQ(imglist_prev_dir(img[0]), img[3]);
-    EXPECT_EQ(imglist_prev_dir(img[1]), img[3]);
-    EXPECT_EQ(imglist_prev_dir(img[2]), img[1]);
-    EXPECT_EQ(imglist_prev_dir(img[3]), img[1]);
+    EXPECT_EQ(imglist_prev_parent(img[0], true), img[3]);
+    EXPECT_EQ(imglist_prev_parent(img[1], true), img[3]);
+    EXPECT_EQ(imglist_prev_parent(img[2], true), img[1]);
+    EXPECT_EQ(imglist_prev_parent(img[3], true), img[1]);
 }
 
 TEST_F(ImageList, GetRandom)

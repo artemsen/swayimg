@@ -112,7 +112,7 @@ TEST_F(Layout, BaseScheme)
         EXPECT_EQ(layout.thumbs[i].img, img);
         EXPECT_NE(layout.thumbs[i].x, static_cast<size_t>(0));
         EXPECT_NE(layout.thumbs[i].y, static_cast<size_t>(0));
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 }
 
@@ -331,7 +331,7 @@ TEST_F(Layout, ClearAllInvisible)
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(img->data);
         ASSERT_TRUE(pixmap_create(&img->data->thumbnail, pixmap_argb, 1, 1));
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 
     layout_clear(&layout, 0);
@@ -346,7 +346,7 @@ TEST_F(Layout, ClearAllInvisible)
                     expect ? 'Y' : 'N');
             FAIL();
         }
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 }
 
@@ -359,7 +359,7 @@ TEST_F(Layout, ClearLimited)
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(img->data);
         ASSERT_TRUE(pixmap_create(&img->data->thumbnail, pixmap_argb, 1, 1));
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 
     layout_clear(&layout, 10);
@@ -374,6 +374,6 @@ TEST_F(Layout, ClearLimited)
                     expect ? 'Y' : 'N');
             FAIL();
         }
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 }

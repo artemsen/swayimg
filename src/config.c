@@ -38,6 +38,7 @@ static const struct configdef_kv def_viewer[] = {
     { CFG_VIEW_SCALE,     "optimal"   },
     { CFG_VIEW_POSITION,  "center"    },
     { CFG_VIEW_AA,        "mks13"     },
+    { CFG_VIEW_LOOP,      CFG_YES     },
     { CFG_VIEW_HISTORY,   "1"         },
     { CFG_VIEW_PRELOAD,   "1"         },
 };
@@ -69,7 +70,6 @@ static const struct configdef_kv def_list[] = {
     { CFG_LIST_FROMFILE,  CFG_NO      },
     { CFG_LIST_ORDER,     "alpha"     },
     { CFG_LIST_REVERSE,   CFG_NO      },
-    { CFG_LIST_LOOP,      CFG_YES     },
     { CFG_LIST_RECURSIVE, CFG_NO      },
     { CFG_LIST_ALL,       CFG_NO      },
     { CFG_LIST_FSMON,     CFG_YES     },

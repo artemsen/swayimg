@@ -23,6 +23,7 @@ struct viewer {
     struct cache* preload; ///< Preloaded images
     pthread_t preload_tid; ///< Preload thread id
     bool preload_active;   ///< Preload in progress flag
+    bool loop_list;        ///< Loop image list
 };
 
 /** Global viewer context. */
@@ -163,7 +164,8 @@ static struct image* open_image(struct image* img, bool forward)
         }
 
         // skip and jump to the nearest entry
-        next = forward ? imglist_next_file(img) : imglist_prev_file(img);
+        next = forward ? imglist_next(img, ctx.loop_list)
+                       : imglist_prev(img, ctx.loop_list);
         if (next == ctx.vp.image) {
             next = NULL;
         } else {
@@ -208,17 +210,17 @@ static bool next_image(enum action_type direction)
             next = imglist_last();
             break;
         case action_prev_dir:
-            next = imglist_prev_dir(ctx.vp.image);
+            next = imglist_prev_parent(ctx.vp.image, ctx.loop_list);
             break;
         case action_next_dir:
-            next = imglist_next_dir(ctx.vp.image);
+            next = imglist_next_parent(ctx.vp.image, ctx.loop_list);
             forward = true;
             break;
         case action_prev_file:
-            next = imglist_prev_file(ctx.vp.image);
+            next = imglist_prev(ctx.vp.image, ctx.loop_list);
             break;
         case action_next_file:
-            next = imglist_next_file(ctx.vp.image);
+            next = imglist_next(ctx.vp.image, ctx.loop_list);
             forward = true;
             break;
         case action_rand_file:
@@ -277,10 +279,10 @@ static bool skip_current(bool remove)
     struct image* curr = ctx.vp.image;
     struct image* next;
 
-    next = imglist_next_file(ctx.vp.image);
+    next = imglist_next(ctx.vp.image, false);
     next = open_image(next, true);
     if (!next) {
-        next = imglist_prev_file(ctx.vp.image);
+        next = imglist_prev(ctx.vp.image, false);
         next = open_image(next, false);
     }
 
@@ -638,6 +640,9 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
     // init viewport
     viewport_init(&ctx.vp, section);
     ctx.vp.animation_cb = on_animation;
+
+    // image list loop mode
+    ctx.loop_list = config_get_bool(section, CFG_VIEW_LOOP);
 
     // init history and preloads caches
     value = config_get_num(section, CFG_VIEW_HISTORY, 0, 1024);

@@ -132,11 +132,9 @@ Configuration specific to the viewer mode: _[viewer]_.
 	- _bicubic_: bicubic with the Catmull-Rom spline;
 	- _mks13_: Magic Kernel with the 2013 Sharp approximation (default).
 
-*slideshow* = _yes_|_no_
-	Run slideshow at startup, _no_ by default.
-
-*slideshow_time* = SECONDS
-	Slideshow image duration in seconds, _3_ by default.
+*loop* = _yes_|_no_
+	Loop image list: jump to first image when end of list is reached, _yes_ by
+	default.
 
 *history* = SIZE
 	Number of previously viewed images to store in cache, _1_ by default.
@@ -227,9 +225,6 @@ Configuration of the image list: _[list]_.
 
 *reverse* = _yes_|_no_
 	Reverse sort order, _no_ by default.
-
-*loop* = _yes_|_no_
-	Looping file list mode, _yes_ by default.
 
 *recursive* = _yes_|_no_
 	Read directories recursively, _no_ by default.

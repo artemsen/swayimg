@@ -75,44 +75,34 @@ struct image* imglist_last(void);
 /**
  * Get next image entry.
  * @param img start image entry
- * @return next nearest image instance or NULL if `img` is the last entry
+ * @param loop enable/disable loop mode
+ * @return next nearest image instance or NULL if not found
  */
-struct image* imglist_next(struct image* img);
+struct image* imglist_next(struct image* img, bool loop);
 
 /**
  * Get previous image entry.
  * @param img start image entry
- * @return previous nearest image instance or NULL if `img` is the first entry
+ * @param loop enable/disable loop mode
+ * @return previous nearest image instance or NULL if not found
  */
-struct image* imglist_prev(struct image* img);
-
-/**
- * Get next image entry given the loop setting.
- * @param img start image entry
- * @return next nearest image instance or NULL next instance not found
- */
-struct image* imglist_next_file(struct image* img);
-
-/**
- * Get previous image entry given the loop setting.
- * @param img start image entry
- * @return previous nearest image instance or NULL previous instance not found
- */
-struct image* imglist_prev_file(struct image* img);
+struct image* imglist_prev(struct image* img, bool loop);
 
 /**
  * Get next image entry with different parent (another dir).
  * @param img start image entry
+ * @param loop enable/disable loop mode
  * @return next nearest image instance or NULL next instance not found
  */
-struct image* imglist_next_dir(struct image* img);
+struct image* imglist_next_parent(struct image* img, bool loop);
 
 /**
  * Get previous image entry with different parent (another dir).
  * @param img start image entry
+ * @param loop enable/disable loop mode
  * @return next previous image instance or NULL next instance not found
  */
-struct image* imglist_prev_dir(struct image* img);
+struct image* imglist_prev_parent(struct image* img, bool loop);
 
 /**
  * Get random image entry.

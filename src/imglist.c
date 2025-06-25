@@ -50,7 +50,6 @@ struct image_list {
 
     enum list_order order; ///< File list order
     bool reverse;          ///< Reverse order flag
-    bool loop;             ///< File list loop mode
     bool recursive;        ///< Read directories recursively
     bool all_files;        ///< Open all files from the same directory
     bool from_file;        ///< Interpret input files as lists
@@ -539,13 +538,13 @@ static void on_fsevent(enum fsevent type, const char* path)
 }
 
 /**
- * Get next image with different parent (parent dir).
+ * Get nearest image with different parent (dir).
  * @param img start entry
  * @param loop enable/disable loop mode
  * @param forward direction (forward/backward)
  * @return image instance or NULL if not found
  */
-static struct image* get_next_parent(struct image* img, bool loop, bool forward)
+static struct image* get_diff_parent(struct image* img, bool loop, bool forward)
 {
     const char* cur_src = img->source;
     const char* cur_delim = strrchr(cur_src, '/');
@@ -559,17 +558,11 @@ static struct image* get_next_parent(struct image* img, bool loop, bool forward)
         size_t it_len;
 
         if (forward) {
-            it = list_next(it);
-            if (!it && loop) {
-                it = ctx.images;
-            }
+            it = imglist_next(it, loop);
         } else {
-            it = list_prev(it);
-            if (!it && loop) {
-                it = list_get_last(ctx.images);
-            }
+            it = imglist_prev(it, loop);
         }
-        if (!it || it == img) {
+        if (!it) {
             break;
         }
 
@@ -594,7 +587,6 @@ void imglist_init(const struct config* cfg)
     ctx.order = config_get_oneof(section, CFG_LIST_ORDER, order_names,
                                  ARRAY_SIZE(order_names));
     ctx.reverse = config_get_bool(section, CFG_LIST_REVERSE);
-    ctx.loop = config_get_bool(section, CFG_LIST_LOOP);
     ctx.recursive = config_get_bool(section, CFG_LIST_RECURSIVE);
     ctx.all_files = config_get_bool(section, CFG_LIST_ALL);
     ctx.from_file = config_get_bool(section, CFG_LIST_FROMFILE);
@@ -689,21 +681,11 @@ struct image* imglist_last(void)
     return list_get_last(ctx.images);
 }
 
-struct image* imglist_next(struct image* img)
+struct image* imglist_next(struct image* img, bool loop)
 {
-    return list_next(img);
-}
+    struct image* next = list_next(img);
 
-struct image* imglist_prev(struct image* img)
-{
-    return list_prev(img);
-}
-
-struct image* imglist_next_file(struct image* img)
-{
-    struct image* next = imglist_next(img);
-
-    if (!next && ctx.loop) {
+    if (!next && loop) {
         next = ctx.images;
         if (next) {
             if (next == img) {
@@ -715,11 +697,11 @@ struct image* imglist_next_file(struct image* img)
     return next;
 }
 
-struct image* imglist_prev_file(struct image* img)
+struct image* imglist_prev(struct image* img, bool loop)
 {
-    struct image* prev = imglist_prev(img);
+    struct image* prev = list_prev(img);
 
-    if (!prev && ctx.loop) {
+    if (!prev && loop) {
         prev = list_get_last(ctx.images);
         if (prev) {
             if (prev == img) {
@@ -731,14 +713,14 @@ struct image* imglist_prev_file(struct image* img)
     return prev;
 }
 
-struct image* imglist_next_dir(struct image* img)
+struct image* imglist_next_parent(struct image* img, bool loop)
 {
-    return get_next_parent(img, ctx.loop, true);
+    return get_diff_parent(img, loop, true);
 }
 
-struct image* imglist_prev_dir(struct image* img)
+struct image* imglist_prev_parent(struct image* img, bool loop)
 {
-    return get_next_parent(img, ctx.loop, false);
+    return get_diff_parent(img, loop, false);
 }
 
 struct image* imglist_rand(struct image* img)

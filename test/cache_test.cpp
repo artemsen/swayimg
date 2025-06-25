@@ -54,18 +54,18 @@ TEST_F(Cache, Put)
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(image_alloc_frame(img->data, pixmap_argb, 1, 1));
         ASSERT_TRUE(cache_put(cache, img));
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 
     img = imglist_first();
     EXPECT_FALSE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_FALSE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
 }
 
@@ -81,20 +81,20 @@ TEST_F(Cache, Trim)
         img->data = static_cast<struct imgdata*>(calloc(1, sizeof(*img->data)));
         ASSERT_TRUE(image_alloc_frame(img->data, pixmap_argb, 1, 1));
         ASSERT_TRUE(cache_put(cache, img));
-        img = imglist_next(img);
+        img = imglist_next(img, false);
     }
 
     cache_trim(cache, 3);
 
     img = imglist_first();
     EXPECT_FALSE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_FALSE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
-    img = imglist_next(img);
+    img = imglist_next(img, false);
     EXPECT_TRUE(image_has_frames(img));
 }
 

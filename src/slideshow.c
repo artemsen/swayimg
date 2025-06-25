@@ -49,18 +49,15 @@ static void preloader(__attribute__((unused)) void* data)
 
     imglist_lock();
 
-    img = imglist_next(ctx.vp.image);
-    if (!img) {
-        img = imglist_first();
-    }
+    img = imglist_next(ctx.vp.image, true);
     while (img && !ctx.next) {
         if (image_has_frames(img) || image_load(img) == imgload_success) {
             ctx.next = img;
         } else {
             struct image* skip = img;
-            img = imglist_next(skip);
+            img = imglist_next(skip, false);
             if (!img) {
-                img = imglist_prev(skip);
+                img = imglist_prev(skip, false);
             }
             imglist_remove(skip);
             if (!img) {

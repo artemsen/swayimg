@@ -47,6 +47,8 @@ scale = optimal
 position = center
 # Anti-aliasing mode (none/box/bilinear/bicubic/mks13)
 antialiasing = mks13
+# Loop image list: jump to first image when end of list is reached (yes/no)
+loop = yes
 # Number of previously viewed images to store in cache
 history = 1
 # Number of preloaded images (read ahead)
@@ -104,8 +106,6 @@ shadow = #000000ff
 order = alpha
 # Reverse order (yes/no)
 reverse = no
-# Looping list of images (yes/no)
-loop = yes
 # Read directories recursively (yes/no)
 recursive = no
 # Add files from the same directory as the first file (yes/no)

@@ -164,7 +164,7 @@ static void clear_thumbnails(bool all)
         struct image* img = imglist_first();
         while (img) {
             image_free(img, IMGDATA_THUMB);
-            img = imglist_next(img);
+            img = imglist_next(img, false);
         }
     } else if (ctx.cache) {
         layout_update(&ctx.layout);

@@ -286,9 +286,9 @@ static struct image* create_imglist(const char* const* sources, size_t num)
     // try to load first available image
     while (image && image_load(image) != imgload_success) {
         struct image* skip = image;
-        image = imglist_next(skip);
+        image = imglist_next(skip, false);
         if (!image) {
-            image = imglist_prev(skip);
+            image = imglist_prev(skip, false);
         }
         imglist_remove(skip);
     }
