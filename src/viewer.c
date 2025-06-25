@@ -334,7 +334,7 @@ static void move_image(enum vp_move dir, const char* params)
         if (str_to_num(params, 0, &val, 0) && val > 0 && val <= 1000) {
             step = val;
         } else {
-            fprintf(stderr, "Invalid move step: \"%s\"\n", params);
+            info_update(info_status, "Invalid move step: \"%s\"\n", params);
         }
     }
 

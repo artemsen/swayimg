@@ -347,86 +347,138 @@ Predefined names for mouse buttons/scroll:
 
 # Actions
 
-*none* Dummy, can be used to remove a built-in action.
+*none*
+	Dummy, does nothing. Can be used to remove default key bindings.
 
-*help* Show/hide help.
+*help*
+	Show/hide help.
 
-*first_file* Go to the first file.
+*first_file*
+	Viewer/Gallery modes only.
+	Go to the first file.
 
-*last_file* Go to the last file.
+*last_file*
+	Viewer/Gallery modes only.
+	Go to the last file.
 
-*prev_dir* (Viewer mode only) Go to previous directory.
+*prev_dir*
+	Viewer mode only.
+	Go to previous directory.
 
-*next_dir* (Viewer mode only) Go to next directory.
+*next_dir*
+	Viewer mode only.
+	Go to next directory.
 
-*prev_file* Go to previous file.
+*prev_file*
+	Viewer/Gallery modes only.
+	Go to previous file.
 
-*next_file* Go to next file.
+*next_file*
+	Viewer/Gallery modes only.
+	Go to next file.
 
-*rand_file* (Viewer mode only) Go to random file.
+*rand_file*
+	Viewer mode only.
+	Go to random file.
 
-*step_left* (Gallery mode only) Select previous image.
+*step_left*
+	Gallery mode only.
+	Select previous image.
 
-*step_right* (Gallery mode only) Select image above.
+*step_right*
+	Gallery mode only.
+	Select next image.
 
-*step_up* (Gallery mode only) Select image above.
+*step_up*
+	Gallery mode only.
+	Select image above.
 
-*step_down* (Gallery mode only) Select image below.
+*step_down*
+	Gallery mode only.
+	Select image below.
 
-*page_up* (Gallery mode only) Scroll page up.
+*page_up*
+	Gallery mode only.
+	Scroll page up.
 
-*page_down* (Gallery mode only) Scroll page down.
+*page_down*
+	Gallery mode only.
+	Scroll page down.
 
-*skip_file* Skip the current file (remove it from the image list).
+*skip_file*
+	Viewer/Gallery modes only.
+	Skip the current file (remove it from the image list).
 
-*prev_frame* (Viewer mode only) Show previous frame.
+*prev_frame*
+	Viewer mode only.
+	Show previous frame.
 
-*next_frame* (Viewer mode only) Show next frame.
+*next_frame*
+	Viewer mode only.
+	Show next frame.
 
-*animation* (Viewer mode only) Start/stop animation.
+*animation*
+	Viewer mode only.
+	Stop/continue animation.
 
-*slideshow* (Viewer mode only) Start/stop slideshow.
-
-*fullscreen* Toggle full-screen mode.
+*fullscreen*
+	Toggle full-screen mode.
 
 *mode* [_viewer_|_slideshow_|_gallery_]
 	Switch between modes. Empty value to switch to previous mode.
 
 *step_left* [PERCENT]
-	(Viewer mode only) Move viewport left, default is _10%_.
+	Viewer mode only.
+	Move viewport left, default is _10%_.
 
 *step_right* [PERCENT]
-	(Viewer mode only) Move viewport right, default is _10%_.
+	Viewer mode only.
+	Move viewport right, default is _10%_.
 
 *step_up* [PERCENT]
-	(Viewer mode only) Move viewport up, default is _10%_;
+	Viewer mode only.
+	Move viewport up, default is _10%_;
 
 *step_down* [PERCENT]
-	(Viewer mode only) Move viewport down, default is _10%_;
+	Viewer mode only.
+	Move viewport down, default is _10%_;
 
 *zoom* [SCALE]
-	(Viewer mode only) Manage scaling, _SCALE_ is:
+	Viewer mode only.
+	Manage scaling, _SCALE_ is:
 	- one of the *viewer.scale* modes (_fit_/_fill_/etc);
 	- percentage number with + or - sign (e.g. _+10_) to zoom in or out;
 	- absolute value in percentage to set the scale, e.g. _200_;
 	- empty value to switch to the next available scaling mode.
 
-*rotate_left* (Viewer mode only) Rotate image anticlockwise.
+*rotate_left*
+	Viewer mode only.
+	Rotate image anticlockwise.
 
-*rotate_right* (Viewer mode only) Rotate image clockwise.
+*rotate_right*
+	Viewer mode only.
+	Rotate image clockwise.
 
-*flip_vertical* (Viewer mode only) Flip image vertically.
+*flip_vertical*
+	Viewer mode only.
+	Flip image vertically.
 
-*flip_horizontal* (Viewer mode only) Flip image horizontally.
+*flip_horizontal*
+	Viewer mode only.
+	Flip image horizontally.
 
 *thumb* SIZE
-	(Gallery mode only) Resize thumbnails, _SIZE_ is:
+	Gallery mode only.
+	Resize thumbnails, _SIZE_ is:
 	- delta in pixels with + or - sign (e.g. _+10_);
 	- absolute size in pixels, e.g. _200_.
 
-*reload* Reset cache and reload current image.
+*reload*
+	Viewer/Gallery modes only.
+	Reset cache and reload current image.
 
 *antialiasing* [MODE]
+	Viewer/Gallery modes only.
 	Set anti-aliasing mode or switch if on/off, _MODE_ is:
 	- one of the *viewer.antialiasing* modes (_none_/_mks13_/etc);
 	- empty value to toggle AA on/off.
@@ -445,15 +497,22 @@ Predefined names for mouse buttons/scroll:
 	- Niri: `niri msg action spawn ...`.
 
 *drag*
-	(Mouse buttons in viewer mode only) Set the button for drag operation.
+	Mouse buttons in viewer mode only.
+	Set the button for drag operation.
 
 *export* FILE
+	Viewer mode only.
 	Export currently displayed image to PNG file.
 
-*status* TEXT
-	Set and show status text.
+*pause*
+	Slideshow mode only.
+	Pause/continue slideshow.
 
-*exit* Exit the application.
+*status* TEXT
+	Display text in status field.
+
+*exit*
+	Exit the application.
 
 # EXAMPLES
 Sample file is available on the project repository:

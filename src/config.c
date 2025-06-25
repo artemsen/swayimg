@@ -169,6 +169,8 @@ static const struct configdef_kv def_keysv[] = {
 
 static const struct configdef_kv def_keyss[] = {
     { "F1",               "help"                                     },
+    { "Space",            "pause"                                    },
+    { "i",                "info"                                     },
     { "f",                "fullscreen"                               },
     { "Return",           "mode"                                     },
     { "Escape",           "exit"                                     },

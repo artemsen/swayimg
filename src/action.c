@@ -49,6 +49,7 @@ static const char* action_names[] = {
     [action_info] = "info",
     [action_exec] = "exec",
     [action_export] = "export",
+    [action_pause] = "pause",
     [action_status] = "status",
     [action_exit] = "exit",
 };

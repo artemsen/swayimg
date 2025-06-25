@@ -25,6 +25,7 @@ struct slideshow {
 
     int timer_fd;    ///< Timer file
     size_t duration; ///< Slideshow image display time (seconds)
+    bool enabled;    ///< Slideshow state (in progress/paused)
 };
 
 /** Global slideshow context. */
@@ -156,6 +157,12 @@ static void handle_action(const struct action* action)
         case action_redraw:
             redraw();
             break;
+        case action_pause:
+            ctx.enabled = !ctx.enabled;
+            timer_ctl(ctx.enabled);
+            info_update(info_status, ctx.enabled ? "Continue" : "Pause");
+            redraw();
+            break;
         default:
             break;
     }
@@ -170,6 +177,8 @@ static struct image* get_current(void)
 /** Mode handler: activate viewer. */
 static void on_activate(struct image* image)
 {
+    ctx.enabled = true;
+
     if (image_has_frames(image) || image_load(image) == imgload_success) {
         on_resize();
         switch_image(image);

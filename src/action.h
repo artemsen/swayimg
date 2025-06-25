@@ -43,6 +43,7 @@ enum action_type {
     action_info,
     action_exec,
     action_export,
+    action_pause,
     action_status,
     action_exit,
 };

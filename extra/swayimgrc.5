@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-22" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-25" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -552,48 +552,123 @@ Predefined names for mouse buttons/scroll:
 .PP
 .SH Actions
 .PP
-\fBnone\fR Dummy, can be used to remove a built-in action.\&
+\fBnone\fR
+.RS 4
+Dummy, does nothing.\& Can be used to remove default key bindings.\&
 .PP
-\fBhelp\fR Show/hide help.\&
+.RE
+\fBhelp\fR
+.RS 4
+Show/hide help.\&
 .PP
-\fBfirst_file\fR Go to the first file.\&
+.RE
+\fBfirst_file\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Go to the first file.\&
 .PP
-\fBlast_file\fR Go to the last file.\&
+.RE
+\fBlast_file\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Go to the last file.\&
 .PP
-\fBprev_dir\fR (Viewer mode only) Go to previous directory.\&
+.RE
+\fBprev_dir\fR
+.RS 4
+Viewer mode only.\&
+Go to previous directory.\&
 .PP
-\fBnext_dir\fR (Viewer mode only) Go to next directory.\&
+.RE
+\fBnext_dir\fR
+.RS 4
+Viewer mode only.\&
+Go to next directory.\&
 .PP
-\fBprev_file\fR Go to previous file.\&
+.RE
+\fBprev_file\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Go to previous file.\&
 .PP
-\fBnext_file\fR Go to next file.\&
+.RE
+\fBnext_file\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Go to next file.\&
 .PP
-\fBrand_file\fR (Viewer mode only) Go to random file.\&
+.RE
+\fBrand_file\fR
+.RS 4
+Viewer mode only.\&
+Go to random file.\&
 .PP
-\fBstep_left\fR (Gallery mode only) Select previous image.\&
+.RE
+\fBstep_left\fR
+.RS 4
+Gallery mode only.\&
+Select previous image.\&
 .PP
-\fBstep_right\fR (Gallery mode only) Select image above.\&
+.RE
+\fBstep_right\fR
+.RS 4
+Gallery mode only.\&
+Select next image.\&
 .PP
-\fBstep_up\fR (Gallery mode only) Select image above.\&
+.RE
+\fBstep_up\fR
+.RS 4
+Gallery mode only.\&
+Select image above.\&
 .PP
-\fBstep_down\fR (Gallery mode only) Select image below.\&
+.RE
+\fBstep_down\fR
+.RS 4
+Gallery mode only.\&
+Select image below.\&
 .PP
-\fBpage_up\fR (Gallery mode only) Scroll page up.\&
+.RE
+\fBpage_up\fR
+.RS 4
+Gallery mode only.\&
+Scroll page up.\&
 .PP
-\fBpage_down\fR (Gallery mode only) Scroll page down.\&
+.RE
+\fBpage_down\fR
+.RS 4
+Gallery mode only.\&
+Scroll page down.\&
 .PP
-\fBskip_file\fR Skip the current file (remove it from the image list).\&
+.RE
+\fBskip_file\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Skip the current file (remove it from the image list).\&
 .PP
-\fBprev_frame\fR (Viewer mode only) Show previous frame.\&
+.RE
+\fBprev_frame\fR
+.RS 4
+Viewer mode only.\&
+Show previous frame.\&
 .PP
-\fBnext_frame\fR (Viewer mode only) Show next frame.\&
+.RE
+\fBnext_frame\fR
+.RS 4
+Viewer mode only.\&
+Show next frame.\&
 .PP
-\fBanimation\fR (Viewer mode only) Start/stop animation.\&
+.RE
+\fBanimation\fR
+.RS 4
+Viewer mode only.\&
+Stop/continue animation.\&
 .PP
-\fBslideshow\fR (Viewer mode only) Start/stop slideshow.\&
+.RE
+\fBfullscreen\fR
+.RS 4
+Toggle full-screen mode.\&
 .PP
-\fBfullscreen\fR Toggle full-screen mode.\&
-.PP
+.RE
 \fBmode\fR [\fIviewer\fR|\fIslideshow\fR|\fIgallery\fR]
 .RS 4
 Switch between modes.\& Empty value to switch to previous mode.\&
@@ -601,27 +676,32 @@ Switch between modes.\& Empty value to switch to previous mode.\&
 .RE
 \fBstep_left\fR [PERCENT]
 .RS 4
-(Viewer mode only) Move viewport left, default is \fI10%\fR.\&
+Viewer mode only.\&
+Move viewport left, default is \fI10%\fR.\&
 .PP
 .RE
 \fBstep_right\fR [PERCENT]
 .RS 4
-(Viewer mode only) Move viewport right, default is \fI10%\fR.\&
+Viewer mode only.\&
+Move viewport right, default is \fI10%\fR.\&
 .PP
 .RE
 \fBstep_up\fR [PERCENT]
 .RS 4
-(Viewer mode only) Move viewport up, default is \fI10%\fR;
+Viewer mode only.\&
+Move viewport up, default is \fI10%\fR;
 .PP
 .RE
 \fBstep_down\fR [PERCENT]
 .RS 4
-(Viewer mode only) Move viewport down, default is \fI10%\fR;
+Viewer mode only.\&
+Move viewport down, default is \fI10%\fR;
 .PP
 .RE
 \fBzoom\fR [SCALE]
 .RS 4
-(Viewer mode only) Manage scaling, \fISCALE\fR is:
+Viewer mode only.\&
+Manage scaling, \fISCALE\fR is:
 .PD 0
 .IP \(bu 4
 one of the \fBviewer.\&scale\fR modes (\fIfit\fR/\fIfill\fR/etc);
@@ -634,17 +714,34 @@ empty value to switch to the next available scaling mode.\&
 .PD
 .PP
 .RE
-\fBrotate_left\fR (Viewer mode only) Rotate image anticlockwise.\&
+\fBrotate_left\fR
+.RS 4
+Viewer mode only.\&
+Rotate image anticlockwise.\&
 .PP
-\fBrotate_right\fR (Viewer mode only) Rotate image clockwise.\&
+.RE
+\fBrotate_right\fR
+.RS 4
+Viewer mode only.\&
+Rotate image clockwise.\&
 .PP
-\fBflip_vertical\fR (Viewer mode only) Flip image vertically.\&
+.RE
+\fBflip_vertical\fR
+.RS 4
+Viewer mode only.\&
+Flip image vertically.\&
 .PP
-\fBflip_horizontal\fR (Viewer mode only) Flip image horizontally.\&
+.RE
+\fBflip_horizontal\fR
+.RS 4
+Viewer mode only.\&
+Flip image horizontally.\&
 .PP
+.RE
 \fBthumb\fR SIZE
 .RS 4
-(Gallery mode only) Resize thumbnails, \fISIZE\fR is:
+Gallery mode only.\&
+Resize thumbnails, \fISIZE\fR is:
 .PD 0
 .IP \(bu 4
 delta in pixels with + or - sign (e.\&g.\& \fI+10\fR);
@@ -653,10 +750,15 @@ absolute size in pixels, e.\&g.\& \fI200\fR.\&
 .PD
 .PP
 .RE
-\fBreload\fR Reset cache and reload current image.\&
+\fBreload\fR
+.RS 4
+Viewer/Gallery modes only.\&
+Reset cache and reload current image.\&
 .PP
+.RE
 \fBantialiasing\fR [MODE]
 .RS 4
+Viewer/Gallery modes only.\&
 Set anti-aliasing mode or switch if on/off, \fIMODE\fR is:
 .PD 0
 .IP \(bu 4
@@ -690,21 +792,32 @@ Niri: `niri msg action spawn .\&.\&.\&`.\&
 .RE
 \fBdrag\fR
 .RS 4
-(Mouse buttons in viewer mode only) Set the button for drag operation.\&
+Mouse buttons in viewer mode only.\&
+Set the button for drag operation.\&
 .PP
 .RE
 \fBexport\fR FILE
 .RS 4
+Viewer mode only.\&
 Export currently displayed image to PNG file.\&
+.PP
+.RE
+\fBpause\fR
+.RS 4
+Slideshow mode only.\&
+Pause/continue slideshow.\&
 .PP
 .RE
 \fBstatus\fR TEXT
 .RS 4
-Set and show status text.\&
+Display text in status field.\&
 .PP
 .RE
-\fBexit\fR Exit the application.\&
+\fBexit\fR
+.RS 4
+Exit the application.\&
 .PP
+.RE
 .SH EXAMPLES
 Sample file is available on the project repository:
 https://github.\&com/artemsen/swayimg/blob/master/extra/swayimgrc or

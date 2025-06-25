@@ -225,6 +225,8 @@ MouseExtra = next_file
 ################################################################################
 [keys.slideshow]
 F1 = help
+Space = pause
+i = info
 f = fullscreen
 Return = mode
 Escape = exit
