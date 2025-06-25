@@ -36,13 +36,13 @@ static int read_stream(int fd, struct array** data)
         if (*data) {
             struct array* arr = arr_append(*data, buf, read_sz);
             if (!arr) {
-                return ENOMEM;
+                return -ENOMEM;
             }
             *data = arr;
         } else {
             *data = arr_create(read_sz, sizeof(uint8_t));
             if (!*data) {
-                return ENOMEM;
+                return -ENOMEM;
             }
             memcpy(arr_nth(*data, 0), buf, read_sz);
         }
