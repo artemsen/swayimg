@@ -45,35 +45,30 @@ static inline void timer_ctl(bool restart)
 static void preloader(__attribute__((unused)) void* data)
 {
     struct image* img;
-    assert(!ctx.next);
 
     imglist_lock();
 
     img = imglist_next(ctx.vp.image, true);
-    while (img && !ctx.next) {
+    while (img) {
         if (image_has_frames(img) || image_load(img) == imgload_success) {
-            ctx.next = img;
+            break;
         } else {
             struct image* skip = img;
-            img = imglist_next(skip, false);
-            if (!img) {
-                img = imglist_prev(skip, false);
-            }
+            img = imglist_next(img, true);
             imglist_remove(skip);
-            if (!img) {
-                img = imglist_first();
-            }
         }
     }
+
+    ctx.next = img;
 
     imglist_unlock();
 }
 
 /**
- * Switch to the next image.
- * @param img next image to show
+ * Set currently displayed image.
+ * @param img image to show
  */
-static void switch_image(struct image* img)
+static void set_current_image(struct image* img)
 {
     struct image* curr = ctx.vp.image;
 
@@ -96,11 +91,82 @@ static void switch_image(struct image* img)
     ui_set_ctype(viewport_anim_stat(&ctx.vp));
 
     // add task to load next image
-    assert(!ctx.next);
+    if (ctx.next && ctx.next != img) {
+        image_free(ctx.next, IMGDATA_FRAMES);
+    }
     tpool_add_task(preloader, NULL, NULL);
 
     // restart timer
-    timer_ctl(true);
+    if (ctx.enabled) {
+        timer_ctl(true);
+    }
+
+    app_redraw();
+}
+
+/**
+ * Open nearest image to the current one.
+ * @param direction next image position
+ */
+static void open_nearest_image(enum action_type direction)
+{
+    struct image* img;
+
+    imglist_lock();
+
+    switch (direction) {
+        case action_first_file:
+            img = imglist_first();
+            break;
+        case action_last_file:
+            img = imglist_last();
+            break;
+        case action_prev_dir:
+            img = imglist_prev_parent(ctx.vp.image, true);
+            break;
+        case action_next_dir:
+            img = imglist_next_parent(ctx.vp.image, true);
+            break;
+        case action_prev_file:
+            img = imglist_prev(ctx.vp.image, true);
+            break;
+        case action_next_file:
+            img = imglist_next(ctx.vp.image, true);
+            break;
+        case action_rand_file:
+            img = imglist_rand(ctx.vp.image);
+            break;
+        default:
+            assert(false && "unreachable code");
+            imglist_unlock();
+            return;
+    }
+
+    while (img) {
+        if (image_has_frames(img) || image_load(img) == imgload_success) {
+            break;
+        } else {
+            struct image* skip = img;
+            switch (direction) {
+                case action_first_file:
+                case action_next_dir:
+                case action_next_file:
+                case action_rand_file:
+                    img = imglist_next(img, false);
+                    break;
+                default:
+                    img = imglist_prev(img, false);
+                    break;
+            }
+            imglist_remove(skip);
+        }
+    }
+
+    imglist_unlock();
+
+    if (img) {
+        set_current_image(img);
+    }
 }
 
 /** Slideshow timer event handler. */
@@ -110,10 +176,7 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
         tpool_wait();
     }
     if (ctx.next) {
-        struct image* img = ctx.next;
-        ctx.next = NULL;
-        switch_image(img);
-        app_redraw();
+        set_current_image(ctx.next);
     } else {
         fprintf(stderr, "No more images to view, exit\n");
         app_exit(0);
@@ -151,6 +214,15 @@ static void on_resize(void)
 static void handle_action(const struct action* action)
 {
     switch (action->type) {
+        case action_first_file:
+        case action_last_file:
+        case action_prev_dir:
+        case action_next_dir:
+        case action_prev_file:
+        case action_next_file:
+        case action_rand_file:
+            open_nearest_image(action->type);
+            break;
         case action_redraw:
             redraw();
             break;
@@ -161,6 +233,9 @@ static void handle_action(const struct action* action)
             redraw();
             break;
         default:
+            info_update(info_status, "Unhandled action: %s",
+                        action_typename(action));
+            redraw();
             break;
     }
 }
@@ -178,7 +253,7 @@ static void on_activate(struct image* image)
 
     if (image_has_frames(image) || image_load(image) == imgload_success) {
         on_resize();
-        switch_image(image);
+        set_current_image(image);
     }
 }
 

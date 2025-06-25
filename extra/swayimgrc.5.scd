@@ -349,31 +349,27 @@ Predefined names for mouse buttons/scroll:
 	Show/hide help.
 
 *first_file*
-	Viewer/Gallery modes only.
 	Go to the first file.
 
 *last_file*
-	Viewer/Gallery modes only.
 	Go to the last file.
 
-*prev_dir*
-	Viewer mode only.
-	Go to previous directory.
-
-*next_dir*
-	Viewer mode only.
-	Go to next directory.
-
 *prev_file*
-	Viewer/Gallery modes only.
 	Go to previous file.
 
 *next_file*
-	Viewer/Gallery modes only.
 	Go to next file.
 
+*prev_dir*
+	Viewer/Slideshow modes only.
+	Go to previous directory.
+
+*next_dir*
+	Viewer/Slideshow modes only.
+	Go to next directory.
+
 *rand_file*
-	Viewer mode only.
+	Viewer/Slideshow modes only.
 	Go to random file.
 
 *step_left*

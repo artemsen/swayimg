@@ -169,6 +169,13 @@ static const struct configdef_kv def_keysv[] = {
 
 static const struct configdef_kv def_keyss[] = {
     { "F1",               "help"                                     },
+    { "Home",             "first_file"                               },
+    { "End",              "last_file"                                },
+    { "Prior",            "prev_file"                                },
+    { "Next",             "next_file"                                },
+    { "Shift+r",          "rand_file"                                },
+    { "Shift+d",          "prev_dir"                                 },
+    { "d",                "next_dir"                                 },
     { "Space",            "pause"                                    },
     { "i",                "info"                                     },
     { "f",                "fullscreen"                               },
