@@ -552,7 +552,7 @@ static void on_resize(void)
 }
 
 /** Mode handler: apply action. */
-static void handle_action(const struct action* action)
+static bool handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_antialiasing:
@@ -585,8 +585,9 @@ static void handle_action(const struct action* action)
             thumb_resize(action->params);
             break;
         default:
-            break;
+            return false;
     }
+    return true;
 }
 
 /** Mode handler: mouse move. */

@@ -62,8 +62,9 @@ struct mode {
     /**
      * Handle action.
      * @param action action to apply
+     * @return true if action was handled
      */
-    void (*handle_action)(const struct action* action);
+    bool (*handle_action)(const struct action* action);
 
     /**
      * Get currently showed/selected image.

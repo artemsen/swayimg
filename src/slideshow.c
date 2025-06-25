@@ -211,7 +211,7 @@ static void on_resize(void)
 }
 
 /** Mode handler: apply action. */
-static void handle_action(const struct action* action)
+static bool handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_first_file:
@@ -230,14 +230,12 @@ static void handle_action(const struct action* action)
             ctx.enabled = !ctx.enabled;
             timer_ctl(ctx.enabled);
             info_update(info_status, ctx.enabled ? "Continue" : "Pause");
-            redraw();
+            app_redraw();
             break;
         default:
-            info_update(info_status, "Unhandled action: %s",
-                        action_typename(action));
-            redraw();
-            break;
+            return false;
     }
+    return true;
 }
 
 /** Mode handler: get currently viewed image. */

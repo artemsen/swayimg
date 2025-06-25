@@ -506,7 +506,7 @@ static bool on_mouse_click(uint8_t mods, uint32_t btn,
 }
 
 /** Mode handler: apply action. */
-static void handle_action(const struct action* action)
+static bool handle_action(const struct action* action)
 {
     switch (action->type) {
         case action_first_file:
@@ -589,8 +589,9 @@ static void handle_action(const struct action* action)
             app_redraw();
             break;
         default:
-            break;
+            return false;
     }
+    return true;
 }
 
 /** Mode handler: get currently viewed image. */

@@ -119,7 +119,11 @@ void mode_handle(struct mode* mode, const struct action* action)
             }
             break;
         default:
-            mode->handle_action(action);
+            if (!mode->handle_action(action)) {
+                info_update(info_status, "Unhandled action: %s",
+                            action_typename(action));
+                app_redraw();
+            }
             break;
     }
 }
