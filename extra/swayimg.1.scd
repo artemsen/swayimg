@@ -75,6 +75,13 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 *-a, --class*=_NAME_
 	Set window class/app_id.
 
+*-i, --ipc*=_FILE_
+	Start IPC server based on UNIX sockets. _FILE_ must point to the UNIX socket
+	file to create.
+	The IPC protocol is a simple text-based one-way protocol that allows
+	clients to submit actions for execution. For a list of actions and their
+	parameters, see _swayimgrc_(5).
+
 *-c, --config*=_SECTION.KEY=VALUE_
 	Override configuration parameter, see _swayimgrc_(5) for a list of sections
 	and their parameters.
@@ -150,7 +157,7 @@ swayimg --gallery
 ```
 
 # SEE ALSO
-_swayimgrc_(1)
+_swayimgrc_(5)
 
 # BUGS
 

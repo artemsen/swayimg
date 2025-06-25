@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMG" "1" "2025-06-22" "swayimg" "Swayimg manual"
+.TH "SWAYIMG" "1" "2025-06-25" "swayimg" "Swayimg manual"
 .PP
 .SH NAME
 .PP
@@ -133,6 +133,15 @@ W,H: absolute size of the window in pixels, e.\&g.\& \fI320,240\fR.\&
 Set window class/app_id.\&
 .PP
 .RE
+\fB-i, --ipc\fR=\fIFILE\fR
+.RS 4
+Start IPC server based on UNIX sockets.\& \fIFILE\fR must point to the UNIX socket
+file to create.\&
+The IPC protocol is a simple text-based one-way protocol that allows
+clients to submit actions for execution.\& For a list of actions and their
+parameters, see \fIswayimgrc\fR(5).\&
+.PP
+.RE
 \fB-c, --config\fR=\fISECTION.\&KEY=VALUE\fR
 .RS 4
 Override configuration parameter, see \fIswayimgrc\fR(5) for a list of sections
@@ -234,7 +243,7 @@ swayimg --gallery
 .RE
 .PP
 .SH SEE ALSO
-\fIswayimgrc\fR(1)
+\fIswayimgrc\fR(5)
 .PP
 .SH BUGS
 .PP

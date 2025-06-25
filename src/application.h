@@ -100,3 +100,10 @@ void app_on_mclick(uint8_t mods, uint32_t btn, size_t x, size_t y);
  * @param mods key modifiers (ctrl/alt/shift)
  */
 void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
+
+/**
+ * Add action to execution event queue.
+ * @param action pointer to the action
+ * @param fau flag to free action after execution
+ */
+void app_apply_action(const struct action* action, bool fau);

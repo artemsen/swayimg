@@ -37,6 +37,7 @@ static const struct cmdarg arguments[] = {
     { 'w', "size",        "SIZE",  "set window size" },
     { 'f', "fullscreen",  NULL,    "show image in full screen mode" },
     { 'a', "class",       "NAME",  "set window class/app_id" },
+    { 'i', "ipc",         "FILE",  "enable IPC server on unix socket" },
     { 'c', "config",      "S.K=V", "set configuration parameter: section.key=value" },
     { 'C', "config-file", "FILE",  "load config from file" },
     { 'v', "version",     NULL,    "print version info and exit" },
@@ -163,6 +164,9 @@ static int parse_cmdargs(int argc, char* argv[], struct config* cfg)
                 break;
             case 'a':
                 config_set(cfg, CFG_GENERAL, CFG_GNRL_APP_ID, optarg);
+                break;
+            case 'i':
+                config_set(cfg, CFG_GENERAL, CFG_GNRL_IPC, optarg);
                 break;
             case 'c':
                 if (!config_set_arg(cfg, optarg)) {

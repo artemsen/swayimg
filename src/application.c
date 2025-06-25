@@ -11,6 +11,7 @@
 #include "gallery.h"
 #include "imglist.h"
 #include "info.h"
+#include "ipc.h"
 #include "shellcmd.h"
 #include "slideshow.h"
 #include "tpool.h"
@@ -54,6 +55,7 @@ struct watchfd {
 struct event {
     struct list list;            ///< Links to prev/next entry
     const struct action* action; ///< Action to perform
+    bool free_after_use;         ///< Flag to free action
 };
 
 /** Application context */
@@ -135,55 +137,11 @@ static void handle_event_queue(__attribute__((unused)) void* data)
 
     if (entry) {
         mode_handle(&ctx.modes[ctx.mcurr], entry->action);
+        if (entry->free_after_use) {
+            action_free((struct action*)entry->action);
+        }
         free(entry);
     }
-}
-
-/**
- * Append event to queue.
- * @param action pointer to the action
- */
-static void append_event(const struct action* action)
-{
-    struct event* event = NULL;
-    const uint64_t value = 1;
-    ssize_t len;
-
-    pthread_mutex_lock(&ctx.events_lock);
-
-    if (action->type == action_redraw) {
-        // remove the same event to append new one to the tail
-        list_for_each(ctx.events, struct event, it) {
-            if (it->action->type == action_redraw) {
-                if (list_is_last(it)) {
-                    pthread_mutex_unlock(&ctx.events_lock);
-                    return;
-                }
-                ctx.events = list_remove(it);
-                event = it;
-                break;
-            }
-        }
-    }
-
-    if (!event) {
-        // create new entry
-        event = malloc(sizeof(*event));
-        if (!event) {
-            return;
-        }
-        event->action = action;
-    }
-
-    // add to queue tail
-    ctx.events = list_append(ctx.events, event);
-
-    pthread_mutex_unlock(&ctx.events_lock);
-
-    // raise notification
-    do {
-        len = write(ctx.event_signal, &value, sizeof(value));
-    } while (len == -1 && errno == EINTR);
 }
 
 /**
@@ -206,7 +164,7 @@ static void on_signal(int signum)
     }
 
     while (sigact) {
-        append_event(sigact);
+        app_apply_action(sigact, false);
         sigact = sigact->next;
     }
 }
@@ -433,6 +391,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
     const struct config* general = config_section(cfg, CFG_GENERAL);
     struct image* first_image;
+    const char* ipc_path;
 
     // create image list
     imglist_init(cfg);
@@ -476,6 +435,12 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     // set signal handler
     setup_signals(general);
 
+    // start ipc server
+    ipc_path = config_get(general, CFG_GNRL_IPC);
+    if (*ipc_path) {
+        ipc_start(ipc_path);
+    }
+
     ctx.modes[ctx.mcurr].on_activate(first_image);
 
     return true;
@@ -483,6 +448,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 
 void app_destroy(void)
 {
+    ipc_stop();
     gallery_destroy();
     slideshow_destroy();
     viewer_destroy();
@@ -577,13 +543,13 @@ void app_exit(int rc)
 void app_reload(void)
 {
     static const struct action action = { .type = action_reload };
-    append_event(&action);
+    app_apply_action(&action, false);
 }
 
 void app_redraw(void)
 {
     static const struct action action = { .type = action_redraw };
-    append_event(&action);
+    app_apply_action(&action, false);
 }
 
 void app_on_imglist(const struct image* image, enum fsevent event)
@@ -622,7 +588,7 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
     if (kb) {
         const struct action* action = kb->actions;
         while (action) {
-            append_event(action);
+            app_apply_action(action, false);
             action = action->next;
         }
     } else {
@@ -633,4 +599,48 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
             app_redraw();
         }
     }
+}
+
+void app_apply_action(const struct action* action, bool fau)
+{
+    struct event* event = NULL;
+    const uint64_t value = 1;
+    ssize_t len;
+
+    pthread_mutex_lock(&ctx.events_lock);
+
+    if (action->type == action_redraw) {
+        // remove the same event to append new one to the tail
+        list_for_each(ctx.events, struct event, it) {
+            if (it->action->type == action_redraw) {
+                if (list_is_last(it)) {
+                    pthread_mutex_unlock(&ctx.events_lock);
+                    return;
+                }
+                ctx.events = list_remove(it);
+                event = it;
+                break;
+            }
+        }
+    }
+
+    if (!event) {
+        // create new entry
+        event = calloc(1, sizeof(*event));
+        if (!event) {
+            return;
+        }
+        event->action = action;
+        event->free_after_use = fau;
+    }
+
+    // add to queue tail
+    ctx.events = list_append(ctx.events, event);
+
+    pthread_mutex_unlock(&ctx.events_lock);
+
+    // raise notification
+    do {
+        len = write(ctx.event_signal, &value, sizeof(value));
+    } while (len == -1 && errno == EINTR);
 }

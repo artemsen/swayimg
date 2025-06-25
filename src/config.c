@@ -29,6 +29,7 @@ static const struct configdef_kv def_general[] = {
     { CFG_GNRL_SIGUSR1,   "reload"    },
     { CFG_GNRL_SIGUSR2,   "next_file" },
     { CFG_GNRL_WC,        CFG_YES     },
+    { CFG_GNRL_IPC,       ""          },
     { CFG_GNRL_APP_ID,    "swayimg"   },
 };
 

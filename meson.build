@@ -243,6 +243,7 @@ sources = [
     'src/image.c',
     'src/imglist.c',
     'src/info.c',
+    'src/ipc.c',
     'src/keybind.c',
     'src/layout.c',
     'src/list.c',
