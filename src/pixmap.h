@@ -12,6 +12,9 @@
 /** ARGB color. */
 typedef uint32_t argb_t;
 
+// max component value
+#define ARGB_MAX_COLOR 0xff
+
 // shifts for each channel in argb_t
 #define ARGB_A_SHIFT 24
 #define ARGB_R_SHIFT 16
@@ -19,16 +22,16 @@ typedef uint32_t argb_t;
 #define ARGB_B_SHIFT 0
 
 // get channel value from argb_t
-#define ARGB_GET_A(c) (((c) >> ARGB_A_SHIFT) & 0xff)
-#define ARGB_GET_R(c) (((c) >> ARGB_R_SHIFT) & 0xff)
-#define ARGB_GET_G(c) (((c) >> ARGB_G_SHIFT) & 0xff)
-#define ARGB_GET_B(c) (((c) >> ARGB_B_SHIFT) & 0xff)
+#define ARGB_GET_A(c) (((c) >> ARGB_A_SHIFT) & ARGB_MAX_COLOR)
+#define ARGB_GET_R(c) (((c) >> ARGB_R_SHIFT) & ARGB_MAX_COLOR)
+#define ARGB_GET_G(c) (((c) >> ARGB_G_SHIFT) & ARGB_MAX_COLOR)
+#define ARGB_GET_B(c) (((c) >> ARGB_B_SHIFT) & ARGB_MAX_COLOR)
 
 // create argb_t from channel value
-#define ARGB_SET_A(a) (((argb_t)(a) & 0xff) << ARGB_A_SHIFT)
-#define ARGB_SET_R(r) (((argb_t)(r) & 0xff) << ARGB_R_SHIFT)
-#define ARGB_SET_G(g) (((argb_t)(g) & 0xff) << ARGB_G_SHIFT)
-#define ARGB_SET_B(b) (((argb_t)(b) & 0xff) << ARGB_B_SHIFT)
+#define ARGB_SET_A(a) (((argb_t)(a) & ARGB_MAX_COLOR) << ARGB_A_SHIFT)
+#define ARGB_SET_R(r) (((argb_t)(r) & ARGB_MAX_COLOR) << ARGB_R_SHIFT)
+#define ARGB_SET_G(g) (((argb_t)(g) & ARGB_MAX_COLOR) << ARGB_G_SHIFT)
+#define ARGB_SET_B(b) (((argb_t)(b) & ARGB_MAX_COLOR) << ARGB_B_SHIFT)
 #define ARGB(a, r, g, b) \
     (ARGB_SET_A(a) | ARGB_SET_R(r) | ARGB_SET_G(g) | ARGB_SET_B(b))
 
@@ -203,24 +206,21 @@ void pixmap_bkg_mirror(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
  * @param src top pixel
  * @param dst bottom pixel
  */
-static inline void alpha_blend(argb_t src, argb_t* dst)
+static inline void pixmap_alpha_blend(argb_t src, argb_t* dst)
 {
-    const uint8_t a1 = ARGB_GET_A(src);
-    if (a1 == 255) {
-        *dst = src;
-    } else if (a1 != 0) {
-        // if all quantities are in [0, 1] range, the formulas are:
-        // a_out = a_top + (1 - a_top) * a_bot
-        // c_out = a_top * c_top + (1 - a_top) * a_bot * c_bot
-        // this integer math does the same, avoiding some division
-        const argb_t dp = *dst;
-        const uint32_t c1 = a1 * 255;
-        const uint32_t c2 = (255 - a1) * ARGB_GET_A(dp);
-        // guaranteed to be non-zero because a1 is nonzero
-        const uint32_t alpha = c1 + c2;
-        *dst = ARGB(alpha / 255,
-                    (ARGB_GET_R(src) * c1 + ARGB_GET_R(dp) * c2) / alpha,
-                    (ARGB_GET_G(src) * c1 + ARGB_GET_G(dp) * c2) / alpha,
-                    (ARGB_GET_B(src) * c1 + ARGB_GET_B(dp) * c2) / alpha);
+    const uint8_t src_a = ARGB_GET_A(src);
+
+    if (src_a != ARGB_MAX_COLOR) {
+        const uint8_t inv_a = ARGB_MAX_COLOR - src_a;
+        const uint8_t dst_a = ARGB_GET_A(*dst);
+        src = ARGB(max(src_a, dst_a),
+                   (src_a * ARGB_GET_R(src) + inv_a * ARGB_GET_R(*dst)) /
+                       ARGB_MAX_COLOR,
+                   (src_a * ARGB_GET_G(src) + inv_a * ARGB_GET_G(*dst)) /
+                       ARGB_MAX_COLOR,
+                   (src_a * ARGB_GET_B(src) + inv_a * ARGB_GET_B(*dst)) /
+                       ARGB_MAX_COLOR);
     }
+
+    *dst = src;
 }

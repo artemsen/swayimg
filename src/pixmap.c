@@ -76,7 +76,7 @@ static inline argb_t slice_average(const struct pm_slice* slice, size_t x,
     g /= total;
     b /= total;
 
-    return ARGB(0xff, r, g, b);
+    return ARGB(ARGB_MAX_COLOR, r, g, b);
 }
 
 /** Working thread callback: extend/blur background. */
@@ -166,7 +166,7 @@ static void bkg_mirror(void* data)
             r /= bkg->image->width;
             g /= bkg->image->width;
             b /= bkg->image->width;
-            average = ARGB(0xff, r, g, b);
+            average = ARGB(ARGB_MAX_COLOR, r, g, b);
 
             for (size_t x = 0; x < left_fill; ++x) {
                 argb_t* dst = slice_ptr(&bkg->fill, x, y);
@@ -319,7 +319,7 @@ void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     for (y = top; y < bottom; ++y) {
         argb_t* line = &pm->data[y * pm->width];
         for (x = left; x < right; ++x) {
-            alpha_blend(color, &line[x]);
+            pixmap_alpha_blend(color, &line[x]);
         }
     }
 }
@@ -332,7 +332,7 @@ void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
         const ssize_t end = min((ssize_t)pm->width, x + (ssize_t)width);
         const size_t offset = y * pm->width;
         for (ssize_t i = begin; i < end; ++i) {
-            alpha_blend(color, &pm->data[offset + i]);
+            pixmap_alpha_blend(color, &pm->data[offset + i]);
         }
     }
 }
@@ -344,7 +344,7 @@ void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
         const ssize_t begin = max(0, y);
         const ssize_t end = min((ssize_t)pm->height, y + (ssize_t)height);
         for (ssize_t i = begin; i < end; ++i) {
-            alpha_blend(color, &pm->data[i * pm->width + x]);
+            pixmap_alpha_blend(color, &pm->data[i * pm->width + x]);
         }
     }
 }
@@ -414,9 +414,10 @@ void pixmap_apply_mask(struct pixmap* pm, ssize_t x, ssize_t y,
             const uint8_t alpha_mask = mask_line[x];
             if (alpha_mask != 0) {
                 const uint8_t alpha_color = ARGB_GET_A(color);
-                const uint8_t alpha = (alpha_mask * alpha_color) / 255;
+                const uint8_t alpha =
+                    (alpha_mask * alpha_color) / ARGB_MAX_COLOR;
                 const argb_t clr = ARGB_SET_A(alpha) | (color & 0x00ffffff);
-                alpha_blend(clr, &dst_line[x]);
+                pixmap_alpha_blend(clr, &dst_line[x]);
             }
         }
     }
@@ -441,7 +442,7 @@ void pixmap_copy(const struct pixmap* src, struct pixmap* dst, ssize_t x,
 
         if (src->format == pixmap_argb) {
             for (x = 0; x < dst_width; ++x) {
-                alpha_blend(src_line[x], &dst_line[x]);
+                pixmap_alpha_blend(src_line[x], &dst_line[x]);
             }
         } else {
             memcpy(dst_line, src_line, line_sz);

@@ -333,7 +333,7 @@ static void apply_hk(const struct pixmap* src, struct pixmap* dst,
                 const uint8_t ur = clamp(r / a, 0, 255);
                 const uint8_t ug = clamp(g / a, 0, 255);
                 const uint8_t ub = clamp(b / a, 0, 255);
-                alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x]);
+                pixmap_alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x]);
             }
         }
     } else {
@@ -396,7 +396,7 @@ static void apply_vk(const struct pixmap* src, struct pixmap* dst,
                 const uint8_t ur = clamp(r / a, 0, 255);
                 const uint8_t ug = clamp(g / a, 0, 255);
                 const uint8_t ub = clamp(b / a, 0, 255);
-                alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x + xoff]);
+                pixmap_alpha_blend(ARGB(ua, ur, ug, ub), &dst_line[x + xoff]);
             }
         }
     } else {
@@ -442,7 +442,7 @@ static void scale_nearest(const struct pixmap* src, struct pixmap* dst,
             const size_t src_x = ((dst_x - x) * num) >> den_bits;
             const argb_t color = src_line[src_x];
             if (src->format == pixmap_argb) {
-                alpha_blend(color, &dst_line[dst_x]);
+                pixmap_alpha_blend(color, &dst_line[dst_x]);
             } else {
                 dst_line[dst_x] = ARGB_SET_A(0xff) | color;
             }
