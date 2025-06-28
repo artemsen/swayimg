@@ -44,24 +44,41 @@ static inline void timer_ctl(bool restart)
 /** Image preloader worker. */
 static void preloader(__attribute__((unused)) void* data)
 {
+    struct image* curr;
     struct image* img;
 
     imglist_lock();
+    curr = ctx.vp.image;
 
-    img = imglist_next(ctx.vp.image, true);
+    img = imglist_next(curr, true);
     while (img) {
+        struct image* skip;
         if (image_has_frames(img) || image_load(img) == imgload_success) {
             break;
-        } else {
-            struct image* skip = img;
-            img = imglist_next(img, true);
-            imglist_remove(skip);
+        }
+        skip = img;
+        img = imglist_next(img, true);
+        imglist_remove(skip);
+        if (img == curr) {
+            img = NULL; // no more images
         }
     }
 
     ctx.next = img;
-
     imglist_unlock();
+}
+
+/**
+ * Start preloader to get next image.
+ */
+static void start_preloader(void)
+{
+    assert(imglist_is_locked());
+
+    if (ctx.next && ctx.next != ctx.vp.image) {
+        image_free(ctx.next, IMGDATA_FRAMES);
+    }
+    tpool_add_task(preloader, NULL, NULL);
 }
 
 /**
@@ -74,6 +91,7 @@ static void set_current_image(struct image* img)
 
     assert(ctx.vp.image != img);
     assert(image_has_frames(img));
+    assert(imglist_is_locked());
 
     // switch image
     viewport_reset(&ctx.vp, img);
@@ -91,10 +109,7 @@ static void set_current_image(struct image* img)
     ui_set_ctype(viewport_anim_stat(&ctx.vp));
 
     // add task to load next image
-    if (ctx.next && ctx.next != img) {
-        image_free(ctx.next, IMGDATA_FRAMES);
-    }
-    tpool_add_task(preloader, NULL, NULL);
+    start_preloader();
 
     // restart timer
     if (ctx.enabled) {
@@ -107,12 +122,13 @@ static void set_current_image(struct image* img)
 /**
  * Open nearest image to the current one.
  * @param direction next image position
+ * @return true if next image is opened
  */
-static void open_nearest_image(enum action_type direction)
+static bool open_nearest_image(enum action_type direction)
 {
     struct image* img;
 
-    imglist_lock();
+    assert(imglist_is_locked());
 
     switch (direction) {
         case action_first_file:
@@ -138,8 +154,7 @@ static void open_nearest_image(enum action_type direction)
             break;
         default:
             assert(false && "unreachable code");
-            imglist_unlock();
-            return;
+            return false;
     }
 
     while (img) {
@@ -162,11 +177,14 @@ static void open_nearest_image(enum action_type direction)
         }
     }
 
-    imglist_unlock();
-
+    if (img == ctx.vp.image) {
+        img = NULL; // no more images
+    }
     if (img) {
         set_current_image(img);
     }
+
+    return !!img;
 }
 
 /** Slideshow timer event handler. */
@@ -175,12 +193,13 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
     if (!ctx.next) {
         tpool_wait();
     }
+    imglist_lock();
     if (ctx.next) {
         set_current_image(ctx.next);
     } else {
-        fprintf(stderr, "No more images to view, exit\n");
-        app_exit(0);
+        open_nearest_image(action_next_file);
     }
+    imglist_unlock();
 }
 
 /** Animation frame switch handler. */
@@ -210,6 +229,34 @@ static void on_resize(void)
     viewport_resize(&ctx.vp, ui_get_width(), ui_get_height());
 }
 
+/** Mode handler: image list update. */
+static void on_imglist(const struct image* image, enum fsevent event)
+{
+    switch (event) {
+        case fsevent_create:
+            if (ctx.enabled && imglist_size() == 2) { // add second image
+                // BUG: sometimes the image file is created but still being
+                // written, this causes it to be skipped, i.e. the loader will
+                // return a format error
+                start_preloader();
+                timer_ctl(true);
+            }
+            break;
+        case fsevent_modify:
+            // ignore
+            break;
+        case fsevent_remove:
+            if (image == ctx.next) {
+                ctx.next = NULL;
+            } else if (image == ctx.vp.image &&
+                       !open_nearest_image(action_next_file)) {
+                fprintf(stderr, "No more images to view, exit\n");
+                app_exit(0);
+            }
+            break;
+    }
+}
+
 /** Mode handler: apply action. */
 static bool handle_action(const struct action* action)
 {
@@ -221,7 +268,9 @@ static bool handle_action(const struct action* action)
         case action_prev_file:
         case action_next_file:
         case action_rand_file:
+            imglist_lock();
             open_nearest_image(action->type);
+            imglist_unlock();
             break;
         case action_redraw:
             redraw();
@@ -249,10 +298,14 @@ static void on_activate(struct image* image)
 {
     ctx.enabled = true;
 
+    imglist_lock();
+
     if (image_has_frames(image) || image_load(image) == imgload_success) {
         on_resize();
         set_current_image(image);
     }
+
+    imglist_unlock();
 }
 
 /** Mode handler: deactivate viewer. */
@@ -296,6 +349,7 @@ void slideshow_init(const struct config* cfg, struct mode* handlers)
     handlers->on_activate = on_activate;
     handlers->on_deactivate = on_deactivate;
     handlers->on_resize = on_resize;
+    handlers->on_imglist = on_imglist;
     handlers->handle_action = handle_action;
     handlers->get_current = get_current;
     handlers->get_keybinds = get_keybinds;
