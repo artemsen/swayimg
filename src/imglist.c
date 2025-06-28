@@ -442,9 +442,8 @@ static struct image* load_sources(const char* const* sources, size_t num)
  * Construct image list by loading text lists.
  * @param files array of list files
  * @param num number of sources in the array
- * @return first image instance to show or NULL if list is empty
  */
-static struct image* load_fromfile(const char* const* files, size_t num)
+static void load_fromfile(const char* const* files, size_t num)
 {
     ctx.all_files = false; // not applicable in this mode
 
@@ -474,8 +473,6 @@ static struct image* load_fromfile(const char* const* files, size_t num)
         free(line);
         fclose(fd);
     }
-
-    return imglist_first();
 }
 
 /** Reindex the image list. */
@@ -631,12 +628,12 @@ bool imglist_is_locked(void)
 
 struct image* imglist_load(const char* const* sources, size_t num)
 {
-    struct image* img;
+    struct image* img = NULL;
 
     assert(ctx.size == 0 && "already loaded");
 
     if (ctx.from_file) {
-        img = load_fromfile(sources, num);
+        load_fromfile(sources, num);
     } else {
         img = load_sources(sources, num);
     }
@@ -644,6 +641,9 @@ struct image* imglist_load(const char* const* sources, size_t num)
     if (ctx.size) {
         sort();
         reindex();
+        if (ctx.from_file) {
+            img = imglist_first();
+        }
     }
 
     return img;
