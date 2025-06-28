@@ -834,7 +834,7 @@ void ui_set_cursor(enum ui_cursor shape)
     enum wp_cursor_shape_device_v1_shape wlshape;
     struct wp_cursor_shape_device_v1* dev;
 
-    if (!ctx.wl.pointer && !ctx.wp.cursor) {
+    if (!ctx.wl.pointer || !ctx.wp.cursor) {
         return;
     }
 
