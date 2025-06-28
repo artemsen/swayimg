@@ -323,7 +323,10 @@ static struct image* add_dir(const char* dir, bool ordered)
                 }
             } else if (S_ISREG(st.st_mode)) {
                 struct image* added = add_entry(path, &st, ordered);
-                if (added && (!first || compare(&added, &first) < 0)) {
+                if (added &&
+                    (!first ||
+                     (ctx.order != order_none && ctx.order != order_random &&
+                      compare(&added, &first) < 0))) {
                     first = added;
                 }
             }
