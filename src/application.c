@@ -348,8 +348,6 @@ static bool create_window(const struct config* section, const struct image* img)
                 }
             }
         }
-#else
-        bool compositor = false;
 #endif // HAVE_COMPOSITOR
 
         if (wnd.width == SIZE_FROM_PARENT && wnd.height == SIZE_FROM_PARENT) {
