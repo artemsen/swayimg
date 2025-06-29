@@ -23,8 +23,8 @@ struct pm_slice {
 
 /** Parameters for background threads. */
 struct bkg_params {
-    const struct pm_slice* image; ///< Image area
-    struct pm_slice fill;         ///< Work area to fill
+    struct pm_slice image; ///< Image area
+    struct pm_slice fill;  ///< Work area to fill
 };
 
 /**
@@ -83,14 +83,14 @@ static inline argb_t slice_average(const struct pm_slice* slice, size_t x,
 static void bkg_extend(void* data)
 {
     struct bkg_params* bkg = data;
-    const struct pixmap* parent = bkg->image->pm;
+    const struct pixmap* parent = bkg->image.pm;
 
-    const double scale_w = (double)parent->width / bkg->image->width;
-    const double scale_h = (double)parent->height / bkg->image->height;
+    const double scale_w = (double)parent->width / bkg->image.width;
+    const double scale_h = (double)parent->height / bkg->image.height;
     const double scale = max(scale_w, scale_h);
 
-    const size_t diff_w = (scale * bkg->image->width - parent->width) / 2;
-    const size_t diff_h = (scale * bkg->image->height - parent->height) / 2;
+    const size_t diff_w = (scale * bkg->image.width - parent->width) / 2;
+    const size_t diff_h = (scale * bkg->image.height - parent->height) / 2;
     const size_t diff_x = diff_w + bkg->fill.x;
     const size_t diff_y = diff_h + bkg->fill.y;
 
@@ -101,7 +101,7 @@ static void bkg_extend(void* data)
             const size_t img_x = (diff_x + x) / scale;
 
             argb_t* dst = slice_ptr(&bkg->fill, x, y);
-            *dst = slice_average(bkg->image, img_x, img_y);
+            *dst = slice_average(&bkg->image, img_x, img_y);
         }
     }
 }
@@ -111,16 +111,16 @@ static void bkg_mirror(void* data)
 {
     struct bkg_params* bkg = data;
 
-    const bool left = bkg->fill.x + bkg->fill.width == bkg->image->x;
-    const bool right = bkg->fill.x == bkg->image->x + bkg->image->width;
-    const bool top = bkg->fill.y + bkg->fill.height == bkg->image->y;
-    const bool bottom = bkg->fill.y == bkg->image->y + bkg->image->height;
+    const bool left = bkg->fill.x + bkg->fill.width == bkg->image.x;
+    const bool right = bkg->fill.x == bkg->image.x + bkg->image.width;
+    const bool top = bkg->fill.y + bkg->fill.height == bkg->image.y;
+    const bool bottom = bkg->fill.y == bkg->image.y + bkg->image.height;
 
     // corners to fill
     size_t left_fill = 0, right_fill = 0;
     if (top || bottom) {
-        left_fill = bkg->image->x;
-        right_fill = bkg->fill.width - left_fill - bkg->image->width;
+        left_fill = bkg->image.x;
+        right_fill = bkg->fill.width - left_fill - bkg->image.width;
     }
 
     for (size_t y = 0; y < bkg->fill.height; ++y) {
@@ -128,9 +128,9 @@ static void bkg_mirror(void* data)
         size_t img_y;
 
         if (top) {
-            img_y = (bkg->fill.height - y) % bkg->image->height;
+            img_y = (bkg->fill.height - y) % bkg->image.height;
         } else if (bottom) {
-            img_y = bkg->image->height - (y % bkg->image->height);
+            img_y = bkg->image.height - (y % bkg->image.height);
         } else {
             img_y = y;
         }
@@ -141,14 +141,14 @@ static void bkg_mirror(void* data)
             size_t img_x;
 
             if (left) {
-                img_x = (bkg->fill.width - x) % bkg->image->width;
+                img_x = (bkg->fill.width - x) % bkg->image.width;
             } else if (right) {
-                img_x = bkg->image->width - (x % bkg->image->width);
+                img_x = bkg->image.width - (x % bkg->image.width);
             } else {
                 img_x = x - left_fill;
             }
 
-            average = slice_average(bkg->image, img_x, img_y);
+            average = slice_average(&bkg->image, img_x, img_y);
             if (top || bottom) {
                 r += ARGB_GET_R(average);
                 g += ARGB_GET_G(average);
@@ -163,9 +163,9 @@ static void bkg_mirror(void* data)
             // fill corners with line's average color
             argb_t average;
 
-            r /= bkg->image->width;
-            g /= bkg->image->width;
-            b /= bkg->image->width;
+            r /= bkg->image.width;
+            g /= bkg->image.width;
+            b /= bkg->image.width;
             average = ARGB(ARGB_MAX_COLOR, r, g, b);
 
             for (size_t x = 0; x < left_fill; ++x) {
@@ -199,44 +199,53 @@ static void bkg_create(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
         .height = min((ssize_t)pm->height, (ssize_t)height + y) - max(0, y),
     };
 
-    struct bkg_params tasks[4]; // left/right/top/bottom
-    size_t tid = 0;
-
     if (img.x > 0) {
-        tasks[tid].image = &img;
-        tasks[tid].fill.pm = img.pm;
-        tasks[tid].fill.x = 0;
-        tasks[tid].fill.y = img.y;
-        tasks[tid].fill.width = img.x;
-        tasks[tid].fill.height = img.height;
-        tpool_add_task(wfn, NULL, &tasks[tid++]);
+        struct bkg_params* task = malloc(sizeof(struct bkg_params));
+        if (task) {
+            task->image = img;
+            task->fill.pm = img.pm;
+            task->fill.x = 0;
+            task->fill.y = img.y;
+            task->fill.width = img.x;
+            task->fill.height = img.height;
+            tpool_add_task(wfn, free, task);
+        }
     }
     if (img.x + img.width < img.pm->width) {
-        tasks[tid].image = &img;
-        tasks[tid].fill.pm = img.pm;
-        tasks[tid].fill.x = img.x + img.width;
-        tasks[tid].fill.y = img.y;
-        tasks[tid].fill.width = img.pm->width - (img.x + img.width);
-        tasks[tid].fill.height = img.height;
-        tpool_add_task(wfn, NULL, &tasks[tid++]);
+        struct bkg_params* task = malloc(sizeof(struct bkg_params));
+        if (task) {
+            task->image = img;
+            task->fill.pm = img.pm;
+            task->fill.x = img.x + img.width;
+            task->fill.y = img.y;
+            task->fill.width = img.pm->width - (img.x + img.width);
+            task->fill.height = img.height;
+            tpool_add_task(wfn, free, task);
+        }
     }
     if (img.y > 0) {
-        tasks[tid].image = &img;
-        tasks[tid].fill.pm = img.pm;
-        tasks[tid].fill.x = 0;
-        tasks[tid].fill.y = 0;
-        tasks[tid].fill.width = img.pm->width;
-        tasks[tid].fill.height = img.y;
-        tpool_add_task(wfn, NULL, &tasks[tid++]);
+        struct bkg_params* task = malloc(sizeof(struct bkg_params));
+        if (task) {
+            task->image = img;
+            task->fill.pm = img.pm;
+            task->fill.x = 0;
+            task->fill.y = 0;
+            task->fill.width = img.pm->width;
+            task->fill.height = img.y;
+            tpool_add_task(wfn, free, task);
+        }
     }
     if (img.y + img.height < img.pm->height) {
-        tasks[tid].image = &img;
-        tasks[tid].fill.pm = img.pm;
-        tasks[tid].fill.x = 0;
-        tasks[tid].fill.y = img.y + img.height;
-        tasks[tid].fill.width = img.pm->width;
-        tasks[tid].fill.height = img.pm->height - (img.y + img.height);
-        tpool_add_task(wfn, NULL, &tasks[tid++]);
+        struct bkg_params* task = malloc(sizeof(struct bkg_params));
+        if (task) {
+            task->image = img;
+            task->fill.pm = img.pm;
+            task->fill.x = 0;
+            task->fill.y = img.y + img.height;
+            task->fill.width = img.pm->width;
+            task->fill.height = img.pm->height - (img.y + img.height);
+            tpool_add_task(wfn, free, task);
+        }
     }
 
     tpool_wait();
