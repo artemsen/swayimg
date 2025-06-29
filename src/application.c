@@ -28,12 +28,6 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
-// Special ids for windows size and position
-#define SIZE_FULLSCREEN  SIZE_MAX
-#define SIZE_FROM_IMAGE  (SIZE_MAX - 1)
-#define SIZE_FROM_PARENT (SIZE_MAX - 2)
-#define POS_FROM_PARENT  SSIZE_MAX
-
 /** Mode names. */
 static const char* mode_names[] = { CFG_VIEWER, CFG_SLIDESHOW, CFG_GALLERY };
 
@@ -265,16 +259,18 @@ static struct image* create_imglist(const char* const* sources, size_t num)
  */
 static bool create_window(const struct config* section, const struct image* img)
 {
+    struct wndrect wnd = { .x = SSIZE_MAX,
+                           .y = SSIZE_MAX,
+                           .width = UI_WINDOW_DEFAULT_WIDTH,
+                           .height = UI_WINDOW_DEFAULT_HEIGHT };
+    bool fullscreen = false;
     char* app_id = NULL;
-    struct wndrect wnd;
     bool decoration;
     const char* value;
 
     // initial window position
-    wnd.x = POS_FROM_PARENT;
-    wnd.y = POS_FROM_PARENT;
     value = config_get(section, CFG_GNRL_POSITION);
-    if (strcmp(value, CFG_FROM_PARENT) != 0) {
+    if (strcmp(value, CFG_AUTO) != 0) {
         struct str_slice slices[2];
         ssize_t x, y;
         if (str_split(value, ',', slices, 2) == 2 &&
@@ -289,27 +285,23 @@ static bool create_window(const struct config* section, const struct image* img)
 
     // initial window size
     value = config_get(section, CFG_GNRL_SIZE);
-    if (strcmp(value, CFG_FROM_PARENT) == 0) {
-        wnd.width = SIZE_FROM_PARENT;
-        wnd.height = SIZE_FROM_PARENT;
+    if (strcmp(value, CFG_FULLSCREEN) == 0) {
+        fullscreen = true;
     } else if (strcmp(value, CFG_FROM_IMAGE) == 0) {
-        wnd.width = SIZE_FROM_IMAGE;
-        wnd.height = SIZE_FROM_IMAGE;
-    } else if (strcmp(value, CFG_FULLSCREEN) == 0) {
-        wnd.width = SIZE_FULLSCREEN;
-        wnd.height = SIZE_FULLSCREEN;
+        struct imgframe* frame = arr_nth(img->data->frames, 0);
+        wnd.width = frame->pm.width;
+        wnd.height = frame->pm.height;
     } else {
         ssize_t width, height;
         struct str_slice slices[2];
         if (str_split(value, ',', slices, 2) == 2 &&
             str_to_num(slices[0].value, slices[0].len, &width, 0) &&
             str_to_num(slices[1].value, slices[1].len, &height, 0) &&
-            width > 0 && width < 100000 && height > 0 && height < 100000) {
+            width > UI_WINDOW_MIN && width < UI_WINDOW_MAX &&
+            height > UI_WINDOW_MIN && height < UI_WINDOW_MAX) {
             wnd.width = width;
             wnd.height = height;
         } else {
-            wnd.width = SIZE_FROM_PARENT;
-            wnd.height = SIZE_FROM_PARENT;
             config_error_val(section->name, CFG_GNRL_SIZE);
         }
     }
@@ -326,41 +318,16 @@ static bool create_window(const struct config* section, const struct image* img)
     decoration = config_get_bool(section, CFG_GNRL_DECOR);
 
     // setup window position and size
-    if (wnd.width == SIZE_FULLSCREEN) {
+    if (fullscreen) {
         wnd.width = UI_WINDOW_DEFAULT_WIDTH;
         wnd.height = UI_WINDOW_DEFAULT_HEIGHT;
         ui_toggle_fullscreen();
     } else {
 #ifdef HAVE_COMPOSITOR
-        bool compositor = config_get_bool(section, CFG_GNRL_WC);
-        if (compositor) {
-            struct wndrect focus;
-            compositor = compositor_get_focus(&focus);
-            if (compositor) {
-                if (wnd.x == POS_FROM_PARENT && wnd.y == POS_FROM_PARENT) {
-                    wnd.x = focus.x;
-                    wnd.y = focus.y;
-                }
-                if (wnd.width == SIZE_FROM_PARENT &&
-                    wnd.height == SIZE_FROM_PARENT) {
-                    wnd.width = focus.width;
-                    wnd.height = focus.height;
-                }
-            }
+        if (config_get_bool(section, CFG_GNRL_OVERLAY)) {
+            compositor_get_focus(&wnd);
         }
 #endif // HAVE_COMPOSITOR
-
-        if (wnd.width == SIZE_FROM_PARENT && wnd.height == SIZE_FROM_PARENT) {
-            // fallback if compositor not available
-            wnd.width = SIZE_FROM_IMAGE;
-            wnd.height = SIZE_FROM_IMAGE;
-        }
-        if (wnd.width == SIZE_FROM_IMAGE && wnd.height == SIZE_FROM_IMAGE) {
-            // determine window size from the first frame of the first image
-            struct imgframe* frame = arr_nth(img->data->frames, 0);
-            wnd.width = frame->pm.width;
-            wnd.height = frame->pm.height;
-        }
 
         // limit window size
         if (wnd.width < UI_WINDOW_MIN || wnd.height < UI_WINDOW_MIN ||
@@ -370,7 +337,7 @@ static bool create_window(const struct config* section, const struct image* img)
         }
 
 #ifdef HAVE_COMPOSITOR
-        if (compositor) {
+        if (wnd.x != SSIZE_MAX && wnd.y != SSIZE_MAX) {
             compositor_overlay(&wnd, &app_id);
         }
 #endif // HAVE_COMPOSITOR

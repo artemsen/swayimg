@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMG" "1" "2025-06-25" "swayimg" "Swayimg manual"
+.TH "SWAYIMG" "1" "2025-06-29" "swayimg" "Swayimg manual"
 .PP
 .SH NAME
 .PP
@@ -39,6 +39,11 @@ Display version information and list of supported image formats.\&
 \fB-g, --gallery\fR
 .RS 4
 Start in gallery mode.\&
+.PP
+.RE
+\fB-l, --slideshow\fR
+.RS 4
+Run slideshow on startup.\&
 .PP
 .RE
 \fB-F, --from-file\fR
@@ -91,40 +96,32 @@ Set image scale:
 .PD
 .PP
 .RE
-\fB-l, --slideshow\fR
-.RS 4
-Run slideshow on startup.\&
-.PP
-.RE
 \fB-f, --fullscreen\fR
 .RS 4
 Start in full screen mode.\&
 .PP
 .RE
-\fB-p, --position\fR=\fIparent\fR|X,Y
+\fB-p, --position\fR=\fIauto\fR|X,Y
 .RS 4
 Set window position, this option valid only in Sway WM:
 .PD 0
 .IP \(bu 4
-\fIparent\fR: set position from parent (currently active) window;
+\fIauto\fR: let the window manager control the window position (default);
 .IP \(bu 4
 X,Y: absolute coordinates of the top left corner, e.\&g.\& \fI100,200\fR.\&
 .PD
 .PP
 .RE
-\fB-w, --size\fR=\fIfullscreen\fR|\fIparent\fR|\fIimage\fR|W,H
+\fB-w, --size\fR=\fIfullscreen\fR|\fIimage\fR|W,H
 .RS 4
 Set window size:
 .PD 0
 .IP \(bu 4
 \fIfullscreen\fR: use full screen mode;
 .IP \(bu 4
-\fIparent\fR: [Only in Sway WM] set size from parent (currently active)
-window;
+\fIimage\fR: set size from the first frame of the first image;
 .IP \(bu 4
-\fIimage\fR: set size from the first loaded image;
-.IP \(bu 4
-W,H: absolute size of the window in pixels, e.\&g.\& \fI320,240\fR.\&
+W,H: absolute size of the window in pixels, default is \fI1280,720\fR.\&
 .PD
 .PP
 .RE

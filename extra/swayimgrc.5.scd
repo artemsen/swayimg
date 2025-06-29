@@ -49,18 +49,21 @@ General configuration for the entire application: _[general]_.
 *mode* = _viewer_|_slideshow_|_gallery_
 	Mode used at startup, _viewer_ by default.
 
-*position* = _parent_|X,Y
-	Initial window position, this option valid only in Sway/Hyprland:
-	- _parent_: set position from parent (currently active) window (default);
-	- X,Y: absolute coordinates of the top left corner, e.g. _100,200_.
-
-*size* = _fullscreen_|_parent_|_image_|W,H
+*size* = _fullscreen_|_image_|W,H
 	Initial window size:
 	- _fullscreen_: use full screen mode;
-	- _parent_: [Only in Sway/Hyprland] set size from parent (currently active)
-	  window (default);
-	- _image_: set size from the first loaded image;
-	- W,H: absolute size of the window in pixels, e.g. _320,240_.
+	- _image_: set size from the first frame of the first image;
+	- W,H: absolute size of the window in pixels, default is _1280,720_.
+
+*position* = _auto_|X,Y
+	Only Sway and Hyprland: Initial window position:
+	- _auto_: let the window manager control the window position (default);
+	- X,Y: absolute coordinates of the top left corner, e.g. _100,200_.
+
+*overlay* = _yes_|_no_
+	Only Sway and Hyprland: Create a floating window with the same coordinates
+	and size as the currently focused window. This options overrides *position*
+	and *size* parameters. Default value is _no_.
 
 *decoration* = _yes_|_no_
 	Use window decoration (borders and title), _no_ by default.
@@ -72,12 +75,6 @@ General configuration for the entire application: _[general]_.
 *sigusr2* = ACTION
 	Action to be performed when the SIGUSR2 signal is triggered, _next_file_ by
 	default.
-
-*compositor* = _yes_|_no_
-	Only Sway and Hyprland: Enable or disable integration with the compositor,
-	_yes_ by default. This feature provides some features such as setting the
-	window position, this allows to create an "overlay" above the currently
-	active window.
 
 *app_id* = NAME
 	Application ID used as window class name, _swayimg_ by default.

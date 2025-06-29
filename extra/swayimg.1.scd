@@ -28,6 +28,9 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 *-g, --gallery*
 	Start in gallery mode.
 
+*-l, --slideshow*
+	Run slideshow on startup.
+
 *-F, --from-file*
 	Interpret _FILE_ as text list of image files.
 
@@ -53,24 +56,19 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 	- _real_: real size (100%);
 	- _keep_: keep the same scale as for previously viewed image.
 
-*-l, --slideshow*
-	Run slideshow on startup.
-
 *-f, --fullscreen*
 	Start in full screen mode.
 
-*-p, --position*=_parent_|X,Y
+*-p, --position*=_auto_|X,Y
 	Set window position, this option valid only in Sway WM:
-	- _parent_: set position from parent (currently active) window;
+	- _auto_: let the window manager control the window position (default);
 	- X,Y: absolute coordinates of the top left corner, e.g. _100,200_.
 
-*-w, --size*=_fullscreen_|_parent_|_image_|W,H
+*-w, --size*=_fullscreen_|_image_|W,H
 	Set window size:
 	- _fullscreen_: use full screen mode;
-	- _parent_: [Only in Sway WM] set size from parent (currently active)
-	  window;
-	- _image_: set size from the first loaded image;
-	- W,H: absolute size of the window in pixels, e.g. _320,240_.
+	- _image_: set size from the first frame of the first image;
+	- W,H: absolute size of the window in pixels, default is _1280,720_.
 
 *-a, --class*=_NAME_
 	Set window class/app_id.

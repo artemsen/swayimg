@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-06-25" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-06-29" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -64,31 +64,35 @@ General configuration for the entire application: \fI[general]\fR.\&
 Mode used at startup, \fIviewer\fR by default.\&
 .PP
 .RE
-\fBposition\fR = \fIparent\fR|X,Y
-.RS 4
-Initial window position, this option valid only in Sway/Hyprland:
-.PD 0
-.IP \(bu 4
-\fIparent\fR: set position from parent (currently active) window (default);
-.IP \(bu 4
-X,Y: absolute coordinates of the top left corner, e.\&g.\& \fI100,200\fR.\&
-.PD
-.PP
-.RE
-\fBsize\fR = \fIfullscreen\fR|\fIparent\fR|\fIimage\fR|W,H
+\fBsize\fR = \fIfullscreen\fR|\fIimage\fR|W,H
 .RS 4
 Initial window size:
 .PD 0
 .IP \(bu 4
 \fIfullscreen\fR: use full screen mode;
 .IP \(bu 4
-\fIparent\fR: [Only in Sway/Hyprland] set size from parent (currently active)
-window (default);
+\fIimage\fR: set size from the first frame of the first image;
 .IP \(bu 4
-\fIimage\fR: set size from the first loaded image;
-.IP \(bu 4
-W,H: absolute size of the window in pixels, e.\&g.\& \fI320,240\fR.\&
+W,H: absolute size of the window in pixels, default is \fI1280,720\fR.\&
 .PD
+.PP
+.RE
+\fBposition\fR = \fIauto\fR|X,Y
+.RS 4
+Only Sway and Hyprland: Initial window position:
+.PD 0
+.IP \(bu 4
+\fIauto\fR: let the window manager control the window position (default);
+.IP \(bu 4
+X,Y: absolute coordinates of the top left corner, e.\&g.\& \fI100,200\fR.\&
+.PD
+.PP
+.RE
+\fBoverlay\fR = \fIyes\fR|\fIno\fR
+.RS 4
+Only Sway and Hyprland: Create a floating window with the same coordinates
+and size as the currently focused window.\& This options overrides \fBposition\fR
+and \fBsize\fR parameters.\& Default value is \fIno\fR.\&
 .PP
 .RE
 \fBdecoration\fR = \fIyes\fR|\fIno\fR
@@ -106,14 +110,6 @@ default.\&
 .RS 4
 Action to be performed when the SIGUSR2 signal is triggered, \fInext_file\fR by
 default.\&
-.PP
-.RE
-\fBcompositor\fR = \fIyes\fR|\fIno\fR
-.RS 4
-Only Sway and Hyprland: Enable or disable integration with the compositor,
-\fIyes\fR by default.\& This feature provides some features such as setting the
-window position, this allows to create an "overlay" above the currently
-active window.\&
 .PP
 .RE
 \fBapp_id\fR = NAME

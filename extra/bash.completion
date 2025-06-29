@@ -4,11 +4,11 @@ _swayimg()
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
     local opts="-g --gallery \
+                -l --slideshow \
                 -F --from-file \
                 -r --recursive \
                 -o --order \
                 -s --scale \
-                -l --slideshow \
                 -f --fullscreen \
                 -p --position \
                 -w --size \

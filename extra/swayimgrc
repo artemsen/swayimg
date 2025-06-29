@@ -18,18 +18,18 @@
 [general]
 # Mode at startup (viewer/slideshow/gallery)
 mode = viewer
-# Window position (parent or absolute coordinates, e.g. 100,200)
-position = parent
-# Window size (fullscreen/parent/image, or absolute size, e.g. 800,600)
-size = parent
+# Window size (fullscreen/image, or absolute size)
+size = 1280,720
+# Sway/Hyprland only: Window position (auto or absolute coordinates, e.g. 10,20)
+position = auto
+# Sway/Hyprland only: Create floating window above the currently focused one
+overlay = no
 # Use window decoration (yes/no)
 decoration = no
 # Action performed by SIGUSR1 signal (same format as for key bindings)
 sigusr1 = reload
 # Action performed by SIGUSR2 signal (same format as for key bindings)
 sigusr2 = next_file
-# Integrate with Wayland compositor (Sway/Hyprland only)
-compositor = yes
 # Application ID and window class name
 app_id = swayimg
 

@@ -41,12 +41,12 @@ struct config {
 
 // Configuration parameters
 #define CFG_GNRL_MODE      "mode"
-#define CFG_GNRL_POSITION  "position"
 #define CFG_GNRL_SIZE      "size"
+#define CFG_GNRL_POSITION  "position"
+#define CFG_GNRL_OVERLAY   "overlay"
 #define CFG_GNRL_DECOR     "decoration"
 #define CFG_GNRL_SIGUSR1   "sigusr1"
 #define CFG_GNRL_SIGUSR2   "sigusr2"
-#define CFG_GNRL_WC        "compositor"
 #define CFG_GNRL_IPC       "ipc"
 #define CFG_GNRL_APP_ID    "app_id"
 #define CFG_VIEW_WINDOW    "window"
@@ -89,11 +89,11 @@ struct config {
 #define CFG_INFO_BR        "bottom_right"
 
 // Some configuration values
-#define CFG_YES         "yes"
-#define CFG_NO          "no"
-#define CFG_FROM_PARENT "parent"
-#define CFG_FROM_IMAGE  "image"
-#define CFG_FULLSCREEN  "fullscreen"
+#define CFG_YES        "yes"
+#define CFG_NO         "no"
+#define CFG_AUTO       "auto"
+#define CFG_FROM_IMAGE "image"
+#define CFG_FULLSCREEN "fullscreen"
 
 /**
  * Create default configuration instance.
