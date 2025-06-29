@@ -93,7 +93,7 @@ static void handle_event(const struct inotify_event* event)
     } else if (event->mask &
                (IN_DELETE | IN_MOVED_FROM | IN_DELETE_SELF | IN_MOVE_SELF)) {
         et = fsevent_remove;
-    } else if (event->mask & IN_MODIFY) {
+    } else if (event->mask & IN_CLOSE) {
         et = fsevent_modify;
     } else {
         assert(false && "unhandled event");
@@ -161,7 +161,7 @@ void fs_monitor_add(const char* path)
 
     // register inotify
     id = inotify_add_watch(ctx.notify, path,
-                           IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVE |
+                           IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVE |
                                IN_DELETE_SELF | IN_MOVE_SELF);
     if (id == -1) {
         return;
