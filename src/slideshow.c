@@ -87,16 +87,15 @@ static void start_preloader(void)
  */
 static void set_current_image(struct image* img)
 {
-    struct image* curr = ctx.vp.image;
+    struct image* prev = ctx.vp.image;
 
-    assert(ctx.vp.image != img);
     assert(image_has_frames(img));
     assert(imglist_is_locked());
 
     // switch image
     viewport_reset(&ctx.vp, img);
-    if (curr) {
-        image_free(curr, IMGDATA_FRAMES);
+    if (prev && prev != img) {
+        image_free(prev, IMGDATA_FRAMES);
     }
 
     // update info
@@ -167,10 +166,10 @@ static bool open_nearest_image(enum action_type direction)
                 case action_next_dir:
                 case action_next_file:
                 case action_rand_file:
-                    img = imglist_next(img, false);
+                    img = imglist_next(img, true);
                     break;
                 default:
-                    img = imglist_prev(img, false);
+                    img = imglist_prev(img, true);
                     break;
             }
             imglist_remove(skip);
@@ -196,8 +195,8 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
     imglist_lock();
     if (ctx.next) {
         set_current_image(ctx.next);
-    } else {
-        open_nearest_image(action_next_file);
+    } else if (!open_nearest_image(action_next_file) && ctx.enabled) {
+        timer_ctl(true); // restart timer
     }
     imglist_unlock();
 }
@@ -232,28 +231,34 @@ static void on_resize(void)
 /** Mode handler: image list update. */
 static void on_imglist(struct image* image, enum fsevent event)
 {
+    bool force_next = false;
+
     switch (event) {
         case fsevent_create:
-            if (ctx.enabled && imglist_size() == 2) { // add second image
-                // BUG: sometimes the image file is created but still being
-                // written, this causes it to be skipped, i.e. the loader will
-                // return a format error
-                start_preloader();
-                timer_ctl(true);
-            }
-            break;
+            break; // ignore
         case fsevent_modify:
-            // ignore
+            if (image == ctx.vp.image) {
+                // reload current file
+                if (image_load(image) == imgload_success) {
+                    set_current_image(image);
+                } else {
+                    force_next = true;
+                }
+            }
             break;
         case fsevent_remove:
+            if (image == ctx.vp.image) {
+                force_next = true;
+            }
             if (image == ctx.next) {
                 ctx.next = NULL;
-            } else if (image == ctx.vp.image &&
-                       !open_nearest_image(action_next_file)) {
-                fprintf(stderr, "No more images to view, exit\n");
-                app_exit(0);
             }
             break;
+    }
+
+    if (force_next && !open_nearest_image(action_next_file)) {
+        fprintf(stderr, "No more images to view, exit\n");
+        app_exit(0);
     }
 }
 
