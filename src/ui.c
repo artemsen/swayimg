@@ -269,8 +269,9 @@ static void on_pointer_motion(void* data, struct wl_pointer* wl_pointer,
                               uint32_t time, wl_fixed_t surface_x,
                               wl_fixed_t surface_y)
 {
-    const int x = wl_fixed_to_int(surface_x);
-    const int y = wl_fixed_to_int(surface_y);
+    const double scale = (double)ctx.wnd.scale / FRACTION_SCALE_DEN;
+    const int x = wl_fixed_to_int(surface_x * scale);
+    const int y = wl_fixed_to_int(surface_y * scale);
     const int dx = x - ctx.mouse.x;
     const int dy = y - ctx.mouse.y;
 
