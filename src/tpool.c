@@ -17,7 +17,7 @@
 #endif
 
 // Max number of threads in the pool
-#define MAX_THREADS 16
+#define MAX_THREADS 8
 
 struct tpool_task {
     struct list list; ///< Links to prev/next entry
