@@ -69,7 +69,7 @@ void app_redraw(void);
  * @param image updated image instance
  * @param event operation type
  */
-void app_on_imglist(const struct image* image, enum fsevent event);
+void app_on_imglist(struct image* image, enum fsevent event);
 
 /**
  * Handler of external event: window resized.

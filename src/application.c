@@ -550,7 +550,7 @@ void app_redraw(void)
     app_apply_action(&action, false);
 }
 
-void app_on_imglist(const struct image* image, enum fsevent event)
+void app_on_imglist(struct image* image, enum fsevent event)
 {
     if (ctx.modes[ctx.mcurr].on_imglist) {
         ctx.modes[ctx.mcurr].on_imglist(image, event);

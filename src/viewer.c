@@ -445,7 +445,7 @@ static void on_resize(void)
 }
 
 /** Mode handler: image list update. */
-static void on_imglist(const struct image* image, enum fsevent event)
+static void on_imglist(struct image* image, enum fsevent event)
 {
     switch (event) {
         case fsevent_create:

@@ -499,7 +499,7 @@ static void on_fsevent(enum fsevent type, const char* path)
         case fsevent_create:
             if (is_dir) {
                 if (ctx.recursive) {
-                    const struct image* img = add_dir(path, true);
+                    struct image* img = add_dir(path, true);
                     if (img) {
                         app_on_imglist(img, type);
                     }
@@ -507,7 +507,7 @@ static void on_fsevent(enum fsevent type, const char* path)
             } else {
                 struct stat st;
                 if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
-                    const struct image* img = add_entry(path, &st, true);
+                    struct image* img = add_entry(path, &st, true);
                     if (img) {
                         app_on_imglist(img, type);
                     }
@@ -525,7 +525,7 @@ static void on_fsevent(enum fsevent type, const char* path)
             break;
         case fsevent_modify:
             if (!is_dir) {
-                const struct image* img = imglist_find(path);
+                struct image* img = imglist_find(path);
                 if (img) {
                     app_on_imglist(img, type);
                 }

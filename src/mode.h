@@ -57,7 +57,7 @@ struct mode {
      * @param image updated image instance
      * @param event operation type
      */
-    void (*on_imglist)(const struct image* image, enum fsevent event);
+    void (*on_imglist)(struct image* image, enum fsevent event);
 
     /**
      * Handle action.
