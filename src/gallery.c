@@ -210,16 +210,10 @@ static void thumb_load(void* data)
     // check if thumbnail already loaded by another thread
     imglist_lock();
     origin = imglist_find(img->source);
-    if (!origin || image_thumb_get(origin)) {
-        imglist_unlock();
-        return;
-    }
-    // try to create from existing frame data
-    if (image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
+    if (!origin ||                 // removed
+        image_thumb_get(origin) || // already loaded
+        image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
                            ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest)) {
-        if (ctx.thumb_pstore) {
-            pstore_save(origin);
-        }
         imglist_unlock();
         app_redraw();
         return;
