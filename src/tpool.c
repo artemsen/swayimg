@@ -68,7 +68,7 @@ static void* worker(__attribute__((unused)) void* data)
         free(task);
 
         pthread_mutex_lock(&ctx.lock);
-        if (--ctx.work == 0) {
+        if (--ctx.work == 0 && !ctx.queue) {
             pthread_cond_signal(&ctx.idle);
         }
         pthread_mutex_unlock(&ctx.lock);
