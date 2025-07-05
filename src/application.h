@@ -69,6 +69,12 @@ void app_on_imglist(struct image* image, enum fsevent event);
 void app_on_resize(void);
 
 /**
+ * Window rescaling handler.
+ * @param scale new scale factor
+ */
+void app_on_scale(double scale);
+
+/**
  * Handler of external event: mouse move.
  * @param mods key modifiers (ctrl/alt/shift)
  * @param btn mask with mouse buttons state

@@ -5,8 +5,6 @@
 #include "application.h"
 
 #include "array.h"
-#include "buildcfg.h"
-#include "compositor.h"
 #include "fdpoll.h"
 #include "font.h"
 #include "gallery.h"
@@ -19,8 +17,6 @@
 #include "ui.h"
 #include "viewer.h"
 
-#include <errno.h>
-#include <limits.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -234,107 +230,6 @@ static struct image* create_imglist(const char* const* sources, size_t num)
     return image;
 }
 
-/**
- * Create window.
- * @param section general config section
- * @param img first image instance
- * @return true if operation completed successfully
- */
-static bool create_window(const struct config* section, const struct image* img)
-{
-    struct wndrect wnd = { .x = SSIZE_MAX,
-                           .y = SSIZE_MAX,
-                           .width = UI_WINDOW_DEFAULT_WIDTH,
-                           .height = UI_WINDOW_DEFAULT_HEIGHT };
-    bool fullscreen = false;
-    char* app_id = NULL;
-    bool decoration;
-    const char* value;
-
-    // initial window position
-    value = config_get(section, CFG_GNRL_POSITION);
-    if (strcmp(value, CFG_AUTO) != 0) {
-        struct str_slice slices[2];
-        ssize_t x, y;
-        if (str_split(value, ',', slices, 2) == 2 &&
-            str_to_num(slices[0].value, slices[0].len, &x, 0) &&
-            str_to_num(slices[1].value, slices[1].len, &y, 0)) {
-            wnd.x = x;
-            wnd.y = y;
-        } else {
-            config_error_val(section->name, CFG_GNRL_POSITION);
-        }
-    }
-
-    // initial window size
-    value = config_get(section, CFG_GNRL_SIZE);
-    if (strcmp(value, CFG_FULLSCREEN) == 0) {
-        fullscreen = true;
-    } else if (strcmp(value, CFG_FROM_IMAGE) == 0) {
-        struct imgframe* frame = arr_nth(img->data->frames, 0);
-        wnd.width = frame->pm.width;
-        wnd.height = frame->pm.height;
-    } else {
-        ssize_t width, height;
-        struct str_slice slices[2];
-        if (str_split(value, ',', slices, 2) == 2 &&
-            str_to_num(slices[0].value, slices[0].len, &width, 0) &&
-            str_to_num(slices[1].value, slices[1].len, &height, 0) &&
-            width > UI_WINDOW_MIN && width < UI_WINDOW_MAX &&
-            height > UI_WINDOW_MIN && height < UI_WINDOW_MAX) {
-            wnd.width = width;
-            wnd.height = height;
-        } else {
-            config_error_val(section->name, CFG_GNRL_SIZE);
-        }
-    }
-
-    // app id (class name)
-    value = config_get(section, CFG_GNRL_APP_ID);
-    if (!*value) {
-        config_error_val(CFG_GENERAL, CFG_GNRL_APP_ID);
-        value = config_get_default(CFG_GENERAL, CFG_GNRL_APP_ID);
-    }
-    str_dup(value, &app_id);
-
-    // window decoration (title/borders/...)
-    decoration = config_get_bool(section, CFG_GNRL_DECOR);
-
-    // setup window position and size
-    if (fullscreen) {
-        wnd.width = UI_WINDOW_DEFAULT_WIDTH;
-        wnd.height = UI_WINDOW_DEFAULT_HEIGHT;
-        ui_toggle_fullscreen();
-    } else {
-#ifdef HAVE_COMPOSITOR
-        if (config_get_bool(section, CFG_GNRL_OVERLAY)) {
-            compositor_get_focus(&wnd);
-        }
-#endif // HAVE_COMPOSITOR
-
-        // limit window size
-        if (wnd.width < UI_WINDOW_MIN || wnd.height < UI_WINDOW_MIN ||
-            wnd.width * wnd.height > UI_WINDOW_MAX) {
-            wnd.width = UI_WINDOW_DEFAULT_WIDTH;
-            wnd.height = UI_WINDOW_DEFAULT_HEIGHT;
-        }
-
-#ifdef HAVE_COMPOSITOR
-        if (wnd.x != SSIZE_MAX && wnd.y != SSIZE_MAX) {
-            compositor_overlay(&wnd, &app_id);
-        }
-#endif // HAVE_COMPOSITOR
-    }
-
-    if (!ui_init(app_id, wnd.width, wnd.height, decoration)) {
-        free(app_id);
-        return false;
-    }
-
-    free(app_id);
-    return true;
-}
-
 bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 {
     const struct config* general = config_section(cfg, CFG_GENERAL);
@@ -350,7 +245,7 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     }
 
     // create ui window
-    if (!create_window(general, first_image)) {
+    if (!ui_init(cfg, first_image)) {
         imglist_destroy();
         return false;
     }
@@ -362,8 +257,9 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
 
     // create event queue notification
     ctx.event_signal = fdevent_add(handle_event_queue, NULL);
-    if (ctx.event_signal == -1) {
-        perror("Unable to create eventfd");
+    if (ctx.event_signal < 0) {
+        fprintf(stderr, "Error creating events: [%i] %s\n", -ctx.event_signal,
+                strerror(-ctx.event_signal));
         imglist_destroy();
         ui_destroy();
         return false;
@@ -468,6 +364,12 @@ void app_on_imglist(struct image* image, enum fsevent event)
 void app_on_resize(void)
 {
     ctx.modes[ctx.mcurr].on_resize();
+}
+
+void app_on_scale(double scale)
+{
+    font_set_scale(scale);
+    info_reinit();
 }
 
 void app_on_mmove(uint8_t mods, uint32_t btn, size_t x, size_t y, ssize_t dx,

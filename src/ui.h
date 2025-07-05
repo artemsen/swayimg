@@ -4,13 +4,15 @@
 
 #pragma once
 
-#include "pixmap.h"
+#include "config.h"
+#include "image.h"
 
 // Window size
-#define UI_WINDOW_MIN            10         // pixels per side
-#define UI_WINDOW_MAX            0x20000000 // total pixels, ~23000x23000
 #define UI_WINDOW_DEFAULT_WIDTH  1280
 #define UI_WINDOW_DEFAULT_HEIGHT 720
+#define UI_WINDOW_FULLSCREEN     0
+#define UI_WINDOW_MIN            10
+#define UI_WINDOW_MAX            20000
 
 /** Cursor shapes. */
 enum ui_cursor {
@@ -19,19 +21,19 @@ enum ui_cursor {
     ui_cursor_hide,
 };
 
-/**
- * Create global UI context.
- */
-void ui_create(void);
+/** Content types. */
+enum ui_ctype {
+    ui_ctype_image,
+    ui_ctype_animation,
+};
 
 /**
  * Initialize global UI context: create window, register handlers etc.
- * @param app_id application id, used as window class
- * @param width,height initial window size in pixels
- * @param decor flag to use server-side window decoration
- * @return true if window created
+ * @param cfg config instance
+ * @param img first image instance
+ * @return true if UI initialized
  */
-bool ui_init(const char* app_id, size_t width, size_t height, bool decor);
+bool ui_init(const struct config* cfg, const struct image* img);
 
 /**
  * Destroy global UI context.
@@ -44,7 +46,7 @@ void ui_destroy(void);
 void ui_event_prepare(void);
 
 /**
- * Event handler complete notification.
+ * Notify window system that events were read.
  */
 void ui_event_done(void);
 
@@ -73,9 +75,9 @@ void ui_set_cursor(enum ui_cursor shape);
 
 /**
  * Set surface content type.
- * @param animated true to set animation, false for static image
+ * @param ctype content type to set
  */
-void ui_set_ctype(bool animated);
+void ui_set_ctype(enum ui_ctype ctype);
 
 /**
  * Get window width.

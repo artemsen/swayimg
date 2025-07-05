@@ -258,6 +258,7 @@ sources = [
     'src/ui.c',
     'src/viewer.c',
     'src/viewport.c',
+    'src/wayland.c',
     'src/wndbuf.c',
     'src/formats/loader.c',
     'src/formats/bmp.c',
