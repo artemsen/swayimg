@@ -29,14 +29,6 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num);
 void app_destroy(void);
 
 /**
- * Add file descriptor for polling in main loop.
- * @param fd file descriptor for polling
- * @param cb callback function
- * @param data user defined data to pass to callback
- */
-void app_watch(int fd, fd_callback cb, void* data);
-
-/**
  * Run application.
  * @return true if application was closed by user, false on errors
  */

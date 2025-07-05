@@ -20,6 +20,7 @@ sources = [
     '../src/array.c',
     '../src/cache.c',
     '../src/config.c',
+    '../src/fdpoll.c',
     '../src/fs.c',
     '../src/image.c',
     '../src/imglist.c',

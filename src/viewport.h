@@ -76,12 +76,6 @@ struct viewport {
 void viewport_init(struct viewport* vp, const struct config* section);
 
 /**
- * Free viewport resources.
- * @param vp viewport context
- */
-void viewport_free(struct viewport* vp);
-
-/**
  * Reset viewport state.
  * @param vp viewport context
  * @param img image to attach

@@ -5,6 +5,7 @@
 #include "ipc.h"
 
 #include "application.h"
+#include "fdpoll.h"
 
 #include <errno.h>
 #include <netdb.h>
@@ -125,7 +126,7 @@ bool ipc_start(const char* path)
         goto fail;
     }
 
-    app_watch(socket_fd, connection_handler, NULL);
+    fdpoll_add(socket_fd, connection_handler, NULL);
 
     return true;
 

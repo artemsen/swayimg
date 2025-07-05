@@ -7,6 +7,7 @@
 #include "array.h"
 #include "buildcfg.h"
 #include "compositor.h"
+#include "fdpoll.h"
 #include "font.h"
 #include "gallery.h"
 #include "imglist.h"
@@ -20,13 +21,10 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/eventfd.h>
-#include <unistd.h>
 
 /** Mode names. */
 static const char* mode_names[] = { CFG_VIEWER, CFG_SLIDESHOW, CFG_GALLERY };
@@ -36,13 +34,6 @@ enum loop_state {
     loop_run,
     loop_stop,
     loop_error,
-};
-
-/** File descriptor and its handler. */
-struct watchfd {
-    int fd;
-    void* data;
-    fd_callback callback;
 };
 
 /* Event queue. */
@@ -55,9 +46,6 @@ struct event {
 /** Application context */
 struct application {
     enum loop_state state; ///< Main loop state
-
-    struct watchfd* wfds; ///< FD polling descriptors
-    size_t wfds_num;      ///< Number of polling FD
 
     struct event* events;        ///< Event queue
     pthread_mutex_t events_lock; ///< Event queue lock
@@ -121,12 +109,7 @@ static void handle_event_queue(__attribute__((unused)) void* data)
     pthread_mutex_unlock(&ctx.events_lock);
 
     if (!ctx.events) {
-        // reset notification
-        uint64_t value;
-        ssize_t len;
-        do {
-            len = read(ctx.event_signal, &value, sizeof(value));
-        } while (len == -1 && errno == EINTR);
+        fdevent_reset(ctx.event_signal);
     }
 
     if (entry) {
@@ -378,10 +361,8 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
     ctx.mprev = mode_viewer;
 
     // create event queue notification
-    ctx.event_signal = eventfd(0, 0);
-    if (ctx.event_signal != -1) {
-        app_watch(ctx.event_signal, handle_event_queue, NULL);
-    } else {
+    ctx.event_signal = fdevent_add(handle_event_queue, NULL);
+    if (ctx.event_signal == -1) {
         perror("Unable to create eventfd");
         imglist_destroy();
         ui_destroy();
@@ -422,80 +403,40 @@ void app_destroy(void)
     info_destroy();
     font_destroy();
     tpool_destroy();
-
-    for (size_t i = 0; i < ctx.wfds_num; ++i) {
-        close(ctx.wfds[i].fd);
-    }
-    free(ctx.wfds);
+    fdpoll_destroy();
 
     list_for_each(ctx.events, struct event, it) {
         free(it);
     }
 
-    if (ctx.event_signal != -1) {
-        close(ctx.event_signal);
-    }
     pthread_mutex_destroy(&ctx.events_lock);
 
     action_free(ctx.sigusr1);
     action_free(ctx.sigusr2);
 }
 
-void app_watch(int fd, fd_callback cb, void* data)
-{
-    const size_t sz = (ctx.wfds_num + 1) * sizeof(*ctx.wfds);
-    struct watchfd* handlers = realloc(ctx.wfds, sz);
-    if (handlers) {
-        ctx.wfds = handlers;
-        ctx.wfds[ctx.wfds_num].fd = fd;
-        ctx.wfds[ctx.wfds_num].data = data;
-        ctx.wfds[ctx.wfds_num].callback = cb;
-        ++ctx.wfds_num;
-    }
-}
-
 bool app_run(void)
 {
-    struct pollfd* fds;
-
-    // file descriptors to poll
-    fds = calloc(1, ctx.wfds_num * sizeof(struct pollfd));
-    if (!fds) {
-        perror("Failed to allocate memory");
-        return false;
-    }
-    for (size_t i = 0; i < ctx.wfds_num; ++i) {
-        fds[i].fd = ctx.wfds[i].fd;
-        fds[i].events = POLLIN;
-    }
+    ctx.state = loop_run;
 
     // main event loop
-    ctx.state = loop_run;
     while (ctx.state == loop_run) {
+        int rc;
+
         ui_event_prepare();
 
-        // poll events
-        if (poll(fds, ctx.wfds_num, -1) < 0) {
-            if (errno != EINTR) {
-                perror("Error polling events");
-                ctx.state = loop_error;
-                break;
-            }
-        }
-
-        // call handlers for each active event
-        for (size_t i = 0; ctx.state == loop_run && i < ctx.wfds_num; ++i) {
-            if (fds[i].revents & POLLIN) {
-                ctx.wfds[i].callback(ctx.wfds[i].data);
-            }
+        rc = fdpoll_next();
+        if (rc) {
+            fprintf(stderr, "Error polling events: [%i] %s\n", rc,
+                    strerror(rc));
+            ctx.state = loop_error;
+            break;
         }
 
         ui_event_done();
     }
 
     ctx.modes[ctx.mcurr].on_deactivate();
-
-    free(fds);
 
     return ctx.state != loop_error;
 }
@@ -569,8 +510,6 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods)
 void app_apply_action(const struct action* action, bool fau)
 {
     struct event* event = NULL;
-    const uint64_t value = 1;
-    ssize_t len;
 
     pthread_mutex_lock(&ctx.events_lock);
 
@@ -598,14 +537,10 @@ void app_apply_action(const struct action* action, bool fau)
         event->action = action;
         event->free_after_use = fau;
     }
-
-    // add to queue tail
     ctx.events = list_append(ctx.events, event);
 
     pthread_mutex_unlock(&ctx.events_lock);
 
     // raise notification
-    do {
-        len = write(ctx.event_signal, &value, sizeof(value));
-    } while (len == -1 && errno == EINTR);
+    fdevent_set(ctx.event_signal);
 }

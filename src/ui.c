@@ -7,6 +7,7 @@
 #include "application.h"
 #include "array.h"
 #include "buildcfg.h"
+#include "fdpoll.h"
 #include "font.h"
 #include "info.h"
 #include "wndbuf.h"
@@ -23,7 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/timerfd.h>
 #include <unistd.h>
 
 // Mouse buttons, from <linux/input-event-codes.h>
@@ -126,17 +126,6 @@ static struct ui ctx = {
 };
 
 /**
- * Fill timespec structure.
- * @param ts destination structure
- * @param ms time in milliseconds
- */
-static inline void set_timespec(struct timespec* ts, uint32_t ms)
-{
-    ts->tv_sec = ms / 1000;
-    ts->tv_nsec = (ms % 1000) * 1000000;
-}
-
-/**
  * Recreate window buffers.
  * @return true if operation completed successfully
  */
@@ -175,9 +164,7 @@ static void on_keyboard_enter(void* data, struct wl_keyboard* wl_keyboard,
 static void on_keyboard_leave(void* data, struct wl_keyboard* wl_keyboard,
                               uint32_t serial, struct wl_surface* surface)
 {
-    // reset keyboard repeat timer
-    struct itimerspec ts = { 0 };
-    timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
+    fdtimer_reset(ctx.repeat.fd, 0, 0); // reset keyboard repeat timer
 }
 
 static void on_keyboard_modifiers(void* data, struct wl_keyboard* wl_keyboard,
@@ -229,11 +216,9 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
                             uint32_t serial, uint32_t time, uint32_t key,
                             uint32_t state)
 {
-    struct itimerspec ts = { 0 };
-
     if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         // stop key repeat timer
-        timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
+        fdtimer_reset(ctx.repeat.fd, 0, 0);
     } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED && ctx.xkb.state) {
         xkb_keysym_t keysym;
         key += 8;
@@ -245,9 +230,8 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
                 xkb_keymap_key_repeats(ctx.xkb.keymap, key)) {
                 // start key repeat timer
                 ctx.repeat.key = keysym;
-                set_timespec(&ts.it_value, ctx.repeat.delay);
-                set_timespec(&ts.it_interval, 1000 / ctx.repeat.rate);
-                timerfd_settime(ctx.repeat.fd, 0, &ts, NULL);
+                fdtimer_reset(ctx.repeat.fd, ctx.repeat.delay,
+                              1000 / ctx.repeat.rate);
             }
         }
     }
@@ -670,10 +654,9 @@ bool ui_init(const char* app_id, size_t width, size_t height, bool decor)
 
     wl_surface_commit(ctx.wl.surface);
 
-    app_watch(wl_display_get_fd(ctx.wl.display), on_wayland_event, NULL);
+    fdpoll_add(wl_display_get_fd(ctx.wl.display), on_wayland_event, NULL);
 
-    ctx.repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    app_watch(ctx.repeat.fd, on_key_repeat, NULL);
+    ctx.repeat.fd = fdtimer_add(on_key_repeat, NULL);
 
     return true;
 }

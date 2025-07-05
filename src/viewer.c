@@ -667,7 +667,7 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
 
 void viewer_destroy(void)
 {
+    keybind_free(ctx.kb);
     cache_free(ctx.history);
     cache_free(ctx.preload);
-    viewport_free(&ctx.vp);
 }

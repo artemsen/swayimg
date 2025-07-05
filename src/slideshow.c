@@ -5,6 +5,7 @@
 #include "slideshow.h"
 
 #include "application.h"
+#include "fdpoll.h"
 #include "imglist.h"
 #include "info.h"
 #include "render.h"
@@ -13,8 +14,6 @@
 #include "viewport.h"
 
 #include <assert.h>
-#include <sys/timerfd.h>
-#include <unistd.h>
 
 /** Slideshow context. */
 struct slideshow {
@@ -24,22 +23,12 @@ struct slideshow {
     struct image* next; ///< Next image to show (preloading)
 
     int timer_fd;    ///< Timer file
-    size_t duration; ///< Slideshow image display time (seconds)
+    size_t duration; ///< Slideshow image display time (ms)
     bool enabled;    ///< Slideshow state (in progress/paused)
 };
 
 /** Global slideshow context. */
 static struct slideshow ctx;
-
-/**
- * Time control.
- * @param restart true to restart timer, false to stop
- */
-static inline void timer_ctl(bool restart)
-{
-    struct itimerspec ts = { .it_value.tv_sec = restart ? ctx.duration : 0 };
-    timerfd_settime(ctx.timer_fd, 0, &ts, NULL);
-}
 
 /** Image preloader worker. */
 static void preloader(__attribute__((unused)) void* data)
@@ -112,7 +101,7 @@ static void set_current_image(struct image* img)
 
     // restart timer
     if (ctx.enabled) {
-        timer_ctl(true);
+        fdtimer_reset(ctx.timer_fd, ctx.duration, 0);
     }
 
     app_redraw();
@@ -196,7 +185,7 @@ static void on_slideshow_timer(__attribute__((unused)) void* data)
     if (ctx.next) {
         set_current_image(ctx.next);
     } else if (!open_nearest_image(action_next_file) && ctx.enabled) {
-        timer_ctl(true); // restart timer
+        fdtimer_reset(ctx.timer_fd, ctx.duration, 0);
     }
     imglist_unlock();
 }
@@ -282,7 +271,7 @@ static bool handle_action(const struct action* action)
             break;
         case action_pause:
             ctx.enabled = !ctx.enabled;
-            timer_ctl(ctx.enabled);
+            fdtimer_reset(ctx.timer_fd, ctx.enabled ? ctx.duration : 0, 0);
             info_update(info_status, ctx.enabled ? "Continue" : "Pause");
             app_redraw();
             break;
@@ -317,7 +306,7 @@ static void on_activate(struct image* image)
 static void on_deactivate(void)
 {
     viewport_reset(&ctx.vp, NULL);
-    timer_ctl(false);
+    fdtimer_reset(ctx.timer_fd, 0, 0);
     ui_set_ctype(false);
 
     tpool_wait();
@@ -345,11 +334,8 @@ void slideshow_init(const struct config* cfg, struct mode* handlers)
     ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_SLIDESHOW));
 
     // setup slideshow timer
-    ctx.duration = config_get_num(section, CFG_VIEW_SSHOW_TM, 1, 86400);
-    ctx.timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (ctx.timer_fd != -1) {
-        app_watch(ctx.timer_fd, on_slideshow_timer, NULL);
-    }
+    ctx.duration = config_get_num(section, CFG_VIEW_SSHOW_TM, 1, 86400) * 1000;
+    ctx.timer_fd = fdtimer_add(on_slideshow_timer, NULL);
 
     handlers->on_activate = on_activate;
     handlers->on_deactivate = on_deactivate;
@@ -362,10 +348,5 @@ void slideshow_init(const struct config* cfg, struct mode* handlers)
 
 void slideshow_destroy(void)
 {
-    if (ctx.timer_fd != -1) {
-        close(ctx.timer_fd);
-    }
-
     keybind_free(ctx.kb);
-    viewport_free(&ctx.vp);
 }

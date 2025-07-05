@@ -4,13 +4,11 @@
 
 #include "viewport.h"
 
-#include "application.h"
+#include "fdpoll.h"
 
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include <sys/timerfd.h>
-#include <unistd.h>
 
 // Convert Id to special color value
 #define ID_TO_ARGB(n) ARGB(0, 0xee, 0xba, 0xbe + (n))
@@ -260,18 +258,7 @@ void viewport_init(struct viewport* vp, const struct config* section)
                                      ARRAY_SIZE(scale_names));
 
     // setup animation timer
-    vp->animation_fd =
-        timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (vp->animation_fd != -1) {
-        app_watch(vp->animation_fd, on_animation_timer, vp);
-    }
-}
-
-void viewport_free(struct viewport* vp)
-{
-    if (vp->animation_fd != -1) {
-        close(vp->animation_fd);
-    }
+    vp->animation_fd = fdtimer_add(on_animation_timer, vp);
 }
 
 void viewport_reset(struct viewport* vp, struct image* img)
@@ -423,26 +410,22 @@ void viewport_scale_abs(struct viewport* vp, double scale)
 
 void viewport_anim_ctl(struct viewport* vp, enum vp_actl op)
 {
-    if (vp->animation_fd != -1) {
-        struct itimerspec ts = { 0 };
-        if (op == vp_actl_start) {
-            const struct imgframe* frame =
-                arr_nth(vp->image->data->frames, vp->frame);
-            if (vp->image->data->frames->size > 1 && frame->duration) {
-                ts.it_value.tv_sec = frame->duration / 1000;
-                ts.it_value.tv_nsec = (frame->duration % 1000) * 1000000;
-            }
+    size_t ms = 0;
+
+    if (op == vp_actl_start) {
+        struct array* frames = vp->image->data->frames;
+        const struct imgframe* frame = arr_nth(frames, vp->frame);
+        if (frames->size > 1 && frame->duration) {
+            ms = frame->duration;
         }
-        timerfd_settime(vp->animation_fd, 0, &ts, NULL);
     }
+
+    fdtimer_reset(vp->animation_fd, ms, 0);
 }
 
 bool viewport_anim_stat(const struct viewport* vp)
 {
-    struct itimerspec ts;
-    return vp->animation_fd != -1 &&
-        timerfd_gettime(vp->animation_fd, &ts) == 0 &&
-        (ts.it_value.tv_sec || ts.it_value.tv_nsec);
+    return vp->animation_fd != -1 && fdtimer_get(vp->animation_fd);
 }
 
 const struct pixmap* viewport_pixmap(const struct viewport* vp)

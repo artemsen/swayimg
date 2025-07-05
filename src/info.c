@@ -5,6 +5,7 @@
 #include "info.h"
 
 #include "application.h"
+#include "fdpoll.h"
 #include "font.h"
 #include "ui.h"
 
@@ -12,8 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/timerfd.h>
-#include <unistd.h>
 
 /** Limit on the length of the meta info key/value */
 #define MAX_META_KEY_LEN   32
@@ -81,9 +80,9 @@ struct scheme {
 
 /** Info timeout description. */
 struct timeout {
-    int fd;         ///< Timer FD
-    size_t timeout; ///< Timeout duration in seconds
-    bool active;    ///< Current state
+    int fd;       ///< Timer FD
+    size_t delay; ///< Timeout duration in ms
+    bool active;  ///< Current state
 };
 
 /** Info data context. */
@@ -108,10 +107,7 @@ static struct info_context ctx;
 static void on_timeout(void* data)
 {
     struct timeout* timeout = data;
-    struct itimerspec ts = { 0 };
-
     timeout->active = false;
-    timerfd_settime(timeout->fd, 0, &ts, NULL);
     app_redraw();
 }
 
@@ -123,13 +119,7 @@ static void timeout_init(struct timeout* timeout)
 {
     timeout->fd = -1;
     timeout->active = true;
-    if (timeout->timeout != 0) {
-        timeout->fd =
-            timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-        if (timeout->fd != -1) {
-            app_watch(timeout->fd, on_timeout, timeout);
-        }
-    }
+    timeout->fd = fdtimer_add(on_timeout, timeout);
 }
 
 /**
@@ -139,21 +129,7 @@ static void timeout_init(struct timeout* timeout)
 static void timeout_reset(struct timeout* timeout)
 {
     timeout->active = true;
-    if (timeout->fd != -1) {
-        struct itimerspec ts = { .it_value.tv_sec = timeout->timeout };
-        timerfd_settime(timeout->fd, 0, &ts, NULL);
-    }
-}
-
-/**
- * Close timer FD.
- * @param timeout timer instance
- */
-static void timeout_close(struct timeout* timeout)
-{
-    if (timeout->fd != -1) {
-        close(timeout->fd);
-    }
+    fdtimer_reset(timeout->fd, timeout->delay, 0);
 }
 
 /** Free help buffer. */
@@ -537,9 +513,10 @@ void info_init(const struct config* cfg, const char* mode)
 
     section = config_section(cfg, CFG_INFO);
     ctx.show = config_get_bool(section, CFG_INFO_SHOW);
-    ctx.info.timeout = config_get_num(section, CFG_INFO_ITIMEOUT, 0, 1024);
+    ctx.info.delay = config_get_num(section, CFG_INFO_ITIMEOUT, 0, 1024) * 1000;
     timeout_init(&ctx.info);
-    ctx.status.timeout = config_get_num(section, CFG_INFO_STIMEOUT, 0, 1024);
+    ctx.status.delay =
+        config_get_num(section, CFG_INFO_STIMEOUT, 0, 1024) * 1000;
     timeout_init(&ctx.status);
 
     info_set_default(mode);
@@ -562,9 +539,6 @@ void info_reinit(void)
 
 void info_destroy(void)
 {
-    timeout_close(&ctx.info);
-    timeout_close(&ctx.status);
-
     free_help();
     free_meta();
 

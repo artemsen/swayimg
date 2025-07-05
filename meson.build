@@ -237,6 +237,7 @@ sources = [
     'src/array.c',
     'src/cache.c',
     'src/config.c',
+    'src/fdpoll.c',
     'src/font.c',
     'src/fs.c',
     'src/gallery.c',

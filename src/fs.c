@@ -4,9 +4,9 @@
 
 #include "fs.h"
 
-#include "application.h"
 #include "array.h"
 #include "buildcfg.h"
+#include "fdpoll.h"
 #include "list.h"
 
 #include <assert.h>
@@ -132,7 +132,7 @@ void fs_monitor_init(fs_monitor_cb handler)
     ctx.notify = inotify_init1(IN_NONBLOCK);
     if (ctx.notify != -1) {
         ctx.handler = handler;
-        app_watch(ctx.notify, on_inotify, NULL);
+        fdpoll_add(ctx.notify, on_inotify, NULL);
     }
 }
 
@@ -144,8 +144,6 @@ void fs_monitor_destroy(void)
             free(it);
         }
         ctx.watch = NULL;
-        close(ctx.notify);
-        ctx.notify = -1;
     }
 }
 
