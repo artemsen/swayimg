@@ -44,6 +44,60 @@ threads = dependency('threads')
 rt = cc.find_library('rt')
 m = cc.find_library('m')
 
+# wayland support
+wlproto = dependency(
+    'wayland-protocols',
+    version: '>=1.35',
+    required: get_option('wayland'),
+)
+if wlproto.found()
+    wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
+    wlscan = dependency('wayland-scanner', required: false, native: true)
+    if wlscan.found()
+        wl_scanner = find_program(
+            wlscan.get_variable(pkgconfig: 'wayland_scanner'),
+            native: true,
+        )
+    else
+        wl_scanner = find_program('wayland-scanner', native: true)
+    endif
+
+    protocols = [
+        wlproto_dir / 'stable/xdg-shell/xdg-shell.xml',
+        wlproto_dir / 'stable/tablet/tablet-v2.xml',
+        wlproto_dir / 'stable/viewporter/viewporter.xml',
+        wlproto_dir / 'staging/content-type/content-type-v1.xml',
+        wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
+        wlproto_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
+        wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
+        wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
+    ]
+    wl_protos_src = []
+
+    foreach xml : protocols
+        wl_protos_src += custom_target(
+            xml.underscorify() + '_c',
+            input: xml,
+            output: '@BASENAME@-protocol.c',
+            command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+        )
+        wl_protos_src += custom_target(
+            xml.underscorify() + '_client_h',
+            input: xml,
+            output: '@BASENAME@-client-protocol.h',
+            command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+        )
+    endforeach
+endif
+
+# DRM support
+drm = dependency('libdrm', required: get_option('drm'))
+
+assert(
+    wlproto.found() or drm.found(),
+    'at least one ui framework (wayland/drm) must be available',
+)
+
 # optional dependencies: file formats support
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
 heif = dependency('libheif', required: get_option('heif'))
@@ -98,50 +152,13 @@ conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
+conf.set('HAVE_WAYLAND', wlproto.found())
 conf.set('HAVE_COMPOSITOR', json.found())
+conf.set('HAVE_DRM', drm.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
 
-# Wayland protocols
-wlproto = dependency('wayland-protocols', version: '>=1.35')
-wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
-wlscan = dependency('wayland-scanner', required: false, native: true)
-if wlscan.found()
-    wl_scanner = find_program(
-        wlscan.get_variable(pkgconfig: 'wayland_scanner'),
-        native: true,
-    )
-else
-    wl_scanner = find_program('wayland-scanner', native: true)
-endif
-
-protocols = [
-    wlproto_dir / 'stable/xdg-shell/xdg-shell.xml',
-    wlproto_dir / 'stable/tablet/tablet-v2.xml',
-    wlproto_dir / 'stable/viewporter/viewporter.xml',
-    wlproto_dir / 'staging/content-type/content-type-v1.xml',
-    wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
-    wlproto_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
-    wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
-    wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
-]
-wl_protos_src = []
-
-foreach xml : protocols
-    wl_protos_src += custom_target(
-        xml.underscorify() + '_c',
-        input: xml,
-        output: '@BASENAME@-protocol.c',
-        command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-    )
-    wl_protos_src += custom_target(
-        xml.underscorify() + '_client_h',
-        input: xml,
-        output: '@BASENAME@-client-protocol.h',
-        command: [wl_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-    )
-endforeach
 
 # install sample config
 install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
@@ -258,8 +275,6 @@ sources = [
     'src/viewer.c',
     'src/viewport.c',
     'src/ui/ui.c',
-    'src/ui/wayland.c',
-    'src/ui/wndbuf.c',
     'src/formats/loader.c',
     'src/formats/bmp.c',
     'src/formats/dicom.c',
@@ -271,6 +286,13 @@ sources = [
 ]
 if json.found()
     sources += 'src/ui/compositor.c'
+endif
+if wlproto.found()
+    sources += 'src/ui/wayland.c'
+    sources += 'src/ui/wndbuf.c'
+endif
+if drm.found()
+    sources += 'src/ui/drm.c'
 endif
 if exif.found()
     sources += 'src/formats/exif.c'
@@ -327,6 +349,7 @@ executable(
         xkb,
         fontconfig,
         freetype,
+        drm,
         # image support
         exif,
         exr,

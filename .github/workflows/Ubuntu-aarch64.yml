@@ -25,6 +25,7 @@ jobs:
           bash-completion
           build-essential
           libavif-dev
+          libdrm-dev
           libexif-dev
           libfontconfig-dev
           libfreetype-dev

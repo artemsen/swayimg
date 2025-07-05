@@ -88,6 +88,22 @@ option(
     description: 'Enable integration with compositors',
 )
 
+# Wayland UI
+option(
+    'wayland',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable Wayland support',
+)
+
+# DRM UI
+option(
+    'drm',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable DRM renderig support',
+)
+
 # extra files to install
 option(
     'bash',

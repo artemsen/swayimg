@@ -22,14 +22,14 @@ jobs:
           pkg install -y
           meson pkgconf
           bash-completion json-c freetype2 fontconfig
-          libinotify libxkbcommon libexif
+          libinotify libxkbcommon libdrm libexif
           wayland wayland-protocols
           libavif libjxl libsixel libraw librsvg2-rust
           giflib jpeg-turbo openexr png tiff webp
           googletest
         run: |
           set -e
-          meson setup --werror -D tests=enabled -D heif=auto -D bash=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
+          meson setup -D tests=enabled -D compositor=enabled -D wayland=enabled -D drm=enabled -D man=true -D desktop=true -D bash=enabled -D zsh=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D heif=auto -D jpeg=enabled -D jxl=enabled -D raw=enabled -D sixel=enabled -D svg=enabled -D webp=enabled --prefix=/usr --werror ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           meson test --verbose -C ${{ env.BUILD_PATH }}
           DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}

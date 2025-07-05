@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "buildcfg.h"
 #include "ui.h"
 
 /** Abstract UI interface. */
@@ -81,6 +82,7 @@ struct ui {
     void (*toggle_fullscreen)(void* data);
 };
 
+#ifdef HAVE_WAYLAND
 /**
  * Initialize Wayland UI.
  * @param app_id application id, used as window class
@@ -91,3 +93,13 @@ struct ui {
  */
 void* ui_init_wl(const char* app_id, size_t width, size_t height, bool decor,
                  struct ui* handlers);
+#endif // HAVE_WAYLAND
+
+#ifdef HAVE_DRM
+/**
+ * Initialize DRM UI.
+ * @param handlers DRM-specific handlers
+ * @return pointer to the UI context or NULL on errors
+ */
+void* ui_init_drm(struct ui* handlers);
+#endif // HAVE_DRM

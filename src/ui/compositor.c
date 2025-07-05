@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Integration with Wayland compositor (Sway and Hyprland only).
+// Integration with Wayland compositors (Sway and Hyprland only).
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
 #include "compositor.h"

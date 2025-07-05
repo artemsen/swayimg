@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-// User interface: Window management, keyboard input, etc.
+// Wayland based user interface.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
 #include "../application.h"
 #include "../array.h"
 #include "../fdpoll.h"
-#include "buildcfg.h"
 #include "uiface.h"
 #include "wndbuf.h"
 
@@ -706,6 +705,7 @@ static size_t wayland_get_width(void* data)
     const double scale = (double)ctx->wnd.scale / FRACTION_SCALE_DEN;
     return scale * ctx->wnd.width;
 }
+
 static size_t wayland_get_height(void* data)
 {
     struct wayland* ctx = data;
@@ -828,7 +828,7 @@ static void wayland_free(void* data)
 }
 
 void* ui_init_wl(const char* app_id, size_t width, size_t height, bool decor,
-                 struct ui* ui)
+                 struct ui* handlers)
 {
     struct wayland* ctx = calloc(1, sizeof(struct wayland));
     if (!ctx) {
@@ -911,17 +911,17 @@ void* ui_init_wl(const char* app_id, size_t width, size_t height, bool decor,
 
     ctx->repeat.fd = fdtimer_add(on_key_repeat, ctx);
 
-    ui->event_prep = wayland_event_prep;
-    ui->event_done = wayland_event_done;
-    ui->draw_begin = wayland_draw_begin;
-    ui->draw_commit = wayland_draw_commit;
-    ui->set_title = wayland_set_title;
-    ui->set_cursor = wayland_set_cursor;
-    ui->set_ctype = wayland_set_ctype;
-    ui->get_width = wayland_get_width;
-    ui->get_height = wayland_get_height;
-    ui->toggle_fullscreen = wayland_toggle_fullscreen;
-    ui->free = wayland_free;
+    handlers->event_prep = wayland_event_prep;
+    handlers->event_done = wayland_event_done;
+    handlers->draw_begin = wayland_draw_begin;
+    handlers->draw_commit = wayland_draw_commit;
+    handlers->set_title = wayland_set_title;
+    handlers->set_cursor = wayland_set_cursor;
+    handlers->set_ctype = wayland_set_ctype;
+    handlers->get_width = wayland_get_width;
+    handlers->get_height = wayland_get_height;
+    handlers->toggle_fullscreen = wayland_toggle_fullscreen;
+    handlers->free = wayland_free;
 
     return ctx;
 

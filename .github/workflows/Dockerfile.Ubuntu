@@ -5,6 +5,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     bash-completion \
     build-essential \
     libavif-dev \
+    libdrm-dev \
     libexif-dev \
     libfontconfig-dev \
     libfreetype-dev \

@@ -17,6 +17,7 @@ static void* ui_ctx;
 /** Global UI handlers. */
 static struct ui ui_handlers;
 
+#ifdef HAVE_WAYLAND
 /**
  * Initialize Wayland UI.
  * @param cfg config instance
@@ -115,10 +116,20 @@ static void* init_wayland(const struct config* cfg, const struct image* img,
     free(app_id);
     return ctx;
 }
+#endif // HAVE_WAYLAND
 
 bool ui_init(const struct config* cfg, const struct image* img)
 {
+#ifdef HAVE_WAYLAND
     ui_ctx = init_wayland(cfg, img, &ui_handlers);
+#endif // HAVE_WAYLAND
+
+#ifdef HAVE_DRM
+    if (!ui_ctx) {
+        ui_ctx = ui_init_drm(&ui_handlers);
+    }
+#endif // HAVE_DRM
+
     return !!ui_ctx;
 }
 

@@ -6,6 +6,7 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     fontconfig \
     gtest \
     libavif \
+    libdrm \
     libexif \
     libheif \
     libjpeg-turbo \

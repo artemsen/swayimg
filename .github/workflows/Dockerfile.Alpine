@@ -1,10 +1,11 @@
 FROM i386/alpine:latest
 
 RUN apk add \
-    build-base \
     bash-completion-dev \
+    build-base \
     giflib-dev \
     json-c-dev \
+    libdrm-dev \
     libexif-dev \
     libheif-dev \
     libjpeg-turbo-dev \
