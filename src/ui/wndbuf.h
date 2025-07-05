@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "pixmap.h"
+#include "../pixmap.h"
 
 #include <wayland-client-protocol.h>
 

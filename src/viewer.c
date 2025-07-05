@@ -9,7 +9,7 @@
 #include "imglist.h"
 #include "info.h"
 #include "render.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "viewport.h"
 
 #include <pthread.h>

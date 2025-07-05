@@ -7,7 +7,7 @@
 #include "application.h"
 #include "info.h"
 #include "shellcmd.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #include <stdlib.h>
 #include <string.h>

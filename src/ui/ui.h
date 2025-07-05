@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "config.h"
-#include "image.h"
+#include "../config.h"
+#include "../image.h"
 
 // Window size
 #define UI_WINDOW_DEFAULT_WIDTH  1280

@@ -11,7 +11,7 @@
 #include "info.h"
 #include "layout.h"
 #include "tpool.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #include <assert.h>
 #include <errno.h>

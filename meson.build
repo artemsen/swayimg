@@ -255,11 +255,11 @@ sources = [
     'src/shellcmd.c',
     'src/slideshow.c',
     'src/tpool.c',
-    'src/ui.c',
     'src/viewer.c',
     'src/viewport.c',
-    'src/wayland.c',
-    'src/wndbuf.c',
+    'src/ui/ui.c',
+    'src/ui/wayland.c',
+    'src/ui/wndbuf.c',
     'src/formats/loader.c',
     'src/formats/bmp.c',
     'src/formats/dicom.c',
@@ -270,7 +270,7 @@ sources = [
     wl_protos_src,
 ]
 if json.found()
-    sources += 'src/compositor.c'
+    sources += 'src/ui/compositor.c'
 endif
 if exif.found()
     sources += 'src/formats/exif.c'

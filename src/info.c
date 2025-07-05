@@ -7,7 +7,7 @@
 #include "application.h"
 #include "fdpoll.h"
 #include "font.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #include <stdarg.h>
 #include <stdio.h>

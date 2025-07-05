@@ -14,7 +14,7 @@
 #include "shellcmd.h"
 #include "slideshow.h"
 #include "tpool.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "viewer.h"
 
 #include <pthread.h>

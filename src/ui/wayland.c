@@ -2,10 +2,10 @@
 // User interface: Window management, keyboard input, etc.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "application.h"
-#include "array.h"
+#include "../application.h"
+#include "../array.h"
+#include "../fdpoll.h"
 #include "buildcfg.h"
-#include "fdpoll.h"
 #include "uiface.h"
 #include "wndbuf.h"
 

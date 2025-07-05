@@ -4,7 +4,7 @@
 
 #include "compositor.h"
 
-#include "array.h"
+#include "../array.h"
 
 #include <assert.h>
 #include <errno.h>

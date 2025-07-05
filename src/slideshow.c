@@ -10,7 +10,7 @@
 #include "info.h"
 #include "render.h"
 #include "tpool.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "viewport.h"
 
 #include <assert.h>
