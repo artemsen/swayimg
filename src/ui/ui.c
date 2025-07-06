@@ -122,6 +122,9 @@ bool ui_init(const struct config* cfg, const struct image* img)
 {
 #ifdef HAVE_WAYLAND
     ui_ctx = init_wayland(cfg, img, &ui_handlers);
+#else
+    (void)cfg;
+    (void)img;
 #endif // HAVE_WAYLAND
 
 #ifdef HAVE_DRM

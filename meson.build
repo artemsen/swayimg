@@ -36,7 +36,6 @@ if version == '0.0.0'
 endif
 
 # mandatory dependencies
-wlcln = dependency('wayland-client')
 xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
@@ -45,12 +44,10 @@ rt = cc.find_library('rt')
 m = cc.find_library('m')
 
 # wayland support
-wlproto = dependency(
-    'wayland-protocols',
-    version: '>=1.35',
-    required: get_option('wayland'),
-)
-if wlproto.found()
+wl_protocols = []
+wlcln = dependency('wayland-client', required: get_option('wayland'))
+if wlcln.found()
+    wlproto = dependency('wayland-protocols', version: '>=1.35')
     wlproto_dir = wlproto.get_variable(pkgconfig: 'pkgdatadir')
     wlscan = dependency('wayland-scanner', required: false, native: true)
     if wlscan.found()
@@ -72,16 +69,15 @@ if wlproto.found()
         wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
         wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
     ]
-    wl_protos_src = []
 
     foreach xml : protocols
-        wl_protos_src += custom_target(
+        wl_protocols += custom_target(
             xml.underscorify() + '_c',
             input: xml,
             output: '@BASENAME@-protocol.c',
             command: [wl_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
         )
-        wl_protos_src += custom_target(
+        wl_protocols += custom_target(
             xml.underscorify() + '_client_h',
             input: xml,
             output: '@BASENAME@-client-protocol.h',
@@ -93,10 +89,7 @@ endif
 # DRM support
 drm = dependency('libdrm', required: get_option('drm'))
 
-assert(
-    wlproto.found() or drm.found(),
-    'at least one ui framework (wayland/drm) must be available',
-)
+assert(wlcln.found() or drm.found(), 'UI libs not available')
 
 # optional dependencies: file formats support
 exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
@@ -121,7 +114,7 @@ else
     if not gif.found() and gif_opt.allowed()
         gif = cc.find_library(
             'gif',
-            dirs: wlcln.get_variable(pkgconfig: 'libdir'),
+            dirs: xkb.get_variable(pkgconfig: 'libdir'),
             required: gif_opt,
         )
     endif
@@ -138,6 +131,11 @@ inotify = dependency('libinotify', required: false)
 
 # configuration file
 conf = configuration_data()
+conf.set('HAVE_COMPOSITOR', wlcln.found() and json.found())
+conf.set('HAVE_WAYLAND', wlcln.found())
+conf.set('HAVE_DRM', drm.found())
+conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
+conf.set('HAVE_LIBEXIF', exif.found())
 conf.set('HAVE_LIBEXR', exr.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBHEIF', heif.found())
@@ -150,11 +148,6 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
-conf.set('HAVE_LIBEXIF', exif.found())
-conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
-conf.set('HAVE_WAYLAND', wlproto.found())
-conf.set('HAVE_COMPOSITOR', json.found())
-conf.set('HAVE_DRM', drm.found())
 conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildcfg.h', configuration: conf)
@@ -282,12 +275,12 @@ sources = [
     'src/formats/pnm.c',
     'src/formats/qoi.c',
     'src/formats/tga.c',
-    wl_protos_src,
+    wl_protocols,
 ]
 if json.found()
     sources += 'src/ui/compositor.c'
 endif
-if wlproto.found()
+if wlcln.found()
     sources += 'src/ui/wayland.c'
     sources += 'src/ui/wndbuf.c'
 endif
