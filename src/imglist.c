@@ -20,16 +20,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-/** Order of file list. */
-enum list_order {
-    order_none,    ///< Unsorted (system depended)
-    order_alpha,   ///< Lexicographic sort
-    order_numeric, ///< Numeric sort
-    order_mtime,   ///< Modification time sort
-    order_size,    ///< Size sort
-    order_random   ///< Random order
-};
-
 // clang-format off
 /** Order names. */
 static const char* order_names[] = {
@@ -48,11 +38,11 @@ struct image_list {
     size_t size;          ///< Size of image list
     pthread_mutex_t lock; ///< List lock
 
-    enum list_order order; ///< File list order
-    bool reverse;          ///< Reverse order flag
-    bool recursive;        ///< Read directories recursively
-    bool all_files;        ///< Open all files from the same directory
-    bool from_file;        ///< Interpret input files as lists
+    enum imglist_order order; ///< File list order
+    bool reverse;             ///< Reverse order flag
+    bool recursive;           ///< Read directories recursively
+    bool all_files;           ///< Open all files from the same directory
+    bool from_file;           ///< Interpret input files as lists
 };
 
 /** Global image list instance. */
@@ -143,71 +133,6 @@ static int compare(const void* ppi0, const void* ppi1)
     }
 
     return ctx.reverse ? -rc : rc;
-}
-
-/**
- * Sort image list considering image list config.
- */
-static void sort(void)
-{
-    struct image* last;
-    struct array* arr;
-    size_t i;
-
-    // same as input or system dependent
-    if (ctx.order == order_none) {
-        if (!ctx.reverse) { // list is created in reverse order, reorder it
-            list_for_each(ctx.images, struct image, it) {
-                struct list* next = it->list.next;
-                it->list.next = it->list.prev;
-                it->list.prev = next;
-                if (!next) { // last entry
-                    ctx.images = it;
-                }
-            }
-        }
-        return;
-    }
-
-    // transform list to array with pointers
-    arr = arr_create(ctx.size, sizeof(struct image*));
-    if (!arr) {
-        return;
-    }
-    i = 0;
-    list_for_each(ctx.images, struct image, it) {
-        *(struct image**)arr_nth(arr, i++) = it;
-        it->list.next = NULL;
-        it->list.prev = NULL;
-    }
-
-    if (ctx.order == order_random) {
-        // shuffle
-        for (i = 0; i < arr->size; ++i) {
-            const size_t swap_index = rand() % arr->size;
-            if (i != swap_index) {
-                struct image** entry0 = arr_nth(arr, i);
-                struct image** entry1 = arr_nth(arr, swap_index);
-                struct image* tmp = *entry0;
-                *entry0 = *entry1;
-                *entry1 = tmp;
-            }
-        }
-    } else if (ctx.order == order_alpha || ctx.order == order_numeric ||
-               ctx.order == order_mtime || ctx.order == order_size) {
-        // sort in specific order
-        qsort(arr_nth(arr, 0), arr->size, arr->item_size, compare);
-    }
-
-    // transform array to list
-    ctx.images = *(struct image**)arr_nth(arr, 0);
-    last = ctx.images;
-    for (i = 1; i < arr->size; ++i) {
-        list_append(last, *(struct image**)arr_nth(arr, i));
-        last = list_next(last);
-    }
-
-    arr_free(arr);
 }
 
 /**
@@ -629,6 +554,75 @@ bool imglist_is_locked(void)
     return true;
 }
 
+enum imglist_order imglist_get_order(void)
+{
+    return ctx.order;
+}
+
+void imglist_sort(enum imglist_order order)
+{
+    struct image* last;
+    struct array* arr;
+    size_t i;
+
+    ctx.order = order;
+
+    // same as input or system dependent
+    if (ctx.order == order_none) {
+        if (!ctx.reverse) { // list is created in reverse order, reorder it
+            list_for_each(ctx.images, struct image, it) {
+                struct list* next = it->list.next;
+                it->list.next = it->list.prev;
+                it->list.prev = next;
+                if (!next) { // last entry
+                    ctx.images = it;
+                }
+            }
+        }
+        return;
+    }
+
+    // transform list to array with pointers
+    arr = arr_create(ctx.size, sizeof(struct image*));
+    if (!arr) {
+        return;
+    }
+    i = 0;
+    list_for_each(ctx.images, struct image, it) {
+        *(struct image**)arr_nth(arr, i++) = it;
+        it->list.next = NULL;
+        it->list.prev = NULL;
+    }
+
+    if (ctx.order == order_random) {
+        // shuffle
+        for (i = 0; i < arr->size; ++i) {
+            const size_t swap_index = rand() % arr->size;
+            if (i != swap_index) {
+                struct image** entry0 = arr_nth(arr, i);
+                struct image** entry1 = arr_nth(arr, swap_index);
+                struct image* tmp = *entry0;
+                *entry0 = *entry1;
+                *entry1 = tmp;
+            }
+        }
+    } else if (ctx.order == order_alpha || ctx.order == order_numeric ||
+               ctx.order == order_mtime || ctx.order == order_size) {
+        // sort in specific order
+        qsort(arr_nth(arr, 0), arr->size, arr->item_size, compare);
+    }
+
+    // transform array to list
+    ctx.images = *(struct image**)arr_nth(arr, 0);
+    last = ctx.images;
+    for (i = 1; i < arr->size; ++i) {
+        list_append(last, *(struct image**)arr_nth(arr, i));
+        last = list_next(last);
+    }
+
+    arr_free(arr);
+}
+
 struct image* imglist_load(const char* const* sources, size_t num)
 {
     struct image* img = NULL;
@@ -642,7 +636,7 @@ struct image* imglist_load(const char* const* sources, size_t num)
     }
 
     if (ctx.size) {
-        sort();
+        imglist_sort(ctx.order);
         reindex();
         if (ctx.from_file) {
             img = imglist_first();

@@ -7,6 +7,16 @@
 #include "config.h"
 #include "image.h"
 
+/** Order of file list. */
+enum imglist_order {
+    order_none,    ///< Unsorted (system depended)
+    order_alpha,   ///< Lexicographic sort
+    order_numeric, ///< Numeric sort
+    order_mtime,   ///< Modification time sort
+    order_size,    ///< Size sort
+    order_random   ///< Random order
+};
+
 /**
  * Initialize global image list context.
  * @param cfg config instance
@@ -32,6 +42,18 @@ void imglist_unlock(void);
  * Check if image list is locked.
  */
 bool imglist_is_locked(void);
+
+/**
+ * Get order of the image list.
+ * @return image list order
+ */
+enum imglist_order imglist_get_order(void);
+
+/**
+ * Set new order and sort image list.
+ * @param order new order to set
+ */
+void imglist_sort(enum imglist_order order);
 
 /**
  * Load image list from specified sources.
