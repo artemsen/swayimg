@@ -22,8 +22,8 @@ mode = viewer
 size = 1280,720
 # Sway/Hyprland only: Window position (auto or absolute coordinates, e.g. 10,20)
 position = auto
-# Sway/Hyprland only: Create floating window above the currently focused one
-overlay = no
+# Sway/Hyprland only: create floating window above the currently focused one
+overlay = yes
 # Use window decoration (yes/no)
 decoration = no
 # Action performed by SIGUSR1 signal (same format as for key bindings)
