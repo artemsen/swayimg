@@ -255,6 +255,12 @@ bool app_init(const struct config* cfg, const char* const* sources, size_t num)
                                  ARRAY_SIZE(mode_names));
     ctx.mprev = mode_viewer;
 
+    // set mode to gallery if current mode is not default and
+    // the imglist is multiple images for expected usage
+    if (imglist_size() > 1 && ctx.mcurr != ctx.mprev) {
+        ctx.mcurr = mode_gallery;
+    }
+
     // create event queue notification
     ctx.event_signal = fdevent_add(handle_event_queue, NULL);
     if (ctx.event_signal < 0) {
