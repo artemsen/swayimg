@@ -33,24 +33,37 @@ static struct slideshow ctx;
 /** Image preloader worker. */
 static void preloader(__attribute__((unused)) void* data)
 {
-    struct image* curr;
+    struct image* prev;
     struct image* img;
 
     imglist_lock();
-    curr = ctx.vp.image;
+    prev = ctx.vp.image;
+    img = imglist_next(prev, false);
 
-    img = imglist_next(curr, true);
-    while (img) {
+    while (true) {
         struct image* skip;
+
+        if (!img) {
+            if (imglist_get_order() == order_random) {
+                imglist_sort(order_random);
+            }
+            img = imglist_first();
+        }
+
+        if (img == prev) {
+            img = NULL; // same image
+        }
+        if (!img) {
+            break; // no more images
+        }
+
         if (image_has_frames(img) || image_load(img) == imgload_success) {
             break;
         }
+
         skip = img;
-        img = imglist_next(img, true);
+        img = imglist_next(img, false);
         imglist_remove(skip);
-        if (img == curr) {
-            img = NULL; // no more images
-        }
     }
 
     ctx.next = img;
