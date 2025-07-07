@@ -487,7 +487,7 @@ static struct image* get_diff_parent(struct image* img, bool loop, bool forward)
         } else {
             it = imglist_prev(it, loop);
         }
-        if (!it) {
+        if (!it || it == img) {
             break;
         }
 
