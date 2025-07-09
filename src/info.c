@@ -107,6 +107,7 @@ static struct info_context ctx;
 static void on_timeout(void* data)
 {
     struct timeout* timeout = data;
+    fdtimer_reset(timeout->fd, 0, 0);
     timeout->active = false;
     app_redraw();
 }
