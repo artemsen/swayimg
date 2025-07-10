@@ -56,9 +56,6 @@ static const char* position_names[] = {
 // Max number of lines in one positioned block
 #define MAX_LINES (ARRAY_SIZE(field_names) + 10 /* EXIF and duplicates */)
 
-// Space between text layout and window edge
-#define TEXT_PADDING 10
-
 /** Key/value text surface. */
 struct keyval {
     struct text_surface key;
@@ -87,7 +84,8 @@ struct timeout {
 
 /** Info data context. */
 struct info_context {
-    bool show; ///< Show/hide flag
+    bool show;      ///< Show/hide flag
+    size_t padding; ///< Text padding
 
     struct timeout info;   ///< Text info timeout
     struct timeout status; ///< Status message timeout
@@ -168,7 +166,7 @@ static void print_help(struct pixmap* window)
 {
     const size_t line_height =
         ((struct text_surface*)arr_nth(ctx.help, 0))->height;
-    const size_t row_max = (window->height - TEXT_PADDING * 2) / line_height;
+    const size_t row_max = (window->height - ctx.padding * 2) / line_height;
     const size_t columns =
         (ctx.help->size / row_max) + (ctx.help->size % row_max ? 1 : 0);
     const size_t rows =
@@ -253,37 +251,35 @@ static void print_keyval(struct pixmap* wnd, enum position pos,
         // calculate line position
         switch (pos) {
             case pos_top_left:
-                y = TEXT_PADDING + i * height;
+                y = ctx.padding + i * height;
                 if (key->data) {
-                    x_key = TEXT_PADDING;
-                    x_val = TEXT_PADDING + max_key_width;
+                    x_key = ctx.padding;
+                    x_val = ctx.padding + max_key_width;
                 } else {
-                    x_val = TEXT_PADDING;
+                    x_val = ctx.padding;
                 }
                 break;
             case pos_top_right:
-                y = TEXT_PADDING + i * height;
-                x_val = wnd->width - TEXT_PADDING - value->width;
+                y = ctx.padding + i * height;
+                x_val = wnd->width - ctx.padding - value->width;
                 if (key->data) {
-                    x_key = x_val - key->width - TEXT_PADDING;
+                    x_key = x_val - key->width - ctx.padding;
                 }
                 break;
             case pos_bottom_left:
-                y = wnd->height - TEXT_PADDING - height * lines_num +
-                    i * height;
+                y = wnd->height - ctx.padding - height * lines_num + i * height;
                 if (key->data) {
-                    x_key = TEXT_PADDING;
-                    x_val = TEXT_PADDING + max_key_width;
+                    x_key = ctx.padding;
+                    x_val = ctx.padding + max_key_width;
                 } else {
-                    x_val = TEXT_PADDING;
+                    x_val = ctx.padding;
                 }
                 break;
             case pos_bottom_right:
-                y = wnd->height - TEXT_PADDING - height * lines_num +
-                    i * height;
-                x_val = wnd->width - TEXT_PADDING - value->width;
+                y = wnd->height - ctx.padding - height * lines_num + i * height;
+                x_val = wnd->width - ctx.padding - value->width;
                 if (key->data) {
-                    x_key = x_val - key->width - TEXT_PADDING;
+                    x_key = x_val - key->width - ctx.padding;
                 }
                 break;
         }
@@ -514,6 +510,7 @@ void info_init(const struct config* cfg, const char* mode)
 
     section = config_section(cfg, CFG_INFO);
     ctx.show = config_get_bool(section, CFG_INFO_SHOW);
+    ctx.padding = config_get_num(section, CFG_INFO_PADDING, 0, 256);
     ctx.info.delay = config_get_num(section, CFG_INFO_ITIMEOUT, 0, 1024) * 1000;
     timeout_init(&ctx.info);
     ctx.status.delay =
