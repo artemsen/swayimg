@@ -134,6 +134,8 @@ background = #00000000
 [info]
 # Show on startup (yes/no)
 show = yes
+# Text padding from window edges
+padding = 10
 # Timeout to hide info (seconds, 0 to always show)
 info_timeout = 5
 # Timeout to hide status message (seconds)
