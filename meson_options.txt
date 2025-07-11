@@ -101,7 +101,7 @@ option(
     'drm',
     type: 'feature',
     value: 'auto',
-    description: 'Enable DRM renderig support',
+    description: 'Enable DRM (Direct Rendering Manager) support',
 )
 
 # extra files to install
