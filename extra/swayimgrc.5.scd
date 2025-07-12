@@ -261,6 +261,9 @@ General configuration of the displayed text layer: _[info]_.
 *show* = _yes_|_no_
 	Enable or disable info text at startup, _yes_ by default.
 
+*padding* = PADDING
+	Text padding from window edges (in px), _10_ by default.
+
 *info_timeout* = SECONDS
 	Timeout of image information displayed on the screen, _0_ to always show,
 	_5_ by default.
