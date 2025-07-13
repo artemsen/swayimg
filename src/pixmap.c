@@ -7,12 +7,13 @@
 #include "tpool.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 // Background blur parameters
-#define BLUR_SIZE   16
-#define BLUR_FACTOR 2
+#define BLUR_SIZE  3
+#define BLUR_SIGMA 8
 
 /** Pixmap slice. */
 struct pm_slice {
@@ -26,6 +27,68 @@ struct bkg_params {
     const struct pm_slice* image; ///< Image area
     struct pm_slice fill;         ///< Work area to fill
 };
+
+/** Color accumulator. */
+struct cacc {
+    double r, g, b;
+};
+
+/**
+ * Initialize color accumulator.
+ * @param cacc color accumulator instance
+ * @param color RGB color to set
+ * @param factor color factor
+ */
+static inline void cacc_set(struct cacc* cacc, argb_t color, double factor)
+{
+    cacc->r = ARGB_GET_R(color) * factor;
+    cacc->g = ARGB_GET_G(color) * factor;
+    cacc->b = ARGB_GET_B(color) * factor;
+}
+
+/**
+ * Add color to accumulator.
+ * @param cacc color accumulator instance
+ * @param color RGB color to add
+ */
+static inline void cacc_add(struct cacc* cacc, argb_t color)
+{
+    cacc->r += ARGB_GET_R(color);
+    cacc->g += ARGB_GET_G(color);
+    cacc->b += ARGB_GET_B(color);
+}
+
+/**
+ * Subtract color from accumulator.
+ * @param cacc color accumulator instance
+ * @param color RGB color to subtract
+ */
+static inline void cacc_sub(struct cacc* cacc, argb_t color)
+{
+    cacc->r -= ARGB_GET_R(color);
+    cacc->g -= ARGB_GET_G(color);
+    cacc->b -= ARGB_GET_B(color);
+}
+
+/**
+ * Create ARGB color from accumulator.
+ * @param cacc color accumulator instance
+ * @param weight weight of the components
+ * @return ARGB color
+ */
+static inline argb_t cacc_argb(const struct cacc* cacc, double weight)
+{
+    ssize_t r = cacc->r * weight;
+    ssize_t g = cacc->g * weight;
+    ssize_t b = cacc->b * weight;
+    r = max(0, r);
+    g = max(0, g);
+    b = max(0, b);
+    r = min(ARGB_MAX_COLOR, r);
+    g = min(ARGB_MAX_COLOR, g);
+    b = min(ARGB_MAX_COLOR, b);
+    return ARGB(ARGB_MAX_COLOR, r, g, b);
+}
 
 /**
  * Get pointer to the pixel at specified coordinates.
@@ -43,40 +106,119 @@ static inline argb_t* slice_ptr(const struct pm_slice* slice, size_t x,
 }
 
 /**
- * Get average color.
+ * Blur pixmap slice horizontally.
  * @param slice pixmap slice
- * @param x,y starting coordinates to calculate average color
- * @return average color
+ * @param radius blur radius
  */
-static inline argb_t slice_average(const struct pm_slice* slice, size_t x,
-                                   size_t y)
+static void blur_h(struct pm_slice* slice, size_t radius)
 {
-    argb_t r = 0, g = 0, b = 0;
-    size_t total = 0;
+    const size_t radius_plus = radius + 1;
+    const double weight = 1.0 / (radius + radius_plus);
 
-    for (ssize_t dy = -BLUR_SIZE / 2; dy <= BLUR_SIZE / 2; ++dy) {
-        const ssize_t off_y = (ssize_t)y + dy * BLUR_FACTOR;
-        if (off_y < 0 || off_y >= (ssize_t)slice->height) {
-            continue;
+    for (size_t y = 0; y < slice->height; ++y) {
+        const argb_t px_first = *slice_ptr(slice, 0, y);
+        const argb_t px_last = *slice_ptr(slice, slice->width - 1, y);
+        struct cacc acc;
+
+        cacc_set(&acc, px_first, radius_plus);
+        for (size_t x = 0; x < radius && x < slice->width; ++x) {
+            cacc_add(&acc, *slice_ptr(slice, x, y));
         }
 
-        for (ssize_t dx = -BLUR_SIZE / 2; dx <= BLUR_SIZE / 2; ++dx) {
-            const ssize_t off_x = (ssize_t)x + dx * BLUR_FACTOR;
-            if (off_x >= 0 && off_x < (ssize_t)slice->width) {
-                const argb_t pixel = *slice_ptr(slice, off_x, off_y);
-                r += ARGB_GET_R(pixel);
-                g += ARGB_GET_G(pixel);
-                b += ARGB_GET_B(pixel);
-                ++total;
-            }
+        for (size_t x = 0; x <= radius && x + radius < slice->width; ++x) {
+            cacc_add(&acc, *slice_ptr(slice, x + radius, y));
+            cacc_sub(&acc, px_first);
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+
+        for (size_t x = radius_plus; x + radius < slice->width; ++x) {
+            cacc_add(&acc, *slice_ptr(slice, x + radius, y));
+            cacc_sub(&acc, *slice_ptr(slice, x - radius_plus, y));
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+
+        for (size_t x = slice->width - radius;
+             x < slice->width && x >= radius_plus; ++x) {
+            cacc_add(&acc, px_last);
+            cacc_sub(&acc, *slice_ptr(slice, x - radius_plus, y));
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+    }
+}
+
+/**
+ * Blur pixmap slice vertically.
+ * @param slice pixmap slice
+ * @param radius blur radius
+ */
+void blur_v(struct pm_slice* slice, size_t radius)
+{
+    const size_t radius_plus = radius + 1;
+    const double weight = 1.0 / (radius + radius_plus);
+
+    for (size_t x = 0; x < slice->width; ++x) {
+        const argb_t px_first = *slice_ptr(slice, x, 0);
+        const argb_t px_last = *slice_ptr(slice, x, slice->height - 1);
+        struct cacc acc;
+
+        cacc_set(&acc, px_first, radius_plus);
+        for (size_t y = 0; y < radius && y < slice->height; ++y) {
+            cacc_add(&acc, *slice_ptr(slice, x, y));
+        }
+
+        for (size_t y = 0; y <= radius && y + radius < slice->height; ++y) {
+            cacc_add(&acc, *slice_ptr(slice, x, y + radius));
+            cacc_sub(&acc, px_first);
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+
+        for (size_t y = radius_plus; y + radius < slice->height; ++y) {
+            cacc_add(&acc, *slice_ptr(slice, x, y + radius));
+            cacc_sub(&acc, *slice_ptr(slice, x, y - radius_plus));
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+
+        for (size_t y = slice->height - radius;
+             y < slice->height && y >= radius_plus; ++y) {
+            cacc_add(&acc, px_last);
+            cacc_sub(&acc, *slice_ptr(slice, x, y - radius_plus));
+            *slice_ptr(slice, x, y) = cacc_argb(&acc, weight);
+        }
+    }
+}
+
+/**
+ * Apply Gaussian blur to pixmap slice.
+ * @param slice pixmap slice
+ */
+static void blur(struct pm_slice* slice)
+{
+    const double sigma12 = 12 * BLUR_SIGMA * BLUR_SIGMA;
+    size_t weight_min, weight_max;
+    size_t weight_tran;
+    static size_t blur_box[BLUR_SIZE] = { 0 };
+
+    if (!blur_box[0]) {
+        // create Gaussian blur box
+        weight_min = sqrt(sigma12 / BLUR_SIZE + 1);
+        if (weight_min % 2 == 0) {
+            --weight_min;
+        }
+        weight_max = weight_min + 2;
+        weight_tran = (sigma12 - BLUR_SIZE * weight_min * weight_min -
+                       4.0 * BLUR_SIZE * weight_min - 3.0 * BLUR_SIZE) /
+            (-4.0 * weight_min - 4.0);
+        for (size_t i = 0; i < BLUR_SIZE; ++i) {
+            blur_box[i] = i < weight_tran ? weight_min : weight_max;
         }
     }
 
-    r /= total;
-    g /= total;
-    b /= total;
-
-    return ARGB(ARGB_MAX_COLOR, r, g, b);
+    // multi-pass blur
+    for (size_t i = 0; i < BLUR_SIZE; ++i) {
+        const size_t radius = (blur_box[i] - 1) / 2;
+        blur_h(slice, radius);
+        blur_v(slice, radius);
+    }
 }
 
 /** Working thread callback: extend/blur background. */
@@ -96,14 +238,14 @@ static void bkg_extend(void* data)
 
     for (size_t y = 0; y < bkg->fill.height; ++y) {
         const size_t img_y = (diff_y + y) / scale;
-
         for (size_t x = 0; x < bkg->fill.width; ++x) {
             const size_t img_x = (diff_x + x) / scale;
-
-            argb_t* dst = slice_ptr(&bkg->fill, x, y);
-            *dst = slice_average(bkg->image, img_x, img_y);
+            const argb_t px = *slice_ptr(bkg->image, img_x, img_y);
+            *slice_ptr(&bkg->fill, x, y) = px;
         }
     }
+
+    blur(&bkg->fill);
 }
 
 /** Working thread callback: mirror/blur background. */
@@ -111,74 +253,59 @@ static void bkg_mirror(void* data)
 {
     struct bkg_params* bkg = data;
 
-    const bool left = bkg->fill.x + bkg->fill.width == bkg->image->x;
     const bool right = bkg->fill.x == bkg->image->x + bkg->image->width;
     const bool top = bkg->fill.y + bkg->fill.height == bkg->image->y;
     const bool bottom = bkg->fill.y == bkg->image->y + bkg->image->height;
 
-    // corners to fill
-    size_t left_fill = 0, right_fill = 0;
-    if (top || bottom) {
-        left_fill = bkg->image->x;
-        right_fill = bkg->fill.width - left_fill - bkg->image->width;
-    }
-
     for (size_t y = 0; y < bkg->fill.height; ++y) {
-        argb_t r = 0, g = 0, b = 0; // average color of the line
         size_t img_y;
+        size_t offset;
+        bool flip;
 
+        // get vertical image coordinates
         if (top) {
-            img_y = (bkg->fill.height - y) % bkg->image->height;
+            offset = bkg->image->height - (bkg->image->y % bkg->image->height);
+            flip = ((offset + y) / bkg->image->height) % 2 ==
+                (bkg->image->y / bkg->image->height) % 2;
         } else if (bottom) {
-            img_y = bkg->image->height - (y % bkg->image->height);
+            offset = 0;
+            flip = ((offset + y) / bkg->image->height) % 2 == 0;
         } else {
-            img_y = y;
+            offset = 0;
+            flip = false;
+        }
+        img_y = (y + offset) % bkg->image->height;
+        if (flip) {
+            img_y = bkg->image->height - img_y - 1;
         }
 
-        for (size_t x = left_fill; x < bkg->fill.width - right_fill; ++x) {
-            argb_t* dst;
-            argb_t average;
+        for (size_t x = 0; x < bkg->fill.width; ++x) {
+            argb_t color;
             size_t img_x;
 
-            if (left) {
-                img_x = (bkg->fill.width - x) % bkg->image->width;
-            } else if (right) {
-                img_x = bkg->image->width - (x % bkg->image->width);
+            // get horzontal image coordinates
+            if (right) {
+                offset = 0;
+                flip = ((offset + x) / bkg->image->width) % 2 == 0;
             } else {
-                img_x = x - left_fill;
+                offset =
+                    bkg->image->width - (bkg->image->x % bkg->image->width);
+                flip = ((offset + x) / bkg->image->width) % 2 ==
+                    (bkg->image->x / bkg->image->width) % 2;
             }
 
-            average = slice_average(bkg->image, img_x, img_y);
-            if (top || bottom) {
-                r += ARGB_GET_R(average);
-                g += ARGB_GET_G(average);
-                b += ARGB_GET_B(average);
+            img_x = (x + offset) % bkg->image->width;
+            if (flip) {
+                img_x = bkg->image->width - img_x - 1;
             }
 
-            dst = slice_ptr(&bkg->fill, x, y);
-            *dst = average;
-        }
-
-        if (top || bottom) {
-            // fill corners with line's average color
-            argb_t average;
-
-            r /= bkg->image->width;
-            g /= bkg->image->width;
-            b /= bkg->image->width;
-            average = ARGB(ARGB_MAX_COLOR, r, g, b);
-
-            for (size_t x = 0; x < left_fill; ++x) {
-                argb_t* dst = slice_ptr(&bkg->fill, x, y);
-                *dst = average;
-            }
-            for (size_t x = bkg->fill.width - right_fill; x < bkg->fill.width;
-                 ++x) {
-                argb_t* dst = slice_ptr(&bkg->fill, x, y);
-                *dst = average;
-            }
+            // copy pixel
+            color = *slice_ptr(bkg->image, img_x, img_y);
+            *slice_ptr(&bkg->fill, x, y) = color;
         }
     }
+
+    blur(&bkg->fill);
 }
 
 /**
@@ -202,6 +329,10 @@ static void bkg_create(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
     struct bkg_params tasks[4]; // left/right/top/bottom
     size_t tid = 0;
 
+    if (img.width == 0 || img.height == 0) {
+        return;
+    }
+
     if (img.x > 0) {
         tasks[tid].image = &img;
         tasks[tid].fill.pm = img.pm;
@@ -216,7 +347,7 @@ static void bkg_create(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
         tasks[tid].fill.pm = img.pm;
         tasks[tid].fill.x = img.x + img.width;
         tasks[tid].fill.y = img.y;
-        tasks[tid].fill.width = img.pm->width - (img.x + img.width);
+        tasks[tid].fill.width = img.pm->width - tasks[tid].fill.x;
         tasks[tid].fill.height = img.height;
         tpool_add_task(wfn, NULL, &tasks[tid++]);
     }
@@ -235,7 +366,7 @@ static void bkg_create(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
         tasks[tid].fill.x = 0;
         tasks[tid].fill.y = img.y + img.height;
         tasks[tid].fill.width = img.pm->width;
-        tasks[tid].fill.height = img.pm->height - (img.y + img.height);
+        tasks[tid].fill.height = img.pm->height - tasks[tid].fill.y;
         tpool_add_task(wfn, NULL, &tasks[tid++]);
     }
 
