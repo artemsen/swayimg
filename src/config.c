@@ -25,7 +25,7 @@ static const struct configdef_kv def_general[] = {
     { CFG_GNRL_MODE,      CFG_VIEWER  },
     { CFG_GNRL_SIZE,      "1280,720"  },
     { CFG_GNRL_POSITION,  CFG_AUTO    },
-    { CFG_GNRL_OVERLAY,   CFG_YES     },
+    { CFG_GNRL_OVERLAY,   CFG_NO      },
     { CFG_GNRL_DECOR,     CFG_NO      },
     { CFG_GNRL_SIGUSR1,   "reload"    },
     { CFG_GNRL_SIGUSR2,   "next_file" },

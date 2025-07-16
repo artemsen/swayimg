@@ -63,7 +63,7 @@ General configuration for the entire application: _[general]_.
 *overlay* = _yes_|_no_
 	Only Sway and Hyprland: Create a floating window with the same coordinates
 	and size as the currently focused window. This options overrides *position*
-	and *size* parameters. Default value is _yes_.
+	and *size* parameters. Default value is _no_.
 
 *decoration* = _yes_|_no_
 	Use window decoration (borders and title), _no_ by default.
