@@ -13,7 +13,7 @@
 
 // Background blur parameters
 #define BLUR_SIZE  3
-#define BLUR_SIGMA 8
+#define BLUR_SIGMA 16
 
 /** Pixmap slice. */
 struct pm_slice {
