@@ -316,8 +316,24 @@ static void redraw(void)
 {
     struct pixmap* wnd = ui_draw_begin();
     if (wnd) {
+
+// #define TRACE_DRAW_TIME
+#ifdef TRACE_DRAW_TIME
+        double ns;
+        struct timespec begin, end;
+        clock_gettime(CLOCK_MONOTONIC, &begin);
+#endif
+
         viewport_draw(&ctx.vp, wnd);
         info_print(wnd);
+
+#ifdef TRACE_DRAW_TIME
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        ns = (double)((end.tv_sec * 1000000000 + end.tv_nsec) -
+                      (begin.tv_sec * 1000000000 + begin.tv_nsec));
+        printf("Redraw in %.6f sec\n", ns / 1000000000);
+#endif
+
         ui_draw_commit();
     }
 }
