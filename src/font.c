@@ -137,7 +137,7 @@ void font_init(const struct config* cfg)
     }
 
     // set font size
-    ctx.size = config_get_num(section, CFG_FONT_SIZE, 1, 256);
+    ctx.size = config_get_num(section, CFG_FONT_SIZE, 1, 1024);
     font_set_scale(1.0);
 
     // color/background/shadow parameters
@@ -236,7 +236,7 @@ void font_print(struct pixmap* wnd, ssize_t x, ssize_t y,
     }
 
     if (ARGB_GET_A(ctx.shadow)) {
-        ssize_t shadow_offset = text->height / 16;
+        ssize_t shadow_offset = text->height / 64;
         if (shadow_offset < 1) {
             shadow_offset = 1;
         }
