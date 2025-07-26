@@ -86,6 +86,7 @@ static const struct configdef_kv def_font[] = {
 
 static const struct configdef_kv def_info[] = {
     { CFG_INFO_SHOW,      CFG_YES     },
+    { CFG_INFO_PADDING,   "10"        },
     { CFG_INFO_ITIMEOUT,  "5"         },
     { CFG_INFO_STIMEOUT,  "3"         },
 };
