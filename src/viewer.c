@@ -5,6 +5,7 @@
 #include "viewer.h"
 
 #include "application.h"
+#include "array.h"
 #include "cache.h"
 #include "imglist.h"
 #include "info.h"
@@ -13,17 +14,19 @@
 #include "viewport.h"
 
 #include <pthread.h>
+#include <string.h>
 
 /** Viewer context. */
 struct viewer {
     struct viewport vp; ///< Viewport
     struct keybind* kb; ///< Key bindings
 
-    struct cache* history; ///< Recently viewed images
-    struct cache* preload; ///< Preloaded images
-    pthread_t preload_tid; ///< Preload thread id
-    bool preload_active;   ///< Preload in progress flag
-    bool loop_list;        ///< Loop image list
+    struct cache* history;   ///< Recently viewed images
+    struct cache* preload;   ///< Preloaded images
+    pthread_t preload_tid;   ///< Preload thread id
+    bool preload_active;     ///< Preload in progress flag
+    bool loop_list;          ///< Loop image list
+    size_t mouse_x, mouse_y; ///< Last known mouse position, SIZE_MAX if unknown
 };
 
 /** Global viewer context. */
@@ -401,27 +404,49 @@ static void zoom_image(const char* params)
     } else if (viewport_scale_def(&ctx.vp, params)) {
         name = params;
     } else {
+        struct str_slice ps[2];
+        size_t ps_num;
+
         double scale = 0.0;
+
+        ps_num = str_split(params, ' ', ps, ARRAY_SIZE(ps));
 
         if (params[0] == '+' || params[0] == '-') {
             // relative
             ssize_t delta;
-            if (str_to_num(params, 0, &delta, 0) && delta != 0 &&
+            if (str_to_num(ps[0].value, ps[0].len, &delta, 0) && delta != 0 &&
                 delta > -1000 && delta < 1000) {
                 scale = ctx.vp.scale + (ctx.vp.scale / 100) * delta;
             }
         } else {
             // percent
             ssize_t percent;
-            if (str_to_num(params, 0, &percent, 0) && percent > 0 &&
-                percent < 100000) {
+            if (str_to_num(ps[0].value, ps[0].len, &percent, 0) &&
+                percent > 0 && percent < 100000) {
                 scale = (double)percent / 100;
             }
         }
 
         if (scale != 0) {
-            viewport_scale_abs(&ctx.vp, scale);
-            info_update(info_scale, "%.0f%%", ctx.vp.scale * 100);
+            size_t preserve_x = SIZE_MAX, preserve_y = SIZE_MAX;
+            // If mouse is unsupported (e.g. DRM backend or no mouse movement
+            // yet), use center position instead.
+            if (ps_num == 1 || strncmp(ps[1].value, "center", ps[1].len) == 0 ||
+                ctx.mouse_x == SIZE_MAX || ctx.mouse_y == SIZE_MAX) {
+                preserve_x = ctx.vp.width / 2.0;
+                preserve_y = ctx.vp.height / 2.0;
+            } else if (strncmp(ps[1].value, "mouse", ps[1].len) == 0) {
+                preserve_x = ctx.mouse_x;
+                preserve_y = ctx.mouse_y;
+            }
+
+            if (preserve_x != SIZE_MAX) {
+                viewport_scale_abs(&ctx.vp, scale, preserve_x, preserve_y);
+                info_update(info_scale, "%.0f%%", ctx.vp.scale * 100);
+            } else {
+                info_update(info_status, "Invalid second zoom parameter: %.*s",
+                            (int)ps[1].len, ps[1].value);
+            }
         } else {
             info_update(info_status, "Invalid zoom operation: %s", params);
         }
@@ -491,6 +516,9 @@ static void on_mouse_move(uint8_t mods, uint32_t btn,
                           __attribute__((unused)) size_t y, ssize_t dx,
                           ssize_t dy)
 {
+    ctx.mouse_x = x;
+    ctx.mouse_y = y;
+
     const struct keybind* kb = keybind_find(ctx.kb, MOUSE_TO_XKB(btn), mods);
     if (kb && kb->actions->type == action_drag) {
         // move viewport
@@ -669,6 +697,9 @@ void viewer_init(const struct config* cfg, struct mode* handlers)
 
     // load key bindings
     ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_VIEWER));
+
+    ctx.mouse_x = SIZE_MAX;
+    ctx.mouse_y = SIZE_MAX;
 
     handlers->on_activate = on_activate;
     handlers->on_deactivate = on_deactivate;

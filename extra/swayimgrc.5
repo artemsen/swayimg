@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-07-10" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-09-04" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -686,7 +686,7 @@ Viewer mode only.\&
 Move viewport down, default is \fI10%\fR;
 .PP
 .RE
-\fBzoom\fR [SCALE]
+\fBzoom\fR [SCALE [POSITION]]
 .RS 4
 Viewer mode only.\&
 Manage scaling, \fISCALE\fR is:
@@ -699,6 +699,14 @@ percentage number with + or - sign (e.\&g.\& \fI+10\fR) to zoom in or out;
 absolute value in percentage to set the scale, e.\&g.\& \fI200\fR;
 .IP \(bu 4
 empty value to switch to the next available scaling mode.\&
+.PD
+.PP
+\fIPOSITION\fR is one of:
+.PD 0
+.IP \(bu 4
+\fIcenter\fR to zoom into and out of the center of the viewport [default];
+.IP \(bu 4
+\fImouse\fR to zoom into and out of the mouse cursor position.\&
 .PD
 .PP
 .RE
