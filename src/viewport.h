@@ -125,11 +125,14 @@ bool viewport_scale_def(struct viewport* vp, const char* scale);
 const char* viewport_scale_switch(struct viewport* vp);
 
 /**
- * Set absolute scale of the image.
+ * Set absolute scale of the image, zooming into / out of the center position.
  * @param vp viewport context
  * @param scale scale factor (1.0 = 100%)
+ * @param preserve_x the x position in viewport to zoom into / out of (in pixel)
+ * @param preserve_y the y position in viewport to zoom into / out of (in pixel)
  */
-void viewport_scale_abs(struct viewport* vp, double scale);
+void viewport_scale_abs(struct viewport* vp, double scale, size_t preserve_x,
+                        size_t preserve_y);
 
 /**
  * Start/stop animation.

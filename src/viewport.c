@@ -207,7 +207,7 @@ static void scale_fixed(struct viewport* vp, enum vp_scale scale)
             break;
     }
 
-    viewport_scale_abs(vp, factor);
+    viewport_scale_abs(vp, factor, vp->width / 2.0, vp->height / 2.0);
 }
 
 /** Animation timer handler. */
@@ -377,15 +377,14 @@ const char* viewport_scale_switch(struct viewport* vp)
     return scale_names[scale];
 }
 
-void viewport_scale_abs(struct viewport* vp, double scale)
+void viewport_scale_abs(struct viewport* vp, double scale, size_t preserve_x,
+                        size_t preserve_y)
 {
     const struct pixmap* pm = viewport_pixmap(vp);
 
-    // save center
-    const double wnd_half_w = (double)vp->width / 2.0;
-    const double wnd_half_h = (double)vp->height / 2.0;
-    const double center_x = wnd_half_w / vp->scale - vp->x / vp->scale;
-    const double center_y = wnd_half_h / vp->scale - vp->y / vp->scale;
+    // save center of image
+    const double img_preserve_x = (double)(preserve_x - vp->x) / vp->scale;
+    const double img_preserve_y = (double)(preserve_y - vp->y) / vp->scale;
 
     // check scale limits
     if (scale > MAX_SCALE) {
@@ -402,8 +401,8 @@ void viewport_scale_abs(struct viewport* vp, double scale)
     vp->scale = scale;
 
     // restore center
-    vp->x = wnd_half_w - center_x * vp->scale;
-    vp->y = wnd_half_h - center_y * vp->scale;
+    vp->x = preserve_x - img_preserve_x * vp->scale;
+    vp->y = preserve_y - img_preserve_y * vp->scale;
 
     fixup_position(vp, false);
 }

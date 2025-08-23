@@ -434,13 +434,17 @@ Predefined names for mouse buttons/scroll:
 	Viewer mode only.
 	Move viewport down, default is _10%_;
 
-*zoom* [SCALE]
+*zoom* [SCALE [POSITION]]
 	Viewer mode only.
 	Manage scaling, _SCALE_ is:
 	- one of the *viewer.scale* modes (_fit_/_fill_/etc);
 	- percentage number with + or - sign (e.g. _+10_) to zoom in or out;
 	- absolute value in percentage to set the scale, e.g. _200_;
 	- empty value to switch to the next available scaling mode.
+
+	_POSITION_ is one of:
+	- _center_ to zoom into and out of the center of the viewport [default];
+	- _mouse_ to zoom into and out of the mouse cursor position.
 
 *rotate_left*
 	Viewer mode only.
