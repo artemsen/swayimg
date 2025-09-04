@@ -459,6 +459,20 @@ static void zoom_image(const char* params)
 }
 
 /**
+ * Position image: handle "position" action.
+ * @param params action parameters
+ */
+static void position_image(const char* params)
+{
+    if (viewport_position_def(&ctx.vp, params)) {
+        info_update(info_status, "Position: %s", params);
+    } else {
+        info_update(info_status, "Invalid position: %s", params);
+    }
+    app_redraw();
+}
+
+/**
  * Switch antialiasing mode: handle "antialiasing" action.
  * @param params action parameters
  */
@@ -591,6 +605,9 @@ static bool handle_action(const struct action* action)
             break;
         case action_zoom:
             zoom_image(action->params);
+            break;
+        case action_position:
+            position_image(action->params);
             break;
         case action_rotate_left:
             image_rotate(ctx.vp.image, 270);

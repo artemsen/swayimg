@@ -365,6 +365,17 @@ bool viewport_scale_def(struct viewport* vp, const char* scale)
     return rc;
 }
 
+bool viewport_position_def(struct viewport* vp, const char* position)
+{
+    const ssize_t index = str_index(position_names, position, 0);
+    const bool rc = (index >= 0);
+    if (rc) {
+        vp->def_pos = index;
+        fixup_position(vp, true);
+    }
+    return rc;
+}
+
 const char* viewport_scale_switch(struct viewport* vp)
 {
     enum vp_scale scale = vp->def_scale;

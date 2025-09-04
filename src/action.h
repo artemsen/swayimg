@@ -31,6 +31,7 @@ enum action_type {
     action_page_up,
     action_page_down,
     action_zoom,
+    action_position,
     action_thumb,
     action_rotate_left,
     action_rotate_right,
