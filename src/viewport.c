@@ -365,17 +365,6 @@ bool viewport_scale_def(struct viewport* vp, const char* scale)
     return rc;
 }
 
-bool viewport_position_def(struct viewport* vp, const char* position)
-{
-    const ssize_t index = str_index(position_names, position, 0);
-    const bool rc = (index >= 0);
-    if (rc) {
-        vp->def_pos = index;
-        fixup_position(vp, true);
-    }
-    return rc;
-}
-
 const char* viewport_scale_switch(struct viewport* vp)
 {
     enum vp_scale scale = vp->def_scale;
@@ -416,6 +405,28 @@ void viewport_scale_abs(struct viewport* vp, double scale, size_t preserve_x,
     vp->y = preserve_y - img_preserve_y * vp->scale;
 
     fixup_position(vp, false);
+}
+
+bool viewport_position_def(struct viewport* vp, const char* position)
+{
+    const ssize_t index = str_index(position_names, position, 0);
+    const bool rc = (index >= 0);
+    if (rc) {
+        vp->def_pos = index;
+        fixup_position(vp, true);
+    }
+    return rc;
+}
+
+const char* viewport_position_switch(struct viewport* vp)
+{
+    enum vp_position position = vp->def_pos;
+    if (++position > vp_pos_br) {
+        position = vp_pos_center;
+    }
+    vp->def_pos = position;
+    fixup_position(vp, true);
+    return position_names[position];
 }
 
 void viewport_anim_ctl(struct viewport* vp, enum vp_actl op)
