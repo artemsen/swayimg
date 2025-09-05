@@ -464,19 +464,14 @@ static void zoom_image(const char* params)
  */
 static void position_image(const char* params)
 {
-    const char* name = NULL;
+    const char* name = viewport_position_def(&ctx.vp, params);
 
-    if (!*params) {
-        name = viewport_position_switch(&ctx.vp);
-    } else if (viewport_position_def(&ctx.vp, params)) {
-        name = params;
+    if (name) {
+        info_update(info_status, "Position: %s", name);
     } else {
         info_update(info_status, "Invalid position: %s", params);
     }
 
-    if (name) {
-        info_update(info_status, "Position: %s", name);
-    }
     app_redraw();
 }
 
