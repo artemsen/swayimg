@@ -135,6 +135,14 @@ void viewport_scale_abs(struct viewport* vp, double scale, size_t preserve_x,
                         size_t preserve_y);
 
 /**
+ * Set default and current position.
+ * @param vp viewport context
+ * @param position name (or empty string to switch to the next one)
+ * @return name of the current position
+ */
+const char* viewport_position_def(struct viewport* vp, const char* position);
+
+/**
  * Start/stop animation.
  * @param vp viewport context
  * @param op operation to perform

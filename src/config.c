@@ -144,6 +144,7 @@ static const struct configdef_kv def_keysv[] = {
     { "BackSpace",        "zoom optimal"                             },
     { "k",                "zoom keep"                                },
     { "Alt+s",            "zoom"                                     },
+    { "Alt+p",            "position"                                 },
     { "bracketleft",      "rotate_left"                              },
     { "bracketright",     "rotate_right"                             },
     { "m",                "flip_vertical"                            },

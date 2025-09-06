@@ -446,6 +446,11 @@ Predefined names for mouse buttons/scroll:
 	- _center_ to zoom into and out of the center of the viewport [default];
 	- _mouse_ to zoom into and out of the mouse cursor position.
 
+*position* [POSITION]
+	Viewer mode only.
+	Change image position; _POSITION_ can be one of the *viewer.position*
+	directions, or empty to switch to the next position.
+
 *rotate_left*
 	Viewer mode only.
 	Rotate image anticlockwise.

@@ -37,6 +37,7 @@ static const char* action_names[] = {
     [action_page_up] = "page_up",
     [action_page_down] = "page_down",
     [action_zoom] = "zoom",
+    [action_position] = "position",
     [action_thumb] = "thumb",
     [action_rotate_left] = "rotate_left",
     [action_rotate_right] = "rotate_right",
