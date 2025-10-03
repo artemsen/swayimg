@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 // clang-format off
 /** Order names. */
@@ -381,7 +382,11 @@ static void load_fromfile(const char* const* files, size_t num)
         ssize_t rd;
         FILE* fd;
 
-        fd = fopen(files[i], "r");
+        if (strcmp(files[i], "-") == 0) {
+            fd = fdopen(STDIN_FILENO, "r");
+        } else {
+            fd = fopen(files[i], "r");
+        }
         if (!fd) {
             const int rc = errno;
             fprintf(stderr, "Unable to open list file %s: [%i] %s\n", files[i],

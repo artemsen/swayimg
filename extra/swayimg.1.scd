@@ -33,6 +33,7 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 
 *-F, --from-file*
 	Interpret _FILE_ as text list of image files.
+	Use '-' to read the file list from stdin.
 
 *-r, --recursive*
 	Read directories recursively.
