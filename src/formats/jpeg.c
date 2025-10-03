@@ -53,10 +53,11 @@ enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
     jpeg_create_decompress(&jpg);
     jpeg_mem_src(&jpg, data, size);
     jpeg_read_header(&jpg, TRUE);
-    jpeg_start_decompress(&jpg);
+
 #ifdef LIBJPEG_TURBO_VERSION
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
+    jpeg_start_decompress(&jpg);
 
     pm = image_alloc_frame(img, pixmap_xrgb, jpg.output_width,
                            jpg.output_height);
@@ -69,30 +70,24 @@ enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
         uint8_t* line = (uint8_t*)&pm->data[jpg.output_scanline * pm->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
-        // convert grayscale to argb
-        if (jpg.out_color_components == 1) {
+        // convert grayscale/rgb to argb
+        if (jpg.out_color_components == 1 || jpg.out_color_components == 3) {
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
-                const uint8_t src = *(line + x);
-                pixel[x] = ((argb_t)0xff << 24) | (argb_t)src << 16 |
-                    (argb_t)src << 8 | src;
+                const uint8_t* src = line + x * jpg.out_color_components;
+                switch (jpg.out_color_components) {
+                    case 1:
+                        pixel[x] = ARGB(ARGB_MAX_COLOR, src[0], src[0], src[0]);
+                        break;
+                    case 3:
+                        pixel[x] = ARGB(ARGB_MAX_COLOR, src[0], src[1], src[2]);
+                        break;
+                }
             }
         }
-
-#ifndef LIBJPEG_TURBO_VERSION
-        // convert rgb to argb
-        if (jpg.out_color_components == 3) {
-            uint32_t* pixel = (uint32_t*)line;
-            for (int x = jpg.output_width - 1; x >= 0; --x) {
-                const uint8_t* src = line + x * 3;
-                pixel[x] = ((argb_t)0xff << 24) | (argb_t)src[0] << 16 |
-                    (argb_t)src[1] << 8 | src[2];
-            }
-        }
-#endif // LIBJPEG_TURBO_VERSION
     }
 
-    image_set_format(img, "JPEG %dbit", jpg.out_color_components * 8);
+    image_set_format(img, "JPEG %dbit", jpg.num_components * 8);
 
     jpeg_finish_decompress(&jpg);
     jpeg_destroy_decompress(&jpg);
