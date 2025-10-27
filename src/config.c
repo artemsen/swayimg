@@ -291,6 +291,9 @@ static bool load(struct config* cfg, const char* path)
         while (nread-- && isspace(line[nread])) {
             line[nread] = 0;
         }
+
+        // false-positive assert for `isspace`
+        // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound)
         while (*line && isspace(*line)) {
             ++line;
         }
@@ -348,11 +351,15 @@ static bool load(struct config* cfg, const char* path)
 
         // trim spaces from start of value
         value = delim + 1;
+        // false-positive assert for `isspace`
+        // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound)
         while (*value && isspace(*value)) {
             ++value;
         }
         // trim spaces from key
         *delim = 0;
+        // false-positive assert for `isspace`
+        // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound)
         while (line != delim && isspace(*--delim)) {
             *delim = 0;
         }
@@ -428,7 +435,7 @@ static bool text_to_color(const char* text, argb_t* value)
     char* endptr;
     argb_t color;
 
-    while (*text == '#' || isspace(*text)) {
+    while (*text && (*text == '#' || isspace(*text))) {
         ++text;
     }
 

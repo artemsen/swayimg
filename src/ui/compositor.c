@@ -97,10 +97,6 @@ static size_t sock_read(int fd, void* buffer, size_t size)
         read += rc;
     }
 
-    if (read && read < size) {
-        ((uint8_t*)buffer)[read] = 0; // add last null
-    }
-
     return read;
 }
 
@@ -200,13 +196,16 @@ static json_object* hyprland_request(const char* req)
     fd = sock_connect(path);
 
     if (fd != INVALID_SOCKET) {
-        char buffer[MAX_RESPONSE_LEN];
-        if (sock_write(fd, req, strlen(req)) &&
-            sock_read(fd, buffer, sizeof(buffer))) {
-            if (buffer[0] == '[' || buffer[0] == '{') {
-                response = json_tokener_parse(buffer);
-            } else if (strncmp(buffer, "ok", 2) == 0) {
-                response = json_tokener_parse("{}");
+        if (sock_write(fd, req, strlen(req))) {
+            char buffer[MAX_RESPONSE_LEN];
+            const size_t rsz = sock_read(fd, buffer, sizeof(buffer) - 1);
+            if (rsz && rsz < sizeof(buffer)) {
+                buffer[rsz] = 0;
+                if (buffer[0] == '[' || buffer[0] == '{') {
+                    response = json_tokener_parse(buffer);
+                } else if (strncmp(buffer, "ok", 2) == 0) {
+                    response = json_tokener_parse("{}");
+                }
             }
         }
         close(fd);
