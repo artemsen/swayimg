@@ -34,6 +34,17 @@ sigusr2 = next_file
 app_id = swayimg
 
 ################################################################################
+# DRM mode settings
+################################################################################
+[drm]
+# Path to DRM device, e.g. /dev/dri/card1
+path = auto
+# Connector name, e.g. DP-1
+connector = auto
+# Display resolution and frequency, e.g. 1920x1080@60
+mode = auto
+
+################################################################################
 # Viewer mode configuration
 ################################################################################
 [viewer]

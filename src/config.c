@@ -33,6 +33,12 @@ static const struct configdef_kv def_general[] = {
     { CFG_GNRL_APP_ID,    "swayimg"   },
 };
 
+static const struct configdef_kv def_drm[] = {
+    { CFG_DRM_PATH,       CFG_AUTO    },
+    { CFG_DRM_CONNECTOR,  CFG_AUTO    },
+    { CFG_DRM_MODE,       CFG_AUTO    },
+};
+
 static const struct configdef_kv def_viewer[] = {
     { CFG_VIEW_WINDOW,    "#00000000" },
     { CFG_VIEW_TRANSP,    "grid"      },
@@ -231,6 +237,7 @@ struct configdef_section {
 
 static const struct configdef_section default_config[] = {
     CONFIGDEF_SECTION(CFG_GENERAL, def_general),
+    CONFIGDEF_SECTION(CFG_DRM, def_drm),
     CONFIGDEF_SECTION(CFG_VIEWER, def_viewer),
     CONFIGDEF_SECTION(CFG_SLIDESHOW, def_slideshow),
     CONFIGDEF_SECTION(CFG_GALLERY, def_gallery),

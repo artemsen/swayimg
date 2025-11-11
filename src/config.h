@@ -25,6 +25,7 @@ struct config {
 
 // Section names
 #define CFG_GENERAL        "general"
+#define CFG_DRM            "drm"
 #define CFG_VIEWER         "viewer"
 #define CFG_SLIDESHOW      "slideshow"
 #define CFG_GALLERY        "gallery"
@@ -49,6 +50,9 @@ struct config {
 #define CFG_GNRL_SIGUSR2   "sigusr2"
 #define CFG_GNRL_IPC       "ipc"
 #define CFG_GNRL_APP_ID    "app_id"
+#define CFG_DRM_PATH       "path"
+#define CFG_DRM_CONNECTOR  "connector"
+#define CFG_DRM_MODE       "mode"
 #define CFG_VIEW_WINDOW    "window"
 #define CFG_VIEW_TRANSP    "transparency"
 #define CFG_VIEW_SCALE     "scale"

@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-09-05" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2025-11-11" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -115,6 +115,27 @@ default.\&
 \fBapp_id\fR = NAME
 .RS 4
 Application ID used as window class name, \fIswayimg\fR by default.\&
+.PP
+.RE
+.SS DRM mode settings
+.PP
+Configuration used to initialize DRM mode: \fI[drm]\fR.\&
+.PP
+\fBpath\fR = \fIauto\fR|PATH
+.RS 4
+Path to the DRM device, e.\&g.\& \fI/dev/dri/card1\fR, \fIauto\fR by default (use first
+available).\&
+.PP
+.RE
+\fBconnector\fR = \fIauto\fR|NAME
+.RS 4
+Connector name e.\&g.\& \fIDP-1\fR, \fIauto\fR by default (use first available).\&
+.PP
+.RE
+\fBmode\fR = \fIauto\fR|MODE
+.RS 4
+Display resolution and frequency, e.\&g.\& \fI1920x1080@60\fR, \fIauto\fR by default
+(use preferred or first available).\&
 .PP
 .RE
 .SS Viewer

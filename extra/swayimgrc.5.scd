@@ -79,6 +79,21 @@ General configuration for the entire application: _[general]_.
 *app_id* = NAME
 	Application ID used as window class name, _swayimg_ by default.
 
+## DRM mode settings
+
+Configuration used to initialize DRM mode: _[drm]_.
+
+*path* = _auto_|PATH
+	Path to the DRM device, e.g. _/dev/dri/card1_, _auto_ by default (use first
+	available).
+
+*connector* = _auto_|NAME
+	Connector name e.g. _DP-1_, _auto_ by default (use first available).
+
+*mode* = _auto_|MODE
+	Display resolution and frequency, e.g. _1920x1080@60_, _auto_ by default
+	(use preferred or first available).
+
 ## Viewer
 
 Configuration specific to the viewer mode: _[viewer]_.

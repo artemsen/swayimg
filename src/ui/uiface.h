@@ -98,8 +98,9 @@ void* ui_init_wl(const char* app_id, size_t width, size_t height, bool decor,
 #ifdef HAVE_DRM
 /**
  * Initialize DRM UI.
+ * @param cfg config instance
  * @param handlers DRM-specific handlers
  * @return pointer to the UI context or NULL on errors
  */
-void* ui_init_drm(struct ui* handlers);
+void* ui_init_drm(const struct config* cfg, struct ui* handlers);
 #endif // HAVE_DRM

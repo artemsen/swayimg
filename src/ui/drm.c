@@ -42,6 +42,15 @@ struct drm {
     struct pixmap pm;     ///< Currently displayed pixmap
 };
 
+/** DRM configuration. */
+struct drm_conf {
+    const char* path;      ///< Path to DRM device
+    const char* connector; ///< Connector name
+    size_t width;          ///< Display width
+    size_t height;         ///< Display height
+    size_t freq;           ///< Display frequency
+};
+
 /**
  * Free frame buffer.
  * @param fd DRM file descriptor
@@ -91,7 +100,7 @@ static bool create_fb(int fd, struct fbuffer* fb, size_t width, size_t height)
     fb->handle = dumb_create.handle;
     fb->size = dumb_create.size;
 
-    // create frambuffer
+    // create frame buffer
     handles[0] = dumb_create.handle;
     strides[0] = dumb_create.pitch;
     if (drmModeAddFB2(fd, dumb_create.width, dumb_create.height,
@@ -103,7 +112,7 @@ static bool create_fb(int fd, struct fbuffer* fb, size_t width, size_t height)
         goto fail;
     }
 
-    // map frambuffer
+    // map frame buffer
     dumb_map.handle = dumb_create.handle;
     if (drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &dumb_map) < 0) {
         const int rc = errno;
@@ -155,68 +164,215 @@ static uint32_t get_crtc(int fd, drmModeRes* res, drmModeConnector* conn)
 }
 
 /**
- * Initialize DRM connection.
+ * Get DRM connector.
  * @param fd DRM file descriptor
- * @param conn_id output connector id
- * @param crtc_id output CRTC id
- * @param mode output mode
- * @return true DRM initialized
+ * @param res DRM resources
+ * @param name optional connector name, NULL to get first available connector
+ * @return connector instance or NULL if not found
  */
-static bool drm_init(int fd, uint32_t* conn_id, uint32_t* crtc_id,
-                     drmModeModeInfo* mode)
+static drmModeConnector* get_connector(int fd, drmModeRes* res,
+                                       const char* name)
 {
-    drmModeRes* res = drmModeGetResources(fd);
-    if (!res) {
-        const int rc = errno;
-        fprintf(stderr, "Unable to get DRM modes: [%d] %s\n", rc, strerror(rc));
-        return false;
-    }
-
     for (int i = 0; i < res->count_connectors; ++i) {
-        drmModeConnector* conn;
-        drmModeEncoder* enc = NULL;
-
-        // open next connector
-        conn = drmModeGetConnector(fd, res->connectors[i]);
+        drmModeConnector* conn = drmModeGetConnector(fd, res->connectors[i]);
         if (!conn) {
             continue;
         }
-        if (conn->connection != DRM_MODE_CONNECTED || conn->count_modes == 0) {
+        // filter out empty and unconnected nodes
+        if (conn->count_modes == 0 || conn->count_encoders == 0 ||
+            conn->connection != DRM_MODE_CONNECTED) {
             drmModeFreeConnector(conn);
             continue;
         }
-
-        // get first available encoder
-        for (int j = 0; !enc && j < conn->count_encoders; ++j) {
-            enc = drmModeGetEncoder(fd, conn->encoders[j]);
-        }
-        if (!enc) {
-            drmModeFreeConnector(conn);
-            continue;
-        }
-
-        // get preferred mode
-        *mode = conn->modes[0]; // use first available as fallback
-        for (int j = 0; j < conn->count_modes; ++j) {
-            if (conn->modes[j].flags & DRM_MODE_TYPE_PREFERRED) {
-                *mode = conn->modes[0];
-                break;
+        if (name) {
+            // filter out by name
+            const char* type_name =
+                drmModeGetConnectorTypeName(conn->connector_type);
+            char full_name[DRM_CONNECTOR_NAME_LEN];
+            snprintf(full_name, sizeof(full_name), "%s-%d", type_name,
+                     conn->connector_type_id);
+            if (strcmp(name, full_name) != 0) {
+                drmModeFreeConnector(conn);
+                continue;
             }
         }
 
-        *conn_id = conn->connector_id;
-        *crtc_id = get_crtc(fd, res, conn);
-
-        drmModeFreeEncoder(enc);
-        drmModeFreeConnector(conn);
-        drmModeFreeResources(res);
-        return true;
+        return conn;
     }
 
-    drmModeFreeResources(res);
+    return NULL;
+}
 
-    fprintf(stderr, "DRM connector not found\n");
-    return false;
+/**
+ * Get DRM mode.
+ * @param conn DRM connector
+ * @param width,height,freq preferred display resolution and frequency
+ * @return mode instance
+ */
+static drmModeModeInfo* get_mode(drmModeConnector* conn, size_t width,
+                                 size_t height, size_t freq)
+{
+    if (width && height) {
+        for (int i = 0; i < conn->count_modes; ++i) {
+            drmModeModeInfo* mode = &conn->modes[i];
+            // filter out resolution
+            if (mode->hdisplay != width || mode->vdisplay != height) {
+                continue;
+            }
+            // filter out frequency
+            if (freq &&
+                freq != mode->clock * 1000 / (mode->htotal * mode->vtotal)) {
+                continue;
+            }
+            return mode;
+        }
+    }
+
+    // get preferred mode
+    for (int i = 0; i < conn->count_modes; ++i) {
+        drmModeModeInfo* mode = &conn->modes[i];
+        if (mode->flags & DRM_MODE_TYPE_PREFERRED) {
+            return mode;
+        }
+    }
+
+    return &conn->modes[0]; // use first mode as fallback
+}
+
+/**
+ * Open DRM device.
+ * @param path device path to open
+ * @return file descriptor, -1 on errors
+ */
+static int drm_open(const char* path, bool silent)
+{
+    int fd = open(path, O_RDWR);
+
+    if (fd == -1) {
+        if (!silent) {
+            const int rc = errno;
+            fprintf(stderr, "Unable to open %s: [%d] %s\n", path, rc,
+                    strerror(rc));
+        }
+    } else {
+        // check capability
+        uint64_t cap;
+        if (drmGetCap(fd, DRM_CAP_DUMB_BUFFER, &cap) < 0 || !cap) {
+            if (!silent) {
+                fprintf(stderr, "Unsupported DRM %s\n", path);
+            }
+            close(fd);
+            fd = -1;
+        }
+    }
+
+    return fd;
+}
+
+/**
+ * Initialize DRM.
+ * @param cfg DRM configuration
+ * @return pointer to DRM context or NULL on errors
+ */
+static struct drm* drm_init(const struct drm_conf* cfg)
+{
+    struct drm* ctx;
+    drmModeRes* resources = NULL;
+    drmModeConnector* connector = NULL;
+    drmModeModeInfo mode;
+
+    ctx = calloc(1, sizeof(struct drm));
+    if (!ctx) {
+        return NULL;
+    }
+
+    // open drm device
+    if (cfg->path) {
+        ctx->fd = drm_open(cfg->path, false);
+        if (ctx->fd == -1) {
+            goto fail;
+        }
+    } else {
+        // try first 3 cards
+        for (size_t i = 0; i < 3; ++i) {
+            char path[16];
+            snprintf(path, sizeof(path), "/dev/dri/card%zu", i);
+            ctx->fd = drm_open(path, true);
+            if (ctx->fd != -1) {
+                break;
+            }
+        }
+        if (ctx->fd == -1) {
+            fprintf(stderr, "No suitable DRM card found\n");
+            goto fail;
+        }
+    }
+
+    resources = drmModeGetResources(ctx->fd);
+    if (!resources) {
+        const int rc = errno;
+        fprintf(stderr, "Unable to get DRM resources: [%d] %s\n", rc,
+                strerror(rc));
+        goto fail;
+    }
+
+    connector = get_connector(ctx->fd, resources, cfg->connector);
+    if (!connector) {
+        fprintf(stderr, "Unable to get DRM connector\n");
+        goto fail;
+    }
+
+    ctx->crtc_id = get_crtc(ctx->fd, resources, connector);
+    if (!ctx->crtc_id) {
+        fprintf(stderr, "Unable to get CRTC\n");
+        goto fail;
+    }
+
+    mode = *get_mode(connector, cfg->width, cfg->height, cfg->freq);
+
+    // create frame buffers
+    if (!create_fb(ctx->fd, &ctx->fb[0], mode.hdisplay, mode.vdisplay) ||
+        !create_fb(ctx->fd, &ctx->fb[1], mode.hdisplay, mode.vdisplay)) {
+        goto fail;
+    }
+
+    ctx->cfb = &ctx->fb[0];
+    ctx->pm.format = pixmap_xrgb;
+    ctx->pm.width = mode.hdisplay;
+    ctx->pm.height = mode.vdisplay;
+    ctx->conn_id = connector->connector_id;
+
+    // save the previous CRTC configuration and set new one
+    ctx->crtc_save = drmModeGetCrtc(ctx->fd, ctx->crtc_id);
+    if (drmModeSetCrtc(ctx->fd, ctx->crtc_id, ctx->cfb->id, 0, 0, &ctx->conn_id,
+                       1, &mode) < 0) {
+        const int rc = errno;
+        fprintf(stderr, "Unable to set CRTC mode: [%d] %s\n", rc, strerror(rc));
+        goto fail;
+    }
+
+    drmModeFreeConnector(connector);
+    drmModeFreeResources(resources);
+
+    return ctx;
+
+fail:
+    if (ctx) {
+        if (ctx->crtc_save) {
+            drmModeFreeCrtc(ctx->crtc_save);
+        }
+        if (ctx->fd > 0) {
+            close(ctx->fd);
+        }
+        free(ctx);
+    }
+    if (connector) {
+        drmModeFreeConnector(connector);
+    }
+    if (resources) {
+        drmModeFreeResources(resources);
+    }
+    return NULL;
 }
 
 static struct pixmap* drm_draw_begin(void* data)
@@ -267,71 +423,42 @@ static void drm_free(void* data)
     free(ctx);
 }
 
-void* ui_init_drm(struct ui* handlers)
+void* ui_init_drm(const struct config* cfg, struct ui* handlers)
 {
-    drmModeModeInfo mode;
     struct drm* ctx;
+    struct drm_conf drm_conf = { 0 };
+    const struct config* drm_sect = config_section(cfg, CFG_DRM);
+    const char* value;
 
-    ctx = calloc(1, sizeof(struct drm));
-    if (!ctx) {
-        return NULL;
+    // get DRM config
+    value = config_get(drm_sect, CFG_DRM_PATH);
+    if (strcmp(value, CFG_AUTO) != 0) {
+        drm_conf.path = value;
     }
-
-    // open DRM, try first 2 cards
-    ctx->fd = -1;
-    for (size_t i = 0; ctx->fd == -1 && i < 2; ++i) {
-        int fd;
-        uint64_t cap;
-        char path[16];
-        snprintf(path, sizeof(path), "/dev/dri/card%zu", i);
-
-        // open drm and check capability
-        fd = open(path, O_RDWR);
-        if (fd == -1) {
-            continue;
-        }
-        if (drmGetCap(fd, DRM_CAP_DUMB_BUFFER, &cap) < 0 || !cap) {
-            close(fd);
-        } else {
-            ctx->fd = fd;
+    value = config_get(drm_sect, CFG_DRM_CONNECTOR);
+    if (strcmp(value, CFG_AUTO) != 0) {
+        drm_conf.connector = value;
+    }
+    value = config_get(drm_sect, CFG_DRM_MODE);
+    if (strcmp(value, CFG_AUTO) != 0) {
+        unsigned int width = 0, height = 0, freq = 0;
+        if (sscanf(value, "%ux%u@%u", &width, &height, &freq) > 0) {
+            drm_conf.width = width;
+            drm_conf.height = height;
+            drm_conf.freq = freq;
         }
     }
-    if (ctx->fd == -1) {
-        fprintf(stderr, "Suitable DRM card not found\n");
-        goto fail;
-    }
 
-    if (!drm_init(ctx->fd, &ctx->conn_id, &ctx->crtc_id, &mode)) {
-        goto fail;
-    }
+    // init drm
+    ctx = drm_init(&drm_conf);
 
-    if (!create_fb(ctx->fd, &ctx->fb[0], mode.hdisplay, mode.vdisplay) ||
-        !create_fb(ctx->fd, &ctx->fb[1], mode.hdisplay, mode.vdisplay)) {
-        goto fail;
+    if (ctx) {
+        handlers->draw_begin = drm_draw_begin;
+        handlers->draw_commit = drm_draw_commit;
+        handlers->get_width = drm_get_width;
+        handlers->get_height = drm_get_height;
+        handlers->free = drm_free;
     }
-    ctx->cfb = &ctx->fb[0];
-    ctx->pm.format = pixmap_xrgb;
-    ctx->pm.width = mode.hdisplay;
-    ctx->pm.height = mode.vdisplay;
-
-    // save the previous CRTC configuration and set new one
-    ctx->crtc_save = drmModeGetCrtc(ctx->fd, ctx->crtc_id);
-    if (drmModeSetCrtc(ctx->fd, ctx->crtc_id, ctx->cfb->id, 0, 0, &ctx->conn_id,
-                       1, &mode) < 0) {
-        const int rc = errno;
-        fprintf(stderr, "Unable to set CRTC mode: [%d] %s\n", rc, strerror(rc));
-        goto fail;
-    }
-
-    handlers->draw_begin = drm_draw_begin;
-    handlers->draw_commit = drm_draw_commit;
-    handlers->get_width = drm_get_width;
-    handlers->get_height = drm_get_height;
-    handlers->free = drm_free;
 
     return ctx;
-
-fail:
-    drm_free(ctx);
-    return NULL;
 }
