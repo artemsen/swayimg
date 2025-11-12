@@ -8,6 +8,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -337,6 +338,7 @@ static struct drm* drm_init(const struct drm_conf* cfg)
     }
 
     ctx->cfb = &ctx->fb[0];
+    ctx->pm.data = (argb_t*)ctx->cfb->data;
     ctx->pm.format = pixmap_xrgb;
     ctx->pm.width = mode.hdisplay;
     ctx->pm.height = mode.vdisplay;
@@ -375,19 +377,41 @@ fail:
     return NULL;
 }
 
-static struct pixmap* drm_draw_begin(void* data)
+static void on_page_flipped(__attribute__((unused)) int fd,
+                            __attribute__((unused)) unsigned int frame,
+                            __attribute__((unused)) unsigned int sec,
+                            __attribute__((unused)) unsigned int usec,
+                            void* data)
 {
+    // switch frame buffer
     struct drm* ctx = data;
     ctx->cfb = ctx->cfb == &ctx->fb[0] ? &ctx->fb[1] : &ctx->fb[0];
     ctx->pm.data = (argb_t*)ctx->cfb->data;
+}
+
+static struct pixmap* drm_draw_begin(void* data)
+{
+    struct drm* ctx = data;
     return &ctx->pm;
 }
 
 static void drm_draw_commit(void* data)
 {
     struct drm* ctx = data;
+    drmEventContext ev = {
+        .version = DRM_EVENT_CONTEXT_VERSION,
+        .page_flip_handler = on_page_flipped,
+    };
+    struct pollfd fds = {
+        .fd = ctx->fd,
+        .events = POLLIN,
+    };
+
     drmModePageFlip(ctx->fd, ctx->crtc_id, ctx->cfb->id,
-                    DRM_MODE_PAGE_FLIP_EVENT, NULL);
+                    DRM_MODE_PAGE_FLIP_EVENT, ctx);
+    if (poll(&fds, 1, -1) > 0 && fds.revents & POLLIN) {
+        drmHandleEvent(ctx->fd, &ev);
+    }
 }
 
 static size_t drm_get_width(void* data)
