@@ -560,7 +560,7 @@ void info_switch(const char* name)
     timeout_reset(&ctx.info);
 
     if (name && *name) {
-        if (strcmp(name, "off")) {
+        if (strcmp(name, "off") == 0) {
             ctx.show = false;
         } else {
             info_set_default(name);
