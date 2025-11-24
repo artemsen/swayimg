@@ -90,11 +90,9 @@ Use prefix *exec://* to get image data from stdout printed by external command.
 
 # SWAY/HYPRLAND INTEGRATION
 
-Sway/Hyprland integration mode is automatically enabled if IPC for these
-compositors is present in the system.
 This mode provides some features such as setting the window position and
 getting the workspace layout.
-By default, the application creates an "overlay" above the currently active
+The application creates an "overlay" above the currently active
 window, which gives the illusion that the image is opened directly inside
 the terminal window.
 
