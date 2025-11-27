@@ -34,7 +34,7 @@ Keys are grouped into named sections. The section name appears on a line by
 itself, in square brackets. All keys after the section declaration are
 associated with that section.
 
-Special directive *include* allows to load another config file. The directive
+Special directive *include* allows one to load another config file. The directive
 must contain the path or name of the file to load the configuration.
 
 Any option can be overridden using the *--config* argument in the command line,
@@ -310,7 +310,7 @@ preceding a field name adds the field title to the display.
 	Bottom right corner of the window.
 	Default is _status_.
 
-Avalable fields:
+Available fields:
 - _name_: File name of the currently viewed/selected image.
 - _dir_: Parent directory name of the currently viewed/selected image.
 - _path_: Absolute path or special source string of the currently
