@@ -46,22 +46,32 @@ TEST(FileSystem, Absolute)
     EXPECT_TRUE(fs_abspath("/abs/path", path, sizeof(path)));
     EXPECT_STREQ(path, "/abs/path");
 
+    EXPECT_TRUE(fs_abspath("/abs//path", path, sizeof(path)));
+    EXPECT_STREQ(path, "/abs/path");
+
     EXPECT_TRUE(fs_abspath("/1/./2/path", path, sizeof(path)));
     EXPECT_STREQ(path, "/1/2/path");
-
-    EXPECT_TRUE(fs_abspath("/1/../2/path", path, sizeof(path)));
-    EXPECT_STREQ(path, "/2/path");
-    EXPECT_TRUE(fs_abspath("/1/path/2/..", path, sizeof(path)));
-    EXPECT_STREQ(path, "/1/path/");
 
     EXPECT_TRUE(fs_abspath("/1/2/path/./", path, sizeof(path)));
     EXPECT_STREQ(path, "/1/2/path/");
 
+    EXPECT_TRUE(fs_abspath("/1/../2/path", path, sizeof(path)));
+    EXPECT_STREQ(path, "/2/path");
+
+    EXPECT_TRUE(fs_abspath("/1/path/2/..", path, sizeof(path)));
+    EXPECT_STREQ(path, "/1/path/");
+
     EXPECT_TRUE(fs_abspath("../path", path, sizeof(path)));
+    EXPECT_EQ(path[0], '/');
+
+    EXPECT_TRUE(fs_abspath("../../../../../../../path", path, sizeof(path)));
     EXPECT_EQ(path[0], '/');
 
     EXPECT_TRUE(fs_abspath("./path", path, sizeof(path)));
     EXPECT_EQ(path[0], '/');
+
+    EXPECT_TRUE(fs_abspath("/1/ 2/path", path, sizeof(path)));
+    EXPECT_STREQ(path, "/1/ 2/path");
 }
 
 TEST(FileSystem, Name)

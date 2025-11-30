@@ -127,6 +127,41 @@ static void on_inotify(__attribute__((unused)) void* data)
     }
 }
 
+/**
+ * Split path by components.
+ * @param path source path to split
+ * @param dirs output array of path components
+ * @param max_dirs max number of path components (size of array)
+ * @return real number of components in source path
+ */
+static size_t split_path(const char* path, struct str_slice* dirs,
+                         size_t max_dirs)
+{
+    size_t index = 0;
+
+    while (*path && index < max_dirs) {
+        struct str_slice* dir = &dirs[index];
+
+        if (*path == '/') {
+            dir->value = NULL; // empty value
+            dir->len = 0;
+        } else {
+            dir->value = path;
+            while (*path && *path != '/') {
+                ++path;
+            }
+            dir->len = path - dir->value;
+        }
+
+        if (*path) {
+            ++path; // skip delimiter
+        }
+        ++index;
+    }
+
+    return index;
+}
+
 void fs_monitor_init(fs_monitor_cb handler)
 {
     ctx.notify = inotify_init1(IN_NONBLOCK);
@@ -258,7 +293,7 @@ size_t fs_append_path(const char* file, char* path, size_t path_max)
 size_t fs_abspath(const char* relative, char* path, size_t path_max)
 {
     char buffer[PATH_MAX] = { 0 };
-    struct str_slice dirs[1024];
+    struct str_slice dirs[512];
     size_t dirs_num;
     size_t pos;
 
@@ -281,8 +316,8 @@ size_t fs_abspath(const char* relative, char* path, size_t path_max)
         strncpy(buffer + len, relative, sizeof(buffer) - len - 1);
     }
 
-    // split by component
-    dirs_num = str_split(buffer, '/', dirs, ARRAY_SIZE(dirs));
+    // split path by dirs
+    dirs_num = split_path(buffer, dirs, ARRAY_SIZE(dirs));
 
     // remove "/../" and "/./"
     for (size_t i = 0; i < dirs_num; ++i) {
