@@ -19,9 +19,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-// Scale for selected thumbnail
-#define THUMB_SELECTED_SCALE 1.15f
-
 // Limits for thumbnail size
 #define THIMB_SIZE_MIN 50
 #define THIMB_SIZE_MAX 1000
@@ -43,6 +40,7 @@ struct gallery {
     argb_t clr_border;     ///< Selected tile border
     size_t border_width;   ///< Selected tile border size
     argb_t clr_shadow;     ///< Selected tile shadow
+    float selected_scale;  ///< Selected tile scale
 
     struct layout layout; ///< Thumbnail layout
 
@@ -439,23 +437,20 @@ static void draw_thumbnail(struct pixmap* window,
         }
     } else {
         // currently selected item
-        const size_t thumb_size = THUMB_SELECTED_SCALE * ctx.layout.thumb_size;
-        const ssize_t thumb_offset = (thumb_size - ctx.layout.thumb_size) / 2;
+        const size_t thumb_size = ctx.selected_scale * ctx.layout.thumb_size;
+        const ssize_t thumb_offset =
+            ((ssize_t)thumb_size - (ssize_t)ctx.layout.thumb_size) / 2;
 
         x = max(0, x - thumb_offset);
         y = max(0, y - thumb_offset);
-        if (x + thumb_size >= window->width) {
-            x = window->width - thumb_size;
-        }
-
         pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
 
         if (pm) {
-            const size_t thumb_w = pm->width * THUMB_SELECTED_SCALE;
-            const size_t thumb_h = pm->height * THUMB_SELECTED_SCALE;
+            const size_t thumb_w = pm->width * ctx.selected_scale;
+            const size_t thumb_h = pm->height * ctx.selected_scale;
             const ssize_t tx = x + thumb_size / 2 - thumb_w / 2;
             const ssize_t ty = y + thumb_size / 2 - thumb_h / 2;
-            software_render(pm, window, tx, ty, THUMB_SELECTED_SCALE,
+            software_render(pm, window, tx, ty, ctx.selected_scale,
                             ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest, false);
         }
 
@@ -704,6 +699,8 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.clr_border = config_get_color(section, CFG_GLRY_BORDER);
     ctx.border_width = config_get_num(section, CFG_GLRY_BORDER_WIDTH, 0, 256);
     ctx.clr_shadow = config_get_color(section, CFG_GLRY_SHADOW);
+    ctx.selected_scale =
+        config_get_float(section, CFG_GLRY_SELECTED_SCALE, 0.1f, 10.0f);
 
     // load key bindings
     ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_GALLERY));

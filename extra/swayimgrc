@@ -108,6 +108,8 @@ select = #404040ff
 border = #000000ff
 # Border width of the selected tile (pixels)
 border_width = 3
+# Scale of the selected tile (float)
+selected_scale = 1.15
 # Shadow color of the selected tile (RGBA)
 shadow = #000000ff
 

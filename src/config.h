@@ -65,18 +65,19 @@ struct config {
 #define CFG_VIEW_PRELOAD  "preload"
 #define CFG_VIEW_SSHOW_TM "time"
 
-#define CFG_GLRY_SIZE         "size"
-#define CFG_GLRY_CACHE        "cache"
-#define CFG_GLRY_PRELOAD      "preload"
-#define CFG_GLRY_PSTORE       "pstore"
-#define CFG_GLRY_FILL         "fill"
-#define CFG_GLRY_AA           "antialiasing"
-#define CFG_GLRY_WINDOW       "window"
-#define CFG_GLRY_BKG          "background"
-#define CFG_GLRY_SELECT       "select"
-#define CFG_GLRY_BORDER       "border"
-#define CFG_GLRY_BORDER_WIDTH "border_width"
-#define CFG_GLRY_SHADOW       "shadow"
+#define CFG_GLRY_SIZE           "size"
+#define CFG_GLRY_CACHE          "cache"
+#define CFG_GLRY_PRELOAD        "preload"
+#define CFG_GLRY_PSTORE         "pstore"
+#define CFG_GLRY_FILL           "fill"
+#define CFG_GLRY_AA             "antialiasing"
+#define CFG_GLRY_WINDOW         "window"
+#define CFG_GLRY_BKG            "background"
+#define CFG_GLRY_SELECT         "select"
+#define CFG_GLRY_BORDER         "border"
+#define CFG_GLRY_BORDER_WIDTH   "border_width"
+#define CFG_GLRY_SHADOW         "shadow"
+#define CFG_GLRY_SELECTED_SCALE "selected_scale"
 
 #define CFG_LIST_FROMFILE  "from_file"
 #define CFG_LIST_ORDER     "order"
@@ -196,6 +197,16 @@ bool config_get_bool(const struct config* section, const char* key);
  */
 ssize_t config_get_num(const struct config* section, const char* key,
                        ssize_t min_val, ssize_t max_val);
+
+/**
+ * Get config parameter as float value.
+ * @param section config section
+ * @param key property key
+ * @return value or default value if user defined value is invalid
+ */
+float config_get_float(const struct config* section, const char* key,
+                       float min_val, float max_val);
+
 /**
  * Get config parameter as ARGB color value.
  * @param section config section
