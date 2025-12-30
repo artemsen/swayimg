@@ -23,6 +23,12 @@
 #define THIMB_SIZE_MIN 50
 #define THIMB_SIZE_MAX 1000
 
+static const char* aspect_names[] = {
+    [thumb_fit] = "fit",
+    [thumb_fill] = "fill",
+    [thumb_keep] = "keep",
+};
+
 /** Gallery context. */
 struct gallery {
     size_t cache; ///< Max number of thumbnails in cache
@@ -31,8 +37,8 @@ struct gallery {
     bool thumb_aa_en;      ///< Enable/disable anti-aliasing mode
     enum aa_mode thumb_aa; ///< Anti-aliasing mode
 
-    bool thumb_fill;   ///< Scale mode (fill/fit)
-    bool thumb_pstore; ///< Use persistent storage for thumbnails
+    enum thumb_aspect aspect; ///< Thumbnail aspect ratio (fit/fill/keep)
+    bool thumb_pstore;        ///< Use persistent storage for thumbnails
 
     argb_t clr_window;     ///< Window background
     argb_t clr_background; ///< Tile background
@@ -84,9 +90,9 @@ static size_t pstore_path(const char* source, char* path, size_t path_max)
     }
 
     // append postfix
-    postfix_len = snprintf(
-        postfix, sizeof(postfix), ".%04x%d%d", (uint16_t)ctx.layout.thumb_size,
-        ctx.thumb_fill ? 1 : 0, ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest);
+    postfix_len = snprintf(postfix, sizeof(postfix), ".%04x%d%d",
+                           (uint16_t)ctx.layout.thumb_size, ctx.aspect,
+                           ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest);
     if (postfix_len <= 0 || len + postfix_len + 1 >= path_max) {
         return 0;
     }
@@ -210,7 +216,7 @@ static void thumb_load(void* data)
     origin = imglist_find(img->source);
     if (!origin ||                 // removed
         image_thumb_get(origin) || // already loaded
-        image_thumb_create(origin, ctx.layout.thumb_size, ctx.thumb_fill,
+        image_thumb_create(origin, ctx.layout.thumb_size, ctx.aspect,
                            ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest)) {
         imglist_unlock();
         app_redraw();
@@ -224,7 +230,7 @@ static void thumb_load(void* data)
     }
     // load entire image and convert it to thumbnail
     if (!image_thumb_get(img) && image_load(img) == imgload_success) {
-        if (image_thumb_create(img, ctx.layout.thumb_size, ctx.thumb_fill,
+        if (image_thumb_create(img, ctx.layout.thumb_size, ctx.aspect,
                                ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest)) {
             if (ctx.thumb_pstore) {
                 // save to thumbnail to persistent storage
@@ -428,8 +434,10 @@ static void draw_thumbnail(struct pixmap* window,
     ssize_t y = lth->y;
 
     if (lth != layout_current(&ctx.layout)) {
-        pixmap_fill(window, x, y, ctx.layout.thumb_size, ctx.layout.thumb_size,
-                    ctx.clr_background);
+        if (ctx.aspect == thumb_fit) {
+            pixmap_fill(window, x, y, ctx.layout.thumb_size,
+                        ctx.layout.thumb_size, ctx.clr_background);
+        }
         if (pm) {
             x += ctx.layout.thumb_size / 2 - pm->width / 2;
             y += ctx.layout.thumb_size / 2 - pm->height / 2;
@@ -443,7 +451,9 @@ static void draw_thumbnail(struct pixmap* window,
 
         x = max(0, x - thumb_offset);
         y = max(0, y - thumb_offset);
-        pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
+        if (ctx.aspect == thumb_fit) {
+            pixmap_fill(window, x, y, thumb_size, thumb_size, ctx.clr_select);
+        }
 
         if (pm) {
             const size_t thumb_w = pm->width * ctx.selected_scale;
@@ -456,6 +466,17 @@ static void draw_thumbnail(struct pixmap* window,
 
         // shadow
         if (ARGB_GET_A(ctx.clr_shadow)) {
+            size_t thumb_w = thumb_size;
+            size_t thumb_h = thumb_size;
+            ssize_t tx = x;
+            ssize_t ty = y;
+            if (pm && ctx.aspect == thumb_keep) {
+                thumb_w = pm->width * ctx.selected_scale;
+                thumb_h = pm->height * ctx.selected_scale;
+                tx = x + thumb_size / 2 - thumb_w / 2;
+                ty = y + thumb_size / 2 - thumb_h / 2;
+            }
+
             const argb_t base = ctx.clr_shadow & 0x00ffffff;
             const uint8_t alpha = ARGB_GET_A(ctx.clr_shadow);
             const size_t width =
@@ -463,24 +484,33 @@ static void draw_thumbnail(struct pixmap* window,
             const size_t alpha_step = alpha / width;
 
             for (size_t i = 0; i < width; ++i) {
-                const ssize_t lx = i + x + thumb_size;
-                const ssize_t ly = y + width;
-                const size_t lh = thumb_size - (width - i);
                 const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
-                pixmap_vline(window, lx, ly, lh, 1, color);
-            }
-            for (size_t i = 0; i < width; ++i) {
-                const ssize_t lx = x + width;
-                const ssize_t ly = y + thumb_size + i;
-                const size_t lw = thumb_size - (width - i) + 1;
-                const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
-                pixmap_hline(window, lx, ly, lw, 1, color);
+
+                const size_t vlx = tx + thumb_w + i;
+                const size_t vly = ty + width;
+                const size_t vlh = thumb_h - (width - i);
+                pixmap_vline(window, vlx, vly, vlh, 1, color);
+
+                const size_t hlx = tx + width;
+                const size_t hly = ty + thumb_h + i;
+                const size_t hlw = thumb_w - (width - i) + 1;
+                pixmap_hline(window, hlx, hly, hlw, 1, color);
             }
         }
 
         // border
         if (ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
-            pixmap_rect(window, x, y, thumb_size, thumb_size, ctx.border_width,
+            size_t thumb_w = thumb_size;
+            size_t thumb_h = thumb_size;
+            ssize_t tx = x;
+            ssize_t ty = y;
+            if (pm && ctx.aspect == thumb_keep) {
+                thumb_w = pm->width * ctx.selected_scale;
+                thumb_h = pm->height * ctx.selected_scale;
+                tx = x + thumb_size / 2 - thumb_w / 2;
+                ty = y + thumb_size / 2 - thumb_h / 2;
+            }
+            pixmap_rect(window, tx, ty, thumb_w, thumb_h, ctx.border_width,
                         ctx.clr_border);
         }
     }
@@ -653,7 +683,7 @@ static void on_activate(struct image* image)
     layout_resize(&ctx.layout, ui_get_width(), ui_get_height());
 
     if (!image_thumb_get(image)) {
-        image_thumb_create(image, ctx.layout.thumb_size, ctx.thumb_fill,
+        image_thumb_create(image, ctx.layout.thumb_size, ctx.aspect,
                            ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest);
     }
 
@@ -691,7 +721,8 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
         config_error_val(section->name, CFG_GLRY_AA);
     }
 
-    ctx.thumb_fill = config_get_bool(section, CFG_GLRY_FILL);
+    ctx.aspect = config_get_oneof(section, CFG_GLRY_ASPECT, aspect_names,
+                                  ARRAY_SIZE(aspect_names));
     ctx.thumb_pstore = config_get_bool(section, CFG_GLRY_PSTORE);
 
     ctx.clr_window = config_get_color(section, CFG_GLRY_WINDOW);

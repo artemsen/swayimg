@@ -252,8 +252,8 @@ void image_rotate(struct image* img, size_t angle)
     }
 }
 
-bool image_thumb_create(struct image* img, size_t size, bool fill,
-                        enum aa_mode aa_mode)
+bool image_thumb_create(struct image* img, size_t size,
+                        enum thumb_aspect aspect, enum aa_mode aa_mode)
 {
     assert(!image_thumb_get(img));
 
@@ -268,14 +268,14 @@ bool image_thumb_create(struct image* img, size_t size, bool fill,
 
     const float scale_width = 1.0 / ((float)real_width / size);
     const float scale_height = 1.0 / ((float)real_height / size);
-    const float scale =
-        fill ? max(scale_width, scale_height) : min(scale_width, scale_height);
+    const float scale = aspect == thumb_fill ? max(scale_width, scale_height)
+                                             : min(scale_width, scale_height);
 
     size_t thumb_width = scale * real_width;
     size_t thumb_height = scale * real_height;
     ssize_t offset_x, offset_y;
 
-    if (fill) {
+    if (aspect == thumb_fill) {
         offset_x = size / 2 - thumb_width / 2;
         offset_y = size / 2 - thumb_height / 2;
         thumb_width = size;

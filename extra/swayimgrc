@@ -96,8 +96,8 @@ cache = 100
 preload = no
 # Enable/disable storing thumbnails in persistent storage (yes/no)
 pstore = no
-# Fill the entire tile with thumbnail (yes/no)
-fill = yes
+# Thumbnail aspect ratio (fit/fill/keep)
+aspect = fill
 # Anti-aliasing mode for thumbnails (none/box/bilinear/bicubic/mks13)
 antialiasing = mks13
 # Background color of the window (RGBA)

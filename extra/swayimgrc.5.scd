@@ -197,8 +197,12 @@ Configuration specific to the gallery mode: _[gallery]_.
 	Enable/disable storing thumbnails in persistent storage, _no_ by default.
 	If enabled, thumbnails will be stored in _XDG_CACHE_HOME/swayimg_.
 
-*fill* = _yes_|_no_
-	Fill the entire tile with thumbnail, yes by default.
+*aspect* = _fit_|_fill_|_keep_
+	Thumbnail aspect ratio, _fill_ by default.
+	- _fit_: Fit image into a square thumbnail, maintaining its aspect ratio;
+	- _fill_: Fill square thumbnail with the image, cropping its larger
+	dimension;
+	- _keep_: Adjust thumbnail size to the aspect ratio of the image.
 
 *antialiasing* = METHOD
 	Anti-aliasing method when scaling images.

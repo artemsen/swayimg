@@ -98,6 +98,15 @@ enum image_status {
     imgload_unknown      ///< Unknown errors
 };
 
+/** Thumbnail aspect ratio. */
+enum thumb_aspect {
+    thumb_fit,  ///< Fit image into a square thumbnail, maintaining its aspect
+                ///< ratio
+    thumb_fill, ///< Fill square thumbnail with the image, cropping its larger
+                ///< dimension
+    thumb_keep, ///< Adjust thumbnail size to the aspect ratio of the image
+};
+
 /** Image data types. */
 #define IMGDATA_FRAMES (1 << 0)
 #define IMGDATA_THUMB  (1 << 1)
@@ -206,12 +215,12 @@ void image_rotate(struct image* img, size_t angle);
  * Create thumbnail.
  * @param img image context
  * @param size thumbnail size in pixels
- * @param fill scale mode (fill/fit)
+ * @param aspect thumbnail aspect ratio (fit/fill/keep)
  * @param aa_mode anti-aliasing mode
  * @return true if thumbnail created
  */
-bool image_thumb_create(struct image* img, size_t size, bool fill,
-                        enum aa_mode aa_mode);
+bool image_thumb_create(struct image* img, size_t size,
+                        enum thumb_aspect aspect, enum aa_mode aa_mode);
 
 /**
  * Load thumbnail from specified file.
