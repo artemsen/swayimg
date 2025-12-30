@@ -88,6 +88,8 @@ antialiasing = mks13
 [gallery]
 # Height and width of each thumbnail (pixels)
 size = 200
+# Padding between thumbnails (pixels)
+padding = 5
 # Max number of invisible thumbnails stored in memory cache
 cache = 100
 # Load not only visible but also adjacent thumbnails

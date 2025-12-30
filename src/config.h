@@ -66,6 +66,7 @@ struct config {
 #define CFG_VIEW_SSHOW_TM "time"
 
 #define CFG_GLRY_SIZE           "size"
+#define CFG_GLRY_PADDING        "padding"
 #define CFG_GLRY_CACHE          "cache"
 #define CFG_GLRY_PRELOAD        "preload"
 #define CFG_GLRY_PSTORE         "pstore"

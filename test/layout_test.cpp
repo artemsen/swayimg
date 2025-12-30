@@ -15,7 +15,7 @@ protected:
         config_set(config, CFG_LIST, CFG_LIST_ORDER, "alpha");
         imglist_init(config);
         imglist_lock();
-        layout_init(&layout, thsize);
+        layout_init(&layout, thsize, padding);
     }
 
     void TearDown() override
@@ -95,6 +95,7 @@ protected:
     struct layout layout;
     struct image* queue = nullptr;
     static constexpr const size_t thsize = 10;
+    static constexpr const size_t padding = 5;
 };
 
 TEST_F(Layout, BaseScheme)
