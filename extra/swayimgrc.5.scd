@@ -222,6 +222,9 @@ Configuration specific to the gallery mode: _[gallery]_.
 *border_width* = PIXELS
 	Border width of the selected tile, _5_ by default.
 
+*selected_scale* = FLOAT
+	Scale of the selected tile, _1.15_ by default.
+
 *shadow* = #COLOR
 	Shadow color of the selected tile, _#000000ff_ by default.
 

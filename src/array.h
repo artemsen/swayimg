@@ -99,6 +99,15 @@ char* str_append(const char* src, size_t len, char** dst);
 bool str_to_num(const char* text, size_t len, ssize_t* value, int base);
 
 /**
+ * Convert text string to float.
+ * @param text text to convert
+ * @param len length of the source string (0=auto)
+ * @param value output variable
+ * @return false if text has invalid format
+ */
+bool str_to_float(const char* text, size_t len, float* value);
+
+/**
  * Convert ASCII string to wide char format.
  * @param src source string to encode
  * @param dst pointer to destination buffer

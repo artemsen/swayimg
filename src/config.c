@@ -72,6 +72,7 @@ static const struct configdef_kv def_gallery[] = {
     { CFG_GLRY_BORDER,          "#000000ff" },
     { CFG_GLRY_BORDER_WIDTH,    "1"         },
     { CFG_GLRY_SHADOW,          "#000000ff" },
+    { CFG_GLRY_SELECTED_SCALE,  "1.15"      },
 };
 
 static const struct configdef_kv def_list[] = {
@@ -731,6 +732,25 @@ ssize_t config_get_num(const struct config* section, const char* key,
                 "Invalid config value \"%s = %s\" in section \"%s\": "
                 "expected integer in range %zd-%zd, "
                 "the default value %zd will be used\n",
+                key, value, section->name, min_val, max_val, num);
+    }
+
+    return num;
+}
+
+float config_get_float(const struct config* section, const char* key,
+                       float min_val, float max_val)
+{
+    float num = 0.0f;
+    const char* value = config_get(section, key);
+
+    if (!str_to_float(value, 0, &num) || num < min_val || num > max_val) {
+        str_to_float(config_get_default(section->name, key), 0, &num);
+        fprintf(stderr,
+                "WARNING: "
+                "Invalid config value \"%s = %s\" in section \"%s\": "
+                "expected float in range %.03f-%.03f, "
+                "the default value %.03f will be used\n",
                 key, value, section->name, min_val, max_val, num);
     }
 

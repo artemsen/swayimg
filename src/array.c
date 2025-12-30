@@ -149,6 +149,43 @@ bool str_to_num(const char* text, size_t len, ssize_t* value, int base)
     return false;
 }
 
+bool str_to_float(const char* text, size_t len, float* value)
+{
+    char* endptr;
+    float num;
+    char buffer[32];
+    const char* ptr;
+
+    if (!text) {
+        return false;
+    }
+
+    if (!*text) {
+        return false;
+    }
+
+    if (len == 0) {
+        ptr = text;
+    } else {
+        if (len >= sizeof(buffer)) {
+            len = sizeof(buffer) - 1;
+        }
+        memcpy(buffer, text, len);
+        buffer[len] = 0;
+        ptr = buffer;
+    }
+
+    errno = 0;
+    num = strtof(ptr, &endptr);
+
+    if (!*endptr && errno == 0) {
+        *value = num;
+        return true;
+    }
+
+    return false;
+}
+
 wchar_t* str_to_wide(const char* src, wchar_t** dst)
 {
     wchar_t* buffer;
