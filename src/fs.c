@@ -18,13 +18,50 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef HAVE_INOTIFY
+#include <sys/inotify.h>
+#endif
+
+/**
+ * Split path by components.
+ * @param path source path to split
+ * @param dirs output array of path components
+ * @param max_dirs max number of path components (size of array)
+ * @return real number of components in source path
+ */
+static size_t split_path(const char* path, struct str_slice* dirs,
+                         size_t max_dirs)
+{
+    size_t index = 0;
+
+    while (*path && index < max_dirs) {
+        struct str_slice* dir = &dirs[index];
+
+        if (*path == '/') {
+            dir->value = NULL; // empty value
+            dir->len = 0;
+        } else {
+            dir->value = path;
+            while (*path && *path != '/') {
+                ++path;
+            }
+            dir->len = path - dir->value;
+        }
+
+        if (*path) {
+            ++path; // skip delimiter
+        }
+        ++index;
+    }
+
+    return index;
+}
+
 #ifndef HAVE_INOTIFY
 void fs_monitor_init(__attribute__((unused)) fs_monitor_cb handler) { }
 void fs_monitor_destroy(void) { }
 void fs_monitor_add(__attribute__((unused)) const char* path) { }
 #else
-
-#include <sys/inotify.h>
 
 /** List of watched files/directories. */
 struct watch {
@@ -125,41 +162,6 @@ static void on_inotify(__attribute__((unused)) void* data)
             pos += sizeof(struct inotify_event) + event->len;
         }
     }
-}
-
-/**
- * Split path by components.
- * @param path source path to split
- * @param dirs output array of path components
- * @param max_dirs max number of path components (size of array)
- * @return real number of components in source path
- */
-static size_t split_path(const char* path, struct str_slice* dirs,
-                         size_t max_dirs)
-{
-    size_t index = 0;
-
-    while (*path && index < max_dirs) {
-        struct str_slice* dir = &dirs[index];
-
-        if (*path == '/') {
-            dir->value = NULL; // empty value
-            dir->len = 0;
-        } else {
-            dir->value = path;
-            while (*path && *path != '/') {
-                ++path;
-            }
-            dir->len = path - dir->value;
-        }
-
-        if (*path) {
-            ++path; // skip delimiter
-        }
-        ++index;
-    }
-
-    return index;
 }
 
 void fs_monitor_init(fs_monitor_cb handler)
