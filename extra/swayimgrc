@@ -106,6 +106,8 @@ background = #202020ff
 select = #404040ff
 # Border color of the selected tile (RGBA)
 border = #000000ff
+# Border width of the selected tile (pixels)
+border_width = 3
 # Shadow color of the selected tile (RGBA)
 shadow = #000000ff
 

@@ -14,7 +14,6 @@
 #include "ui/ui.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +41,7 @@ struct gallery {
     argb_t clr_background; ///< Tile background
     argb_t clr_select;     ///< Selected tile background
     argb_t clr_border;     ///< Selected tile border
+    size_t border_width;   ///< Selected tile border size
     argb_t clr_shadow;     ///< Selected tile shadow
 
     struct layout layout; ///< Thumbnail layout
@@ -472,20 +472,21 @@ static void draw_thumbnail(struct pixmap* window,
                 const ssize_t ly = y + width;
                 const size_t lh = thumb_size - (width - i);
                 const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
-                pixmap_vline(window, lx, ly, lh, color);
+                pixmap_vline(window, lx, ly, lh, 1, color);
             }
             for (size_t i = 0; i < width; ++i) {
                 const ssize_t lx = x + width;
                 const ssize_t ly = y + thumb_size + i;
                 const size_t lw = thumb_size - (width - i) + 1;
                 const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
-                pixmap_hline(window, lx, ly, lw, color);
+                pixmap_hline(window, lx, ly, lw, 1, color);
             }
         }
 
         // border
-        if (ARGB_GET_A(ctx.clr_border)) {
-            pixmap_rect(window, x, y, thumb_size, thumb_size, ctx.clr_border);
+        if (ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
+            pixmap_rect(window, x, y, thumb_size, thumb_size, ctx.border_width,
+                        ctx.clr_border);
         }
     }
 }
@@ -701,6 +702,7 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.clr_background = config_get_color(section, CFG_GLRY_BKG);
     ctx.clr_select = config_get_color(section, CFG_GLRY_SELECT);
     ctx.clr_border = config_get_color(section, CFG_GLRY_BORDER);
+    ctx.border_width = config_get_num(section, CFG_GLRY_BORDER_WIDTH, 0, 256);
     ctx.clr_shadow = config_get_color(section, CFG_GLRY_SHADOW);
 
     // load key bindings
