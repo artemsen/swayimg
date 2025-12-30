@@ -11,7 +11,6 @@
 #include "imglist.h"
 #include "info.h"
 #include "ipc.h"
-#include "shellcmd.h"
 #include "slideshow.h"
 #include "tpool.h"
 #include "ui/ui.h"

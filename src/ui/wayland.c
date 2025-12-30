@@ -5,6 +5,7 @@
 #include "../application.h"
 #include "../array.h"
 #include "../fdpoll.h"
+#include "../keybind.h"
 #include "uiface.h"
 #include "wndbuf.h"
 
