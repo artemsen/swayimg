@@ -183,6 +183,9 @@ Configuration specific to the gallery mode: _[gallery]_.
 *size* = PIXELS
 	Height and width of each thumbnail in pixels, _200_ by default.
 
+*padding* = PIXELS
+	Padding between thumbnails in pixels, _5_ by default.
+
 *cache* = SIZE
 	Max number of invisible thumbnails stored in memory cache, _100_ by default.
 

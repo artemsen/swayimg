@@ -23,6 +23,7 @@ struct layout {
     size_t current_row;    ///< Currently selected row
 
     size_t thumb_size;           ///< Size of thumbnail (in pixels)
+    size_t thumb_padding;        ///< Padding of thumbnail (in pixels)
     size_t thumb_total;          ///< Total number of showed thumbnails
     struct layout_thumb* thumbs; ///< Visible thumbnails array
 };
@@ -43,8 +44,9 @@ enum layout_dir {
  * Create new layout.
  * @param lo pointer to the thumbnail layout for initialization
  * @param thumb_size thumbnail size in pixels
+ * @param thumb_padding thumbnail padding in pixels
  */
-void layout_init(struct layout* lo, size_t thumb_size);
+void layout_init(struct layout* lo, size_t thumb_size, size_t thumb_padding);
 
 /**
  * Free layout resources.

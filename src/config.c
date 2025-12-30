@@ -61,6 +61,7 @@ static const struct configdef_kv def_slideshow[] = {
 
 static const struct configdef_kv def_gallery[] = {
     { CFG_GLRY_SIZE,            "200"       },
+    { CFG_GLRY_PADDING,         "5"         },
     { CFG_GLRY_CACHE,           "100"       },
     { CFG_GLRY_PRELOAD,         CFG_NO      },
     { CFG_GLRY_PSTORE,          CFG_NO      },

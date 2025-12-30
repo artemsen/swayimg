@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Space between thumbnails
-#define PADDING 5
-
 /**
  * Recalculate thumbnails scheme.
  * @param lo pointer to the thumbnail layout
@@ -70,10 +67,11 @@ static struct image* rearrange(struct layout* lo, size_t* visible)
     return first;
 }
 
-void layout_init(struct layout* lo, size_t thumb_size)
+void layout_init(struct layout* lo, size_t thumb_size, size_t thumb_padding)
 {
     memset(lo, 0, sizeof(*lo));
     lo->thumb_size = thumb_size;
+    lo->thumb_padding = thumb_padding;
     lo->current_row = SIZE_MAX;
 }
 
@@ -108,16 +106,18 @@ void layout_update(struct layout* lo)
 
     // fill thumbnails map
     lo->thumb_total = total;
-    offset_x = (lo->width - lo->columns * (lo->thumb_size + PADDING)) / 2;
-    offset_y = (lo->height - lo->rows * (lo->thumb_size + PADDING)) / 2;
+    offset_x =
+        (lo->width - lo->columns * (lo->thumb_size + lo->thumb_padding)) / 2;
+    offset_y =
+        (lo->height - lo->rows * (lo->thumb_size + lo->thumb_padding)) / 2;
     for (size_t i = 0; i < lo->thumb_total; ++i) {
         struct layout_thumb* thumb = &lo->thumbs[i];
         thumb->col = i % lo->columns;
         thumb->row = i / lo->columns;
         thumb->x = offset_x + thumb->col * lo->thumb_size;
-        thumb->x += PADDING * (thumb->col + 1);
+        thumb->x += lo->thumb_padding * (thumb->col + 1);
         thumb->y = offset_y + thumb->row * lo->thumb_size;
-        thumb->y += PADDING * (thumb->row + 1);
+        thumb->y += lo->thumb_padding * (thumb->row + 1);
         thumb->img = img;
         img = imglist_next(img, false);
     }
@@ -131,11 +131,11 @@ void layout_resize(struct layout* lo, size_t width, size_t height)
     lo->width = width;
     lo->height = height;
 
-    lo->columns = lo->width / (lo->thumb_size + PADDING);
+    lo->columns = lo->width / (lo->thumb_size + lo->thumb_padding);
     if (lo->columns == 0) {
         lo->columns = 1;
     }
-    lo->rows = lo->height / (lo->thumb_size + PADDING);
+    lo->rows = lo->height / (lo->thumb_size + lo->thumb_padding);
     if (lo->rows == 0) {
         lo->rows = 1;
     }

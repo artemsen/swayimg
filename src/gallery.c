@@ -677,7 +677,8 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     const struct config* section = config_section(cfg, CFG_GALLERY);
 
     const size_t ts = config_get_num(section, CFG_GLRY_SIZE, 1, 4096);
-    layout_init(&ctx.layout, ts);
+    const size_t ps = config_get_num(section, CFG_GLRY_PADDING, 0, 256);
+    layout_init(&ctx.layout, ts, ps);
 
     ctx.cache = config_get_num(section, CFG_GLRY_CACHE, 0, SSIZE_MAX);
     ctx.preload = config_get_bool(section, CFG_GLRY_PRELOAD);
