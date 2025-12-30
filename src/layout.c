@@ -88,6 +88,8 @@ void layout_update(struct layout* lo)
 {
     assert(imglist_is_locked());
 
+    size_t used_rows, used_cols;
+    size_t mid_x, mid_y;
     size_t offset_x, offset_y;
     size_t total;
     struct image* img;
@@ -104,12 +106,15 @@ void layout_update(struct layout* lo)
         lo->thumbs = thumbs;
     }
 
+    used_cols = min(lo->columns, total);
+    used_rows = (total + lo->columns - 1) / lo->columns;
+
     // fill thumbnails map
     lo->thumb_total = total;
-    offset_x =
-        (lo->width - lo->columns * (lo->thumb_size + lo->thumb_padding)) / 2;
-    offset_y =
-        (lo->height - lo->rows * (lo->thumb_size + lo->thumb_padding)) / 2;
+    mid_x = min(lo->width, used_cols * (lo->thumb_size + lo->thumb_padding));
+    mid_y = min(lo->height, used_rows * (lo->thumb_size + lo->thumb_padding));
+    offset_x = (lo->width - mid_x) / 2;
+    offset_y = (lo->height - mid_y) / 2;
     for (size_t i = 0; i < lo->thumb_total; ++i) {
         struct layout_thumb* thumb = &lo->thumbs[i];
         thumb->col = i % lo->columns;
