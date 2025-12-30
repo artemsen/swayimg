@@ -2,7 +2,7 @@
 // DRM based user interface.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
-#include "../application.h"
+#include "../config.h"
 #include "buildcfg.h"
 #include "uiface.h"
 

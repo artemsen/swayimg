@@ -8,7 +8,6 @@
 #include "fdpoll.h"
 #include "imglist.h"
 #include "info.h"
-#include "render.h"
 #include "tpool.h"
 #include "ui/ui.h"
 #include "viewport.h"

@@ -5,7 +5,7 @@
 #pragma once
 
 #include "image.h"
-#include "mode.h"
+#include "keybind.h"
 
 /** Available info fields. */
 enum info_field {

@@ -4,9 +4,12 @@
 
 #pragma once
 
+#include "action.h"
+#include "config.h"
 #include "fs.h"
 #include "image.h"
-#include "keybind.h"
+
+#include <xkbcommon/xkbcommon.h>
 
 /**
  * Handler of the fd poll events.
