@@ -219,6 +219,9 @@ Configuration specific to the gallery mode: _[gallery]_.
 *border* = #COLOR
 	Border color of the selected tile, _#000000ff_ by default.
 
+*border_width* = PIXELS
+	Border width of the selected tile, _5_ by default.
+
 *shadow* = #COLOR
 	Shadow color of the selected tile, _#000000ff_ by default.
 

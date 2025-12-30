@@ -154,6 +154,9 @@ bool layout_select(struct layout* lo, enum layout_dir dir)
     switch (dir) {
         case layout_up:
             next = imglist_jump(lo->current, -(ssize_t)lo->columns);
+            if (!next) {
+                next = imglist_first();
+            }
             --row;
             break;
         case layout_down:

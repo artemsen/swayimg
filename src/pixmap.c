@@ -456,38 +456,45 @@ void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
 }
 
 void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
-                  argb_t color)
+                  size_t thickness, argb_t color)
 {
-    if (y >= 0 && y < (ssize_t)pm->height) {
-        const ssize_t begin = max(0, x);
-        const ssize_t end = min((ssize_t)pm->width, x + (ssize_t)width);
-        const size_t offset = y * pm->width;
-        for (ssize_t i = begin; i < end; ++i) {
-            pixmap_alpha_blend(color, &pm->data[offset + i]);
+    for (size_t j = 0; j < thickness; ++j) {
+        const ssize_t yy = y + j;
+        if (yy >= 0 && yy < (ssize_t)pm->height) {
+            const ssize_t begin = max(0, x);
+            const ssize_t end = min((ssize_t)pm->width, x + (ssize_t)width);
+            const size_t offset = yy * pm->width;
+            for (ssize_t i = begin; i < end; ++i) {
+                pixmap_alpha_blend(color, &pm->data[offset + i]);
+            }
         }
     }
 }
 
 void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
-                  argb_t color)
+                  size_t thickness, argb_t color)
 {
-    if (x >= 0 && x < (ssize_t)pm->width) {
-        const ssize_t begin = max(0, y);
-        const ssize_t end = min((ssize_t)pm->height, y + (ssize_t)height);
-        for (ssize_t i = begin; i < end; ++i) {
-            pixmap_alpha_blend(color, &pm->data[i * pm->width + x]);
+    for (size_t j = 0; j < thickness; ++j) {
+        const ssize_t xx = x + j;
+        if (xx >= 0 && xx < (ssize_t)pm->width) {
+            const ssize_t begin = max(0, y);
+            const ssize_t end = min((ssize_t)pm->height, y + (ssize_t)height);
+            for (ssize_t i = begin; i < end; ++i) {
+                pixmap_alpha_blend(color, &pm->data[i * pm->width + xx]);
+            }
         }
     }
 }
 
 void pixmap_rect(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
-                 size_t height, argb_t color)
+                 size_t height, size_t thickness, argb_t color)
 {
-
-    pixmap_hline(pm, x, y, width, color);
-    pixmap_hline(pm, x, y + height - 1, width, color);
-    pixmap_vline(pm, x, y + 1, height - 1, color);
-    pixmap_vline(pm, x + width - 1, y + 1, height - 1, color);
+    pixmap_hline(pm, x - thickness + 1, y - thickness + 1,
+                 width + thickness * 2 - 2, thickness, color);
+    pixmap_hline(pm, x - thickness + 1, y + height - 1,
+                 width + thickness * 2 - 2, thickness, color);
+    pixmap_vline(pm, x - thickness + 1, y + 1, height - 1, thickness, color);
+    pixmap_vline(pm, x + width - 1, y + 1, height - 1, thickness, color);
 }
 
 void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,

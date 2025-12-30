@@ -106,30 +106,33 @@ void pixmap_blend(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
  * @param width line size
+ * @param thickness line thickness, growing in @ref y direction
  * @param color color to use
  */
 void pixmap_hline(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
-                  argb_t color);
+                  size_t thickness, argb_t color);
 
 /**
  * Draw vertical line.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
  * @param height line size
+ * @param thickness line thickness, growing in @ref x direction
  * @param color color to use
  */
 void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
-                  argb_t color);
+                  size_t thickness, argb_t color);
 
 /**
- * Draw rectangle with 1px lines.
+ * Draw rectangle.
  * @param pm pixmap context
  * @param x,y start coordinates, left top point
  * @param width,height rectangle size
+ * @param thickness rectangle line thickness, growing outwards
  * @param color color to use
  */
 void pixmap_rect(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
-                 size_t height, argb_t color);
+                 size_t height, size_t thickness, argb_t color);
 
 /**
  * Fill pixmap with grid.
