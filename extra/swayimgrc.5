@@ -317,9 +317,17 @@ Enable/disable storing thumbnails in persistent storage, \fIno\fR by default.\&
 If enabled, thumbnails will be stored in \fIXDG_CACHE_HOME/swayimg\fR.\&
 .PP
 .RE
-\fBfill\fR = \fIyes\fR|\fIno\fR
+\fBaspect\fR = \fIfit\fR|\fIfill\fR|\fIkeep\fR
 .RS 4
-Fill the entire tile with thumbnail, yes by default.\&
+Thumbnail aspect ratio, \fIfill\fR by default.\&
+.PD 0
+.IP \(bu 4
+\fIfit\fR: Fit image into a square thumbnail, maintaining its aspect ratio;
+.IP \(bu 4
+\fIfill\fR: Fill square thumbnail with the image, cropping its larger dimension;
+.IP \(bu 4
+\fIkeep\fR: Adjust thumbnail size to the aspect ratio of the image.\&
+.PD
 .PP
 .RE
 \fBantialiasing\fR = METHOD

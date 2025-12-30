@@ -70,7 +70,7 @@ struct config {
 #define CFG_GLRY_CACHE          "cache"
 #define CFG_GLRY_PRELOAD        "preload"
 #define CFG_GLRY_PSTORE         "pstore"
-#define CFG_GLRY_FILL           "fill"
+#define CFG_GLRY_ASPECT         "aspect"
 #define CFG_GLRY_AA             "antialiasing"
 #define CFG_GLRY_WINDOW         "window"
 #define CFG_GLRY_BKG            "background"

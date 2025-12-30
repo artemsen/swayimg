@@ -72,7 +72,7 @@ TEST_F(Image, Free)
     Load(TEST_DATA_DIR "/image.bmp");
 
     EXPECT_FALSE(image_thumb_get(image));
-    image_thumb_create(image, 1, true, aa_nearest);
+    image_thumb_create(image, 1, thumb_fill, aa_nearest);
     EXPECT_TRUE(image_thumb_get(image));
     image_free(image, IMGDATA_THUMB);
     EXPECT_FALSE(image_thumb_get(image));
@@ -97,13 +97,13 @@ TEST_F(Image, Transform)
 TEST_F(Image, Thumbnail)
 {
     image = image_create("file");
-    ASSERT_FALSE(image_thumb_create(image, 10, true, aa_nearest));
+    ASSERT_FALSE(image_thumb_create(image, 10, thumb_fill, aa_nearest));
     image_free(image, IMGDATA_SELF);
 
     Load(TEST_DATA_DIR "/image.bmp");
 
     ASSERT_FALSE(image_thumb_get(image));
-    ASSERT_TRUE(image_thumb_create(image, 10, true, aa_nearest));
+    ASSERT_TRUE(image_thumb_create(image, 10, thumb_fill, aa_nearest));
     ASSERT_TRUE(image_thumb_get(image));
     ASSERT_TRUE(image->data);
     EXPECT_TRUE(image->data->thumbnail.data);

@@ -126,10 +126,10 @@ TEST_F(ConfigTest, GetBool)
 {
     const struct config* section = config_section(config, CFG_GALLERY);
 
-    EXPECT_TRUE(config_set(config, CFG_GALLERY, CFG_GLRY_FILL, CFG_YES));
-    EXPECT_TRUE(config_get_bool(section, CFG_GLRY_FILL));
-    EXPECT_TRUE(config_set(config, CFG_GALLERY, CFG_GLRY_FILL, CFG_NO));
-    EXPECT_FALSE(config_get_bool(section, CFG_GLRY_FILL));
+    EXPECT_TRUE(config_set(config, CFG_GALLERY, CFG_GLRY_PRELOAD, CFG_YES));
+    EXPECT_TRUE(config_get_bool(section, CFG_GLRY_PRELOAD));
+    EXPECT_TRUE(config_set(config, CFG_GALLERY, CFG_GLRY_PRELOAD, CFG_NO));
+    EXPECT_FALSE(config_get_bool(section, CFG_GLRY_PRELOAD));
 }
 
 TEST_F(ConfigTest, GetNum)

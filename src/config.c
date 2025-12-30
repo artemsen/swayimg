@@ -65,7 +65,7 @@ static const struct configdef_kv def_gallery[] = {
     { CFG_GLRY_CACHE,           "100"       },
     { CFG_GLRY_PRELOAD,         CFG_NO      },
     { CFG_GLRY_PSTORE,          CFG_NO      },
-    { CFG_GLRY_FILL,            CFG_YES     },
+    { CFG_GLRY_ASPECT,          "fill"      },
     { CFG_GLRY_AA,              "mks13"     },
     { CFG_GLRY_WINDOW,          "#00000000" },
     { CFG_GLRY_BKG,             "#202020ff" },
