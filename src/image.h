@@ -100,11 +100,9 @@ enum image_status {
 
 /** Thumbnail aspect ratio. */
 enum thumb_aspect {
-    thumb_fit,  ///< Fit image into a square thumbnail, maintaining its aspect
-                ///< ratio
-    thumb_fill, ///< Fill square thumbnail with the image, cropping its larger
-                ///< dimension
-    thumb_keep, ///< Adjust thumbnail size to the aspect ratio of the image
+    aspect_fit,  ///< Fit image into a square thumbnail
+    aspect_fill, ///< Fill square thumbnail with the image
+    aspect_keep, ///< Adjust thumbnail size to the aspect ratio of the image
 };
 
 /** Image data types. */

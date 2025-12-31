@@ -268,14 +268,14 @@ bool image_thumb_create(struct image* img, size_t size,
 
     const float scale_width = 1.0 / ((float)real_width / size);
     const float scale_height = 1.0 / ((float)real_height / size);
-    const float scale = aspect == thumb_fill ? max(scale_width, scale_height)
-                                             : min(scale_width, scale_height);
+    const float scale = aspect == aspect_fill ? max(scale_width, scale_height)
+                                              : min(scale_width, scale_height);
 
     size_t thumb_width = scale * real_width;
     size_t thumb_height = scale * real_height;
     ssize_t offset_x, offset_y;
 
-    if (aspect == thumb_fill) {
+    if (aspect == aspect_fill) {
         offset_x = size / 2 - thumb_width / 2;
         offset_y = size / 2 - thumb_height / 2;
         thumb_width = size;

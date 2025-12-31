@@ -24,9 +24,9 @@
 #define THIMB_SIZE_MAX 1000
 
 static const char* aspect_names[] = {
-    [thumb_fit] = "fit",
-    [thumb_fill] = "fill",
-    [thumb_keep] = "keep",
+    [aspect_fit] = "fit",
+    [aspect_fill] = "fill",
+    [aspect_keep] = "keep",
 };
 
 /** Gallery context. */
@@ -446,7 +446,7 @@ static void draw_thumbnail(struct pixmap* window,
             thumb_x += ctx.layout.thumb_size / 2 - pm->width / 2;
             thumb_y += ctx.layout.thumb_size / 2 - pm->height / 2;
 
-            if (ctx.aspect == thumb_keep) {
+            if (ctx.aspect == aspect_keep) {
                 bg_x = thumb_x;
                 bg_y = thumb_y;
                 bg_w = pm->width;
@@ -480,7 +480,7 @@ static void draw_thumbnail(struct pixmap* window,
             thumb_x += thumb_size / 2 - thumb_w / 2;
             thumb_y += thumb_size / 2 - thumb_h / 2;
 
-            if (ctx.aspect == thumb_keep) {
+            if (ctx.aspect == aspect_keep) {
                 bg_x = thumb_x;
                 bg_y = thumb_y;
                 bg_w = thumb_w;
