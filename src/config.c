@@ -60,19 +60,19 @@ static const struct configdef_kv def_slideshow[] = {
 };
 
 static const struct configdef_kv def_gallery[] = {
-    { CFG_GLRY_SIZE,            "200"       },
-    { CFG_GLRY_PADDING,         "5"         },
-    { CFG_GLRY_CACHE,           "100"       },
-    { CFG_GLRY_PRELOAD,         CFG_NO      },
-    { CFG_GLRY_PSTORE,          CFG_NO      },
-    { CFG_GLRY_ASPECT,          "fill"      },
-    { CFG_GLRY_AA,              "mks13"     },
-    { CFG_GLRY_WINDOW,          "#00000000" },
-    { CFG_GLRY_BKG,             "#202020ff" },
-    { CFG_GLRY_SELECT,          "#404040ff" },
-    { CFG_GLRY_BORDER,          "#000000ff" },
-    { CFG_GLRY_BORDER_WIDTH,    "1"         },
-    { CFG_GLRY_SELECTED_SCALE,  "1.15"      },
+    { CFG_GLRY_SIZE,      "200"       },
+    { CFG_GLRY_PADDING,   "5"         },
+    { CFG_GLRY_CACHE,     "100"       },
+    { CFG_GLRY_PRELOAD,   CFG_NO      },
+    { CFG_GLRY_PSTORE,    CFG_NO      },
+    { CFG_GLRY_ASPECT,    "fill"      },
+    { CFG_GLRY_AA,        "mks13"     },
+    { CFG_GLRY_WINDOW,    "#00000000" },
+    { CFG_GLRY_BKG,       "#202020ff" },
+    { CFG_GLRY_SELECT,    "#404040ff" },
+    { CFG_GLRY_BRD_COLOR, "#aaaaaaff" },
+    { CFG_GLRY_BRD_WIDTH, "5"         },
+    { CFG_GLRY_SSCALE,    "1.15"      },
 };
 
 static const struct configdef_kv def_list[] = {

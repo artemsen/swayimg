@@ -702,10 +702,10 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.clr_window = config_get_color(section, CFG_GLRY_WINDOW);
     ctx.clr_background = config_get_color(section, CFG_GLRY_BKG);
     ctx.clr_select = config_get_color(section, CFG_GLRY_SELECT);
-    ctx.clr_border = config_get_color(section, CFG_GLRY_BORDER);
-    ctx.border_width = config_get_num(section, CFG_GLRY_BORDER_WIDTH, 0, 256);
+    ctx.clr_border = config_get_color(section, CFG_GLRY_BRD_COLOR);
+    ctx.border_width = config_get_num(section, CFG_GLRY_BRD_WIDTH, 0, 256);
     ctx.selected_scale =
-        config_get_float(section, CFG_GLRY_SELECTED_SCALE, 0.1f, 10.0f);
+        config_get_float(section, CFG_GLRY_SSCALE, 1.0f, 10.0f);
 
     // load key bindings
     ctx.kb = keybind_load(config_section(cfg, CFG_KEYS_GALLERY));

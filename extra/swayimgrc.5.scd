@@ -183,8 +183,33 @@ Configuration specific to the gallery mode: _[gallery]_.
 *size* = PIXELS
 	Height and width of each thumbnail in pixels, _200_ by default.
 
+*selected_scale* = FLOAT
+	Scale of the selected tile, _1.15_ by default.
+
+*aspect* = _fit_|_fill_|_keep_
+	Thumbnail aspect ratio, _fill_ by default.
+	- _fit_: Fit image into a square thumbnail, maintaining its aspect ratio;
+	- _fill_: Fill square thumbnail with the image, cropping its larger
+	  dimension;
+	- _keep_: Adjust thumbnail size to the aspect ratio of the image.
+
 *padding* = PIXELS
 	Padding between thumbnails in pixels, _5_ by default.
+
+*select* = #COLOR
+	Background color of the selected tile, _#404040ff_ by default.
+
+*background* = #COLOR
+	Background color of non-selected tiles, _#202020ff_ by default.
+
+*border_color* = #COLOR
+	Border color of the selected tile, _#aaaaaaff_ by default.
+
+*border_width* = PIXELS
+	Border width of the selected tile, _5_ pixels by default.
+
+*window* = #COLOR
+	Window background color in RGB or RGBA format, _#00000000_ by default.
 
 *cache* = SIZE
 	Max number of invisible thumbnails stored in memory cache, _100_ by default.
@@ -197,13 +222,6 @@ Configuration specific to the gallery mode: _[gallery]_.
 	Enable/disable storing thumbnails in persistent storage, _no_ by default.
 	If enabled, thumbnails will be stored in _XDG_CACHE_HOME/swayimg_.
 
-*aspect* = _fit_|_fill_|_keep_
-	Thumbnail aspect ratio, _fill_ by default.
-	- _fit_: Fit image into a square thumbnail, maintaining its aspect ratio;
-	- _fill_: Fill square thumbnail with the image, cropping its larger
-	dimension;
-	- _keep_: Adjust thumbnail size to the aspect ratio of the image.
-
 *antialiasing* = METHOD
 	Anti-aliasing method when scaling images.
 	In general, the methods improve in quality and decrease in performance from
@@ -213,24 +231,6 @@ Configuration specific to the gallery mode: _[gallery]_.
 	- _bilinear_: bilinear;
 	- _bicubic_: bicubic with the Catmull-Rom spline;
 	- _mks13_: Magic Kernel with the 2013 Sharp approximation (default).
-
-*window* = #COLOR
-	Window background color in RGB or RGBA format, _#00000000_ by default.
-
-*background* = #COLOR
-	Background color of non-selected tiles, _#202020ff_ by default.
-
-*select* = #COLOR
-	Background color of the selected tile, _#404040ff_ by default.
-
-*border* = #COLOR
-	Border color of the selected tile, _#000000ff_ by default.
-
-*border_width* = PIXELS
-	Border width of the selected tile, _5_ by default.
-
-*selected_scale* = FLOAT
-	Scale of the selected tile, _1.15_ by default.
 
 ## Image list
 
