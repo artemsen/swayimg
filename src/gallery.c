@@ -45,7 +45,6 @@ struct gallery {
     argb_t clr_select;     ///< Selected tile background
     argb_t clr_border;     ///< Selected tile border
     size_t border_width;   ///< Selected tile border size
-    argb_t clr_shadow;     ///< Selected tile shadow
     float selected_scale;  ///< Selected tile scale
 
     struct layout layout; ///< Thumbnail layout
@@ -494,29 +493,6 @@ static void draw_thumbnail(struct pixmap* window,
                             ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest, false);
         }
 
-        // shadow
-        if (ARGB_GET_A(ctx.clr_shadow)) {
-            const argb_t base = ctx.clr_shadow & 0x00ffffff;
-            const uint8_t alpha = ARGB_GET_A(ctx.clr_shadow);
-            const size_t width =
-                max(1, (double)thumb_size / 15.0 * ((double)alpha / 255.0));
-            const size_t alpha_step = alpha / width;
-
-            for (size_t i = 0; i < width; ++i) {
-                const argb_t color = base | ARGB_SET_A(alpha - i * alpha_step);
-
-                const size_t vlx = bg_x + bg_w + i;
-                const size_t vly = bg_y + width;
-                const size_t vlh = bg_h - (width - i);
-                pixmap_vline(window, vlx, vly, vlh, 1, color);
-
-                const size_t hlx = bg_x + width;
-                const size_t hly = bg_y + bg_h + i;
-                const size_t hlw = bg_w - (width - i) + 1;
-                pixmap_hline(window, hlx, hly, hlw, 1, color);
-            }
-        }
-
         // border
         if (ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
             pixmap_rect(window, bg_x, bg_y, bg_w, bg_h, ctx.border_width,
@@ -739,7 +715,6 @@ void gallery_init(const struct config* cfg, struct mode* handlers)
     ctx.clr_select = config_get_color(section, CFG_GLRY_SELECT);
     ctx.clr_border = config_get_color(section, CFG_GLRY_BORDER);
     ctx.border_width = config_get_num(section, CFG_GLRY_BORDER_WIDTH, 0, 256);
-    ctx.clr_shadow = config_get_color(section, CFG_GLRY_SHADOW);
     ctx.selected_scale =
         config_get_float(section, CFG_GLRY_SELECTED_SCALE, 0.1f, 10.0f);
 

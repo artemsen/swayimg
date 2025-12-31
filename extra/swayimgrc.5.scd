@@ -232,9 +232,6 @@ Configuration specific to the gallery mode: _[gallery]_.
 *selected_scale* = FLOAT
 	Scale of the selected tile, _1.15_ by default.
 
-*shadow* = #COLOR
-	Shadow color of the selected tile, _#000000ff_ by default.
-
 ## Image list
 
 Configuration of the image list: _[list]_.

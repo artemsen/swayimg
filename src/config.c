@@ -72,7 +72,6 @@ static const struct configdef_kv def_gallery[] = {
     { CFG_GLRY_SELECT,          "#404040ff" },
     { CFG_GLRY_BORDER,          "#000000ff" },
     { CFG_GLRY_BORDER_WIDTH,    "1"         },
-    { CFG_GLRY_SHADOW,          "#000000ff" },
     { CFG_GLRY_SELECTED_SCALE,  "1.15"      },
 };
 
