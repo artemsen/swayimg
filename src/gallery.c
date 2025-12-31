@@ -45,7 +45,7 @@ struct gallery {
     argb_t clr_select;     ///< Selected tile background
     argb_t clr_border;     ///< Selected tile border
     size_t border_width;   ///< Selected tile border size
-    float selected_scale;  ///< Selected tile scale
+    double selected_scale; ///< Selected tile scale
 
     struct layout layout; ///< Thumbnail layout
 
@@ -428,76 +428,65 @@ static void thumb_resize(const char* params)
 static void draw_thumbnail(struct pixmap* window,
                            const struct layout_thumb* lth)
 {
+    const bool selected = (lth == layout_current(&ctx.layout));
     const struct pixmap* pm = image_thumb_get(lth->img);
-    const ssize_t x = lth->x;
-    const ssize_t y = lth->y;
 
-    if (lth != layout_current(&ctx.layout)) {
-        ssize_t thumb_x = x;
-        ssize_t thumb_y = y;
+    ssize_t x = lth->x;
+    ssize_t y = lth->y;
 
-        ssize_t bg_x = x;
-        ssize_t bg_y = y;
-        size_t bg_w = ctx.layout.thumb_size;
-        size_t bg_h = ctx.layout.thumb_size;
+    size_t width;
+    size_t height;
 
-        if (pm) {
-            thumb_x += ctx.layout.thumb_size / 2 - pm->width / 2;
-            thumb_y += ctx.layout.thumb_size / 2 - pm->height / 2;
-
-            if (ctx.aspect == aspect_keep) {
-                bg_x = thumb_x;
-                bg_y = thumb_y;
-                bg_w = pm->width;
-                bg_h = pm->height;
-            }
-        }
-
-        pixmap_fill(window, bg_x, bg_y, bg_w, bg_h, ctx.clr_background);
-        if (pm) {
-            pixmap_copy(pm, window, thumb_x, thumb_y);
-        }
+    if (ctx.aspect == aspect_keep && pm) {
+        width = pm->width;
+        height = pm->height;
     } else {
-        // currently selected item
-        const size_t thumb_size = ctx.selected_scale * ctx.layout.thumb_size;
-        const ssize_t thumb_offset =
-            ((ssize_t)thumb_size - (ssize_t)ctx.layout.thumb_size) / 2;
+        width = ctx.layout.thumb_size;
+        height = ctx.layout.thumb_size;
+    }
+    if (selected) {
+        width *= ctx.selected_scale;
+        height *= ctx.selected_scale;
+    }
 
-        ssize_t thumb_x = max(0, x - thumb_offset);
-        ssize_t thumb_y = max(0, y - thumb_offset);
-        size_t thumb_w = thumb_size;
-        size_t thumb_h = thumb_size;
+    if (ctx.aspect == aspect_keep) {
+        x += ctx.layout.thumb_size / 2 - width / 2;
+        y += ctx.layout.thumb_size / 2 - height / 2;
+    }
 
-        ssize_t bg_x = thumb_x;
-        ssize_t bg_y = thumb_y;
-        size_t bg_w = thumb_w;
-        size_t bg_h = thumb_h;
-
-        if (pm) {
-            thumb_w = pm->width * ctx.selected_scale;
-            thumb_h = pm->height * ctx.selected_scale;
-            thumb_x += thumb_size / 2 - thumb_w / 2;
-            thumb_y += thumb_size / 2 - thumb_h / 2;
-
-            if (ctx.aspect == aspect_keep) {
-                bg_x = thumb_x;
-                bg_y = thumb_y;
-                bg_w = thumb_w;
-                bg_h = thumb_h;
-            }
+    if (selected) {
+        // prevent going beyond the window
+        if (x + width + ctx.border_width > window->width) {
+            x = window->width - width - ctx.border_width;
         }
-        pixmap_fill(window, bg_x, bg_y, bg_w, bg_h, ctx.clr_select);
+        if (y + height + ctx.border_width > window->height) {
+            y = window->height - height - ctx.border_width;
+        }
+        x = max((ssize_t)ctx.border_width, x);
+        y = max((ssize_t)ctx.border_width, y);
+    }
 
-        if (pm) {
-            software_render(pm, window, thumb_x, thumb_y, ctx.selected_scale,
+    // background
+    pixmap_fill(window, x, y, width, height,
+                selected ? ctx.clr_select : ctx.clr_background);
+    // thumbnail
+    if (pm) {
+        if (selected) {
+            software_render(pm, window, x, y, ctx.selected_scale,
                             ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest, false);
+        } else {
+            pixmap_copy(pm, window, x, y);
         }
+    }
 
-        // border
-        if (ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
-            pixmap_rect(window, bg_x, bg_y, bg_w, bg_h, ctx.border_width,
-                        ctx.clr_border);
-        }
+    // border
+    if (selected && ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
+        const size_t border_x = x - ctx.border_width;
+        const size_t border_y = y - ctx.border_width;
+        const size_t border_w = width + ctx.border_width * 2;
+        const size_t border_h = height + ctx.border_width * 2;
+        pixmap_rect(window, border_x, border_y, border_w, border_h,
+                    ctx.border_width, ctx.clr_border);
     }
 }
 

@@ -489,12 +489,12 @@ void pixmap_vline(struct pixmap* pm, ssize_t x, ssize_t y, size_t height,
 void pixmap_rect(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
                  size_t height, size_t thickness, argb_t color)
 {
-    pixmap_hline(pm, x - thickness + 1, y - thickness + 1,
-                 width + thickness * 2 - 2, thickness, color);
-    pixmap_hline(pm, x - thickness + 1, y + height - 1,
-                 width + thickness * 2 - 2, thickness, color);
-    pixmap_vline(pm, x - thickness + 1, y + 1, height - 1, thickness, color);
-    pixmap_vline(pm, x + width - 1, y + 1, height - 1, thickness, color);
+    pixmap_hline(pm, x, y, width, thickness, color);
+    pixmap_hline(pm, x, y + height - thickness, width, thickness, color);
+    pixmap_vline(pm, x, y + thickness, height - thickness * 2, thickness,
+                 color);
+    pixmap_vline(pm, x + width - thickness, y + thickness,
+                 height - thickness * 2, thickness, color);
 }
 
 void pixmap_grid(struct pixmap* pm, ssize_t x, ssize_t y, size_t width,
