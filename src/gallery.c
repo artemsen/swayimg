@@ -269,7 +269,7 @@ static void thumb_free(void* data)
     image_free(data, IMGDATA_SELF);
 }
 
-/** Recreate thumnail load queue. */
+/** Recreate thumbnail load queue. */
 static void thumb_requeue(void)
 {
     struct image* queue;
@@ -336,13 +336,13 @@ static bool select_next(enum action_type direction)
     if (rc) {
         thumb_requeue();
     }
-    imglist_unlock();
-
     if (rc) {
         info_reset(ctx.layout.current);
     }
     ui_set_title(ctx.layout.current->name);
     info_update_index(info_index, ctx.layout.current->index, imglist_size());
+    imglist_unlock();
+
     app_redraw();
 
     return rc;
@@ -431,60 +431,81 @@ static void draw_thumbnail(struct pixmap* window,
     const bool selected = (lth == layout_current(&ctx.layout));
     const struct pixmap* pm = image_thumb_get(lth->img);
 
-    ssize_t x = lth->x;
-    ssize_t y = lth->y;
-
-    size_t width;
-    size_t height;
-
-    if (ctx.aspect == aspect_keep && pm) {
-        width = pm->width;
-        height = pm->height;
-    } else {
-        width = ctx.layout.thumb_size;
-        height = ctx.layout.thumb_size;
-    }
+    // calculate tile position/size
+    ssize_t tile_x = lth->x;
+    ssize_t tile_y = lth->y;
+    size_t tile_w = ctx.layout.thumb_size;
+    size_t tile_h = ctx.layout.thumb_size;
     if (selected) {
-        width *= ctx.selected_scale;
-        height *= ctx.selected_scale;
-    }
+        tile_w *= ctx.selected_scale;
+        tile_h *= ctx.selected_scale;
+        tile_x -= tile_w / 2 - ctx.layout.thumb_size / 2;
+        tile_y -= tile_h / 2 - ctx.layout.thumb_size / 2;
 
-    if (ctx.aspect == aspect_keep) {
-        x += ctx.layout.thumb_size / 2 - width / 2;
-        y += ctx.layout.thumb_size / 2 - height / 2;
-    }
-
-    if (selected) {
         // prevent going beyond the window
-        if (x + width + ctx.border_width > window->width) {
-            x = window->width - width - ctx.border_width;
+        if (tile_x + tile_w + ctx.border_width > window->width) {
+            tile_x = window->width - tile_w - ctx.border_width;
         }
-        if (y + height + ctx.border_width > window->height) {
-            y = window->height - height - ctx.border_width;
+        if (tile_x < (ssize_t)ctx.border_width) {
+            tile_x = ctx.border_width;
         }
-        x = max((ssize_t)ctx.border_width, x);
-        y = max((ssize_t)ctx.border_width, y);
+        if (tile_y + tile_h + ctx.border_width > window->height) {
+            tile_y = window->height - tile_h - ctx.border_width;
+        }
+        if (tile_y < (ssize_t)ctx.border_width) {
+            tile_y = ctx.border_width;
+        }
     }
 
-    // background
-    pixmap_fill(window, x, y, width, height,
-                selected ? ctx.clr_select : ctx.clr_background);
-    // thumbnail
+    // calculate thumbnail position/size
+    ssize_t th_x = tile_x;
+    ssize_t th_y = tile_y;
+    size_t th_w = tile_w;
+    size_t th_h = tile_h;
+    if (pm && (ctx.aspect == aspect_keep || ctx.aspect == aspect_fit)) {
+        th_w = pm->width;
+        th_h = pm->height;
+        if (selected) {
+            th_w *= ctx.selected_scale;
+            th_h *= ctx.selected_scale;
+        }
+        th_x += tile_w / 2 - th_w / 2;
+        th_y += tile_h / 2 - th_h / 2;
+    }
+
+    // draw background
+    const argb_t bkg_c = selected ? ctx.clr_select : ctx.clr_background;
+    ssize_t bkg_x, bkg_y;
+    size_t bkg_w, bkg_h;
+    if (ctx.aspect == aspect_keep) {
+        bkg_x = th_x;
+        bkg_y = th_y;
+        bkg_w = th_w;
+        bkg_h = th_h;
+    } else {
+        bkg_x = tile_x;
+        bkg_y = tile_y;
+        bkg_w = tile_w;
+        bkg_h = tile_h;
+    }
+    pixmap_fill(window, bkg_x, bkg_y, bkg_w, bkg_h, bkg_c);
+
+    // draw thumbnail
     if (pm) {
         if (selected) {
-            software_render(pm, window, x, y, ctx.selected_scale,
+            software_render(pm, window, th_x, th_y, ctx.selected_scale,
                             ctx.thumb_aa_en ? ctx.thumb_aa : aa_nearest, false);
         } else {
-            pixmap_copy(pm, window, x, y);
+            pixmap_copy(pm, window, th_x, th_y);
         }
     }
 
-    // border
+    // draw border
     if (selected && ARGB_GET_A(ctx.clr_border) && ctx.border_width > 0) {
-        const size_t border_x = x - ctx.border_width;
-        const size_t border_y = y - ctx.border_width;
-        const size_t border_w = width + ctx.border_width * 2;
-        const size_t border_h = height + ctx.border_width * 2;
+        const size_t border_x = bkg_x - ctx.border_width;
+        const size_t border_y = bkg_y - ctx.border_width;
+        const size_t border_w = bkg_w + ctx.border_width * 2;
+        const size_t border_h = bkg_h + ctx.border_width * 2;
         pixmap_rect(window, border_x, border_y, border_w, border_h,
                     ctx.border_width, ctx.clr_border);
     }
