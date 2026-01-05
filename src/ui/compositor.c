@@ -298,6 +298,15 @@ static bool hyprland_overlay(const struct wndrect* wnd, char** app_id)
     }
     json_object_put(response);
 
+    // set size
+    snprintf(buf, sizeof(buf), "keyword windowrule size %zd %zd, match:class %s",
+            wnd->width, wnd->height, *app_id);
+    response = hyprland_request(buf);
+    if (!response) {
+        return false;
+    }
+    json_object_put(response);
+
     return true;
 }
 
