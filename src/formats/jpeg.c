@@ -55,7 +55,17 @@ enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
     jpeg_read_header(&jpg, TRUE);
 
 #ifdef LIBJPEG_TURBO_VERSION
-    jpg.out_color_space = JCS_EXT_BGRA;
+    switch (jpg.jpeg_color_space) {
+        case JCS_CMYK:
+        case JCS_YCCK:
+            jpg.out_color_space = JCS_CMYK;
+            break;
+        case JCS_UNKNOWN:
+            break;
+        default:
+            jpg.out_color_space = JCS_EXT_BGRA;
+            break;
+    }
 #endif // LIBJPEG_TURBO_VERSION
     jpeg_start_decompress(&jpg);
 
@@ -70,18 +80,33 @@ enum image_status decode_jpeg(struct imgdata* img, const uint8_t* data,
         uint8_t* line = (uint8_t*)&pm->data[jpg.output_scanline * pm->width];
         jpeg_read_scanlines(&jpg, &line, 1);
 
-        // convert grayscale/rgb to argb
-        if (jpg.out_color_components == 1 || jpg.out_color_components == 3) {
+        // convert grayscale/rgb/cmyk to argb
+        if (jpg.out_color_components == 1 || jpg.out_color_components == 3 ||
+            jpg.out_color_space == JCS_CMYK) {
             uint32_t* pixel = (uint32_t*)line;
             for (int x = jpg.output_width - 1; x >= 0; --x) {
                 const uint8_t* src = line + x * jpg.out_color_components;
-                switch (jpg.out_color_components) {
-                    case 1:
-                        pixel[x] = ARGB(ARGB_MAX_COLOR, src[0], src[0], src[0]);
-                        break;
-                    case 3:
-                        pixel[x] = ARGB(ARGB_MAX_COLOR, src[0], src[1], src[2]);
-                        break;
+                if (jpg.out_color_space == JCS_CMYK) {
+                    const double c = src[0];
+                    const double m = src[1];
+                    const double y = src[2];
+                    const double k = src[3];
+
+                    const uint8_t r = c * k / ARGB_MAX_COLOR;
+                    const uint8_t g = m * k / ARGB_MAX_COLOR;
+                    const uint8_t b = y * k / ARGB_MAX_COLOR;
+                    pixel[x] = ARGB(ARGB_MAX_COLOR, r, g, b);
+                } else {
+                    switch (jpg.out_color_components) {
+                        case 1:
+                            pixel[x] =
+                                ARGB(ARGB_MAX_COLOR, src[0], src[0], src[0]);
+                            break;
+                        case 3:
+                            pixel[x] =
+                                ARGB(ARGB_MAX_COLOR, src[0], src[1], src[2]);
+                            break;
+                    }
                 }
             }
         }
