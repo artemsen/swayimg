@@ -9,6 +9,7 @@
 #include "font.h"
 #include "ui/ui.h"
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -488,6 +489,40 @@ static struct scheme* create_scheme(const char* name,
     return scheme;
 }
 
+/**
+ * Trim spaces from the beginning and end of the span.
+ * @param text input/output span start
+ * @param len input/output span length
+ */
+static void trim_span(const char** text, size_t* len)
+{
+    while (*len && isspace((unsigned char)**text)) {
+        ++(*text);
+        --(*len);
+    }
+    while (*len && isspace((unsigned char)(*text)[*len - 1])) {
+        --(*len);
+    }
+}
+
+/**
+ * Find configured scheme by name.
+ * @param name scheme name span
+ * @param len length of the scheme name
+ * @return scheme pointer, NULL if not found
+ */
+static struct scheme* find_scheme(const char* name, size_t len)
+{
+    struct scheme* it = ctx.schemes;
+    while (it) {
+        if (strlen(it->name) == len && strncmp(it->name, name, len) == 0) {
+            return it;
+        }
+        it = it->next;
+    }
+    return NULL;
+}
+
 void info_init(const struct config* cfg, const char* mode)
 {
     const struct config* section;
@@ -557,9 +592,89 @@ void info_destroy(void)
 
 void info_switch(const char* name)
 {
+    const char toggle_kw[] = "toggle";
+
     timeout_reset(&ctx.info);
 
     if (name && *name) {
+
+        // toggle in a custom list: "toggle [mode1/mode2/...]" (spaces ignored)
+        if (strncmp(name, toggle_kw, sizeof(toggle_kw) - 1) == 0 &&
+            (name[sizeof(toggle_kw) - 1] == 0 ||
+             isspace((unsigned char)name[sizeof(toggle_kw) - 1]))) {
+            const char* spec = name + sizeof(toggle_kw) - 1;
+            struct str_slice slices[16];
+            const char* current_name;
+            size_t current_len;
+            ssize_t current_idx = -1;
+            size_t num, start;
+
+            while (*spec && isspace((unsigned char)*spec)) {
+                ++spec;
+            }
+            if (!*spec) {
+                spec = "off/viewer/gallery";
+            }
+
+            // split mode list
+            num = str_split(spec, '/', slices, ARRAY_SIZE(slices));
+            if (num > ARRAY_SIZE(slices)) {
+                num = ARRAY_SIZE(slices);
+            }
+
+            // detect current mode ("off" if hidden)
+            if (!ctx.show) {
+                current_name = "off";
+            } else if (ctx.current) {
+                current_name = ctx.current->name;
+            } else {
+                current_name = "";
+            }
+            current_len = strlen(current_name);
+
+            // find current index
+            for (size_t i = 0; i < num; ++i) {
+                const char* s = slices[i].value;
+                size_t l = slices[i].len;
+                trim_span(&s, &l);
+                if (l == 0) {
+                    continue;
+                }
+                if (l == current_len && strncmp(s, current_name, l) == 0) {
+                    current_idx = (ssize_t)i;
+                    break;
+                }
+            }
+
+            // select next non-empty entry
+            start = current_idx >= 0 ? (size_t)current_idx + 1 : 0;
+            for (size_t step = 0; step < num; ++step) {
+                const size_t i = (start + step) % num;
+                const char* s = slices[i].value;
+                size_t l = slices[i].len;
+                trim_span(&s, &l);
+                if (l == 0) {
+                    continue;
+                }
+
+                if (l == 3 && strncmp(s, "off", 3) == 0) {
+                    ctx.show = false;
+                } else {
+                    struct scheme* scheme = find_scheme(s, l);
+                    if (scheme) {
+                        ctx.current = scheme;
+                        ctx.show = true;
+                    } else {
+                        fprintf(stderr, "Invalid info scheme: %.*s\n", (int)l,
+                                s);
+                    }
+                }
+                return;
+            }
+            return;
+        }
+
+        // Set explicit scheme (legacy behaviour).
         if (strcmp(name, "off") == 0) {
             ctx.show = false;
         } else {
