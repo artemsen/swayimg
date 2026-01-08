@@ -621,10 +621,13 @@ void info_switch(const char* expression)
             current_len = strlen(current_name);
 
             // find current index
-            for (size_t i = 0; i < num; ++i) {
-                if (slices[i].len == current_len &&
-                    strncmp(slices[i].value, current_name, current_len) == 0) {
-                    current_idx = i;
+            for (size_t index = 0; index < num; ++index) {
+                const char* mode = slices[index].value;
+                const size_t len = slices[index].len;
+
+                if (len == current_len &&
+                    strncmp(mode, current_name, current_len) == 0) {
+                    current_idx = index;
                     break;
                 }
             }
@@ -632,27 +635,27 @@ void info_switch(const char* expression)
             // select next non-empty entry
             start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
             for (size_t step = 0; step < num && !switched; ++step) {
-                const size_t i = (start + step) % num;
-                const char* s = slices[i].value;
-                const size_t l = slices[i].len;
+                const size_t idx = (start + step) % num;
+                const char* s = slices[idx].value;
+                const size_t len = slices[idx].len;
 
-                if (l == 0) {
+                if (len == 0) {
                     continue;
                 }
 
-                if (l == 3 && strncmp(s, "off", 3) == 0) {
+                if (len == 3 && strncmp(s, "off", 3) == 0) {
                     ctx.show = false;
                     switched = true;
                     continue;
                 }
 
-                struct scheme* scheme = find_scheme(s, l);
+                struct scheme* scheme = find_scheme(s, len);
                 if (scheme) {
                     ctx.current = scheme;
                     ctx.show = true;
                     switched = true;
                 } else {
-                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)l, s);
+                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len, s);
                 }
             }
         } else if (args[0].len == 3 && strncmp(args[0].value, "off", 3) == 0 &&
