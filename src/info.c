@@ -10,6 +10,7 @@
 #include "ui/ui.h"
 
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -488,6 +489,24 @@ static struct scheme* create_scheme(const char* name,
     return scheme;
 }
 
+/**
+ * Find configured scheme by name.
+ * @param name scheme name span
+ * @param len length of the scheme name
+ * @return scheme pointer, NULL if not found
+ */
+static struct scheme* find_scheme(const char* name, size_t len)
+{
+    struct scheme* it = ctx.schemes;
+    while (it) {
+        if (strlen(it->name) == len && strncmp(it->name, name, len) == 0) {
+            return it;
+        }
+        it = it->next;
+    }
+    return NULL;
+}
+
 void info_init(const struct config* cfg, const char* mode)
 {
     const struct config* section;
@@ -555,24 +574,120 @@ void info_destroy(void)
     }
 }
 
-void info_switch(const char* name)
+void info_switch(const char* expression)
 {
+    const char* toggle_kw = "toggle";
+    const size_t toggle_kw_len = strlen(toggle_kw);
+    struct str_slice args[2];
+    size_t argc = 0;
+    bool handled = false;
+
     timeout_reset(&ctx.info);
 
-    if (name && *name) {
-        if (strcmp(name, "off") == 0) {
+    if (expression) {
+        argc = str_split(expression, ' ', args, ARRAY_SIZE(args));
+    }
+
+    if (argc > 0) {
+
+        // toggle in a custom list: "toggle [mode1/mode2/...]"
+        if (args[0].len == toggle_kw_len &&
+            strncmp(args[0].value, toggle_kw, toggle_kw_len) == 0) {
+            const char* spec =
+                argc > 1 && args[1].len ? args[1].value : "off/viewer/gallery";
+            struct str_slice slices[16];
+            size_t num, start;
+            const char* current_name;
+            size_t current_len;
+            size_t current_idx = SIZE_MAX;
+            bool switched = false;
+
+            handled = true;
+
+            // split mode list (spaces are stripped by str_split)
+            num = str_split(spec, '/', slices, ARRAY_SIZE(slices));
+            if (num > ARRAY_SIZE(slices)) {
+                num = ARRAY_SIZE(slices);
+            }
+
+            // detect current mode ("off" if hidden)
+            if (!ctx.show) {
+                current_name = "off";
+            } else if (ctx.current) {
+                current_name = ctx.current->name;
+            } else {
+                current_name = "";
+            }
+            current_len = strlen(current_name);
+
+            // find current index
+            for (size_t index = 0; index < num; ++index) {
+                const char* mode = slices[index].value;
+                const size_t len = slices[index].len;
+
+                if (len == current_len &&
+                    strncmp(mode, current_name, current_len) == 0) {
+                    current_idx = index;
+                    break;
+                }
+            }
+
+            // select next non-empty entry
+            start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
+            for (size_t step = 0; step < num && !switched; ++step) {
+                const size_t idx = (start + step) % num;
+                const char* s = slices[idx].value;
+                const size_t len = slices[idx].len;
+
+                if (len == 0) {
+                    continue;
+                }
+
+                if (len == 3 && strncmp(s, "off", 3) == 0) {
+                    ctx.show = false;
+                    switched = true;
+                    continue;
+                }
+
+                struct scheme* scheme = find_scheme(s, len);
+                if (scheme) {
+                    ctx.current = scheme;
+                    ctx.show = true;
+                    switched = true;
+                } else {
+                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len, s);
+                }
+            }
+        } else if (args[0].len == 3 && strncmp(args[0].value, "off", 3) == 0 &&
+                   argc == 1) {
             ctx.show = false;
+            handled = true;
         } else {
-            info_set_default(name);
+
+            // Set explicit scheme (legacy behaviour).
+            char* name = malloc(args[0].len + 1);
+            if (name) {
+                memcpy(name, args[0].value, args[0].len);
+                name[args[0].len] = 0;
+                info_set_default(name);
+                free(name);
+            } else {
+                fprintf(stderr, "Out of memory\n");
+            }
             ctx.show = true;
+            handled = true;
         }
-    } else if (!ctx.show) {
-        ctx.show = true;
-    } else {
-        ctx.current = ctx.current->next;
-        if (!ctx.current) {
-            ctx.show = false;
-            ctx.current = ctx.schemes;
+    }
+
+    if (!handled) {
+        if (!ctx.show) {
+            ctx.show = true;
+        } else {
+            ctx.current = ctx.current->next;
+            if (!ctx.current) {
+                ctx.show = false;
+                ctx.current = ctx.schemes;
+            }
         }
     }
 }
