@@ -593,6 +593,7 @@ void info_destroy(void)
 void info_switch(const char* name)
 {
     const char toggle_kw[] = "toggle";
+    bool handled = false;
 
     timeout_reset(&ctx.info);
 
@@ -608,6 +609,9 @@ void info_switch(const char* name)
             size_t current_len;
             ssize_t current_idx = -1;
             size_t num, start;
+            bool switched = false;
+
+            handled = true;
 
             while (*spec && isspace((unsigned char)*spec)) {
                 ++spec;
@@ -648,7 +652,7 @@ void info_switch(const char* name)
 
             // select next non-empty entry
             start = current_idx >= 0 ? (size_t)current_idx + 1 : 0;
-            for (size_t step = 0; step < num; ++step) {
+            for (size_t step = 0; step < num && !switched; ++step) {
                 const size_t i = (start + step) % num;
                 const char* s = slices[i].value;
                 size_t l = slices[i].len;
@@ -659,27 +663,30 @@ void info_switch(const char* name)
 
                 if (l == 3 && strncmp(s, "off", 3) == 0) {
                     ctx.show = false;
+                    switched = true;
                 } else {
                     struct scheme* scheme = find_scheme(s, l);
                     if (scheme) {
                         ctx.current = scheme;
                         ctx.show = true;
+                        switched = true;
                     } else {
                         fprintf(stderr, "Invalid info scheme: %.*s\n", (int)l,
                                 s);
                     }
                 }
-                return;
             }
-            return;
         }
 
-        // Set explicit scheme (legacy behaviour).
-        if (strcmp(name, "off") == 0) {
-            ctx.show = false;
-        } else {
-            info_set_default(name);
-            ctx.show = true;
+        if (!handled) {
+
+            // Set explicit scheme (legacy behaviour).
+            if (strcmp(name, "off") == 0) {
+                ctx.show = false;
+            } else {
+                info_set_default(name);
+                ctx.show = true;
+            }
         }
     } else if (!ctx.show) {
         ctx.show = true;
