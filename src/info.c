@@ -10,6 +10,7 @@
 #include "ui/ui.h"
 
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -598,7 +599,7 @@ void info_switch(const char* expression)
             size_t num, start;
             const char* current_name;
             size_t current_len;
-            ssize_t current_idx = -1;
+            size_t current_idx = SIZE_MAX;
             bool switched = false;
 
             handled = true;
@@ -623,13 +624,13 @@ void info_switch(const char* expression)
             for (size_t i = 0; i < num; ++i) {
                 if (slices[i].len == current_len &&
                     strncmp(slices[i].value, current_name, current_len) == 0) {
-                    current_idx = (ssize_t)i;
+                    current_idx = i;
                     break;
                 }
             }
 
             // select next non-empty entry
-            start = current_idx >= 0 ? (size_t)current_idx + 1 : 0;
+            start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
             for (size_t step = 0; step < num && !switched; ++step) {
                 const size_t i = (start + step) % num;
                 const char* s = slices[i].value;
