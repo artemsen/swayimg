@@ -592,7 +592,8 @@ void info_destroy(void)
 
 void info_switch(const char* name)
 {
-    const char toggle_kw[] = "toggle";
+    const char* toggle_kw = "toggle";
+    const size_t toggle_kw_len = strlen(toggle_kw);
     bool handled = false;
 
     timeout_reset(&ctx.info);
@@ -600,10 +601,10 @@ void info_switch(const char* name)
     if (name && *name) {
 
         // toggle in a custom list: "toggle [mode1/mode2/...]" (spaces ignored)
-        if (strncmp(name, toggle_kw, sizeof(toggle_kw) - 1) == 0 &&
-            (name[sizeof(toggle_kw) - 1] == 0 ||
-             isspace((unsigned char)name[sizeof(toggle_kw) - 1]))) {
-            const char* spec = name + sizeof(toggle_kw) - 1;
+        if (strncmp(name, toggle_kw, toggle_kw_len) == 0 &&
+            (name[toggle_kw_len] == 0 ||
+             isspace((unsigned char)name[toggle_kw_len]))) {
+            const char* spec = name + toggle_kw_len;
             struct str_slice slices[16];
             const char* current_name;
             size_t current_len;
