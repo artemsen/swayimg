@@ -9,7 +9,6 @@
 #include "font.h"
 #include "ui/ui.h"
 
-#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -490,22 +489,6 @@ static struct scheme* create_scheme(const char* name,
 }
 
 /**
- * Trim spaces from the beginning and end of the span.
- * @param text input/output span start
- * @param len input/output span length
- */
-static void trim_span(const char** text, size_t* len)
-{
-    while (*len && isspace((unsigned char)**text)) {
-        ++(*text);
-        --(*len);
-    }
-    while (*len && isspace((unsigned char)(*text)[*len - 1])) {
-        --(*len);
-    }
-}
-
-/**
  * Find configured scheme by name.
  * @param name scheme name span
  * @param len length of the scheme name
@@ -590,38 +573,37 @@ void info_destroy(void)
     }
 }
 
-void info_switch(const char* name)
+void info_switch(const char* expression)
 {
     const char* toggle_kw = "toggle";
     const size_t toggle_kw_len = strlen(toggle_kw);
+    struct str_slice args[2];
+    size_t argc = 0;
     bool handled = false;
 
     timeout_reset(&ctx.info);
 
-    if (name && *name) {
+    if (expression) {
+        argc = str_split(expression, ' ', args, ARRAY_SIZE(args));
+    }
 
-        // toggle in a custom list: "toggle [mode1/mode2/...]" (spaces ignored)
-        if (strncmp(name, toggle_kw, toggle_kw_len) == 0 &&
-            (name[toggle_kw_len] == 0 ||
-             isspace((unsigned char)name[toggle_kw_len]))) {
-            const char* spec = name + toggle_kw_len;
+    if (argc > 0) {
+
+        // toggle in a custom list: "toggle [mode1/mode2/...]"
+        if (args[0].len == toggle_kw_len &&
+            strncmp(args[0].value, toggle_kw, toggle_kw_len) == 0) {
+            const char* spec =
+                argc > 1 && args[1].len ? args[1].value : "off/viewer/gallery";
             struct str_slice slices[16];
+            size_t num, start;
             const char* current_name;
             size_t current_len;
             ssize_t current_idx = -1;
-            size_t num, start;
             bool switched = false;
 
             handled = true;
 
-            while (*spec && isspace((unsigned char)*spec)) {
-                ++spec;
-            }
-            if (!*spec) {
-                spec = "off/viewer/gallery";
-            }
-
-            // split mode list
+            // split mode list (spaces are stripped by str_split)
             num = str_split(spec, '/', slices, ARRAY_SIZE(slices));
             if (num > ARRAY_SIZE(slices)) {
                 num = ARRAY_SIZE(slices);
@@ -639,13 +621,8 @@ void info_switch(const char* name)
 
             // find current index
             for (size_t i = 0; i < num; ++i) {
-                const char* s = slices[i].value;
-                size_t l = slices[i].len;
-                trim_span(&s, &l);
-                if (l == 0) {
-                    continue;
-                }
-                if (l == current_len && strncmp(s, current_name, l) == 0) {
+                if (slices[i].len == current_len &&
+                    strncmp(slices[i].value, current_name, current_len) == 0) {
                     current_idx = (ssize_t)i;
                     break;
                 }
@@ -656,8 +633,8 @@ void info_switch(const char* name)
             for (size_t step = 0; step < num && !switched; ++step) {
                 const size_t i = (start + step) % num;
                 const char* s = slices[i].value;
-                size_t l = slices[i].len;
-                trim_span(&s, &l);
+                const size_t l = slices[i].len;
+
                 if (l == 0) {
                     continue;
                 }
@@ -665,37 +642,48 @@ void info_switch(const char* name)
                 if (l == 3 && strncmp(s, "off", 3) == 0) {
                     ctx.show = false;
                     switched = true;
+                    continue;
+                }
+
+                struct scheme* scheme = find_scheme(s, l);
+                if (scheme) {
+                    ctx.current = scheme;
+                    ctx.show = true;
+                    switched = true;
                 } else {
-                    struct scheme* scheme = find_scheme(s, l);
-                    if (scheme) {
-                        ctx.current = scheme;
-                        ctx.show = true;
-                        switched = true;
-                    } else {
-                        fprintf(stderr, "Invalid info scheme: %.*s\n", (int)l,
-                                s);
-                    }
+                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)l, s);
                 }
             }
-        }
-
-        if (!handled) {
+        } else if (args[0].len == 3 && strncmp(args[0].value, "off", 3) == 0 &&
+                   argc == 1) {
+            ctx.show = false;
+            handled = true;
+        } else {
 
             // Set explicit scheme (legacy behaviour).
-            if (strcmp(name, "off") == 0) {
-                ctx.show = false;
-            } else {
+            char* name = malloc(args[0].len + 1);
+            if (name) {
+                memcpy(name, args[0].value, args[0].len);
+                name[args[0].len] = 0;
                 info_set_default(name);
-                ctx.show = true;
+                free(name);
+            } else {
+                fprintf(stderr, "Out of memory\n");
             }
+            ctx.show = true;
+            handled = true;
         }
-    } else if (!ctx.show) {
-        ctx.show = true;
-    } else {
-        ctx.current = ctx.current->next;
-        if (!ctx.current) {
-            ctx.show = false;
-            ctx.current = ctx.schemes;
+    }
+
+    if (!handled) {
+        if (!ctx.show) {
+            ctx.show = true;
+        } else {
+            ctx.current = ctx.current->next;
+            if (!ctx.current) {
+                ctx.show = false;
+                ctx.current = ctx.schemes;
+            }
         }
     }
 }

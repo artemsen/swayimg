@@ -41,9 +41,9 @@ void info_destroy(void);
 
 /**
  * Switch info scheme.
- * @param name scheme name
+ * @param expression scheme name or toggle expression
  */
-void info_switch(const char* name);
+void info_switch(const char* expression);
 
 /**
  * Set info scheme.
