@@ -22,8 +22,7 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     pkgconf \
     scdoc \
     wayland \
-    wayland-protocols \
-    x264
+    wayland-protocols
 
 RUN useradd --create-home builder
 
