@@ -117,7 +117,6 @@ static void on_timeout(void* data)
  */
 static void timeout_init(struct timeout* timeout)
 {
-    timeout->fd = -1;
     timeout->active = true;
     timeout->fd = fdtimer_add(on_timeout, timeout);
 }
@@ -313,8 +312,14 @@ static void print_block(struct pixmap* wnd, enum position pos,
         const struct field* field = arr_nth(fields, i);
         const struct keyval* origin = &ctx.fields[field->type];
 
-        if (field->type == info_status && !ctx.status.active) {
-            continue;
+        if (field->type == info_status) {
+            if (!ctx.status.active) {
+                continue;
+            }
+        } else {
+            if (!ctx.info.active) {
+                continue;
+            }
         }
 
         if (field->type == info_exif) {
