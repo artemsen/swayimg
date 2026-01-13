@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "SWAYIMGRC" "5" "2025-12-31" "swayimg" "Swayimg configuration"
+.TH "SWAYIMGRC" "5" "2026-01-13" "swayimg" "Swayimg configuration"
 .PP
 .SH NAME
 .PP
@@ -302,7 +302,7 @@ Scale of the selected tile, \fI1.\&15\fR by default.\&
 .RE
 \fBaspect\fR = \fIfit\fR|\fIfill\fR|\fIkeep\fR
 .RS 4
-Thumbnail aspect ratio, \fIkeep\fR by default.\&
+Thumbnail aspect ratio, \fIfill\fR by default.\&
 .PD 0
 .IP \(bu 4
 \fIfit\fR: Fit image into a square thumbnail, maintaining its aspect ratio;
@@ -813,8 +813,15 @@ empty value to toggle AA on/off.\&
 .RE
 \fBinfo\fR [MODE]
 .RS 4
-Set text info mode or cycle through them, \fIMODE\fR is one of the configured
-schemes: \fIoff\fR/\fIviewer\fR/\fIslideshow\fR/\fIgallery\fR or empty value to switch to the next mode.\&
+Switch or cycle text info modes.\&
+.PP
+With no \fIMODE\fR, the mode cycles through: \fIoff\fR/\fIviewer\fR/\fIslideshow\fR/\fIgallery\fR.\&
+.PP
+If \fIMODE\fR is a single mode name (e.\&g.\& \fIviewer\fR), switch to that mode.\&
+If \fIMODE\fR is a comma-separated list (e.\&g.\& \fIviewer,off\fR), cycle through the
+listed modes.\& Spaces around commas are ignored.\&
+.PP
+Each entry must be either \fIoff\fR or the name of a configured scheme.\&
 .PP
 .RE
 \fBexec\fR COMMAND
