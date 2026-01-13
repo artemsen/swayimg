@@ -48,8 +48,10 @@ void info_switch(const char* expression);
 /**
  * Set info scheme.
  * @param name scheme name
+ * @param len length of the scheme name, 0 to auto
+ * @return false if specified scheme name is invalid
  */
-void info_set_default(const char* name);
+bool info_set_default(const char* name, size_t len);
 
 /**
  * Compose info data from image.

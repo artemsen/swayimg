@@ -83,7 +83,7 @@ void app_switch_mode(const char* name)
     ctx.mcurr = next;
     ctx.modes[ctx.mcurr].on_activate(img);
 
-    info_set_default(mode_names[ctx.mcurr]);
+    info_set_default(mode_names[ctx.mcurr], 0);
     if (help_visible()) {
         help_hide();
     }
