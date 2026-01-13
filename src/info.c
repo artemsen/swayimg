@@ -10,6 +10,7 @@
 #include "ui/ui.h"
 
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -488,6 +489,24 @@ static struct scheme* create_scheme(const char* name,
     return scheme;
 }
 
+/**
+ * Find configured scheme by name.
+ * @param name scheme name span
+ * @param len length of the scheme name
+ * @return scheme pointer, NULL if not found
+ */
+static struct scheme* find_scheme(const char* name, size_t len)
+{
+    struct scheme* it = ctx.schemes;
+    while (it) {
+        if (strlen(it->name) == len && strncmp(it->name, name, len) == 0) {
+            return it;
+        }
+        it = it->next;
+    }
+    return NULL;
+}
+
 void info_init(const struct config* cfg, const char* mode)
 {
     const struct config* section;
@@ -555,24 +574,114 @@ void info_destroy(void)
     }
 }
 
-void info_switch(const char* name)
+void info_switch(const char* expression)
 {
+    struct str_slice slices[6];
+    size_t num = 0;
+    bool cycle = false;
+
     timeout_reset(&ctx.info);
 
-    if (name && *name) {
-        if (strcmp(name, "off") == 0) {
-            ctx.show = false;
-        } else {
-            info_set_default(name);
-            ctx.show = true;
+    if (!expression || !*expression) {
+
+        // default cycle order
+        expression = "off,viewer,slideshow,gallery";
+        cycle = true;
+    }
+
+    // comma-separated list: MODE,MODE,...
+    num = str_split(expression, ',', slices, ARRAY_SIZE(slices));
+    if (num == 0) {
+
+        // expression contains only spaces
+        expression = "off,viewer,slideshow,gallery";
+        cycle = true;
+        num = str_split(expression, ',', slices, ARRAY_SIZE(slices));
+    }
+    if (num > ARRAY_SIZE(slices)) {
+        num = ARRAY_SIZE(slices);
+    }
+    if (num > 1) {
+        cycle = true;
+    }
+
+    if (!cycle) {
+
+        // explicit mode
+        const char* mode = slices[0].value;
+        const size_t len = slices[0].len;
+
+        if (len != 0) {
+            if (len == 3 && strncmp(mode, "off", 3) == 0) {
+                ctx.show = false;
+            } else {
+                struct scheme* scheme = find_scheme(mode, len);
+                if (scheme) {
+                    ctx.current = scheme;
+                    ctx.show = true;
+                } else {
+                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len,
+                            mode);
+                }
+            }
         }
-    } else if (!ctx.show) {
-        ctx.show = true;
     } else {
-        ctx.current = ctx.current->next;
-        if (!ctx.current) {
-            ctx.show = false;
-            ctx.current = ctx.schemes;
+        size_t start;
+        const char* current_name;
+        size_t current_len;
+        size_t current_idx = SIZE_MAX;
+        bool switched = false;
+
+        // detect current mode ("off" if hidden)
+        if (!ctx.show) {
+            current_name = "off";
+        } else if (ctx.current) {
+            current_name = ctx.current->name;
+        } else {
+            current_name = "";
+        }
+        current_len = strlen(current_name);
+
+        // find current index
+        for (size_t i = 0; i < num; ++i) {
+            const char* mode = slices[i].value;
+            const size_t len = slices[i].len;
+
+            if (len == 0) {
+                continue;
+            }
+            if (len == current_len &&
+                strncmp(mode, current_name, current_len) == 0) {
+                current_idx = i;
+                break;
+            }
+        }
+
+        // select next non-empty entry
+        start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
+        for (size_t step = 0; step < num && !switched; ++step) {
+            const size_t index = (start + step) % num;
+            const char* mode = slices[index].value;
+            const size_t len = slices[index].len;
+
+            if (len == 0) {
+                continue;
+            }
+
+            if (len == 3 && strncmp(mode, "off", 3) == 0) {
+                ctx.show = false;
+                switched = true;
+                continue;
+            }
+
+            struct scheme* scheme = find_scheme(mode, len);
+            if (scheme) {
+                ctx.current = scheme;
+                ctx.show = true;
+                switched = true;
+            } else {
+                fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len, mode);
+            }
         }
     }
 }

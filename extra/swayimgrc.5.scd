@@ -509,8 +509,15 @@ Predefined names for mouse buttons/scroll:
 	- empty value to toggle AA on/off.
 
 *info* [MODE]
-	Set text info mode or cycle through them, _MODE_ is one of the configured
-	schemes: _off_/_viewer_/_slideshow_/_gallery_ or empty value to switch to the next mode.
+	Switch or cycle text info modes.
+
+	With no _MODE_, the mode cycles through: _off_/_viewer_/_slideshow_/_gallery_.
+
+	If _MODE_ is a single mode name (e.g. _viewer_), switch to that mode.
+	If _MODE_ is a comma-separated list (e.g. _viewer,off_), cycle through the
+	listed modes. Spaces around commas are ignored.
+
+	Each entry must be either _off_ or the name of a configured scheme.
 
 *exec* COMMAND
 	Execute an external command, use % to substitute the full path to the
