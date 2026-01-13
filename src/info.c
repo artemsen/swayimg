@@ -576,117 +576,111 @@ void info_destroy(void)
 
 void info_switch(const char* expression)
 {
-    const char* toggle_kw = "toggle";
-    const size_t toggle_kw_len = strlen(toggle_kw);
-    struct str_slice args[2];
-    size_t argc = 0;
-    bool handled = false;
+    struct str_slice slices[6];
+    size_t num = 0;
+    bool cycle = false;
 
     timeout_reset(&ctx.info);
 
-    if (expression) {
-        argc = str_split(expression, ' ', args, ARRAY_SIZE(args));
+    if (!expression || !*expression) {
+
+        // default cycle order
+        expression = "off,viewer,slideshow,gallery";
+        cycle = true;
     }
 
-    if (argc > 0) {
+    // comma-separated list: MODE,MODE,...
+    num = str_split(expression, ',', slices, ARRAY_SIZE(slices));
+    if (num == 0) {
 
-        // toggle in a custom list: "toggle [mode1/mode2/...]"
-        if (args[0].len == toggle_kw_len &&
-            strncmp(args[0].value, toggle_kw, toggle_kw_len) == 0) {
-            const char* spec =
-                argc > 1 && args[1].len ? args[1].value : "off/viewer/gallery";
-            struct str_slice slices[16];
-            size_t num, start;
-            const char* current_name;
-            size_t current_len;
-            size_t current_idx = SIZE_MAX;
-            bool switched = false;
+        // expression contains only spaces
+        expression = "off,viewer,slideshow,gallery";
+        cycle = true;
+        num = str_split(expression, ',', slices, ARRAY_SIZE(slices));
+    }
+    if (num > ARRAY_SIZE(slices)) {
+        num = ARRAY_SIZE(slices);
+    }
+    if (num > 1) {
+        cycle = true;
+    }
 
-            handled = true;
+    if (!cycle) {
 
-            // split mode list (spaces are stripped by str_split)
-            num = str_split(spec, '/', slices, ARRAY_SIZE(slices));
-            if (num > ARRAY_SIZE(slices)) {
-                num = ARRAY_SIZE(slices);
-            }
+        // explicit mode
+        const char* mode = slices[0].value;
+        const size_t len = slices[0].len;
 
-            // detect current mode ("off" if hidden)
-            if (!ctx.show) {
-                current_name = "off";
-            } else if (ctx.current) {
-                current_name = ctx.current->name;
+        if (len != 0) {
+            if (len == 3 && strncmp(mode, "off", 3) == 0) {
+                ctx.show = false;
             } else {
-                current_name = "";
-            }
-            current_len = strlen(current_name);
-
-            // find current index
-            for (size_t index = 0; index < num; ++index) {
-                const char* mode = slices[index].value;
-                const size_t len = slices[index].len;
-
-                if (len == current_len &&
-                    strncmp(mode, current_name, current_len) == 0) {
-                    current_idx = index;
-                    break;
-                }
-            }
-
-            // select next non-empty entry
-            start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
-            for (size_t step = 0; step < num && !switched; ++step) {
-                const size_t idx = (start + step) % num;
-                const char* s = slices[idx].value;
-                const size_t len = slices[idx].len;
-
-                if (len == 0) {
-                    continue;
-                }
-
-                if (len == 3 && strncmp(s, "off", 3) == 0) {
-                    ctx.show = false;
-                    switched = true;
-                    continue;
-                }
-
-                struct scheme* scheme = find_scheme(s, len);
+                struct scheme* scheme = find_scheme(mode, len);
                 if (scheme) {
                     ctx.current = scheme;
                     ctx.show = true;
-                    switched = true;
                 } else {
-                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len, s);
+                    fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len,
+                            mode);
                 }
             }
-        } else if (args[0].len == 3 && strncmp(args[0].value, "off", 3) == 0 &&
-                   argc == 1) {
-            ctx.show = false;
-            handled = true;
-        } else {
-
-            // Set explicit scheme (legacy behaviour).
-            char* name = malloc(args[0].len + 1);
-            if (name) {
-                memcpy(name, args[0].value, args[0].len);
-                name[args[0].len] = 0;
-                info_set_default(name);
-                free(name);
-            } else {
-                fprintf(stderr, "Out of memory\n");
-            }
-            ctx.show = true;
-            handled = true;
         }
-    }
+    } else {
+        size_t start;
+        const char* current_name;
+        size_t current_len;
+        size_t current_idx = SIZE_MAX;
+        bool switched = false;
 
-    if (!handled) {
+        // detect current mode ("off" if hidden)
         if (!ctx.show) {
-            ctx.show = true;
+            current_name = "off";
+        } else if (ctx.current) {
+            current_name = ctx.current->name;
         } else {
-            ctx.current = ctx.current->next;
-            if (!ctx.current) {
+            current_name = "";
+        }
+        current_len = strlen(current_name);
+
+        // find current index
+        for (size_t i = 0; i < num; ++i) {
+            const char* mode = slices[i].value;
+            const size_t len = slices[i].len;
+
+            if (len == 0) {
+                continue;
+            }
+            if (len == current_len &&
+                strncmp(mode, current_name, current_len) == 0) {
+                current_idx = i;
+                break;
+            }
+        }
+
+        // select next non-empty entry
+        start = current_idx != SIZE_MAX ? current_idx + 1 : 0;
+        for (size_t step = 0; step < num && !switched; ++step) {
+            const size_t index = (start + step) % num;
+            const char* mode = slices[index].value;
+            const size_t len = slices[index].len;
+
+            if (len == 0) {
+                continue;
+            }
+
+            if (len == 3 && strncmp(mode, "off", 3) == 0) {
                 ctx.show = false;
-                ctx.current = ctx.schemes;
+                switched = true;
+                continue;
+            }
+
+            struct scheme* scheme = find_scheme(mode, len);
+            if (scheme) {
+                ctx.current = scheme;
+                ctx.show = true;
+                switched = true;
+            } else {
+                fprintf(stderr, "Invalid info scheme: %.*s\n", (int)len, mode);
             }
         }
     }
