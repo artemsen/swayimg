@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// EXIT reader.
+// EXIF reader.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 #include "exif.h"
@@ -191,6 +191,7 @@ void process_exif(struct imgdata* img, const uint8_t* data, size_t size)
         add_meta(img, exif, EXIF_TAG_SOFTWARE, "Software");
         add_meta(img, exif, EXIF_TAG_EXPOSURE_TIME, "Exposure");
         add_meta(img, exif, EXIF_TAG_FNUMBER, "F Number");
+        add_meta(img, exif, EXIF_TAG_FOCAL_LENGTH, "FocalLength");
 
         read_location(img, exif);
 

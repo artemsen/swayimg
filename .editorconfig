@@ -1,0 +1,10 @@
+root=true
+
+[*]
+indent_size = 4
+
+[*.scd]
+indent_style = tab
+
+[*.[ch]]
+indent_style = space

@@ -92,14 +92,15 @@ struct config {
 #define CFG_FONT_BKG    "background"
 #define CFG_FONT_SHADOW "shadow"
 
-#define CFG_INFO_SHOW     "show"
-#define CFG_INFO_PADDING  "padding"
-#define CFG_INFO_ITIMEOUT "info_timeout"
-#define CFG_INFO_STIMEOUT "status_timeout"
-#define CFG_INFO_TL       "top_left"
-#define CFG_INFO_TR       "top_right"
-#define CFG_INFO_BL       "bottom_left"
-#define CFG_INFO_BR       "bottom_right"
+#define CFG_INFO_SHOW          "show"
+#define CFG_INFO_PADDING       "padding"
+#define CFG_INFO_ITIMEOUT      "info_timeout"
+#define CFG_INFO_STIMEOUT      "status_timeout"
+#define CFG_INFO_EXIFTOOL_ARGS "exiftool_args"
+#define CFG_INFO_TL            "top_left"
+#define CFG_INFO_TR            "top_right"
+#define CFG_INFO_BL            "bottom_left"
+#define CFG_INFO_BR            "bottom_right"
 
 // Some configuration values
 #define CFG_YES        "yes"

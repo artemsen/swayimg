@@ -296,6 +296,14 @@ General configuration of the displayed text layer: _[info]_.
 *status_timeout* = SECONDS
 	Timeout of the status message displayed on the screen, _3_ by default.
 
+*exiftool_args* = SHELLARGS
+	Space-separated list of arguments to pass to _exiftool_.
+	Example: _-DateTimeOriginal -ExposureTime -FocalLength -Location -Rating_
+	The output is parsed to set the value of the exif field when displayed.
+	
+	The call is synchronous and done after switching to an image - can lag.
+	Set to _none_ to rely on libexif (cannot read jxl/avif/heif) (default).
+
 ## Text info: viewer mode
 
 Layout of fields for displaying text info in viewer mode: _[info.viewer]_.

@@ -480,6 +480,16 @@ Timeout of image information displayed on the screen, \fI0\fR to always show,
 Timeout of the status message displayed on the screen, \fI3\fR by default.\&
 .PP
 .RE
+\fBexiftool_args\fR = SHELLARGS
+.RS 4
+Space-separated list of arguments to pass to \fIexiftool\fR.
+Example: \fI-DateTimeOriginal -ExposureTime -FocalLength -Location -Rating\fR
+The output is parsed to set the value of the exif field when displayed.\&
+.PP
+The call is synchronous and done after switching to an image - can lag.
+Set to \fInone\fR to rely on \fIlibexif\fR (cannot read jxl/avif/heif) (default).\&
+.PP
+.RE
 .SS Text info: viewer mode
 .PP
 Layout of fields for displaying text info in viewer mode: \fI[info.\&viewer]\fR.\&

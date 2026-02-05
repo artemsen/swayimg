@@ -74,6 +74,7 @@ struct imgdata {
     struct array* info;      ///< Meta info
     struct pixmap thumbnail; ///< Image thumbnail
     struct imgdec decoder;   ///< Decoder specific handlers
+    bool used_exiftool;      ///< If exiftool was used to get meta info
 };
 
 /** Image context. */
@@ -259,6 +260,8 @@ void image_set_format(struct imgdata* img, const char* fmt, ...)
  */
 void image_add_info(struct imgdata* img, const char* key, const char* fmt, ...)
     __attribute__((format(printf, 3, 4)));
+
+void image_clear_info(struct imgdata* img);
 
 /**
  * Create multiple empty frames.

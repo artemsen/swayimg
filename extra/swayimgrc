@@ -155,6 +155,8 @@ padding = 10
 info_timeout = 5
 # Timeout to hide status message (seconds)
 status_timeout = 3
+# Args to determine order and list of exif data to display with +exif
+exiftool_args = none
 
 # Display scheme for viewer mode (position = content)
 [info.viewer]

@@ -16,6 +16,7 @@ enum info_field {
     info_image_format,
     info_image_size,
     info_exif,
+    info_exiftool,
     info_frame,
     info_index,
     info_scale,

@@ -4,6 +4,7 @@
 
 #include "image.h"
 
+#include "array.h"
 #include "buildcfg.h"
 #include "fs.h"
 
@@ -405,6 +406,14 @@ void image_add_info(struct imgdata* img, const char* key, const char* fmt, ...)
         img->info = info;
     } else {
         free(entry.key);
+    }
+}
+
+void image_clear_info(struct imgdata* img)
+{
+    if (img->info) {
+        arr_free(img->info);
+        img->info = NULL;
     }
 }
 

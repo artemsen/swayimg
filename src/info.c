@@ -7,6 +7,7 @@
 #include "application.h"
 #include "fdpoll.h"
 #include "font.h"
+#include "exiftool.h"
 #include "ui/ui.h"
 
 #include <stdarg.h>
@@ -30,6 +31,7 @@ static const char* field_names[] = {
     [info_image_format] = "format",
     [info_image_size] = "imagesize",
     [info_exif] = "exif",
+    [info_exiftool] = "exiftool",
     [info_frame] = "frame",
     [info_index] = "index",
     [info_scale] = "scale",
@@ -95,6 +97,7 @@ struct info_context {
     struct scheme* current; ///< Currently active scheme
 
     struct array* help; ///< Help layer lines
+    const char* exiftool_args; ///< User arg string for exiftool
     struct array* meta; ///< Image meta data (EXIF etc)
     struct keyval fields[ARRAY_SIZE(field_names)]; ///< Info data
 };
@@ -292,6 +295,49 @@ static void print_keyval(struct pixmap* wnd, enum position pos,
 }
 
 /**
+ * Import meta data from image.
+ * @param image source image
+ */
+static void import_meta(const struct image* img);
+
+
+/**
+ * Ensure the current image has the exiftool data loaded if the user wants it.
+ * @param img source image or NULL, if called to update the last seen image
+ * @return img or the last img if metadata needs re-rendering to updated img exif
+ */
+static const struct image* ensure_correct_exif(const struct image* img)
+{
+    // For calls from print_block when we first realize the user actually wants exif
+    static const struct image* last;
+    // Ensure exif is from exiftool (slow).
+    // Gets enabled by print_block that runs just after it
+    // if exif is in one of the sections to be printed.
+    // -> Always disable, so that if no exif section is printed,
+    // we don't waste time on the lookup either.
+    // 0 = no, 1 = yes, 2 = load now and disable (called from init)
+    static uint8_t should_load_exif = 0;
+
+    if (img) {
+        last = img;
+        should_load_exif = should_load_exif ? 2 : 0;
+    } else { // call from print_block (image is not available there)
+        img = last;
+        should_load_exif = 1;
+    }
+
+    // Attempt to load exif if it is to be shown and hasn't been loaded yet
+    if (should_load_exif && *ctx.exiftool_args && img->data && !img->data->used_exiftool) {
+        // TODO: make the loading async
+        query_exiftool(img, ctx.exiftool_args);
+
+        should_load_exif = should_load_exif == 2 ? 0 : 1;
+        return img;
+    }
+    return NULL;
+}
+
+/**
  * Print info block with key/value text.
  * @param wnd destination window
  * @param pos block position
@@ -323,6 +369,13 @@ static void print_block(struct pixmap* wnd, enum position pos,
         }
 
         if (field->type == info_exif) {
+            // Notify that exif will be displayed and check if we should update
+            // Hack to get the exif immediately if the user just switched the info on
+            const struct image* to_rerender = ensure_correct_exif(NULL);
+            if (to_rerender) {
+                import_meta(to_rerender);
+            }
+
             if (ctx.meta) {
                 for (size_t j = 0;
                      j < ctx.meta->size && lnum < ARRAY_SIZE(lines); ++j) {
@@ -355,6 +408,8 @@ static void print_block(struct pixmap* wnd, enum position pos,
  */
 static void import_meta(const struct image* img)
 {
+    ensure_correct_exif(img);
+
     const struct array* info = img->data ? img->data->info : NULL;
 
     free_meta();
@@ -519,6 +574,12 @@ void info_init(const struct config* cfg, const char* mode)
     ctx.padding = config_get_num(section, CFG_INFO_PADDING, 0, 256);
     ctx.info.delay = config_get_num(section, CFG_INFO_ITIMEOUT, 0, 1024) * 1000;
     timeout_init(&ctx.info);
+    const char* exiftool_args = config_get(section, CFG_INFO_EXIFTOOL_ARGS);
+    if (strcmp(exiftool_args, "none") == 0) {
+        ctx.exiftool_args = "";
+    } else {
+        ctx.exiftool_args = strdup(exiftool_args);
+    }
     ctx.status.delay =
         config_get_num(section, CFG_INFO_STIMEOUT, 0, 1024) * 1000;
     timeout_init(&ctx.status);
