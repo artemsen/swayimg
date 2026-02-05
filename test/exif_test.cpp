@@ -26,16 +26,17 @@ TEST_F(Exif, Read)
 
     process_exif(image->data, data.data(), data.size());
 
-    ASSERT_EQ(image->data->info->size, static_cast<size_t>(7));
+    ASSERT_EQ(image->data->info->size, static_cast<size_t>(8));
 
     const std::pair<const char*, const char*> etalon[] = {
-        { "DateTime", "2024:05:30 21:18:48"            },
-        { "Camera",   "Google"                         },
-        { "Model",    "Pixel 7"                        },
-        { "Software", "GIMP 2.99.16"                   },
-        { "Exposure", "1/50 sec."                      },
-        { "F Number", "f/1.9"                          },
-        { "Location", "55°44'28.41\"N, 37°37'25.46\"E" },
+        { "DateTime",    "2024:05:30 21:18:48"            },
+        { "Camera",      "Google"                         },
+        { "Model",       "Pixel 7"                        },
+        { "Software",    "GIMP 2.99.16"                   },
+        { "Exposure",    "1/50 sec."                      },
+        { "F Number",    "f/1.9"                          },
+        { "FocalLength", "6.8 mm"                         },
+        { "Location",    "55°44'28.41\"N, 37°37'25.46\"E" },
     };
 
     for (size_t i = 0; i < sizeof(etalon) / sizeof(etalon[0]); ++i) {
