@@ -324,6 +324,7 @@ static const struct image* ensure_correct_exif(const struct image* img)
     } else { // call from print_block (image is not available there)
         img = last;
         should_load_exif = 1;
+        if (!img) return NULL;
     }
 
     // Attempt to load exif if it is to be shown and hasn't been loaded yet
