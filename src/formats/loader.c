@@ -340,7 +340,7 @@ enum image_status image_load(struct image* img)
         status = load_from_file(img, img->source);
     }
 
-    if (status == imgload_success) {        
+    if (status == imgload_success) {
         img->data->used_exiftool = false;
     }
 

@@ -5,9 +5,9 @@
 #include "info.h"
 
 #include "application.h"
+#include "exiftool.h"
 #include "fdpoll.h"
 #include "font.h"
-#include "exiftool.h"
 #include "ui/ui.h"
 
 #include <stdarg.h>
@@ -96,9 +96,9 @@ struct info_context {
     struct scheme* schemes; ///< List of available schemes
     struct scheme* current; ///< Currently active scheme
 
-    struct array* help; ///< Help layer lines
+    struct array* help;        ///< Help layer lines
     const char* exiftool_args; ///< User arg string for exiftool
-    struct array* meta; ///< Image meta data (EXIF etc)
+    struct array* meta;        ///< Image meta data (EXIF etc)
     struct keyval fields[ARRAY_SIZE(field_names)]; ///< Info data
 };
 
@@ -300,15 +300,16 @@ static void print_keyval(struct pixmap* wnd, enum position pos,
  */
 static void import_meta(const struct image* img);
 
-
 /**
  * Ensure the current image has the exiftool data loaded if the user wants it.
  * @param img source image or NULL, if called to update the last seen image
- * @return img or the last img if metadata needs re-rendering to updated img exif
+ * @return img or the last img if metadata needs re-rendering to updated img
+ * exif
  */
 static const struct image* ensure_correct_exif(const struct image* img)
 {
-    // For calls from print_block when we first realize the user actually wants exif
+    // For calls from print_block when we first realize the user actually wants
+    // exif
     static const struct image* last;
     // Ensure exif is from exiftool (slow).
     // Gets enabled by print_block that runs just after it
@@ -324,11 +325,14 @@ static const struct image* ensure_correct_exif(const struct image* img)
     } else { // call from print_block (image is not available there)
         img = last;
         should_load_exif = 1;
-        if (!img) return NULL;
+        if (!img) {
+            return NULL;
+        }
     }
 
     // Attempt to load exif if it is to be shown and hasn't been loaded yet
-    if (should_load_exif && *ctx.exiftool_args && img->data && !img->data->used_exiftool) {
+    if (should_load_exif && *ctx.exiftool_args && img->data &&
+        !img->data->used_exiftool) {
         // TODO: make the loading async
         query_exiftool(img, ctx.exiftool_args);
 
@@ -371,7 +375,8 @@ static void print_block(struct pixmap* wnd, enum position pos,
 
         if (field->type == info_exif) {
             // Notify that exif will be displayed and check if we should update
-            // Hack to get the exif immediately if the user just switched the info on
+            // Hack to get the exif immediately if the user just switched the
+            // info on
             const struct image* to_rerender = ensure_correct_exif(NULL);
             if (to_rerender) {
                 import_meta(to_rerender);
