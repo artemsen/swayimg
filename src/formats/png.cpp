@@ -10,7 +10,7 @@
 #include <cstring>
 #include <format>
 
-#include "../image.hpp"
+#include "../imageloader.hpp"
 
 // support for legacy libpng
 #ifdef PNG_APNG_SUPPORTED

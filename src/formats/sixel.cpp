@@ -6,7 +6,7 @@
 
 #include <cstdlib>
 
-#include "../image.hpp"
+#include "../imageloader.hpp"
 
 // register format in factory
 class ImageSixel;

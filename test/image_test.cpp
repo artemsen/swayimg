@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "buildconf.hpp"
-#include "image.hpp"
+#include "imageloader.hpp"
 
 static ImagePtr load_image(const char* path)
 {

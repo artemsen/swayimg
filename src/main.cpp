@@ -11,7 +11,7 @@
 
 #include "application.hpp"
 #include "buildconf.hpp"
-#include "image.hpp"
+#include "imageloader.hpp"
 #include "log.hpp"
 
 /** Command line arguments. */

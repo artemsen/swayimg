@@ -7,6 +7,7 @@
 #include <format>
 
 #include "application.hpp"
+#include "imageloader.hpp"
 
 Viewer::Viewer()
 {

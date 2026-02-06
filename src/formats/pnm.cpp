@@ -4,7 +4,7 @@
 
 #include <format>
 
-#include "../image.hpp"
+#include "../imageloader.hpp"
 
 // register format in factory
 class ImagePnm;

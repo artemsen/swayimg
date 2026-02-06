@@ -6,7 +6,7 @@
 
 #include <format>
 
-#include "../image.hpp"
+#include "../imageloader.hpp"
 
 // depends on other headers, but doesn't include them, so is added at the end
 #include <jpeglib.h>

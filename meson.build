@@ -238,6 +238,7 @@ sources = [
     'src/gallery.cpp',
     'src/image.cpp',
     'src/imagelist.cpp',
+    'src/imageloader.cpp',
     'src/input.cpp',
     'src/log.cpp',
     'src/luaengine.cpp',
