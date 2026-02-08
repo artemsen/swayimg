@@ -2,12 +2,12 @@
 // TIFF format decoder.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <tiffio.h>
 
 #include <cstring>
 #include <format>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageTiff;

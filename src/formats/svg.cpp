@@ -2,6 +2,8 @@
 // SVG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wexpansion-to-defined"
 #include <librsvg/rsvg.h>
@@ -10,8 +12,6 @@
 #include <cstring>
 #include <format>
 #include <memory>
-
-#include "../imageloader.hpp"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

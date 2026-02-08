@@ -2,13 +2,13 @@
 // Thumbnail layout for gallery mode.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
-#include "layout.h"
+#include "layout.hpp"
 
-#include "imglist.h"
+#include "imagelist.hpp"
 
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
 
 /**
  * Recalculate thumbnails scheme.

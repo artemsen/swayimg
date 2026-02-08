@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
+#include "pixmap.hpp"
+
 #include <gtest/gtest.h>
 
 #include <format>
-
-#include "pixmap.hpp"
 
 ::testing::AssertionResult CheckPixmap(const Pixmap& pm,
                                        const std::vector<argb_t>& expect)

@@ -2,11 +2,11 @@
 // Sixel format decoder.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <sixel.h>
 
 #include <cstdlib>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageSixel;

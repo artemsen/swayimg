@@ -2,13 +2,13 @@
 // AV1 (AVIF/AVIFS) format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <avif/avif.h>
 
 #include <cstring>
 #include <format>
 #include <memory>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageAvif;

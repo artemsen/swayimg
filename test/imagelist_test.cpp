@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
+#include "imagelist.hpp"
+
 #include <gtest/gtest.h>
 
 #include <format>
-
-#include "imagelist.hpp"
 
 ::testing::AssertionResult
 CheckImageList(ImageList& il, const std::vector<std::filesystem::path>& expect)

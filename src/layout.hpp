@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "image.h"
+#include "image.hpp"
 
 /** Thumbnail instance with coordinates. */
 struct layout_thumb {

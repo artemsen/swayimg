@@ -4,9 +4,9 @@
 
 #include "threadpool.hpp"
 
-#include <algorithm>
-
 #include "log.hpp"
+
+#include <algorithm>
 
 // Thread pool limits
 constexpr size_t MIN_THREADS = 1;
@@ -53,6 +53,13 @@ void ThreadPool::wait(const size_t tid)
     complete.wait(lock, [completed]() {
         return completed();
     });
+}
+
+void ThreadPool::wait(const std::vector<size_t>& tids)
+{
+    for (auto& it : tids) {
+        wait(it);
+    }
 }
 
 void ThreadPool::run()

@@ -4,16 +4,13 @@
 
 #pragma once
 
-#include <unistd.h>
+#include "color.hpp"
+#include "geometry.hpp"
 
 #include <cassert>
-#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <vector>
-
-#include "color.hpp"
-#include "rectangle.hpp"
 
 struct Pixmap {
     /** Pixmap formats. */

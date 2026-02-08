@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include <functional>
-#include <map>
-
 #include "image.hpp"
 #include "input.hpp"
+
+#include <functional>
+#include <map>
 
 class AppMode {
 public:

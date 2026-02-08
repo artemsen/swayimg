@@ -4,6 +4,8 @@
 
 #include "imagelist.hpp"
 
+#include "log.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -11,8 +13,6 @@
 #include <mutex>
 #include <random>
 #include <string>
-
-#include "log.hpp"
 
 // Image entry index used for removed entries.
 constexpr size_t INVALID_INDEX = std::numeric_limits<size_t>::max();

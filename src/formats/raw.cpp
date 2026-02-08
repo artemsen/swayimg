@@ -2,6 +2,8 @@
 // Raw camera format decoder.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <libraw.h>
@@ -9,8 +11,6 @@
 
 #include <cstring>
 #include <memory>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageRaw;

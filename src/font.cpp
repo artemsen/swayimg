@@ -4,12 +4,12 @@
 
 #include "font.hpp"
 
+#include "application.hpp"
+#include "log.hpp"
+
 #include <fontconfig/fontconfig.h>
 
 #include <memory>
-
-#include "application.hpp"
-#include "log.hpp"
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)

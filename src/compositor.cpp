@@ -4,14 +4,15 @@
 
 #include "compositor.hpp"
 
+#include "log.hpp"
+
+#include <json/json.hpp>
+
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include <cstring>
 #include <format>
-#include <json/json.hpp>
-
-#include "log.hpp"
 
 using json = nlohmann::json;
 

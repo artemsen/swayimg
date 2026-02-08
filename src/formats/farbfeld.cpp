@@ -2,11 +2,11 @@
 // Farbfeld format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <arpa/inet.h>
 
 #include <cstring>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageFarbfeld;

@@ -2,10 +2,10 @@
 // Truevision TGA format decoder.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <cstring>
 #include <format>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageTga;

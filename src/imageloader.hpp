@@ -4,11 +4,11 @@
 
 #pragma once
 
+#include "image.hpp"
+
 #include <functional>
 #include <memory>
 #include <string>
-
-#include "image.hpp"
 
 /** Image loader and factory. */
 class ImageLoader {

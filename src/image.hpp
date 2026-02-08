@@ -4,13 +4,13 @@
 
 #pragma once
 
+#include "imagelist.hpp"
+#include "pixmap.hpp"
+
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "imagelist.hpp"
-#include "pixmap.hpp"
 
 /** Image instance. */
 class Image {

@@ -2,10 +2,10 @@
 // BMP format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <cstdlib>
 #include <format>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageBmp;

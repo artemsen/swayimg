@@ -2,12 +2,12 @@
 // HEIF format decoder.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <libheif/heif.h>
 
 #include <cstring>
 #include <memory>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageHeif;

@@ -4,10 +4,10 @@
 
 #pragma once
 
+#include "xkb.hpp"
+
 #include <optional>
 #include <string>
-
-#include "xkb.hpp"
 
 /** Description of key with modifiers. */
 struct InputKeyboard {

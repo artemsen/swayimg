@@ -4,14 +4,14 @@
 
 #pragma once
 
+#include "fsmonitor.hpp"
+
 #include <ctime>
 #include <filesystem>
 #include <functional>
 #include <list>
 #include <shared_mutex>
 #include <vector>
-
-#include "fsmonitor.hpp"
 
 /** Thread-safe list of images. */
 class ImageList {

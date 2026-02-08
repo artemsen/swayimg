@@ -4,6 +4,8 @@
 
 #include "ui_wayland.hpp"
 
+#include "log.hpp"
+
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/mman.h>
@@ -12,8 +14,6 @@
 
 #include <cstring>
 #include <format>
-
-#include "log.hpp"
 
 /** Static Wayland handlers. */
 class WaylandHandler {

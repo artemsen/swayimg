@@ -1,26 +1,45 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
+#include "geometry.hpp"
+
 #include <gtest/gtest.h>
 
-#include "rectangle.hpp"
+TEST(PointTest, Validation)
+{
+    Point pt;
+    EXPECT_FALSE(pt);
+
+    pt.x = 10;
+    EXPECT_FALSE(pt);
+
+    pt.y = 20;
+    EXPECT_TRUE(pt);
+}
+
+TEST(SizeTest, Validation)
+{
+    Size sz;
+    EXPECT_FALSE(sz);
+
+    sz.width = 10;
+    EXPECT_FALSE(sz);
+
+    sz.height = 20;
+    EXPECT_TRUE(sz);
+}
 
 TEST(RectangleTest, Validation)
 {
     Rectangle rect;
-
-    EXPECT_FALSE(rect.has_pos());
-    EXPECT_FALSE(rect.has_size());
     EXPECT_FALSE(rect);
 
     rect.x = 10;
     rect.y = 20;
-    EXPECT_TRUE(rect.has_pos());
     EXPECT_FALSE(rect);
 
     rect.width = 100;
     rect.height = 200;
-    EXPECT_TRUE(rect.has_size());
     EXPECT_TRUE(rect);
 }
 

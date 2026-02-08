@@ -4,11 +4,11 @@
 
 #pragma once
 
+#include "fdevent.hpp"
+
 #include <xkbcommon/xkbcommon.h>
 
 #include <string>
-
-#include "fdevent.hpp"
 
 using keymod_t = uint8_t;
 constexpr keymod_t KEYMOD_NONE = 0;

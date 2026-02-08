@@ -2,11 +2,11 @@
 // GIF format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <gif_lib.h>
 
 #include <cstring>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageGif;

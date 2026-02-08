@@ -4,14 +4,14 @@
 
 #include "imageloader.hpp"
 
+#include "buildconf.hpp"
+
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <cerrno>
-
-#include "buildconf.hpp"
 
 #ifdef HAVE_LIBEXIV2
 #include <exiv2/exiv2.hpp>

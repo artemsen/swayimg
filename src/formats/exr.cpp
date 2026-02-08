@@ -2,6 +2,8 @@
 // EXR format decoder.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -13,8 +15,6 @@
 
 #include <cstring>
 #include <format>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageExr;

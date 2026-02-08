@@ -2,17 +2,17 @@
 // Program entry point.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "application.hpp"
+#include "buildconf.hpp"
+#include "imageloader.hpp"
+#include "log.hpp"
+
 #include <getopt.h>
 #include <unistd.h>
 
 #include <clocale>
 #include <cstdlib>
 #include <format>
-
-#include "application.hpp"
-#include "buildconf.hpp"
-#include "imageloader.hpp"
-#include "log.hpp"
 
 /** Command line arguments. */
 struct cmdarg {
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     std::srand(getpid());
 
     ///////////////////////////////////////////////////////////////////////////
-    Log::enable_verbose();
+    Log::verbose_flag() = true;
     ///////////////////////////////////////////////////////////////////////////
 
     Application::StartupParams app_params;
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
                 app_params.config = std::filesystem::absolute(optarg);
                 break;
             case 'V':
-                Log::enable_verbose();
+                Log::verbose_flag() = true;
                 break;
             case 'v':
                 print_version();

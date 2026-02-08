@@ -4,10 +4,10 @@
 
 #pragma once
 
+#include "appmode.hpp"
+
 #include <string>
 #include <vector>
-
-#include "appmode.hpp"
 
 // forward declaration to avoid include lua headers
 namespace luabridge {

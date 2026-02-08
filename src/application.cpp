@@ -4,8 +4,6 @@
 
 #include "application.hpp"
 
-#include <poll.h>
-
 #include "buildconf.hpp"
 #include "image.hpp"
 #include "log.hpp"
@@ -15,6 +13,8 @@
 #ifdef HAVE_COMPOSITOR
 #include "compositor.hpp"
 #endif
+
+#include <poll.h>
 
 Application& Application::self()
 {
@@ -203,7 +203,7 @@ void Application::ui_handle_event(Ui::Event event)
         case Ui::Event::Type::WindowRedraw: {
             Pixmap& wnd = ui->lock_surface();
             if (wnd) {
-// #define TRACE_DRAW_TIME
+#define TRACE_DRAW_TIME
 #ifdef TRACE_DRAW_TIME
                 struct timespec begin_time;
                 clock_gettime(CLOCK_MONOTONIC, &begin_time);

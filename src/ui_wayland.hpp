@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include "fdevent.hpp"
+#include "ui.hpp"
+#include "xkb.hpp"
+
 #include <content-type-v1-client-protocol.h>
 #include <cursor-shape-v1-client-protocol.h>
 #include <ext-idle-notify-v1-client-protocol.h>
@@ -15,10 +19,6 @@
 #include <cassert>
 #include <mutex>
 #include <thread>
-
-#include "fdevent.hpp"
-#include "ui.hpp"
-#include "xkb.hpp"
 
 /** Generic Wayland object. */
 template <typename T> struct WaylandObject {

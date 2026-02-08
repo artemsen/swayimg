@@ -4,15 +4,15 @@
 
 #include "fsmonitor.hpp"
 
+#include "application.hpp"
+#include "buildconf.hpp"
+#include "log.hpp"
+
 #include <unistd.h>
 
 #include <cassert>
 #include <cerrno>
 #include <ranges>
-
-#include "application.hpp"
-#include "buildconf.hpp"
-#include "log.hpp"
 
 #ifdef HAVE_INOTIFY
 #include <sys/inotify.h>

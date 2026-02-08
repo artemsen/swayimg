@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
+#include "input.hpp"
+
 #include <gtest/gtest.h>
 
 #include <clocale>
-
-#include "input.hpp"
 
 TEST(InputKeyboardTest, Load)
 {

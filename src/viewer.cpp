@@ -4,10 +4,10 @@
 
 #include "viewer.hpp"
 
-#include <format>
-
 #include "application.hpp"
 #include "imageloader.hpp"
+
+#include <format>
 
 Viewer::Viewer()
 {

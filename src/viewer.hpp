@@ -4,13 +4,13 @@
 
 #pragma once
 
+#include "appmode.hpp"
+#include "fdevent.hpp"
+
 #include <atomic>
 #include <deque>
 #include <mutex>
 #include <thread>
-
-#include "appmode.hpp"
-#include "fdevent.hpp"
 
 class Viewer : public AppMode {
 public:

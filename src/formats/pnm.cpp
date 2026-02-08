@@ -2,9 +2,9 @@
 // PNM formats decoder
 // Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
 
-#include <format>
-
 #include "../imageloader.hpp"
+
+#include <format>
 
 // register format in factory
 class ImagePnm;

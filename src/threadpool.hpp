@@ -66,6 +66,12 @@ public:
      */
     void wait(const size_t tid);
 
+    /**
+     * Wait for specified tasks to complete.
+     * @param tids tasks id for waiting
+     */
+    void wait(const std::vector<size_t>& tids);
+
 private:
     /**
      * Thread worker function.

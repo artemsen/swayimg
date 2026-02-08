@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include <string>
-
 #include "pixmap.hpp"
 
 // freetype stuff
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
+
+#include <string>
 
 /** Font render. */
 class Font {

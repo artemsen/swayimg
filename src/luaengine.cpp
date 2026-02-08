@@ -4,9 +4,6 @@
 
 #include "luaengine.hpp"
 
-#include <cstdlib>
-#include <cstring>
-
 #include "application.hpp"
 #include "log.hpp"
 
@@ -16,6 +13,9 @@
 #include <luabridge/LuaBridge.h>
 #include <luabridge/Vector.h>
 // clang-format on
+
+#include <cstdlib>
+#include <cstring>
 
 /**
  * Get path to config file (init.lua).

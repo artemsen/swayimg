@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
-#include <gtest/gtest.h>
-
 #include "color.hpp"
+
+#include <gtest/gtest.h>
 
 TEST(ColorTest, ARGB)
 {

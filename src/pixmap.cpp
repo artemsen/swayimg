@@ -4,6 +4,38 @@
 
 #include "pixmap.hpp"
 
+#include "threadpool.hpp"
+
+/** Thread pool used for multithreaded rendering. */
+static ThreadPool thread_pool;
+
+/**
+ * Put one pixmap on another.
+ * @param src_pm source pixmap (overlay)
+ * @param src_pt top left point of source pixmap
+ * @param src_scale scale factor of source pixmap
+ * @param dst_pm destination pixmap (underlay)
+ * @param dst_rect destination area to fill
+ */
+static void mix_pm(const Pixmap& src_pm, Point src_pt, const double src_scale,
+                   Pixmap& dst_pm, Rectangle dst_rect)
+{
+    for (size_t y = 0; y < dst_rect.height; ++y) {
+        const size_t src_y = static_cast<double>(src_pt.y + y) / src_scale;
+        const size_t dst_y = dst_rect.y + y;
+        for (size_t x = 0; x < dst_rect.width; ++x) {
+            const size_t src_x = static_cast<double>(src_pt.x + x) / src_scale;
+            const argb_t src = src_pm.at(src_x, src_y);
+            argb_t& dst = dst_pm.at(dst_rect.x + x, dst_y);
+            if (src_pm.format() == Pixmap::ARGB) {
+                dst.blend(src);
+            } else {
+                dst = src;
+            }
+        }
+    }
+}
+
 void Pixmap::create(const Format format, const size_t width,
                     const size_t height)
 {
@@ -355,22 +387,30 @@ void Pixmap::put(const Pixmap& pm, const ssize_t x, const ssize_t y,
         return; // out of pixmap
     }
 
-    const size_t diff_x = visible.x - image.x;
-    const size_t diff_y = visible.y - image.y;
+    std::vector<size_t> tids;
 
-    for (size_t y = 0; y < visible.height; ++y) {
-        const size_t sc_y = static_cast<double>(diff_y + y) / scale;
-        for (size_t x = 0; x < visible.width; ++x) {
-            const size_t sc_x = static_cast<double>(diff_x + x) / scale;
-            const argb_t src = pm.at(sc_x, sc_y);
-            argb_t& dst = at(visible.x + x, visible.y + y);
-            if (pm.format() == Format::ARGB) {
-                dst.blend(src);
-            } else {
-                dst = src;
-            }
+    Point src_start { visible.x - image.x, visible.y - image.y };
+    const size_t threads = thread_pool.size();
+    const size_t step = visible.height / threads;
+    for (size_t i = 0; i < threads; ++i) {
+        const size_t src_offset = step * i;
+
+        Point src_pos = src_start;
+        src_pos.y += src_offset;
+
+        Rectangle dst_rect = visible;
+        dst_rect.y += src_offset;
+        dst_rect.height = step;
+
+        if (i == threads - 1) {
+            dst_rect.height += visible.height - step * threads;
         }
+
+        tids.push_back(
+            thread_pool.add(&mix_pm, pm, src_pos, scale, *this, dst_rect));
     }
+
+    thread_pool.wait(tids);
 }
 
 void Pixmap::filter(const std::function<void(argb_t&)>& fn)

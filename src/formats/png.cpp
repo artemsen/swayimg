@@ -4,13 +4,13 @@
 
 #include "png.hpp"
 
+#include "../imageloader.hpp"
+
 #include <png.h>
 #include <setjmp.h>
 
 #include <cstring>
 #include <format>
-
-#include "../imageloader.hpp"
 
 // support for legacy libpng
 #ifdef PNG_APNG_SUPPORTED

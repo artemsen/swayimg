@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include <gtest/gtest.h>
-#include <unistd.h>
-
 #include "buildconf.hpp"
 #include "imageloader.hpp"
+
+#include <gtest/gtest.h>
+#include <unistd.h>
 
 static ImagePtr load_image(const char* path)
 {

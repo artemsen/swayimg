@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include <string>
+#include "geometry.hpp"
 
-#include "rectangle.hpp"
+#include <string>
 
 namespace Compositor {
 

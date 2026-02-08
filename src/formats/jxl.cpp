@@ -2,12 +2,12 @@
 // JPEG XL format decoder.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
 #include <jxl/decode_cxx.h>
 #include <jxl/resizable_parallel_runner_cxx.h>
 
 #include <format>
-
-#include "../imageloader.hpp"
 
 // register format in factory
 class ImageJxl;

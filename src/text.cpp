@@ -4,10 +4,10 @@
 
 #include "text.hpp"
 
+#include "application.hpp"
+
 #include <ctime>
 #include <format>
-
-#include "application.hpp"
 
 Text::Text()
 {

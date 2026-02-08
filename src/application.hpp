@@ -4,12 +4,6 @@
 
 #pragma once
 
-#include <deque>
-#include <functional>
-#include <memory>
-#include <mutex>
-#include <vector>
-
 #include "fdevent.hpp"
 #include "font.hpp"
 #include "gallery.hpp"
@@ -19,6 +13,12 @@
 #include "text.hpp"
 #include "ui.hpp"
 #include "viewer.hpp"
+
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 class Application {
 public:

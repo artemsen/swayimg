@@ -4,11 +4,11 @@
 
 #pragma once
 
+#include "image.hpp"
+
 #include <map>
 #include <string>
 #include <vector>
-
-#include "image.hpp"
 
 /** Text overlay. */
 class Text {

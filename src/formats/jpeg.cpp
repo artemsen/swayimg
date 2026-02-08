@@ -2,14 +2,12 @@
 // JPEG format decoder.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
+#include "../imageloader.hpp"
+
+#include <jpeglib.h>
 #include <setjmp.h>
 
 #include <format>
-
-#include "../imageloader.hpp"
-
-// depends on other headers, but doesn't include them, so is added at the end
-#include <jpeglib.h>
 
 // register format in factory
 class ImageJpg;
