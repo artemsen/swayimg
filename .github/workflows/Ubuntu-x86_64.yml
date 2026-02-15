@@ -30,8 +30,24 @@ jobs:
         docker exec swayimg
         meson setup
         -D version=${{steps.version.outputs.VERSION}}
+        -D compositor=enabled
+        -D wayland=enabled
+        -D drm=enabled
+        -D man=true
+        -D desktop=true
+        -D bash=enabled
+        -D zsh=enabled
+        -D exif=enabled
+        -D exr=auto
+        -D gif=enabled
+        -D heif=enabled
+        -D jpeg=enabled
+        -D jxl=enabled
+        -D raw=enabled
+        -D sixel=enabled
+        -D svg=enabled
+        -D webp=enabled
         -D tests=enabled
-        --auto-features=enabled
         --prefix=/usr
         --werror
         ${{ env.BUILD_PATH }}

@@ -6,7 +6,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     build-essential \
     libavif-dev \
     libdrm-dev \
-    libexif-dev \
+    libexiv2-dev \
     libfontconfig-dev \
     libfreetype-dev \
     libgif-dev \
@@ -23,6 +23,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libwayland-dev \
     libwebp-dev \
     libxkbcommon-dev \
+    libluajit-5.1-dev \
     meson \
     pkg-config \
     wayland-protocols

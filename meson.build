@@ -5,7 +5,6 @@ project(
     'c',
     'cpp',
     default_options: [
-        'c_std=c99',
         'cpp_std=c++20',
         'warning_level=3',
         'buildtype=release',
@@ -13,12 +12,8 @@ project(
     ],
     license: 'MIT',
     version: '0.0.0',
-    meson_version: '>=0.60.0',
+    meson_version: '>=1.1',
 )
-
-add_project_arguments(['-D_POSIX_C_SOURCE=200809'], language: 'c')
-
-cc = meson.get_compiler('c')
 
 # version info
 version = get_option('version')
@@ -40,8 +35,7 @@ xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 threads = dependency('threads')
-rt = cc.find_library('rt')
-m = cc.find_library('m')
+lua = dependency('luajit')
 
 # wayland support
 wl_protocols = []
@@ -92,11 +86,12 @@ drm = dependency('libdrm', required: get_option('drm'))
 assert(wlcln.found() or drm.found(), 'UI libs not available')
 
 # optional dependencies: file formats support
-exr = dependency('OpenEXR', version: '>=3.1', required: get_option('exr'))
+exr = dependency('OpenEXR', version: '>=3.4', required: get_option('exr'))
 heif = dependency('libheif', required: get_option('heif'))
-avif = dependency('libavif', required: get_option('avif'))
+avif = dependency('libavif', version: '>=1.0', required: get_option('avif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
 jxl = dependency('libjxl', required: get_option('jxl'))
+jxl_threads = dependency('libjxl_threads', required: get_option('jxl'))
 png = dependency('libpng', required: get_option('png'))
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
@@ -106,6 +101,7 @@ webp = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
 
 # hack to build "pkgconfigless" gif in FreeBSD
+cc = meson.get_compiler('c')
 gif_opt = get_option('gif')
 if gif_opt.disabled()
     gif = cc.find_library('gif', required: gif_opt)
@@ -121,8 +117,7 @@ else
 endif
 
 # optional dependencies: other features
-json = dependency('json-c', required: get_option('compositor'))
-exif = dependency('libexif', required: get_option('exif'))
+exiv = dependency('exiv2', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
 
 # non-Linux (BSD specific)
@@ -131,27 +126,25 @@ inotify = dependency('libinotify', required: false)
 
 # configuration file
 conf = configuration_data()
-conf.set('HAVE_COMPOSITOR', wlcln.found() and json.found())
+conf.set('HAVE_COMPOSITOR', wlcln.found() and get_option('compositor').allowed())
 conf.set('HAVE_WAYLAND', wlcln.found())
 conf.set('HAVE_DRM', drm.found())
 conf.set('HAVE_INOTIFY', cc.has_header('sys/inotify.h', dependencies: inotify))
-conf.set('HAVE_LIBEXIF', exif.found())
+conf.set('HAVE_LIBEXIV2', exiv.found())
 conf.set('HAVE_LIBEXR', exr.found())
 conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBHEIF', heif.found())
 conf.set('HAVE_LIBAVIF', avif.found())
 conf.set('HAVE_LIBJPEG', jpeg.found())
-conf.set('HAVE_LIBJXL', jxl.found())
+conf.set('HAVE_LIBJXL', jxl.found() and jxl_threads.found())
 conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
-conf.set_quoted('APP_NAME', meson.project_name())
 conf.set_quoted('APP_VERSION', version)
-configure_file(output: 'buildcfg.h', configuration: conf)
-
+configure_file(output: 'buildconf.hpp', configuration: conf)
 
 # install sample config
 install_data('extra/swayimgrc', install_dir: get_option('datadir') / 'swayimg')
@@ -235,129 +228,135 @@ if bash.found()
     )
 endif
 
-# unit tests
-if get_option('tests').enabled()
-    subdir('test')
-endif
-
 # source files
 sources = [
-    'src/action.c',
-    'src/application.c',
-    'src/array.c',
-    'src/cache.c',
-    'src/config.c',
-    'src/fdpoll.c',
-    'src/font.c',
-    'src/fs.c',
-    'src/gallery.c',
-    'src/image.c',
-    'src/imglist.c',
-    'src/info.c',
-    'src/ipc.c',
-    'src/keybind.c',
-    'src/layout.c',
-    'src/list.c',
-    'src/main.c',
-    'src/mode.c',
-    'src/pixmap.c',
-    'src/render.c',
-    'src/shellcmd.c',
-    'src/slideshow.c',
-    'src/tpool.c',
-    'src/viewer.c',
-    'src/viewport.c',
-    'src/ui/ui.c',
-    'src/formats/loader.c',
-    'src/formats/bmp.c',
-    'src/formats/dicom.c',
-    'src/formats/farbfeld.c',
-    'src/formats/pnm.c',
-    'src/formats/qoi.c',
-    'src/formats/tga.c',
+    'src/application.cpp',
+    'src/appmode.cpp',
+    'src/fdevent.cpp',
+    'src/font.cpp',
+    'src/fsmonitor.cpp',
+    'src/gallery.cpp',
+    'src/geometry.cpp',
+    'src/image.cpp',
+    'src/imagelist.cpp',
+    'src/imageloader.cpp',
+    'src/input.cpp',
+    'src/luaengine.cpp',
+    'src/pixmap.cpp',
+    'src/render.cpp',
+    'src/slideshow.cpp',
+    'src/text.cpp',
+    'src/threadpool.cpp',
+    'src/viewer.cpp',
+    'src/xkb.cpp',
+    'src/formats/bmp.cpp',
+    'src/formats/dicom.cpp',
+    'src/formats/farbfeld.cpp',
+    'src/formats/pnm.cpp',
+    'src/formats/qoi.cpp',
+    'src/formats/tga.cpp',
     wl_protocols,
 ]
-if json.found()
-    sources += 'src/ui/compositor.c'
-endif
+
 if wlcln.found()
-    sources += 'src/ui/wayland.c'
-    sources += 'src/ui/wndbuf.c'
+    sources += 'src/ui_wayland.cpp'
 endif
 if drm.found()
-    sources += 'src/ui/drm.c'
+    sources += 'src/ui_drm.cpp'
 endif
-if exif.found()
-    sources += 'src/formats/exif.c'
+if wlcln.found() and get_option('compositor').allowed()
+    sources += 'src/compositor.cpp'
 endif
 if exr.found()
-    sources += 'src/formats/exr.c'
+    sources += 'src/formats/exr.cpp'
 endif
 if gif.found()
-    sources += 'src/formats/gif.c'
+    sources += 'src/formats/gif.cpp'
 endif
 if heif.found()
-    sources += 'src/formats/heif.c'
+    sources += 'src/formats/heif.cpp'
 endif
 if avif.found()
-    sources += 'src/formats/avif.c'
+    sources += 'src/formats/avif.cpp'
 endif
 if jpeg.found()
-    sources += 'src/formats/jpeg.c'
+    sources += 'src/formats/jpeg.cpp'
 endif
 if jxl.found()
-    sources += 'src/formats/jxl.c'
+    sources += 'src/formats/jxl.cpp'
 endif
 if png.found()
-    sources += 'src/formats/png.c'
+    sources += 'src/formats/png.cpp'
 endif
 if rsvg.found()
-    sources += 'src/formats/svg.c'
+    sources += 'src/formats/svg.cpp'
 endif
 if tiff.found()
-    sources += 'src/formats/tiff.c'
+    sources += 'src/formats/tiff.cpp'
 endif
 if sixel.found()
-    sources += 'src/formats/sixel.c'
+    sources += 'src/formats/sixel.cpp'
 endif
 if raw.found()
-    sources += 'src/formats/raw.c'
+    sources += 'src/formats/raw.cpp'
 endif
 if webp.found() and webp_demux.found()
-    sources += 'src/formats/webp.c'
+    sources += 'src/formats/webp.cpp'
 endif
+
+dependencies = [
+    # runtime
+    drm,
+    epoll,
+    fontconfig,
+    freetype,
+    inotify,
+    lua,
+    threads,
+    wlcln,
+    xkb,
+    exiv,
+    # image support
+    avif,
+    exr,
+    gif,
+    heif,
+    jpeg,
+    jxl,
+    jxl_threads,
+    png,
+    raw,
+    rsvg,
+    sixel,
+    tiff,
+    webp,
+    webp_demux,
+]
 
 executable(
     'swayimg',
-    sources,
-    dependencies: [
-        # runtime
-        m,
-        rt,
-        threads,
-        wlcln,
-        epoll,
-        inotify,
-        json,
-        xkb,
-        fontconfig,
-        freetype,
-        drm,
-        # image support
-        exif,
-        exr,
-        gif,
-        heif,
-        avif,
-        jpeg,
-        jxl,
-        png,
-        rsvg,
-        tiff,
-        sixel,
-        raw,
-        webp,
-        webp_demux,
-    ],
+    sources + 'src/main.cpp',
+    dependencies: dependencies,
+    include_directories: 'src/external',
     install: true,
 )
+
+# unit tests
+if get_option('tests').enabled()
+    gtest = dependency('gtest', main: true, disabler: true, required: true)
+    test_exe = executable(
+        'swayimg_test',
+        sources + [
+            'test/color_test.cpp',
+            'test/geometry_test.cpp',
+            'test/image_test.cpp',
+            'test/imagelist_test.cpp',
+            'test/input_test.cpp',
+            'test/pixmap_test.cpp',
+        ],
+        include_directories: ['src', 'src/external'],
+        dependencies: dependencies + gtest,
+        cpp_args: '-DTEST_DATA_DIR="' + meson.current_source_dir() + '/test/data"',
+    )
+    test('Unit tests', test_exe)
+endif

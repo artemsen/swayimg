@@ -26,7 +26,7 @@ jobs:
           build-essential
           libavif-dev
           libdrm-dev
-          libexif-dev
+          libexiv2-dev
           libfontconfig-dev
           libfreetype-dev
           libgif-dev
@@ -35,6 +35,7 @@ jobs:
           libjpeg-dev
           libjson-c-dev
           libjxl-dev
+          libluajit-5.1-dev
           libopenexr-dev
           libraw-dev
           librsvg2-dev
@@ -49,7 +50,7 @@ jobs:
 
         run: |
           set -e
-          meson setup --werror -D tests=enabled -D heif=enabled -D bash=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
+          meson setup --werror -D tests=enabled -D heif=enabled -D bash=enabled -D exif=enabled -D exr=auto -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           meson test --verbose -C ${{ env.BUILD_PATH }}
           DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}

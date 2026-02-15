@@ -3,10 +3,10 @@ FROM i386/alpine:latest
 RUN apk add \
     bash-completion-dev \
     build-base \
+    exiv2-dev \
     giflib-dev \
     json-c-dev \
     libdrm-dev \
-    libexif-dev \
     libheif-dev \
     libjpeg-turbo-dev \
     libjxl-dev \
@@ -15,6 +15,7 @@ RUN apk add \
     libsixel-dev \
     libwebp-dev \
     libxkbcommon-dev \
+    luajit-dev \
     meson \
     wayland-dev \
     wayland-protocols

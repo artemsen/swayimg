@@ -1,9 +1,0 @@
-# Swayimg test configuration file.
-
-[general]
- mode 	 =	s p a c e s  
-app_id=my_ap_id
-sigusr1=
-
-[unknown_section]
-some_param = 1

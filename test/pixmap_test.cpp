@@ -1,537 +1,301 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "pixmap_test.h"
+#include "pixmap.hpp"
 
-TEST_F(PixmapTest, Create)
+#include <gtest/gtest.h>
+
+#include <format>
+
+::testing::AssertionResult CheckPixmap(const Pixmap& pm,
+                                       const std::vector<argb_t>& expect)
 {
-    struct pixmap pm;
+    if (pm.width() * pm.height() != expect.size()) {
+        return ::testing::AssertionFailure()
+            << "Wrong pixmap size: " << expect.size() << " expected "
+            << pm.width() * pm.height();
+    }
+    for (size_t y = 0; y < pm.height(); ++y) {
+        for (size_t x = 0; x < pm.width(); ++x) {
+            if (pm.at(x, y) != expect[y * pm.width() + x]) {
+                return ::testing::AssertionFailure()
+                    << std::format(
+                           "{}",
+                           *reinterpret_cast<const uint32_t*>(pm.ptr(x, y)))
+                    << " != "
+                    << std::format("{}",
+                                   *reinterpret_cast<const uint32_t*>(
+                                       &expect[y * pm.width() + x]))
+                    << " at x:" << x << ",y:" << y;
+            }
+        }
+    }
 
-    ASSERT_TRUE(pixmap_create(&pm, pixmap_argb, 123, 456));
-    EXPECT_NE(pm.data, nullptr);
-    EXPECT_EQ(pm.data[0], static_cast<size_t>(0));
-    EXPECT_EQ(pm.format, pixmap_argb);
-    EXPECT_EQ(pm.width, static_cast<size_t>(123));
-    EXPECT_EQ(pm.height, static_cast<size_t>(456));
-
-    pixmap_free(&pm);
+    return ::testing::AssertionSuccess();
 }
 
-TEST_F(PixmapTest, Fill)
+#define EXPECT_PMEQ(pm, ex) \
+    EXPECT_TRUE(CheckPixmap(pm, ex)) << "Pixmap:\n" << to_string(pm)
+
+static std::string to_string(const Pixmap& pm)
 {
-    const argb_t clr = 0x12345678;
+    std::string res;
+    for (size_t y = 0; y < pm.height(); ++y) {
+        for (size_t x = 0; x < pm.width(); ++x) {
+            res += std::format(
+                " {}", *reinterpret_cast<const uint32_t*>((pm.ptr(x, y))));
+        }
+        res += '\n';
+    }
+    return res;
+}
+
+TEST(PixmapTest, Create)
+{
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 10, 5);
+    EXPECT_EQ(pm.width(), 10UL);
+    EXPECT_EQ(pm.height(), 5UL);
+    EXPECT_EQ(pm.stride(), 40UL);
+    EXPECT_TRUE(pm);
+
+    EXPECT_TRUE(pm.ptr(0, 0));
+    EXPECT_TRUE(pm.ptr(9, 4));
+    EXPECT_EQ(pm.at(0, 0), 0);
+    EXPECT_EQ(pm.at(9, 4), 0);
+}
+
+TEST(PixmapTest, Attach)
+{
+    std::vector<argb_t> data = { 1, 2, 3, 4 };
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 2, 2, data.data());
+    EXPECT_EQ(pm.width(), 2UL);
+    EXPECT_EQ(pm.height(), 2UL);
+    EXPECT_EQ(pm.stride(), 8UL);
+    EXPECT_PMEQ(pm, data);
+}
+
+TEST(PixmapTest, Free)
+{
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 10, 10);
+    pm.free();
+    EXPECT_EQ(pm.width(), 0UL);
+    EXPECT_EQ(pm.height(), 0UL);
+    EXPECT_EQ(pm.stride(), 0UL);
+    EXPECT_FALSE(pm);
+}
+
+TEST(PixmapTest, Fill)
+{
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 4, 4);
+    pm.fill({ 1, 1, 10, 10 }, 1);
 
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, clr,  clr,  0x13,
-        0x20, clr,  clr,  0x23,
-        0x30, 0x31, 0x32, 0x33,
+    const std::vector<argb_t> expect = {
+        0, 0, 0, 0,
+        0, 1, 1, 1,
+        0, 1, 1, 1,
+        0, 1, 1, 1,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-
-    pixmap_fill(&pm, 1, 1, 2, 2, clr);
-    Compare(pm, expect);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, FillOutsideTL)
+TEST(PixmapTest, FlipHorizontal)
 {
-    const argb_t clr = 0x12345678;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    std::vector<argb_t> source = {
+        1, 0, 0, 2,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        3, 0, 0, 1,
     };
-    const argb_t expect[] = {
-        clr,  clr,  0x02, 0x03,
-        clr,  clr,  0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    const std::vector<argb_t> expect = {
+        2, 0, 0, 1,
+        0, 0, 1, 0,
+        0, 1, 0, 0,
+        1, 0, 0, 3,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_fill(&pm, -2, -2, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 4, 4, source.data());
+    pm.flip_horizontal();
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, FillOutsideBR)
+TEST(PixmapTest, FlipVertical)
 {
-    const argb_t clr = 0x12345678;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    std::vector<argb_t> source = {
+        1, 0, 0, 2,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        3, 0, 0, 1,
     };
-    const argb_t expect[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, clr,  clr,
-        0x30, 0x31, clr,  clr,
+    const std::vector<argb_t> expect = {
+        3, 0, 0, 1,
+        0, 0, 1, 0,
+        0, 1, 0, 0,
+        1, 0, 0, 2,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_fill(&pm, 2, 2, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 4, 4, source.data());
+    pm.flip_vertical();
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, InverseFill)
+TEST(PixmapTest, Rotate90)
 {
-    const argb_t clr = 0x12345678;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    std::vector<argb_t> source = {
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        8, 9, 0, 1,
     };
-    const argb_t expect[] = {
-        clr,  clr,  clr,  clr,
-        clr,  0x11, 0x12, clr,
-        clr,  0x21, 0x22, clr,
-        clr,  clr,  clr,  clr,
+    const std::vector<argb_t> expect = {
+        8, 4, 0,
+        9, 5, 1,
+        0, 6, 2,
+        1, 7, 3,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_inverse_fill(&pm, 1, 1, 2, 2, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 4, 3, source.data());
+    pm.rotate(90);
+    EXPECT_EQ(pm.width(), 3UL);
+    EXPECT_EQ(pm.height(), 4UL);
+    EXPECT_EQ(pm.stride(), 12UL);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, InverseOutsideTL)
+TEST(PixmapTest, Rotate180)
 {
-    const argb_t clr = 0x12345678;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    std::vector<argb_t> source = {
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        8, 9, 0, 1,
     };
-    const argb_t expect[] = {
-        0x00, 0x01, clr,  clr,
-        0x10, 0x11, clr,  clr,
-        clr,  clr,  clr,  clr,
-        clr,  clr,  clr,  clr,
+    const std::vector<argb_t> expect = {
+        1, 0, 9, 8,
+        7, 6, 5, 4,
+        3, 2, 1, 0,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_inverse_fill(&pm, -2, -2, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 4, 3, source.data());
+    pm.rotate(180);
+    EXPECT_EQ(pm.width(), 4UL);
+    EXPECT_EQ(pm.height(), 3UL);
+    EXPECT_EQ(pm.stride(), 16UL);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, InverseOutsideBR)
+TEST(PixmapTest, Rotate270)
 {
-    const argb_t clr = 0x12345678;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
+    std::vector<argb_t> source = {
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        8, 9, 0, 1,
     };
-    const argb_t expect[] = {
-        clr,  clr,  clr,  clr,
-        clr,  clr,  clr,  clr,
-        clr,  clr,  0x22, 0x23,
-        clr,  clr,  0x32, 0x33,
+    const std::vector<argb_t> expect = {
+        3, 7, 1,
+        2, 6, 0,
+        1, 5, 9,
+        0, 4, 8,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_inverse_fill(&pm, 2, 2, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.attach(Pixmap::ARGB, 4, 3, source.data());
+    pm.rotate(270);
+    EXPECT_EQ(pm.width(), 3UL);
+    EXPECT_EQ(pm.height(), 4UL);
+    EXPECT_EQ(pm.stride(), 12UL);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, Grid)
+TEST(PixmapTest, Grid)
 {
-    const argb_t clr1 = 0x12345678;
-    const argb_t clr2 = 0x87654321;
-
     // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        clr2, clr2, clr1, clr1,
-        clr2, clr2, clr1, clr1,
-        clr1, clr1, clr2, clr2,
-        clr1, clr1, clr2, clr2,
+    const std::vector<argb_t> expect = {
+        0, 0, 0, 0,
+        0, 2, 1, 2,
+        0, 1, 2, 1,
+        0, 2, 1, 2,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_grid(&pm, -10, -10, 20, 20, 2, clr1, clr2);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 4, 4);
+    pm.grid({ 1, 1, 10, 10 }, 1, 1, 2);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, Mask)
+TEST(PixmapTest, Rectangle)
 {
-    const argb_t clr = 0xffaaaaaa;
-
     // clang-format off
-    argb_t src[] = {
-        0xdddddddd, 0xcccccccc, 0xbbbbbbbb, 0xaaaaaaaa,
-        0x11111111, 0xff000000, 0x80000000, 0x22222222,
-        0x33333333, 0xaa111111, 0x00000000, 0x44444444,
-        0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc, 0xdddddddd,
-    };
-    const uint8_t mask[] = {
-        0x00, 0x00, 0x00, 0x00,
-        0x00, 0xff, 0xff, 0x00,
-        0x00, 0x80, 0x40, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-    };
-    const argb_t expect[] = {
-        0xdddddddd, 0xcccccccc, 0xbbbbbbbb, 0xaaaaaaaa,
-        0x11111111, 0xffaaaaaa, 0xffaaaaaa, 0x22222222,
-        0x33333333, 0xaa5d5d5d, 0x402a2a2a, 0x44444444,
-        0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc, 0xdddddddd,
+    const std::vector<argb_t> expect = {
+        0, 0, 0, 0,
+        0, 1, 1, 1,
+        0, 1, 0, 0,
+        0, 1, 0, 0,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_apply_mask(&pm, 0, 0, mask, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 4, 4);
+    pm.rectangle({ 1, 1, 10, 10 }, 1, 1);
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, MaskOutsideTL)
+TEST(PixmapTest, Filter)
 {
-    const argb_t clr = 0xffaaaaaa;
-
     // clang-format off
-    argb_t src[] = {
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
-    };
-    const uint8_t mask[] = {
-        0xff, 0xff, 0xff, 0xff,
-        0xff, 0x00, 0x00, 0xff,
-        0xff, 0x00, 0x00, 0xff,
-        0xff, 0xff, 0xff, 0xff,
-    };
-    const argb_t expect[] = {
-        0xff000000, 0xffaaaaaa, 0xff000000, 0xff000000,
-        0xffaaaaaa, 0xffaaaaaa, 0x00000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
+    const std::vector<argb_t> expect = {
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_apply_mask(&pm, -2, -2, mask, 4, 4, clr);
-    Compare(pm, expect);
+    Pixmap pm;
+    pm.create(Pixmap::ARGB, 4, 4);
+    pm.foreach([](argb_t& c) {
+        c = 1;
+    });
+    EXPECT_PMEQ(pm, expect);
 }
 
-TEST_F(PixmapTest, MaskOutsideBR)
+TEST(PixmapTest, Copy)
 {
-    const argb_t clr = 0xffaaaaaa;
-
     // clang-format off
-    argb_t src[] = {
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
-    };
-    const uint8_t mask[] = {
-        0xff, 0xff, 0xff, 0xff,
-        0xff, 0x00, 0x00, 0xff,
-        0xff, 0x00, 0x00, 0xff,
-        0xff, 0xff, 0xff, 0xff,
-    };
-    const argb_t expect[] = {
-        0xff000000, 0xff000000, 0xff000000, 0xff000000,
-        0xff000000, 0x00000000, 0x00000000, 0xff000000,
-        0xff000000, 0x00000000, 0xffaaaaaa, 0xffaaaaaa,
-        0xff000000, 0xff000000, 0xffaaaaaa, 0xff000000,
+    const std::vector<argb_t> expect = {
+        0, 0, 0, 0,
+        0, 1, 1, 1,
+        0, 1, 1, 1,
+        0, 1, 1, 1,
     };
     // clang-format on
 
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_apply_mask(&pm, 2, 2, mask, 4, 4, clr);
-    Compare(pm, expect);
-}
+    Pixmap fg;
+    fg.create(Pixmap::ARGB, 4, 4);
+    fg.fill({ 0, 0, 4, 4 }, 1);
 
-TEST_F(PixmapTest, Copy)
-{
-    // clang-format off
-    argb_t src[] = {
-        0xaa, 0xbb,
-        0xcc, 0xdd,
-    };
-    argb_t dst[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0xaa, 0xbb, 0x13,
-        0x20, 0xcc, 0xdd, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
+    Pixmap bg;
+    bg.create(Pixmap::ARGB, 4, 4);
+    bg.copy(fg, 1, 1);
 
-    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 1, 1);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, CopyOutsideTL)
-{
-    // clang-format off
-    argb_t src[] = {
-        0xaa, 0xbb,
-        0xcc, 0xdd,
-    };
-    argb_t dst[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0xdd, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, -1, -1);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, CopyOutsideBR)
-{
-    // clang-format off
-    argb_t src[] = {
-        0xaa, 0xbb,
-        0xcc, 0xdd,
-    };
-    argb_t dst[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0xaa,
-    };
-    // clang-format on
-
-    const struct pixmap pm_src = { pixmap_xrgb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 3, 3);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, CopyAlpha)
-{
-    // clang-format off
-    argb_t src[] = {
-        0xffaaaaaa, 0x80aaaaaa,
-        0x40aaaaaa, 0x00aaaaaa,
-    };
-    argb_t dst[] = {
-        0x00000000, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0x55555555, 0x66666666, 0x77777777,
-        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
-    };
-    const argb_t expect[] = {
-        0x00000000, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0xffaaaaaa, 0x80888888, 0x77777777,
-        0x88888888, 0x999d9d9d, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
-    };
-    // clang-format on
-
-    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 1, 1);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, CopyAlphaOutsideTL)
-{
-    // clang-format off
-    argb_t src[] = {
-        0x00aaaaaa, 0x40bbbbbb,
-        0x80cccccc, 0xffdddddd,
-    };
-    argb_t dst[] = {
-        0x00000000, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0x55555555, 0x66666666, 0x77777777,
-        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
-    };
-    const argb_t expect[] = {
-        0xffdddddd, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0x55555555, 0x66666666, 0x77777777,
-        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
-    };
-    // clang-format on
-
-    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, -1, -1);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, CopyAlphaOutsideBL)
-{
-    // clang-format off
-    argb_t src[] = {
-        0xffaaaaaa, 0x80aaaaaa,
-        0x40aaaaaa, 0x00aaaaaa,
-    };
-    argb_t dst[] = {
-        0x00000000, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0x55555555, 0x66666666, 0x77777777,
-        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffffffff,
-    };
-    const argb_t expect[] = {
-        0x00000000, 0x11111111, 0x22222222, 0x33333333,
-        0x44444444, 0x55555555, 0x66666666, 0x77777777,
-        0x88888888, 0x99999999, 0xaaaaaaaa, 0xbbbbbbbb,
-        0xcccccccc, 0xdddddddd, 0xeeeeeeee, 0xffaaaaaa,
-    };
-    // clang-format on
-
-    const struct pixmap pm_src = { pixmap_argb, 2, 2, src };
-    struct pixmap pm_dst = { pixmap_argb, 4, 4, dst };
-    pixmap_copy(&pm_src, &pm_dst, 3, 3);
-    Compare(pm_dst, expect);
-}
-
-TEST_F(PixmapTest, Rect)
-{
-    const argb_t clr = 0xff345678;
-
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        clr,  clr,  clr,  clr,
-        clr,  0x11, 0x12, clr,
-        clr,  0x21, 0x22, clr,
-        clr,  clr,  clr,  clr,
-    };
-    // clang-format on
-
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-
-    pixmap_rect(&pm, 0, 0, 4, 4, 1, clr);
-    Compare(pm, expect);
-}
-
-TEST_F(PixmapTest, RectThickness)
-{
-    const argb_t c = 0xff345678;
-    argb_t src[16 * 8] = { 0 };
-
-    // clang-format off
-    const argb_t expect[sizeof(src)] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, c, c, c, c, c, c, c, c, c, c, c, c, c, c, 0,
-        0, c, c, c, c, c, c, c, c, c, c, c, c, c, c, 0,
-        0, c, c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, c, c, 0,
-        0, c, c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, c, c, 0,
-        0, c, c, c, c, c, c, c, c, c, c, c, c, c, c, 0,
-        0, c, c, c, c, c, c, c, c, c, c, c, c, c, c, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    };
-    // clang-format on
-
-    struct pixmap pm = { pixmap_argb, 16, 8, src };
-
-    pixmap_rect(&pm, 1, 1, 14, 6, 2, c);
-    Compare(pm, expect);
-}
-
-TEST_F(PixmapTest, RectOutsideTL)
-{
-    const argb_t clr = 0xff345678;
-
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0x00, clr,  0x02, 0x03,
-        clr,  clr,  0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    // clang-format on
-
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_rect(&pm, -2, -2, 4, 4, 1, clr);
-    Compare(pm, expect);
-}
-
-TEST_F(PixmapTest, RectOutsideBR)
-{
-    const argb_t clr = 0xff345678;
-
-    // clang-format off
-    argb_t src[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, 0x22, 0x23,
-        0x30, 0x31, 0x32, 0x33,
-    };
-    const argb_t expect[] = {
-        0x00, 0x01, 0x02, 0x03,
-        0x10, 0x11, 0x12, 0x13,
-        0x20, 0x21, clr,  clr,
-        0x30, 0x31, clr,  0x33,
-    };
-    // clang-format on
-
-    struct pixmap pm = { pixmap_argb, 4, 4, src };
-    pixmap_rect(&pm, 2, 2, 4, 4, 1, clr);
-    Compare(pm, expect);
+    EXPECT_PMEQ(bg, expect);
 }

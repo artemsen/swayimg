@@ -55,4 +55,4 @@ jobs:
       run: docker exec swayimg ninja -C ${{ env.BUILD_PATH }} clang-tidy
 
     - name: Check clang-format
-      run: docker exec swayimg clang-format --Werror --dry-run src/*.c src/*.h src/formats/* test/*.cpp
+      run: docker exec swayimg clang-format --Werror --dry-run src/*.cpp src/*.hpp src/formats/* test/*.cpp
