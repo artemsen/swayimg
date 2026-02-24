@@ -18,7 +18,9 @@
 #include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
+#include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -39,6 +41,12 @@
 // Timeout to hide cursor
 #define CURSOR_HIDE_TIMEOUT 3 // sec
 
+// DnD mime types
+#define MIME_URI_LIST   "text/uri-list"
+#define MIME_TEXT_UTF8  "text/plain;charset=utf-8"
+#define MIME_TEXT_PLAIN "text/plain"
+#define MIME_GNOME_COPY "x-special/gnome-copied-files"
+
 /** Wayland context. */
 struct wayland {
     // wayland objects
@@ -52,6 +60,8 @@ struct wayland {
         struct wl_pointer* pointer;
         struct wl_surface* surface;
         struct wl_output* output;
+        struct wl_data_device_manager* data_device_manager;
+        struct wl_data_device* data_device;
     } wl;
 
     // wayland protocols objects
@@ -110,12 +120,160 @@ struct wayland {
         int y;
     } mouse;
 
+    // drag and drop payload
+    struct dnd {
+        struct wl_data_source* source;
+        char* file_uri;
+        char* file_path;
+        char* gnome_copy;
+    } dnd;
+
     // fullscreen mode
     bool fullscreen;
 
     // flag to cancel event queue
     bool event_handled;
 };
+
+/**
+ * Release current DnD payload.
+ * @param ctx UI context
+ */
+static void dnd_payload_reset(struct wayland* ctx)
+{
+    free(ctx->dnd.file_uri);
+    free(ctx->dnd.file_path);
+    free(ctx->dnd.gnome_copy);
+    ctx->dnd.file_uri = NULL;
+    ctx->dnd.file_path = NULL;
+    ctx->dnd.gnome_copy = NULL;
+}
+
+/**
+ * URI escape file path.
+ * @param path source file path
+ * @return escaped URI path or NULL on errors
+ */
+static char* uri_escape_path(const char* path)
+{
+    size_t len = 0;
+    size_t esc_len = 0;
+    char* out;
+    char* dst;
+
+    while (path[len]) {
+        const unsigned char ch = (unsigned char)path[len];
+        if (isalnum(ch) || ch == '/' || ch == '-' || ch == '_' || ch == '.' ||
+            ch == '~') {
+            esc_len += 1;
+        } else {
+            esc_len += 3;
+        }
+        ++len;
+    }
+
+    out = malloc(esc_len + 1);
+    if (!out) {
+        return NULL;
+    }
+
+    dst = out;
+    for (size_t i = 0; i < len; ++i) {
+        const unsigned char ch = (unsigned char)path[i];
+        if (isalnum(ch) || ch == '/' || ch == '-' || ch == '_' || ch == '.' ||
+            ch == '~') {
+            *dst++ = ch;
+        } else {
+            dst += snprintf(dst, 4, "%%%02X", ch);
+        }
+    }
+    *dst = 0;
+
+    return out;
+}
+
+/**
+ * Write complete buffer to file descriptor.
+ * @param fd target descriptor
+ * @param data buffer to write
+ */
+static void write_to_fd(int fd, const char* data)
+{
+    size_t left = strlen(data);
+
+    while (left) {
+        const ssize_t rc = write(fd, data, left);
+        if (rc < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
+        }
+        if (rc == 0) {
+            break;
+        }
+        left -= rc;
+        data += rc;
+    }
+}
+
+/**
+ * Build drag-n-drop payload for currently shown image file.
+ * @param ctx UI context
+ * @return true if payload built successfully
+ */
+static bool dnd_build_payload(struct wayland* ctx)
+{
+    const struct image* image = app_current_image();
+    const char* source;
+    char* escaped;
+
+    dnd_payload_reset(ctx);
+
+    if (!image || !image->source) {
+        return false;
+    }
+
+    source = image->source;
+    if (strncmp(source, LDRSRC_STDIN, LDRSRC_STDIN_LEN) == 0 ||
+        strncmp(source, LDRSRC_EXEC, LDRSRC_EXEC_LEN) == 0) {
+        return false;
+    }
+    if (*source != '/') {
+        return false;
+    }
+
+    ctx->dnd.file_path = str_dup(source, NULL);
+    if (!ctx->dnd.file_path) {
+        dnd_payload_reset(ctx);
+        return false;
+    }
+
+    escaped = uri_escape_path(source);
+    if (!escaped) {
+        dnd_payload_reset(ctx);
+        return false;
+    }
+    str_append("file://", 0, &ctx->dnd.file_uri);
+    str_append(escaped, 0, &ctx->dnd.file_uri);
+    free(escaped);
+
+    if (!ctx->dnd.file_uri) {
+        dnd_payload_reset(ctx);
+        return false;
+    }
+
+    str_append("copy\n", 0, &ctx->dnd.gnome_copy);
+    str_append(ctx->dnd.file_uri, 0, &ctx->dnd.gnome_copy);
+    str_append("\n", 0, &ctx->dnd.gnome_copy);
+
+    if (!ctx->dnd.gnome_copy) {
+        dnd_payload_reset(ctx);
+        return false;
+    }
+
+    return true;
+}
 
 /**
  * Recreate window buffers.
@@ -235,6 +393,140 @@ static void on_keyboard_key(void* data, struct wl_keyboard* wl_keyboard,
     }
 }
 
+/*******************************************************************************
+ * Drag and Drop handlers
+ ******************************************************************************/
+static void on_data_source_target(void* data, struct wl_data_source* source,
+                                  const char* mime_type)
+{
+}
+
+static void on_data_source_send(void* data, struct wl_data_source* source,
+                                const char* mime_type, int32_t fd)
+{
+    struct wayland* ctx = data;
+
+    if (strcmp(mime_type, MIME_URI_LIST) == 0) {
+        write_to_fd(fd, ctx->dnd.file_uri);
+        write_to_fd(fd, "\r\n");
+    } else if (strcmp(mime_type, MIME_TEXT_UTF8) == 0 ||
+               strcmp(mime_type, MIME_TEXT_PLAIN) == 0) {
+        write_to_fd(fd, ctx->dnd.file_path);
+        write_to_fd(fd, "\n");
+    } else if (strcmp(mime_type, MIME_GNOME_COPY) == 0) {
+        write_to_fd(fd, ctx->dnd.gnome_copy);
+    }
+
+    close(fd);
+}
+
+static void on_data_source_cancelled(void* data, struct wl_data_source* source)
+{
+    struct wayland* ctx = data;
+    if (ctx->dnd.source) {
+        wl_data_source_destroy(ctx->dnd.source);
+        ctx->dnd.source = NULL;
+    }
+    dnd_payload_reset(ctx);
+}
+
+static void on_data_source_dnd_drop_performed(void* data,
+                                              struct wl_data_source* source)
+{
+}
+
+static void on_data_source_dnd_finished(void* data, struct wl_data_source* source)
+{
+}
+
+static void on_data_source_action(void* data, struct wl_data_source* source,
+                                  uint32_t dnd_action)
+{
+}
+
+static const struct wl_data_source_listener data_source_listener = {
+    .target = on_data_source_target,
+    .send = on_data_source_send,
+    .cancelled = on_data_source_cancelled,
+    .dnd_drop_performed = on_data_source_dnd_drop_performed,
+    .dnd_finished = on_data_source_dnd_finished,
+    .action = on_data_source_action,
+};
+
+static void on_data_device_data_offer(void* data, struct wl_data_device* device,
+                                      struct wl_data_offer* offer)
+{
+    wl_data_offer_destroy(offer);
+}
+
+static void on_data_device_enter(void* data, struct wl_data_device* device,
+                                 uint32_t serial, struct wl_surface* surface,
+                                 wl_fixed_t x, wl_fixed_t y,
+                                 struct wl_data_offer* id)
+{
+}
+
+static void on_data_device_leave(void* data, struct wl_data_device* device) { }
+
+static void on_data_device_motion(void* data, struct wl_data_device* device,
+                                  uint32_t time, wl_fixed_t x, wl_fixed_t y)
+{
+}
+
+static void on_data_device_drop(void* data, struct wl_data_device* device) { }
+
+static void on_data_device_selection(void* data, struct wl_data_device* device,
+                                     struct wl_data_offer* offer)
+{
+}
+
+static const struct wl_data_device_listener data_device_listener = {
+    .data_offer = on_data_device_data_offer,
+    .enter = on_data_device_enter,
+    .leave = on_data_device_leave,
+    .motion = on_data_device_motion,
+    .drop = on_data_device_drop,
+    .selection = on_data_device_selection,
+};
+
+/**
+ * Start drag-n-drop operation.
+ * @param ctx UI context
+ * @param serial serial from pointer button event
+ * @return true if DnD successfully started
+ */
+static bool start_dnd(struct wayland* ctx, uint32_t serial)
+{
+    if (!ctx->wl.data_device_manager || !ctx->wl.data_device) {
+        return false;
+    }
+    if (!dnd_build_payload(ctx)) {
+        return false;
+    }
+
+    if (ctx->dnd.source) {
+        wl_data_source_destroy(ctx->dnd.source);
+        ctx->dnd.source = NULL;
+    }
+
+    ctx->dnd.source =
+        wl_data_device_manager_create_data_source(ctx->wl.data_device_manager);
+    if (!ctx->dnd.source) {
+        dnd_payload_reset(ctx);
+        return false;
+    }
+
+    wl_data_source_add_listener(ctx->dnd.source, &data_source_listener, ctx);
+    wl_data_source_offer(ctx->dnd.source, MIME_URI_LIST);
+    wl_data_source_offer(ctx->dnd.source, MIME_TEXT_UTF8);
+    wl_data_source_offer(ctx->dnd.source, MIME_TEXT_PLAIN);
+    wl_data_source_offer(ctx->dnd.source, MIME_GNOME_COPY);
+
+    wl_data_device_start_drag(ctx->wl.data_device, ctx->dnd.source,
+                              ctx->wl.surface, NULL, serial);
+    return true;
+}
+
 static void on_pointer_enter(void* data, struct wl_pointer* wl_pointer,
                              uint32_t serial, struct wl_surface* surface,
                              wl_fixed_t surface_x, wl_fixed_t surface_y)
@@ -304,6 +596,13 @@ static void on_pointer_button(void* data, struct wl_pointer* wl_pointer,
             const uint8_t mods = keybind_mods(ctx->xkb.state);
             ctx->mouse.button |= btn;
             app_on_mclick(mods, ctx->mouse.button, ctx->mouse.x, ctx->mouse.y);
+
+            if (ctx->mouse.shape == ui_cursor_drag_and_drop &&
+                start_dnd(ctx, serial)) {
+                // The compositor handles drag cursor and motion while dragging.
+                ctx->mouse.button &= ~btn;
+                ui_set_cursor(ui_cursor_default);
+            }
         }
     }
 }
@@ -379,6 +678,14 @@ static void on_seat_capabilities(void* data, struct wl_seat* seat, uint32_t cap)
     } else if (ctx->wl.pointer) {
         wl_pointer_destroy(ctx->wl.pointer);
         ctx->wl.pointer = NULL;
+    }
+
+    if (ctx->wl.data_device_manager && !ctx->wl.data_device) {
+        ctx->wl.data_device =
+            wl_data_device_manager_get_data_device(ctx->wl.data_device_manager,
+                                                   seat);
+        wl_data_device_add_listener(ctx->wl.data_device, &data_device_listener,
+                                    ctx);
     }
 
     // register idle listener
@@ -524,6 +831,12 @@ static void on_registry_global(void* data, struct wl_registry* registry,
                                         WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION);
         wl_seat_add_listener(ctx->wl.seat, &seat_listener, data);
 
+    } else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
+        // drag-and-drop + clipboard data device
+        ctx->wl.data_device_manager = wl_registry_bind(
+            registry, name, &wl_data_device_manager_interface,
+            WL_DATA_DEVICE_MANAGER_GET_DATA_DEVICE_SINCE_VERSION);
+
     } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
         // idle notifier
         ctx->wp.idle_manager =
@@ -658,17 +971,18 @@ static void wayland_set_cursor(void* data, enum ui_cursor shape)
     enum wp_cursor_shape_device_v1_shape wlshape;
     struct wp_cursor_shape_device_v1* dev;
 
+    ctx->mouse.shape = shape;
+
     if (!ctx->wl.pointer || !ctx->wp.cursor) {
         return;
     }
-
-    ctx->mouse.shape = shape;
 
     switch (shape) {
         case ui_cursor_hide:
             wl_pointer_set_cursor(ctx->wl.pointer, 0, NULL, 0, 0);
             return;
         case ui_cursor_drag:
+        case ui_cursor_drag_and_drop:
             wlshape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING;
             break;
         case ui_cursor_default:
@@ -796,7 +1110,18 @@ static void wayland_free(void* data)
     wndbuf_free(ctx->wnd.buffer0);
     wndbuf_free(ctx->wnd.buffer1);
 
+    if (ctx->dnd.source) {
+        wl_data_source_destroy(ctx->dnd.source);
+    }
+    dnd_payload_reset(ctx);
+
     // base wayland
+    if (ctx->wl.data_device) {
+        wl_data_device_destroy(ctx->wl.data_device);
+    }
+    if (ctx->wl.data_device_manager) {
+        wl_data_device_manager_destroy(ctx->wl.data_device_manager);
+    }
     if (ctx->wl.seat) {
         wl_seat_destroy(ctx->wl.seat);
     }
@@ -857,6 +1182,13 @@ void* ui_init_wl(const char* app_id, size_t width, size_t height, bool decor,
     }
     wl_registry_add_listener(ctx->wl.registry, &registry_listener, ctx);
     wl_display_roundtrip(ctx->wl.display);
+
+    if (ctx->wl.data_device_manager && ctx->wl.seat && !ctx->wl.data_device) {
+        ctx->wl.data_device = wl_data_device_manager_get_data_device(
+            ctx->wl.data_device_manager, ctx->wl.seat);
+        wl_data_device_add_listener(ctx->wl.data_device, &data_device_listener,
+                                    ctx);
+    }
 
     ctx->wl.surface = wl_compositor_create_surface(ctx->wl.compositor);
     if (!ctx->wl.surface) {

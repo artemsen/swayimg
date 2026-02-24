@@ -563,6 +563,10 @@ static bool on_mouse_click(uint8_t mods, uint32_t btn,
         ui_set_cursor(ui_cursor_drag);
         return true;
     }
+    if (kb && kb->actions->type == action_drag_and_drop) {
+        ui_set_cursor(ui_cursor_drag_and_drop);
+        return true;
+    }
     return false;
 }
 

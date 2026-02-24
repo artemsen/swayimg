@@ -445,3 +445,11 @@ void app_apply_action(const struct action* action, bool fau)
     // raise notification
     fdevent_set(ctx.event_signal);
 }
+
+const struct image* app_current_image(void)
+{
+    if (!ctx.modes[ctx.mcurr].get_current) {
+        return NULL;
+    }
+    return ctx.modes[ctx.mcurr].get_current();
+}
