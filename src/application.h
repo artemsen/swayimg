@@ -108,3 +108,9 @@ void app_on_keyboard(xkb_keysym_t key, uint8_t mods);
  * @param fau flag to free action after execution
  */
 void app_apply_action(const struct action* action, bool fau);
+
+/**
+ * Get currently showed/selected image.
+ * @return current image instance
+ */
+const struct image* app_current_image(void);

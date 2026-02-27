@@ -532,6 +532,10 @@ Predefined names for mouse buttons/scroll:
 	Mouse buttons in viewer mode only.
 	Set the button for drag operation.
 
+*drag_and_drop*
+	Mouse buttons in viewer/gallery modes only.
+	Start drag and drop operation for the current image file.
+
 *export* FILE
 	Viewer mode only.
 	Export currently displayed image to PNG file.

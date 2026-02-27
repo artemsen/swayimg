@@ -18,6 +18,7 @@
 enum ui_cursor {
     ui_cursor_default,
     ui_cursor_drag,
+    ui_cursor_drag_and_drop,
     ui_cursor_hide,
 };
 

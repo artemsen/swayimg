@@ -235,6 +235,7 @@ Shift+ScrollDown = next_file
 Alt+ScrollUp = prev_frame
 Alt+ScrollDown = next_frame
 MouseLeft = drag
+# MouseMiddle = drag_and_drop
 MouseSide = prev_file
 MouseExtra = next_file
 
@@ -291,3 +292,4 @@ ScrollDown = step_down
 Ctrl+ScrollUp = thumb +20
 Ctrl+ScrollDown = thumb -20
 MouseLeft = mode viewer
+# MouseMiddle = drag_and_drop

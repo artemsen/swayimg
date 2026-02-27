@@ -40,6 +40,7 @@ enum action_type {
     action_reload,
     action_redraw,
     action_drag,
+    action_drag_and_drop,
     action_antialiasing,
     action_info,
     action_exec,
