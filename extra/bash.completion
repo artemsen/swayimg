@@ -4,18 +4,14 @@ _swayimg()
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
     local opts="-g --gallery \
-                -l --slideshow \
-                -F --from-file \
-                -r --recursive \
-                -o --order \
-                -s --scale \
-                -f --fullscreen \
+                -s --slideshow \
+                -f --from-file \
+                -l --fullscreen \
                 -p --position \
                 -w --size \
                 -a --class \
-                -i --ipc \
                 -c --config \
-                -C --config-file \
+                -V --verbose \
                 -v --version \
                 -h --help"
     if [[ ${cur} == -* ]]; then

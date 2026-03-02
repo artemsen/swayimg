@@ -1,0 +1,989 @@
+// SPDX-License-Identifier: MIT
+// Lua integration.
+// Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
+
+#include "luaengine.hpp"
+
+#include "application.hpp"
+#include "gallery.hpp"
+#include "imagelist.hpp"
+#include "log.hpp"
+#include "render.hpp"
+#include "slideshow.hpp"
+#include "text.hpp"
+#include "viewer.hpp"
+
+#include <array>
+#include <cstdlib>
+#include <cstring>
+#include <optional>
+
+// Namespaces
+constexpr const char* NS_SWAYIMG = "swayimg";
+constexpr const char* NS_TEXT = "text";
+constexpr const char* NS_IMAGELIST = "imagelist";
+constexpr const char* NS_VIEWER = "viewer";
+constexpr const char* NS_SLIDESHOW = "slideshow";
+constexpr const char* NS_GALLERY = "gallery";
+
+// app modes table: type to name
+static constexpr std::array appmodes =
+    std::to_array<std::pair<Application::Mode, const char*>>({
+        { Application::Mode::Viewer,    "viewer"    },
+        { Application::Mode::Slideshow, "slideshow" },
+        { Application::Mode::Gallery,   "gallery"   },
+});
+
+// ilage list orders: type to name
+static constexpr std::array ilorders =
+    std::to_array<std::pair<ImageList::Order, const char*>>({
+        { ImageList::Order::None,    "none"    },
+        { ImageList::Order::Alpha,   "alpha"   },
+        { ImageList::Order::Numeric, "numeric" },
+        { ImageList::Order::Mtime,   "mtime"   },
+        { ImageList::Order::Size,    "size"    },
+        { ImageList::Order::Random,  "random"  },
+});
+
+// image list directions: type to name
+static constexpr std::array ildirs =
+    std::to_array<std::pair<ImageList::Dir, const char*>>({
+        { ImageList::Dir::First,      "first"    },
+        { ImageList::Dir::Last,       "last"     },
+        { ImageList::Dir::Next,       "next"     },
+        { ImageList::Dir::Prev,       "prev"     },
+        { ImageList::Dir::NextParent, "next_dir" },
+        { ImageList::Dir::PrevParent, "prev_dir" },
+        { ImageList::Dir::Random,     "random"   },
+});
+
+// fixed scale: type to name
+static constexpr std::array scales =
+    std::to_array<std::pair<Viewer::Scale, const char*>>({
+        { Viewer::Scale::Optimal,    "optimal" },
+        { Viewer::Scale::FitWindow,  "fit"     },
+        { Viewer::Scale::FitWidth,   "width"   },
+        { Viewer::Scale::FitHeight,  "height"  },
+        { Viewer::Scale::FillWindow, "fill"    },
+        { Viewer::Scale::RealSize,   "real"    },
+        { Viewer::Scale::Keep,       "keep"    },
+});
+
+// fixed position: type to name
+static constexpr std::array positions =
+    std::to_array<std::pair<Viewer::Position, const char*>>({
+        { Viewer::Position::Center,       "center"       },
+        { Viewer::Position::TopCenter,    "topcenter"    },
+        { Viewer::Position::BottomCenter, "bottomcenter" },
+        { Viewer::Position::LeftCenter,   "leftcenter"   },
+        { Viewer::Position::RightCenter,  "rightcenter"  },
+        { Viewer::Position::TopLeft,      "topleft"      },
+        { Viewer::Position::TopRight,     "topright"     },
+        { Viewer::Position::BottomLeft,   "bottomleft"   },
+        { Viewer::Position::BottomRight,  "bottomright"  },
+});
+
+// window background mode: type to name
+static constexpr std::array wndbkgs =
+    std::to_array<std::pair<Viewer::Background, const char*>>({
+        { Viewer::Background::Mirror, "mirror" },
+        { Viewer::Background::Extend, "extend" },
+        { Viewer::Background::Auto,   "auto"   },
+});
+
+// set current selection in gallery: type to name
+static constexpr std::array gldirs =
+    std::to_array<std::pair<Layout::Direction, const char*>>({
+        { Layout::Direction::First,  "first"  },
+        { Layout::Direction::Last,   "last"   },
+        { Layout::Direction::Up,     "up"     },
+        { Layout::Direction::Down,   "down"   },
+        { Layout::Direction::Left,   "left"   },
+        { Layout::Direction::Right,  "right"  },
+        { Layout::Direction::PgUp,   "pgup"   },
+        { Layout::Direction::PgDown, "pgdown" },
+});
+
+// thumnail aspect ratio: type to name
+static constexpr std::array aspects =
+    std::to_array<std::pair<Gallery::Aspect, const char*>>({
+        { Gallery::Aspect::Fit,  "fit"  },
+        { Gallery::Aspect::Fill, "fill" },
+        { Gallery::Aspect::Keep, "keep" },
+});
+
+/**
+ * Get type from name.
+ * @param arr table with all possible pairs type->name
+ * @param name name to convert
+ * @return type or nullopt if name not found
+ */
+template <typename T, size_t N>
+static std::optional<T>
+name_to_type(const std::array<std::pair<T, const char*>, N>& arr,
+             const char* name)
+{
+    for (const auto& it : arr) {
+        if (strcmp(it.second, name) == 0) {
+            return it.first;
+        }
+    }
+    return std::nullopt;
+}
+
+/**
+ * Get name from type.
+ * @param arr table with all possible pairs type->name
+ * @param type type to convert
+ * @return name
+ */
+template <typename T, size_t N>
+static const char*
+type_to_name(const std::array<std::pair<T, const char*>, N>& arr, const T& type)
+{
+    for (const auto& it : arr) {
+        if (it.first == type) {
+            return it.second;
+        }
+    }
+    assert(false && "unreachable");
+    return nullptr;
+}
+
+/**
+ * Get path to config file (init.lua).
+ * @return path to initial config file
+ */
+static std::filesystem::path get_config_file()
+{
+    const std::pair<const char*, const char*> env_paths[] = {
+        { "XDG_CONFIG_HOME", "swayimg"          },
+        { "XDG_CONFIG_DIRS", "swayimg"          },
+        { "HOME",            ".config/swayimg"  },
+        { nullptr,           "/etc/xdg/swayimg" }
+    };
+
+    for (size_t i = 0; i < sizeof(env_paths) / sizeof(env_paths[0]); ++i) {
+        std::filesystem::path path;
+
+        const char* env = env_paths[i].first;
+        if (env) {
+            env = std::getenv(env);
+            if (!env) {
+                continue;
+            }
+            // use only the first directory if prefix is a list
+            const char* delim = strchr(env, ':');
+            if (!delim) {
+                path = env;
+            } else {
+                path = std::string(env, delim - 1);
+            }
+        }
+        path /= env_paths[i].second;
+        path /= "init.lua";
+
+        if (std::filesystem::exists(path)) {
+            return std::filesystem::absolute(path).lexically_normal();
+        }
+    }
+
+    return {};
+}
+
+LuaEngine& LuaEngine::self()
+{
+    static LuaEngine singleton;
+    return singleton;
+}
+
+LuaEngine::~LuaEngine()
+{
+    if (lua_state) {
+        for (auto& it : refs) {
+            delete it;
+        }
+        lua_close(lua_state);
+    }
+}
+
+void LuaEngine::initialize(const std::filesystem::path& config)
+{
+    const std::filesystem::path config_file =
+        config.empty() ? get_config_file() : config;
+    if (config_file.empty()) {
+        Log::verbose("User config not found, use default settings");
+        return;
+    } else {
+        Log::verbose("Load user config from {}", config_file.c_str());
+    }
+
+    // initialize lua
+    lua_state = luaL_newstate();
+    if (!lua_state) {
+        Log::error("Unable to initialize Lua state");
+        return;
+    }
+    luaL_openlibs(lua_state);
+
+    // add config dir to lua runtime path
+    lua_getglobal(lua_state, "package");
+    lua_getfield(lua_state, -1, "path");
+    std::string pack_path = lua_tostring(lua_state, -1);
+    lua_pop(lua_state, 2);
+    pack_path += ";" + config_file.parent_path().string() + "/?.lua";
+    lua_getglobal(lua_state, "package");
+    lua_pushstring(lua_state, pack_path.c_str());
+    lua_setfield(lua_state, -2, "path");
+    lua_pop(lua_state, 1); // Pop package table
+
+    // register lua bindings
+    bind_root_api();
+    bind_imagelist_api();
+    bind_text_api();
+    bind_viewer_api(NS_VIEWER);
+    bind_slideshow_api();
+    bind_gallery_api();
+
+    // load config file
+    if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
+        Log::error("Failed to load config file: {}",
+                   lua_tostring(lua_state, -1));
+    } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
+        Log::error("Failed to execute config file: {}",
+                   lua_tostring(lua_state, -1));
+    }
+}
+
+void LuaEngine::bind_root_api()
+{
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .addFunction("exit",
+                     [](const std::optional<int> code) {
+                         Application::self().exit(code ? *code : 0);
+                     })
+        .addFunction("set_title",
+                     [](const char* title) {
+                         Application::get_ui()->set_title(title);
+                     })
+        .addFunction("set_status",
+                     [](const char* status) {
+                         Text::self().set_status(status);
+                     })
+        .addFunction("set_mode",
+                     [](const char* name) {
+                         const auto mode = name_to_type(appmodes, name);
+                         if (mode.has_value()) {
+                             Application::self().set_mode(mode.value());
+                         } else {
+                             Log::error("Invalid mode: {}", name);
+                         }
+                     })
+        .addFunction("get_mode",
+                     []() {
+                         return type_to_name(appmodes,
+                                             Application::self().get_mode());
+                     })
+        .addFunction("get_window_size",
+                     []() {
+                         const Size wnd =
+                             Application::self().get_ui()->get_size();
+                         return std::make_tuple(wnd.width, wnd.height);
+                     })
+        .addFunction("get_mouse_pos",
+                     []() {
+                         const Point pos =
+                             Application::self().get_ui()->get_mouse();
+                         return std::make_tuple(pos.x, pos.y);
+                     })
+        .addFunction("enable_antialiasing",
+                     [](const bool enable) {
+                         Render::self().antialiasing = enable;
+                         Application::redraw();
+                     })
+        .addFunction("enable_decoration",
+                     [](const bool enable) {
+                         Application::self().sparams.decoration = enable;
+                     })
+        .addFunction("enable_overlay",
+                     [](const bool enable) {
+                         Application::self().sparams.use_overlay = enable;
+                     })
+        .endNamespace();
+}
+
+void LuaEngine::bind_imagelist_api()
+{
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(NS_IMAGELIST)
+        .addFunction("size",
+                     []() {
+                         return ImageList::self().size();
+                     })
+        .addFunction("get",
+                     [this]() {
+                         luabridge::LuaRef table =
+                             luabridge::newTable(lua_state);
+                         size_t index = 0;
+                         for (const auto& it : ImageList::self().get_all()) {
+                             table[++index] = entry_to_table(it);
+                         }
+                         return table;
+                     })
+        .addFunction("add",
+                     [](const char* path) {
+                         const std::filesystem::path abs_path =
+                             std::filesystem::absolute(path).lexically_normal();
+                         Application::self().add_event(
+                             AppEvent::FileCreate { path });
+                     })
+        .addFunction("remove",
+                     [](const char* path) {
+                         const std::filesystem::path abs_path =
+                             std::filesystem::absolute(path).lexically_normal();
+                         Application::self().add_event(
+                             AppEvent::FileRemove { path });
+                     })
+        .addFunction(
+            "mark",
+            [](const std::optional<bool>& state) {
+                ImageEntryPtr entry =
+                    Application::self().current_mode()->current_entry();
+                if (state.has_value()) {
+                    entry->mark = state.value();
+                } else {
+                    entry->mark = !entry->mark;
+                }
+                Application::redraw();
+            })
+        .addFunction("set_order",
+                     [](const char* name) {
+                         const auto order = name_to_type(ilorders, name);
+                         if (order.has_value()) {
+                             ImageList::self().set_order(order.value());
+                         } else {
+                             Log::error("Invalid image list order: {}", name);
+                         }
+                     })
+        .addFunction("enable_reverse",
+                     [](const bool enable) {
+                         ImageList::self().set_reverse(enable);
+                     })
+        .addFunction("enable_recursive",
+                     [](const bool enable) {
+                         ImageList::self().recursive = enable;
+                     })
+        .addFunction("enable_adjacent",
+                     [](const bool enable) {
+                         ImageList::self().adjacent = enable;
+                     })
+        .endNamespace()
+        .endNamespace();
+}
+
+void LuaEngine::bind_text_api()
+{
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(NS_TEXT)
+        .addFunction("set_font",
+                     [](const char* name) {
+                         Text::self().set_font(name);
+                     })
+        .addFunction("set_size",
+                     [](const size_t sz) {
+                         Text::self().set_size(sz);
+                     })
+        .addFunction("set_padding",
+                     [](const size_t sz) {
+                         Text::self().set_padding(sz);
+                     })
+        .addFunction("set_foreground",
+                     [](const uint32_t clr) {
+                         Text::self().set_foreground(clr);
+                     })
+        .addFunction("set_background",
+                     [](const uint32_t clr) {
+                         Text::self().set_background(clr);
+                     })
+        .addFunction("set_shadow",
+                     [](const uint32_t clr) {
+                         Text::self().set_shadow(clr);
+                     })
+        .addFunction("set_overall_timer",
+                     [](const size_t to) {
+                         Text::self().set_overall_timer(to);
+                     })
+        .addFunction("set_status_timer",
+                     [](const size_t to) {
+                         Text::self().set_status_timer(to);
+                     })
+        .addFunction("show",
+                     []() {
+                         Text::self().show();
+                     })
+        .addFunction("hide",
+                     []() {
+                         Text::self().hide();
+                     })
+        .endNamespace()
+        .endNamespace();
+}
+
+void LuaEngine::bind_viewer_api(const char* name)
+{
+    assert(strcmp(name, NS_VIEWER) == 0 || strcmp(name, NS_SLIDESHOW) == 0);
+
+    Viewer* mode =
+        strcmp(name, NS_VIEWER) == 0 ? &Viewer::self() : &Slideshow::self();
+
+    bind_appmode_api(name);
+
+    // check if required mode is active
+    auto check_active = [mode, name](const char* fname) {
+        if (Application::self().current_mode() == mode) {
+            return true;
+        }
+        Log::error("Unable to execute {}.{}.{}: {} mode is not active",
+                   NS_SWAYIMG, name, fname, name);
+        return false;
+    };
+
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(name)
+        .addFunction("open",
+                     [check_active, mode, name](const char* dname) {
+                         if (!check_active("open")) {
+                             return;
+                         }
+                         const auto dir = name_to_type(ildirs, dname);
+                         if (dir.has_value()) {
+                             mode->open_file(dir.value());
+                         } else {
+                             Log::error("Invalid argument {} for {}.{}.open",
+                                        dname, NS_SWAYIMG, name);
+                         }
+                     })
+        .addFunction("current_image",
+                     [this, check_active, mode]() {
+                         if (!check_active("current_image")) {
+                             return luabridge::newTable(lua_state);
+                         }
+                         ImagePtr image = mode->current_image();
+                         luabridge::LuaRef tbl = entry_to_table(*image->entry);
+                         tbl["frames"] = image->frames.size();
+                         tbl["width"] = image->frames[0].pm.width();
+                         tbl["height"] = image->frames[0].pm.height();
+                         tbl["format"] = image->format;
+                         for (const auto& [key, value] : image->meta) {
+                             tbl[key] = value;
+                         }
+                         return tbl;
+                     })
+        .addFunction("get_scale",
+                     [mode]() {
+                         return mode->get_scale();
+                     })
+        .addFunction("set_abs_scale",
+                     [check_active, mode](const double scale,
+                                          const std::optional<ssize_t>& x,
+                                          const std::optional<ssize_t>& y) {
+                         if (!check_active("set_abs_scale")) {
+                             return;
+                         }
+                         Point preserve;
+                         if (x.has_value() && y.has_value()) {
+                             preserve.x = x.value();
+                             preserve.y = y.value();
+                         }
+                         mode->set_scale(scale, preserve);
+                     })
+        .addFunction("set_fix_scale",
+                     [check_active, mode, name](const char* scname) {
+                         if (!check_active("set_fix_scale")) {
+                             return;
+                         }
+                         const auto scale = name_to_type(scales, scname);
+                         if (scale.has_value()) {
+                             mode->set_scale(scale.value());
+                         } else {
+                             Log::error(
+                                 "Invalid argument {} for {}.{}.set_fix_scale",
+                                 scname, NS_SWAYIMG, name);
+                         }
+                     })
+        .addFunction("reset_scale",
+                     [check_active, mode]() {
+                         if (check_active("reset_scale")) {
+                             mode->reset_scale();
+                         }
+                     })
+        .addFunction(
+            "set_default_scale",
+            [mode, name](const luabridge::LuaRef& val) {
+                if (val.isString()) {
+                    const std::string str = val;
+                    const auto scale = name_to_type(scales, str.c_str());
+                    if (scale.has_value()) {
+                        mode->default_scale = scale.value();
+                    } else {
+                        Log::error(
+                            "Invalid argument {} for {}.{}.set_default_scale",
+                            str, NS_SWAYIMG, name);
+                    }
+                } else if (val.isNumber()) {
+                    mode->default_scale = static_cast<double>(val);
+                }
+            })
+        .addFunction("get_position",
+                     [check_active, mode]() {
+                         Point pt;
+                         if (check_active("get_position")) {
+                             pt = mode->get_position();
+                         }
+                         return std::make_tuple(pt.x, pt.y);
+                     })
+        .addFunction("set_abs_position",
+                     [check_active, mode](const ssize_t x, const ssize_t y) {
+                         if (check_active("set_abs_position")) {
+                             mode->set_position({ x, y });
+                         }
+                     })
+        .addFunction(
+            "set_fix_position",
+            [check_active, mode, name](const char* fpos) {
+                if (check_active("set_fix_position")) {
+                    const auto pos = name_to_type(positions, fpos);
+                    if (pos.has_value()) {
+                        mode->set_position(pos.value());
+                    } else {
+                        Log::error(
+                            "Invalid argument {} for {}.{}.set_fix_position",
+                            fpos, NS_SWAYIMG, name);
+                    }
+                }
+            })
+        .addFunction(
+            "set_default_position",
+            [mode, name](const char* fpos) {
+                const auto pos = name_to_type(positions, fpos);
+                if (pos.has_value()) {
+                    mode->default_pos = pos.value();
+                } else {
+                    Log::error(
+                        "Invalid argument {} for {}.{}.set_default_position",
+                        fpos, NS_SWAYIMG, name);
+                }
+            })
+        .addFunction("next_frame",
+                     [check_active, mode]() {
+                         if (check_active("next_frame")) {
+                             mode->animation_stop();
+                             return mode->next_frame();
+                         }
+                         return static_cast<size_t>(0);
+                     })
+        .addFunction("prev_frame",
+                     [check_active, mode]() {
+                         if (check_active("prev_frame")) {
+                             mode->animation_stop();
+                             return mode->prev_frame();
+                         }
+                         return static_cast<size_t>(0);
+                     })
+        .addFunction("flip_vertical",
+                     [check_active, mode]() {
+                         if (check_active("flip_vertical")) {
+                             mode->flip_vertical();
+                         }
+                     })
+        .addFunction("flip_horizontal",
+                     [check_active, mode]() {
+                         if (check_active("flip_horizontal")) {
+                             mode->flip_horizontal();
+                         }
+                     })
+        .addFunction("rotate",
+                     [check_active, mode, name](const size_t angle) {
+                         if (!check_active("rotate")) {
+                             return;
+                         }
+                         if (angle == 90 || angle == 180 || angle == 270) {
+                             mode->rotate(angle);
+                         } else {
+                             Log::error("Invalid argument {} for {}.{}.rotate",
+                                        angle, NS_SWAYIMG, name);
+                         }
+                     })
+        .addFunction("animation_stop",
+                     [check_active, mode]() {
+                         if (check_active("animation_stop")) {
+                             mode->animation_stop();
+                         }
+                     })
+        .addFunction("animation_resume",
+                     [check_active, mode]() {
+                         if (check_active("animation_resume")) {
+                             mode->animation_resume();
+                         }
+                     })
+        .addFunction(
+            "set_window_background",
+            [mode, name](const luabridge::LuaRef& val) {
+                if (val.isString()) {
+                    const std::string str = val;
+                    const auto bgmode = name_to_type(wndbkgs, str.c_str());
+                    if (bgmode.has_value()) {
+                        mode->set_window_background(bgmode.value());
+                    } else {
+                        Log::error("Invalid argument {} for "
+                                   "{}.{}.set_window_background",
+                                   str, NS_SWAYIMG, name);
+                    }
+                } else if (val.isNumber()) {
+                    mode->set_window_background(static_cast<uint32_t>(val));
+                }
+            })
+        .addFunction("set_image_background",
+                     [mode](const uint32_t& val) {
+                         mode->set_image_background(val);
+                     })
+        .addFunction(
+            "set_image_grid",
+            [mode](const size_t sz, const uint32_t clr0, const uint32_t clr1) {
+                mode->set_image_grid(sz, clr0, clr1);
+            })
+        .addFunction("set_meta",
+                     [check_active, mode, name](const std::string& key,
+                                                const std::string& val) {
+                         if (!check_active("set_meta")) {
+                             return;
+                         }
+                         ImagePtr image = mode->current_image();
+                         const std::string meta_prefix = "meta.";
+                         std::string meta_key = key;
+                         if (meta_key.starts_with(meta_prefix)) {
+                             meta_key.erase(0, meta_prefix.length());
+                         }
+                         if (meta_key.empty()) {
+                             Log::error("Empty key for {}.{}.set_meta",
+                                        NS_SWAYIMG, name);
+                             return;
+                         }
+                         if (val.empty()) {
+                             image->meta.erase(meta_key);
+                         } else {
+                             image->meta.insert_or_assign(meta_key, val);
+                         }
+                     })
+        .addFunction("export",
+                     [check_active, mode](const char* path) {
+                         if (check_active("export")) {
+                             mode->export_frame(path);
+                         }
+                     })
+        .addFunction("enable_freemove",
+                     [mode](const bool enable) {
+                         mode->free_move = enable;
+                     })
+        .addFunction("enable_loop",
+                     [mode](const bool enable) {
+                         mode->imagelist_loop = enable;
+                     })
+        .addFunction("set_preload_limit",
+                     [mode](const size_t size) {
+                         mode->set_preload_limit(size);
+                     })
+        .addFunction("set_history_limit",
+                     [mode](const size_t size) {
+                         mode->set_history_limit(size);
+                     })
+        .addFunction(
+            "bind_drag",
+            [mode, name](const std::string& state) {
+                std::optional<InputMouse> input = InputMouse::load(state);
+                if (input) {
+                    mode->bind_image_drag(input.value());
+                } else {
+                    Log::error("Invalid button for {}.{}.bind_drag: {}",
+                               NS_SWAYIMG, name, state);
+                }
+            })
+        .endNamespace()
+        .endNamespace();
+}
+
+void LuaEngine::bind_slideshow_api()
+{
+    bind_viewer_api(NS_SLIDESHOW);
+
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(NS_SLIDESHOW)
+        .addFunction("set_timeout",
+                     [](const double timeout) {
+                         Slideshow::self().duration = timeout * 1000;
+                     })
+        .endNamespace()
+        .endNamespace();
+}
+
+void LuaEngine::bind_gallery_api()
+{
+    // check if required mode is active
+    auto check_active = [](const char* name) {
+        if (Gallery::self().is_active()) {
+            return true;
+        }
+        Log::error("Unable to execute {}.{}.{}: gallery mode is not active",
+                   NS_SWAYIMG, NS_GALLERY, name);
+        return false;
+    };
+
+    bind_appmode_api(NS_GALLERY);
+
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(NS_GALLERY)
+        .addFunction("select",
+                     [check_active](const char* name) {
+                         if (!check_active("select")) {
+                             return;
+                         }
+                         const auto dir = name_to_type(gldirs, name);
+                         if (dir.has_value()) {
+                             Gallery::self().select(dir.value());
+                         } else {
+                             Log::error("Invalid argument {} for {}.{}.select",
+                                        name, NS_SWAYIMG, NS_GALLERY);
+                         }
+                     })
+        .addFunction(
+            "current_image",
+            [this, check_active]() {
+                if (!check_active("current_image")) {
+                    return luabridge::newTable(lua_state);
+                }
+                luabridge::LuaRef table = entry_to_table(
+                    *Application::self().current_mode()->current_entry());
+                return table;
+            })
+        .addFunction("set_aspect",
+                     [](const char* name) {
+                         const auto aspect = name_to_type(aspects, name);
+                         if (aspect.has_value()) {
+                             Gallery::self().set_thumb_aspect(aspect.value());
+                         } else {
+                             Log::error(
+                                 "Invalid argument {} for {}.{}.set_aspect",
+                                 name, NS_SWAYIMG, NS_GALLERY);
+                         }
+                     })
+        .addFunction("get_thumb_size",
+                     []() {
+                         return Gallery::self().get_thumb_size();
+                     })
+        .addFunction("set_thumb_size",
+                     [](const size_t size) {
+                         Gallery::self().set_thumb_size(size);
+                     })
+        .addFunction("set_padding_size",
+                     [](const size_t size) {
+                         Gallery::self().set_padding_size(size);
+                     })
+        .addFunction("set_border_size",
+                     [](const size_t size) {
+                         Gallery::self().set_border_size(size);
+                     })
+        .addFunction("set_border_color",
+                     [](const uint32_t& color) {
+                         Gallery::self().set_border_color(color);
+                     })
+        .addFunction("set_selected_scale",
+                     [](const double scale) {
+                         Gallery::self().set_selected_scale(scale);
+                     })
+        .addFunction("set_selected_color",
+                     [](const uint32_t& color) {
+                         Gallery::self().set_selected_color(color);
+                     })
+        .addFunction("set_background_color",
+                     [](const uint32_t& color) {
+                         Gallery::self().set_background_color(color);
+                     })
+        .addFunction("set_window_color",
+                     [](const uint32_t& color) {
+                         Gallery::self().set_window_color(color);
+                     })
+        .addFunction("set_cache_size",
+                     [](const size_t size) {
+                         Gallery::self().set_cache_size(size);
+                     })
+        .addFunction("enable_preload",
+                     [](const bool enable) {
+                         Gallery::self().enable_preload(enable);
+                     })
+        .addFunction("enable_pstore",
+                     [](const bool enable) {
+                         Gallery::self().enable_pstore(enable);
+                     })
+        .addFunction("set_pstore_path",
+                     [](const std::filesystem::path& path) {
+                         Gallery::self().set_pstore_path(path);
+                     })
+        .endNamespace()
+        .endNamespace();
+}
+
+void LuaEngine::bind_appmode_api(const char* name)
+{
+    AppMode* appmode = nullptr;
+    if (strcmp(name, NS_VIEWER) == 0) {
+        appmode = &Viewer::self();
+    } else if (strcmp(name, NS_SLIDESHOW) == 0) {
+        appmode = &Slideshow::self();
+    } else if (strcmp(name, NS_GALLERY) == 0) {
+        appmode = &Gallery::self();
+    }
+    assert(appmode);
+
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace(NS_SWAYIMG)
+        .beginNamespace(name)
+        .addFunction("on_change_image",
+                     [this, appmode, name](const luabridge::LuaRef& cb) {
+                         if (!cb.isFunction()) {
+                             Log::error(
+                                 "Invalid argument for {}.{}.on_change_image: "
+                                 "expected function, but got {}",
+                                 NS_SWAYIMG, name, cb.tostring().c_str());
+                         } else {
+                             luabridge::LuaRef* ref = add_ref(&cb);
+                             appmode->subscribe([ref]() {
+                                 const luabridge::LuaResult result = (*ref)();
+                                 if (!result) {
+                                     Log::error("{}", result.errorMessage());
+                                 }
+                             });
+                         }
+                     })
+        .addFunction(
+            "on_key",
+            [this, appmode, name](const std::string& key,
+                                  const luabridge::LuaRef& cb) {
+                std::optional<InputKeyboard> input = InputKeyboard::load(key);
+                if (!input) {
+                    Log::error("Invalid key for {}.{}.on_key: {}", NS_SWAYIMG,
+                               name, key);
+                    return;
+                }
+                if (!cb.isFunction()) {
+                    Log::error("Invalid argument for {}.{}.on_key: "
+                               "expected function, but got {}",
+                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    return;
+                }
+                luabridge::LuaRef* ref = add_ref(&cb);
+                appmode->bind_input(*input, [ref]() {
+                    const luabridge::LuaResult result = (*ref)();
+                    if (!result) {
+                        Log::error("{}", result.errorMessage());
+                    }
+                });
+            })
+        .addFunction(
+            "on_mouse",
+            [this, appmode, name](const std::string& key,
+                                  const luabridge::LuaRef& cb) {
+                std::optional<InputMouse> input = InputMouse::load(key);
+                if (!input) {
+                    Log::error("Invalid button for {}.{}.on_mouse: {}",
+                               NS_SWAYIMG, name, key);
+                    return;
+                }
+                if (!cb.isFunction()) {
+                    Log::error("Invalid argument for {}.{}.on_mouse: "
+                               "expected function, but got {}",
+                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    return;
+                }
+                luabridge::LuaRef* ref = add_ref(&cb);
+                appmode->bind_input(*input, [ref]() {
+                    const luabridge::LuaResult result = (*ref)();
+                    if (!result) {
+                        Log::error("{}", result.errorMessage());
+                    }
+                });
+            })
+        .addFunction(
+            "on_signal",
+            [this, appmode, name](const std::string& key,
+                                  const luabridge::LuaRef& cb) {
+                std::optional<InputSignal> input = InputSignal::load(key);
+                if (!input) {
+                    Log::error("Invalid signal for {}.{}.on_signal: {}",
+                               NS_SWAYIMG, name, key);
+                    return;
+                }
+                if (!cb.isFunction()) {
+                    Log::error("Invalid argument for {}.{}.on_signal: "
+                               "expected function, but got {}",
+                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    return;
+                }
+                luabridge::LuaRef* ref = add_ref(&cb);
+                appmode->bind_input(*input, [ref]() {
+                    const luabridge::LuaResult result = (*ref)();
+                    if (!result) {
+                        Log::error("{}", result.errorMessage());
+                    }
+                });
+            })
+        .addFunction("bind_reset",
+                     [appmode]() {
+                         appmode->bind_reset();
+                     })
+        .addFunction("set_text_tl",
+                     [appmode](const luabridge::LuaRef& table) {
+                         appmode->text_tl =
+                             table.cast<std::vector<std::string>>().value();
+                     })
+        .addFunction("set_text_tr",
+                     [appmode](const luabridge::LuaRef& table) {
+                         appmode->text_tr =
+                             table.cast<std::vector<std::string>>().value();
+                     })
+        .addFunction("set_text_bl",
+                     [appmode](const luabridge::LuaRef& table) {
+                         appmode->text_bl =
+                             table.cast<std::vector<std::string>>().value();
+                     })
+        .addFunction("set_text_br",
+                     [appmode](const luabridge::LuaRef& table) {
+                         appmode->text_br =
+                             table.cast<std::vector<std::string>>().value();
+                     })
+        .endNamespace()
+        .endNamespace();
+}
+
+luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const
+{
+    luabridge::LuaRef table = luabridge::newTable(lua_state);
+    table["path"] = entry.path.string();
+    table["index"] = entry.index;
+    table["size"] = entry.size;
+    table["mtime"] = entry.mtime;
+    table["mark"] = entry.mark;
+    return table;
+}
+
+luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
+{
+    luabridge::LuaRef* ref = new luabridge::LuaRef(*obj);
+    refs.push_back(ref);
+    return ref;
+}

@@ -22,7 +22,7 @@ jobs:
           pkg install -y
           meson pkgconf
           bash-completion json-c freetype2 fontconfig
-          libinotify libxkbcommon libdrm libexif
+          libinotify libxkbcommon libdrm luajit exiv2
           wayland wayland-protocols
           libavif libjxl libsixel libraw librsvg2-rust
           giflib jpeg-turbo openexr png tiff webp

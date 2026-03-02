@@ -1,6 +1,6 @@
 # Swayimg: image viewer for Wayland
 
-Fully customizable and lightweight image viewer for Wayland based display servers.
+Image viewer for Wayland/DRM with Lua support.
 
 - Support for the most popular image formats:
   - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
@@ -9,7 +9,7 @@ Fully customizable and lightweight image viewer for Wayland based display server
   - GIF (via [giflib](http://giflib.sourceforge.net));
   - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
   - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
-  - HEIF/AVIF (via [libheif](https://github.com/strukturag/libheif));
+  - HEIF/HEIC (via [libheif](https://github.com/strukturag/libheif));
   - AV1F/AVIFS (via [libavif](https://github.com/AOMediaCodec/libavif));
   - TIFF (via [libtiff](https://libtiff.gitlab.io/libtiff));
   - Sixel (via [libsixel](https://github.com/saitoha/libsixel));
@@ -21,33 +21,28 @@ Fully customizable and lightweight image viewer for Wayland based display server
   - QOI (built-in);
   - DICOM (built-in);
   - Farbfeld (built-in).
-- Fully customizable keyboard bindings, colors, and [many other](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) parameters;
+- Fully customizable keyboard bindings, colors, and many other parameters via
+  [Lua bindings](CONFIG.md);
 - Loading images from files and pipes;
 - Gallery and viewer modes with slideshow and animation support;
 - Preload images in a separate thread;
 - Cache in memory, no data is written to permanent storage (HDD/SSD);
-- [Sway](https://swaywm.org) and [Hyprland](https://hyprland.org/) integration
-mode: the application creates an "overlay" above the currently active window,
-which gives the illusion that you are opening the image directly in a terminal
-window (not enabled by default).
+- [Sway](https://swaywm.org) and [Hyprland](https://hypr.land/) integration
+  mode: the application creates an "overlay" above the currently active window,
+  which gives the illusion that you are opening the image directly in a terminal
+  window (enabled in Sway by default).
 
-![Viewer mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/viewer.png)
-![Gallery mode](https://raw.githubusercontent.com/artemsen/swayimg/master/.github/gallery.png)
+![Viewer mode](.github/viewer.png)
+![Gallery mode](.github/gallery.png)
 
 ## Usage
 
 `swayimg [OPTIONS]... [FILE]...`
 
-See [man page](https://github.com/artemsen/swayimg/blob/master/extra/swayimg.1.scd?plain=1) for details.
-
 Examples:
 - View multiple files:
   ```
   swayimg photo.jpg logo.png
-  ```
-- Start slideshow for all files (recursively) in the current directory in random order:
-  ```
-  swayimg --slideshow --recursive --order=random
   ```
 - View using pipes:
   ```
@@ -58,37 +53,33 @@ Examples:
   swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png" \
           "exec://curl -so- https://www.kernel.org/theme/images/logos/tux.png"
   ```
-- View all images from the current directory in gallery mode:
-  ```
-  swayimg --gallery
-  ```
 
 ## Configuration
 
-The viewer searches for the configuration file with name `config` in the
-following directories:
-- `$XDG_CONFIG_HOME/swayimg`
-- `$HOME/.config/swayimg`
-- `$XDG_CONFIG_DIRS/swayimg`
-- `/etc/xdg/swayimg`
+The Swayimg configuration file is a Lua script. Please refer to the official Lua
+documentation for information about the file format.
 
-Sample file is available [here](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc) or locally `/usr/share/swayimg/swayimgrc`.
+The full list of available functions is described in the [documentation](CONFIG.md)
+and in the [Lua source](extra/swayimg.lua) file.
 
-See [man page](https://github.com/artemsen/swayimg/blob/master/extra/swayimgrc.5.scd?plain=1) for details.
+[Example](extra/example.lua) of the configuration file is available after
+installation in `/usr/share/swayimg/example.lua`.
 
 ## Install
 
 [![Packaging status](https://repology.org/badge/tiny-repos/swayimg.svg)](https://repology.org/project/swayimg/versions)
 
-List of supported distributives can be found on the [Repology page](https://repology.org/project/swayimg/versions).
+List of supported distributives can be found on the
+[Repology page](https://repology.org/project/swayimg/versions).
 
-Arch users can install the program from the extra repository: [swayimg](https://archlinux.org/packages/extra/x86_64/swayimg) or from AUR [swayimg-git](https://aur.archlinux.org/packages/swayimg-git) package.
+Arch users can install the program from the [extra](https://archlinux.org/packages/extra/x86_64/swayimg)
+repository or from [AUR](https://aur.archlinux.org/packages/swayimg-git) package.
 
 ## Build
 
 The project uses Meson build system:
 ```
-meson setup _build_dir
-meson compile -C _build_dir
-meson install -C _build_dir
+meson setup my_build_dir
+meson compile -C my_build_dir
+meson install -C my_build_dir
 ```

@@ -14,21 +14,22 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortLambdasOnASingleLine: Empty
 
-ForEachMacros: [list_for_each, list_for_each_back]
-SpaceBeforeParens: ControlStatementsExceptForEachMacros
-
 BreakBeforeBinaryOperators: None
 IndentCaseLabels: true
 InsertBraces: true
 
+ForEachMacros: [dummy]
+
 SortIncludes: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex:    '^".*\.h"'
+  - Regex:    '^".*\.hpp"'
     Priority: 1
-  - Regex:    '^<.*\.h>'
+  - Regex:    '^<.*\.hpp>'
     Priority: 2
-  - Regex:    '^<.*'
+  - Regex:    '^<.*\.h>'
     Priority: 3
-  - Regex:    '.*'
+  - Regex:    '^<.*'
     Priority: 4
+  - Regex:    '.*'
+    Priority: 5

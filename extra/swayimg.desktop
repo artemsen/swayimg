@@ -2,7 +2,7 @@
 Type=Application
 Name=Swayimg
 GenericName=Image viewer
-Comment=Image viewer for Sway/Wayland
+Comment=Image viewer for Wayland
 Icon=swayimg
 Exec=swayimg %F
 Terminal=false
