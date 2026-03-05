@@ -62,14 +62,14 @@ function swayimg.get_window_size() end
 function swayimg.get_mouse_pos() end
 
 ---Enable or disable antialiasing.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.enable_antialiasing(enable) end
 
 ---Enable or disable window decoration (title, border, buttons).
 ---This function available only in Wayland, the corresponding protocol must be
 ---supported by the composer.
 ---By default disabled in Sway and enabled in other compositors.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.enable_decoration(enable) end
 
 ---Enable or disable window overlay mode.
@@ -77,7 +77,7 @@ function swayimg.enable_decoration(enable) end
 ---Create a floating window with the same coordinates and size as the currently
 ---focused window. This variable can be set only once.
 ---By default enabled in Sway and disabled in other compositors.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.enable_overlay(enable) end
 
 --------------------------------------------------------------------------------
@@ -109,7 +109,10 @@ function swayimg.imagelist.add(path) end
 function swayimg.imagelist.remove(path) end
 
 ---Set, clear or toggle mark for currently viewed/selected image.
----@param state? boolean State to set, toggle mark if state not specified
+---@see swayimg.viewer.set_mark_color
+---@see swayimg.slideshow.set_mark_color
+---@see swayimg.gallery.set_mark_color
+---@param state? boolean Mark state to set, toggle if the state is not specified
 function swayimg.imagelist.mark(state) end
 
 ---Set image list order.
@@ -117,15 +120,15 @@ function swayimg.imagelist.mark(state) end
 function swayimg.imagelist.set_order(order) end
 
 ---Enable or disable reverse order.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.imagelist.enable_reverse(enable) end
 
 ---Enable or disable recursive directory reading.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.imagelist.enable_recursive(enable) end
 
 ---Enable or disable opening adjacent files from the same directory.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.imagelist.enable_adjacent(enable) end
 
 --------------------------------------------------------------------------------
@@ -305,6 +308,11 @@ function swayimg.viewer.set_image_background(color) end
 ---@param color2 number Second color in ARGB format, e.g. `0xff00aa99`
 function swayimg.viewer.set_image_grid(size, color1, color2) end
 
+---Set mark icon color.
+---@see swayimg.imagelist.mark
+---@param color number Color in ARGB format, e.g. `0xff00aa99`
+function swayimg.viewer.set_mark_color(color) end
+
 ---Add/replace/remove meta info for current image.
 ---@param key string Meta key name
 ---@param value string Meta value, empty value to remove
@@ -341,11 +349,11 @@ function swayimg.viewer.on_signal(signal, fn) end
 function swayimg.viewer.bind_reset() end
 
 ---Enable or disable free move mode.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.viewer.enable_freemove(enable) end
 
 ---Enable or disable image list loop mode.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.viewer.enable_loop(enable) end
 
 ---Set number of images to preload in a separate thread.
@@ -487,6 +495,11 @@ function swayimg.slideshow.set_image_background(color) end
 ---@param color2 number Second color in ARGB format, e.g. `0xff00aa99`
 function swayimg.slideshow.set_image_grid(size, color1, color2) end
 
+---Set mark icon color.
+---@see swayimg.imagelist.mark
+---@param color number Color in ARGB format, e.g. `0xff00aa99`
+function swayimg.slideshow.set_mark_color(color) end
+
 ---Add/replace/remove meta info for current image.
 ---@param key string Meta key name
 ---@param value string Meta value, empty value to remove
@@ -523,11 +536,11 @@ function swayimg.slideshow.on_signal(signal, fn) end
 function swayimg.slideshow.bind_reset() end
 
 ---Enable or disable free move mode.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.slideshow.enable_freemove(enable) end
 
 ---Enable or disable image list loop mode.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.slideshow.enable_loop(enable) end
 
 ---Set number of images to preload in a separate thread.
@@ -625,6 +638,11 @@ function swayimg.gallery.set_background_color(color) end
 ---@param color number Color in ARGB format, e.g. `0xff00aa99`
 function swayimg.gallery.set_window_color(color) end
 
+---Set mark icon color.
+---@see swayimg.imagelist.mark
+---@param color number Color in ARGB format, e.g. `0xff00aa99`
+function swayimg.gallery.set_mark_color(color) end
+
 ---Add a callback function called when a new image is selected.
 ---@param fn function Callback handler
 function swayimg.gallery.on_change_image(fn) end
@@ -652,11 +670,11 @@ function swayimg.gallery.bind_reset() end
 function swayimg.gallery.set_cache_size(size) end
 
 ---Enable or disable preloading invisible thumbnails.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.gallery.enable_preload(enable) end
 
 ---Enable or disable persistent storage for thumbnails.
----@param enable boolean State to set
+---@param enable boolean Enable/disable flag to set
 function swayimg.gallery.enable_pstore(enable) end
 
 ---Set custom path for persistent storage for thumbnails.

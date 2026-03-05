@@ -20,7 +20,7 @@ Slideshow::Slideshow()
     set_window_background(Background::Auto);
     default_scale = Scale::FitWindow;
 
-    text_tl = { "{name}" };
+    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "{name}" };
 }
 
 void Slideshow::initialize()

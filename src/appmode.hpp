@@ -6,6 +6,7 @@
 
 #include "image.hpp"
 #include "input.hpp"
+#include "text.hpp"
 
 #include <functional>
 #include <map>
@@ -23,6 +24,8 @@ public:
 
     /** External handler called when switching an image. */
     using ImageSwitchCallback = std::function<void()>;
+
+    AppMode();
 
     /**
      * Initialze mode instance.
@@ -111,6 +114,20 @@ public:
     void subscribe(const ImageSwitchCallback& cb);
 
     /**
+     * Set mark icon color.
+     * @param color mark icon color
+     */
+    void set_mark_color(const argb_t& color);
+
+    /**
+     * Set text layer scheme.
+     * @param pos block position
+     * @param scheme scheme description
+     */
+    void set_text_scheme(const Text::Position pos,
+                         const std::vector<std::string>& scheme);
+
+    /**
      * Remove all bindings: keyboard/mouse/signals.
      */
     void bind_reset();
@@ -142,11 +159,9 @@ protected:
      */
     void switch_current();
 
-public:
-    std::vector<std::string> text_tl; ///< Top left scheme for text overlay
-    std::vector<std::string> text_tr; ///< Top right scheme for text overlay
-    std::vector<std::string> text_bl; ///< Bottom left scheme for text overlay
-    std::vector<std::string> text_br; ///< Bottom right scheme for text overlay
+protected:
+    argb_t mark_color;                       ///< Mark icon color
+    std::vector<std::string> text_scheme[4]; ///< Text layer scheme
 
 private:
     std::vector<ImageSwitchCallback> imswitch_cb; ///< Image switch callbacks

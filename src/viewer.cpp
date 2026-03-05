@@ -28,6 +28,7 @@ Viewer::Viewer()
 
     free_move = false;
     imagelist_loop = true;
+    scale = 1.0;
 
     default_scale = Scale::Optimal;
     default_pos = Position::Center;
@@ -42,16 +43,20 @@ Viewer::Viewer()
 
     animation_enable = true;
 
-    text_tl = { "File: {name}",
-                "Format: {format}",
-                "File size: {size}",
-                "File time: {time}",
-                "EXIF date: {meta.Exif.Photo.DateTimeOriginal}",
-                "EXIF camera: {meta.Exif.Image.Model}" };
-    text_tr = { "Image: {list.index} of {list.total}",
-                "Frame: {frame.index} of {frame.total}",
-                "Size: {frame.width}x{frame.height}" };
-    text_bl = { "Scale: {scale}" };
+    text_scheme[static_cast<size_t>(Text::TopLeft)] = {
+        "File: {name}",
+        "Format: {format}",
+        "File size: {size}",
+        "File time: {time}",
+        "EXIF date: {meta.Exif.Photo.DateTimeOriginal}",
+        "EXIF camera: {meta.Exif.Image.Model}"
+    };
+    text_scheme[static_cast<size_t>(Text::TopRight)] = {
+        "Image: {list.index} of {list.total}",
+        "Frame: {frame.index} of {frame.total}",
+        "Size: {frame.width}x{frame.height}"
+    };
+    text_scheme[static_cast<size_t>(Text::BottomLeft)] = { "Scale: {scale}" };
 
     // default key bindings: general management
     bind_input(InputKeyboard { XKB_KEY_Escape, KEYMOD_NONE }, []() {
@@ -645,7 +650,7 @@ void Viewer::window_redraw(Pixmap& wnd)
             static_cast<ssize_t>(Resource::mark.width()) - margin;
         const ssize_t y = static_cast<ssize_t>(wnd.height()) -
             static_cast<ssize_t>(Resource::mark.height()) - margin;
-        wnd.mask(Resource::mark, { x, y }, { 0xff, 0x80, 0x80, 0x80 });
+        wnd.mask(Resource::mark, { x, y }, mark_color);
     }
 }
 

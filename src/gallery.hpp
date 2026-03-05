@@ -98,6 +98,12 @@ public:
     void set_window_color(const argb_t& color);
 
     /**
+     * Set mark icon color.
+     * @param color mark icon color
+     */
+    void set_mark_color(const argb_t& color);
+
+    /**
      * Set number of thumbnails stored in memory cache.
      * @param size max number of thumbnails stored in memory cache
      */

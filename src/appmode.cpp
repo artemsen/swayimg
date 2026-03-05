@@ -5,17 +5,20 @@
 #include "appmode.hpp"
 
 #include "application.hpp"
-#include "text.hpp"
 
 #include <format>
+
+AppMode::AppMode()
+{
+    mark_color = { argb_t::max, 0x80, 0x80, 0x80 };
+}
 
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
     Text& text = Text::self();
-    text.set_scheme(Text::TopLeft, text_tl);
-    text.set_scheme(Text::TopRight, text_tr);
-    text.set_scheme(Text::BottomLeft, text_bl);
-    text.set_scheme(Text::BottomRight, text_br);
+    for (size_t i = 0; i < sizeof(text_scheme) / sizeof(text_scheme[0]); ++i) {
+        text.set_scheme(static_cast<Text::Position>(i), text_scheme[i]);
+    }
 }
 
 bool AppMode::handle_keyboard(const InputKeyboard& input)
@@ -56,6 +59,26 @@ bool AppMode::is_active() const
 void AppMode::subscribe(const ImageSwitchCallback& cb)
 {
     imswitch_cb.push_back(cb);
+}
+
+void AppMode::set_mark_color(const argb_t& color)
+{
+    mark_color = color;
+    if (is_active()) {
+        Application::redraw();
+    }
+}
+
+void AppMode::set_text_scheme(const Text::Position pos,
+                              const std::vector<std::string>& scheme)
+{
+    text_scheme[static_cast<size_t>(pos)] = scheme;
+    if (is_active()) {
+        Text& text = Text::self();
+        text.set_scheme(pos, scheme);
+        text.update();
+        Application::redraw();
+    }
 }
 
 void AppMode::bind_reset()

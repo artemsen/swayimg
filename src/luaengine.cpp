@@ -946,25 +946,33 @@ void LuaEngine::bind_appmode_api(const char* name)
                      [appmode]() {
                          appmode->bind_reset();
                      })
+        .addFunction("set_mark_color",
+                     [appmode](const uint32_t color) {
+                         appmode->set_mark_color(color);
+                     })
         .addFunction("set_text_tl",
                      [appmode](const luabridge::LuaRef& table) {
-                         appmode->text_tl =
-                             table.cast<std::vector<std::string>>().value();
+                         appmode->set_text_scheme(
+                             Text::TopLeft,
+                             table.cast<std::vector<std::string>>().value());
                      })
         .addFunction("set_text_tr",
                      [appmode](const luabridge::LuaRef& table) {
-                         appmode->text_tr =
-                             table.cast<std::vector<std::string>>().value();
+                         appmode->set_text_scheme(
+                             Text::TopRight,
+                             table.cast<std::vector<std::string>>().value());
                      })
         .addFunction("set_text_bl",
                      [appmode](const luabridge::LuaRef& table) {
-                         appmode->text_bl =
-                             table.cast<std::vector<std::string>>().value();
+                         appmode->set_text_scheme(
+                             Text::BottomLeft,
+                             table.cast<std::vector<std::string>>().value());
                      })
         .addFunction("set_text_br",
                      [appmode](const luabridge::LuaRef& table) {
-                         appmode->text_br =
-                             table.cast<std::vector<std::string>>().value();
+                         appmode->set_text_scheme(
+                             Text::BottomRight,
+                             table.cast<std::vector<std::string>>().value());
                      })
         .endNamespace()
         .endNamespace();

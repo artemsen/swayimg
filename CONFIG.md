@@ -87,6 +87,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_window_background](#swayimgviewerset_window_background): Set window background color and mode
   * [swayimg.viewer.set_image_background](#swayimgviewerset_image_background): Set background color for transparent images
   * [swayimg.viewer.set_image_grid](#swayimgviewerset_image_grid): Set parameters for grid used as background for transparent images
+  * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color): Set mark icon color
   * [swayimg.viewer.set_meta](#swayimgviewerset_meta): Add/replace/remove meta info for current image
   * [swayimg.viewer.export](#swayimgviewerexport): Export currently viewed frame to PNG file
   * [swayimg.viewer.on_change_image](#swayimgvieweron_change_image): Add a callback function called when a new image is opened
@@ -126,6 +127,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_window_background](#swayimgslideshowset_window_background): Set window background color and mode
   * [swayimg.slideshow.set_image_background](#swayimgslideshowset_image_background): Set background color for transparent images
   * [swayimg.slideshow.set_image_grid](#swayimgslideshowset_image_grid): Set parameters for grid used as background for transparent images
+  * [swayimg.slideshow.set_mark_color](#swayimgslideshowset_mark_color): Set mark icon color
   * [swayimg.slideshow.set_meta](#swayimgslideshowset_meta): Add/replace/remove meta info for current image
   * [swayimg.slideshow.export](#swayimgslideshowexport): Export currently viewed frame to PNG file
   * [swayimg.slideshow.on_change_image](#swayimgslideshowon_change_image): Add a callback function called when a new image is opened
@@ -155,6 +157,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_selected_color](#swayimggalleryset_selected_color): Set background color for currently selected thumbnail
   * [swayimg.gallery.set_background_color](#swayimggalleryset_background_color): Set background color for unselected thumbnails
   * [swayimg.gallery.set_window_color](#swayimggalleryset_window_color): Set window background color
+  * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color): Set mark icon color
   * [swayimg.gallery.on_change_image](#swayimggalleryon_change_image): Add a callback function called when a new image is selected
   * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
@@ -200,7 +203,7 @@ Show status message.
 ### swayimg.set_mode
 
 ```lua
-swayimg.set_mode(mode: "gallery"|"slideshow"|"viewer")
+swayimg.set_mode(mode: appmode_t)
 ```
 
 Switch to specified mode.
@@ -217,7 +220,7 @@ mode:
 ### swayimg.get_mode
 
 ```lua
-swayimg.get_mode() -> "gallery"|"slideshow"|"viewer"
+swayimg.get_mode() -> appmode_t
 ```
 
 Get current mode.
@@ -259,7 +262,7 @@ swayimg.enable_antialiasing(enable: boolean)
 
 Enable or disable antialiasing.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.enable_decoration
 
@@ -272,7 +275,7 @@ This function available only in Wayland, the corresponding protocol must be
 supported by the composer.
 By default disabled in Sway and enabled in other compositors.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.enable_overlay
 
@@ -286,7 +289,7 @@ Create a floating window with the same coordinates and size as the currently
 focused window. This variable can be set only once.
 By default enabled in Sway and disabled in other compositors.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ## Image list
 
@@ -338,12 +341,17 @@ swayimg.imagelist.mark(state?: boolean)
 
 Set, clear or toggle mark for currently viewed/selected image.
 
-@*param* `state` — State to set, toggle mark if state not specified
+@*param* `state` — Mark state to set, toggle if the state is not specified
+
+See:
+  * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color)
+  * [swayimg.slideshow.set_mark_color](#swayimgslideshowset_mark_color)
+  * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color)
 
 ### swayimg.imagelist.set_order
 
 ```lua
-swayimg.imagelist.set_order(order: "alpha"|"mtime"|"none"|"numeric"|"random"...(+1))
+swayimg.imagelist.set_order(order: order_t)
 ```
 
 Set image list order.
@@ -368,7 +376,7 @@ swayimg.imagelist.enable_reverse(enable: boolean)
 
 Enable or disable reverse order.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.imagelist.enable_recursive
 
@@ -378,7 +386,7 @@ swayimg.imagelist.enable_recursive(enable: boolean)
 
 Enable or disable recursive directory reading.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.imagelist.enable_adjacent
 
@@ -388,7 +396,7 @@ swayimg.imagelist.enable_adjacent(enable: boolean)
 
 Enable or disable opening adjacent files from the same directory.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ## Text layer
 
@@ -493,7 +501,7 @@ Hide text layer and stop the timer.
 ### swayimg.viewer.open
 
 ```lua
-swayimg.viewer.open(dir: "first"|"last"|"next"|"next_dir"|"prev"...(+2))
+swayimg.viewer.open(dir: vdir_t)
 ```
 
 Open next file at specified direction.
@@ -548,7 +556,7 @@ Set absolute image scale.
 ### swayimg.viewer.set_fix_scale
 
 ```lua
-swayimg.viewer.set_fix_scale(scale: "fill"|"fit"|"height"|"keep"|"optimal"...(+2))
+swayimg.viewer.set_fix_scale(scale: fixed_scale_t)
 ```
 
 Set fixed image scale.
@@ -578,7 +586,7 @@ See: [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
 ### swayimg.viewer.set_default_scale
 
 ```lua
-swayimg.viewer.set_default_scale(scale: number|"fill"|"fit"|"height"|"keep"...(+3))
+swayimg.viewer.set_default_scale(scale: number|fixed_scale_t)
 ```
 
 Set default image scale for newly opened images.
@@ -621,7 +629,7 @@ Set absolute image position.
 ### swayimg.viewer.set_fix_position
 
 ```lua
-swayimg.viewer.set_fix_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
+swayimg.viewer.set_fix_position(pos: fixed_position_t)
 ```
 
 Set fixed image position.
@@ -644,7 +652,7 @@ pos:
 ### swayimg.viewer.set_default_position
 
 ```lua
-swayimg.viewer.set_default_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
+swayimg.viewer.set_default_position(pos: fixed_position_t)
 ```
 
 Set default image position for newly opened images.
@@ -713,7 +721,7 @@ Flip image horizontally.
 ### swayimg.viewer.rotate
 
 ```lua
-swayimg.viewer.rotate(angle: 180|270|90)
+swayimg.viewer.rotate(angle: rotation_t)
 ```
 
 Rotate image.
@@ -746,7 +754,7 @@ Resume animation.
 ### swayimg.viewer.set_window_background
 
 ```lua
-swayimg.viewer.set_window_background(bkg: number|"auto"|"extend"|"mirror")
+swayimg.viewer.set_window_background(bkg: number|bkgmode_t)
 ```
 
 Set window background color and mode.
@@ -784,6 +792,18 @@ Set parameters for grid used as background for transparent images.
 @*param* `color1` — First color in ARGB format, e.g. `0xff00aa99`
 
 @*param* `color2` — Second color in ARGB format, e.g. `0xff00aa99`
+
+### swayimg.viewer.set_mark_color
+
+```lua
+swayimg.viewer.set_mark_color(color: number)
+```
+
+Set mark icon color.
+
+@*param* `color` — Color in ARGB format, e.g. `0xff00aa99`
+
+See: [swayimg.imagelist.mark](#swayimgimagelistmark)
 
 ### swayimg.viewer.set_meta
 
@@ -879,7 +899,7 @@ swayimg.viewer.enable_freemove(enable: boolean)
 
 Enable or disable free move mode.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.viewer.enable_loop
 
@@ -889,7 +909,7 @@ swayimg.viewer.enable_loop(enable: boolean)
 
 Enable or disable image list loop mode.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.viewer.set_preload_limit
 
@@ -987,7 +1007,7 @@ Set a timeout after which next image should be opened.
 ### swayimg.slideshow.open
 
 ```lua
-swayimg.slideshow.open(dir: "first"|"last"|"next"|"next_dir"|"prev"...(+2))
+swayimg.slideshow.open(dir: vdir_t)
 ```
 
 Open next file at specified direction.
@@ -1042,7 +1062,7 @@ Set absolute image scale.
 ### swayimg.slideshow.set_fix_scale
 
 ```lua
-swayimg.slideshow.set_fix_scale(scale: "fill"|"fit"|"height"|"keep"|"optimal"...(+2))
+swayimg.slideshow.set_fix_scale(scale: fixed_scale_t)
 ```
 
 Set fixed image scale.
@@ -1072,7 +1092,7 @@ See: [swayimg.slideshow.set_default_scale](#swayimgslideshowset_default_scale)
 ### swayimg.slideshow.set_default_scale
 
 ```lua
-swayimg.slideshow.set_default_scale(scale: number|"fill"|"fit"|"height"|"keep"...(+3))
+swayimg.slideshow.set_default_scale(scale: number|fixed_scale_t)
 ```
 
 Set default image scale for newly opened images.
@@ -1115,7 +1135,7 @@ Set absolute image position.
 ### swayimg.slideshow.set_fix_position
 
 ```lua
-swayimg.slideshow.set_fix_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
+swayimg.slideshow.set_fix_position(pos: fixed_position_t)
 ```
 
 Set fixed image position.
@@ -1138,7 +1158,7 @@ pos:
 ### swayimg.slideshow.set_default_position
 
 ```lua
-swayimg.slideshow.set_default_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
+swayimg.slideshow.set_default_position(pos: fixed_position_t)
 ```
 
 Set default image position for newly opened images.
@@ -1205,7 +1225,7 @@ Flip image horizontally.
 ### swayimg.slideshow.rotate
 
 ```lua
-swayimg.slideshow.rotate(angle: 180|270|90)
+swayimg.slideshow.rotate(angle: rotation_t)
 ```
 
 Rotate image.
@@ -1238,7 +1258,7 @@ Resume animation.
 ### swayimg.slideshow.set_window_background
 
 ```lua
-swayimg.slideshow.set_window_background(bkg: number|"auto"|"extend"|"mirror")
+swayimg.slideshow.set_window_background(bkg: number|bkgmode_t)
 ```
 
 Set window background color and mode.
@@ -1276,6 +1296,18 @@ Set parameters for grid used as background for transparent images.
 @*param* `color1` — First color in ARGB format, e.g. `0xff00aa99`
 
 @*param* `color2` — Second color in ARGB format, e.g. `0xff00aa99`
+
+### swayimg.slideshow.set_mark_color
+
+```lua
+swayimg.slideshow.set_mark_color(color: number)
+```
+
+Set mark icon color.
+
+@*param* `color` — Color in ARGB format, e.g. `0xff00aa99`
+
+See: [swayimg.imagelist.mark](#swayimgimagelistmark)
 
 ### swayimg.slideshow.set_meta
 
@@ -1371,7 +1403,7 @@ swayimg.slideshow.enable_freemove(enable: boolean)
 
 Enable or disable free move mode.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.slideshow.enable_loop
 
@@ -1381,7 +1413,7 @@ swayimg.slideshow.enable_loop(enable: boolean)
 
 Enable or disable image list loop mode.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.slideshow.set_preload_limit
 
@@ -1456,7 +1488,7 @@ See: [swayimg.viewer.set_text_tl](#swayimgviewerset_text_tl) for scheme descript
 ### swayimg.gallery.select
 
 ```lua
-swayimg.gallery.select(dir: "down"|"first"|"last"|"left"|"pgdown"...(+3))
+swayimg.gallery.select(dir: gdir_t)
 ```
 
 Select the next thumbnail from the gallery.
@@ -1488,7 +1520,7 @@ Get information about currently selected image.
 ### swayimg.gallery.set_aspect
 
 ```lua
-swayimg.gallery.set_aspect(aspect: "fill"|"fit"|"keep")
+swayimg.gallery.set_aspect(aspect: aspect_t)
 ```
 
 Set thumbnail aspect ratio.
@@ -1592,6 +1624,18 @@ Set window background color.
 
 @*param* `color` — Color in ARGB format, e.g. `0xff00aa99`
 
+### swayimg.gallery.set_mark_color
+
+```lua
+swayimg.gallery.set_mark_color(color: number)
+```
+
+Set mark icon color.
+
+@*param* `color` — Color in ARGB format, e.g. `0xff00aa99`
+
+See: [swayimg.imagelist.mark](#swayimgimagelistmark)
+
 ### swayimg.gallery.on_change_image
 
 ```lua
@@ -1664,7 +1708,7 @@ swayimg.gallery.enable_preload(enable: boolean)
 
 Enable or disable preloading invisible thumbnails.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.gallery.enable_pstore
 
@@ -1674,7 +1718,7 @@ swayimg.gallery.enable_pstore(enable: boolean)
 
 Enable or disable persistent storage for thumbnails.
 
-@*param* `enable` — State to set
+@*param* `enable` — Enable/disable flag to set
 
 ### swayimg.gallery.set_pstore_path
 

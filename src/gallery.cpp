@@ -85,8 +85,10 @@ Gallery::Gallery()
     preload = false;
     cache_size = 100;
 
-    text_tl = { "File: {name}" };
-    text_tr = { "{list.index} of {list.total}" };
+    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File: {name}" };
+    text_scheme[static_cast<size_t>(Text::TopRight)] = {
+        "{list.index} of {list.total}"
+    };
 
     // default key bindings: general management
     bind_input(InputKeyboard { XKB_KEY_Escape, KEYMOD_NONE }, []() {
@@ -449,7 +451,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
             static_cast<ssize_t>(Resource::mark.width()) - margin;
         const ssize_t y = bkg.y + static_cast<ssize_t>(bkg.height) -
             static_cast<ssize_t>(Resource::mark.height()) - margin;
-        wnd.mask(Resource::mark, { x, y }, { 0xff, 0xf0, 0x00, 0xf0 });
+        wnd.mask(Resource::mark, { x, y }, mark_color);
     }
 }
 

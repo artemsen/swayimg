@@ -280,9 +280,9 @@ public:
     Position default_pos;                      ///< Default image position
 
 private:
-    ImagePtr image;     ///< Currently shown image
-    Point position;     ///< Image position on the window
-    double scale = 1.0; ///< Current scale factor of the image
+    ImagePtr image; ///< Currently shown image
+    Point position; ///< Image position on the window
+    double scale;   ///< Current scale factor of the image
 
     Size window_size;                            ///< Window size in pixels
     std::variant<argb_t, Background> window_bkg; ///< Window background
