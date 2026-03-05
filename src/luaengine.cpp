@@ -479,7 +479,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          tbl["height"] = image->frames[0].pm.height();
                          tbl["format"] = image->format;
                          for (const auto& [key, value] : image->meta) {
-                             tbl[key] = value;
+                             tbl[std::string("meta.") + key] = value;
                          }
                          return tbl;
                      })
