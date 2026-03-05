@@ -603,6 +603,7 @@ void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
     fixup_position();
+    AppMode::window_resize(wnd);
 }
 
 void Viewer::window_redraw(Pixmap& wnd)

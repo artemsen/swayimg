@@ -91,6 +91,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_meta](#swayimgviewerset_meta): Add/replace/remove meta info for current image
   * [swayimg.viewer.export](#swayimgviewerexport): Export currently viewed frame to PNG file
   * [swayimg.viewer.on_change_image](#swayimgvieweron_change_image): Add a callback function called when a new image is opened
+  * [swayimg.viewer.on_window_resize](#swayimgvieweron_window_resize): Add a callback function called when main window is resized
   * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.bind_drag](#swayimgviewerbind_drag): Bind the mouse state to image drag operation
@@ -131,6 +132,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_meta](#swayimgslideshowset_meta): Add/replace/remove meta info for current image
   * [swayimg.slideshow.export](#swayimgslideshowexport): Export currently viewed frame to PNG file
   * [swayimg.slideshow.on_change_image](#swayimgslideshowon_change_image): Add a callback function called when a new image is opened
+  * [swayimg.slideshow.on_window_resize](#swayimgslideshowon_window_resize): Add a callback function called when main window is resized
   * [swayimg.slideshow.on_key](#swayimgslideshowon_key): Bind the key press event to a handler
   * [swayimg.slideshow.on_mouse](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.bind_drag](#swayimgslideshowbind_drag): Bind the mouse state to image drag operation
@@ -159,6 +161,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_window_color](#swayimggalleryset_window_color): Set window background color
   * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color): Set mark icon color
   * [swayimg.gallery.on_change_image](#swayimggalleryon_change_image): Add a callback function called when a new image is selected
+  * [swayimg.gallery.on_window_resize](#swayimggalleryon_window_resize): Add a callback function called when main window is resized
   * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal](#swayimggalleryon_signal): Bind the signal event to a handler
@@ -837,6 +840,16 @@ Add a callback function called when a new image is opened.
 
 @*param* `fn` — Callback handler
 
+### swayimg.viewer.on_window_resize
+
+```lua
+swayimg.viewer.on_window_resize(fn: function)
+```
+
+Add a callback function called when main window is resized.
+
+@*param* `fn` — Callback handler
+
 ### swayimg.viewer.on_key
 
 ```lua
@@ -1344,6 +1357,16 @@ Add a callback function called when a new image is opened.
 
 @*param* `fn` — Callback handler
 
+### swayimg.slideshow.on_window_resize
+
+```lua
+swayimg.slideshow.on_window_resize(fn: function)
+```
+
+Add a callback function called when main window is resized.
+
+@*param* `fn` — Callback handler
+
 ### swayimg.slideshow.on_key
 
 ```lua
@@ -1646,6 +1669,16 @@ swayimg.gallery.on_change_image(fn: function)
 ```
 
 Add a callback function called when a new image is selected.
+
+@*param* `fn` — Callback handler
+
+### swayimg.gallery.on_window_resize
+
+```lua
+swayimg.gallery.on_window_resize(fn: function)
+```
+
+Add a callback function called when main window is resized.
 
 @*param* `fn` — Callback handler
 

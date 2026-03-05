@@ -862,7 +862,24 @@ void LuaEngine::bind_appmode_api(const char* name)
                                  NS_SWAYIMG, name, cb.tostring().c_str());
                          } else {
                              luabridge::LuaRef* ref = add_ref(&cb);
-                             appmode->subscribe([ref]() {
+                             appmode->subscribe_image_switch([ref]() {
+                                 const luabridge::LuaResult result = (*ref)();
+                                 if (!result) {
+                                     Log::error("{}", result.errorMessage());
+                                 }
+                             });
+                         }
+                     })
+        .addFunction("on_window_resize",
+                     [this, appmode, name](const luabridge::LuaRef& cb) {
+                         if (!cb.isFunction()) {
+                             Log::error(
+                                 "Invalid argument for {}.{}.on_window_resize: "
+                                 "expected function, but got {}",
+                                 NS_SWAYIMG, name, cb.tostring().c_str());
+                         } else {
+                             luabridge::LuaRef* ref = add_ref(&cb);
+                             appmode->subscribe_window_resize([ref]() {
                                  const luabridge::LuaResult result = (*ref)();
                                  if (!result) {
                                      Log::error("{}", result.errorMessage());

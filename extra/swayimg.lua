@@ -326,6 +326,10 @@ function swayimg.viewer.export(path) end
 ---@param fn function Callback handler
 function swayimg.viewer.on_change_image(fn) end
 
+---Add a callback function called when main window is resized.
+---@param fn function Callback handler
+function swayimg.viewer.on_window_resize(fn) end
+
 ---Bind the key press event to a handler.
 ---@param key string Key description, for example `Ctrl-a`
 ---@param fn function Key press handler
@@ -516,6 +520,10 @@ function swayimg.slideshow.export(path) end
 ---@param fn function Callback handler
 function swayimg.slideshow.on_change_image(fn) end
 
+---Add a callback function called when main window is resized.
+---@param fn function Callback handler
+function swayimg.slideshow.on_window_resize(fn) end
+
 ---Bind the key press event to a handler.
 ---@param key string Key description, for example `Ctrl-a`
 ---@param fn function Key press handler
@@ -649,6 +657,10 @@ function swayimg.gallery.set_mark_color(color) end
 ---Add a callback function called when a new image is selected.
 ---@param fn function Callback handler
 function swayimg.gallery.on_change_image(fn) end
+
+---Add a callback function called when main window is resized.
+---@param fn function Callback handler
+function swayimg.gallery.on_window_resize(fn) end
 
 ---Bind the key press event to a handler.
 ---@param key string Key description, for example `Ctrl-a`

@@ -311,6 +311,7 @@ ImageEntryPtr Gallery::current_entry()
 void Gallery::window_resize(const Size& wnd)
 {
     layout.set_window_size(wnd);
+    AppMode::window_resize(wnd);
 }
 
 void Gallery::window_redraw(Pixmap& wnd)

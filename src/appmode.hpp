@@ -24,11 +24,13 @@ public:
 
     /** External handler called when switching an image. */
     using ImageSwitchCallback = std::function<void()>;
+    /** External handler called when main window resizing. */
+    using WindowResizeCallback = std::function<void()>;
 
     AppMode();
 
     /**
-     * Initialze mode instance.
+     * Initialize mode instance.
      */
     virtual void initialize() = 0;
 
@@ -54,7 +56,7 @@ public:
      * Window resize handler.
      * @param wnd window size
      */
-    virtual void window_resize(const Size& wnd) = 0;
+    virtual void window_resize(const Size& wnd);
 
     /**
      * Window resize handler.
@@ -111,7 +113,13 @@ public:
      * Subscribe to the image switch event.
      * @param cb event handler
      */
-    void subscribe(const ImageSwitchCallback& cb);
+    void subscribe_image_switch(const ImageSwitchCallback& cb);
+
+    /**
+     * Subscribe to window resize event.
+     * @param cb event handler
+     */
+    void subscribe_window_resize(const WindowResizeCallback& cb);
 
     /**
      * Set mark icon color.
@@ -165,6 +173,7 @@ protected:
 
 private:
     std::vector<ImageSwitchCallback> imswitch_cb; ///< Image switch callbacks
+    std::vector<WindowResizeCallback> wndrsz_cb;  ///< Window resize callbacks
     std::map<InputKeyboard, InputCallback> kbindings; ///< Keyboard bindings
     std::map<InputMouse, InputCallback> mbindings;    ///< Mouse bindings
     std::map<InputSignal, InputCallback> sbindings;   ///< Signal bindings
