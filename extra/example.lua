@@ -18,7 +18,7 @@ swayimg.text.set_foreground(0xffff0000)
 swayimg.viewer.set_text_tl({
   "File: {name}",
   "Format: {format}",
-  "File size: {size}",
+  "File size: {sizehr}",
   "File time: {time}",
   "EXIF date: {meta.Exif.Photo.DateTimeOriginal}",
   "EXIF camera: {meta.Exif.Image.Model}"

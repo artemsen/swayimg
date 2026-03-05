@@ -371,7 +371,8 @@ function swayimg.viewer.set_history_limit(size) end
 ---* `{name}`: File name of the currently viewed/selected image;
 ---* `{dir}`: Parent directory name of the currently viewed/selected image;
 ---* `{path}`: Absolute path to the currently viewed/selected image;
----* `{size}`: File size in human-readable format;
+---* `{size}`: File size in bytes;
+---* `{sizehr}`: File size in human-readable format;
 ---* `{time}`: File modification time;
 ---* `{format}`: Brief image format description;
 ---* `{scale}`: Current image scale in percent;

@@ -28,6 +28,7 @@ public:
     static constexpr const char* FIELD_FILE_DIR = "dir";
     static constexpr const char* FIELD_FILE_NAME = "name";
     static constexpr const char* FIELD_FILE_SIZE = "size";
+    static constexpr const char* FIELD_FILE_SIZE_HR = "sizehr";
     static constexpr const char* FIELD_FILE_TIME = "time";
     static constexpr const char* FIELD_IMAGE_FORMAT = "format";
     static constexpr const char* FIELD_SCALE = "scale";

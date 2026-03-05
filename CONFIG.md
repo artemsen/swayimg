@@ -203,7 +203,7 @@ Show status message.
 ### swayimg.set_mode
 
 ```lua
-swayimg.set_mode(mode: appmode_t)
+swayimg.set_mode(mode: "gallery"|"slideshow"|"viewer")
 ```
 
 Switch to specified mode.
@@ -220,7 +220,7 @@ mode:
 ### swayimg.get_mode
 
 ```lua
-swayimg.get_mode() -> appmode_t
+swayimg.get_mode() -> "gallery"|"slideshow"|"viewer"
 ```
 
 Get current mode.
@@ -351,7 +351,7 @@ See:
 ### swayimg.imagelist.set_order
 
 ```lua
-swayimg.imagelist.set_order(order: order_t)
+swayimg.imagelist.set_order(order: "alpha"|"mtime"|"none"|"numeric"|"random"...(+1))
 ```
 
 Set image list order.
@@ -501,7 +501,7 @@ Hide text layer and stop the timer.
 ### swayimg.viewer.open
 
 ```lua
-swayimg.viewer.open(dir: vdir_t)
+swayimg.viewer.open(dir: "first"|"last"|"next"|"next_dir"|"prev"...(+2))
 ```
 
 Open next file at specified direction.
@@ -556,7 +556,7 @@ Set absolute image scale.
 ### swayimg.viewer.set_fix_scale
 
 ```lua
-swayimg.viewer.set_fix_scale(scale: fixed_scale_t)
+swayimg.viewer.set_fix_scale(scale: "fill"|"fit"|"height"|"keep"|"optimal"...(+2))
 ```
 
 Set fixed image scale.
@@ -586,7 +586,7 @@ See: [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
 ### swayimg.viewer.set_default_scale
 
 ```lua
-swayimg.viewer.set_default_scale(scale: number|fixed_scale_t)
+swayimg.viewer.set_default_scale(scale: number|"fill"|"fit"|"height"|"keep"...(+3))
 ```
 
 Set default image scale for newly opened images.
@@ -629,7 +629,7 @@ Set absolute image position.
 ### swayimg.viewer.set_fix_position
 
 ```lua
-swayimg.viewer.set_fix_position(pos: fixed_position_t)
+swayimg.viewer.set_fix_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
 ```
 
 Set fixed image position.
@@ -652,7 +652,7 @@ pos:
 ### swayimg.viewer.set_default_position
 
 ```lua
-swayimg.viewer.set_default_position(pos: fixed_position_t)
+swayimg.viewer.set_default_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
 ```
 
 Set default image position for newly opened images.
@@ -721,7 +721,7 @@ Flip image horizontally.
 ### swayimg.viewer.rotate
 
 ```lua
-swayimg.viewer.rotate(angle: rotation_t)
+swayimg.viewer.rotate(angle: 180|270|90)
 ```
 
 Rotate image.
@@ -754,7 +754,7 @@ Resume animation.
 ### swayimg.viewer.set_window_background
 
 ```lua
-swayimg.viewer.set_window_background(bkg: number|bkgmode_t)
+swayimg.viewer.set_window_background(bkg: number|"auto"|"extend"|"mirror")
 ```
 
 Set window background color and mode.
@@ -946,7 +946,8 @@ fields surrounded by curly braces. The following fields are supported:
 * `{name}`: File name of the currently viewed/selected image;
 * `{dir}`: Parent directory name of the currently viewed/selected image;
 * `{path}`: Absolute path to the currently viewed/selected image;
-* `{size}`: File size in human-readable format;
+* `{size}`: File size in bytes;
+* `{sizehr}`: File size in human-readable format;
 * `{time}`: File modification time;
 * `{format}`: Brief image format description;
 * `{scale}`: Current image scale in percent;
@@ -1007,7 +1008,7 @@ Set a timeout after which next image should be opened.
 ### swayimg.slideshow.open
 
 ```lua
-swayimg.slideshow.open(dir: vdir_t)
+swayimg.slideshow.open(dir: "first"|"last"|"next"|"next_dir"|"prev"...(+2))
 ```
 
 Open next file at specified direction.
@@ -1062,7 +1063,7 @@ Set absolute image scale.
 ### swayimg.slideshow.set_fix_scale
 
 ```lua
-swayimg.slideshow.set_fix_scale(scale: fixed_scale_t)
+swayimg.slideshow.set_fix_scale(scale: "fill"|"fit"|"height"|"keep"|"optimal"...(+2))
 ```
 
 Set fixed image scale.
@@ -1092,7 +1093,7 @@ See: [swayimg.slideshow.set_default_scale](#swayimgslideshowset_default_scale)
 ### swayimg.slideshow.set_default_scale
 
 ```lua
-swayimg.slideshow.set_default_scale(scale: number|fixed_scale_t)
+swayimg.slideshow.set_default_scale(scale: number|"fill"|"fit"|"height"|"keep"...(+3))
 ```
 
 Set default image scale for newly opened images.
@@ -1135,7 +1136,7 @@ Set absolute image position.
 ### swayimg.slideshow.set_fix_position
 
 ```lua
-swayimg.slideshow.set_fix_position(pos: fixed_position_t)
+swayimg.slideshow.set_fix_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
 ```
 
 Set fixed image position.
@@ -1158,7 +1159,7 @@ pos:
 ### swayimg.slideshow.set_default_position
 
 ```lua
-swayimg.slideshow.set_default_position(pos: fixed_position_t)
+swayimg.slideshow.set_default_position(pos: "bottomcenter"|"bottomleft"|"bottomright"|"center"|"leftcenter"...(+4))
 ```
 
 Set default image position for newly opened images.
@@ -1225,7 +1226,7 @@ Flip image horizontally.
 ### swayimg.slideshow.rotate
 
 ```lua
-swayimg.slideshow.rotate(angle: rotation_t)
+swayimg.slideshow.rotate(angle: 180|270|90)
 ```
 
 Rotate image.
@@ -1258,7 +1259,7 @@ Resume animation.
 ### swayimg.slideshow.set_window_background
 
 ```lua
-swayimg.slideshow.set_window_background(bkg: number|bkgmode_t)
+swayimg.slideshow.set_window_background(bkg: number|"auto"|"extend"|"mirror")
 ```
 
 Set window background color and mode.
@@ -1488,7 +1489,7 @@ See: [swayimg.viewer.set_text_tl](#swayimgviewerset_text_tl) for scheme descript
 ### swayimg.gallery.select
 
 ```lua
-swayimg.gallery.select(dir: gdir_t)
+swayimg.gallery.select(dir: "down"|"first"|"last"|"left"|"pgdown"...(+3))
 ```
 
 Select the next thumbnail from the gallery.
@@ -1520,7 +1521,7 @@ Get information about currently selected image.
 ### swayimg.gallery.set_aspect
 
 ```lua
-swayimg.gallery.set_aspect(aspect: aspect_t)
+swayimg.gallery.set_aspect(aspect: "fill"|"fit"|"keep")
 ```
 
 Set thumbnail aspect ratio.

@@ -46,7 +46,7 @@ Viewer::Viewer()
     text_scheme[static_cast<size_t>(Text::TopLeft)] = {
         "File: {name}",
         "Format: {format}",
-        "File size: {size}",
+        "File size: {sizehr}",
         "File time: {time}",
         "EXIF date: {meta.Exif.Photo.DateTimeOriginal}",
         "EXIF camera: {meta.Exif.Image.Model}"

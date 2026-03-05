@@ -181,13 +181,14 @@ void Text::reset(const ImageEntryPtr& entry)
     set_field(FIELD_FRAME_HEIGHT, {});
     set_field(FIELD_FRAME_INDEX, {});
     set_field(FIELD_FRAME_TOTAL, {});
+    set_field(FIELD_FILE_SIZE, std::to_string(entry->size));
     set_field(FIELD_LIST_INDEX, std::to_string(entry->index));
     set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
     set_field(FIELD_SCALE, {});
 
     // human readable file size
     const size_t mib = 1024 * 1024;
-    set_field(FIELD_FILE_SIZE,
+    set_field(FIELD_FILE_SIZE_HR,
               std::format("{:.02f} {}iB",
                           static_cast<float>(entry->size) /
                               (entry->size >= mib ? mib : 1024),
