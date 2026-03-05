@@ -955,7 +955,9 @@ fields surrounded by curly braces. The following fields are supported:
 * `{list.total}`: Total number of files in the image list;
 * `{frame.width}`: Current frame width in pixels;
 * `{frame.height}`: Current frame height in pixels;
-* `{meta.*}`: Image meta info: EXIF, tags etc.
+* `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
+  found at [Exiv2 website](https://exiv2.org/tags.html) or printed using
+  utility exiv2: `exiv2 -pa photo.jpg`.
 
 ### swayimg.viewer.set_text_tr
 

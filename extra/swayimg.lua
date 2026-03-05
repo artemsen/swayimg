@@ -380,7 +380,9 @@ function swayimg.viewer.set_history_limit(size) end
 ---* `{list.total}`: Total number of files in the image list;
 ---* `{frame.width}`: Current frame width in pixels;
 ---* `{frame.height}`: Current frame height in pixels;
----* `{meta.*}`: Image meta info: EXIF, tags etc.
+---* `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
+---  found at [Exiv2 website](https://exiv2.org/tags.html) or printed using
+---  utility exiv2: `exiv2 -pa photo.jpg`.
 function swayimg.viewer.set_text_tl(scheme) end
 
 ---Set text layer scheme for top right corner of the window.
