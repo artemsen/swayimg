@@ -46,12 +46,11 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 """
 
 
-def get_funcs(tmp_dir):
+def get_funcs(src_file, tmp_dir):
     """Get functions list."""
-    lua_file = Path(__file__).parent / 'swayimg.lua'
     # lua to json
     subprocess.check_call(
-        ['lua-language-server', '--doc_out_path', tmp_dir, '--doc', lua_file],
+        ['lua-language-server', '--doc_out_path', tmp_dir, '--doc', src_file],
         stdout=subprocess.DEVNULL)
     # json to python dict
     jfuncs = {}
@@ -81,7 +80,7 @@ def get_funcs(tmp_dir):
                     }
     # restore original order (luals sorts by name)
     sfuncs = []
-    with open(lua_file, 'r', encoding='utf-8') as file:
+    with open(src_file, 'r', encoding='utf-8') as file:
         for line in file:
             if line.startswith('function '):
                 name = line[len('function '):]
@@ -129,9 +128,10 @@ def print_md(funcs):
 def main():
     """Entry point."""
     parser = argparse.ArgumentParser(description='Lua to MD converter.')
+    parser.add_argument('source', help='path to source file')
     parser.add_argument('-t', '--tmpdir', default='./', help='temp path')
     args = parser.parse_args()
-    funcs = get_funcs(Path(args.tmpdir))
+    funcs = get_funcs(args.source, Path(args.tmpdir))
     print_md(funcs)
 
 

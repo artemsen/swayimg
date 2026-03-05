@@ -156,16 +156,23 @@ if get_option('man')
 endif
 
 # doc generator
+python3 = find_program('python3', native: true, required: false)
 lualsp = find_program('lua-language-server', native: true, required: false)
-if lualsp.found()
-    cmd = [meson.global_source_root() / 'extra' / 'luadocgen.py']
-    cmd += '--tmpdir=' + meson.current_build_dir()
+if python3.found() and lualsp.found()
+    input = meson.global_source_root() / 'extra' / 'swayimg.lua'
     output = 'CONFIG.md'
     custom_target(
         output,
         build_by_default: true,
+        depend_files: input,
         output: output,
-        command: cmd,
+        command: [
+            python3,
+            meson.global_source_root() / 'extra' / 'luadocgen.py',
+            '--tmpdir',
+            meson.current_build_dir(),
+            input,
+        ],
         capture: true,
     )
 endif
