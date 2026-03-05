@@ -48,7 +48,13 @@ public:
     void mirror_background(Pixmap& pm, const Rectangle& preserve);
 
 public:
-    bool antialiasing = true; ///< Flag to use anti-aliasing
+    /** Flag to use anti-aliasing. */
+    bool antialiasing =
+#ifdef NDEBUG
+        true;
+#else
+        false;
+#endif // NDEBUG
 
 private:
     ThreadPool tpool; ///< Thread pool used for multithreaded rendering
