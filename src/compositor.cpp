@@ -160,6 +160,16 @@ public:
                 wnd = rect;
                 wnd.x += wrect.x;
                 wnd.y += wrect.y;
+
+                // consider borders in non-fullscreen mode
+                if (focus.contains("fullscreen_mode") &&
+                    focus.contains("current_border_width") &&
+                    focus["fullscreen_mode"].get<int>() == 0) {
+                    const size_t border =
+                        focus["current_border_width"].get<size_t>();
+                    wnd.width -= border * 2;
+                    wnd.height -= border * 2;
+                }
             }
         }
 
