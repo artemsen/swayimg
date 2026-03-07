@@ -206,6 +206,8 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 {
     assert(entry);
 
+    Log::verbose("Remove image entry {}", entry->path.filename().string());
+
     ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
 
     std::unique_lock lock(mutex);
@@ -506,15 +508,14 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
 
 void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 {
-    const auto it = std::find_if(entries.begin(), entries.end(),
-                                 [&entry](const ImageEntryPtr& it) {
-                                     return entry->path == it->path;
-                                 });
-    if (it != entries.end()) {
-        Log::warning("File {} already exists in list, skipped",
-                     entry->path.string());
-        return;
+    if (std::find_if(entries.begin(), entries.end(),
+                     [&entry](const ImageEntryPtr& it) {
+                         return entry->path == it->path;
+                     }) != entries.end()) {
+        return; // already exists
     }
+
+    Log::verbose("Add image entry {}", entry->path.filename().string());
 
     if (!ordered || order == Order::None) {
         entries.push_back(entry);

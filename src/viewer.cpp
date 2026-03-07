@@ -217,11 +217,18 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
             next_image = image_pool.history.get(next_entry);
         }
     }
+    if (next_image) {
+        Log::verbose("Get image {} from cache",
+                     next_entry->path.filename().string());
+    }
 
     while (next_entry && !next_image) {
         next_image = ImageLoader::load(next_entry);
         if (!next_image) {
             next_entry = il.remove(next_entry, forward);
+        }
+        if (!next_entry && imagelist_loop) {
+            next_entry = il.get(nullptr, ImageList::Dir::First);
         }
     }
     if (next_image) {
@@ -689,7 +696,7 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             if (entry == image->entry) {
                 if (!open_file(ImageList::Dir::Next, image->entry)) {
                     Log::info("No more images to view, exit");
-                    Application::self().exit(0); // no images
+                    Application::self().exit(0);
                 }
             } else {
                 std::lock_guard lock(image_pool.mutex);
@@ -701,7 +708,7 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             if (entry == image->entry) {
                 if (!open_file(ImageList::Dir::Next, nullptr)) {
                     Log::info("No more images to view, exit");
-                    Application::self().exit(0); // no images
+                    Application::self().exit(0);
                 }
             } else {
                 std::lock_guard lock(image_pool.mutex);
@@ -766,6 +773,8 @@ void Viewer::preloader_start()
             if (!next_image) {
                 il.remove(next_entry);
             } else {
+                Log::verbose("Put image {} to cache",
+                             next_entry->path.filename().string());
                 std::lock_guard lock(image_pool.mutex);
                 image_pool.preload.put(next_image);
                 last_entry = next_image->entry;

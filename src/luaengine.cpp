@@ -277,16 +277,16 @@ void LuaEngine::bind_root_api()
                          Application::self().exit(code ? *code : 0);
                      })
         .addFunction("set_title",
-                     [](const char* title) {
-                         Application::get_ui()->set_title(title);
+                     [](const std::string& title) {
+                         Application::get_ui()->set_title(title.c_str());
                      })
         .addFunction("set_status",
-                     [](const char* status) {
+                     [](const std::string& status) {
                          Text::self().set_status(status);
                      })
         .addFunction("set_mode",
-                     [](const char* name) {
-                         const auto mode = name_to_type(appmodes, name);
+                     [](const std::string& name) {
+                         const auto mode = name_to_type(appmodes, name.c_str());
                          if (mode.has_value()) {
                              Application::self().set_mode(mode.value());
                          } else {
@@ -346,18 +346,18 @@ void LuaEngine::bind_imagelist_api()
                          return table;
                      })
         .addFunction("add",
-                     [](const char* path) {
+                     [](const std::string& path) {
                          const std::filesystem::path abs_path =
                              std::filesystem::absolute(path).lexically_normal();
                          Application::self().add_event(
-                             AppEvent::FileCreate { path });
+                             AppEvent::FileCreate { abs_path });
                      })
         .addFunction("remove",
-                     [](const char* path) {
+                     [](const std::string& path) {
                          const std::filesystem::path abs_path =
                              std::filesystem::absolute(path).lexically_normal();
                          Application::self().add_event(
-                             AppEvent::FileRemove { path });
+                             AppEvent::FileRemove { abs_path });
                      })
         .addFunction(
             "mark",
@@ -372,8 +372,9 @@ void LuaEngine::bind_imagelist_api()
                 Application::redraw();
             })
         .addFunction("set_order",
-                     [](const char* name) {
-                         const auto order = name_to_type(ilorders, name);
+                     [](const std::string& name) {
+                         const auto order =
+                             name_to_type(ilorders, name.c_str());
                          if (order.has_value()) {
                              ImageList::self().set_order(order.value());
                          } else {
@@ -402,7 +403,7 @@ void LuaEngine::bind_text_api()
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(NS_TEXT)
         .addFunction("set_font",
-                     [](const char* name) {
+                     [](const std::string& name) {
                          Text::self().set_font(name);
                      })
         .addFunction("set_size",
@@ -468,11 +469,11 @@ void LuaEngine::bind_viewer_api(const char* name)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
         .addFunction("open",
-                     [check_active, mode, name](const char* dname) {
+                     [check_active, mode, name](const std::string& dname) {
                          if (!check_active("open")) {
                              return;
                          }
-                         const auto dir = name_to_type(ildirs, dname);
+                         const auto dir = name_to_type(ildirs, dname.c_str());
                          if (dir.has_value()) {
                              mode->open_file(dir.value());
                          } else {
@@ -514,20 +515,20 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                          mode->set_scale(scale, preserve);
                      })
-        .addFunction("set_fix_scale",
-                     [check_active, mode, name](const char* scname) {
-                         if (!check_active("set_fix_scale")) {
-                             return;
-                         }
-                         const auto scale = name_to_type(scales, scname);
-                         if (scale.has_value()) {
-                             mode->set_scale(scale.value());
-                         } else {
-                             Log::error(
-                                 "Invalid argument {} for {}.{}.set_fix_scale",
-                                 scname, NS_SWAYIMG, name);
-                         }
-                     })
+        .addFunction(
+            "set_fix_scale",
+            [check_active, mode, name](const std::string& scname) {
+                if (!check_active("set_fix_scale")) {
+                    return;
+                }
+                const auto scale = name_to_type(scales, scname.c_str());
+                if (scale.has_value()) {
+                    mode->set_scale(scale.value());
+                } else {
+                    Log::error("Invalid argument {} for {}.{}.set_fix_scale",
+                               scname, NS_SWAYIMG, name);
+                }
+            })
         .addFunction("reset_scale",
                      [check_active, mode]() {
                          if (check_active("reset_scale")) {
@@ -567,9 +568,9 @@ void LuaEngine::bind_viewer_api(const char* name)
                      })
         .addFunction(
             "set_fix_position",
-            [check_active, mode, name](const char* fpos) {
+            [check_active, mode, name](const std::string& fpos) {
                 if (check_active("set_fix_position")) {
-                    const auto pos = name_to_type(positions, fpos);
+                    const auto pos = name_to_type(positions, fpos.c_str());
                     if (pos.has_value()) {
                         mode->set_position(pos.value());
                     } else {
@@ -581,8 +582,8 @@ void LuaEngine::bind_viewer_api(const char* name)
             })
         .addFunction(
             "set_default_position",
-            [mode, name](const char* fpos) {
-                const auto pos = name_to_type(positions, fpos);
+            [mode, name](const std::string& fpos) {
+                const auto pos = name_to_type(positions, fpos.c_str());
                 if (pos.has_value()) {
                     mode->default_pos = pos.value();
                 } else {
@@ -693,7 +694,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("export",
-                     [check_active, mode](const char* path) {
+                     [check_active, mode](const std::string& path) {
                          if (check_active("export")) {
                              mode->export_frame(path);
                          }
@@ -762,11 +763,11 @@ void LuaEngine::bind_gallery_api()
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(NS_GALLERY)
         .addFunction("select",
-                     [check_active](const char* name) {
+                     [check_active](const std::string& name) {
                          if (!check_active("select")) {
                              return;
                          }
-                         const auto dir = name_to_type(gldirs, name);
+                         const auto dir = name_to_type(gldirs, name.c_str());
                          if (dir.has_value()) {
                              Gallery::self().select(dir.value());
                          } else {
@@ -784,17 +785,17 @@ void LuaEngine::bind_gallery_api()
                     *Application::self().current_mode()->current_entry());
                 return table;
             })
-        .addFunction("set_aspect",
-                     [](const char* name) {
-                         const auto aspect = name_to_type(aspects, name);
-                         if (aspect.has_value()) {
-                             Gallery::self().set_thumb_aspect(aspect.value());
-                         } else {
-                             Log::error(
-                                 "Invalid argument {} for {}.{}.set_aspect",
-                                 name, NS_SWAYIMG, NS_GALLERY);
-                         }
-                     })
+        .addFunction(
+            "set_aspect",
+            [](const std::string& name) {
+                const auto aspect = name_to_type(aspects, name.c_str());
+                if (aspect.has_value()) {
+                    Gallery::self().set_thumb_aspect(aspect.value());
+                } else {
+                    Log::error("Invalid argument {} for {}.{}.set_aspect", name,
+                               NS_SWAYIMG, NS_GALLERY);
+                }
+            })
         .addFunction("get_thumb_size",
                      []() {
                          return Gallery::self().get_thumb_size();

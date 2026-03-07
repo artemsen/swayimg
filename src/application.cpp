@@ -5,6 +5,7 @@
 #include "application.hpp"
 
 #include "buildconf.hpp"
+#include "fsmonitor.hpp"
 #include "gallery.hpp"
 #include "imagelist.hpp"
 #include "log.hpp"
@@ -53,7 +54,8 @@ int Application::run()
         lua.execute(sparams.lua_script);
     }
 
-    // initialize image list
+    // initialize filemon and image list
+    FsMonitor::self().initialize();
     ImageEntryPtr first_entry = il_initialize();
     if (!first_entry) {
         Log::info("Image list is empty, exit");
@@ -88,6 +90,7 @@ int Application::run()
 
 void Application::exit(int rc)
 {
+    stop_flag = true;
     exit_code = rc;
     exit_event.set();
 }
@@ -271,9 +274,8 @@ void Application::event_loop()
     });
 
     // register exit handler
-    bool stop = false;
-    add_fdpoll(exit_event, [&stop]() {
-        stop = true;
+    add_fdpoll(exit_event, [this]() {
+        stop_flag = true;
     });
 
     // create fd array to poll
@@ -289,14 +291,14 @@ void Application::event_loop()
     }
 
     // main loop: handle events
-    while (!stop) {
+    while (!stop_flag) {
         if (poll(poll_fds.data(), poll_fds.size(), -1) < 0 && errno != EINTR) {
             exit_code = errno;
             Log::error(errno, "Failed to poll events");
             break;
         }
         // call handlers for each active event
-        for (size_t i = 0; !stop && i < poll_fds.size(); ++i) {
+        for (size_t i = 0; !stop_flag && i < poll_fds.size(); ++i) {
             if (poll_fds[i].revents & POLLIN) {
                 fds[i].second();
             }

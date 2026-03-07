@@ -9,6 +9,7 @@
 #include "fdevent.hpp"
 #include "ui.hpp"
 
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <memory>
@@ -151,8 +152,9 @@ private:
 
     Mode active_mode = Mode::Viewer; ///< Currently active mode
 
-    int exit_code = -1; ///< Application exit code
-    FdEvent exit_event; ///< Application stop event
+    std::atomic<bool> stop_flag = false; ///< Application stop flag
+    int exit_code = -1;                  ///< Application exit code
+    FdEvent exit_event;                  ///< Application stop event
 
     std::vector<std::pair<int, FdEventHandler>>
         fds; ///< Monitored file descriptors
