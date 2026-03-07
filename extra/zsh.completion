@@ -4,15 +4,17 @@
 # Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
 _arguments \
+  '(-v --viewer)'{-v,--viewer}'[start in viewer mode]' \
   '(-g --gallery)'{-g,--gallery}'[start in gallery mode]' \
-  '(-s --slideshow)'{-l,--slideshow}'[start in slideshow mode]' \
-  '(-f --from-file)'{-f,--from-file}'[interpret input files as text lists of image files]' \
-  '(-l --fullscreen)'{-l,--fullscreen}'[open in full screen mode]' \
-  '(-p --position)'{-p,--position=}'[set window position]:position' \
-  '(-w --size)'{-w,--size=}'[set window size]:size' \
-  '(-a --class)'{-a,--class=}'[set window class/app_id]:class' \
-  '(-c --config)'{-c,--config=}'[set configuration parameter]:file' \
-  '(-V --verbose)'{-V,--verbose}'[enable verbose output]' \
-  '(-v --version)'{-v,--version}'[print version info and exit]' \
+  '(-s --slideshow)'{-s,--slideshow}'[start in slideshow mode]' \
+  '(-f --from-file)'{-f,--from-file}'[load file list from file]:file' \
+  '(-P --position)'{-P,--position=}'[set window position]:position' \
+  '(-S --size)'{-S,--size=}'[set window size]:size' \
+  '(-F --fullscreen)'{-F,--fullscreen}'[open in full screen mode]' \
+  '(-c --config)'{-c,--config=}'[load config from file]:file' \
+  '(-e --execute)'{-e,--execute=}'[execute Lua script on start]:script' \
+  '--class[set window class/app_id]:class' \
+  '--verbose[enable verbose output]' \
+  '(-V --version)'{-V,--version}'[print version info and exit]' \
   '(-h --help)'{-h,--help}'[print help and exit]' \
   '*:file:_files'
