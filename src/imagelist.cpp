@@ -273,11 +273,15 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
     std::shared_lock lock(mutex);
 
+    if (entries.empty()) {
+        return nullptr;
+    }
+
     if (dir == Dir::First) {
-        return entries.empty() ? nullptr : entries.front();
+        return entries.front();
     }
     if (dir == Dir::Last) {
-        return entries.empty() ? nullptr : entries.back();
+        return entries.back();
     }
 
     assert(from);
@@ -296,17 +300,18 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         return random;
     }
 
-    std::list<ImageEntryPtr>::const_iterator it = entries.end();
-    if (*from) {
-        it = std::find(entries.begin(), entries.end(), from);
-    } else {
-        it = std::find_if(entries.begin(), entries.end(),
-                          [&from, this](const ImageEntryPtr& entry) {
-                              const bool cmp =
-                                  compare_entries(*from, *entry, order);
-                              return reverse ? !cmp : cmp;
-                          });
+    // handle removed entry: return nearest entry
+    if (!*from) {
+        const auto it = std::find_if(entries.begin(), entries.end(),
+                                     [&from, this](const ImageEntryPtr& entry) {
+                                         const bool cmp = compare_entries(
+                                             *from, *entry, order);
+                                         return reverse ? !cmp : cmp;
+                                     });
+        return it == entries.end() ? entries.front() : *it;
     }
+
+    auto it = std::find(entries.begin(), entries.end(), from);
 
     if (dir == Dir::Next) {
         return ++it == entries.end() ? nullptr : *it;
@@ -315,9 +320,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         return --it == entries.end() ? nullptr : *it;
     }
 
-    if (it == entries.end()) {
-        return nullptr;
-    }
+    assert(it != entries.end());
 
     const std::filesystem::path from_parent = from->path.parent_path();
     if (dir == Dir::NextParent) {

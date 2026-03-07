@@ -7,6 +7,7 @@
 #include "application.hpp"
 #include "imagelist.hpp"
 #include "imageloader.hpp"
+#include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
 #include "text.hpp"
@@ -351,8 +352,10 @@ void Gallery::handle_imagelist(const ImageListEvent event,
                                const ImageEntryPtr& entry)
 {
     if (event == ImageListEvent::Remove && entry == layout.get_selected()) {
-        if (!layout.select(Layout::Right)) {
-            layout.select(Layout::Left);
+        if (!layout.select(Layout::Right) && !layout.select(Layout::Left)) {
+            Log::info("No more images to view, exit");
+            Application::self().exit(0);
+            return;
         }
         switch_current();
     }

@@ -15,11 +15,12 @@ void Layout::update()
     }
 
     ImageList& il = ImageList::self();
-    ImageEntryPtr first_image = il.get(nullptr, ImageList::Dir::First);
+    ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
 
-    if (!sel_img) {
-        sel_img = first_image;
+    if (!sel_entry) {
+        sel_entry = first_entry;
     }
+    assert(*sel_entry);
 
     columns = std::max(static_cast<size_t>(1),
                        window.width / (thumb_size + thumb_padding));
@@ -27,7 +28,7 @@ void Layout::update()
                     window.height / (thumb_size + thumb_padding));
 
     // set preliminary position for the currently selected image
-    ssize_t distance = il.distance(first_image, sel_img);
+    ssize_t distance = il.distance(first_entry, sel_entry);
     sel_col = distance % columns;
     if (sel_row == rows) {
         sel_row = rows - 1;
@@ -37,9 +38,9 @@ void Layout::update()
 
     // get the first visible image
     distance = sel_row * columns + sel_col;
-    ImageEntryPtr first_visible = il.get(sel_img, -distance);
+    ImageEntryPtr first_visible = il.get(sel_entry, -distance);
     if (!first_visible) {
-        first_visible = first_image;
+        first_visible = first_entry;
     }
 
     // get the last visible images
@@ -48,18 +49,18 @@ void Layout::update()
     if (!last_visible) {
         ImageEntryPtr last_image = il.get(nullptr, ImageList::Dir::Last);
         last_visible = last_image;
-        if (first_visible != first_image) {
+        if (first_visible != first_entry) {
             // scroll to fill the entire window
             const size_t last_col = (il.size() - 1) % columns;
             distance = max_thumb - (columns - last_col);
             first_visible = il.get(last_visible, -distance);
             if (!first_visible) {
-                first_visible = first_image;
+                first_visible = first_entry;
             }
         }
     }
 
-    sel_row = il.distance(first_visible, sel_img) / columns;
+    sel_row = il.distance(first_visible, sel_entry) / columns;
 
     assert(first_visible);
     assert(last_visible);
@@ -91,7 +92,7 @@ void Layout::update()
         img = il.get(img, ImageList::Dir::Next);
     }
 
-    assert(sel_img == scheme[sel_row * columns + sel_col].img);
+    assert(sel_entry == scheme[sel_row * columns + sel_col].img);
 }
 
 void Layout::set_window_size(const Size& size)
@@ -114,14 +115,14 @@ void Layout::set_padding(const size_t padding)
 
 void Layout::select(const ImageEntryPtr& image)
 {
-    sel_img = image;
+    sel_entry = image;
     sel_row = std::numeric_limits<size_t>::max();
     update();
 }
 
 bool Layout::select(const Direction dir)
 {
-    assert(sel_img);
+    assert(sel_entry);
 
     ImageList& il = ImageList::self();
     ImageEntryPtr next = nullptr;
@@ -138,42 +139,42 @@ bool Layout::select(const Direction dir)
             row = 0;
             break;
         case Direction::Up:
-            next = il.get(sel_img, -static_cast<ssize_t>(columns));
+            next = il.get(sel_entry, -static_cast<ssize_t>(columns));
             if (!next) {
                 next = il.get(nullptr, ImageList::Dir::First);
             }
             --row;
             break;
         case Direction::Down:
-            next = il.get(sel_img, columns);
+            next = il.get(sel_entry, columns);
             if (!next) {
                 next = il.get(nullptr, ImageList::Dir::Last);
             }
             ++row;
             break;
         case Direction::Left:
-            next = il.get(sel_img, ImageList::Dir::Prev);
+            next = il.get(sel_entry, ImageList::Dir::Prev);
             --col;
             break;
         case Direction::Right:
-            next = il.get(sel_img, ImageList::Dir::Next);
+            next = il.get(sel_entry, ImageList::Dir::Next);
             ++col;
             break;
         case Direction::PgUp:
-            next = il.get(sel_img, -static_cast<ssize_t>(columns * rows));
+            next = il.get(sel_entry, -static_cast<ssize_t>(columns * rows));
             if (!next) {
                 next = il.get(nullptr, ImageList::Dir::First);
             }
             break;
         case Direction::PgDown:
-            next = il.get(sel_img, columns * rows);
+            next = il.get(sel_entry, columns * rows);
             if (!next) {
                 next = il.get(nullptr, ImageList::Dir::Last);
             }
             break;
     }
 
-    if (next == sel_img) {
+    if (next == sel_entry) {
         next = nullptr;
     }
 
@@ -188,7 +189,7 @@ bool Layout::select(const Direction dir)
         } else {
             sel_row = row;
         }
-        sel_img = next;
+        sel_entry = next;
         update();
     }
 
@@ -198,10 +199,10 @@ bool Layout::select(const Direction dir)
 bool Layout::select(const Point& pos)
 {
     const Thumbnail* thumb = at(pos);
-    const bool new_select = thumb && thumb->img != sel_img;
+    const bool new_select = thumb && thumb->img != sel_entry;
 
     if (new_select) {
-        sel_img = thumb->img;
+        sel_entry = thumb->img;
         sel_col = thumb->col;
         sel_row = thumb->row;
     }
@@ -224,7 +225,7 @@ const Layout::Thumbnail* Layout::at(const Point& pos) const
 
 ImageEntryPtr Layout::get_selected() const
 {
-    return sel_img;
+    return sel_entry;
 }
 
 const std::vector<Layout::Thumbnail>& Layout::get_scheme() const

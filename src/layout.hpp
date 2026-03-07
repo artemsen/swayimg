@@ -116,7 +116,7 @@ private:
     Size window;          ///< Layout size (output window)
     size_t columns, rows; ///< Size of the layout in thumbnails
 
-    ImageEntryPtr sel_img = nullptr; ///< Currently selected image
+    ImageEntryPtr sel_entry = nullptr; ///< Currently selected entry
     size_t sel_col =
         std::numeric_limits<size_t>::max(); ///< Currently selected column
     size_t sel_row =
