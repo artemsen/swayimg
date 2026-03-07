@@ -56,7 +56,8 @@ int Application::run()
     // initialize image list
     ImageEntryPtr first_entry = il_initialize();
     if (!first_entry) {
-        return 1;
+        Log::info("Image list is empty, exit");
+        return 0;
     }
 
     // initialize UI
