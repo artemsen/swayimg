@@ -163,6 +163,10 @@ int main(int argc, char* argv[])
 
     Args args;
 
+    args.add('v', "viewer", nullptr, "start in viewer mode", [](const char*) {
+        Application::self().sparams.mode = Application::Mode::Viewer;
+    });
+
     args.add('g', "gallery", nullptr, "start in gallery mode", [](const char*) {
         Application::self().sparams.mode = Application::Mode::Gallery;
     });
@@ -208,7 +212,17 @@ int main(int argc, char* argv[])
                  Application::self().sparams.fullscreen = true;
              });
 
-    args.add('a', "class", nullptr, "set window class/app_id",
+    args.add('c', "config", "FILE", "load config from FILE",
+             [](const char* arg) {
+                 Application::self().sparams.config = arg;
+             });
+
+    args.add('e', "execute", "LUA", "execute Lua script on start",
+             [](const char* arg) {
+                 Application::self().sparams.lua_script = arg;
+             });
+
+    args.add(0, "class", nullptr, "set window class/app_id",
              [](const char* arg) {
                  if (!*arg) {
                      Log::error("Empty window class name");
@@ -217,11 +231,11 @@ int main(int argc, char* argv[])
                  Application::self().sparams.app_id = arg;
              });
 
-    args.add('V', "verbose", nullptr, "enable verbose output", [](const char*) {
+    args.add(0, "verbose", nullptr, "enable verbose output", [](const char*) {
         Log::verbose_enable() = true;
     });
 
-    args.add('v', "version", nullptr, "print version info and exit",
+    args.add('V', "version", nullptr, "print version info and exit",
              [](const char*) {
                  puts("swayimg version " APP_VERSION ".");
                  puts("https://github.com/artemsen/swayimg");

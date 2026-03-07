@@ -1,6 +1,9 @@
-# Swayimg: image viewer for Wayland
+# Swayimg: image viewer for Wayland and DRM
 
-Image viewer for Wayland/DRM with Lua support.
+Swayimg is a lightweight Wayland-native image viewer optimized for the Sway
+and Hyprland window managers, featuring an overlay mode that simulates terminal
+image display. The application supports slideshow and gallery modes, reads from
+stdin and external commands, and is highly customizable via [Lua scripting](CONFIG.md).
 
 - Support for the most popular image formats:
   - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
@@ -21,16 +24,11 @@ Image viewer for Wayland/DRM with Lua support.
   - QOI (built-in);
   - DICOM (built-in);
   - Farbfeld (built-in).
-- Fully customizable keyboard bindings, colors, and many other parameters via
-  [Lua bindings](CONFIG.md);
-- Loading images from files and pipes;
 - Gallery and viewer modes with slideshow and animation support;
+- Loading images from files and pipes;
 - Preload images in a separate thread;
-- Cache in memory, no data is written to permanent storage (HDD/SSD);
-- [Sway](https://swaywm.org) and [Hyprland](https://hypr.land/) integration
-  mode: the application creates an "overlay" above the currently active window,
-  which gives the illusion that you are opening the image directly in a terminal
-  window (enabled in Sway by default).
+- Fully customizable keyboard bindings, colors, and many other parameters via
+  [Lua bindings](CONFIG.md).
 
 ![Viewer mode](.github/viewer.png)
 ![Gallery mode](.github/gallery.png)
@@ -54,13 +52,13 @@ Examples:
           "exec://curl -so- https://www.kernel.org/theme/images/logos/tux.png"
   ```
 
+See full [documentation](USAGE.md) for details.
+
 ## Configuration
 
-The Swayimg configuration file is a Lua script. Please refer to the official Lua
-documentation for information about the file format.
-
-The full list of available functions is described in the [documentation](CONFIG.md)
-and in the [Lua source](extra/swayimg.lua) file.
+The Swayimg configuration file is a Lua script. The full list of available
+functions is described in the [documentation](CONFIG.md) and in the
+[Lua source](extra/swayimg.lua) file.
 
 [Example](extra/example.lua) of the configuration file is available after
 installation in `/usr/share/swayimg/example.lua`.

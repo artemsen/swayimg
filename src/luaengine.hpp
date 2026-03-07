@@ -34,6 +34,12 @@ public:
      */
     void initialize(const std::filesystem::path& config);
 
+    /**
+     * Execute Lua script.
+     * @param script script to execute
+     */
+    void execute(const std::string& script);
+
 private:
     // Bind API to Lua
     void bind_root_api();

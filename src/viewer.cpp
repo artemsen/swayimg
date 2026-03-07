@@ -596,7 +596,7 @@ void Viewer::on_open()
 
 ImageEntryPtr Viewer::current_entry()
 {
-    return image->entry;
+    return image ? image->entry : nullptr;
 }
 
 void Viewer::window_resize(const Size& wnd)

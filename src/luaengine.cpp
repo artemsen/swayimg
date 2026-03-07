@@ -255,6 +255,19 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     }
 }
 
+void LuaEngine::execute(const std::string& script)
+{
+    assert(lua_state);
+
+    if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
+        Log::error("Failed to load script line: {}",
+                   lua_tostring(lua_state, -1));
+    } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
+        Log::error("Failed to execute script line: {}",
+                   lua_tostring(lua_state, -1));
+    }
+}
+
 void LuaEngine::bind_root_api()
 {
     luabridge::getGlobalNamespace(lua_state)

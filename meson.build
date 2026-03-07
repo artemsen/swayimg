@@ -157,10 +157,10 @@ endif
 
 # doc generator
 python3 = find_program('python3', native: true, required: false)
-lualsp = find_program('lua-language-server', native: true, required: false)
-if python3.found() and lualsp.found()
-    input = meson.global_source_root() / 'extra' / 'swayimg.lua'
-    output = 'CONFIG.md'
+if python3.found()
+    # man 1
+    input = meson.global_source_root() / 'USAGE.md'
+    output = 'swayimg.1'
     custom_target(
         output,
         build_by_default: true,
@@ -168,13 +168,31 @@ if python3.found() and lualsp.found()
         output: output,
         command: [
             python3,
-            meson.global_source_root() / 'extra' / 'luadocgen.py',
-            '--tmpdir',
-            meson.current_build_dir(),
+            meson.global_source_root() / 'extra' / 'md2man.py',
             input,
         ],
         capture: true,
     )
+    # lua doc
+    lualsp = find_program('lua-language-server', native: true, required: false)
+    if python3.found() and lualsp.found()
+        input = meson.global_source_root() / 'extra' / 'swayimg.lua'
+        output = 'CONFIG.md'
+        custom_target(
+            output,
+            build_by_default: true,
+            depend_files: input,
+            output: output,
+            command: [
+                python3,
+                meson.global_source_root() / 'extra' / 'luadocgen.py',
+                '--tmpdir',
+                meson.current_build_dir(),
+                input,
+            ],
+            capture: true,
+        )
+    endif
 endif
 
 # desktop file + icon

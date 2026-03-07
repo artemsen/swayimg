@@ -1,83 +1,171 @@
-.\" Swayimg: image viewer for Sway/Wayland
-.\" Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
-.TH "SWAYIMG" "1" "2026-02-28" "swayimg" "Swayimg manual"
+.TH "SWAYIMG" "1" "2026-03-08" "swayimg" "Swayimg manual"
+.PP
 .SH NAME
 .PP
-swayimg - image viewer for Wayland display servers
+\fBswayimg\fR - image viewer for Wayland/DRM with Lua scripting support
+.PP
 .SH SYNOPSIS
 .PP
-\fBswayimg\fR [OPTIONS]... [FILE]...
-.SH DESCRIPTION
+\fBswayimg\fR [\fIOPTION\fR]... [\fIFILE\fR]...
 .PP
 If no input files or directories are specified, the viewer will try to read all
 files in the current directory.
 .PP
-Use '-' as FILE to read image data from stdin.
+Use \fB-\fR as \fIFILE\fR to read image data from stdin.
 .PP
 Use prefix \fBexec://\fR to get image data from stdout printed by external command.
+.PP
+.SH DESCRIPTION
+.PP
+Swayimg is a lightweight Wayland-native image viewer optimized for the Sway
+and Hyprland window managers, featuring an overlay mode that simulates terminal
+image display. The application supports slideshow and gallery modes, reads from
+stdin and external commands, and is highly customizable via Lua scripting.
+.PP
 .SH OPTIONS
 .PP
-Mandatory arguments to long options are mandatory for short options too.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-h\fR, \fB\-\-help\fR"
+\fB-h, --help\fR
+.RS 4
 Display help message and exit.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-v\fR, \fB\-\-version\fR"
-Display version information and list of supported image formats.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-g\fR, \fB\-\-gallery\fR"
-Start in gallery mode.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-s\fR, \fB\-\-slideshow\fR"
-Start in slide show mode.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-f\fR, \fB\-\-from\-file\fR=\fIFILE\fR"
-Load file list from specified \fIFILE\fR.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-P\fR, \fB\-\-position\fR=\fIXxY\fR"
-Set initial position of the window (Sway/Hyperland only).
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-S\fR, \fB\-\-size\fR=\fIWxH\fR"
-Set initial size of the window.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-F\fR, \fB\-\-fullscreen\fR"
-Start in full-screen mode.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-a\fR, \fB\-\-class\fR=\fIAPPID\fR"
-Set window class (application id).
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-c\fR, \fB\-\-config\fR=\fIFILE\fR"
-Load config specified \fIFILE\fR.
-.\" ----------------------------------------------------------------------------
-.IP "\fB\-V\fR, \fB\-\-verbose\fR"
-Enable verbose output.
-.\" ----------------------------------------------------------------------------
-.SH SWAY/HYPRLAND INTEGRATION
+.RE
 .PP
-This mode provides some features such as setting the window position and
-getting the workspace layout.
-The application creates an "overlay" above the currently active
-window, which gives the illusion that the image is opened directly inside
-the terminal window.
-.\" ----------------------------------------------------------------------------
+\fB-V, --version\fR
+.RS 4
+Display version information and list of supported image formats.
+.RE
+.PP
+\fB-v, --viewer\fR
+.RS 4
+Force start in viewer mode.
+.RE
+.PP
+\fB-g, --gallery\fR
+.RS 4
+Force start in gallery mode.
+.RE
+.PP
+\fB-s, --slideshow\fR
+.RS 4
+Force start in slideshow mode.
+.RE
+.PP
+\fB-f, --from-file\fR=\fIFILE\fR
+.RS 4
+Load file list from text \fIFILE\fR.
+.RE
+.PP
+\fB-P, --position\fR=\fIX,Y\fR
+.RS 4
+Set initial position of the window (Sway/Hyperland only).
+.RE
+.PP
+\fB-S, --size\fR=\fIW,H\fR
+.RS 4
+Set initial size of the window.
+.RE
+.PP
+\fB-F, --fullscreen\fR
+.RS 4
+Start in full screen mode.
+.RE
+.PP
+\fB-c, --config\fR=\fIFILE\fR
+.RS 4
+Load the specified Lua \fIFILE\fR instead of default one.
+.RE
+.PP
+\fB-e, --execute\fR=\fILUA\fR
+.RS 4
+Execute the specified Lua script after loading the configuration.
+.RE
+.PP
+\fB--class\fR=\fINAME\fR
+.RS 4
+Set window class name (application ID).
+.RE
+.PP
+\fB--verbose\fR
+.RS 4
+Enable verbose output.
+.RE
+.PP
 .SH ENVIRONMENT
-.IP "\fISWAYSOCK\fR"
+.PP
+\fBSWAYSOCK\fR
+.RS 4
 Path to the socket file used for Sway IPC.
-.IP "\fIHYPRLAND_INSTANCE_SIGNATURE\fR, \fIXDG_RUNTIME_DIR\fR"
+.RE
+.PP
+\fBHYPRLAND_INSTANCE_SIGNATURE\fR, \fBXDG_RUNTIME_DIR\fR
+.RS 4
 Path to the socket file used for Hyprland IPC.
-.IP "\fIXDG_CONFIG_HOME\fR, \fIXDG_CONFIG_DIRS\fR, \fIHOME\fR"
-Prefix of the path to default application config file.
-.IP "\fISHELL\fR"
-Shell for executing an external command and loading an image from stdout.
-.\" ----------------------------------------------------------------------------
+.RE
+.PP
+\fBXDG_CONFIG_HOME\fR, \fBXDG_CONFIG_DIRS\fR, \fBHOME\fR
+.RS 4
+Prefix for the path to the default application config file.
+.RE
+.PP
+\fBSHELL\fR
+.RS 4
+Shell used for executing an external command and loading an image from
+stdout.
+.RE
+.PP
 .SH SIGNALS
-.IP "\fISIGUSR1\fR, \fISIGUSR2\fR"
+.PP
+\fBSIGUSR1\fR, \fBSIGUSR2\fR
+.RS 4
 Perform the actions specified in the config file.
-.\" ----------------------------------------------------------------------------
+.RE
+.PP
 .SH EXIT STATUS
+.PP
 The exit status is 0 if the program completed successfully and 1 if an
-error occurred. Other codes can be specified via config file.
-.\" ----------------------------------------------------------------------------
+error occurred. Other codes can be specified via Lua script.
+.PP
+.SH EXAMPLES
+.PP
+Viewing multiple files:
+.NF
+.RS 4
+swayimg photo.jpg logo.png
+.RE
+.FI
+.PP
+Displaying an image received via a pipe:
+.NF
+.RS 4
+wget -qO- https://www.kernel.org/theme/images/logos/tux.png | swayimg -
+.RE
+.FI
+.PP
+Loading stdout from external commands:
+.NF
+.RS 4
+swayimg "exec://wget -qO- https://www.kernel.org/theme/images/logos/tux.png" \\
+        "exec://curl -so- https://www.kernel.org/theme/images/logos/tux.png"
+.RE
+.FI
+.PP
+.SH FILES
+.PP
+The application searches for and processes the \fBinit.lua\fR file at startup. The
+file is a Lua script that sets initial parameters, adds hooks and changes the
+behavior of the program.
+.PP
+Possible file locations:
+.PD 0
+.IP \(bu 4
+\fB$XDG_CONFIG_HOME/swayimg/init.lua\fR
+.IP \(bu 4
+\fB$HOME/.config/swayimg/init.lua\fR
+.IP \(bu 4
+\fB$XDG_CONFIG_DIRS/swayimg/init.lua\fR
+.IP \(bu 4
+\fB/etc/xdg/swayimg/init.lua\fR
+.PD
+.PP
 .SH BUGS
 .PP
 For suggestions, comments, bug reports, etc. visit the project homepage

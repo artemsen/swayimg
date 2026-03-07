@@ -130,6 +130,7 @@ public:
     /** Application startup parameters. */
     struct StartupParams {
         std::filesystem::path config;    ///< Lua config file to load
+        std::string lua_script;          ///< Lua script to start
         std::filesystem::path from_file; ///< Load image list from file
         std::vector<std::filesystem::path> sources; ///< Image list
         Mode mode = Application::Mode::Viewer;      ///< Initial mode

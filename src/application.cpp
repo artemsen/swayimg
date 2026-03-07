@@ -48,7 +48,11 @@ int Application::run()
 {
     active_mode = sparams.mode;
 
-    LuaEngine::self().initialize(sparams.config);
+    LuaEngine& lua = LuaEngine::self();
+    lua.initialize(sparams.config);
+    if (!sparams.lua_script.empty()) {
+        lua.execute(sparams.lua_script);
+    }
 
     ImageEntryPtr first_entry = il_initialize();
     if (!first_entry) {
