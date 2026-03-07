@@ -263,7 +263,11 @@ int main(int argc, char* argv[])
     }
 
     for (int i = argn; i < argc; ++i) {
-        Application::self().sparams.sources.push_back(argv[i]);
+        std::string arg = argv[i];
+        if (arg == "-") {
+            arg = ImageEntry::SRC_STDIN;  // Convert "-" to "stdin://"
+        }
+        Application::self().sparams.sources.push_back(arg);
     }
 
     return Application::self().run();
