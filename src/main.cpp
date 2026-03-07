@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
                  Application::self().sparams.lua_script = arg;
              });
 
-    args.add(0, "class", nullptr, "set window class/app_id",
+    args.add(0, "class", "NAME", "set window class/app_id",
              [](const char* arg) {
                  if (!*arg) {
                      Log::error("Empty window class name");
