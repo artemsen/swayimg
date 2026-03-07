@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 class Application {
@@ -133,7 +134,7 @@ public:
         std::string lua_script;          ///< Lua script to start
         std::filesystem::path from_file; ///< Load image list from file
         std::vector<std::filesystem::path> sources; ///< Image list
-        Mode mode = Application::Mode::Viewer;      ///< Initial mode
+        std::optional<Mode> mode;                   ///< Initial mode
         Rectangle window;               ///< Main window position/size
         bool use_overlay = false;       ///< Use overlay mode (Wayland only)
         bool fullscreen = false;        ///< Full screen mode (Wayland only)
@@ -145,6 +146,8 @@ public:
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance
+
+    bool initialized = false; ///< Initialization complete flag
 
     Mode active_mode = Mode::Viewer; ///< Currently active mode
 

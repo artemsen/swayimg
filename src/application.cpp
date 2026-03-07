@@ -46,29 +46,35 @@ Application::Application()
 
 int Application::run()
 {
-    active_mode = sparams.mode;
-
+    // initialize and load Lua
     LuaEngine& lua = LuaEngine::self();
     lua.initialize(sparams.config);
     if (!sparams.lua_script.empty()) {
         lua.execute(sparams.lua_script);
     }
 
+    // initialize image list
     ImageEntryPtr first_entry = il_initialize();
     if (!first_entry) {
         return 1;
     }
 
+    // initialize UI
     if (!ui_initialize()) {
         return 1;
     }
 
+    // initialize signal handler
     sig_initialize();
 
+    // initialize other subsystems
     Text::self().initialize();
     Viewer::self().initialize();
     Slideshow::self().initialize();
     Gallery::self().initialize();
+
+    initialized = true;
+    active_mode = sparams.mode.value_or(Mode::Viewer);
 
     current_mode()->activate(first_entry, ui->get_size());
     ui->run();
@@ -87,6 +93,13 @@ void Application::exit(int rc)
 
 void Application::set_mode(Mode mode)
 {
+    if (!initialized) {
+        if (!sparams.mode.has_value()) {
+            sparams.mode = mode;
+        }
+        return; // not yet initialized
+    }
+
     if (mode != active_mode) {
         AppMode* app_mode;
 
@@ -102,6 +115,10 @@ void Application::set_mode(Mode mode)
 
 AppMode* Application::current_mode()
 {
+    if (!initialized) {
+        return nullptr; // not yet initialized
+    }
+
     switch (active_mode) {
         case Mode::Viewer:
             return &Viewer::self();
