@@ -11,6 +11,7 @@
 #include "resources.hpp"
 #include "text.hpp"
 
+#include <cmath>
 #include <format>
 
 /** Max scale factor. */
@@ -573,13 +574,28 @@ void Viewer::on_open()
 
     set_frame(0);
 
-    if (std::holds_alternative<Scale>(default_scale)) {
-        set_scale(std::get<Scale>(default_scale));
+    if (std::holds_alternative<Scale>(default_scale) &&
+        std::get<Scale>(default_scale) == Scale::Keep && previmg) {
+        // handle "keep scale" mode
+        const Pixmap& pm = image->frames[frame_index].pm;
+        const ssize_t diff_w = static_cast<ssize_t>(previmg.width) -
+            static_cast<ssize_t>(pm.width());
+        const ssize_t diff_h = static_cast<ssize_t>(previmg.height) -
+            static_cast<ssize_t>(pm.height());
+        position.x += std::floor(scale * diff_w) / 2.0;
+        position.y += std::floor(scale * diff_h) / 2.0;
+        fixup_position();
     } else {
-        set_scale(std::get<double>(default_scale));
+        if (std::holds_alternative<Scale>(default_scale)) {
+            set_scale(std::get<Scale>(default_scale));
+        } else {
+            set_scale(std::get<double>(default_scale));
+        }
+
+        set_position(default_pos);
     }
 
-    set_position(default_pos);
+    previmg = image->frames[frame_index].pm;
 
     // start animation
     if (animation_enable && is_animation) {

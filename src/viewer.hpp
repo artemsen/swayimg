@@ -283,6 +283,7 @@ private:
     ImagePtr image; ///< Currently shown image
     Point position; ///< Image position on the window
     double scale;   ///< Current scale factor of the image
+    Size previmg;   ///< Size of previous image (used for "keep" scale mode)
 
     Size window_size;                            ///< Window size in pixels
     std::variant<argb_t, Background> window_bkg; ///< Window background
