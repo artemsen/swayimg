@@ -172,7 +172,12 @@ ImageEntryPtr Application::il_initialize()
         first_entry = il.load(sparams.from_file);
     }
     if (!sparams.sources.empty()) {
-        first_entry = il.load(sparams.sources);
+        if (sparams.sources.size() == 1 && sparams.sources[0] == "-") {
+            first_entry = il.load(
+                std::vector<std::filesystem::path> { ImageEntry::SRC_STDIN });
+        } else {
+            first_entry = il.load(sparams.sources);
+        }
     }
     if (sparams.from_file.empty() && sparams.sources.empty()) {
         first_entry = il.load(std::vector<std::filesystem::path> { "." });
