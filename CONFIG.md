@@ -46,6 +46,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
+  * [swayimg.on_initialized](#swayimgon_initialized): Set the initialization completion handler
 * Image list
   * [swayimg.imagelist.size](#swayimgimagelistsize): Get size of image list
   * [swayimg.imagelist.get](#swayimgimagelistget): Get list of all entries in the image list
@@ -318,6 +319,17 @@ focused window. This variable can be set only once.
 By default enabled in Sway and disabled in other compositors.
 
 @*param* `enable` — Enable/disable flag to set
+
+### swayimg.on_initialized
+
+```lua
+swayimg.on_initialized(fn: function)
+```
+
+Set the initialization completion handler.
+Called after all subsystems have been initialized.
+
+@*param* `fn` — Initialization completion callback
 
 ## Image list
 

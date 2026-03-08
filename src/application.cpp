@@ -81,6 +81,11 @@ int Application::run()
 
     current_mode()->activate(first_entry, ui->get_window_size());
     ui->run();
+
+    if (on_init_complete) {
+        on_init_complete();
+    }
+
     event_loop();
     current_mode()->deactivate();
     ui->stop();

@@ -90,6 +90,11 @@ function swayimg.enable_decoration(enable) end
 ---@param enable boolean Enable/disable flag to set
 function swayimg.enable_overlay(enable) end
 
+---Set the initialization completion handler.
+---Called after all subsystems have been initialized.
+---@param fn function Initialization completion callback
+function swayimg.on_initialized(fn) end
+
 --------------------------------------------------------------------------------
 -- Image list
 --------------------------------------------------------------------------------

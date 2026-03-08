@@ -147,6 +147,9 @@ public:
         size_t drm_freq = 0;            ///< Display frequency (DRM only)
     } sparams;
 
+    /** Initialization complete callback. */
+    std::function<void()> on_init_complete = nullptr;
+
 private:
     std::unique_ptr<Ui> ui; ///< UI instance
 

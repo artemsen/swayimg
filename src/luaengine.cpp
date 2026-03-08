@@ -363,6 +363,23 @@ void LuaEngine::bind_root_api()
                      [](const bool enable) {
                          Application::self().sparams.use_overlay = enable;
                      })
+        .addFunction("on_initialized",
+                     [this](const luabridge::LuaRef& cb) {
+                         if (!cb.isFunction()) {
+                             Log::error(
+                                 "Invalid argument for {}.on_initialized: "
+                                 "expected function, but got {}",
+                                 NS_SWAYIMG, cb.tostring().c_str());
+                             return;
+                         }
+                         luabridge::LuaRef* ref = add_ref(&cb);
+                         Application::self().on_init_complete = [ref]() {
+                             const luabridge::LuaResult result = (*ref)();
+                             if (!result) {
+                                 Log::error("{}", result.errorMessage());
+                             }
+                         };
+                     })
         .endNamespace();
 }
 
