@@ -691,6 +691,7 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 {
     switch (event) {
         case ImageListEvent::Create:
+            preloader_start();
             break;
         case ImageListEvent::Modify:
             if (entry == image->entry) {

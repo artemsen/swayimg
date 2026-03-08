@@ -407,7 +407,7 @@ void LuaEngine::bind_imagelist_api()
                          const std::filesystem::path abs_path =
                              std::filesystem::absolute(path).lexically_normal();
                          Application::self().add_event(
-                             AppEvent::FileCreate { abs_path });
+                             AppEvent::FileCreate { abs_path, true });
                      })
         .addFunction("remove",
                      [](const std::string& path) {

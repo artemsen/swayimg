@@ -432,7 +432,7 @@ void Application::handle_event(const AppEvent::FileCreate& event)
     ImageList& il = ImageList::self();
     std::vector<ImageEntryPtr> entries;
     if (std::filesystem::is_directory(event.path)) {
-        if (il.recursive) {
+        if (il.recursive || event.force) {
             entries = il.add(event.path);
         }
     } else {
@@ -441,6 +441,7 @@ void Application::handle_event(const AppEvent::FileCreate& event)
     for (auto& it : entries) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
     }
+    redraw();
 }
 
 void Application::handle_event(const AppEvent::FileModify& event)

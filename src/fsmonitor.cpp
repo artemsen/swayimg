@@ -115,7 +115,7 @@ void FsMonitor::handle_event(const inotify_event* event)
     Application& app = Application::self();
     if (event->mask & (IN_CREATE | IN_MOVED_TO)) {
         Log::verbose("FSMON: Create {}", path.c_str());
-        app.add_event(AppEvent::FileCreate { path });
+        app.add_event(AppEvent::FileCreate { path, false });
     } else if (event->mask &
                (IN_DELETE | IN_MOVED_FROM | IN_DELETE_SELF | IN_MOVE_SELF)) {
         Log::verbose("FSMON: Remove {}", path.c_str());
