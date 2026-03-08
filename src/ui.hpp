@@ -12,6 +12,7 @@ public:
     enum class CursorShape : uint8_t {
         Default,
         Drag,
+        Copy,
         Hide,
     };
 

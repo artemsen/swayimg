@@ -150,6 +150,9 @@ private:
         WLOBJ_DECLARE(wl_keyboard) keyboard;
         WLOBJ_DECLARE(wl_seat) seat;
         WLOBJ_DECLARE(wl_shm) shm;
+        WLOBJ_DECLARE(wl_data_device_manager) datadev_mgr;
+        WLOBJ_DECLARE(wl_data_device) datadev;
+        WLOBJ_DECLARE(wl_data_source) datasrc;
         WLOBJ_DECLARE(xdg_wm_base) xwmbase;
         WLOBJ_DECLARE(xdg_surface) xsurface;
         WLOBJ_DECLARE(xdg_toplevel) xtoplevel;
@@ -181,9 +184,10 @@ private:
     Point mouse_pos;      ///< Mouse coordinates
 
 public:
-    bool decoration = false;     ///< Flag to use server side decoration
-    bool fullscreen = false;     ///< Full screen mode
-    int32_t width = 1280;        ///< Window width
-    int32_t height = 720;        ///< Window height
+    InputMouse dnd;          ///< Mouse and key modifiers used for drag-and-drop
+    bool decoration = false; ///< Flag to use server side decoration
+    bool fullscreen = false; ///< Full screen mode
+    int32_t width = 1280;    ///< Window width
+    int32_t height = 720;    ///< Window height
     uint32_t cursor_hide = 3000; ///< Timeout to hide cursor, 3 sec
 };

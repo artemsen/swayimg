@@ -66,6 +66,11 @@ function swayimg.set_window_size(width, height) end
 ---@return table # (x, y) tuple with mouse pointer coordinates
 function swayimg.get_mouse_pos() end
 
+---Bind the mouse button for drag-and-drop image to external applications.
+---This function can be called only at startup.
+---@param button string Button description, for example `MouseRight`
+function swayimg.set_drag_button(button) end
+
 ---Enable or disable antialiasing.
 ---@param enable boolean Enable/disable flag to set
 function swayimg.enable_antialiasing(enable) end

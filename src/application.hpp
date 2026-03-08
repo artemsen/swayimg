@@ -136,6 +136,8 @@ public:
         std::filesystem::path from_file; ///< Load image list from file
         std::vector<std::filesystem::path> sources; ///< Image list
         std::optional<Mode> mode;                   ///< Initial mode
+        InputMouse dnd { InputMouse::BUTTON_RIGHT,
+                         KEYMOD_NONE }; ///< Mouse used for drag-and-drop
         Rectangle window;               ///< Main window position/size
         bool use_overlay = false;       ///< Use overlay mode (Wayland only)
         bool fullscreen = false;        ///< Full screen mode (Wayland only)

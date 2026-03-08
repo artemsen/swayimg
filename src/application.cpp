@@ -216,6 +216,7 @@ bool Application::ui_initialize()
         wayland->width = window.width;
         wayland->height = window.height;
     }
+    wayland->dnd = sparams.dnd;
     wayland->cursor_hide = sparams.cursor_hide;
     wayland->decoration = sparams.decoration;
     wayland->fullscreen = sparams.fullscreen;

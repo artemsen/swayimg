@@ -16,6 +16,10 @@
 #include <cstring>
 #include <format>
 
+// supported MIME types for drag-and-drop
+static const char* MIME_URI_LIST = "text/uri-list";
+static const char* MIME_TEXT_PLAIN = "text/plain";
+
 /** Static Wayland handlers. */
 class WaylandHandler {
 public:
@@ -125,8 +129,9 @@ public:
         });
     }
 
-    static void on_pointer_button(void* data, struct wl_pointer*, uint32_t,
-                                  uint32_t, uint32_t button, uint32_t state)
+    static void on_pointer_button(void* data, struct wl_pointer*,
+                                  uint32_t serial, uint32_t, uint32_t button,
+                                  uint32_t state)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
@@ -140,10 +145,28 @@ public:
             ui->set_cursor(Ui::CursorShape::Default);
         } else {
             ui->mouse_buttons |= btn;
-            Application::self().add_event(AppEvent::MouseClick {
-                { ui->mouse_buttons, ui->xkb.get_modifiers() },
-                ui->mouse_pos
-            });
+            const InputMouse input { ui->mouse_buttons,
+                                     ui->xkb.get_modifiers() };
+            if (ui->dnd != input || !ui->wl.datadev_mgr) {
+                Application::self().add_event(
+                    AppEvent::MouseClick { input, ui->mouse_pos });
+            } else {
+                // start drag-and-drop
+                ui->mouse_buttons = InputMouse();
+                ui->set_cursor(Ui::CursorShape::Copy);
+                if (ui->wl.datasrc) {
+                    ui->wl.datasrc.destroy(ui->wl.datasrc);
+                    ui->wl.datasrc.ptr = nullptr;
+                }
+                ui->wl.datasrc = wl_data_device_manager_create_data_source(
+                    ui->wl.datadev_mgr);
+                wl_data_source_add_listener(
+                    ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
+                wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
+                wl_data_source_offer(ui->wl.datasrc, MIME_URI_LIST);
+                wl_data_device_start_drag(ui->wl.datadev, ui->wl.datasrc,
+                                          ui->wl.surface, nullptr, serial);
+            }
         }
     }
 
@@ -262,6 +285,127 @@ public:
     };
 
     /***************************************************************************
+     * Data source handlers
+     **************************************************************************/
+    static void on_data_source_target(void*, struct wl_data_source*,
+                                      const char*)
+    {
+    }
+
+    static void on_data_source_send(void*, struct wl_data_source*,
+                                    const char* mime_type, int32_t fd)
+    {
+        const ImageEntryPtr entry =
+            Application::self().current_mode()->current_entry();
+        const std::string path = entry->path.string();
+
+        int err_code = 0;
+
+        if (strcmp(mime_type, MIME_TEXT_PLAIN) == 0) {
+            if (write(fd, path.c_str(), path.length()) == -1) {
+                err_code = errno;
+            }
+        } else if (strcmp(mime_type, MIME_URI_LIST) == 0) {
+            std::string uri = "file://";
+            uri.reserve(uri.length() + path.length() + 16 /* spaces */);
+            for (const char chr : path) {
+                if (chr == ' ') {
+                    uri += "%20";
+                } else {
+                    uri += chr;
+                }
+            }
+            uri += "\r\n";
+            if (write(fd, uri.c_str(), uri.length()) == -1) {
+                err_code = errno;
+            }
+        } else {
+            Log::warning("Requested unsupported MIME type {}", mime_type);
+        }
+
+        if (err_code) {
+            Log::error(err_code, "Unable to write file");
+        }
+
+        close(fd);
+    }
+
+    static void on_data_source_cancelled(void*, struct wl_data_source*) { }
+
+    static void on_data_source_dnd_drop_performed(void*, struct wl_data_source*)
+    {
+    }
+
+    static void on_data_source_dnd_finished(void*, struct wl_data_source*) { }
+
+    static void on_data_source_action(void*, struct wl_data_source*, uint32_t)
+    {
+    }
+
+    static constexpr const wl_data_source_listener datasrc_listener = {
+        .target = on_data_source_target,
+        .send = on_data_source_send,
+        .cancelled = on_data_source_cancelled,
+        .dnd_drop_performed = on_data_source_dnd_drop_performed,
+        .dnd_finished = on_data_source_dnd_finished,
+        .action = on_data_source_action,
+    };
+
+    /***************************************************************************
+     * Data device handlers
+     **************************************************************************/
+    static wl_data_offer** get_datadev_offer()
+    {
+        static wl_data_offer* datadev_offer = nullptr;
+        return &datadev_offer;
+    }
+
+    static void on_data_device_data_offer(void*, struct wl_data_device*,
+                                          struct wl_data_offer* offer)
+    {
+        *get_datadev_offer() = offer;
+    }
+
+    static void on_data_device_enter(void*, struct wl_data_device*, uint32_t,
+                                     struct wl_surface*, wl_fixed_t, wl_fixed_t,
+                                     struct wl_data_offer*)
+    {
+    }
+
+    static void on_data_device_leave(void*, struct wl_data_device*)
+    {
+        wl_data_offer** offer = get_datadev_offer();
+        if (*offer) {
+            wl_data_offer_destroy(*offer);
+            *offer = nullptr;
+        }
+    }
+
+    static void on_data_device_motion(void*, struct wl_data_device*, uint32_t,
+                                      wl_fixed_t, wl_fixed_t)
+    {
+    }
+
+    static void on_data_device_drop(void*, struct wl_data_device*) { }
+
+    static void on_data_device_selection(void*, struct wl_data_device*,
+                                         struct wl_data_offer* offer)
+    {
+        if (offer) {
+            wl_data_offer_destroy(offer);
+        }
+    }
+
+    static constexpr const wl_data_device_listener datadev_listener = {
+        .data_offer = on_data_device_data_offer,
+        .enter = on_data_device_enter,
+        .leave = on_data_device_leave,
+        .motion = on_data_device_motion,
+        .drop = on_data_device_drop,
+        .selection = on_data_device_selection,
+    };
+
+    /***************************************************************************
      * Frame handlers
      **************************************************************************/
     static void on_frame_done(void* data, struct wl_callback*, uint32_t)
@@ -359,6 +503,13 @@ public:
             ui->wl.seat.bind(registry, name,
                              WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION);
             wl_seat_add_listener(ui->wl.seat, &seat_listener, data);
+
+        } else if (strcmp(interface, wl_data_device_manager_interface.name) ==
+                   0) {
+            // drag-and-drop + clipboard data device
+            ui->wl.datadev_mgr.bind(
+                registry, name,
+                WL_DATA_DEVICE_MANAGER_GET_DATA_DEVICE_SINCE_VERSION);
         } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
             // xdg (app window)
             ui->wl.xwmbase.bind(registry, name, XDG_WM_BASE_PING_SINCE_VERSION);
@@ -506,6 +657,13 @@ bool UiWayland::initialize(const std::string& app_id)
     wl.callback = wl_surface_frame(wl.surface);
     wl_callback_add_listener(wl.callback, &WaylandHandler::frame_listener,
                              this);
+
+    if (wl.datadev_mgr) {
+        wl.datadev =
+            wl_data_device_manager_get_data_device(wl.datadev_mgr, wl.seat);
+        wl_data_device_add_listener(wl.datadev,
+                                    &WaylandHandler::datadev_listener, this);
+    }
 
     assert(wl.xwmbase);
     wl.xsurface = xdg_wm_base_get_xdg_surface(wl.xwmbase, wl.surface);
@@ -669,6 +827,9 @@ void UiWayland::set_cursor(CursorShape shape)
             break;
         case CursorShape::Drag:
             wlshape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING;
+            break;
+        case CursorShape::Copy:
+            wlshape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COPY;
             break;
         case CursorShape::Hide:
             wl_pointer_set_cursor(wl.pointer, 0, nullptr, 0, 0);

@@ -42,6 +42,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_window_size](#swayimgget_window_size): Get application window size
   * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
   * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
+  * [swayimg.set_drag_button](#swayimgset_drag_button): Bind the mouse button for drag-and-drop image to external applications
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
@@ -269,6 +270,17 @@ swayimg.get_mouse_pos() -> table
 Get mouse pointer coordinates.
 
 @*return* — (x, y) tuple with mouse pointer coordinates
+
+### swayimg.set_drag_button
+
+```lua
+swayimg.set_drag_button(button: string)
+```
+
+Bind the mouse button for drag-and-drop image to external applications.
+This function can be called only at startup.
+
+@*param* `button` — Button description, for example `MouseRight`
 
 ### swayimg.enable_antialiasing
 

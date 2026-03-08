@@ -339,6 +339,17 @@ void LuaEngine::bind_root_api()
                          }
                          return std::make_tuple(pos.x, pos.y);
                      })
+        .addFunction(
+            "set_drag_button",
+            [](const std::string& button) {
+                std::optional<InputMouse> input = InputMouse::load(button);
+                if (!input) {
+                    Log::error("Invalid button for {}.set_drag_button: {}",
+                               NS_SWAYIMG, button);
+                    return;
+                }
+                Application::self().sparams.dnd = input.value();
+            })
         .addFunction("enable_antialiasing",
                      [](const bool enable) {
                          Render::self().antialiasing = enable;
