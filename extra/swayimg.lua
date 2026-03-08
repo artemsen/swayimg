@@ -278,14 +278,14 @@ function swayimg.viewer.set_fix_position(pos) end
 ---@param pos fixed_position_t Fixed image position
 function swayimg.viewer.set_default_position(pos) end
 
----Show next frame.
+---Show next frame from multi-frame image (animation).
 ---This function also stops the animation.
 ---@see swayimg.viewer.animation_stop
 ---@see swayimg.viewer.animation_resume
 ---@return number # Index of the currently shown frame
 function swayimg.viewer.next_frame() end
 
----Show previous frame.
+---Show previous frame from multi-frame image (animation).
 ---This function also stops the animation.
 ---@see swayimg.viewer.animation_stop
 ---@see swayimg.viewer.animation_resume
@@ -474,13 +474,13 @@ function swayimg.slideshow.set_fix_position(pos) end
 ---@param pos fixed_position_t Fixed image position
 function swayimg.slideshow.set_default_position(pos) end
 
----Show next frame.
+---Show next frame from multi-frame image (animation).
 ---@see swayimg.slideshow.animation_stop
 ---@see swayimg.slideshow.animation_resume
 ---@return number # Index of the currently shown frame
 function swayimg.slideshow.next_frame() end
 
----Show previous frame.
+---Show previous frame from multi-frame image (animation).
 ---@see swayimg.slideshow.animation_stop
 ---@see swayimg.slideshow.animation_resume
 ---@return number # Index of the currently shown frame

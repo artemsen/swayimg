@@ -21,6 +21,10 @@ Slideshow::Slideshow()
     default_scale = Scale::FitWindow;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = { "{name}" };
+
+    bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
+        Application::self().set_mode(Application::Mode::Viewer);
+    });
 }
 
 void Slideshow::initialize()

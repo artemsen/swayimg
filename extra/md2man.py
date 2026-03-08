@@ -47,6 +47,8 @@ def convert(src_file):
                 continue
             if line.startswith('## '):
                 line = line.replace('##', '.SH')
+            if line.startswith('### '):
+                line = line.replace('###', '.SS')
             if not code_block and line.startswith(' '):
                 line_lstrip = line.lstrip(' ')
                 new_indent = len(line) - len(line_lstrip)

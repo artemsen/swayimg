@@ -80,8 +80,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_abs_position](#swayimgviewerset_abs_position): Set absolute image position
   * [swayimg.viewer.set_fix_position](#swayimgviewerset_fix_position): Set fixed image position
   * [swayimg.viewer.set_default_position](#swayimgviewerset_default_position): Set default image position for newly opened images
-  * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame
-  * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame
+  * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
+  * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
   * [swayimg.viewer.flip_vertical](#swayimgviewerflip_vertical): Flip image vertically
   * [swayimg.viewer.flip_horizontal](#swayimgviewerflip_horizontal): Flip image horizontally
   * [swayimg.viewer.rotate](#swayimgviewerrotate): Rotate image
@@ -121,8 +121,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_abs_position](#swayimgslideshowset_abs_position): Set absolute image position
   * [swayimg.slideshow.set_fix_position](#swayimgslideshowset_fix_position): Set fixed image position
   * [swayimg.slideshow.set_default_position](#swayimgslideshowset_default_position): Set default image position for newly opened images
-  * [swayimg.slideshow.next_frame](#swayimgslideshownext_frame): Show next frame
-  * [swayimg.slideshow.prev_frame](#swayimgslideshowprev_frame): Show previous frame
+  * [swayimg.slideshow.next_frame](#swayimgslideshownext_frame): Show next frame from multi-frame image (animation)
+  * [swayimg.slideshow.prev_frame](#swayimgslideshowprev_frame): Show previous frame from multi-frame image (animation)
   * [swayimg.slideshow.flip_vertical](#swayimgslideshowflip_vertical): Flip image vertically
   * [swayimg.slideshow.flip_horizontal](#swayimgslideshowflip_horizontal): Flip image horizontally
   * [swayimg.slideshow.rotate](#swayimgslideshowrotate): Rotate image
@@ -718,7 +718,7 @@ pos:
 swayimg.viewer.next_frame() -> number
 ```
 
-Show next frame.
+Show next frame from multi-frame image (animation).
 This function also stops the animation.
 
 @*return* — Index of the currently shown frame
@@ -733,7 +733,7 @@ See:
 swayimg.viewer.prev_frame() -> number
 ```
 
-Show previous frame.
+Show previous frame from multi-frame image (animation).
 This function also stops the animation.
 
 @*return* — Index of the currently shown frame
@@ -1237,7 +1237,7 @@ pos:
 swayimg.slideshow.next_frame() -> number
 ```
 
-Show next frame.
+Show next frame from multi-frame image (animation).
 
 @*return* — Index of the currently shown frame
 
@@ -1251,7 +1251,7 @@ See:
 swayimg.slideshow.prev_frame() -> number
 ```
 
-Show previous frame.
+Show previous frame from multi-frame image (animation).
 
 @*return* — Index of the currently shown frame
 

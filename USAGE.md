@@ -63,6 +63,66 @@ stdin and external commands, and is highly customizable via Lua scripting.
 *--verbose*
     Enable verbose output.
 
+## KEYS
+
+### Viewer and Slideshow
+
+- `Esc`: Exit from application
+- `Enter`: Switch to gallery mode
+- `s`: Enable/disable to slideshow mode
+- `Insert`: Mark/unmark currently displayed image
+- `f`: Enable/disable full screen mode
+- `a`: Enable/disable anti-aliasing
+- `]`: Rotate the image 90 degrees clockwise
+- `[`: Rotate the image 90 degrees counterclockwise
+- `m`: Flip image vertically
+- `Shift-m`: Flip image horizontally
+- `i`: Force show text info layer
+- `Shift-i`: Hide text info layer
+- `PgDown`: Show next image
+- `PgUp`: Show previous image
+- `Shift-PgDown`: Show next frame
+- `Shift-PgUp`: Show previous image
+- `+`: Zoom in
+- `-`: Zoom out
+- `Left/Right/Up/Down`: Move image
+- `Backspace`: Reset scale and image position to defaults
+
+Mouse bindings:
+- `ScrollUp/ScrollDown/ScrollLeft/ScrollRight`: Move image
+- `Ctrl-ScrollUp`: Zoom in
+- `Ctrl-ScrollDown`: Zoom out
+- `MouseLeft`: Move image (drag)
+- `MouseRight`: Drag-and-drop image to external applications
+
+### Gallery
+
+- `Esc`: Exit from application
+- `Home`: Select first thumbnail in image list
+- `End`: Select last thumbnail in image list
+- `Left`: Select the thumbnail to the left of the current one
+- `Right`: Select the thumbnail to the right of the current one
+- `Up`: Select the thumbnail above the current one
+- `Down`: Select the thumbnail below the current one
+- `PgUp`: Select the thumbnail on the previous page
+- `PgDown`: Select the thumbnail on the next page
+- `Enter`: Switch to viewer mode
+- `s`: Switch to slideshow mode
+- `Insert`: Mark/unmark currently selected image
+- `f`: Enable/disable full screen mode
+- `a`: Enable/disable anti-aliasing
+- `+`: Increase thumbnail size
+- `-`: Decrease thumbnail size
+- `i`: Force show text info layer
+- `Shift-i`: Hide text info layer
+
+Mouse bindings:
+- `MouseLeft`: Open currently selected image in viewer
+- `MouseRight`: Drag-and-drop image to external applications
+- `Ctrl-ScrollUp`: Increase thumbnail size
+- `Ctrl-ScrollDown`: Decrease thumbnail size
+- `ScrollUp/ScrollDown/ScrollLeft/ScrollRight`: Select next image
+
 ## ENVIRONMENT
 
 *SWAYSOCK*
