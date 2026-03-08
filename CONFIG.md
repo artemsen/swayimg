@@ -40,7 +40,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.set_mode](#swayimgset_mode): Switch to specified mode
   * [swayimg.get_mode](#swayimgget_mode): Get current mode
   * [swayimg.get_window_size](#swayimgget_window_size): Get application window size
-  * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pinter coordinates
+  * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
+  * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
@@ -247,13 +248,25 @@ Get application window size.
 
 @*return* — (width, height) tuple with window size in pixels
 
+### swayimg.set_window_size
+
+```lua
+swayimg.set_window_size(width: number, height: number)
+```
+
+Set application window size.
+
+@*param* `width` — Width of the window in pixels
+
+@*param* `height` — Height of the window in pixels
+
 ### swayimg.get_mouse_pos
 
 ```lua
 swayimg.get_mouse_pos() -> table
 ```
 
-Get mouse pinter coordinates.
+Get mouse pointer coordinates.
 
 @*return* — (x, y) tuple with mouse pointer coordinates
 

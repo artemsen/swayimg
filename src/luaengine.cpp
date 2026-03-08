@@ -278,7 +278,10 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction("set_title",
                      [](const std::string& title) {
-                         Application::get_ui()->set_title(title.c_str());
+                         Ui* ui = Application::get_ui();
+                         if (ui) {
+                             ui->set_title(title.c_str());
+                         }
                      })
         .addFunction("set_status",
                      [](const std::string& status) {
@@ -300,14 +303,40 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction("get_window_size",
                      []() {
-                         const Size wnd =
-                             Application::self().get_ui()->get_size();
+                         Size wnd { 0, 0 };
+                         Ui* ui = Application::get_ui();
+                         if (ui) {
+                             wnd = ui->get_window_size();
+                         }
                          return std::make_tuple(wnd.width, wnd.height);
                      })
+        .addFunction(
+            "set_window_size",
+            [](const size_t width, const size_t height) {
+                if (!width || !height || width > 32767 || height > 32767) {
+                    Log::error(
+                        "Invalid arguments ({}, {}) for {} .set_window_size ",
+                        width, height, NS_SWAYIMG);
+                    return;
+                }
+                Ui* ui = Application::get_ui();
+                if (ui) {
+                    ui->set_window_size({ width, height });
+                } else {
+                    Rectangle& wnd = Application::self().sparams.window;
+                    if (!static_cast<Size>(wnd)) {
+                        wnd.width = width;
+                        wnd.height = height;
+                    }
+                }
+            })
         .addFunction("get_mouse_pos",
                      []() {
-                         const Point pos =
-                             Application::self().get_ui()->get_mouse();
+                         Point pos { 0, 0 };
+                         Ui* ui = Application::get_ui();
+                         if (ui) {
+                             pos = ui->get_mouse();
+                         }
                          return std::make_tuple(pos.x, pos.y);
                      })
         .addFunction("enable_antialiasing",
@@ -535,23 +564,23 @@ void LuaEngine::bind_viewer_api(const char* name)
                              mode->reset_scale();
                          }
                      })
-        .addFunction(
-            "set_default_scale",
-            [mode, name](const luabridge::LuaRef& val) {
-                if (val.isString()) {
-                    const std::string str = val;
-                    const auto scale = name_to_type(scales, str.c_str());
-                    if (scale.has_value()) {
-                        mode->default_scale = scale.value();
-                    } else {
-                        Log::error(
-                            "Invalid argument {} for {}.{}.set_default_scale",
-                            str, NS_SWAYIMG, name);
-                    }
-                } else if (val.isNumber()) {
-                    mode->default_scale = static_cast<double>(val);
-                }
-            })
+        .addFunction("set_default_scale",
+                     [mode, name](const luabridge::LuaRef& val) {
+                         if (val.isString()) {
+                             const std::string str = val;
+                             const auto scale =
+                                 name_to_type(scales, str.c_str());
+                             if (scale.has_value()) {
+                                 mode->default_scale = scale.value();
+                             } else {
+                                 Log::error("Invalid argument {} for "
+                                            "{}.{}.set_default_scale",
+                                            str, NS_SWAYIMG, name);
+                             }
+                         } else if (val.isNumber()) {
+                             mode->default_scale = static_cast<double>(val);
+                         }
+                     })
         .addFunction("get_position",
                      [check_active, mode]() {
                          Point pt;
@@ -566,32 +595,31 @@ void LuaEngine::bind_viewer_api(const char* name)
                              mode->set_position({ x, y });
                          }
                      })
-        .addFunction(
-            "set_fix_position",
-            [check_active, mode, name](const std::string& fpos) {
-                if (check_active("set_fix_position")) {
-                    const auto pos = name_to_type(positions, fpos.c_str());
-                    if (pos.has_value()) {
-                        mode->set_position(pos.value());
-                    } else {
-                        Log::error(
-                            "Invalid argument {} for {}.{}.set_fix_position",
-                            fpos, NS_SWAYIMG, name);
-                    }
-                }
-            })
-        .addFunction(
-            "set_default_position",
-            [mode, name](const std::string& fpos) {
-                const auto pos = name_to_type(positions, fpos.c_str());
-                if (pos.has_value()) {
-                    mode->default_pos = pos.value();
-                } else {
-                    Log::error(
-                        "Invalid argument {} for {}.{}.set_default_position",
-                        fpos, NS_SWAYIMG, name);
-                }
-            })
+        .addFunction("set_fix_position",
+                     [check_active, mode, name](const std::string& fpos) {
+                         if (check_active("set_fix_position")) {
+                             const auto pos =
+                                 name_to_type(positions, fpos.c_str());
+                             if (pos.has_value()) {
+                                 mode->set_position(pos.value());
+                             } else {
+                                 Log::error("Invalid argument {} for "
+                                            "{}.{}.set_fix_position",
+                                            fpos, NS_SWAYIMG, name);
+                             }
+                         }
+                     })
+        .addFunction("set_default_position",
+                     [mode, name](const std::string& fpos) {
+                         const auto pos = name_to_type(positions, fpos.c_str());
+                         if (pos.has_value()) {
+                             mode->default_pos = pos.value();
+                         } else {
+                             Log::error("Invalid argument {} for "
+                                        "{}.{}.set_default_position",
+                                        fpos, NS_SWAYIMG, name);
+                         }
+                     })
         .addFunction("next_frame",
                      [check_active, mode]() {
                          if (check_active("next_frame")) {

@@ -79,7 +79,7 @@ int Application::run()
     initialized = true;
     active_mode = sparams.mode.value_or(Mode::Viewer);
 
-    current_mode()->activate(first_entry, ui->get_size());
+    current_mode()->activate(first_entry, ui->get_window_size());
     ui->run();
     event_loop();
     current_mode()->deactivate();
@@ -113,7 +113,7 @@ void Application::set_mode(Mode mode)
 
         active_mode = mode;
         app_mode = current_mode();
-        app_mode->activate(entry, ui->get_size());
+        app_mode->activate(entry, ui->get_window_size());
     }
 }
 

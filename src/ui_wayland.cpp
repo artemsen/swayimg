@@ -206,13 +206,13 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         if (ui->scale != factor) {
             ui->scale = factor;
-            const Size window = ui->get_size();
+            const Size window = ui->get_window_size();
             ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height);
             Application::self().add_event(
                 AppEvent::WindowRescale { static_cast<double>(ui->scale) /
                                           UiWayland::FRACTION_SCALE_DEN });
             Application::self().add_event(
-                AppEvent::WindowResize { ui->get_size() });
+                AppEvent::WindowResize { ui->get_window_size() });
             Application::self().add_event(AppEvent::WindowRedraw {});
         }
     }
@@ -312,7 +312,7 @@ public:
         xdg_surface_ack_configure(surface, serial);
 
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
-        const Size window = ui->get_size();
+        const Size window = ui->get_window_size();
 
         ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height);
         if (ui->wl.viewport) {
@@ -320,7 +320,7 @@ public:
         }
 
         Application::self().add_event(
-            AppEvent::WindowResize { ui->get_size() });
+            AppEvent::WindowResize { ui->get_window_size() });
         Application::self().add_event(AppEvent::WindowRedraw {});
     }
 
@@ -713,10 +713,22 @@ void UiWayland::toggle_fullscreen()
     }
 }
 
-Size UiWayland::get_size()
+Size UiWayland::get_window_size()
 {
     const double abs_scale = static_cast<double>(scale) / FRACTION_SCALE_DEN;
     return Size(abs_scale * width, abs_scale * height);
+}
+
+void UiWayland::set_window_size(const Size& size)
+{
+    width = size.width;
+    height = size.height;
+
+    xdg_surface_set_window_geometry(wl.xsurface, 0, 0, width, height);
+    wp_viewport_set_destination(wl.viewport, width, height);
+
+    Application::self().add_event(AppEvent::WindowResize { get_window_size() });
+    Application::self().add_event(AppEvent::WindowRedraw {});
 }
 
 Point UiWayland::get_mouse()

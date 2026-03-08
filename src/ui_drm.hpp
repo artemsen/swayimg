@@ -28,7 +28,7 @@ public:
     bool initialize();
 
     // Implementation of UI generic interface
-    Size get_size() override;
+    Size get_window_size() override;
     Pixmap& lock_surface() override;
     void commit_surface() override;
 

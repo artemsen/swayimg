@@ -162,7 +162,7 @@ bool UiDrm::initialize()
     return true;
 }
 
-Size UiDrm::get_size()
+Size UiDrm::get_window_size()
 {
     return pm;
 }

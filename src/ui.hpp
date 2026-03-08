@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "appevent.hpp"
 #include "pixmap.hpp"
 
 class Ui {
@@ -61,13 +60,19 @@ public:
      * Get window size.
      * @return window size in pixels
      */
-    virtual Size get_size() = 0;
+    virtual Size get_window_size() = 0;
+
+    /**
+     * Set window size.
+     * @param size window size in pixels
+     */
+    virtual void set_window_size(const Size& /*size*/) { }
 
     /**
      * Get mouse pointer position within the window.
      * @return mouse pointer coordinates
      */
-    virtual Point get_mouse() { return {}; };
+    virtual Point get_mouse() { return {}; }
 
     /**
      * Begin window redraw procedure.

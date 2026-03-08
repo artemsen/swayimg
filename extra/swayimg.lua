@@ -57,7 +57,12 @@ function swayimg.get_mode() end
 ---@return table # (width, height) tuple with window size in pixels
 function swayimg.get_window_size() end
 
----Get mouse pinter coordinates.
+---Set application window size.
+---@param width number Width of the window in pixels
+---@param height number Height of the window in pixels
+function swayimg.set_window_size(width, height) end
+
+---Get mouse pointer coordinates.
 ---@return table # (x, y) tuple with mouse pointer coordinates
 function swayimg.get_mouse_pos() end
 
