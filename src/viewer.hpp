@@ -5,8 +5,14 @@
 #pragma once
 
 #include "appmode.hpp"
+#include "buildconf.hpp"
 #include "fdevent.hpp"
 #include "imagelist.hpp"
+
+#ifdef HAVE_VULKAN
+#include "vulkan_aa.hpp"
+#include <vulkan/vulkan.h>
+#endif
 
 #include <atomic>
 #include <deque>
@@ -87,6 +93,12 @@ public:
      * @param path path to file
      */
     void export_frame(const std::filesystem::path& path) const;
+
+    /**
+     * Get current frame index.
+     * @return frame index
+     */
+    size_t get_frame_index() const { return frame_index; }
 
     /**
      * Get current scale.
@@ -208,6 +220,23 @@ public:
     virtual ImageEntryPtr current_entry() override;
     virtual void window_resize(const Size& wnd) override;
     virtual void window_redraw(Pixmap& wnd) override;
+
+#ifdef HAVE_VULKAN
+    /**
+     * Pre-render hook: prepare blur background if needed.
+     * @param cmd command buffer (before render pass)
+     * @param texcache texture cache
+     */
+    void pre_render_vk(VkCommandBuffer cmd,
+                        class TextureCache& texcache) override;
+
+    /**
+     * Vulkan rendering path for viewer mode.
+     * @param cmd active command buffer
+     * @param texcache texture cache for GPU uploads
+     */
+    void window_redraw_vk(VkCommandBuffer cmd, class TextureCache& texcache);
+#endif
     virtual void handle_mmove(const InputMouse& input, const Point& pos,
                               const Point& delta) override;
     virtual void handle_pinch(const double scale_delta) override;
@@ -307,6 +336,10 @@ private:
     size_t frame_index;      ///< Index of the currently displayed frame
 
     InputMouse drag; ///< Mouse state for dragging an image across the canvas
+
+#ifdef HAVE_VULKAN
+    VulkanAA::Result vk_aa_result; ///< Last AA compute result for current frame
+#endif
 
     /** Image pool. */
     struct ImagePool {

@@ -15,6 +15,8 @@ project(
     meson_version: '>=1.1',
 )
 
+fs = import('fs')
+
 # version info
 version = get_option('version')
 if version == '0.0.0'
@@ -117,6 +119,9 @@ else
     endif
 endif
 
+# Vulkan rendering support
+vulkan = dependency('vulkan', required: get_option('vulkan'))
+
 # optional dependencies: other features
 exiv = dependency('exiv2', required: get_option('exif'))
 bash = dependency('bash-completion', required: get_option('bash'))
@@ -144,6 +149,7 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
+conf.set('HAVE_VULKAN', vulkan.found())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildconf.hpp', configuration: conf)
 
@@ -358,6 +364,48 @@ endif
 if webp.found() and webp_demux.found()
     sources += 'src/formats/webp.cpp'
 endif
+if vulkan.found()
+    sources += [
+        'src/vulkan_ctx.cpp',
+        'src/vulkan_swapchain.cpp',
+        'src/vulkan_texture.cpp',
+        'src/vulkan_pipeline.cpp',
+        'src/vulkan_blur.cpp',
+        'src/vulkan_aa.cpp',
+    ]
+
+    # Compile GLSL shaders to SPIR-V binary, then convert to C header
+    glslc = find_program('glslc', native: true)
+    xxd = find_program('xxd', native: true)
+    shader_sources = [
+        'src/shaders/quad.vert',
+        'src/shaders/image.frag',
+        'src/shaders/fill.frag',
+        'src/shaders/grid.frag',
+        'src/shaders/blur.comp',
+        'src/shaders/mks13.comp',
+    ]
+    shader_headers = []
+    foreach shader : shader_sources
+        name = fs.name(shader).underscorify()
+        # Compile GLSL to SPIR-V binary
+        spv = custom_target(
+            name + '_spv_bin',
+            input: shader,
+            output: name + '.spv',
+            command: [glslc, '-O', '--target-env=vulkan1.0',
+                      '-o', '@OUTPUT@', '@INPUT@'],
+        )
+        # Convert binary to C include header
+        shader_headers += custom_target(
+            name + '_spv_h',
+            input: spv,
+            output: name + '_spv.h',
+            command: [xxd, '-i', '@INPUT@', '@OUTPUT@'],
+        )
+    endforeach
+    sources += shader_headers
+endif
 
 dependencies = [
     # runtime
@@ -368,6 +416,7 @@ dependencies = [
     inotify,
     lua,
     threads,
+    vulkan,
     wlcln,
     xkb,
     exiv,

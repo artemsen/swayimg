@@ -231,6 +231,26 @@ int main(int argc, char* argv[])
                  Application::self().sparams.app_id = arg;
              });
 
+    args.add(0, "renderer", "TYPE",
+             "set renderer: auto, vulkan, software",
+             [](const char* arg) {
+                 const std::string val = arg;
+                 if (val == "auto") {
+                     Application::self().sparams.renderer =
+                         Application::Renderer::Auto;
+                 } else if (val == "vulkan" || val == "gpu") {
+                     Application::self().sparams.renderer =
+                         Application::Renderer::Vulkan;
+                 } else if (val == "software" || val == "sw" ||
+                            val == "cpu") {
+                     Application::self().sparams.renderer =
+                         Application::Renderer::Software;
+                 } else {
+                     Log::error("Invalid renderer: {}", arg);
+                     exit(EXIT_FAILURE);
+                 }
+             });
+
     args.add(0, "verbose", nullptr, "enable verbose output", [](const char*) {
         Log::verbose_enable() = true;
     });

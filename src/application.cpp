@@ -10,6 +10,7 @@
 #include "imagelist.hpp"
 #include "log.hpp"
 #include "luaengine.hpp"
+#include "resources.hpp"
 #include "slideshow.hpp"
 #include "text.hpp"
 #include "viewer.hpp"
@@ -20,6 +21,17 @@
 #include "compositor.hpp"
 #endif // HAVE_COMPOSITOR
 #endif // HAVE_WAYLAND
+#ifdef HAVE_VULKAN
+#include "vulkan_aa.hpp"
+#include "vulkan_blur.hpp"
+#include "vulkan_ctx.hpp"
+#include "vulkan_pipeline.hpp"
+#include "vulkan_swapchain.hpp"
+#include "vulkan_texture.hpp"
+#include <memory>
+static std::unique_ptr<VulkanSwapchain> vk_swapchain;
+static TextureCache vk_texcache;
+#endif // HAVE_VULKAN
 #ifdef HAVE_DRM
 #include "ui_drm.hpp"
 #endif // HAVE_DRM
@@ -115,6 +127,12 @@ void Application::set_mode(Mode mode)
         app_mode = current_mode();
         ImageEntryPtr entry = app_mode->current_entry();
         app_mode->deactivate();
+
+#ifdef HAVE_VULKAN
+        if (VulkanCtx::self().is_active()) {
+            vk_texcache.clear();
+        }
+#endif
 
         active_mode = mode;
         app_mode = current_mode();
@@ -234,6 +252,49 @@ bool Application::ui_initialize()
     }
     if (wayland->initialize(app_id)) {
         ui.reset(wayland);
+
+#ifdef HAVE_VULKAN
+        if (sparams.renderer != Renderer::Software) {
+            auto& vk = VulkanCtx::self();
+            if (vk.init(wayland->get_wl_display(),
+                         wayland->get_wl_surface(), wayland->width,
+                         wayland->height)) {
+                vk_swapchain = std::make_unique<VulkanSwapchain>();
+                if (vk_swapchain->init(
+                        wayland->get_wl_display(),
+                        wayland->get_wl_surface(), wayland->width,
+                        wayland->height)) {
+                    if (VulkanPipeline::self().init(
+                            vk_swapchain->get_extent())) {
+                        vk_texcache.set_budget(vk.get_vram_budget());
+                        VulkanBlur::self().init(
+                            vk_swapchain->get_extent().width,
+                            vk_swapchain->get_extent().height);
+                        VulkanAA::self().init();
+                        Log::info("Vulkan rendering initialized "
+                                  "(VRAM budget: {}MB)",
+                                  vk.get_vram_budget() / (1024 * 1024));
+                    } else {
+                        Log::error("Vulkan pipeline init failed");
+                        vk_swapchain.reset();
+                        vk.destroy();
+                    }
+                } else {
+                    Log::error("Vulkan swapchain init failed");
+                    vk_swapchain.reset();
+                    vk.destroy();
+                }
+            } else if (sparams.renderer == Renderer::Vulkan) {
+                Log::error("Vulkan requested but not available");
+            } else {
+                Log::info("Vulkan not available, using software "
+                           "renderer");
+            }
+        } else {
+            Log::info("Software renderer selected");
+        }
+#endif // HAVE_VULKAN
+
     } else {
         delete wayland;
     }
@@ -242,6 +303,9 @@ bool Application::ui_initialize()
 
 #ifdef HAVE_DRM
     if (!ui) {
+        if (sparams.renderer == Renderer::Vulkan) {
+            Log::info("DRM backend: Vulkan not supported, using software");
+        }
         UiDrm* drm = new UiDrm();
         if (static_cast<Size>(window)) {
             drm->width = window.width;
@@ -378,18 +442,115 @@ void Application::handle_event(const AppEvent::WindowClose&)
 
 void Application::handle_event(const AppEvent::WindowResize& event)
 {
+#ifdef HAVE_VULKAN
+    if (VulkanCtx::self().is_active() && vk_swapchain) {
+        vk_swapchain->recreate(event.size.width, event.size.height);
+        VulkanPipeline::self().update_viewport(vk_swapchain->get_extent());
+        VulkanBlur::self().resize(vk_swapchain->get_extent().width,
+                                  vk_swapchain->get_extent().height);
+    }
+#endif
     current_mode()->window_resize(event.size);
     redraw();
 }
 
 void Application::handle_event(const AppEvent::WindowRescale& event)
 {
+#ifdef HAVE_VULKAN
+    if (VulkanCtx::self().is_active() && vk_swapchain) {
+        const Size wnd_size = ui->get_window_size();
+        vk_swapchain->recreate(wnd_size.width, wnd_size.height);
+        VulkanPipeline::self().update_viewport(vk_swapchain->get_extent());
+        VulkanBlur::self().resize(vk_swapchain->get_extent().width,
+                                  vk_swapchain->get_extent().height);
+    }
+#endif
     Text::self().set_scale(event.scale);
     redraw();
 }
 
 void Application::handle_event(const AppEvent::WindowRedraw&)
 {
+#ifdef HAVE_VULKAN
+    if (VulkanCtx::self().is_active() && vk_swapchain) {
+        Log::PerfTimer timer;
+
+        VkCommandBuffer cmd = vk_swapchain->begin_frame();
+        if (cmd != VK_NULL_HANDLE) {
+            // Pre-render pass: compute/transfer work (e.g., blur)
+            current_mode()->pre_render_vk(cmd, vk_texcache);
+
+            // Begin render pass
+            vk_swapchain->begin_render_pass();
+
+            if (active_mode == Mode::Viewer ||
+                active_mode == Mode::Slideshow) {
+                static_cast<Viewer*>(current_mode())
+                    ->window_redraw_vk(cmd, vk_texcache);
+            } else if (active_mode == Mode::Gallery) {
+                Gallery::self().window_redraw_vk(cmd, vk_texcache);
+            }
+
+            // Draw text overlay and mark icon: render to CPU pixmap,
+            // upload, draw
+            {
+                const auto ext = vk_swapchain->get_extent();
+                Pixmap text_pm;
+                text_pm.create(Pixmap::ARGB, ext.width, ext.height);
+                Text::self().draw(text_pm);
+
+                // Draw mark icon if current image is marked
+                auto entry = current_mode()->current_entry();
+                if (entry && entry->mark) {
+                    constexpr ssize_t margin = 10;
+                    const ssize_t mx =
+                        static_cast<ssize_t>(ext.width) -
+                        static_cast<ssize_t>(Resource::mark.width()) - margin;
+                    const ssize_t my =
+                        static_cast<ssize_t>(ext.height) -
+                        static_cast<ssize_t>(Resource::mark.height()) - margin;
+                    text_pm.mask(Resource::mark, { mx, my },
+                                 current_mode()->get_mark_color());
+                }
+
+                // Release previous text overlay and upload new one
+                vk_texcache.release(SIZE_MAX);
+                GpuTexture* ttex =
+                    vk_texcache.get_or_upload(text_pm, SIZE_MAX, 0);
+                if (ttex) {
+                    VulkanPipeline::self().draw_image(
+                        cmd, *ttex, 0, 0, static_cast<float>(ext.width),
+                        static_cast<float>(ext.height));
+                }
+            }
+
+            if (!vk_swapchain->end_frame()) {
+                const Size wnd_size = ui->get_window_size();
+                if (!vk_swapchain->recreate(wnd_size.width,
+                                            wnd_size.height)) {
+                    // Device lost or unrecoverable — fall back
+                    Log::error("Vulkan device lost, falling back to "
+                               "software renderer");
+                    vk_texcache.clear();
+                    VulkanAA::self().destroy();
+                    VulkanBlur::self().destroy();
+                    VulkanPipeline::self().destroy();
+                    vk_swapchain.reset();
+                    VulkanCtx::self().destroy();
+                } else {
+                    VulkanPipeline::self().update_viewport(
+                        vk_swapchain->get_extent());
+                }
+            }
+
+            if (Log::verbose_enable()) {
+                Log::verbose("Vulkan redraw in {:.6f} sec", timer.time());
+            }
+        }
+        return;
+    }
+#endif // HAVE_VULKAN
+
     Pixmap& wnd = ui->lock_surface();
     if (wnd) {
         Log::PerfTimer timer;
@@ -406,10 +567,13 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
 
 void Application::handle_event(const AppEvent::KeyPress& event)
 {
+    Log::verbose("Key event: {} (mode={})", event.key.to_string(),
+                 static_cast<int>(active_mode));
     if (!current_mode()->handle_keyboard(event.key) &&
         !Xkb::is_modifier(event.key.key)) {
         const std::string msg =
             std::format("Unhandled key: {}", event.key.to_string());
+        Log::info("Unhandled key: {}", event.key.to_string());
         Text::self().set_status(msg);
     }
 }

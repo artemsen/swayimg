@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: MIT
+// MKS13 (Magic Kernel Sharp 2013) separable resampling compute shader.
+// Performs one 1D convolution pass (horizontal or vertical).
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) uniform sampler2D src_tex;
+layout(set = 0, binding = 1, rgba8) uniform writeonly image2D dst_img;
+
+layout(push_constant) uniform PushConstants {
+    int direction;      // 0 = horizontal, 1 = vertical
+    float scale;        // resize scale factor (output / source)
+    int src_size;       // source dimension in convolution direction
+    float local_offset; // output pixel 0 in image-relative coordinates
+    int src_start;      // source index offset for texelFetch (0 for hor pass)
+} pc;
+
+const float WINDOW_SIZE = 2.5;
+
+float mks13(float x) {
+    if (x <= 0.5) {
+        return 1.0625 - 1.75 * x * x;
+    }
+    if (x <= 1.5) {
+        return x * x - 2.75 * x + 1.75;
+    }
+    return -0.125 * x * x + 0.625 * x - 0.78125;
+}
+
+float get_weight(int in_idx, float out_rel) {
+    float c, x;
+    if (pc.scale >= 1.0) {
+        c = (out_rel + 0.5) / pc.scale - 0.5;
+        x = abs(float(in_idx) - c);
+    } else {
+        c = (float(in_idx) + 0.5) * pc.scale - 0.5;
+        x = abs(out_rel - c);
+    }
+    return x > WINDOW_SIZE ? 0.0 : mks13(x);
+}
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dst_size = imageSize(dst_img);
+    if (pos.x >= dst_size.x || pos.y >= dst_size.y) {
+        return;
+    }
+
+    // Output index in the convolution direction
+    int out_idx = (pc.direction == 0) ? pos.x : pos.y;
+
+    // Map to image-relative coordinate
+    float out_rel = float(out_idx) + pc.local_offset;
+
+    // Compute source pixel bounds
+    float c = (out_rel + 0.5) / pc.scale - 0.5;
+    float d = WINDOW_SIZE / min(pc.scale, 1.0);
+    int first = max(int(floor(c - d)), 0);
+    int last = min(int(ceil(c + d)), pc.src_size - 1);
+
+    // Accumulate with alpha-weighted color (matches CPU MKS13 behavior)
+    float sum_a = 0.0;
+    vec3 sum_rgb = vec3(0.0);
+    float wsum = 0.0;
+
+    for (int i = first; i <= last; ++i) {
+        float w = get_weight(i, out_rel);
+        int tex_idx = i - pc.src_start;
+
+        ivec2 sample_pos;
+        if (pc.direction == 0) {
+            sample_pos = ivec2(tex_idx, pos.y);
+        } else {
+            sample_pos = ivec2(pos.x, tex_idx);
+        }
+
+        vec4 color = texelFetch(src_tex, sample_pos, 0);
+        float wa = w * color.a;
+        sum_a += wa;
+        sum_rgb += color.rgb * wa;
+        wsum += w;
+    }
+
+    // Normalize
+    vec4 result;
+    result.a = clamp(sum_a / max(wsum, 1e-6), 0.0, 1.0);
+    if (sum_a > 0.0) {
+        result.rgb = clamp(sum_rgb / sum_a, vec3(0.0), vec3(1.0));
+    } else {
+        result.rgb = vec3(0.0);
+    }
+
+    imageStore(dst_img, pos, result);
+}

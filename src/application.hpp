@@ -130,6 +130,13 @@ private:
     void handle_event(const AppEvent::FileRemove& event);
 
 public:
+    /** Rendering backend. */
+    enum class Renderer : uint8_t {
+        Auto,     ///< Auto-detect (Vulkan if available, else software)
+        Vulkan,   ///< Force Vulkan (fail if unavailable)
+        Software, ///< Force software rendering
+    };
+
     /** Application startup parameters. */
     struct StartupParams {
         std::filesystem::path config;    ///< Lua config file to load
@@ -146,6 +153,7 @@ public:
         uint32_t cursor_hide = 3000;    ///< Cursor hide time (Wayland only)
         std::string app_id = "swayimg"; ///< Window class name (Wayland only)
         size_t drm_freq = 0;            ///< Display frequency (DRM only)
+        Renderer renderer = Renderer::Auto; ///< Rendering backend
     } sparams;
 
     /** Initialization complete callback. */

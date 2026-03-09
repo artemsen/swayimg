@@ -73,6 +73,7 @@ public:
         } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
             key += 8;
             const xkb_keysym_t keysym = ui->xkb.get_keysym(key);
+            Log::verbose("Wayland key: code={} keysym={:#x}", key, keysym);
             if (keysym != XKB_KEY_NoSymbol) {
                 Application::self().add_event(
                     AppEvent::KeyPress { keysym, ui->xkb.get_modifiers() });

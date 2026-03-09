@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MIT
+// 1D box blur compute shader for background blur effect.
+// Direction (horizontal/vertical) controlled by push constant.
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0, rgba8) uniform readonly image2D src_image;
+layout(set = 0, binding = 1, rgba8) uniform writeonly image2D dst_image;
+
+layout(push_constant) uniform PushConstants {
+    int direction; // 0 = horizontal, 1 = vertical
+    int radius;    // blur radius
+} pc;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(src_image);
+
+    if (pos.x >= size.x || pos.y >= size.y) {
+        return;
+    }
+
+    vec4 sum = vec4(0.0);
+    float count = float(2 * pc.radius + 1);
+
+    for (int i = -pc.radius; i <= pc.radius; ++i) {
+        ivec2 sample_pos;
+        if (pc.direction == 0) {
+            sample_pos = ivec2(clamp(pos.x + i, 0, size.x - 1), pos.y);
+        } else {
+            sample_pos = ivec2(pos.x, clamp(pos.y + i, 0, size.y - 1));
+        }
+        sum += imageLoad(src_image, sample_pos);
+    }
+
+    imageStore(dst_image, pos, sum / count);
+}

@@ -4,9 +4,14 @@
 
 #pragma once
 
+#include "buildconf.hpp"
 #include "image.hpp"
 #include "input.hpp"
 #include "text.hpp"
+
+#ifdef HAVE_VULKAN
+#include <vulkan/vulkan.h>
+#endif
 
 #include <functional>
 #include <map>
@@ -63,6 +68,21 @@ public:
      * @param wnd window surface pixmap
      */
     virtual void window_redraw(Pixmap& wnd) = 0;
+
+#ifdef HAVE_VULKAN
+    /**
+     * Pre-render pass hook for compute/transfer work (e.g., blur).
+     * Called after begin_frame() but before begin_render_pass().
+     * @param cmd command buffer
+     * @param texcache texture cache
+     */
+    virtual void pre_render_vk(VkCommandBuffer cmd,
+                                class TextureCache& texcache)
+    {
+        (void)cmd;
+        (void)texcache;
+    }
+#endif
 
     /**
      * Handle key press event.
@@ -132,6 +152,12 @@ public:
      * @param color mark icon color
      */
     void set_mark_color(const argb_t& color);
+
+    /**
+     * Get mark icon color.
+     * @return mark icon color
+     */
+    const argb_t& get_mark_color() const { return mark_color; }
 
     /**
      * Set text layer scheme.

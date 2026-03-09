@@ -5,9 +5,14 @@
 #pragma once
 
 #include "appmode.hpp"
+#include "buildconf.hpp"
 #include "image.hpp"
 #include "layout.hpp"
 #include "threadpool.hpp"
+
+#ifdef HAVE_VULKAN
+#include <vulkan/vulkan.h>
+#endif
 
 #include <deque>
 #include <mutex>
@@ -19,7 +24,6 @@ public:
     enum class Aspect : uint8_t {
         Fit,  ///< Fit image into a square thumbnail
         Fill, ///< Fill square thumbnail with the image
-        Keep, ///< Adjust thumbnail size to the aspect ratio of the image
     };
 
     /**
@@ -134,6 +138,9 @@ public:
     ImageEntryPtr current_entry() override;
     void window_resize(const Size& wnd) override;
     void window_redraw(Pixmap& wnd) override;
+#ifdef HAVE_VULKAN
+    void window_redraw_vk(VkCommandBuffer cmd, class TextureCache& texcache);
+#endif
     void handle_mmove(const InputMouse& input, const Point& pos,
                       const Point& delta) override;
     void handle_pinch(const double scale_delta) override;

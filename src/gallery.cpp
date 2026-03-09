@@ -341,6 +341,192 @@ void Gallery::window_redraw(Pixmap& wnd)
     clear_thumbnails();
 }
 
+#ifdef HAVE_VULKAN
+#include "vulkan_pipeline.hpp"
+#include "vulkan_texture.hpp"
+
+void Gallery::window_redraw_vk(VkCommandBuffer cmd, TextureCache& texcache)
+{
+    layout.update();
+
+    auto& pipe = VulkanPipeline::self();
+    const Size wnd_size = Application::self().get_ui()->get_window_size();
+
+    // Fill window background
+    pipe.draw_fill(cmd, 0, 0, static_cast<float>(wnd_size.width),
+                   static_cast<float>(wnd_size.height), clr_window);
+
+    const ImageEntryPtr current = layout.get_selected();
+    const size_t tile_size = layout.get_thumb_size();
+
+    // Icon textures: create once on first use, then reuse from cache
+    constexpr size_t FILE_ICON_KEY = SIZE_MAX - 1;
+    constexpr size_t MARK_ICON_KEY = SIZE_MAX - 2;
+
+    // File placeholder icon (white with low alpha) — static, never changes
+    GpuTexture* file_icon_tex = texcache.get(FILE_ICON_KEY, 0);
+    if (!file_icon_tex) {
+        Pixmap file_pm;
+        file_pm.create(Pixmap::ARGB, Resource::file.width(),
+                       Resource::file.height());
+        file_pm.mask(Resource::file, { 0, 0 }, { 0x20, 0xff, 0xff, 0xff });
+        file_icon_tex = texcache.get_or_upload(file_pm, FILE_ICON_KEY, 0);
+    }
+
+    // Mark icon — static color, create once
+    GpuTexture* mark_icon_tex = texcache.get(MARK_ICON_KEY, 0);
+    if (!mark_icon_tex) {
+        Pixmap mark_pm;
+        mark_pm.create(Pixmap::ARGB, Resource::mark.width(),
+                       Resource::mark.height());
+        mark_pm.mask(Resource::mark, { 0, 0 }, mark_color);
+        mark_icon_tex = texcache.get_or_upload(mark_pm, MARK_ICON_KEY, 0);
+    }
+
+    // Draw all thumbnails (non-selected first, then selected on top)
+    auto draw_thumb = [&](const Layout::Thumbnail& tlay) {
+        std::lock_guard lock(mutex);
+
+        const bool selected = (tlay.img == current);
+        const Pixmap* pm = get_thumbnail(tlay.img);
+
+        // Calculate tile position/size
+        Rectangle tile { tlay.pos, { tile_size, tile_size } };
+        if (selected) {
+            tile.width *= selected_scale;
+            tile.height *= selected_scale;
+            tile.x -= tile.width / 2 - tile_size / 2;
+            tile.y -= tile.height / 2 - tile_size / 2;
+
+            // prevent going beyond the window
+            if (tile.x + tile.width + border_size > wnd_size.width) {
+                tile.x = wnd_size.width - tile.width - border_size;
+            }
+            if (tile.x < static_cast<ssize_t>(border_size)) {
+                tile.x = border_size;
+            }
+            if (tile.y + tile.height + border_size > wnd_size.height) {
+                tile.y = wnd_size.height - tile.height - border_size;
+            }
+            if (tile.y < static_cast<ssize_t>(border_size)) {
+                tile.y = border_size;
+            }
+        }
+
+        // Background
+        Rectangle bkg = tile;
+        pipe.draw_fill(cmd, static_cast<float>(bkg.x),
+                       static_cast<float>(bkg.y),
+                       static_cast<float>(bkg.width),
+                       static_cast<float>(bkg.height),
+                       selected ? clr_select : clr_background);
+
+        // Thumbnail image or file placeholder icon
+        if (pm) {
+            const double scale_w =
+                static_cast<double>(tile.width) / pm->width();
+            const double scale_h =
+                static_cast<double>(tile.height) / pm->height();
+            const double sc = aspect == Aspect::Fill
+                ? std::max(scale_w, scale_h)
+                : std::min(scale_w, scale_h);
+
+            const float img_w = static_cast<float>(sc * pm->width());
+            const float img_h = static_cast<float>(sc * pm->height());
+            const float img_x = static_cast<float>(tile.x) +
+                static_cast<float>(tile.width) / 2.0f - img_w / 2.0f;
+            const float img_y = static_cast<float>(tile.y) +
+                static_cast<float>(tile.height) / 2.0f - img_h / 2.0f;
+
+            GpuTexture* tex = texcache.get_or_upload(
+                *pm, reinterpret_cast<size_t>(tlay.img.get()), 0);
+            if (tex) {
+                // Clip image to tile boundary (Fill mode may overflow)
+                const VkRect2D tile_scissor = {
+                    .offset = { static_cast<int32_t>(tile.x),
+                                static_cast<int32_t>(tile.y) },
+                    .extent = { static_cast<uint32_t>(tile.width),
+                                static_cast<uint32_t>(tile.height) },
+                };
+                vkCmdSetScissor(cmd, 0, 1, &tile_scissor);
+                pipe.draw_image(cmd, *tex, img_x, img_y, img_w, img_h);
+                // Restore full-window scissor
+                const VkRect2D full_scissor = {
+                    .offset = { 0, 0 },
+                    .extent = { static_cast<uint32_t>(wnd_size.width),
+                                static_cast<uint32_t>(wnd_size.height) },
+                };
+                vkCmdSetScissor(cmd, 0, 1, &full_scissor);
+            }
+        } else if (file_icon_tex &&
+                   bkg.width > Resource::file.width() &&
+                   bkg.height > Resource::file.height()) {
+            // Draw file placeholder icon centered in tile
+            const float ix = static_cast<float>(bkg.x) +
+                static_cast<float>(bkg.width) / 2.0f -
+                static_cast<float>(Resource::file.width()) / 2.0f;
+            const float iy = static_cast<float>(bkg.y) +
+                static_cast<float>(bkg.height) / 2.0f -
+                static_cast<float>(Resource::file.height()) / 2.0f;
+            pipe.draw_image(cmd, *file_icon_tex, ix, iy,
+                            static_cast<float>(Resource::file.width()),
+                            static_cast<float>(Resource::file.height()));
+        }
+
+        // Border for selected
+        if (selected && clr_border.a && border_size) {
+            const float bx = static_cast<float>(bkg.x - border_size);
+            const float by = static_cast<float>(bkg.y - border_size);
+            const float bw = static_cast<float>(bkg.width + border_size * 2);
+            const float bh = static_cast<float>(bkg.height + border_size * 2);
+            const float bs = static_cast<float>(border_size);
+            // Top
+            pipe.draw_fill(cmd, bx, by, bw, bs, clr_border);
+            // Bottom
+            pipe.draw_fill(cmd, bx, by + bh - bs, bw, bs, clr_border);
+            // Left
+            pipe.draw_fill(cmd, bx, by + bs, bs, bh - 2 * bs, clr_border);
+            // Right
+            pipe.draw_fill(cmd, bx + bw - bs, by + bs, bs, bh - 2 * bs,
+                           clr_border);
+        }
+
+        // Mark icon
+        if (tlay.img->mark && mark_icon_tex) {
+            constexpr ssize_t margin = 5;
+            const float mx = static_cast<float>(bkg.x) +
+                static_cast<float>(bkg.width) -
+                static_cast<float>(Resource::mark.width()) -
+                static_cast<float>(margin);
+            const float my = static_cast<float>(bkg.y) +
+                static_cast<float>(bkg.height) -
+                static_cast<float>(Resource::mark.height()) -
+                static_cast<float>(margin);
+            pipe.draw_image(cmd, *mark_icon_tex, mx, my,
+                            static_cast<float>(Resource::mark.width()),
+                            static_cast<float>(Resource::mark.height()));
+        }
+    };
+
+    // Non-selected thumbnails first
+    for (auto& it : layout.get_scheme()) {
+        if (it.img != current) {
+            draw_thumb(it);
+        }
+    }
+    // Selected on top
+    for (auto& it : layout.get_scheme()) {
+        if (it.img == current) {
+            draw_thumb(it);
+            break;
+        }
+    }
+
+    load_thumbnails();
+    clear_thumbnails();
+}
+#endif // HAVE_VULKAN
+
 void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
 {
     if (layout.select(pos)) {
@@ -416,18 +602,6 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
     // draw background
     Rectangle bkg = tile;
-    if (pm && aspect == Aspect::Keep) {
-        const double scale_w = static_cast<double>(tile.width) / pm->width();
-        const double scale_h = static_cast<double>(tile.height) / pm->height();
-        bkg.width /= scale_w;
-        bkg.height /= scale_h;
-        if (selected) {
-            bkg.width *= selected_scale;
-            bkg.height *= selected_scale;
-        }
-        bkg.x += tile.width / 2 - bkg.width / 2;
-        bkg.y += tile.height / 2 - bkg.height / 2;
-    }
     wnd.fill(bkg, selected ? clr_select : clr_background);
 
     if (pm) {

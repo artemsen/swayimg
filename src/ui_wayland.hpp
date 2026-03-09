@@ -132,6 +132,18 @@ public:
     Pixmap& lock_surface() override;
     void commit_surface() override;
 
+    /**
+     * Get Wayland display handle for Vulkan WSI.
+     * @return wl_display pointer
+     */
+    wl_display* get_wl_display() { return wl.display; }
+
+    /**
+     * Get Wayland surface handle for Vulkan WSI.
+     * @return wl_surface pointer
+     */
+    wl_surface* get_wl_surface() { return wl.surface; }
+
 private:
     // Fractional scale denominator (Wayland constant)
     static constexpr const size_t FRACTION_SCALE_DEN = 120;

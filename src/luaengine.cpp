@@ -109,7 +109,7 @@ static constexpr std::array aspects =
     std::to_array<std::pair<Gallery::Aspect, const char*>>({
         { Gallery::Aspect::Fit,  "fit"  },
         { Gallery::Aspect::Fill, "fill" },
-        { Gallery::Aspect::Keep, "keep" },
+        { Gallery::Aspect::Fit,  "keep" }, // backward compat alias
 });
 
 /**
@@ -390,6 +390,22 @@ void LuaEngine::bind_root_api()
         .addFunction("enable_overlay",
                      [](const bool enable) {
                          Application::self().sparams.use_overlay = enable;
+                     })
+        .addFunction("set_renderer",
+                     [](const std::string& name) {
+                         auto& params = Application::self().sparams;
+                         if (name == "auto") {
+                             params.renderer = Application::Renderer::Auto;
+                         } else if (name == "vulkan" || name == "gpu") {
+                             params.renderer =
+                                 Application::Renderer::Vulkan;
+                         } else if (name == "software" || name == "sw" ||
+                                    name == "cpu") {
+                             params.renderer =
+                                 Application::Renderer::Software;
+                         } else {
+                             Log::error("Invalid renderer: {}", name);
+                         }
                      })
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {

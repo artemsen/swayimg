@@ -674,6 +674,106 @@ void Viewer::window_redraw(Pixmap& wnd)
     }
 }
 
+#ifdef HAVE_VULKAN
+#include "vulkan_aa.hpp"
+#include "vulkan_blur.hpp"
+#include "vulkan_pipeline.hpp"
+#include "vulkan_texture.hpp"
+
+void Viewer::pre_render_vk(VkCommandBuffer cmd, TextureCache& texcache)
+{
+    if (!image || image->frames.empty()) {
+        return;
+    }
+
+    const Pixmap& pm = image->frames[frame_index].pm;
+    GpuTexture* tex = texcache.get_or_upload(
+        pm, reinterpret_cast<size_t>(image->entry.get()), frame_index);
+    if (!tex) {
+        return;
+    }
+
+    // Blur background (before render pass)
+    if (!std::holds_alternative<argb_t>(window_bkg)) {
+        auto& blur = VulkanBlur::self();
+        if (blur.is_valid()) {
+            blur.prepare(cmd, *tex);
+            blur.apply(cmd);
+        }
+    }
+
+    // MKS13 anti-aliased scaling (before render pass)
+    vk_aa_result = {};
+    if (Render::self().antialiasing) {
+        auto& aa = VulkanAA::self();
+        if (aa.is_valid()) {
+            const Size wnd =
+                Application::self().get_ui()->get_window_size();
+            vk_aa_result = aa.apply(cmd, *tex, static_cast<float>(scale),
+                                    static_cast<float>(position.x),
+                                    static_cast<float>(position.y),
+                                    wnd.width, wnd.height);
+        }
+    }
+}
+
+void Viewer::window_redraw_vk(VkCommandBuffer cmd, TextureCache& texcache)
+{
+    if (!image || image->frames.empty()) {
+        return;
+    }
+
+    auto& pipe = VulkanPipeline::self();
+    const Pixmap& pm = image->frames[frame_index].pm;
+    const float img_x = static_cast<float>(position.x);
+    const float img_y = static_cast<float>(position.y);
+    const float img_w = static_cast<float>(pm.width() * scale);
+    const float img_h = static_cast<float>(pm.height() * scale);
+
+    // Draw blur background (must be first — behind everything)
+    if (!std::holds_alternative<argb_t>(window_bkg)) {
+        auto& blur = VulkanBlur::self();
+        if (blur.is_valid()) {
+            const auto& result = blur.get_result();
+            pipe.draw_image(cmd, result, 0, 0,
+                            static_cast<float>(result.width),
+                            static_cast<float>(result.height));
+        }
+    }
+
+    // Clear image background for transparent images
+    if (pm.format() == Pixmap::ARGB) {
+        if (tr_grid) {
+            pipe.draw_grid(cmd, img_x, img_y, img_w, img_h,
+                           static_cast<float>(tr_grsize), tr_grcolor[0],
+                           tr_grcolor[1]);
+        } else {
+            pipe.draw_fill(cmd, img_x, img_y, img_w, img_h, tr_bgcolor);
+        }
+    }
+
+    // Draw image — use AA result if available, otherwise nearest-neighbor
+    if (vk_aa_result.texture) {
+        pipe.draw_image(cmd, *vk_aa_result.texture, vk_aa_result.x,
+                        vk_aa_result.y, vk_aa_result.w, vk_aa_result.h);
+    } else {
+        GpuTexture* tex = texcache.get_or_upload(
+            pm, reinterpret_cast<size_t>(image->entry.get()), frame_index);
+        if (tex) {
+            pipe.draw_image(cmd, *tex, img_x, img_y, img_w, img_h);
+        } else {
+            Log::verbose("VRAM exhausted, CPU fallback for current frame");
+        }
+    }
+
+    // Fill window background (solid color mode only)
+    if (std::holds_alternative<argb_t>(window_bkg)) {
+        pipe.draw_fill_inverse(cmd, img_x, img_y, img_w, img_h,
+                               std::get<argb_t>(window_bkg));
+    }
+}
+#endif // HAVE_VULKAN
+
 void Viewer::handle_mmove(const InputMouse& input, const Point&,
                           const Point& delta)
 {

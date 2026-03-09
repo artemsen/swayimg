@@ -104,6 +104,14 @@ option(
     description: 'Enable DRM (Direct Rendering Manager) support',
 )
 
+# Vulkan rendering
+option(
+    'vulkan',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable Vulkan GPU-accelerated rendering',
+)
+
 # extra files to install
 option(
     'bash',

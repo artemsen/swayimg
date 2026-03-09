@@ -1605,7 +1605,7 @@ Get information about currently selected image.
 ### swayimg.gallery.set_aspect
 
 ```lua
-swayimg.gallery.set_aspect(aspect: "fill"|"fit"|"keep")
+swayimg.gallery.set_aspect(aspect: "fill"|"fit")
 ```
 
 Set thumbnail aspect ratio.
@@ -1616,8 +1616,9 @@ Set thumbnail aspect ratio.
 aspect:
     | "fit" -- Fit image into a square thumbnail
     | "fill" -- Fill square thumbnail with the image
-    | "keep" -- Adjust thumbnail size to the aspect ratio of the image
 ```
+
+Note: `"keep"` is accepted as an alias for `"fit"` for backward compatibility.
 
 ### swayimg.gallery.get_thumb_size
 
