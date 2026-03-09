@@ -797,6 +797,11 @@ void LuaEngine::bind_slideshow_api()
                      [](const double timeout) {
                          Slideshow::self().duration = timeout * 1000;
                      })
+        .addFunction(
+            "get_timeout",
+            []() {
+                return static_cast<double>(Slideshow::self().duration) / 1000;
+            })
         .endNamespace()
         .endNamespace();
 }

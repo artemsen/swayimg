@@ -427,6 +427,10 @@ function swayimg.viewer.set_text_br(scheme) end
 ---@param seconds number Timeout in seconds
 function swayimg.slideshow.set_timeout(seconds) end
 
+---Get a timeout after which next image is opened.
+---@return number # Timeout in seconds
+function swayimg.slideshow.get_timeout() end
+
 ---Open next file at specified direction.
 ---@param dir vdir_t Next file direction
 function swayimg.slideshow.open(dir) end

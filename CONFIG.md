@@ -110,6 +110,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_text_br](#swayimgviewerset_text_br): Set text layer scheme for bottom right corner of the window
 * Slide show mode
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
+  * [swayimg.slideshow.get_timeout](#swayimgslideshowget_timeout): Get a timeout after which next image is opened
   * [swayimg.slideshow.open](#swayimgslideshowopen): Open next file at specified direction
   * [swayimg.slideshow.current_image](#swayimgslideshowcurrent_image): Get information about currently viewed image
   * [swayimg.slideshow.get_scale](#swayimgslideshowget_scale): Get current image scale
@@ -1056,6 +1057,16 @@ swayimg.slideshow.set_timeout(seconds: number)
 Set a timeout after which next image should be opened.
 
 @*param* `seconds` — Timeout in seconds
+
+### swayimg.slideshow.get_timeout
+
+```lua
+swayimg.slideshow.get_timeout() -> number
+```
+
+Get a timeout after which next image is opened.
+
+@*return* — Timeout in seconds
 
 ### swayimg.slideshow.open
 
