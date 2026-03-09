@@ -6,10 +6,13 @@
 
 #include "image.hpp"
 
+#include <atomic>
 #include <ctime>
 #include <filesystem>
 #include <list>
 #include <shared_mutex>
+#include <thread>
+#include <unordered_set>
 #include <vector>
 
 /** Thread-safe list of images. */
@@ -35,6 +38,8 @@ public:
         PrevParent, ///< Previous entry with different parent
         Random      ///< Random entry
     };
+
+    ~ImageList();
 
     /**
      * Get global instance of image list.
@@ -70,6 +75,12 @@ public:
      * @return valid nearest entry or nullptr if list is empty
      */
     ImageEntryPtr remove(const ImageEntryPtr& entry, bool forward = true);
+
+    /**
+     * Check if background scanning is in progress.
+     * @return true if scanning
+     */
+    bool is_scanning() const;
 
     /**
      * Get number of entries in the image list.
@@ -167,6 +178,13 @@ private:
     void add_entry(ImageEntryPtr& entry, const bool ordered);
 
     /**
+     * Find image entry (caller must hold lock).
+     * @param path path to search
+     * @return entry or nullptr
+     */
+    ImageEntryPtr find_unlocked(const std::filesystem::path& path);
+
+    /**
      * Sort image list.
      * @param locked flag to lock the list before processing
      */
@@ -177,12 +195,42 @@ private:
      */
     void reindex();
 
+    /**
+     * Flush a batch of entries into the list.
+     * @param batch entries to add
+     */
+    void flush_batch(std::vector<ImageEntryPtr>& batch);
+
+    /**
+     * Background scanning thread entry point.
+     * @param dirs directories to scan recursively
+     */
+    void scan_background(std::vector<std::filesystem::path> dirs);
+
+    /**
+     * Finalize background scan: sort, reindex, notify.
+     */
+    void finish_scan();
+
+    /**
+     * Recursively scan a directory, accumulating entries.
+     * @param path directory to scan
+     * @param batch accumulator for discovered entries
+     */
+    void scan_recursive(const std::filesystem::path& path,
+                        std::vector<ImageEntryPtr>& batch);
+
 private:
-    std::list<ImageEntryPtr> entries; ///< List of image entries
-    std::shared_mutex mutex;          ///< Image list mutex
+    std::list<ImageEntryPtr> entries;           ///< List of image entries
+    std::unordered_set<std::string> path_index; ///< O(1) duplicate detection
+    std::shared_mutex mutex;                    ///< Image list mutex
 
     Order order = Order::Numeric; ///< Image list order
     bool reverse = false;         ///< Reverse order flag
+
+    std::atomic<bool> scanning { false }; ///< Background scan in progress
+    std::atomic<bool> sorting { false };  ///< Sort in progress
+    std::thread scan_thread;              ///< Background scanning thread
 
 public:
     bool recursive = false; ///< Read directories recursively

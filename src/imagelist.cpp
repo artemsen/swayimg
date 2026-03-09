@@ -4,6 +4,7 @@
 
 #include "imagelist.hpp"
 
+#include "application.hpp"
 #include "fsmonitor.hpp"
 #include "log.hpp"
 
@@ -50,8 +51,16 @@ static int compare_strings(const std::string& l, const std::string& r,
 
             ls.erase(0, ldstart);
             rs.erase(0, rdstart);
-            const size_t lnum = std::stoull(ls);
-            const size_t rnum = std::stoull(rs);
+            size_t lnum = 0, rnum = 0;
+            try {
+                lnum = std::stoull(ls);
+                rnum = std::stoull(rs);
+            } catch (const std::out_of_range&) {
+                // number too large, fall back to lexicographic compare
+                cmp = coll.compare(ls.data(), ls.data() + ls.length(),
+                                   rs.data(), rs.data() + rs.length());
+                break;
+            }
             if (lnum != rnum) {
                 cmp = lnum < rnum ? -1 : 1;
                 break;
@@ -132,16 +141,93 @@ ImageList& ImageList::self()
     return singleton;
 }
 
+ImageList::~ImageList()
+{
+    if (scan_thread.joinable()) {
+        scanning = false;
+        scan_thread.join();
+    }
+}
+
 ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
 {
     if (sources.empty()) {
         return nullptr;
     }
 
+    std::vector<std::filesystem::path> bg_dirs;
+
     mutex.lock();
     for (auto& it : sources) {
-        add(it, false);
+        const std::string path_str = it.string();
+        if (path_str.starts_with(ImageEntry::SRC_STDIN) ||
+            path_str.starts_with(ImageEntry::SRC_EXEC)) {
+            add(it, false);
+        } else if (!std::filesystem::exists(it)) {
+            Log::warning("File {} not found, skipped", path_str);
+        } else if (std::filesystem::is_directory(it)) {
+            const std::filesystem::path abs_path =
+                std::filesystem::absolute(it).lexically_normal();
+            // scan first level only (no recursion)
+            try {
+                for (const auto& dir_entry :
+                     std::filesystem::directory_iterator(abs_path)) {
+                    const std::filesystem::path& sub_path = dir_entry.path();
+                    if (std::filesystem::is_directory(sub_path)) {
+                        if (recursive) {
+                            bg_dirs.push_back(sub_path);
+                        }
+                    } else {
+                        add_file(sub_path, false);
+                    }
+                }
+                FsMonitor::self().add(abs_path);
+            } catch (const std::filesystem::filesystem_error&) {
+            }
+        } else {
+            const std::filesystem::path abs_path =
+                std::filesystem::absolute(it).lexically_normal();
+            add_file(abs_path, false);
+            if (adjacent) {
+                try {
+                    const auto parent = abs_path.parent_path();
+                    for (const auto& dir_entry :
+                         std::filesystem::directory_iterator(parent)) {
+                        const auto& sub_path = dir_entry.path();
+                        if (!std::filesystem::is_directory(sub_path)) {
+                            add_file(sub_path, false);
+                        }
+                    }
+                    FsMonitor::self().add(parent);
+                } catch (const std::filesystem::filesystem_error&) {
+                }
+            }
+        }
     }
+    // if no files found at top level but we have subdirs to scan,
+    // synchronously scan until we find at least one file
+    if (entries.empty() && !bg_dirs.empty()) {
+        std::vector<ImageEntryPtr> batch;
+        while (entries.empty() && !bg_dirs.empty()) {
+            const auto dir = bg_dirs.front();
+            bg_dirs.erase(bg_dirs.begin());
+            try {
+                for (const auto& dir_entry :
+                     std::filesystem::directory_iterator(dir)) {
+                    const auto& sub_path = dir_entry.path();
+                    if (std::filesystem::is_directory(sub_path)) {
+                        bg_dirs.push_back(sub_path);
+                    } else {
+                        add_file(sub_path, false);
+                    }
+                }
+                FsMonitor::self().add(dir);
+            } catch (const std::filesystem::filesystem_error&) {
+            }
+        }
+    }
+
+    reindex();
     mutex.unlock();
 
     sort(true);
@@ -151,9 +237,14 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
     adjacent = false;
 
     // get first entry
+    std::shared_lock lock(mutex);
+    if (entries.empty()) {
+        return nullptr;
+    }
+
     ImageEntryPtr first = nullptr;
     for (auto& path : sources) {
-        first = find(path);
+        first = find_unlocked(path);
         if (first) {
             break;
         }
@@ -171,7 +262,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
             }
         }
     }
-    return first ? first : *entries.begin();
+    return first ? first : entries.front();
 }
 
 ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
@@ -214,6 +305,7 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
     std::unique_lock lock(mutex);
 
+    path_index.erase(entry->path.string());
     entries.remove(entry);
     entry->remove();
 
@@ -240,6 +332,12 @@ void ImageList::set_reverse(const bool enable)
 
 ImageEntryPtr ImageList::find(const std::filesystem::path& path)
 {
+    std::shared_lock lock(mutex);
+    return find_unlocked(path);
+}
+
+ImageEntryPtr ImageList::find_unlocked(const std::filesystem::path& path)
+{
     std::string search = path.string();
     if (search.empty()) {
         return nullptr;
@@ -248,8 +346,6 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
         !search.starts_with(ImageEntry::SRC_EXEC)) {
         search = std::filesystem::absolute(path).lexically_normal();
     }
-
-    std::shared_lock lock(mutex);
 
     auto it = std::find_if(entries.begin(), entries.end(),
                            [&search](const ImageEntryPtr& entry) {
@@ -506,21 +602,19 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     entry->index = 0;
     add_entry(entry, ordered);
 
-    FsMonitor::self().add(path);
-
     return entry;
 }
 
 void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 {
-    if (std::find_if(entries.begin(), entries.end(),
-                     [&entry](const ImageEntryPtr& it) {
-                         return entry->path == it->path;
-                     }) != entries.end()) {
+    const std::string path_str = entry->path.string();
+    if (path_index.count(path_str)) {
         return; // already exists
     }
 
     Log::verbose("Add image entry {}", entry->path.filename().string());
+
+    path_index.insert(path_str);
 
     if (!ordered || order == Order::None) {
         entries.push_back(entry);
@@ -582,4 +676,114 @@ void ImageList::reindex()
     for (auto& it : entries) {
         it->index = ++index;
     }
+}
+
+bool ImageList::is_scanning() const
+{
+    return scanning.load();
+}
+
+void ImageList::flush_batch(std::vector<ImageEntryPtr>& batch)
+{
+    std::unique_lock lock(mutex);
+    for (auto& entry : batch) {
+        const std::string path_str = entry->path.string();
+        if (!path_index.count(path_str)) {
+            path_index.insert(path_str);
+            entries.push_back(entry);
+        }
+    }
+    reindex();
+}
+
+void ImageList::scan_recursive(const std::filesystem::path& path,
+                               std::vector<ImageEntryPtr>& batch)
+{
+    try {
+        for (const auto& it : std::filesystem::directory_iterator(path)) {
+            if (!scanning.load()) {
+                return; // early exit on shutdown
+            }
+            const std::filesystem::path& sub_path = it.path();
+            if (std::filesystem::is_directory(sub_path)) {
+                scan_recursive(sub_path, batch);
+            } else if (std::filesystem::is_regular_file(sub_path)) {
+                const auto fs_time =
+                    std::filesystem::last_write_time(sub_path);
+                auto sys_time =
+                    std::chrono::time_point_cast<
+                        std::chrono::system_clock::duration>(
+                        fs_time -
+                        std::filesystem::file_time_type::clock::now() +
+                        std::chrono::system_clock::now());
+                const std::time_t tt_time =
+                    std::chrono::system_clock::to_time_t(sys_time);
+
+                ImageEntryPtr entry = std::make_shared<ImageEntry>();
+                entry->path = sub_path;
+                entry->mtime = tt_time;
+                entry->size = std::filesystem::file_size(sub_path);
+                entry->index = 0;
+                batch.push_back(entry);
+
+                if (batch.size() >= 100) {
+                    flush_batch(batch);
+                    batch.clear();
+                    Application::self().add_event(
+                        AppEvent::ScanProgress { entries.size() });
+                }
+            }
+        }
+        FsMonitor::self().add(path);
+    } catch (const std::filesystem::filesystem_error&) {
+    }
+}
+
+void ImageList::scan_background(std::vector<std::filesystem::path> dirs)
+{
+    std::vector<ImageEntryPtr> batch;
+    batch.reserve(100);
+
+    for (const auto& dir : dirs) {
+        if (!scanning.load()) {
+            return; // early exit
+        }
+        scan_recursive(dir, batch);
+    }
+
+    // flush remaining entries
+    if (!batch.empty()) {
+        flush_batch(batch);
+        batch.clear();
+    }
+
+    finish_scan();
+}
+
+void ImageList::finish_scan()
+{
+    {
+        std::unique_lock lock(mutex);
+
+        if (order == Order::None) {
+            // nothing to do
+        } else if (order == Order::Random) {
+            std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
+            std::random_device rdev;
+            std::mt19937 engine(rdev());
+            std::shuffle(tmp.begin(), tmp.end(), engine);
+            entries.assign(tmp.begin(), tmp.end());
+        } else {
+            entries.sort(
+                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
+                    const bool cmp = compare_entries(*l, *r, order);
+                    return reverse ? !cmp : cmp;
+                });
+        }
+
+        reindex();
+        scanning = false;
+    }
+
+    Application::self().add_event(AppEvent::ScanComplete {});
 }
