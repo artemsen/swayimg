@@ -820,69 +820,61 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 
 void Viewer::preloader_start()
 {
-    if (image_pool.thread.joinable()) {
-        if (image_pool.stop) {
-            image_pool.thread.join();
-        } else {
-            return; // already in progress
+    image_pool.tpool.cancel();
+    image_pool.stop = false;
+
+    ImageList& il = ImageList::self();
+    ImageEntryPtr last_entry = image->entry;
+
+    // collect entries to preload
+    std::vector<ImageEntryPtr> to_preload;
+    for (size_t i = 0; i < image_pool.preload.capacity; ++i) {
+        ImageEntryPtr next_entry = il.get(last_entry, ImageList::Dir::Next);
+        if (!next_entry && imagelist_loop) {
+            next_entry = il.get(nullptr, ImageList::Dir::First);
         }
+        if (!next_entry || next_entry == last_entry) {
+            break;
+        }
+
+        // skip if already cached
+        bool cached = false;
+        {
+            std::lock_guard lock(image_pool.mutex);
+            cached = image_pool.preload.get(next_entry) != nullptr ||
+                     image_pool.history.get(next_entry) != nullptr;
+        }
+
+        if (!cached) {
+            to_preload.push_back(next_entry);
+        }
+        last_entry = next_entry;
     }
 
-    image_pool.thread = std::thread([this] {
-        ImageList& il = ImageList::self();
-        ImagePtr current_image = image;
-        ImageEntryPtr last_entry = image->entry;
-        size_t counter = 0;
-
-        while (!image_pool.stop && counter < image_pool.preload.capacity) {
-            if (current_image != image) {
-                // current image has changed, restart preloading
-                current_image = image;
-                last_entry = image->entry;
-                counter = 0;
+    // dispatch parallel decode tasks
+    for (auto& entry : to_preload) {
+        image_pool.tpool.add([this, entry]() {
+            if (image_pool.stop) {
+                return;
             }
 
-            ImageEntryPtr next_entry = il.get(last_entry, ImageList::Dir::Next);
-            if (!next_entry && imagelist_loop) {
-                next_entry = il.get(nullptr, ImageList::Dir::First);
-            }
-            if (!next_entry || next_entry == last_entry) {
-                // no more images to preload
-                std::lock_guard lock(image_pool.mutex);
-                image_pool.preload.trim(counter);
-                break;
+            ImagePtr loaded = ImageLoader::load(entry);
+            if (image_pool.stop) {
+                return;
             }
 
-            ImagePtr next_image = nullptr;
-
-            // get existing image form history/preload cache
-            {
-                std::lock_guard lock(image_pool.mutex);
-                next_image = image_pool.preload.get(next_entry);
-                if (!next_image) {
-                    next_image = image_pool.history.get(next_entry);
-                }
-            }
-
-            // load image
-            if (!next_image) {
-                next_image = ImageLoader::load(next_entry);
-            }
-
-            if (!next_image) {
-                il.remove(next_entry);
-            } else {
+            if (loaded) {
                 Log::verbose("Put image {} to cache",
-                             next_entry->path.filename().string());
+                             entry->path.filename().string());
                 std::lock_guard lock(image_pool.mutex);
-                image_pool.preload.put(next_image);
-                last_entry = next_image->entry;
-                ++counter;
+                image_pool.preload.put(loaded);
+            } else {
+                ImageList::self().remove(entry);
             }
-        }
 
-        image_pool.stop = true;
-    });
+            Application::redraw();
+        });
+    }
 }
 
 void Viewer::fixup_position()
@@ -943,10 +935,9 @@ void Viewer::fixup_position()
 
 void Viewer::preloader_stop()
 {
-    if (image_pool.thread.joinable()) {
-        image_pool.stop = true;
-        image_pool.thread.join();
-    }
+    image_pool.stop = true;
+    image_pool.tpool.cancel();
+    image_pool.tpool.wait();
 }
 
 void Viewer::Cache::trim(const size_t size)

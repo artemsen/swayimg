@@ -14,10 +14,11 @@
 #include <vulkan/vulkan.h>
 #endif
 
+#include "threadpool.hpp"
+
 #include <atomic>
 #include <deque>
 #include <mutex>
-#include <thread>
 #include <variant>
 
 class Viewer : public AppMode {
@@ -345,8 +346,8 @@ private:
     struct ImagePool {
         Cache preload;          ///< Preloaded images (read ahead)
         Cache history;          ///< Recently viewed images
-        std::thread thread;     ///< Preload thread
-        std::atomic<bool> stop; ///< Stop signal for preload thread
+        ThreadPool tpool;       ///< Thread pool for parallel preloading
+        std::atomic<bool> stop; ///< Stop signal for preload tasks
         std::mutex mutex;       ///< Sync mutex for pool access
     } image_pool;
 };
