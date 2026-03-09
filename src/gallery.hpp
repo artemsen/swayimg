@@ -16,8 +16,7 @@
 
 #include <deque>
 #include <mutex>
-#include <set>
-#include <shared_mutex>
+#include <unordered_set>
 
 class Gallery : public AppMode {
 public:
@@ -150,6 +149,11 @@ public:
 
 private:
     /**
+     * Drain completed thumbnails from worker queue into cache.
+     */
+    void drain_completed();
+
+    /**
      * Draw thumbnail.
      * @param tlay thumbnail layout description
      * @param wnd target window
@@ -214,13 +218,13 @@ private:
         ImageEntryPtr entry;
         Pixmap pm;
     };
-    std::deque<ThumbEntry> cache;   ///< Thumbnails cache
-    std::set<ImageEntryPtr> queue;  ///< Loading queue
-    std::set<ImageEntryPtr> active; ///< Currently loading
+    std::deque<ThumbEntry> cache; ///< Thumbnails cache (main thread only)
+
+    std::vector<ThumbEntry> completed;          ///< Completed thumbnails from workers
+    std::unordered_set<ImageEntryPtr> queued;   ///< Entries queued or being processed
+    std::mutex completed_mutex;                 ///< Protects completed and queued
 
     bool preload;      ///< Enable/disable preloading of invisible thumbnails
     size_t cache_size; ///< Max number of thumbnails in cache
-    std::shared_mutex cache_mutex; ///< Protects cache (shared reads, exclusive writes)
-    std::mutex task_mutex;         ///< Protects queue and active sets
     std::atomic<bool> stopping{false}; ///< Non-blocking cancellation flag
 };
