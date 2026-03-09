@@ -210,6 +210,7 @@ public:
     virtual void window_redraw(Pixmap& wnd) override;
     virtual void handle_mmove(const InputMouse& input, const Point& pos,
                               const Point& delta) override;
+    virtual void handle_pinch(const double scale_delta) override;
     virtual void handle_imagelist(const ImageListEvent event,
                                   const ImageEntryPtr& entry) override;
 

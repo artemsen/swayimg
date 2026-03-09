@@ -61,6 +61,7 @@ if wlcln.found()
         wlproto_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
         wlproto_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
         wlproto_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
+        wlproto_dir / 'unstable/pointer-gestures/pointer-gestures-unstable-v1.xml',
         wlproto_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
     ]
 

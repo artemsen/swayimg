@@ -123,6 +123,7 @@ private:
     void handle_event(const AppEvent::KeyPress& event);
     void handle_event(const AppEvent::MouseClick& event);
     void handle_event(const AppEvent::MouseMove& event);
+    void handle_event(const AppEvent::GesturePinch& event);
     void handle_event(const AppEvent::Signal& event);
     void handle_event(const AppEvent::FileCreate& event);
     void handle_event(const AppEvent::FileModify& event);

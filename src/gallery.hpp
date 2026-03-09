@@ -136,6 +136,7 @@ public:
     void window_redraw(Pixmap& wnd) override;
     void handle_mmove(const InputMouse& input, const Point& pos,
                       const Point& delta) override;
+    void handle_pinch(const double scale_delta) override;
     void handle_imagelist(const ImageListEvent event,
                           const ImageEntryPtr& entry) override;
 

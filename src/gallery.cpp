@@ -348,6 +348,11 @@ void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
     }
 }
 
+void Gallery::handle_pinch(const double scale_delta)
+{
+    set_thumb_size(get_thumb_size() + scale_delta * 100.0);
+}
+
 void Gallery::handle_imagelist(const ImageListEvent event,
                                const ImageEntryPtr& entry)
 {

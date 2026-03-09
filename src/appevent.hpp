@@ -48,6 +48,11 @@ struct MouseMove {
     Point delta;      ///< Delta between this and last call
 };
 
+/** Gesture: pinch event. */
+struct GesturePinch {
+    double scale_delta; ///< Scale diff
+};
+
 /** Signal occur event. */
 struct Signal {
     InputSignal signal; ///< Signal description
@@ -77,6 +82,7 @@ using Holder = std::variant<WindowClose,
                             KeyPress,
                             MouseClick,
                             MouseMove,
+                            GesturePinch,
                             Signal,
                             FileCreate,
                             FileModify,

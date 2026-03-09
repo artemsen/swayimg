@@ -13,6 +13,7 @@
 #include <cursor-shape-v1-client-protocol.h>
 #include <ext-idle-notify-v1-client-protocol.h>
 #include <fractional-scale-v1-client-protocol.h>
+#include <pointer-gestures-unstable-v1-client-protocol.h>
 #include <viewporter-client-protocol.h>
 #include <xdg-decoration-unstable-v1-client-protocol.h>
 #include <xdg-shell-client-protocol.h>
@@ -163,6 +164,8 @@ private:
         WLOBJ_DECLARE(wp_content_type_v1) ctype;
         WLOBJ_DECLARE(wp_fractional_scale_manager_v1) scale_mgr;
         WLOBJ_DECLARE(wp_fractional_scale_v1) scale;
+        WLOBJ_DECLARE(zwp_pointer_gestures_v1) gestures_mgr;
+        WLOBJ_DECLARE(zwp_pointer_gesture_pinch_v1) gestures_pinch;
         WLOBJ_DECLARE(zxdg_decoration_manager_v1) decor_mgr;
         WLOBJ_DECLARE(zxdg_toplevel_decoration_v1) decor;
         WLOBJ_DECLARE(ext_idle_notifier_v1) idle_mgr;
@@ -182,6 +185,8 @@ private:
     InputMouse::mouse_btn_t mouse_buttons =
         InputMouse::NONE; ///< Currently pressed mouse buttons
     Point mouse_pos;      ///< Mouse coordinates
+
+    double pinch_scale; ///< Last pinch scale
 
 public:
     InputMouse dnd;          ///< Mouse and key modifiers used for drag-and-drop

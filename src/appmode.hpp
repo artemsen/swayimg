@@ -89,6 +89,12 @@ public:
                               const Point& delta) = 0;
 
     /**
+     * Handle pinch gesture.
+     * @param scale_delta scale diff
+     */
+    virtual void handle_pinch(const double scale_delta) = 0;
+
+    /**
      * Handle signal.
      * @param input input event description
      * @return false if event not supported

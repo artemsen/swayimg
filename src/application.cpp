@@ -345,6 +345,10 @@ void Application::handle_event(const AppEvent::Holder& event)
             } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::MouseMove&>) {
                 handle_event(event);
+            } else if constexpr (std::is_same_v<
+                                     decltype(event),
+                                     const AppEvent::GesturePinch&>) {
+                handle_event(event);
             } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::Signal&>) {
                 handle_event(event);
@@ -420,6 +424,11 @@ void Application::handle_event(const AppEvent::MouseClick& event)
 void Application::handle_event(const AppEvent::MouseMove& event)
 {
     current_mode()->handle_mmove(event.mouse, event.pointer, event.delta);
+}
+
+void Application::handle_event(const AppEvent::GesturePinch& event)
+{
+    current_mode()->handle_pinch(event.scale_delta);
 }
 
 void Application::handle_event(const AppEvent::Signal& event)

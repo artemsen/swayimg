@@ -265,6 +265,15 @@ public:
         if (cap & WL_SEAT_CAPABILITY_POINTER) {
             ui->wl.pointer = wl_seat_get_pointer(seat);
             wl_pointer_add_listener(ui->wl.pointer, &pointer_listener, ui);
+
+            // register gesures handler
+            if (ui->wl.gestures_mgr) {
+                ui->wl.gestures_pinch =
+                    zwp_pointer_gestures_v1_get_pinch_gesture(
+                        ui->wl.gestures_mgr, ui->wl.pointer);
+                zwp_pointer_gesture_pinch_v1_add_listener(
+                    ui->wl.gestures_pinch, &WaylandHandler::pinch_listener, ui);
+            }
         } else if (ui->wl.pointer) {
             wl_pointer_destroy(ui->wl.pointer);
             ui->wl.pointer = nullptr;
@@ -406,6 +415,44 @@ public:
     };
 
     /***************************************************************************
+     * Pinch gesture handlers
+     **************************************************************************/
+    static void on_pinch_begin(void* data, struct zwp_pointer_gesture_pinch_v1*,
+                               uint32_t, uint32_t, struct wl_surface*, uint32_t)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->pinch_scale = 1.0;
+    }
+
+    static void on_pinch_update(void* data,
+                                struct zwp_pointer_gesture_pinch_v1*, uint32_t,
+                                wl_fixed_t, wl_fixed_t, wl_fixed_t scale,
+                                wl_fixed_t)
+    {
+
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        const double fscale = wl_fixed_to_double(scale);
+        const double delta = 2.0 * (fscale - ui->pinch_scale);
+
+        if (delta != 0.0) {
+            ui->pinch_scale = fscale;
+            Application::self().add_event(AppEvent::GesturePinch { delta });
+        }
+    }
+
+    static void on_pinch_end(void*, struct zwp_pointer_gesture_pinch_v1*,
+                             uint32_t, uint32_t, int32_t)
+    {
+    }
+
+    static constexpr const zwp_pointer_gesture_pinch_v1_listener
+        pinch_listener = {
+            .begin = on_pinch_begin,
+            .update = on_pinch_update,
+            .end = on_pinch_end,
+        };
+
+    /***************************************************************************
      * Frame handlers
      **************************************************************************/
     static void on_frame_done(void* data, struct wl_callback*, uint32_t)
@@ -541,6 +588,11 @@ public:
             ui->wl.scale_mgr.bind(
                 registry, name,
                 WP_FRACTIONAL_SCALE_V1_PREFERRED_SCALE_SINCE_VERSION);
+        } else if (strcmp(interface, zwp_pointer_gestures_v1_interface.name) ==
+                   0) {
+            // gestures
+            ui->wl.gestures_mgr.bind(registry, name,
+                                     ZWP_POINTER_GESTURES_V1_GET_PINCH_GESTURE);
         } else if (strcmp(interface,
                           zxdg_decoration_manager_v1_interface.name) == 0) {
             // server side window decoration
