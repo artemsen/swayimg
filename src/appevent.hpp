@@ -74,6 +74,14 @@ struct FileRemove {
     std::filesystem::path path; ///< Path to the file
 };
 
+/** Scan progress event (background directory scan). */
+struct ScanProgress {
+    size_t count; ///< Total entries found so far
+};
+
+/** Scan complete event (background directory scan finished). */
+struct ScanComplete { };
+
 // clang-format off
 using Holder = std::variant<WindowClose,
                             WindowRedraw,
@@ -86,7 +94,9 @@ using Holder = std::variant<WindowClose,
                             Signal,
                             FileCreate,
                             FileModify,
-                            FileRemove>;
+                            FileRemove,
+                            ScanProgress,
+                            ScanComplete>;
 // clang-format on
 
 // event handler

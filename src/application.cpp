@@ -427,6 +427,14 @@ void Application::handle_event(const AppEvent::Holder& event)
             } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::FileRemove&>) {
                 handle_event(event);
+            } else if constexpr (std::is_same_v<
+                                     decltype(event),
+                                     const AppEvent::ScanProgress&>) {
+                handle_event(event);
+            } else if constexpr (std::is_same_v<
+                                     decltype(event),
+                                     const AppEvent::ScanComplete&>) {
+                handle_event(event);
             } else {
                 assert(false && "unhnadled event type");
                 handle_event(event);
@@ -642,4 +650,14 @@ void Application::handle_event(const AppEvent::FileRemove& event)
                                              entry);
         }
     }
+}
+
+void Application::handle_event(const AppEvent::ScanProgress&)
+{
+    redraw();
+}
+
+void Application::handle_event(const AppEvent::ScanComplete&)
+{
+    redraw();
 }
