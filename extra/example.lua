@@ -28,7 +28,7 @@ swayimg.viewer.set_text_tl({
 swayimg.viewer.on_key("Left", function()
   local w, _ = unpack(swayimg.get_window_size())
   local x, y = unpack(swayimg.viewer.get_position())
-  swayimg.viewer.set_abs_position(x - w / 10, y);
+  swayimg.viewer.set_abs_position(math.floor(x - w / 10), y);
 end)
 
 -- bind mouse vertical scroll button with pressed Ctrl to zoom in the image at mouse pointer coordinates
