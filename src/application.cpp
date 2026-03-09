@@ -435,6 +435,9 @@ void Application::handle_event(const AppEvent::Holder& event)
                                      decltype(event),
                                      const AppEvent::ScanComplete&>) {
                 handle_event(event);
+            } else if constexpr (std::is_same_v<decltype(event),
+                                                const AppEvent::ImageReady&>) {
+                handle_event(event);
             } else {
                 assert(false && "unhnadled event type");
                 handle_event(event);
@@ -570,6 +573,9 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
         if (Log::verbose_enable()) {
             Log::verbose("Redraw in {:.6f} sec", timer.time());
         }
+    } else {
+        // frame not ready, re-queue redraw for next frame callback
+        redraw();
     }
 }
 
@@ -660,4 +666,12 @@ void Application::handle_event(const AppEvent::ScanProgress&)
 void Application::handle_event(const AppEvent::ScanComplete&)
 {
     redraw();
+}
+
+void Application::handle_event(const AppEvent::ImageReady& event)
+{
+    if (active_mode == Mode::Viewer || active_mode == Mode::Slideshow) {
+        Viewer& viewer = Viewer::self();
+        viewer.on_image_ready(event.image, event.entry);
+    }
 }

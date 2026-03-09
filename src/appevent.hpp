@@ -5,6 +5,7 @@
 #pragma once
 
 #include "geometry.hpp"
+#include "image.hpp"
 #include "input.hpp"
 
 #include <filesystem>
@@ -82,6 +83,12 @@ struct ScanProgress {
 /** Scan complete event (background directory scan finished). */
 struct ScanComplete { };
 
+/** Image ready event (async image load completed). */
+struct ImageReady {
+    ImagePtr image;       ///< Loaded image
+    ImageEntryPtr entry;  ///< Image entry that was loaded
+};
+
 // clang-format off
 using Holder = std::variant<WindowClose,
                             WindowRedraw,
@@ -96,7 +103,8 @@ using Holder = std::variant<WindowClose,
                             FileModify,
                             FileRemove,
                             ScanProgress,
-                            ScanComplete>;
+                            ScanComplete,
+                            ImageReady>;
 // clang-format on
 
 // event handler

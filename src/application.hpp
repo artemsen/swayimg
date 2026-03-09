@@ -130,6 +130,7 @@ private:
     void handle_event(const AppEvent::FileRemove& event);
     void handle_event(const AppEvent::ScanProgress& event);
     void handle_event(const AppEvent::ScanComplete& event);
+    void handle_event(const AppEvent::ImageReady& event);
 
 public:
     /** Rendering backend. */

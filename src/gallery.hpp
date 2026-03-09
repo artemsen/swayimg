@@ -17,6 +17,7 @@
 #include <deque>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 
 class Gallery : public AppMode {
 public:
@@ -219,5 +220,7 @@ private:
 
     bool preload;      ///< Enable/disable preloading of invisible thumbnails
     size_t cache_size; ///< Max number of thumbnails in cache
-    std::mutex mutex;  ///< Sync mutex for thumbnails cache access
+    std::shared_mutex cache_mutex; ///< Protects cache (shared reads, exclusive writes)
+    std::mutex task_mutex;         ///< Protects queue and active sets
+    std::atomic<bool> stopping{false}; ///< Non-blocking cancellation flag
 };

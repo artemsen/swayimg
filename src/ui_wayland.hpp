@@ -148,9 +148,10 @@ private:
     // Fractional scale denominator (Wayland constant)
     static constexpr const size_t FRACTION_SCALE_DEN = 120;
 
-    std::thread thread;  ///< Wayland event handler thread
-    FdEvent stop_event;  ///< Stop signaling event
-    FdEvent flush_event; ///< Flush buffer event
+    std::thread thread;      ///< Wayland event handler thread
+    FdEvent stop_event;      ///< Stop signaling event
+    FdEvent flush_event;     ///< Flush buffer event
+    FdEvent frame_ready_event; ///< Frame callback readiness signal
 
     /** Wayland objects. */
     struct WaylandObjects {
@@ -185,6 +186,7 @@ private:
     } wl;
 
     WaylandBuffer wnd_buffer; ///< Window buffers (double buffering)
+    Pixmap empty_pm;         ///< Empty pixmap returned when frame not ready
 
     std::mutex frame_mutex; ///< Draw frame lock
 

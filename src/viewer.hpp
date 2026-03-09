@@ -269,6 +269,16 @@ private:
      */
     void on_open();
 
+public:
+    /**
+     * Handle async image load completion (called from main thread).
+     * @param loaded loaded image
+     * @param entry entry that was loaded
+     */
+    void on_image_ready(const ImagePtr& loaded, const ImageEntryPtr& entry);
+
+private:
+
     /**
      * Fix up image position.
      */
@@ -344,10 +354,12 @@ private:
 
     /** Image pool. */
     struct ImagePool {
-        Cache preload;          ///< Preloaded images (read ahead)
-        Cache history;          ///< Recently viewed images
-        ThreadPool tpool;       ///< Thread pool for parallel preloading
-        std::atomic<bool> stop; ///< Stop signal for preload tasks
-        std::mutex mutex;       ///< Sync mutex for pool access
+        Cache preload;              ///< Preloaded images (read ahead)
+        Cache history;              ///< Recently viewed images
+        ThreadPool tpool;           ///< Thread pool for parallel preloading
+        std::atomic<bool> stop;     ///< Stop signal for preload tasks
+        std::mutex mutex;           ///< Sync mutex for pool access
+        ImageEntryPtr pending;      ///< Entry being loaded async (protected by mutex)
+        std::atomic<bool> loading;  ///< Whether an async load is in progress
     } image_pool;
 };

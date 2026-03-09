@@ -193,6 +193,7 @@ bool Gallery::select(const Layout::Direction dir)
         return false;
     }
     switch_current();
+    load_thumbnails();
     return true;
 }
 
@@ -292,16 +293,19 @@ void Gallery::initialize() { }
 
 void Gallery::activate(const ImageEntryPtr& entry, const Size& wnd)
 {
+    stopping = false;
     AppMode::activate(entry, wnd);
     layout.set_window_size(wnd);
     layout.select(entry);
     switch_current();
+    load_thumbnails();
 }
 
 void Gallery::deactivate()
 {
+    stopping = true;
     tpool.cancel();
-    tpool.wait();
+    // don't wait — running tasks check stopping flag and return early
 }
 
 ImageEntryPtr Gallery::current_entry()
@@ -313,6 +317,7 @@ void Gallery::window_resize(const Size& wnd)
 {
     layout.set_window_size(wnd);
     AppMode::window_resize(wnd);
+    load_thumbnails();
 }
 
 void Gallery::window_redraw(Pixmap& wnd)
@@ -337,7 +342,6 @@ void Gallery::window_redraw(Pixmap& wnd)
         }
     }
 
-    load_thumbnails();
     clear_thumbnails();
 }
 
@@ -385,7 +389,7 @@ void Gallery::window_redraw_vk(VkCommandBuffer cmd, TextureCache& texcache)
 
     // Draw all thumbnails (non-selected first, then selected on top)
     auto draw_thumb = [&](const Layout::Thumbnail& tlay) {
-        std::lock_guard lock(mutex);
+        std::shared_lock lock(cache_mutex);
 
         const bool selected = (tlay.img == current);
         const Pixmap* pm = get_thumbnail(tlay.img);
@@ -522,7 +526,6 @@ void Gallery::window_redraw_vk(VkCommandBuffer cmd, TextureCache& texcache)
         }
     }
 
-    load_thumbnails();
     clear_thumbnails();
 }
 #endif // HAVE_VULKAN
@@ -531,6 +534,7 @@ void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
 {
     if (layout.select(pos)) {
         switch_current();
+        load_thumbnails();
     }
 }
 
@@ -563,12 +567,13 @@ void Gallery::handle_imagelist(const ImageListEvent event,
         switch_current();
     }
     layout.update();
+    load_thumbnails();
     Application::redraw();
 }
 
 void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 {
-    std::lock_guard lock(mutex);
+    std::shared_lock lock(cache_mutex);
 
     const bool selected = (tlay.img == layout.get_selected());
     const Size wnd_size = wnd;
@@ -652,13 +657,12 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
 void Gallery::load_thumbnails()
 {
-    std::lock_guard lock(mutex);
-
-    tpool.cancel();
-    queue.clear();
-
     ImageList& il = ImageList::self();
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
+
+    if (scheme.empty()) {
+        return;
+    }
 
     const size_t index_first = scheme.front().img->index;
     const size_t index_last = scheme.back().img->index;
@@ -666,8 +670,13 @@ void Gallery::load_thumbnails()
     size_t preload_counter = preload ? cache_size : 0;
 
     auto check_and_load = [this](ImageEntryPtr& entry) {
-        if (!get_thumbnail(entry) && !queue.contains(entry) &&
-            !active.contains(entry)) {
+        bool cached;
+        {
+            std::shared_lock clock(cache_mutex);
+            cached = get_thumbnail(entry) != nullptr;
+        }
+        std::lock_guard tlock(task_mutex);
+        if (!cached && !queue.contains(entry) && !active.contains(entry)) {
             queue.insert(entry);
             tpool.add([this, entry]() {
                 load_thumbnail(entry);
@@ -706,7 +715,7 @@ void Gallery::load_thumbnails()
 
 void Gallery::clear_thumbnails()
 {
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(cache_mutex);
 
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
 
@@ -736,7 +745,7 @@ const Pixmap* Gallery::get_thumbnail(const ImageEntryPtr& entry)
 void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
-        std::lock_guard lock(mutex);
+        std::lock_guard lock(task_mutex);
         active.insert(entry);
         queue.erase(entry);
     }
@@ -777,13 +786,23 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
         }
     }
 
-    std::lock_guard lock(mutex);
+    // check stopping flag before updating cache
+    if (stopping) {
+        std::lock_guard lock(task_mutex);
+        active.erase(entry);
+        return;
+    }
 
     if (thumb.pm) {
+        std::unique_lock lock(cache_mutex);
         thumb.entry = entry;
         cache.emplace_back(thumb);
     }
-    active.erase(entry);
+
+    {
+        std::lock_guard lock(task_mutex);
+        active.erase(entry);
+    }
 
     Application::redraw();
 }

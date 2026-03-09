@@ -192,7 +192,7 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
         }
         next_entry = il.get(
             nullptr, forward ? ImageList::Dir::First : ImageList::Dir::Last);
-        if (next_entry == image->entry) {
+        if (image && next_entry == image->entry) {
             next_entry = il.get(next_entry, pos);
         }
         if (!next_entry) {
@@ -203,40 +203,96 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     ImagePtr next_image = nullptr;
 
     {
-        // get file form history/preload cache
+        // get file from history/preload cache
         std::lock_guard lock(image_pool.mutex);
         next_image = image_pool.preload.get(next_entry);
         if (!next_image) {
             next_image = image_pool.history.get(next_entry);
         }
     }
+
     if (next_image) {
+        // cache hit — switch immediately
         Log::verbose("Get image {} from cache",
                      next_entry->path.filename().string());
-    }
-
-    while (next_entry && !next_image) {
-        next_image = ImageLoader::load(next_entry);
-        if (!next_image) {
-            next_entry = il.remove(next_entry, forward);
-        }
-        if (!next_entry && imagelist_loop) {
-            next_entry = il.get(nullptr, ImageList::Dir::First);
-        }
-    }
-    if (next_image) {
-        // put to history
         if (image) {
             std::lock_guard lock(image_pool.mutex);
             image_pool.history.put(image);
         }
-
-        // switch to new image
         image = next_image;
         on_open();
+        return true;
     }
 
-    return !!next_image;
+    // cache miss
+    if (!image) {
+        // no current image (startup) — must load synchronously
+        while (next_entry && !next_image) {
+            next_image = ImageLoader::load(next_entry);
+            if (!next_image) {
+                next_entry = il.remove(next_entry, forward);
+            }
+            if (!next_entry && imagelist_loop) {
+                next_entry = il.get(nullptr, ImageList::Dir::First);
+            }
+        }
+        if (next_image) {
+            image = next_image;
+            on_open();
+        }
+        return !!next_image;
+    }
+
+    // load asynchronously — cancel queued (not yet running) tasks
+    image_pool.tpool.cancel();
+
+    {
+        std::lock_guard lock(image_pool.mutex);
+        image_pool.pending = next_entry;
+    }
+    image_pool.loading = true;
+
+    image_pool.tpool.add([this, next_entry, forward]() {
+        // check if this task is still wanted (not superseded by rapid nav)
+        {
+            std::lock_guard lock(image_pool.mutex);
+            if (image_pool.pending != next_entry) {
+                return; // superseded by newer navigation
+            }
+        }
+
+        ImageList& il = ImageList::self();
+        ImageEntryPtr entry = next_entry;
+        ImagePtr loaded = nullptr;
+
+        while (entry && !loaded) {
+            if (image_pool.stop) {
+                return; // mode switch / shutdown
+            }
+            // check if still the target before expensive I/O
+            {
+                std::lock_guard lock(image_pool.mutex);
+                if (image_pool.pending != next_entry) {
+                    return; // superseded
+                }
+            }
+            loaded = ImageLoader::load(entry);
+            if (!loaded) {
+                entry = il.remove(entry, forward);
+            }
+            if (!entry && imagelist_loop) {
+                entry = il.get(nullptr, ImageList::Dir::First);
+            }
+        }
+
+        if (loaded && !image_pool.stop) {
+            // deliver result to main thread via event
+            Application::self().add_event(
+                AppEvent::ImageReady { loaded, entry });
+        }
+    });
+
+    return true; // async load dispatched, previous image stays displayed
 }
 
 size_t Viewer::next_frame()
@@ -627,6 +683,9 @@ void Viewer::window_resize(const Size& wnd)
 
 void Viewer::window_redraw(Pixmap& wnd)
 {
+    if (!image) {
+        return; // async load in progress, nothing to render yet
+    }
     const Pixmap& pm = image->frames[frame_index].pm;
     const Rectangle imgr = { position, static_cast<Size>(pm) * scale };
 
@@ -818,6 +877,29 @@ void Viewer::handle_imagelist(const ImageListEvent event,
     }
 }
 
+void Viewer::on_image_ready(const ImagePtr& loaded, const ImageEntryPtr& entry)
+{
+    // verify this is still the image we want (not superseded by rapid navigation)
+    {
+        std::lock_guard lock(image_pool.mutex);
+        if (image_pool.pending != entry) {
+            return; // superseded, discard
+        }
+        image_pool.pending = nullptr;
+    }
+    image_pool.loading = false;
+
+    // put current image to history
+    if (image) {
+        std::lock_guard lock(image_pool.mutex);
+        image_pool.history.put(image);
+    }
+
+    // switch to new image
+    image = loaded;
+    on_open();
+}
+
 void Viewer::preloader_start()
 {
     image_pool.tpool.cancel();
@@ -937,7 +1019,7 @@ void Viewer::preloader_stop()
 {
     image_pool.stop = true;
     image_pool.tpool.cancel();
-    image_pool.tpool.wait();
+    // don't wait — running tasks check stop flag and return early
 }
 
 void Viewer::Cache::trim(const size_t size)

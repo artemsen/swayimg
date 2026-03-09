@@ -465,6 +465,7 @@ public:
         wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
 
         ui->frame_mutex.unlock();
+        ui->frame_ready_event.set(); // signal main thread that frame is ready
     }
 
     static constexpr const wl_callback_listener frame_listener = {
@@ -801,6 +802,11 @@ void UiWayland::run()
              .events = POLLIN,
              .revents = 0,
              },
+            {
+             .fd = frame_ready_event,
+             .events = POLLIN,
+             .revents = 0,
+             },
         };
 
         // main event loop
@@ -847,6 +853,12 @@ void UiWayland::run()
                     Application::self().add_event(
                         AppEvent::KeyPress { key, km });
                 }
+            }
+
+            // frame ready: queue a redraw on the main thread
+            if (fds[4].revents & POLLIN) {
+                frame_ready_event.reset();
+                Application::redraw();
             }
         }
     });
@@ -955,7 +967,9 @@ Point UiWayland::get_mouse()
 Pixmap& UiWayland::lock_surface()
 {
     if (wnd_buffer) {
-        frame_mutex.lock();
+        if (!frame_mutex.try_lock()) {
+            return empty_pm; // frame not ready, skip this render
+        }
         wnd_buffer.mutex.lock();
     }
     return wnd_buffer.pm;
