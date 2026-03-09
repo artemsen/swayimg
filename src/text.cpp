@@ -184,6 +184,8 @@ void Text::reset(const ImageEntryPtr& entry)
     set_field(FIELD_FILE_SIZE, std::to_string(entry->size));
     set_field(FIELD_LIST_INDEX, std::to_string(entry->index));
     set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
+    set_field(FIELD_LIST_SCANNING,
+              ImageList::self().is_scanning() ? "scanning..." : "");
     set_field(FIELD_SCALE, {});
 
     // human readable file size

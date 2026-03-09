@@ -53,7 +53,7 @@ Viewer::Viewer()
         "EXIF camera: {meta.Exif.Image.Model}"
     };
     text_scheme[static_cast<size_t>(Text::TopRight)] = {
-        "Image: {list.index} of {list.total}",
+        "Image: {list.index} of {list.total} {list.scanning}",
         "Frame: {frame.index} of {frame.total}",
         "Size: {frame.width}x{frame.height}"
     };

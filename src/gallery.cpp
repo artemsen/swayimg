@@ -88,7 +88,7 @@ Gallery::Gallery()
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File: {name}" };
     text_scheme[static_cast<size_t>(Text::TopRight)] = {
-        "{list.index} of {list.total}"
+        "{list.index} of {list.total} {list.scanning}"
     };
 
     // default key bindings: general management

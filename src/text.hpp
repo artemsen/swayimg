@@ -39,6 +39,7 @@ public:
     static constexpr const char* FIELD_FRAME_WIDTH = "frame.width";
     static constexpr const char* FIELD_FRAME_HEIGHT = "frame.height";
     static constexpr const char* FIELD_META = "meta";
+    static constexpr const char* FIELD_LIST_SCANNING = "list.scanning";
 
     Text();
 
