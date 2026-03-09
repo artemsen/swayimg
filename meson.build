@@ -146,15 +146,6 @@ conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildconf.hpp', configuration: conf)
 
-# install lua files
-install_data('extra/example.lua', install_dir: get_option('datadir') / 'swayimg')
-install_data('extra/swayimg.lua', install_dir: get_option('datadir') / 'swayimg')
-
-# man installation
-if get_option('man')
-    install_man('extra/swayimg.1')
-endif
-
 # doc generator
 python3 = find_program('python3', native: true, required: false)
 if python3.found()
@@ -247,6 +238,19 @@ if bash.found()
         rename: 'swayimg',
     )
 endif
+
+# man installation
+if get_option('man')
+    install_man('extra/swayimg.1')
+endif
+
+# license, documentations, etc
+install_data('LICENSE', install_dir: get_option('datadir') / 'licenses' / 'swayimg')
+install_data('README.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
+install_data('CONFIG.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
+install_data('USAGE.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
+install_data('extra/example.lua', install_dir: get_option('datadir') / 'swayimg')
+install_data('extra/swayimg.lua', install_dir: get_option('datadir') / 'swayimg')
 
 # source files
 sources = [
