@@ -182,25 +182,18 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
 
     ImageEntryPtr next_entry = from ? from : il.get(image->entry, pos);
 
-    bool forward = true;
+    const bool forward =
+        pos != ImageList::Dir::Prev && pos != ImageList::Dir::PrevParent;
 
     if (!next_entry && imagelist_loop) {
-        switch (pos) {
-            case ImageList::Dir::Next:
-            case ImageList::Dir::NextParent:
-                if (imagelist_loop) {
-                    next_entry = il.get(nullptr, ImageList::Dir::First);
-                }
-                break;
-            case ImageList::Dir::Prev:
-            case ImageList::Dir::PrevParent:
-                forward = false;
-                if (imagelist_loop) {
-                    next_entry = il.get(nullptr, ImageList::Dir::Last);
-                }
-                break;
-            default:
-                break;
+        // reshuffle random on new loop
+        if (il.get_order() == ImageList::Order::Random) {
+            il.set_order(ImageList::Order::Random);
+        }
+        next_entry = il.get(
+            nullptr, forward ? ImageList::Dir::First : ImageList::Dir::Last);
+        if (next_entry == image->entry) {
+            next_entry = il.get(next_entry, pos);
         }
         if (!next_entry) {
             return false;

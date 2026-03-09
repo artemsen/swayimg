@@ -78,6 +78,12 @@ public:
     size_t size() const { return entries.size(); }
 
     /**
+     * Get image list order.
+     * @return order of the image list
+     */
+    Order get_order() const { return order; }
+
+    /**
      * Set order and sort the image list.
      * @param new_order new order of the image list
      */

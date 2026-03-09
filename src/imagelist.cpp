@@ -222,7 +222,7 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
 void ImageList::set_order(const Order new_order)
 {
-    if (order != new_order) {
+    if (order != new_order || new_order == Order::Random) {
         order = new_order;
         sort();
     }
