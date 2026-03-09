@@ -6,12 +6,13 @@
 
 #include "image.hpp"
 
+#include "threadpool.hpp"
+
 #include <atomic>
 #include <ctime>
 #include <filesystem>
 #include <list>
 #include <shared_mutex>
-#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -142,6 +143,18 @@ public:
      */
     ssize_t distance(const ImageEntryPtr& from, const ImageEntryPtr& to);
 
+    /**
+     * Drain pending entries into the main entries list.
+     * Called from main thread on ScanProgress events.
+     */
+    void drain_pending();
+
+    /**
+     * Get total discovered entries during scan.
+     * @return total entries found so far
+     */
+    size_t get_total_discovered() const { return total_discovered.load(); }
+
 private:
     /**
      * Add file or special source to the list.
@@ -196,29 +209,21 @@ private:
     void reindex();
 
     /**
-     * Flush a batch of entries into the list.
-     * @param batch entries to add
+     * Scan a single directory (non-recursive), enqueue subdirs as tasks.
+     * @param path directory to scan
      */
-    void flush_batch(std::vector<ImageEntryPtr>& batch);
+    void scan_directory(const std::filesystem::path& path);
 
     /**
-     * Background scanning thread entry point.
-     * @param dirs directories to scan recursively
+     * Push a batch of entries to the pending buffer.
+     * @param batch entries to push
      */
-    void scan_background(std::vector<std::filesystem::path> dirs);
+    void push_pending(std::vector<ImageEntryPtr>& batch);
 
     /**
-     * Finalize background scan: sort, reindex, notify.
+     * Finalize background scan: drain, sort, reindex, notify.
      */
     void finish_scan();
-
-    /**
-     * Recursively scan a directory, accumulating entries.
-     * @param path directory to scan
-     * @param batch accumulator for discovered entries
-     */
-    void scan_recursive(const std::filesystem::path& path,
-                        std::vector<ImageEntryPtr>& batch);
 
 private:
     std::list<ImageEntryPtr> entries;           ///< List of image entries
@@ -228,9 +233,14 @@ private:
     Order order = Order::Numeric; ///< Image list order
     bool reverse = false;         ///< Reverse order flag
 
-    std::atomic<bool> scanning { false }; ///< Background scan in progress
-    std::atomic<bool> sorting { false };  ///< Sort in progress
-    std::thread scan_thread;              ///< Background scanning thread
+    std::atomic<bool> scanning { false };           ///< Background scan in progress
+    std::atomic<size_t> scan_active { 0 };          ///< Active scan task counter
+    std::atomic<size_t> total_discovered { 0 };     ///< Total entries found during scan
+    ThreadPool scan_pool;                           ///< Thread pool for parallel scanning
+
+    std::vector<ImageEntryPtr> pending_entries;     ///< Pending entries from scan tasks
+    std::vector<std::filesystem::path> pending_dirs; ///< Dirs to register with FsMonitor
+    std::mutex pending_mutex;                       ///< Protects pending_entries/pending_dirs
 
 public:
     bool recursive = false; ///< Read directories recursively

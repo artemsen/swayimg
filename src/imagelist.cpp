@@ -143,10 +143,8 @@ ImageList& ImageList::self()
 
 ImageList::~ImageList()
 {
-    if (scan_thread.joinable()) {
-        scanning = false;
-        scan_thread.join();
-    }
+    scanning = false;
+    scan_pool.stop();
 }
 
 ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
@@ -683,30 +681,28 @@ bool ImageList::is_scanning() const
     return scanning.load();
 }
 
-void ImageList::flush_batch(std::vector<ImageEntryPtr>& batch)
+void ImageList::scan_directory(const std::filesystem::path& path)
 {
-    std::unique_lock lock(mutex);
-    for (auto& entry : batch) {
-        const std::string path_str = entry->path.string();
-        if (!path_index.count(path_str)) {
-            path_index.insert(path_str);
-            entries.push_back(entry);
+    if (!scanning.load()) {
+        if (scan_active.fetch_sub(1) == 1) {
+            finish_scan();
         }
+        return;
     }
-    reindex();
-}
 
-void ImageList::scan_recursive(const std::filesystem::path& path,
-                               std::vector<ImageEntryPtr>& batch)
-{
+    std::vector<ImageEntryPtr> batch;
+    batch.reserve(100);
+
     try {
         for (const auto& it : std::filesystem::directory_iterator(path)) {
             if (!scanning.load()) {
-                return; // early exit on shutdown
+                break;
             }
             const std::filesystem::path& sub_path = it.path();
             if (std::filesystem::is_directory(sub_path)) {
-                scan_recursive(sub_path, batch);
+                // enqueue subdirectory as a new task
+                scan_active.fetch_add(1);
+                scan_pool.add(&ImageList::scan_directory, this, sub_path);
             } else if (std::filesystem::is_regular_file(sub_path)) {
                 const auto fs_time =
                     std::filesystem::last_write_time(sub_path);
@@ -725,43 +721,68 @@ void ImageList::scan_recursive(const std::filesystem::path& path,
                 entry->size = std::filesystem::file_size(sub_path);
                 entry->index = 0;
                 batch.push_back(entry);
-
-                if (batch.size() >= 100) {
-                    flush_batch(batch);
-                    batch.clear();
-                    Application::self().add_event(
-                        AppEvent::ScanProgress { entries.size() });
-                }
             }
         }
-        FsMonitor::self().add(path);
     } catch (const std::filesystem::filesystem_error&) {
+    }
+
+    if (!batch.empty()) {
+        push_pending(batch);
+        Application::self().add_event(
+            AppEvent::ScanProgress { total_discovered.load() });
+    }
+
+    // register directory with FsMonitor on main thread
+    {
+        std::lock_guard lock(pending_mutex);
+        pending_dirs.push_back(path);
+    }
+
+    if (scan_active.fetch_sub(1) == 1) {
+        finish_scan();
     }
 }
 
-void ImageList::scan_background(std::vector<std::filesystem::path> dirs)
+void ImageList::push_pending(std::vector<ImageEntryPtr>& batch)
 {
-    std::vector<ImageEntryPtr> batch;
-    batch.reserve(100);
+    std::lock_guard lock(pending_mutex);
+    total_discovered.fetch_add(batch.size());
+    pending_entries.insert(pending_entries.end(),
+                           std::make_move_iterator(batch.begin()),
+                           std::make_move_iterator(batch.end()));
+}
 
-    for (const auto& dir : dirs) {
-        if (!scanning.load()) {
-            return; // early exit
+void ImageList::drain_pending()
+{
+    std::vector<ImageEntryPtr> to_insert;
+    std::vector<std::filesystem::path> to_monitor;
+    {
+        std::lock_guard lock(pending_mutex);
+        to_insert.swap(pending_entries);
+        to_monitor.swap(pending_dirs);
+    }
+
+    if (!to_insert.empty()) {
+        std::unique_lock lock(mutex);
+        for (auto& entry : to_insert) {
+            const std::string path_str = entry->path.string();
+            if (!path_index.count(path_str)) {
+                path_index.insert(path_str);
+                entries.push_back(entry);
+            }
         }
-        scan_recursive(dir, batch);
     }
 
-    // flush remaining entries
-    if (!batch.empty()) {
-        flush_batch(batch);
-        batch.clear();
+    for (const auto& dir : to_monitor) {
+        FsMonitor::self().add(dir);
     }
-
-    finish_scan();
 }
 
 void ImageList::finish_scan()
 {
+    // drain any remaining pending entries
+    drain_pending();
+
     {
         std::unique_lock lock(mutex);
 
@@ -782,6 +803,7 @@ void ImageList::finish_scan()
         }
 
         reindex();
+        total_discovered = entries.size();
         scanning = false;
     }
 

@@ -660,6 +660,7 @@ void Application::handle_event(const AppEvent::FileRemove& event)
 
 void Application::handle_event(const AppEvent::ScanProgress&)
 {
+    ImageList::self().drain_pending();
     redraw();
 }
 
