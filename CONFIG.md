@@ -64,7 +64,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.set_foreground](#swayimgtextset_foreground): Set foreground text color
   * [swayimg.text.set_background](#swayimgtextset_background): Set background text color
   * [swayimg.text.set_shadow](#swayimgtextset_shadow): Set shadow text color
-  * [swayimg.text.set_overall_timer](#swayimgtextset_overall_timer): Set a timeout after which the entire text layer will be hidden
+  * [swayimg.text.set_timer](#swayimgtextset_timer): Set a timeout after which the entire text layer will be hidden
   * [swayimg.text.set_status_timer](#swayimgtextset_status_timer): Set a timeout after which the status message will be hidden
   * [swayimg.text.show](#swayimgtextshow): Show text layer and stop the time
   * [swayimg.text.hide](#swayimgtexthide): Hide text layer and stop the timer
@@ -109,7 +109,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_text_bl](#swayimgviewerset_text_bl): Set text layer scheme for bottom left corner of the window
   * [swayimg.viewer.set_text_br](#swayimgviewerset_text_br): Set text layer scheme for bottom right corner of the window
 * Slide show mode
-  * [swayimg.slideshow.set_time](#swayimgslideshowset_time): Set a timeout after which next image should be opened
+  * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
   * [swayimg.slideshow.open](#swayimgslideshowopen): Open next file at specified direction
   * [swayimg.slideshow.current_image](#swayimgslideshowcurrent_image): Get information about currently viewed image
   * [swayimg.slideshow.get_scale](#swayimgslideshowget_scale): Get current image scale
@@ -500,10 +500,10 @@ Set shadow text color.
 
 @*param* `color` — Color in ARGB format, e.g. `0xff00aa99`
 
-### swayimg.text.set_overall_timer
+### swayimg.text.set_timer
 
 ```lua
-swayimg.text.set_overall_timer(seconds: number)
+swayimg.text.set_timer(seconds: number)
 ```
 
 Set a timeout after which the entire text layer will be hidden.
@@ -1047,10 +1047,10 @@ See: [swayimg.viewer.set_text_tl](#swayimgviewerset_text_tl) for scheme descript
 
 ## Slide show mode
 
-### swayimg.slideshow.set_time
+### swayimg.slideshow.set_timeout
 
 ```lua
-swayimg.slideshow.set_time(seconds: number)
+swayimg.slideshow.set_timeout(seconds: number)
 ```
 
 Set a timeout after which next image should be opened.

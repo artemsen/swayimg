@@ -483,13 +483,13 @@ void LuaEngine::bind_text_api()
                      [](const uint32_t clr) {
                          Text::self().set_shadow(clr);
                      })
-        .addFunction("set_overall_timer",
-                     [](const size_t to) {
-                         Text::self().set_overall_timer(to);
+        .addFunction("set_timer",
+                     [](const double timeout) {
+                         Text::self().set_overall_timer(timeout * 1000);
                      })
         .addFunction("set_status_timer",
-                     [](const size_t to) {
-                         Text::self().set_status_timer(to);
+                     [](const double timeout) {
+                         Text::self().set_status_timer(timeout * 1000);
                      })
         .addFunction("show",
                      []() {

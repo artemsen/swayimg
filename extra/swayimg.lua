@@ -176,7 +176,7 @@ function swayimg.text.set_shadow(color) end
 
 ---Set a timeout after which the entire text layer will be hidden.
 ---@param seconds number Timeout in seconds
-function swayimg.text.set_overall_timer(seconds) end
+function swayimg.text.set_timer(seconds) end
 
 ---Set a timeout after which the status message will be hidden.
 ---@param seconds number Timeout in seconds
@@ -425,7 +425,7 @@ function swayimg.viewer.set_text_br(scheme) end
 
 ---Set a timeout after which next image should be opened.
 ---@param seconds number Timeout in seconds
-function swayimg.slideshow.set_time(seconds) end
+function swayimg.slideshow.set_timeout(seconds) end
 
 ---Open next file at specified direction.
 ---@param dir vdir_t Next file direction
