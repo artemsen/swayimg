@@ -547,7 +547,7 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 
 void ImageList::sort(bool locked)
 {
-    auto unlocked_sort = [&]() {
+    auto unlocked_sort = [this]() {
         if (order == Order::None) {
             // nothing to do
         } else if (order == Order::Random) {
@@ -572,6 +572,7 @@ void ImageList::sort(bool locked)
         reindex();
     } else {
         unlocked_sort();
+        reindex();
     }
 }
 
