@@ -245,13 +245,41 @@ if get_option('man')
     install_man('extra/swayimg.1')
 endif
 
-# license, documentations, etc
-install_data('LICENSE', install_dir: get_option('datadir') / 'licenses' / 'swayimg')
-install_data('README.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
-install_data('CONFIG.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
-install_data('USAGE.md', install_dir: get_option('datadir') / 'doc' / 'swayimg')
-install_data('extra/example.lua', install_dir: get_option('datadir') / 'swayimg')
-install_data('extra/swayimg.lua', install_dir: get_option('datadir') / 'swayimg')
+# license file installation
+if get_option('license')
+    install_data(
+        'LICENSE',
+        install_dir: get_option('datadir') / 'licenses' / 'swayimg',
+    )
+endif
+
+# markdown documentations
+if get_option('doc')
+    install_data(
+        'README.md',
+        install_dir: get_option('datadir') / 'doc' / 'swayimg',
+    )
+    install_data(
+        'CONFIG.md',
+        install_dir: get_option('datadir') / 'doc' / 'swayimg',
+    )
+    install_data(
+        'USAGE.md',
+        install_dir: get_option('datadir') / 'doc' / 'swayimg',
+    )
+endif
+
+# lua meta file with example config
+if get_option('luameta')
+    install_data(
+        'extra/example.lua',
+        install_dir: get_option('datadir') / 'swayimg',
+    )
+    install_data(
+        'extra/swayimg.lua',
+        install_dir: get_option('datadir') / 'swayimg',
+    )
+endif
 
 # source files
 sources = [

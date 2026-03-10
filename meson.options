@@ -123,6 +123,24 @@ option(
     value: true,
     description: 'Install desktop file with icon',
 )
+option(
+    'license',
+    type: 'boolean',
+    value: true,
+    description: 'Install license file',
+)
+option(
+    'doc',
+    type: 'boolean',
+    value: true,
+    description: 'Install documentation in markdown format',
+)
+option(
+    'luameta',
+    type: 'boolean',
+    value: true,
+    description: 'Install Lua meta file with example config',
+)
 option('man', type: 'boolean', value: true, description: 'Install man page')
 
 # project version
