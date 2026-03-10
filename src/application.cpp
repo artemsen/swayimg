@@ -229,7 +229,9 @@ bool Application::ui_initialize()
     wayland->dnd = sparams.dnd;
     wayland->cursor_hide = sparams.cursor_hide;
     wayland->decoration = sparams.decoration;
-    wayland->fullscreen = sparams.fullscreen;
+    if (sparams.fullscreen.has_value()) {
+        wayland->fullscreen = sparams.fullscreen.value();
+    }
     if (wayland->initialize(app_id)) {
         ui.reset(wayland);
     } else {

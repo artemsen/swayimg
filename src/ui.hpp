@@ -54,8 +54,9 @@ public:
 
     /**
      * Toggle full screen mode.
+     * @return true if full screen mode enabled
      */
-    virtual void toggle_fullscreen() { }
+    virtual bool toggle_fullscreen() { return false; }
 
     /**
      * Get window size.

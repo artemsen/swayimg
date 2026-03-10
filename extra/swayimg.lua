@@ -62,6 +62,10 @@ function swayimg.get_window_size() end
 ---@param height number Height of the window in pixels
 function swayimg.set_window_size(width, height) end
 
+---Toggle full screen mode.
+---@return boolean # True if full screen is enabled
+function swayimg.toggle_fullscreen() end
+
 ---Get mouse pointer coordinates.
 ---@return table # (x, y) tuple with mouse pointer coordinates
 function swayimg.get_mouse_pos() end

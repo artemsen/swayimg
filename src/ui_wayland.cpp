@@ -913,7 +913,7 @@ void UiWayland::set_ctype(ContentType type)
     wp_content_type_v1_set_content_type(wl.ctype, content_type);
 }
 
-void UiWayland::toggle_fullscreen()
+bool UiWayland::toggle_fullscreen()
 {
     fullscreen = !fullscreen;
 
@@ -924,6 +924,8 @@ void UiWayland::toggle_fullscreen()
             xdg_toplevel_unset_fullscreen(wl.xtoplevel);
         }
     }
+
+    return fullscreen;
 }
 
 Size UiWayland::get_window_size()

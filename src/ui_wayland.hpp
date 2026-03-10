@@ -125,7 +125,7 @@ public:
     void set_title(const char* title) override;
     void set_cursor(CursorShape shape) override;
     void set_ctype(ContentType type) override;
-    void toggle_fullscreen() override;
+    bool toggle_fullscreen() override;
     Size get_window_size() override;
     void set_window_size(const Size& size) override;
     Point get_mouse() override;

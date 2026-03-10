@@ -344,6 +344,20 @@ void LuaEngine::bind_root_api()
                     }
                 }
             })
+        .addFunction("toggle_fullscreen",
+                     []() {
+                         Ui* ui = Application::get_ui();
+                         if (ui) {
+                             return ui->toggle_fullscreen();
+                         } else {
+                             std::optional<bool>& fullscreen =
+                                 Application::self().sparams.fullscreen;
+                             if (!fullscreen.has_value()) {
+                                 fullscreen = true;
+                             }
+                             return fullscreen.value();
+                         }
+                     })
         .addFunction("get_mouse_pos",
                      []() {
                          Point pos { 0, 0 };

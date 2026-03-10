@@ -41,6 +41,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_mode](#swayimgget_mode): Get current mode
   * [swayimg.get_window_size](#swayimgget_window_size): Get application window size
   * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
+  * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
   * [swayimg.set_drag_button](#swayimgset_drag_button): Bind the mouse button for drag-and-drop image to external applications
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
@@ -262,6 +263,16 @@ Set application window size.
 @*param* `width` — Width of the window in pixels
 
 @*param* `height` — Height of the window in pixels
+
+### swayimg.toggle_fullscreen
+
+```lua
+swayimg.toggle_fullscreen() -> boolean
+```
+
+Toggle full screen mode.
+
+@*return* — True if full screen is enabled
 
 ### swayimg.get_mouse_pos
 
