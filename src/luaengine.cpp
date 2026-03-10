@@ -151,6 +151,20 @@ type_to_name(const std::array<std::pair<T, const char*>, N>& arr, const T& type)
 }
 
 /**
+ * Print Lua error message.
+ * @param fmt format description
+ * @param ... format arguments
+ */
+template <typename... Args>
+static void show_error(const std::format_string<Args...> fmt, Args&&... args)
+{
+    const std::string message =
+        std::vformat(fmt.get(), std::make_format_args(args...));
+    Log::error("{}", message);
+    Text::self().set_status(message);
+}
+
+/**
  * Get path to config file (init.lua).
  * @return path to initial config file
  */
@@ -247,10 +261,10 @@ void LuaEngine::initialize(const std::filesystem::path& config)
 
     // load config file
     if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
-        Log::error("Failed to load config file: {}",
+        show_error("Failed to load config file: {}",
                    lua_tostring(lua_state, -1));
     } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        Log::error("Failed to execute config file: {}",
+        show_error("Failed to execute config file: {}",
                    lua_tostring(lua_state, -1));
     }
 }
@@ -260,10 +274,10 @@ void LuaEngine::execute(const std::string& script)
     assert(lua_state);
 
     if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
-        Log::error("Failed to load script line: {}",
+        show_error("Failed to load script line: {}",
                    lua_tostring(lua_state, -1));
     } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        Log::error("Failed to execute script line: {}",
+        show_error("Failed to execute script line: {}",
                    lua_tostring(lua_state, -1));
     }
 }
@@ -293,7 +307,7 @@ void LuaEngine::bind_root_api()
                          if (mode.has_value()) {
                              Application::self().set_mode(mode.value());
                          } else {
-                             Log::error("Invalid mode: {}", name);
+                             show_error("Invalid mode: {}", name);
                          }
                      })
         .addFunction("get_mode",
@@ -314,7 +328,7 @@ void LuaEngine::bind_root_api()
             "set_window_size",
             [](const size_t width, const size_t height) {
                 if (!width || !height || width > 32767 || height > 32767) {
-                    Log::error(
+                    show_error(
                         "Invalid arguments ({}, {}) for {} .set_window_size ",
                         width, height, NS_SWAYIMG);
                     return;
@@ -344,7 +358,7 @@ void LuaEngine::bind_root_api()
             [](const std::string& button) {
                 std::optional<InputMouse> input = InputMouse::load(button);
                 if (!input) {
-                    Log::error("Invalid button for {}.set_drag_button: {}",
+                    show_error("Invalid button for {}.set_drag_button: {}",
                                NS_SWAYIMG, button);
                     return;
                 }
@@ -366,7 +380,7 @@ void LuaEngine::bind_root_api()
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
-                             Log::error(
+                             show_error(
                                  "Invalid argument for {}.on_initialized: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, cb.tostring().c_str());
@@ -376,7 +390,7 @@ void LuaEngine::bind_root_api()
                          Application::self().on_init_complete = [ref]() {
                              const luabridge::LuaResult result = (*ref)();
                              if (!result) {
-                                 Log::error("{}", result.errorMessage());
+                                 show_error("{}", result.errorMessage());
                              }
                          };
                      })
@@ -435,7 +449,7 @@ void LuaEngine::bind_imagelist_api()
                          if (order.has_value()) {
                              ImageList::self().set_order(order.value());
                          } else {
-                             Log::error("Invalid image list order: {}", name);
+                             show_error("Invalid image list order: {}", name);
                          }
                      })
         .addFunction("enable_reverse",
@@ -517,7 +531,7 @@ void LuaEngine::bind_viewer_api(const char* name)
         if (Application::self().current_mode() == mode) {
             return true;
         }
-        Log::error("Unable to execute {}.{}.{}: {} mode is not active",
+        show_error("Unable to execute {}.{}.{}: {} mode is not active",
                    NS_SWAYIMG, name, fname, name);
         return false;
     };
@@ -534,7 +548,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (dir.has_value()) {
                              mode->open_file(dir.value());
                          } else {
-                             Log::error("Invalid argument {} for {}.{}.open",
+                             show_error("Invalid argument {} for {}.{}.open",
                                         dname, NS_SWAYIMG, name);
                          }
                      })
@@ -582,7 +596,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                 if (scale.has_value()) {
                     mode->set_scale(scale.value());
                 } else {
-                    Log::error("Invalid argument {} for {}.{}.set_fix_scale",
+                    show_error("Invalid argument {} for {}.{}.set_fix_scale",
                                scname, NS_SWAYIMG, name);
                 }
             })
@@ -601,7 +615,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                              if (scale.has_value()) {
                                  mode->default_scale = scale.value();
                              } else {
-                                 Log::error("Invalid argument {} for "
+                                 show_error("Invalid argument {} for "
                                             "{}.{}.set_default_scale",
                                             str, NS_SWAYIMG, name);
                              }
@@ -631,7 +645,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                              if (pos.has_value()) {
                                  mode->set_position(pos.value());
                              } else {
-                                 Log::error("Invalid argument {} for "
+                                 show_error("Invalid argument {} for "
                                             "{}.{}.set_fix_position",
                                             fpos, NS_SWAYIMG, name);
                              }
@@ -643,7 +657,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (pos.has_value()) {
                              mode->default_pos = pos.value();
                          } else {
-                             Log::error("Invalid argument {} for "
+                             show_error("Invalid argument {} for "
                                         "{}.{}.set_default_position",
                                         fpos, NS_SWAYIMG, name);
                          }
@@ -684,7 +698,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (angle == 90 || angle == 180 || angle == 270) {
                              mode->rotate(angle);
                          } else {
-                             Log::error("Invalid argument {} for {}.{}.rotate",
+                             show_error("Invalid argument {} for {}.{}.rotate",
                                         angle, NS_SWAYIMG, name);
                          }
                      })
@@ -709,7 +723,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                     if (bgmode.has_value()) {
                         mode->set_window_background(bgmode.value());
                     } else {
-                        Log::error("Invalid argument {} for "
+                        show_error("Invalid argument {} for "
                                    "{}.{}.set_window_background",
                                    str, NS_SWAYIMG, name);
                     }
@@ -739,7 +753,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                              meta_key.erase(0, meta_prefix.length());
                          }
                          if (meta_key.empty()) {
-                             Log::error("Empty key for {}.{}.set_meta",
+                             show_error("Empty key for {}.{}.set_meta",
                                         NS_SWAYIMG, name);
                              return;
                          }
@@ -778,7 +792,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                 if (input) {
                     mode->bind_image_drag(input.value());
                 } else {
-                    Log::error("Invalid button for {}.{}.bind_drag: {}",
+                    show_error("Invalid button for {}.{}.bind_drag: {}",
                                NS_SWAYIMG, name, state);
                 }
             })
@@ -813,7 +827,7 @@ void LuaEngine::bind_gallery_api()
         if (Gallery::self().is_active()) {
             return true;
         }
-        Log::error("Unable to execute {}.{}.{}: gallery mode is not active",
+        show_error("Unable to execute {}.{}.{}: gallery mode is not active",
                    NS_SWAYIMG, NS_GALLERY, name);
         return false;
     };
@@ -832,7 +846,7 @@ void LuaEngine::bind_gallery_api()
                          if (dir.has_value()) {
                              Gallery::self().select(dir.value());
                          } else {
-                             Log::error("Invalid argument {} for {}.{}.select",
+                             show_error("Invalid argument {} for {}.{}.select",
                                         name, NS_SWAYIMG, NS_GALLERY);
                          }
                      })
@@ -853,7 +867,7 @@ void LuaEngine::bind_gallery_api()
                 if (aspect.has_value()) {
                     Gallery::self().set_thumb_aspect(aspect.value());
                 } else {
-                    Log::error("Invalid argument {} for {}.{}.set_aspect", name,
+                    show_error("Invalid argument {} for {}.{}.set_aspect", name,
                                NS_SWAYIMG, NS_GALLERY);
                 }
             })
@@ -931,7 +945,7 @@ void LuaEngine::bind_appmode_api(const char* name)
         .addFunction("on_change_image",
                      [this, appmode, name](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
-                             Log::error(
+                             show_error(
                                  "Invalid argument for {}.{}.on_change_image: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring().c_str());
@@ -940,7 +954,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                              appmode->subscribe_image_switch([ref]() {
                                  const luabridge::LuaResult result = (*ref)();
                                  if (!result) {
-                                     Log::error("{}", result.errorMessage());
+                                     show_error("{}", result.errorMessage());
                                  }
                              });
                          }
@@ -948,7 +962,7 @@ void LuaEngine::bind_appmode_api(const char* name)
         .addFunction("on_window_resize",
                      [this, appmode, name](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
-                             Log::error(
+                             show_error(
                                  "Invalid argument for {}.{}.on_window_resize: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring().c_str());
@@ -957,7 +971,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                              appmode->subscribe_window_resize([ref]() {
                                  const luabridge::LuaResult result = (*ref)();
                                  if (!result) {
-                                     Log::error("{}", result.errorMessage());
+                                     show_error("{}", result.errorMessage());
                                  }
                              });
                          }
@@ -968,12 +982,12 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputKeyboard> input = InputKeyboard::load(key);
                 if (!input) {
-                    Log::error("Invalid key for {}.{}.on_key: {}", NS_SWAYIMG,
+                    show_error("Invalid key for {}.{}.on_key: {}", NS_SWAYIMG,
                                name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    Log::error("Invalid argument for {}.{}.on_key: "
+                    show_error("Invalid argument for {}.{}.on_key: "
                                "expected function, but got {}",
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
@@ -982,7 +996,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        Log::error("{}", result.errorMessage());
+                        show_error("{}", result.errorMessage());
                     }
                 });
             })
@@ -992,12 +1006,12 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputMouse> input = InputMouse::load(key);
                 if (!input) {
-                    Log::error("Invalid button for {}.{}.on_mouse: {}",
+                    show_error("Invalid button for {}.{}.on_mouse: {}",
                                NS_SWAYIMG, name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    Log::error("Invalid argument for {}.{}.on_mouse: "
+                    show_error("Invalid argument for {}.{}.on_mouse: "
                                "expected function, but got {}",
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
@@ -1006,7 +1020,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        Log::error("{}", result.errorMessage());
+                        show_error("{}", result.errorMessage());
                     }
                 });
             })
@@ -1016,12 +1030,12 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputSignal> input = InputSignal::load(key);
                 if (!input) {
-                    Log::error("Invalid signal for {}.{}.on_signal: {}",
+                    show_error("Invalid signal for {}.{}.on_signal: {}",
                                NS_SWAYIMG, name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    Log::error("Invalid argument for {}.{}.on_signal: "
+                    show_error("Invalid argument for {}.{}.on_signal: "
                                "expected function, but got {}",
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
@@ -1030,7 +1044,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        Log::error("{}", result.errorMessage());
+                        show_error("{}", result.errorMessage());
                     }
                 });
             })
