@@ -79,6 +79,18 @@ void FsMonitor::add(const std::filesystem::path& path)
 
     assert(path.is_absolute());
 
+    // check if file is already watched by its parent
+    if (std::filesystem::is_regular_file(path)) {
+        const std::filesystem::path& parent = path.parent_path();
+        const auto it =
+            std::find_if(watch.begin(), watch.end(), [&parent](const auto& it) {
+                return parent == it.second.parent_path();
+            });
+        if (it != watch.end()) {
+            return; // already watched
+        }
+    }
+
     const int wd =
         inotify_add_watch(fd, path.c_str(),
                           IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | IN_MOVE |
@@ -88,7 +100,7 @@ void FsMonitor::add(const std::filesystem::path& path)
         return;
     }
 
-    watch.insert_or_assign(wd, path);
+    watch.insert(std::make_pair(wd, path));
 }
 
 void FsMonitor::handle_event(const inotify_event* event)

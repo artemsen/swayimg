@@ -462,6 +462,7 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
     std::vector<ImageEntryPtr> entries;
 
     try {
+        FsMonitor::self().add(path);
         for (const auto& it : std::filesystem::directory_iterator(path)) {
             const std::filesystem::path& sub_path = it.path();
             if (std::filesystem::is_directory(sub_path)) {
@@ -477,7 +478,6 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
                 }
             }
         }
-        FsMonitor::self().add(path);
     } catch (const std::filesystem::filesystem_error&) {
     }
 
