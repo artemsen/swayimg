@@ -146,6 +146,10 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
 
     sort();
 
+    // disable loading of adjacent files, otherwise fs mon will add unnecessary
+    // files to the list
+    adjacent = false;
+
     // get first entry
     ImageEntryPtr first = nullptr;
     for (auto& path : sources) {

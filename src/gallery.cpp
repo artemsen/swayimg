@@ -75,10 +75,10 @@ Gallery::Gallery()
     border_size = 5;
     selected_scale = 1.15;
 
-    clr_window = argb_t(0xff, 0x00, 0x00, 0x00);
-    clr_background = argb_t(0xff, 0x20, 0x20, 0x20);
-    clr_select = argb_t(0xff, 0x40, 0x40, 0x40);
-    clr_border = argb_t(0xff, 0xaa, 0xaa, 0xaa);
+    clr_window = { argb_t::max, 0x00, 0x00, 0x00 };
+    clr_background = { argb_t::max, 0x20, 0x20, 0x20 };
+    clr_select = { argb_t::max, 0x40, 0x40, 0x40 };
+    clr_border = { argb_t::max, 0xaa, 0xaa, 0xaa };
 
     pstore_enable = false;
     pstore_path = pstore_defpath();
@@ -356,6 +356,18 @@ void Gallery::handle_pinch(const double scale_delta)
 void Gallery::handle_imagelist(const ImageListEvent event,
                                const ImageEntryPtr& entry)
 {
+    if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
+        // remove entry from cache
+        std::lock_guard lock(mutex);
+        auto it = std::find_if(cache.begin(), cache.end(),
+                               [&entry](const ThumbEntry& thumb) {
+                                   return entry == thumb.entry;
+                               });
+        if (it != cache.end()) {
+            cache.erase(it);
+        }
+    }
+
     if (event == ImageListEvent::Remove && entry == layout.get_selected()) {
         if (!layout.select(Layout::Right) && !layout.select(Layout::Left)) {
             Log::info("No more images to view, exit");

@@ -690,32 +690,29 @@ void Viewer::handle_pinch(const double scale_delta)
 void Viewer::handle_imagelist(const ImageListEvent event,
                               const ImageEntryPtr& entry)
 {
+    if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
+        // remove entry from cache
+        std::lock_guard lock(image_pool.mutex);
+        image_pool.history.get(entry);
+        image_pool.preload.get(entry);
+    }
+
     switch (event) {
         case ImageListEvent::Create:
             preloader_start();
             break;
         case ImageListEvent::Modify:
-            if (entry == image->entry) {
-                if (!open_file(ImageList::Dir::Next, image->entry)) {
-                    Log::info("No more images to view, exit");
-                    Application::self().exit(0);
-                }
-            } else {
-                std::lock_guard lock(image_pool.mutex);
-                image_pool.history.get(entry);
-                image_pool.preload.get(entry);
+            if (entry == image->entry &&
+                !open_file(ImageList::Dir::Next, image->entry)) {
+                Log::info("No more images to view, exit");
+                Application::self().exit(0);
             }
             break;
         case ImageListEvent::Remove:
-            if (entry == image->entry) {
-                if (!open_file(ImageList::Dir::Next, nullptr)) {
-                    Log::info("No more images to view, exit");
-                    Application::self().exit(0);
-                }
-            } else {
-                std::lock_guard lock(image_pool.mutex);
-                image_pool.history.get(entry);
-                image_pool.preload.get(entry);
+            if (entry == image->entry &&
+                !open_file(ImageList::Dir::Next, nullptr)) {
+                Log::info("No more images to view, exit");
+                Application::self().exit(0);
             }
             break;
     }
