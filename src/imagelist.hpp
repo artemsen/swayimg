@@ -167,14 +167,10 @@ private:
     void add_entry(ImageEntryPtr& entry, const bool ordered);
 
     /**
-     * Sort image list without locking.
+     * Sort image list.
+     * @param locked flag to lock the list before processing
      */
-    void unlocked_sort();
-
-    /**
-     * Sort image list with locking.
-     */
-    void sort();
+    void sort(bool locked);
 
     /**
      * Reindex the image list.

@@ -144,7 +144,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
     }
     mutex.unlock();
 
-    sort();
+    sort(true);
 
     // disable loading of adjacent files, otherwise fs mon will add unnecessary
     // files to the list
@@ -226,7 +226,7 @@ void ImageList::set_order(const Order new_order)
 {
     if (order != new_order || new_order == Order::Random) {
         order = new_order;
-        sort();
+        sort(true);
     }
 }
 
@@ -234,7 +234,7 @@ void ImageList::set_reverse(const bool enable)
 {
     if (reverse != enable) {
         reverse = enable;
-        sort();
+        sort(true);
     }
 }
 
@@ -476,7 +476,7 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
     }
 
     if (ordered) {
-        unlocked_sort();
+        sort(false);
     }
 
     return entries;
@@ -545,30 +545,34 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
     }
 }
 
-void ImageList::unlocked_sort()
+void ImageList::sort(bool locked)
 {
-    if (order == Order::None) {
-        // nothing to do
-    } else if (order == Order::Random) {
-        // shuffle list
-        std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
-        std::random_device rdev;
-        std::mt19937 engine(rdev());
-        std::shuffle(tmp.begin(), tmp.end(), engine);
-        entries.assign(tmp.begin(), tmp.end());
-    } else {
-        entries.sort([this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
-            const bool cmp = compare_entries(*l, *r, order);
-            return reverse ? !cmp : cmp;
-        });
-    }
-}
+    auto unlocked_sort = [&]() {
+        if (order == Order::None) {
+            // nothing to do
+        } else if (order == Order::Random) {
+            // shuffle list
+            std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
+            std::random_device rdev;
+            std::mt19937 engine(rdev());
+            std::shuffle(tmp.begin(), tmp.end(), engine);
+            entries.assign(tmp.begin(), tmp.end());
+        } else {
+            entries.sort(
+                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
+                    const bool cmp = compare_entries(*l, *r, order);
+                    return reverse ? !cmp : cmp;
+                });
+        }
+    };
 
-void ImageList::sort()
-{
-    std::unique_lock lock(mutex);
-    unlocked_sort();
-    reindex();
+    if (locked) {
+        std::unique_lock lock(mutex);
+        unlocked_sort();
+        reindex();
+    } else {
+        unlocked_sort();
+    }
 }
 
 void ImageList::reindex()
