@@ -144,7 +144,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
     }
     mutex.unlock();
 
-    sort();
+    sort(true);
 
     // disable loading of adjacent files, otherwise fs mon will add unnecessary
     // files to the list
@@ -197,10 +197,8 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
 
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
 {
-    std::vector<ImageEntryPtr> entries;
-
     std::unique_lock lock(mutex);
-    entries = add(path, true);
+    std::vector<ImageEntryPtr> entries = add(path, true);
     reindex();
 
     return entries;
@@ -228,7 +226,7 @@ void ImageList::set_order(const Order new_order)
 {
     if (order != new_order || new_order == Order::Random) {
         order = new_order;
-        sort();
+        sort(true);
     }
 }
 
@@ -236,7 +234,7 @@ void ImageList::set_reverse(const bool enable)
 {
     if (reverse != enable) {
         reverse = enable;
-        sort();
+        sort(true);
     }
 }
 
@@ -423,8 +421,6 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                           const bool ordered)
 {
-    std::vector<ImageEntryPtr> entries;
-
     if (path.string().starts_with(ImageEntry::SRC_STDIN) ||
         path.string().starts_with(ImageEntry::SRC_EXEC)) {
         ImageEntryPtr entry = std::make_shared<ImageEntry>();
@@ -433,27 +429,26 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         entry->size = 0;
         entry->index = 0;
         add_entry(entry, ordered);
-        entries.push_back(entry);
-    } else {
-        if (!std::filesystem::exists(path)) {
-            Log::warning("File {} not found, skipped", path.string());
-        } else {
-            const std::filesystem::path abs_path =
-                std::filesystem::absolute(path).lexically_normal();
-            if (std::filesystem::is_directory(path)) {
-                entries = add_dir(abs_path, ordered);
-            } else {
-                entries.push_back(add_file(abs_path, ordered));
-                if (adjacent) {
-                    const std::vector<ImageEntryPtr> edir =
-                        add_dir(abs_path.parent_path(), ordered);
-                    entries.insert(entries.end(), edir.begin(), edir.end());
-                }
-            }
-        }
+        return { entry };
     }
 
-    return entries;
+    if (!std::filesystem::exists(path)) {
+        Log::warning("File {} not found, skipped", path.string());
+        return {};
+    }
+
+    const std::filesystem::path abs_path =
+        std::filesystem::absolute(
+            (std::filesystem::is_directory(path) || !adjacent)
+                ? path
+                : path.parent_path())
+            .lexically_normal();
+
+    if (std::filesystem::is_directory(abs_path)) {
+        return add_dir(abs_path, ordered);
+    } else {
+        return { add_file(abs_path, ordered) };
+    }
 }
 
 std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
@@ -467,18 +462,21 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
             const std::filesystem::path& sub_path = it.path();
             if (std::filesystem::is_directory(sub_path)) {
                 if (recursive) {
-                    std::vector<ImageEntryPtr> added =
-                        add_dir(sub_path, ordered);
+                    std::vector<ImageEntryPtr> added = add_dir(sub_path, false);
                     entries.insert(entries.end(), added.begin(), added.end());
                 }
             } else {
-                ImageEntryPtr entry = add_file(sub_path, ordered);
+                ImageEntryPtr entry = add_file(sub_path, false);
                 if (entry) {
                     entries.push_back(entry);
                 }
             }
         }
     } catch (const std::filesystem::filesystem_error&) {
+    }
+
+    if (ordered) {
+        sort(false);
     }
 
     return entries;
@@ -547,27 +545,35 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
     }
 }
 
-void ImageList::sort()
+void ImageList::sort(bool locked)
 {
-    std::unique_lock lock(mutex);
+    auto unlocked_sort = [this]() {
+        if (order == Order::None) {
+            // nothing to do
+        } else if (order == Order::Random) {
+            // shuffle list
+            std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
+            std::random_device rdev;
+            std::mt19937 engine(rdev());
+            std::shuffle(tmp.begin(), tmp.end(), engine);
+            entries.assign(tmp.begin(), tmp.end());
+        } else {
+            entries.sort(
+                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
+                    const bool cmp = compare_entries(*l, *r, order);
+                    return reverse ? !cmp : cmp;
+                });
+        }
+    };
 
-    if (order == Order::None) {
-        // nothing to do
-    } else if (order == Order::Random) {
-        // shuffle list
-        std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
-        std::random_device rdev;
-        std::mt19937 engine(rdev());
-        std::shuffle(tmp.begin(), tmp.end(), engine);
-        entries.assign(tmp.begin(), tmp.end());
+    if (locked) {
+        std::unique_lock lock(mutex);
+        unlocked_sort();
+        reindex();
     } else {
-        entries.sort([this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
-            const bool cmp = compare_entries(*l, *r, order);
-            return reverse ? !cmp : cmp;
-        });
+        unlocked_sort();
+        reindex();
     }
-
-    reindex();
 }
 
 void ImageList::reindex()

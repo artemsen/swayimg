@@ -168,8 +168,9 @@ private:
 
     /**
      * Sort image list.
+     * @param locked flag to lock the list before processing
      */
-    void sort();
+    void sort(bool locked);
 
     /**
      * Reindex the image list.
