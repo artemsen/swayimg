@@ -326,16 +326,7 @@ void Viewer::set_scale(const double sc, const Point& preserve)
     position.x = bpt.x - pr_x * scale;
     position.y = bpt.y - pr_y * scale;
 
-    // update text layer
-    Text& text = Text::self();
-    std::string tscale;
-    if (scale >= 0.1) {
-        tscale = std::format("{}%", static_cast<size_t>(scale * 100));
-    } else {
-        tscale = std::format("{:.02}%", scale * 100);
-    }
-    text.set_field(Text::FIELD_SCALE, tscale);
-    text.update();
+    update_text(TextUpdate::Scale);
 
     fixup_position();
 }
@@ -427,7 +418,7 @@ void Viewer::rotate(const size_t angle)
     position.x -= shift;
     position.y += shift;
 
-    set_frame(0); // force update frame params in text layer
+    update_text(TextUpdate::Frame);
 
     fixup_position();
 }
@@ -542,22 +533,35 @@ void Viewer::set_frame(const size_t index)
     assert(index < image->frames.size());
 
     frame_index = index;
-    update_text(true);
+    update_text(TextUpdate::Frame);
     Application::redraw();
 }
 
-void Viewer::update_text(const bool frame_only) const
+void Viewer::update_text(const TextUpdate what) const
 {
     Text& text = Text::self();
 
-    if (!frame_only) {
+    if (what == TextUpdate::All) {
         text.reset(image);
     }
 
-    const Pixmap& pm = image->frames[frame_index].pm;
-    text.set_field(Text::FIELD_FRAME_INDEX, std::to_string(frame_index + 1));
-    text.set_field(Text::FIELD_FRAME_WIDTH, std::to_string(pm.width()));
-    text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_string(pm.height()));
+    if (what == TextUpdate::All || what == TextUpdate::Frame) {
+        const Pixmap& pm = image->frames[frame_index].pm;
+        text.set_field(Text::FIELD_FRAME_INDEX,
+                       std::to_string(frame_index + 1));
+        text.set_field(Text::FIELD_FRAME_WIDTH, std::to_string(pm.width()));
+        text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_string(pm.height()));
+    }
+
+    if (what == TextUpdate::All || what == TextUpdate::Scale) {
+        std::string tscale;
+        if (scale >= 0.1) {
+            tscale = std::format("{}%", static_cast<size_t>(scale * 100));
+        } else {
+            tscale = std::format("{:.02}%", scale * 100);
+        }
+        text.set_field(Text::FIELD_SCALE, tscale);
+    }
 
     text.update();
 }
@@ -566,13 +570,12 @@ void Viewer::on_open()
 {
     const bool is_animation =
         image->frames.size() > 1 && image->frames[0].duration;
+    frame_index = 0;
 
     // set content type
     Ui* ui = Application::self().get_ui();
     ui->set_ctype(is_animation ? Ui::ContentType::Animation
                                : Ui::ContentType::Static);
-
-    set_frame(0);
 
     if (std::holds_alternative<Scale>(default_scale) &&
         std::get<Scale>(default_scale) == Scale::Keep && previmg) {
@@ -607,7 +610,7 @@ void Viewer::on_open()
     preloader_start();
 
     switch_current();
-    update_text(false);
+    update_text(TextUpdate::All);
 }
 
 ImageEntryPtr Viewer::current_entry()

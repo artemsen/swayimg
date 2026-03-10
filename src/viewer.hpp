@@ -221,11 +221,18 @@ private:
      */
     void set_frame(const size_t index);
 
+    /** Type of text update. */
+    enum class TextUpdate : uint8_t {
+        All,   ///< Update all info
+        Frame, ///< Update only frame index and size
+        Scale  ///< Update only scale info
+    };
+
     /**
      * Update text layer.
-     * @param frame_only update only frame description
+     * @param what type of updated data
      */
-    void update_text(const bool frame_only) const;
+    void update_text(const TextUpdate what) const;
 
     /**
      * Image open post processing.
