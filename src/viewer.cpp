@@ -185,6 +185,10 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     const bool forward =
         pos != ImageList::Dir::Prev && pos != ImageList::Dir::PrevParent;
 
+    if (!next_entry && !imagelist_loop) {
+        return false; // end of list, no looping
+    }
+
     if (!next_entry && imagelist_loop) {
         // reshuffle random on new loop
         if (il.get_order() == ImageList::Order::Random) {
@@ -243,16 +247,15 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
         return !!next_image;
     }
 
-    // load asynchronously — cancel queued (not yet running) tasks
-    image_pool.tpool.cancel();
-
+    // load asynchronously — insert at front of queue so this image
+    // loads before any pending preload tasks (which remain queued)
     {
         std::lock_guard lock(image_pool.mutex);
         image_pool.pending = next_entry;
     }
     image_pool.loading = true;
 
-    image_pool.tpool.add([this, next_entry, forward]() {
+    image_pool.tpool.push_front([this, next_entry, forward]() {
         // check if this task is still wanted (not superseded by rapid nav)
         {
             std::lock_guard lock(image_pool.mutex);
