@@ -22,7 +22,7 @@ constexpr size_t BORDER_SIZE_MAX = 100;
 constexpr double SSCALE_MAX = 10.0;
 
 /** Number of threads used for loading thumbnails. */
-constexpr size_t THUMB_LOAD_THREADS = 4;
+constexpr size_t THUMB_LOAD_THREADS = 10;
 
 /**
  * Get default path for persistent storage.
@@ -672,8 +672,9 @@ void Gallery::load_thumbnails()
 {
     drain_completed();
 
-
     ImageList& il = ImageList::self();
+    il.ensure_indexed();
+
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
 
     if (scheme.empty()) {
@@ -685,43 +686,70 @@ void Gallery::load_thumbnails()
 
     size_t preload_counter = preload ? cache_size : 0;
 
-    auto check_and_load = [this](ImageEntryPtr& entry) {
+    // Submit uncached thumbnails. Visible entries use push_front() so they
+    // jump ahead of any queued preload tasks from previous positions.
+    // Preload entries use add() (back of queue, low priority).
+    auto check_and_load = [this](ImageEntryPtr& entry, bool high_priority) {
         if (get_thumbnail(entry)) {
             return;
         }
         std::lock_guard lock(completed_mutex);
         if (!queued.contains(entry)) {
             queued.insert(entry);
-            tpool.add([this, entry]() {
-                load_thumbnail(entry);
-            });
+            if (high_priority) {
+                tpool.push_front([this, entry]() {
+                    load_thumbnail(entry);
+                });
+            } else {
+                tpool.add([this, entry]() {
+                    load_thumbnail(entry);
+                });
+            }
         }
     };
 
+    // Pass 1: visible thumbnails (outward from selected — closest first)
+    // Uses high priority (push_front) so they jump ahead of stale preloads.
     ImageEntryPtr fwd = layout.get_selected();
     ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
 
     while (fwd || back) {
         if (fwd) {
-            check_and_load(fwd);
-            fwd = il.get(fwd, ImageList::Dir::Next);
-            if (fwd && fwd->index > index_last) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    fwd = nullptr;
-                }
+            if (fwd->index > index_last) {
+                fwd = nullptr;
+            } else {
+                check_and_load(fwd, true);
+                fwd = il.get(fwd, ImageList::Dir::Next);
             }
         }
         if (back) {
-            check_and_load(back);
-            back = il.get(back, ImageList::Dir::Prev);
-            if (back && back->index < index_first) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    back = nullptr;
+            if (back->index < index_first) {
+                back = nullptr;
+            } else {
+                check_and_load(back, true);
+                back = il.get(back, ImageList::Dir::Prev);
+            }
+        }
+    }
+
+    // Pass 2: preload thumbnails beyond visible area (low priority)
+    if (preload_counter) {
+        fwd = il.get(scheme.back().img, ImageList::Dir::Next);
+        back = il.get(scheme.front().img, ImageList::Dir::Prev);
+
+        while ((fwd || back) && preload_counter) {
+            if (fwd) {
+                check_and_load(fwd, false);
+                fwd = il.get(fwd, ImageList::Dir::Next);
+                --preload_counter;
+                if (!preload_counter) {
+                    break;
                 }
+            }
+            if (back) {
+                check_and_load(back, false);
+                back = il.get(back, ImageList::Dir::Prev);
+                --preload_counter;
             }
         }
     }
@@ -741,6 +769,13 @@ void Gallery::clear_thumbnails()
         std::erase_if(cache, [store_min, store_max](const ThumbEntry& thumb) {
             return thumb.entry->index < store_min ||
                 thumb.entry->index > store_max;
+        });
+
+        // Also trim queued set so evicted items can be re-loaded if the user
+        // scrolls back to them later.
+        std::lock_guard lock(completed_mutex);
+        std::erase_if(queued, [store_min, store_max](const ImageEntryPtr& e) {
+            return e->index < store_min || e->index > store_max;
         });
     }
 }
@@ -763,6 +798,13 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     if (pstore_enable) {
         thumb.pm = pstore_load(entry);
+    }
+
+    // Early stopping check before expensive image decode
+    if (stopping) {
+        std::lock_guard lock(completed_mutex);
+        queued.erase(entry);
+        return;
     }
 
     if (!thumb.pm) {
@@ -802,8 +844,13 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
         std::lock_guard lock(completed_mutex);
         if (thumb.pm) {
             completed.emplace_back(std::move(thumb));
+            // Keep entry in queued as "already loaded" marker to prevent
+            // re-queueing items that get evicted from cache later.
+            // queued is cleaned in clear_thumbnails() and deactivate().
+        } else {
+            // Remove on failure so it won't block future retries
+            queued.erase(entry);
         }
-        queued.erase(entry);
     }
 
     Application::redraw();
