@@ -62,6 +62,31 @@ public:
     }
 
     /**
+     * Add high-priority task to the front of the execution queue.
+     * @param fn worker function to handle a task
+     * @param args function arguments
+     * @return task id
+     */
+    template <typename F, typename... Args>
+    size_t push_front(F&& fn, Args&&... args)
+    {
+        assert(!quit);
+
+        size_t task_id;
+        auto task_fn =
+            std::bind(std::forward<F>(fn), std::forward<Args>(args)...);
+
+        mutex.lock();
+        task_id = ++last_id;
+        tasks.emplace_front(Task { task_id, task_fn });
+        mutex.unlock();
+
+        tnotify.notify_one();
+
+        return task_id;
+    }
+
+    /**
      * Wait all tasks to complete.
      */
     void wait();

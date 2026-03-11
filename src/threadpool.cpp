@@ -8,7 +8,7 @@
 
 // Thread pool limits
 constexpr size_t MIN_THREADS = 1;
-constexpr size_t MAX_THREADS = 8;
+constexpr size_t MAX_THREADS = 16;
 
 ThreadPool::ThreadPool(const size_t max_threads)
 {
