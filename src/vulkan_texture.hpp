@@ -79,9 +79,17 @@ private:
 
     std::map<TextureCacheKey, GpuTexture> cache;
     std::list<TextureCacheKey> lru_order;
+    std::vector<GpuTexture> pending_destroy; ///< Deferred destruction queue
     size_t vram_budget = 256 * 1024 * 1024; // 256MB default
     size_t vram_used = 0;
     static constexpr size_t MAX_ENTRIES = 512; ///< Max cached textures (descriptor pool limit)
+
+public:
+    /**
+     * Destroy textures queued for deferred destruction.
+     * Call after GPU fence signals (previous frame complete).
+     */
+    void flush_pending();
 };
 
 #endif // HAVE_VULKAN

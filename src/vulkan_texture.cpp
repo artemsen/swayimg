@@ -109,7 +109,7 @@ void TextureCache::release(size_t source_id)
     while (it != cache.end()) {
         if (it->first.first == source_id) {
             vram_used -= it->second.memory_size;
-            it->second.destroy();
+            pending_destroy.push_back(it->second);
             lru_order.remove(it->first);
             it = cache.erase(it);
         } else {
@@ -140,9 +140,17 @@ void TextureCache::evict_lru()
     auto it = cache.find(key);
     if (it != cache.end()) {
         vram_used -= it->second.memory_size;
-        it->second.destroy();
+        pending_destroy.push_back(it->second);
         cache.erase(it);
     }
+}
+
+void TextureCache::flush_pending()
+{
+    for (auto& tex : pending_destroy) {
+        tex.destroy();
+    }
+    pending_destroy.clear();
 }
 
 bool TextureCache::upload(GpuTexture& tex, const Pixmap& pm)

@@ -537,6 +537,9 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
 
         VkCommandBuffer cmd = vk_swapchain->begin_frame();
         if (cmd != VK_NULL_HANDLE) {
+            // Destroy textures deferred from previous frame (safe after fence)
+            vk_texcache.flush_pending();
+
             // Pre-render pass: compute/transfer work (e.g., blur)
             current_mode()->pre_render_vk(cmd, vk_texcache);
 
