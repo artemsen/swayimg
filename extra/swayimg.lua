@@ -164,12 +164,12 @@ local mode_base = {}
 
 ---Map a keyboard event to an action.
 ---@param bind string|string[] 1 or more mouse or keyboard events to map - `Alt+s`, etc.
----@param cb string|fun() shellcmd to execute (% for current image) or callback function to run
+---@param cb fun() callback function to run
 function mode_base.on_key(bind, cb) end
 
 ---Map a mouse event to an action.
 ---@param bind string|string[] 1 or more mouse or keyboard events to map - `Ctrl+ScrollDown`, etc.
----@param cb string|fun() shellcmd to execute (% for current image) or callback function to run
+---@param cb fun() callback function to run
 function mode_base.on_mouse(bind, cb) end
 
 ---Remove all existing key/mouse/signal bindings.
