@@ -271,17 +271,63 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
         return nullptr;
     }
 
-    std::vector<std::filesystem::path> sources;
-
+    // Read all paths from file — fast path that bypasses the generic
+    // load(sources) to avoid per-entry exists()/is_directory() branching
+    // and the expensive sort on large lists.
+    std::vector<std::filesystem::path> paths;
     std::string line;
     while (std::getline(file, line)) {
         if (!line.empty()) {
-            sources.emplace_back(line);
+            paths.emplace_back(line);
         }
     }
     file.close();
 
-    return load(sources);
+    if (paths.empty()) {
+        return nullptr;
+    }
+
+    // Add all entries synchronously under a single lock.
+    // Skip sort — preserve the file list order (typically filesystem order
+    // from fd/find, which is good enough for browsing).
+    mutex.lock();
+    for (const auto& p : paths) {
+        const std::filesystem::path abs_path =
+            p.is_absolute() ? p : std::filesystem::absolute(p).lexically_normal();
+        if (std::filesystem::is_regular_file(abs_path)) {
+            std::error_code ec;
+            const auto fs_time = std::filesystem::last_write_time(abs_path, ec);
+            if (ec) {
+                continue;
+            }
+            auto sys_time =
+                std::chrono::time_point_cast<
+                    std::chrono::system_clock::duration>(
+                    fs_time -
+                    std::filesystem::file_time_type::clock::now() +
+                    std::chrono::system_clock::now());
+
+            ImageEntryPtr entry = std::make_shared<ImageEntry>();
+            entry->path = abs_path;
+            entry->mtime = std::chrono::system_clock::to_time_t(sys_time);
+            entry->size = std::filesystem::file_size(abs_path, ec);
+            entry->index = 0;
+
+            const std::string path_str = abs_path.string();
+            if (!path_index.count(path_str)) {
+                entries.push_back(entry);
+                path_index.emplace(path_str, std::prev(entries.end()));
+            }
+        }
+    }
+    reindex();
+    mutex.unlock();
+
+    // No sort — order::none semantics for file-list input.
+    // No background scanning — all entries are explicit file paths.
+
+    std::shared_lock lock(mutex);
+    return entries.empty() ? nullptr : entries.front();
 }
 
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
@@ -299,15 +345,28 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
     Log::verbose("Remove image entry {}", entry->path.filename().string());
 
-    ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
-
     std::unique_lock lock(mutex);
 
-    path_index.erase(entry->path.string());
-    entries.remove(entry);
+    ImageEntryPtr next = nullptr;
+    auto pi = path_index.find(entry->path.string());
+    if (pi != path_index.end()) {
+        auto it = pi->second;
+        if (forward) {
+            auto nit = std::next(it);
+            if (nit != entries.end()) {
+                next = *nit;
+            }
+        } else {
+            if (it != entries.begin()) {
+                next = *std::prev(it);
+            }
+        }
+        entries.erase(it);
+        path_index.erase(pi);
+    }
     entry->remove();
 
-    reindex();
+    reindex_needed = true;
 
     return next;
 }
@@ -345,11 +404,8 @@ ImageEntryPtr ImageList::find_unlocked(const std::filesystem::path& path)
         search = std::filesystem::absolute(path).lexically_normal();
     }
 
-    auto it = std::find_if(entries.begin(), entries.end(),
-                           [&search](const ImageEntryPtr& entry) {
-                               return search == entry->path;
-                           });
-    return it == entries.end() ? nullptr : *it;
+    auto it = path_index.find(search);
+    return it == path_index.end() ? nullptr : *(it->second);
 }
 
 std::vector<ImageEntry> ImageList::get_all()
@@ -407,7 +463,12 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         return it == entries.end() ? entries.front() : *it;
     }
 
-    auto it = std::find(entries.begin(), entries.end(), from);
+    // O(1) lookup via path_index instead of O(n) linear search
+    auto pi = path_index.find(from->path.string());
+    if (pi == path_index.end()) {
+        return nullptr;
+    }
+    auto it = pi->second;
 
     if (dir == Dir::Next) {
         return ++it == entries.end() ? nullptr : *it;
@@ -446,8 +507,12 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
 
     assert(from && *from);
 
-    auto it = std::find(entries.begin(), entries.end(), from);
-    assert(it != entries.end());
+    // O(1) lookup via path_index instead of O(n) linear search
+    auto pi = path_index.find(from->path.string());
+    if (pi == path_index.end()) {
+        return nullptr;
+    }
+    auto it = pi->second;
 
     ssize_t step = distance;
     if (step > 0) {
@@ -612,18 +677,19 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 
     Log::verbose("Add image entry {}", entry->path.filename().string());
 
-    path_index.insert(path_str);
-
     if (!ordered || order == Order::None) {
         entries.push_back(entry);
+        path_index.emplace(path_str, std::prev(entries.end()));
     } else if (order == Order::Random) {
         if (entries.size() <= 1) {
             entries.push_back(entry);
+            path_index.emplace(path_str, std::prev(entries.end()));
         } else {
             const size_t distance = rand() % entries.size();
             auto it = entries.begin();
             std::advance(it, distance);
-            entries.insert(it, entry);
+            auto ins = entries.insert(it, entry);
+            path_index.emplace(path_str, ins);
         }
     } else {
         // search the right place to insert new entry according to sort order
@@ -633,7 +699,8 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
                                        compare_entries(*entry, *it, order);
                                    return reverse ? !cmp : cmp;
                                });
-        entries.insert(it, entry);
+        auto ins = entries.insert(it, entry);
+        path_index.emplace(path_str, ins);
     }
 }
 
@@ -666,6 +733,8 @@ void ImageList::sort(bool locked)
         unlocked_sort();
         reindex();
     }
+
+    rebuild_path_index();
 }
 
 void ImageList::reindex()
@@ -673,6 +742,23 @@ void ImageList::reindex()
     size_t index = 0;
     for (auto& it : entries) {
         it->index = ++index;
+    }
+}
+
+void ImageList::rebuild_path_index()
+{
+    path_index.clear();
+    path_index.reserve(entries.size());
+    for (auto it = entries.begin(); it != entries.end(); ++it) {
+        path_index.emplace((*it)->path.string(), it);
+    }
+}
+
+void ImageList::ensure_indexed()
+{
+    if (reindex_needed.exchange(false)) {
+        std::unique_lock lock(mutex);
+        reindex();
     }
 }
 
@@ -767,10 +853,11 @@ void ImageList::drain_pending()
         for (auto& entry : to_insert) {
             const std::string path_str = entry->path.string();
             if (!path_index.count(path_str)) {
-                path_index.insert(path_str);
                 entries.push_back(entry);
+                path_index.emplace(path_str, std::prev(entries.end()));
             }
         }
+        reindex();
     }
 
     for (const auto& dir : to_monitor) {
@@ -803,6 +890,7 @@ void ImageList::finish_scan()
         }
 
         reindex();
+        rebuild_path_index();
         total_discovered = entries.size();
         scanning = false;
     }

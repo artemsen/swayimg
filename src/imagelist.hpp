@@ -13,7 +13,7 @@
 #include <filesystem>
 #include <list>
 #include <shared_mutex>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 /** Thread-safe list of images. */
@@ -144,6 +144,18 @@ public:
     ssize_t distance(const ImageEntryPtr& from, const ImageEntryPtr& to);
 
     /**
+     * Rebuild path_index map from entries list.
+     * Call after operations that invalidate iterators (sort, assign).
+     */
+    void rebuild_path_index();
+
+    /**
+     * Ensure indices are up to date (lazy reindex).
+     * Call before using index-based arithmetic.
+     */
+    void ensure_indexed();
+
+    /**
      * Drain pending entries into the main entries list.
      * Called from main thread on ScanProgress events.
      */
@@ -226,8 +238,11 @@ private:
     void finish_scan();
 
 private:
-    std::list<ImageEntryPtr> entries;           ///< List of image entries
-    std::unordered_set<std::string> path_index; ///< O(1) duplicate detection
+    std::list<ImageEntryPtr> entries;    ///< List of image entries
+    std::atomic<bool> reindex_needed { false }; ///< Lazy reindex flag
+    /// O(1) path lookup: maps path string → list iterator
+    std::unordered_map<std::string, std::list<ImageEntryPtr>::iterator>
+        path_index;
     std::shared_mutex mutex;                    ///< Image list mutex
 
     Order order = Order::Numeric; ///< Image list order

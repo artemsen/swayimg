@@ -15,6 +15,7 @@ void Layout::update()
     }
 
     ImageList& il = ImageList::self();
+    il.ensure_indexed(); // lazy reindex after bulk removals
     ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
 
     if (!sel_entry) {
@@ -28,7 +29,10 @@ void Layout::update()
                     window.height / (thumb_size + thumb_padding));
 
     // set preliminary position for the currently selected image
-    ssize_t distance = il.distance(first_entry, sel_entry);
+    // Use index arithmetic instead of O(n) distance() for performance
+    // with large image lists. Indices are contiguous (1-based, maintained
+    // by reindex()).
+    ssize_t distance = sel_entry->index - first_entry->index;
     sel_col = distance % columns;
     if (sel_row == rows) {
         sel_row = rows - 1;
@@ -60,13 +64,13 @@ void Layout::update()
         }
     }
 
-    sel_row = il.distance(first_visible, sel_entry) / columns;
+    sel_row = (sel_entry->index - first_visible->index) / columns;
 
     assert(first_visible);
     assert(last_visible);
 
     // recalculate layout
-    const size_t total_visible = il.distance(first_visible, last_visible) + 1;
+    const size_t total_visible = last_visible->index - first_visible->index + 1;
     const size_t used_cols = std::min(columns, total_visible);
     const size_t used_rows = (total_visible + columns - 1) / columns;
     const size_t mid_x =
