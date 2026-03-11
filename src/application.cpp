@@ -5,7 +5,10 @@
 #include "application.hpp"
 
 #include "buildconf.hpp"
+#include "frame_profiler.hpp"
 #include "fsmonitor.hpp"
+
+#include <chrono>
 #include "gallery.hpp"
 #include "imagelist.hpp"
 #include "log.hpp"
@@ -115,6 +118,9 @@ int Application::run()
 #endif // HAVE_VULKAN
 
     ui->stop();
+
+    // Print frame profiling statistics
+    FrameProfiler::instance().print_stats();
 
     return exit_code;
 }
@@ -382,7 +388,36 @@ void Application::event_loop()
     }
 
     // main loop: handle events
+    auto profiling_start = std::chrono::high_resolution_clock::now();
+    int nav_counter = 0;
+    bool is_profiling = FrameProfiler::instance().is_profiling_enabled();
+
     while (!stop_flag) {
+        // Auto-navigate during profiling mode
+        if (is_profiling) {
+            auto now = std::chrono::high_resolution_clock::now();
+            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - profiling_start).count();
+
+            // Queue navigation events periodically during profiling
+            if (elapsed_ms > (++nav_counter * 1000)) {
+                // Create navigation events to simulate user input
+                int nav_type = (nav_counter / 3) % 3;
+                if (nav_type == 0) {
+                    add_event(AppEvent::KeyPress { XKB_KEY_Down, 0 });
+                } else if (nav_type == 1) {
+                    add_event(AppEvent::KeyPress { XKB_KEY_Up, 0 });
+                } else {
+                    add_event(AppEvent::KeyPress { XKB_KEY_Page_Down, 0 });
+                }
+            }
+
+            // Stop after ~30 seconds or when frame profiler indicates stop
+            if (elapsed_ms > 30000 || FrameProfiler::instance().should_stop_profiling()) {
+                stop_flag = true;
+                continue;
+            }
+        }
+
         if (poll(poll_fds.data(), poll_fds.size(), -1) < 0 && errno != EINTR) {
             exit_code = errno;
             Log::error(errno, "Failed to poll events");
@@ -580,9 +615,14 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
     if (wnd) {
         Log::PerfTimer timer;
 
+        // Frame profiling for performance investigation
+        FrameProfiler::instance().frame_start();
+
         current_mode()->window_redraw(wnd);
         Text::self().draw(wnd);
         ui->commit_surface();
+
+        FrameProfiler::instance().frame_end();
 
         if (Log::verbose_enable()) {
             Log::verbose("Redraw in {:.6f} sec", timer.time());

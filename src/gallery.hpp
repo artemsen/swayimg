@@ -217,6 +217,9 @@ private:
     struct ThumbEntry {
         ImageEntryPtr entry;
         Pixmap pm;
+        // Frame buffer cache for lazy rendering optimization
+        Pixmap rendered_frame;  ///< Pre-rendered thumbnail frame (cached)
+        bool frame_rendered = false; ///< Whether rendered_frame is valid
     };
     std::deque<ThumbEntry> cache; ///< Thumbnails cache (main thread only)
 

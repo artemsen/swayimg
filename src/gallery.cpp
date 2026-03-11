@@ -217,6 +217,13 @@ void Gallery::set_thumb_aspect(const Aspect ratio)
 void Gallery::set_thumb_size(const size_t size)
 {
     layout.set_thumb_size(std::clamp(size, THIMB_SIZE_MIN, THIMB_SIZE_MAX));
+
+    // OPTIMIZATION (Spec 9): Invalidate rendered frame cache when tile size changes
+    for (auto& entry : cache) {
+        entry.rendered_frame = Pixmap(); // Clear cached frame
+        entry.frame_rendered = false;
+    }
+
     if (is_active()) {
         Application::redraw();
     }
@@ -632,20 +639,45 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
     wnd.fill(bkg, selected ? clr_select : clr_background);
 
     if (pm) {
-        // draw thumbnail
-        const double scale_w = static_cast<double>(tile.width) / pm->width();
-        const double scale_h = static_cast<double>(tile.height) / pm->height();
-        const double scale = aspect == Aspect::Fill
-            ? std::max(scale_w, scale_h)
-            : std::min(scale_w, scale_h);
+        // OPTIMIZATION (Spec 9): Lazy thumbnail rendering
+        // Find cache entry for this thumbnail to access rendered_frame
+        ThumbEntry* cache_entry = nullptr;
+        for (auto& entry : cache) {
+            if (entry.entry == tlay.img) {
+                cache_entry = &entry;
+                break;
+            }
+        }
 
-        const Point pos { static_cast<ssize_t>(tile.width / 2) -
-                              static_cast<ssize_t>(scale * pm->width()) / 2,
-                          static_cast<ssize_t>(tile.height / 2) -
-                              static_cast<ssize_t>(scale * pm->height()) / 2 };
+        // Render thumbnail once and cache it, then reuse cached frame
+        if (cache_entry && cache_entry->rendered_frame && cache_entry->frame_rendered) {
+            // Fast path: use cached rendered frame
+            // Composite the cached frame directly
+            wnd.copy(cache_entry->rendered_frame, tile);
+        } else {
+            // Slow path: render thumbnail (first time seen in viewport)
+            // Draw thumbnail
+            const double scale_w = static_cast<double>(tile.width) / pm->width();
+            const double scale_h = static_cast<double>(tile.height) / pm->height();
+            const double scale = aspect == Aspect::Fill
+                ? std::max(scale_w, scale_h)
+                : std::min(scale_w, scale_h);
 
-        Pixmap sub = wnd.submap(tile);
-        Render::self().draw(sub, *pm, pos, scale);
+            const Point pos { static_cast<ssize_t>(tile.width / 2) -
+                                  static_cast<ssize_t>(scale * pm->width()) / 2,
+                              static_cast<ssize_t>(tile.height / 2) -
+                                  static_cast<ssize_t>(scale * pm->height()) / 2 };
+
+            Pixmap sub = wnd.submap(tile);
+            Render::self().draw(sub, *pm, pos, scale);
+
+            // Cache rendered frame for future use
+            if (cache_entry && !cache_entry->rendered_frame) {
+                cache_entry->rendered_frame.create(sub.format(), tile.width, tile.height);
+                cache_entry->rendered_frame.copy(sub, { 0, 0 });
+                cache_entry->frame_rendered = true;
+            }
+        }
     } else if (bkg.width > Resource::file.width() &&
                bkg.height > Resource::file.height()) {
         // draw icon
