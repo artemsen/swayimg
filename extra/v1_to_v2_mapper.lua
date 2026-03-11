@@ -42,144 +42,200 @@ local _s = swayimg -- local reference; avoids repeated global lookups
 -------------------------------------------------------------------------------
 ---@param name string
 local function proxy(name, overrides)
-	local api = _s[name]
-	overrides = overrides or {}
-	return setmetatable({}, {
-		__index = function(self, idx)
-			local v = overrides[idx]
-			if v then
-				if type(v) == 'function' then return v end
-				if v.get then return v.get() end
-			end
+    local api = _s[name]
+    overrides = overrides or {}
+    return setmetatable({}, {
+        __index = function(self, idx)
+            local v = overrides[idx]
+            if v then
+                if type(v) == "function" then
+                    return v
+                end
+                if v.get then
+                    return v.get()
+                end
+            end
 
-			v = api[idx]
-			if v ~= nil then return v end -- directly forward access to the old api
+            v = api[idx]
+            if v ~= nil then
+                return v
+            end -- directly forward access to the old api
 
-			v = api['get_' .. idx]
-			if v then return v() end -- idiomatic getter
+            v = api["get_" .. idx]
+            if v then
+                return v()
+            end -- idiomatic getter
 
-			v = rawget(self, '_' .. idx)
-			if v ~= nil then return v end -- read local copy of the last set value
+            v = rawget(self, "_" .. idx)
+            if v ~= nil then
+                return v
+            end -- read local copy of the last set value
 
-			error('invalid request of field: swi.' .. name .. '.' .. idx)
-		end,
+            error("invalid request of field: swi." .. name .. "." .. idx)
+        end,
 
-		__newindex = function(self, idx, val)
-			local ov = overrides[idx]
-			if type(ov) == 'table' and ov.set then
-				ov.set(val)
-			else
-				local fn = api[(type(val) == 'boolean' and 'enable_' or 'set_') .. idx]
-				if not fn then error('invalid attempt to set field: swi.' .. name .. '.' .. idx) end
+        __newindex = function(self, idx, val)
+            local ov = overrides[idx]
+            if type(ov) == "table" and ov.set then
+                ov.set(val)
+            else
+                local fn =
+                    api[(type(val) == "boolean" and "enable_" or "set_") .. idx]
+                if not fn then
+                    error(
+                        "invalid attempt to set field: swi."
+                            .. name
+                            .. "."
+                            .. idx
+                    )
+                end
 
-				fn(val)
-			end
+                fn(val)
+            end
 
-			rawset(self, '_' .. idx, val) -- set in case a getter isn't available
-		end,
-	})
+            rawset(self, "_" .. idx, val) -- set in case a getter isn't available
+        end,
+    })
 end
 
 ---@param bind string|string[]
 ---@param cb string|function shellcmd to execute or callback
 local function map(bind, cb, api)
-	if type(cb) == 'string' then
-		local cmd = cb
-		cb = function() swi.exec(cmd) end
-	end
+    if type(cb) == "string" then
+        local cmd = cb
+        cb = function()
+            swi.exec(cmd)
+        end
+    end
 
-	for _, b in ipairs(type(bind) == 'table' and bind or { bind }) do
-		if b:match 'Mouse' or b:match 'Scroll' then
-			api.on_mouse(b, cb)
-		else
-			api.on_key(b, cb)
-		end
-	end
+    for _, b in ipairs(type(bind) == "table" and bind or { bind }) do
+        if b:match("Mouse") or b:match("Scroll") then
+            api.on_mouse(b, cb)
+        else
+            api.on_key(b, cb)
+        end
+    end
 end
 
+local function gen_unhookable(api, name)
+    local hooks = {}
+    local initiated
+    return function(fn)
+        if not initiated then
+            api[name](function()
+                local i = #hooks
+                while i > 0 do
+                    if hooks[i]() then
+                        table.remove(hooks, i)
+                    end
+                    i = i - 1
+                end
+            end)
+            initiated = true
+        end
+        hooks[#hooks + 1] = fn
+    end
+end
 local function mode_overrides(api)
-	return {
-		on_image_change = api.on_change_image,
-		map = function(key, cb) return map(key, cb, api) end,
-	}
+    return {
+        on_window_resize = gen_unhookable(api, "on_window_resize"),
+        on_image_change = gen_unhookable(api, "on_change_image"),
+        on_signal = gen_unhookable(api, "on_signal"),
+        map = function(key, cb)
+            return map(key, cb, api)
+        end,
+    }
 end
 local function viewer_overrides(api)
-	local o = mode_overrides(api)
-	o.select = api.open
-	o.get_loaded_image = function()
-		local img = api.current_image()
-		img.marked = img.mark
-		return img
-	end
-	return o
+    local o = mode_overrides(api)
+    o.select = api.open
+    o.get_loaded_image = function()
+        local img = api.current_image()
+        img.marked = img.mark
+        return img
+    end
+    return o
 end
 
 ---@type swi
 _G.swi = setmetatable({
-	imagelist = proxy('imagelist', {
-		get = function()
-			local list = _s.imagelist.get()
-			for _, img in ipairs(list) do
-				img.marked = img.mark
-			end
-			return list
-		end,
-		get_current = function()
-			local img = _s[_s.get_mode()].current_image()
-			img.marked = img.mark
-			return img
-		end,
-		mark_current = _s.imagelist.mark,
-	}),
+    imagelist = proxy("imagelist", {
+        get = function()
+            local list = _s.imagelist.get()
+            for _, img in ipairs(list) do
+                img.marked = img.mark
+            end
+            return list
+        end,
+        get_current = function()
+            local img = _s[_s.get_mode()].current_image()
+            img.marked = img.mark
+            return img
+        end,
+        mark_current = _s.imagelist.mark,
+    }),
 
-	text = proxy('text', {
-		visible = {
-			set = function(val)
-				if type(val) == 'number' then
-					_s.text.set_timer(val)
-				elseif val then
-					_s.text.show()
-				else
-					_s.text.hide()
-				end
-			end,
-		},
-		-- set_status lives at the swayimg root in the legacy API, not under swayimg.text
-		set_status = _s.set_status,
-	}),
+    text = proxy("text", {
+        visible = {
+            set = function(val)
+                if type(val) == "number" then
+                    _s.text.set_timer(val)
+                elseif val then
+                    _s.text.show()
+                else
+                    _s.text.hide()
+                end
+            end,
+        },
+        -- set_status lives at the swayimg root in the legacy API, not under swayimg.text
+        set_status = _s.set_status,
+    }),
 
-	viewer = proxy('viewer', viewer_overrides(_s.viewer)),
-	slideshow = proxy('slideshow', viewer_overrides(_s.slideshow)),
-	gallery = proxy('gallery', mode_overrides(_s.gallery)),
+    viewer = proxy("viewer", viewer_overrides(_s.viewer)),
+    slideshow = proxy("slideshow", viewer_overrides(_s.slideshow)),
+    gallery = proxy("gallery", mode_overrides(_s.gallery)),
 
-	exec = function(cmd)
-		-- TODO: how to make stderr appear? 2>&1 doesn't work
-		cmd = cmd:gsub('([^%%])%%([^%%])', '%1' .. swi.imagelist.get_current().path .. '%2')
-		local p = io.popen(cmd, 'r')
-		if not p then error('invalid command: ' .. cmd) end
-		local out = p:read '*a'
-		p:close()
-		swi.text.set_status(out)
-	end,
+    exec = function(cmd)
+        -- TODO: how to make stderr appear? 2>&1 doesn't work
+        cmd = cmd:gsub(
+            "([^%%])%%([^%%])",
+            "%1" .. swi.imagelist.get_current().path .. "%2"
+        )
+        local p = io.popen(cmd, "r")
+        if not p then
+            error("invalid command: " .. cmd)
+        end
+        local out = p:read("*a")
+        p:close()
+        swi.text.set_status(out)
+    end,
 }, {
-	__index = function(self, idx)
-		local v = _s[idx]
-		if v then return v end -- directly forward access to the old api
+    __index = function(self, idx)
+        local v = _s[idx]
+        if v then
+            return v
+        end -- directly forward access to the old api
 
-		v = _s['get_' .. idx]
-		if v ~= nil then return v() end -- idiomatic getter
+        v = _s["get_" .. idx]
+        if v ~= nil then
+            return v()
+        end -- idiomatic getter
 
-		v = rawget(self, '_' .. idx)
-		if v ~= nil then return v end -- read local copy of the last set value
+        v = rawget(self, "_" .. idx)
+        if v ~= nil then
+            return v
+        end -- read local copy of the last set value
 
-		error('invalid request of field: swi.' .. idx)
-	end,
+        error("invalid request of field: swi." .. idx)
+    end,
 
-	__newindex = function(self, idx, val)
-		local fn = _s[(type(val) == 'boolean' and 'enable_' or 'set_') .. idx]
-		if not fn then error('invalid attempt to set field: swi.' .. idx) end
+    __newindex = function(self, idx, val)
+        local fn = _s[(type(val) == "boolean" and "enable_" or "set_") .. idx]
+        if not fn then
+            error("invalid attempt to set field: swi." .. idx)
+        end
 
-		fn(val)
-		rawset(self, '_' .. idx, val) -- set in case a getter isn't available
-	end,
+        fn(val)
+        rawset(self, "_" .. idx, val) -- set in case a getter isn't available
+    end,
 })

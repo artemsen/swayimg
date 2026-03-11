@@ -179,16 +179,16 @@ function swi.text.set_status(status) end
 local mode_base = {}
 
 ---Add a callback function called when a new image is selected.
----@param fn function Callback handler
+---@param fn fun():(boolean?) Handler, return true to detach
 function mode_base.on_image_change(fn) end
 
 ---Add a callback function called when main window is resized.
----@param fn function Callback handler
+---@param fn fun():(boolean?) Handler, return true to detach
 function mode_base.on_window_resize(fn) end
 
 ---Bind the signal event to a handler.
----@param signal string Signal name: `USR1` or `USR2`
----@param fn function Signal handler
+---@param signal string Signal name (`USR1`, `USR2`, etc.)
+---@param fn fun():(boolean?) Handler, return true to detach
 function mode_base.on_signal(signal, fn) end
 
 ---Remove all existing key/mouse/signal bindings.
