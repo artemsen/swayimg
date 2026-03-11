@@ -708,6 +708,10 @@ bool UiWayland::initialize(const std::string& app_id)
         Log::error("Failed to create wayland surface");
         return false;
     }
+    // Lock frame_mutex before registering the first frame callback.
+    // on_frame_done() will unlock() it, so the mutex must be in locked
+    // state when the first callback fires.
+    frame_mutex.lock();
     wl.callback = wl_surface_frame(wl.surface);
     wl_callback_add_listener(wl.callback, &WaylandHandler::frame_listener,
                              this);
