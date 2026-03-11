@@ -565,6 +565,7 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
     AppMode::activate(entry, wnd);
 
     window_size = wnd;
+    image_pool.stop = false;
 
     if (!image || image->entry != entry) {
         if (!open_file(ImageList::Dir::Next, entry)) {
