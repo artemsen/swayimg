@@ -18,6 +18,7 @@
 #include <xdg-decoration-unstable-v1-client-protocol.h>
 #include <xdg-shell-client-protocol.h>
 
+#include <atomic>
 #include <cassert>
 #include <mutex>
 #include <thread>
@@ -188,7 +189,7 @@ private:
     WaylandBuffer wnd_buffer; ///< Window buffers (double buffering)
     Pixmap empty_pm;         ///< Empty pixmap returned when frame not ready
 
-    std::mutex frame_mutex; ///< Draw frame lock
+    std::atomic<bool> frame_ready{true}; ///< Frame callback readiness flag
 
     uint32_t scale = FRACTION_SCALE_DEN; ///< Window scale factor (WL format)
 

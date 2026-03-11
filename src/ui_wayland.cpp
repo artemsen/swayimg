@@ -464,7 +464,7 @@ public:
         ui->wl.callback = wl_surface_frame(ui->wl.surface);
         wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
 
-        ui->frame_mutex.unlock();
+        ui->frame_ready.store(true, std::memory_order_release);
         ui->frame_ready_event.set(); // signal main thread that frame is ready
     }
 
@@ -708,10 +708,9 @@ bool UiWayland::initialize(const std::string& app_id)
         Log::error("Failed to create wayland surface");
         return false;
     }
-    // Lock frame_mutex before registering the first frame callback.
-    // on_frame_done() will unlock() it, so the mutex must be in locked
-    // state when the first callback fires.
-    frame_mutex.lock();
+    // Register the first frame callback. frame_ready starts as true so the
+    // first lock_surface() succeeds; on_frame_done() will re-arm it after
+    // each presented frame.
     wl.callback = wl_surface_frame(wl.surface);
     wl_callback_add_listener(wl.callback, &WaylandHandler::frame_listener,
                              this);
@@ -971,7 +970,7 @@ Point UiWayland::get_mouse()
 Pixmap& UiWayland::lock_surface()
 {
     if (wnd_buffer) {
-        if (!frame_mutex.try_lock()) {
+        if (!frame_ready.exchange(false, std::memory_order_acq_rel)) {
             return empty_pm; // frame not ready, skip this render
         }
         wnd_buffer.mutex.lock();
