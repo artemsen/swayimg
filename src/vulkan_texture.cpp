@@ -61,8 +61,9 @@ GpuTexture* TextureCache::get_or_upload(const Pixmap& pm, size_t source_id,
     // Calculate required memory
     size_t required = static_cast<size_t>(pm.width()) * pm.height() * 4;
 
-    // Evict until enough space
-    while (vram_used + required > vram_budget && !lru_order.empty()) {
+    // Evict until enough space (VRAM budget and entry count)
+    while ((vram_used + required > vram_budget || cache.size() >= MAX_ENTRIES) &&
+           !lru_order.empty()) {
         evict_lru();
     }
 

@@ -81,6 +81,7 @@ private:
     std::list<TextureCacheKey> lru_order;
     size_t vram_budget = 256 * 1024 * 1024; // 256MB default
     size_t vram_used = 0;
+    static constexpr size_t MAX_ENTRIES = 512; ///< Max cached textures (descriptor pool limit)
 };
 
 #endif // HAVE_VULKAN
