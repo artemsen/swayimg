@@ -49,7 +49,7 @@ function swayimg.get_mouse_pos() end
 
 ---Set the initialization completion handler.
 ---Called after all subsystems have been initialized.
----@param fn function Initialization completion callback
+---@param fn fun() Initialization completion callback
 function swayimg.on_initialized(fn) end
 
 ---Add a callback function called when main window is resized.
@@ -80,13 +80,17 @@ function swayimg.on_window_resize(fn) end
 ---| "size"    # Size sort
 ---| "random"  # Random order
 
----Image list, use `#swayimg.imagelist` to get the size
+---Image list
 ---@class swayimg.imagelist
 ---@field order order_t Image list sort order
 ---@field reverse boolean Reverse the sort order
 ---@field recursive boolean Recursive directory reading
 ---@field adjacent boolean Open adjacent files from the same directory
 swayimg.imagelist = {}
+
+---Get size of image list.
+---@return number # Number of entries in the image list
+function swayimg.imagelist.size() end
 
 ---Get list of all entries in the image list.
 ---@return image_entry[] # Array with all entries
@@ -160,12 +164,12 @@ local mode_base = {}
 
 ---Map a keyboard event to an action.
 ---@param bind string|string[] 1 or more mouse or keyboard events to map - `Alt+s`, etc.
----@param cb string|function shellcmd to execute (% for current image) or callback function to run
+---@param cb string|fun() shellcmd to execute (% for current image) or callback function to run
 function mode_base.on_key(bind, cb) end
 
 ---Map a mouse event to an action.
 ---@param bind string|string[] 1 or more mouse or keyboard events to map - `Ctrl+ScrollDown`, etc.
----@param cb string|function shellcmd to execute (% for current image) or callback function to run
+---@param cb string|fun() shellcmd to execute (% for current image) or callback function to run
 function mode_base.on_mouse(bind, cb) end
 
 ---Remove all existing key/mouse/signal bindings.
@@ -235,6 +239,12 @@ function mode_base.on_signal(signal, fn) end
 ---see <https://exiv2.org/tags.html>
 ---@field [string] table<string,string>
 
+---Configuration for the grid pattern to be displayed for transparent image bg.
+---@class checkerboard
+---@field [1] integer first color (i.e. 0xff000000)
+---@field [2] integer second color (i.e. 0xff888888)
+---@field size integer size of individual grids in pixels
+
 ---@class swayimg.viewer : mode_base
 ---@field default_scale fixed_scale_t Default scale applied to newly opened images
 ---@field image_scale fixed_scale_t|number Scale of the image as a preset or absolute value
@@ -243,7 +253,8 @@ function mode_base.on_signal(signal, fn) end
 ---Example: ←↑ corner of the image is outside the window -> `x,y<0`
 ---@field image_pos fixed_position_t|{[1]:integer,[2]:integer}
 ---@field window_background integer|bkgmode_t Window background: solid ARGB color or fill mode
----@field image_background integer Background color for transparent images (ARGB); disables checkerboard grid
+---Background color or pattern for transparent images (ARGB)
+---@field image_background integer|checkerboard
 ---@field freemove boolean Free move mode TODO: needs a more detailed explanation
 ---@field loop boolean Image list loop mode
 ---@field preload_limit integer Number of images to preload in a separate thread
@@ -264,20 +275,6 @@ function swayimg.viewer.get_current_image() end
 ---@param y integer Y coordinate of center point, empty for window center
 function swayimg.viewer.scale_centered(scale, x, y) end
 
----Show next frame from multi-frame image (animation).
----This function also stops the animation.
----@see swayimg.viewer.animation_stop
----@see swayimg.viewer.animation_resume
----@return integer # Index of the currently shown frame
-function swayimg.viewer.next_frame() end
-
----Show previous frame from multi-frame image (animation).
----This function also stops the animation.
----@see swayimg.viewer.animation_stop
----@see swayimg.viewer.animation_resume
----@return integer # Index of the currently shown frame
-function swayimg.viewer.prev_frame() end
-
 ---Flip image vertically.
 function swayimg.viewer.flip_vertical() end
 
@@ -294,11 +291,19 @@ function swayimg.viewer.animation_stop() end
 ---Resume animation.
 function swayimg.viewer.animation_resume() end
 
----Set parameters for the checkerboard grid used as background for transparent images.
----@param size number Size of single grid cell in pixels
----@param color1 number First color in ARGB format, e.g. `0xff00aa99`
----@param color2 number Second color in ARGB format, e.g. `0xff00aa99`
-function swayimg.viewer.set_image_grid(size, color1, color2) end
+---Show next frame from multi-frame image (animation).
+---This function also stops the animation.
+---@see swayimg.viewer.animation_stop
+---@see swayimg.viewer.animation_resume
+---@return integer # Index of the currently shown frame
+function swayimg.viewer.next_frame() end
+
+---Show previous frame from multi-frame image (animation).
+---This function also stops the animation.
+---@see swayimg.viewer.animation_stop
+---@see swayimg.viewer.animation_resume
+---@return integer # Index of the currently shown frame
+function swayimg.viewer.prev_frame() end
 
 ---Export currently viewed frame to PNG file.
 ---@param path string Path to file
