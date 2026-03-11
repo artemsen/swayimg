@@ -1,0 +1,56 @@
+# Build artifacts
+build/
+build_*/
+bin/
+obj/
+out/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# IDE
+.idea/
+.vscode/
+*.user
+*.suo
+CMakeLists.txt.user
+
+# Profiling & testing
+perf.data*
+*.prof
+callgrind.out.*
+massif.out.*
+*.dSYM/
+.tsan*
+.asan*
+*.valgrind
+
+# Artifacts from specs
+specs/*/artifacts/
+test_data/
+!test_data/README.md
+!test_data/generate_images.py
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.log
+*.log*
+
+# Meson build
+meson-logs/
+meson-private/
+
+# Misc
+*~
+*.bak
+.~*

@@ -449,8 +449,8 @@ size_t VulkanCtx::get_vram_budget() const
         }
     }
 
-    // 50% of device-local heap, capped at 512MB
-    constexpr size_t MAX_BUDGET = 512 * 1024 * 1024;
+    // 50% of device-local heap, capped at 4GB
+    constexpr size_t MAX_BUDGET = 4UL * 1024UL * 1024UL * 1024UL;
     const size_t budget = static_cast<size_t>(max_heap / 2);
     return std::min(budget, MAX_BUDGET);
 }
