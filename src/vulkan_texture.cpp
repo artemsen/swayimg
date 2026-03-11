@@ -384,8 +384,17 @@ bool TextureCache::upload(GpuTexture& tex, const Pixmap& pm)
         .pSetLayouts = &layout,
     };
 
-    if (vkAllocateDescriptorSets(dev, &ds_alloc, &tex.descriptor) !=
-        VK_SUCCESS) {
+    VkResult result = vkAllocateDescriptorSets(dev, &ds_alloc, &tex.descriptor);
+
+    // Audit R3: Handle descriptor pool exhaustion gracefully
+    if (result == VK_ERROR_OUT_OF_POOL_MEMORY) {
+        // Descriptor pool exhausted, try evicting one texture and retrying
+        evict_lru();
+        result = vkAllocateDescriptorSets(dev, &ds_alloc, &tex.descriptor);
+    }
+
+    if (result != VK_SUCCESS) {
+        // Allocation failed after retry, fallback to software rendering
         return false;
     }
 

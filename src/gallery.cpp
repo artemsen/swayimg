@@ -13,6 +13,7 @@
 #include "text.hpp"
 
 #include <sys/stat.h>
+#include <thread>
 
 // Limits for thumbnail size and other parameters
 constexpr size_t THIMB_SIZE_MIN = 10;
@@ -21,8 +22,16 @@ constexpr size_t PADDING_SIZE_MAX = 1000;
 constexpr size_t BORDER_SIZE_MAX = 100;
 constexpr double SSCALE_MAX = 10.0;
 
-/** Number of threads used for loading thumbnails. */
-constexpr size_t THUMB_LOAD_THREADS = 10;
+/**
+ * Calculate number of threads for loading thumbnails.
+ * Audit R4: Scale with CPU cores (capped at 8).
+ */
+static size_t get_thumb_load_threads()
+{
+    unsigned int cores = std::thread::hardware_concurrency();
+    if (cores == 0) cores = 1;  // Fallback if detection fails
+    return std::min(8u, cores);  // Cap at 8 to avoid diminishing returns
+}
 
 /**
  * Get default path for persistent storage.
@@ -67,7 +76,7 @@ Gallery& Gallery::self()
 }
 
 Gallery::Gallery()
-    : tpool(THUMB_LOAD_THREADS)
+    : tpool(get_thumb_load_threads())
 {
     // default settings
 
@@ -84,7 +93,7 @@ Gallery::Gallery()
     pstore_path = pstore_defpath();
 
     preload = false;
-    cache_size = 100;
+    cache_size = 3500;  // Audit R2: increased from 100 to reduce first-scroll jank
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File: {name}" };
     text_scheme[static_cast<size_t>(Text::TopRight)] = {

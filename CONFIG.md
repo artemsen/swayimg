@@ -1794,7 +1794,17 @@ swayimg.gallery.set_cache_size(size: number)
 
 Set max number of thumbnails stored in memory cache.
 
-@*param* `size` — Cache size
+**Default**: 3500 entries (optimized for reduced first-scroll jank on typical galleries)
+
+**Recommended values**:
+- Small galleries (< 100 images): 500-1000
+- Medium galleries (100-500 images): 2000-3500 (default)
+- Large galleries (> 500 images): 5000-10000
+- Memory-constrained systems: 1000-2000
+
+**Memory impact**: Approximately 15-20 KB per cached thumbnail entry
+
+@*param* `size` — Cache size (recommended: 1000-10000, default: 3500)
 
 ### swayimg.gallery.enable_preload
 

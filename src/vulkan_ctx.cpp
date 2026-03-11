@@ -359,7 +359,7 @@ bool VulkanCtx::create_command_pool()
 bool VulkanCtx::create_descriptor_pool()
 {
     const VkDescriptorPoolSize pool_sizes[] = {
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2048 },  // Audit R1: increased from 1024 to support 4GB VRAM budget
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 16 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 16 },
     };
@@ -367,7 +367,7 @@ bool VulkanCtx::create_descriptor_pool()
     const VkDescriptorPoolCreateInfo pool_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        .maxSets = 1024,
+        .maxSets = 2048,  // Audit R1: increased from 1024
         .poolSizeCount = 3,
         .pPoolSizes = pool_sizes,
     };
