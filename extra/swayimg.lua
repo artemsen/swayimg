@@ -13,7 +13,6 @@
 ---@class swayimg
 ---@field mode appmode_t Which mode is the application in
 ---@field title string Window title text
----@field window_size {[1]:integer,[2]:integer} Size of the application window
 ---@field fulscreen boolean Is the application in fullscreen mode
 ---Mouse button for drag-and-drop to external apps.
 ---Configurable only at startup.
@@ -35,9 +34,17 @@ swayimg = {}
 ---@param code? integer Program exit code, `0` by default
 function swayimg.exit(code) end
 
+---Get application window size.
+---@return {[1]:integer,[2]:integer} # (width, height) window size in pixels
+function swayimg.get_window_size() end
+
+---Set application window size.
+---@param width integer Width of the window in pixels
+---@param height integer Height of the window in pixels
+function swayimg.set_window_size(width, height) end
+
 ---Get mouse pointer coordinates.
----@return integer x
----@return integer y
+---@return {[1]:integer,[2]:integer} # (x,y) coordinates of the mouse
 function swayimg.get_mouse_pos() end
 
 ---Set the initialization completion handler.
@@ -46,7 +53,7 @@ function swayimg.get_mouse_pos() end
 function swayimg.on_initialized(fn) end
 
 ---Add a callback function called when main window is resized.
----@param fn fun():(boolean?) Handler, return true to detach
+---@param fn fun() Handler
 function swayimg.on_window_resize(fn) end
 
 --------------------------------------------------------------------------------
@@ -169,12 +176,12 @@ function mode_base.bind_reset() end
 function mode_base.mark_current_image(state) end
 
 ---Add a callback function called when a new image is selected.
----@param fn fun():(boolean?) Handler, return true to detach
+---@param fn fun() Handler
 function mode_base.on_image_change(fn) end
 
 ---Bind the signal event to a handler.
 ---@param signal string Signal name (`USR1`, `USR2`, etc.)
----@param fn fun():(boolean?) Handler, return true to detach
+---@param fn fun() Handler
 function mode_base.on_signal(signal, fn) end
 
 --------------------------------------------------------------------------------
