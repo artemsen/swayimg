@@ -139,10 +139,13 @@ bool VulkanAA::create_pipeline()
 bool VulkanAA::ensure_images(uint32_t new_inter_w, uint32_t new_inter_h,
                               uint32_t new_out_w, uint32_t new_out_h)
 {
-    // Check if existing images are large enough
+    // Check if existing images match exactly — don't reuse larger images
+    // because the compute shader only writes visible_w × visible_h pixels,
+    // but UV mapping samples the full texture (0-1), exposing stale content
+    // from previous frames in the unused portion
     if (inter_image != VK_NULL_HANDLE && out_image != VK_NULL_HANDLE &&
-        inter_w >= new_inter_w && inter_h >= new_inter_h &&
-        out_w >= new_out_w && out_h >= new_out_h) {
+        inter_w == new_inter_w && inter_h == new_inter_h &&
+        out_w == new_out_w && out_h == new_out_h) {
         return true;
     }
 
