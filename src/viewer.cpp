@@ -180,7 +180,18 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
 {
     ImageList& il = ImageList::self();
 
-    ImageEntryPtr next_entry = from ? from : il.get(image->entry, pos);
+    // When async load is pending, compute next from logical nav target
+    // (not the still-displayed image) so rapid presses advance properly
+    ImageEntryPtr base_entry;
+    {
+        std::lock_guard lock(image_pool.mutex);
+        if (image_pool.pending && !from) {
+            base_entry = image_pool.nav_target;
+        }
+    }
+    ImageEntryPtr next_entry =
+        from ? from
+             : il.get(base_entry ? base_entry : image->entry, pos);
 
     const bool forward =
         pos != ImageList::Dir::Prev && pos != ImageList::Dir::PrevParent;
@@ -216,13 +227,20 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     }
 
     if (next_image) {
-        // cache hit — switch immediately
+        // cache hit — switch immediately, cancel any pending async load
         Log::verbose("Get image {} from cache",
                      next_entry->path.filename().string());
-        if (image) {
+        {
             std::lock_guard lock(image_pool.mutex);
-            image_pool.history.put(image);
+            if (image_pool.pending) {
+                image_pool.pending = nullptr;
+                image_pool.nav_target = nullptr;
+            }
+            if (image) {
+                image_pool.history.put(image);
+            }
         }
+        image_pool.loading = false;
         image = next_image;
         on_open();
         return true;
@@ -249,9 +267,15 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
 
     // load asynchronously — insert at front of queue so this image
     // loads before any pending preload tasks (which remain queued)
+    if (image_pool.loading) {
+        // re-navigating while a load is pending: cancel queued preload tasks
+        // so the new target gets a thread immediately
+        image_pool.tpool.cancel();
+    }
     {
         std::lock_guard lock(image_pool.mutex);
         image_pool.pending = next_entry;
+        image_pool.nav_target = next_entry;
     }
     image_pool.loading = true;
 
@@ -890,6 +914,7 @@ void Viewer::on_image_ready(const ImagePtr& loaded, const ImageEntryPtr& entry)
             return; // superseded, discard
         }
         image_pool.pending = nullptr;
+        image_pool.nav_target = nullptr;
     }
     image_pool.loading = false;
 

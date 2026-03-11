@@ -360,6 +360,7 @@ private:
         std::atomic<bool> stop;     ///< Stop signal for preload tasks
         std::mutex mutex;           ///< Sync mutex for pool access
         ImageEntryPtr pending;      ///< Entry being loaded async (protected by mutex)
+        ImageEntryPtr nav_target;   ///< Logical navigation target during pending load
         std::atomic<bool> loading;  ///< Whether an async load is in progress
     } image_pool;
 };
