@@ -100,6 +100,20 @@ int Application::run()
 
     event_loop();
     current_mode()->deactivate();
+
+#ifdef HAVE_VULKAN
+    // Destroy Vulkan resources before Wayland disconnect, to avoid
+    // use-after-free of wl_surface in static destructors.
+    if (VulkanCtx::self().is_active()) {
+        vk_texcache.clear();
+        VulkanAA::self().destroy();
+        VulkanBlur::self().destroy();
+        VulkanPipeline::self().destroy();
+        vk_swapchain.reset();
+        VulkanCtx::self().destroy();
+    }
+#endif // HAVE_VULKAN
+
     ui->stop();
 
     return exit_code;
