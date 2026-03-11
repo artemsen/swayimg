@@ -330,17 +330,6 @@ void Gallery::window_redraw(Pixmap& wnd)
     layout.update();
     drain_completed();
 
-    const auto& dbg_scheme = layout.get_scheme();
-    size_t dbg_cached = 0;
-    for (const auto& t : dbg_scheme) {
-        if (get_thumbnail(t.img)) {
-            ++dbg_cached;
-        }
-    }
-    Log::info("Gallery::window_redraw: scheme={} cached_visible={} cache_total={}"
-              " queued={}",
-              dbg_scheme.size(), dbg_cached, cache.size(), queued.size());
-
     wnd.fill({ 0, 0, wnd.width(), wnd.height() }, clr_window);
 
     const ImageEntryPtr current = layout.get_selected();
@@ -371,19 +360,6 @@ void Gallery::window_redraw_vk(VkCommandBuffer cmd, TextureCache& texcache)
 {
     layout.update();
     drain_completed();
-
-    {
-        const auto& dbg_scheme = layout.get_scheme();
-        size_t dbg_cached = 0;
-        for (const auto& t : dbg_scheme) {
-            if (get_thumbnail(t.img)) {
-                ++dbg_cached;
-            }
-        }
-        Log::info("Gallery::window_redraw_vk: scheme={} cached_visible={}"
-                  " cache_total={} queued={}",
-                  dbg_scheme.size(), dbg_cached, cache.size(), queued.size());
-    }
 
     auto& pipe = VulkanPipeline::self();
     const Size wnd_size = Application::self().get_ui()->get_window_size();
@@ -723,23 +699,16 @@ void Gallery::load_thumbnails()
     const size_t index_last = scheme.back().img->index;
 
     size_t preload_counter = preload ? cache_size : 0;
-    size_t newly_queued = 0;
-    size_t already_cached = 0;
-
     // Submit uncached thumbnails. Visible entries use push_front() so they
     // jump ahead of any queued preload tasks.
     // Preload entries use add() (back of queue, low priority).
-    auto check_and_load = [this, &newly_queued,
-                           &already_cached](ImageEntryPtr& entry,
-                                            bool high_priority) {
+    auto check_and_load = [this](ImageEntryPtr& entry, bool high_priority) {
         if (get_thumbnail(entry)) {
-            ++already_cached;
             return;
         }
         std::lock_guard lock(completed_mutex);
         if (!queued.contains(entry)) {
             queued.insert(entry);
-            ++newly_queued;
             if (high_priority) {
                 tpool.push_front([this, entry]() {
                     load_thumbnail(entry);
@@ -798,10 +767,6 @@ void Gallery::load_thumbnails()
         }
     }
 
-    Log::info("Gallery::load_thumbnails: range=[{}-{}] newly_queued={}"
-              " already_cached={} total_queued={} cache={}",
-              index_first, index_last, newly_queued, already_cached,
-              queued.size(), cache.size());
 }
 
 void Gallery::clear_thumbnails()
