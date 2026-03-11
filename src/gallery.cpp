@@ -570,7 +570,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
 {
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
-        std::lock_guard lock(mutex);
+        std::lock_guard lock(completed_mutex);
         auto it = std::find_if(cache.begin(), cache.end(),
                                [&entry](const ThumbEntry& thumb) {
                                    return entry == thumb.entry;
