@@ -186,6 +186,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
             const std::filesystem::path abs_path =
                 std::filesystem::absolute(it).lexically_normal();
             add_file(abs_path, false);
+            FsMonitor::self().add(abs_path.parent_path());
             if (adjacent) {
                 try {
                     const auto parent = abs_path.parent_path();
