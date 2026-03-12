@@ -896,10 +896,12 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             }
             break;
         case ImageListEvent::Remove:
-            if (entry == image->entry &&
-                !open_file(ImageList::Dir::Next, nullptr)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
+            if (entry == image->entry) {
+                Text::self().set_status("File deleted");
+                if (!open_file(ImageList::Dir::Next, nullptr)) {
+                    Log::info("No more images to view, exit");
+                    Application::self().exit(0);
+                }
             }
             break;
     }
