@@ -698,6 +698,7 @@ void Application::handle_event(const AppEvent::FileModify& event)
         if (entry) {
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Modify,
                                              entry);
+            redraw();
         }
     }
 }
@@ -711,6 +712,7 @@ void Application::handle_event(const AppEvent::FileRemove& event)
             il.remove(entry);
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
                                              entry);
+            redraw();
         }
     }
 }
