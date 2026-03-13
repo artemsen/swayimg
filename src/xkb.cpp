@@ -58,7 +58,9 @@ void Xkb::start_repeat(const xkb_keycode_t code)
 {
     if (repeat_rate && xkb_keymap_key_repeats(keymap, code)) {
         // start key repeat timer
-        repeat_key = xkb_state_key_get_one_sym(state, code);
+        // Shift won't capitalize the keys anymore.
+        repeat_key =
+            xkb_keysym_to_lower(xkb_state_key_get_one_sym(state, code));
         repeat_timer.reset(repeat_delay, 1000 / repeat_rate);
     }
 }
