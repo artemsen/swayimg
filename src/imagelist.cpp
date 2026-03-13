@@ -15,7 +15,28 @@
 #include <string>
 
 /**
- * Comparison of two localized strings.
+ * Comparison of two strings using ASCII table order (byte-wise).
+ * @param l,r strings to compare
+ * @return compare result
+ */
+static int compare_alpha(const std::string& l, const std::string& r)
+{
+    const size_t n = std::min(l.size(), r.size());
+    for (size_t i = 0; i < n; ++i) {
+        const unsigned char a = static_cast<unsigned char>(l[i]);
+        const unsigned char b = static_cast<unsigned char>(r[i]);
+        if (a != b) {
+            return a < b ? -1 : 1;
+        }
+    }
+    if (l.size() == r.size()) {
+        return 0;
+    }
+    return l.size() < r.size() ? -1 : 1;
+}
+
+/**
+ * Comparison of two strings.
  * @param l,r strings to compare
  * @param numeric flag to use numeric compare
  * @return compare result
@@ -23,14 +44,14 @@
 static int compare_strings(const std::string& l, const std::string& r,
                            const bool numeric)
 {
-    int cmp = 0;
-    const std::locale loc("");
-    const std::collate<char>& coll = std::use_facet<std::collate<char>>(loc);
-
     if (!numeric) {
-        cmp = coll.compare(l.data(), l.data() + l.length(), r.data(),
-                           r.data() + r.length());
+        return compare_alpha(l, r);
     } else {
+        int cmp = 0;
+        const std::locale loc("");
+        const std::collate<char>& coll =
+            std::use_facet<std::collate<char>>(loc);
+
         const std::string digits = "0123456789";
         std::string ls(l);
         std::string rs(r);
@@ -62,9 +83,8 @@ static int compare_strings(const std::string& l, const std::string& r,
             ls.erase(0, ldend);
             rs.erase(0, rdend);
         }
+        return cmp;
     }
-
-    return cmp;
 }
 
 /**
