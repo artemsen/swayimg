@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <list>
 #include <shared_mutex>
+#include <unordered_set>
 #include <vector>
 
 /** Thread-safe list of images. */
@@ -180,6 +181,9 @@ private:
 private:
     std::list<ImageEntryPtr> entries; ///< List of image entries
     std::shared_mutex mutex;          ///< Image list mutex
+
+    /** Set of paths used for searching duplicates. */
+    std::unordered_set<std::filesystem::path> duplicates;
 
     Order order = Order::Numeric; ///< Image list order
     bool reverse = false;         ///< Reverse order flag

@@ -217,6 +217,8 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
     std::unique_lock lock(mutex);
 
     entries.remove(entry);
+    duplicates.erase(entry->path);
+
     entry->remove();
 
     reindex();
@@ -518,12 +520,10 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
 
 void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 {
-    if (std::find_if(entries.begin(), entries.end(),
-                     [&entry](const ImageEntryPtr& it) {
-                         return entry->path == it->path;
-                     }) != entries.end()) {
+    if (duplicates.contains(entry->path)) {
         return; // already exists
     }
+    duplicates.insert(entry->path);
 
     if (!ordered || order == Order::None) {
         entries.push_back(entry);
