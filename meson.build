@@ -150,6 +150,7 @@ configure_file(output: 'buildconf.hpp', configuration: conf)
 # doc generator
 python3 = find_program('python3', native: true, required: false)
 if python3.found()
+    extra_dir = meson.global_source_root() / 'extra'
     # man 1
     input = meson.global_source_root() / 'USAGE.md'
     output = 'swayimg.1'
@@ -158,33 +159,20 @@ if python3.found()
         build_by_default: true,
         depend_files: input,
         output: output,
-        command: [
-            python3,
-            meson.global_source_root() / 'extra' / 'md2man.py',
-            input,
-        ],
+        command: [python3, extra_dir / 'md2man.py', input],
         capture: true,
     )
     # lua doc
-    lualsp = find_program('lua-language-server', native: true, required: false)
-    if python3.found() and lualsp.found()
-        input = meson.global_source_root() / 'extra' / 'swayimg.lua'
-        output = 'CONFIG.md'
-        custom_target(
-            output,
-            build_by_default: true,
-            depend_files: input,
-            output: output,
-            command: [
-                python3,
-                meson.global_source_root() / 'extra' / 'luadocgen.py',
-                '--tmpdir',
-                meson.current_build_dir(),
-                input,
-            ],
-            capture: true,
-        )
-    endif
+    input = extra_dir / 'swayimg.lua'
+    output = 'CONFIG.md'
+    custom_target(
+        output,
+        build_by_default: true,
+        depend_files: input,
+        output: output,
+        command: [python3, extra_dir / 'lua2md.py', input],
+        capture: true,
+    )
 endif
 
 # desktop file + icon
