@@ -421,6 +421,8 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                           const bool ordered)
 {
+    std::vector<ImageEntryPtr> entries;
+
     if (path.string().starts_with(ImageEntry::SRC_STDIN) ||
         path.string().starts_with(ImageEntry::SRC_EXEC)) {
         ImageEntryPtr entry = std::make_shared<ImageEntry>();
@@ -429,26 +431,27 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         entry->size = 0;
         entry->index = 0;
         add_entry(entry, ordered);
-        return { entry };
-    }
-
-    if (!std::filesystem::exists(path)) {
-        Log::warning("File {} not found, skipped", path.string());
-        return {};
-    }
-
-    const std::filesystem::path abs_path =
-        std::filesystem::absolute(
-            (std::filesystem::is_directory(path) || !adjacent)
-                ? path
-                : path.parent_path())
-            .lexically_normal();
-
-    if (std::filesystem::is_directory(abs_path)) {
-        return add_dir(abs_path, ordered);
+        entries.push_back(entry);
     } else {
-        return { add_file(abs_path, ordered) };
+        if (!std::filesystem::exists(path)) {
+            Log::warning("File {} not found, skipped", path.string());
+        } else {
+            const std::filesystem::path abs_path =
+                std::filesystem::absolute(path).lexically_normal();
+            if (std::filesystem::is_directory(path)) {
+                entries = add_dir(abs_path, ordered);
+            } else {
+                entries.push_back(add_file(abs_path, ordered));
+                if (adjacent) {
+                    const std::vector<ImageEntryPtr> edir =
+                        add_dir(abs_path.parent_path(), ordered);
+                    entries.insert(entries.end(), edir.begin(), edir.end());
+                }
+            }
+        }
     }
+
+    return entries;
 }
 
 std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
