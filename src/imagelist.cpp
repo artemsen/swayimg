@@ -525,8 +525,6 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
         return; // already exists
     }
 
-    Log::verbose("Add image entry {}", entry->path.filename().string());
-
     if (!ordered || order == Order::None) {
         entries.push_back(entry);
     } else if (order == Order::Random) {

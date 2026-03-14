@@ -178,6 +178,8 @@ ImageEntryPtr Application::il_initialize()
 
     ImageEntryPtr first_entry = nullptr;
 
+    Log::PerfTimer timer;
+
     if (!sparams.from_file.empty()) {
         first_entry = il.load(sparams.from_file);
     }
@@ -191,6 +193,10 @@ ImageEntryPtr Application::il_initialize()
     }
     if (sparams.from_file.empty() && sparams.sources.empty()) {
         first_entry = il.load(std::vector<std::filesystem::path> { "." });
+    }
+
+    if (Log::verbose_enable()) {
+        Log::verbose("Image list loaded in {:.6f} sec", timer.time());
     }
 
     return first_entry;
