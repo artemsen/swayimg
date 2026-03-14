@@ -21,13 +21,6 @@ void AppMode::activate(const ImageEntryPtr&, const Size&)
     }
 }
 
-void AppMode::window_resize(const Size&)
-{
-    for (auto& it : wndrsz_cb) {
-        it();
-    }
-}
-
 bool AppMode::handle_keyboard(const InputKeyboard& input)
 {
     const auto& bind = kbindings.find(input);
@@ -63,14 +56,9 @@ bool AppMode::is_active() const
     return Application::self().current_mode() == this;
 }
 
-void AppMode::subscribe_image_switch(const ImageSwitchCallback& cb)
+void AppMode::subscribe_image_switch(const ImageSwitchNotify& cb)
 {
-    imswitch_cb.push_back(cb);
-}
-
-void AppMode::subscribe_window_resize(const WindowResizeCallback& cb)
-{
-    wndrsz_cb.push_back(cb);
+    img_switch.push_back(cb);
 }
 
 void AppMode::set_mark_color(const argb_t& color)
@@ -130,7 +118,7 @@ void AppMode::switch_current()
     Text::self().reset(current);
 
     // call handlers
-    for (auto& it : imswitch_cb) {
+    for (auto& it : img_switch) {
         it();
     }
 

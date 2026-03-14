@@ -133,15 +133,13 @@ void Text::set_status_timer(const size_t timeout)
 void Text::show()
 {
     overall_tm.show = true;
-    overall_tm.delay = 0;
-    overall_tm.fd.reset(0, 0);
+    overall_tm.fd.reset(overall_tm.delay, 0);
     Application::redraw();
 }
 
 void Text::hide()
 {
     overall_tm.show = false;
-    overall_tm.delay = 0;
     overall_tm.fd.reset(0, 0);
     Application::redraw();
 }

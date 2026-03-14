@@ -108,9 +108,9 @@ public:
     void set_scale(const double sc, const Point& preserve = Point());
 
     /**
-     * Reset scale to default value.
+     * Reset scale and position to defaults.
      */
-    void reset_scale();
+    void reset();
 
     /**
      * Set predefined image position on canvas.
@@ -175,13 +175,13 @@ public:
     void set_image_background(const argb_t& color);
 
     /**
-     * Set image background for transparent images to grid.
+     * Set image background for transparent images to chessboard.
      * @param size size of single grid cell in pixels
      * @param color1 first color color for cell
      * @param color2 second color color for cell
      */
-    void set_image_grid(const size_t size, const argb_t& color1,
-                        const argb_t& color2);
+    void set_image_chessboard(const size_t size, const argb_t& color1,
+                              const argb_t& color2);
 
     /**
      * Set number of images to preload in a separate thread.
@@ -281,7 +281,7 @@ private:
     };
 
 public:
-    bool free_move;      ///< Flag to allow free image move on canvas
+    bool auto_center;    ///< Enable automatic image centering
     bool imagelist_loop; ///< Flag to loop image list
 
     std::variant<double, Scale> default_scale; ///< Default image scale
@@ -297,9 +297,9 @@ private:
     std::variant<argb_t, Background> window_bkg; ///< Window background
 
     // Transparent image background
-    bool tr_grid;         ///< Background mode (grid/solid color)
-    size_t tr_grsize;     ///< Size of grid tile
-    argb_t tr_grcolor[2]; ///< Grid colors
+    bool tr_chessboard;   ///< Background mode (chessboard/solid color)
+    size_t tr_cbsize;     ///< Size of grid tile
+    argb_t tr_cbcolor[2]; ///< Grid colors
     argb_t tr_bgcolor;    ///< Solid color
 
     bool animation_enable;   ///< Flag to start animation automatically

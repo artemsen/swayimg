@@ -27,7 +27,7 @@ Viewer::Viewer()
 {
     // default settings
 
-    free_move = false;
+    auto_center = true;
     imagelist_loop = true;
     scale = 1.0;
 
@@ -36,10 +36,10 @@ Viewer::Viewer()
 
     window_bkg = argb_t(argb_t::max, 0, 0, 0);
 
-    tr_grid = true;
-    tr_grsize = 20;
-    tr_grcolor[0] = { argb_t::max, 0x33, 0x33, 0x33 };
-    tr_grcolor[1] = { argb_t::max, 0x4c, 0x4c, 0x4c };
+    tr_chessboard = true;
+    tr_cbsize = 20;
+    tr_cbcolor[0] = { argb_t::max, 0x33, 0x33, 0x33 };
+    tr_cbcolor[1] = { argb_t::max, 0x4c, 0x4c, 0x4c };
     tr_bgcolor = { argb_t::max, 0, 0, 0 };
 
     animation_enable = true;
@@ -97,10 +97,12 @@ Viewer::Viewer()
     });
     // text layer
     bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_NONE }, []() {
-        Text::self().show();
-    });
-    bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_SHIFT }, []() {
-        Text::self().hide();
+        Text& text = Text::self();
+        if (text.is_visible()) {
+            text.hide();
+        } else {
+            text.show();
+        }
     });
     // next/prev image
     bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_NONE }, [this]() {
@@ -129,7 +131,7 @@ Viewer::Viewer()
         set_scale(scale - scale / 10.0);
     });
     bind_input(InputKeyboard { XKB_KEY_BackSpace, KEYMOD_NONE }, [this]() {
-        reset_scale();
+        reset();
     });
     // image position
     bind_input(InputKeyboard { XKB_KEY_Left, KEYMOD_NONE }, [this]() {
@@ -331,13 +333,14 @@ void Viewer::set_scale(const double sc, const Point& preserve)
     fixup_position();
 }
 
-void Viewer::reset_scale()
+void Viewer::reset()
 {
     if (std::holds_alternative<Scale>(default_scale)) {
         set_scale(std::get<Scale>(default_scale));
     } else {
         set_scale(std::get<double>(default_scale));
     }
+    set_position(default_pos);
 }
 
 void Viewer::set_position(const Position pos)
@@ -456,20 +459,20 @@ void Viewer::set_window_background(const Background mode)
 
 void Viewer::set_image_background(const argb_t& color)
 {
-    tr_grid = false;
+    tr_chessboard = false;
     tr_bgcolor = color;
     if (is_active()) {
         Application::redraw();
     }
 }
 
-void Viewer::set_image_grid(const size_t size, const argb_t& color1,
-                            const argb_t& color2)
+void Viewer::set_image_chessboard(const size_t size, const argb_t& color1,
+                                  const argb_t& color2)
 {
-    tr_grid = true;
-    tr_grsize = size;
-    tr_grcolor[0] = color1;
-    tr_grcolor[1] = color2;
+    tr_chessboard = true;
+    tr_cbsize = size;
+    tr_cbcolor[0] = color1;
+    tr_cbcolor[1] = color2;
     if (is_active()) {
         Application::redraw();
     }
@@ -622,7 +625,6 @@ void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
     fixup_position();
-    AppMode::window_resize(wnd);
 }
 
 void Viewer::window_redraw(Pixmap& wnd)
@@ -632,8 +634,8 @@ void Viewer::window_redraw(Pixmap& wnd)
 
     // clear image background
     if (pm.format() == Pixmap::ARGB) {
-        if (tr_grid) {
-            wnd.grid(imgr, tr_grsize, tr_grcolor[0], tr_grcolor[1]);
+        if (tr_chessboard) {
+            wnd.grid(imgr, tr_cbsize, tr_cbcolor[0], tr_cbcolor[1]);
         } else {
             wnd.fill(imgr, tr_bgcolor);
         }
@@ -790,7 +792,7 @@ void Viewer::fixup_position()
     const Pixmap& pm = image->frames[frame_index].pm;
     const Size scaled = static_cast<Size>(pm) * scale;
 
-    if (free_move) {
+    if (!auto_center) {
         // don't let canvas to be far out of window
         if (position.x + static_cast<ssize_t>(scaled.width) < 0) {
             position.x = -static_cast<ssize_t>(scaled.width);

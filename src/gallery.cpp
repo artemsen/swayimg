@@ -154,10 +154,12 @@ Gallery::Gallery()
     });
     // text layer
     bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_NONE }, []() {
-        Text::self().show();
-    });
-    bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_SHIFT }, []() {
-        Text::self().hide();
+        Text& text = Text::self();
+        if (text.is_visible()) {
+            text.hide();
+        } else {
+            text.show();
+        }
     });
     // mouse
     bind_input(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE }, []() {
@@ -312,7 +314,6 @@ ImageEntryPtr Gallery::current_entry()
 void Gallery::window_resize(const Size& wnd)
 {
     layout.set_window_size(wnd);
-    AppMode::window_resize(wnd);
 }
 
 void Gallery::window_redraw(Pixmap& wnd)

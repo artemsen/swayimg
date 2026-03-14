@@ -167,6 +167,11 @@ void Application::add_event(const AppEvent::Holder& event)
     event_notify.set();
 }
 
+void Application::subscribe_window_resize(const WindowResizeNotify& cb)
+{
+    wnd_resize_cb.push_back(cb);
+}
+
 ImageEntryPtr Application::il_initialize()
 {
     ImageList& il = ImageList::self();
@@ -380,6 +385,9 @@ void Application::handle_event(const AppEvent::WindowResize& event)
 {
     current_mode()->window_resize(event.size);
     redraw();
+    for (auto& it : wnd_resize_cb) {
+        it();
+    }
 }
 
 void Application::handle_event(const AppEvent::WindowRescale& event)

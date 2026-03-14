@@ -125,6 +125,12 @@ public:
     void hide();
 
     /**
+     * Check if text layer currently displayed.
+     * @return true if layer is visible
+     */
+    bool is_visible() const { return overall_tm.show; }
+
+    /**
      * Set status text.
      * @param msg status message to display
      */

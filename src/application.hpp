@@ -28,6 +28,8 @@ public:
 
     /** File descriptor event handler. */
     using FdEventHandler = std::function<void()>;
+    /** Notification handler that is called when the window is resized. */
+    using WindowResizeNotify = std::function<void()>;
 
     /**
      * Get global instance of the application.
@@ -91,6 +93,12 @@ public:
      */
     void add_event(const AppEvent::Holder& event);
 
+    /**
+     * Subscribe to window resize event.
+     * @param cb event handler
+     */
+    void subscribe_window_resize(const WindowResizeNotify& cb);
+
 private:
     /**
      * Initialize image list.
@@ -150,6 +158,8 @@ public:
 
     /** Initialization complete callback. */
     std::function<void()> on_init_complete = nullptr;
+
+    std::vector<WindowResizeNotify> wnd_resize_cb; ///< Window resize callbacks
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance
