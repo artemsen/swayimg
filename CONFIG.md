@@ -65,8 +65,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.set_foreground](#swayimgtextset_foreground): Set foreground text color
   * [swayimg.text.set_background](#swayimgtextset_background): Set background text color
   * [swayimg.text.set_shadow](#swayimgtextset_shadow): Set shadow text color
-  * [swayimg.text.set_timer](#swayimgtextset_timer): Set a timeout after which the entire text layer will be hidden
-  * [swayimg.text.set_status_timer](#swayimgtextset_status_timer): Set a timeout after which the status message will be hidden
+  * [swayimg.text.set_timout](#swayimgtextset_timout): Set a timeout after which the entire text layer will be hidden
+  * [swayimg.text.set_status_timout](#swayimgtextset_status_timout): Set a timeout after which the status message will be hidden
   * [swayimg.text.set_status](#swayimgtextset_status): Show status message
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
@@ -498,10 +498,10 @@ Setting alpha channel to `0` disables shadows.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
-### swayimg.text.set_timer
+### swayimg.text.set_timout
 
 ```lua
-swayimg.text.set_timer(seconds: number)
+swayimg.text.set_timout(seconds: number)
 ```
 
 Set a timeout after which the entire text layer will be hidden.
@@ -511,10 +511,10 @@ to be displayed continuously.
 
 @_param_ `seconds` - Timeout in seconds
 
-### swayimg.text.set_status_timer
+### swayimg.text.set_status_timout
 
 ```lua
-swayimg.text.set_status_timer(seconds: number)
+swayimg.text.set_status_timout(seconds: number)
 ```
 
 Set a timeout after which the status message will be hidden.
@@ -621,6 +621,15 @@ swayimg.viewer.set_default_scale(scale: number|fixed_scale_t)
 Set default image scale for newly opened images.
 
 @_param_ `scale` - Absolute value (1.0 = 100%) or one the predefined names
+
+`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+* `"optimal"`: 100% or less to fit to window
+* `"width"`: Fit image width to window width
+* `"height"`: Fit image height to window height
+* `"fit"`: Fit to window
+* `"fill"`: Crop image to fill the window
+* `"real"`: Real size (100%)
+* `"keep"`: Keep the same scale as for previously viewed image
 
 ### swayimg.viewer.get_position
 
@@ -766,6 +775,14 @@ swayimg.viewer.set_window_background(bkg: color_t|bkgmode_t)
 Set window background color and mode.
 
 @_param_ `bkg` - Solid color or one of the predefined mode
+
+`color_t`:
+ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+
+`bkgmode_t`, Fixed rotation angles for images in viewer and slideshow modes:
+* `"extend"`: Fill window with the current image and blur it
+* `"mirror"`: Fill window with the mirrored current image and blur it
+* `"auto"`: Fill the window background in `extend` or `mirror` mode depending on the image aspect ratio
 
 ### swayimg.viewer.set_image_background
 
@@ -1047,6 +1064,15 @@ Set default image scale for newly opened images.
 
 @_param_ `scale` - Absolute value (1.0 = 100%) or one the predefined names
 
+`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+* `"optimal"`: 100% or less to fit to window
+* `"width"`: Fit image width to window width
+* `"height"`: Fit image height to window height
+* `"fit"`: Fit to window
+* `"fill"`: Crop image to fill the window
+* `"real"`: Real size (100%)
+* `"keep"`: Keep the same scale as for previously viewed image
+
 ### swayimg.slideshow.get_position
 
 ```lua
@@ -1191,6 +1217,14 @@ swayimg.slideshow.set_window_background(bkg: color_t|bkgmode_t)
 Set window background color and mode.
 
 @_param_ `bkg` - Solid color or one of the predefined mode
+
+`color_t`:
+ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+
+`bkgmode_t`, Fixed rotation angles for images in viewer and slideshow modes:
+* `"extend"`: Fill window with the current image and blur it
+* `"mirror"`: Fill window with the mirrored current image and blur it
+* `"auto"`: Fill the window background in `extend` or `mirror` mode depending on the image aspect ratio
 
 ### swayimg.slideshow.set_image_background
 

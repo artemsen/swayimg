@@ -20,6 +20,8 @@ Text::Text()
 {
     // default settings
 
+    enable = true;
+
     overall_tm.delay = 5000;
     overall_tm.show = true;
 
@@ -132,6 +134,7 @@ void Text::set_status_timer(const size_t timeout)
 
 void Text::show()
 {
+    enable = true;
     overall_tm.show = true;
     overall_tm.fd.reset(overall_tm.delay, 0);
     Application::redraw();
@@ -139,6 +142,7 @@ void Text::show()
 
 void Text::hide()
 {
+    enable = false;
     overall_tm.show = false;
     overall_tm.fd.reset(0, 0);
     Application::redraw();
@@ -199,7 +203,7 @@ void Text::reset(const ImageEntryPtr& entry)
     set_field(FIELD_FILE_TIME, time_buff);
 
     // restart timer
-    if (overall_tm.delay) {
+    if (enable && overall_tm.delay) {
         overall_tm.show = true;
         overall_tm.fd.reset(overall_tm.delay, 0);
     }

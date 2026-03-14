@@ -539,11 +539,11 @@ void LuaEngine::bind_text_api()
                      [](const uint32_t clr) {
                          Text::self().set_shadow(clr);
                      })
-        .addFunction("set_timer",
+        .addFunction("set_timeout",
                      [](const double timeout) {
                          Text::self().set_overall_timer(timeout * 1000);
                      })
-        .addFunction("set_status_timer",
+        .addFunction("set_status_timout",
                      [](const double timeout) {
                          Text::self().set_status_timer(timeout * 1000);
                      })

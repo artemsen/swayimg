@@ -239,6 +239,8 @@ private:
         bool show;    ///< Current state
     };
 
+    bool enable; ///< Enable/disable text layer
+
     HideTimeout overall_tm; ///< Overall show timer
     HideTimeout status_tm;  ///< Status show timer
 
