@@ -23,9 +23,11 @@
 static int compare_strings(const std::string& l, const std::string& r,
                            const bool numeric)
 {
+    static const std::locale loc("");
+    static const std::collate<char>& coll =
+        std::use_facet<std::collate<char>>(loc);
+
     int cmp = 0;
-    const std::locale loc("");
-    const std::collate<char>& coll = std::use_facet<std::collate<char>>(loc);
 
     if (!numeric) {
         cmp = coll.compare(l.data(), l.data() + l.length(), r.data(),
