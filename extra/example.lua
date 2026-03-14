@@ -15,7 +15,7 @@ swayimg.text.set_size(32)
 swayimg.text.set_foreground(0xffff0000)
 
 -- set top left text block scheme for viewer mode
-swayimg.viewer.set_text_tl({
+swayimg.viewer.set_text("topleft", {
   "File: {name}",
   "Format: {format}",
   "File size: {sizehr}",
@@ -26,38 +26,38 @@ swayimg.viewer.set_text_tl({
 
 -- bind the left arrow key to move the image to the left by 1/10 of the application window size
 swayimg.viewer.on_key("Left", function()
-  local w, _ = unpack(swayimg.get_window_size())
-  local x, y = unpack(swayimg.viewer.get_position())
-  swayimg.viewer.set_abs_position(math.floor(x - w / 10), y);
+  local wnd = swayimg.get_window_size()
+  local pos = swayimg.viewer.get_position()
+  swayimg.viewer.set_abs_position(math.floor(pos.x - wnd.width / 10), pos.y);
 end)
 
 -- bind mouse vertical scroll button with pressed Ctrl to zoom in the image at mouse pointer coordinates
 swayimg.viewer.on_mouse("Ctrl-ScrollUp", function()
-  local x, y = unpack(swayimg.get_mouse_pos())
+  local pos = swayimg.get_mouse_pos()
   local scale = swayimg.viewer.get_scale()
   scale = scale + scale / 10
-  swayimg.viewer.set_abs_scale(scale, x, y);
+  swayimg.viewer.set_abs_scale(scale, pos.x, pos.y);
 end)
 
 -- bind the Delete key in slide show mode to delete the current file and display a status message
 swayimg.slideshow.on_key("Delete", function()
-  local image = swayimg.slideshow.current_image()
-  os.remove(image['path'])
-  swayimg.set_status("File "..image["path"].." removed")
+  local image = swayimg.slideshow.get_image()
+  os.remove(image.path)
+  swayimg.text.set_status("File "..image.path.." removed")
 end)
 
 -- set a custom window title in gallery mode
-swayimg.gallery.on_change_image(function()
-  local image = swayimg.gallery.current_image()
-  swayimg.set_title("Gallery: "..image['path'])
+swayimg.gallery.on_image_change(function()
+  local image = swayimg.gallery.get_image()
+  swayimg.set_title("Gallery: "..image.path)
 end)
 
 -- print paths to all marked files by pressing Ctrl-p in gallery mode
 swayimg.gallery.on_key("Ctrl-p", function()
   local entries = swayimg.imagelist.get()
   for _, entry in ipairs(entries) do
-    if entry['mark'] then
-        print(entry['path'])
+    if entry.mark then
+        print(entry.path)
     end
   end
 end)
