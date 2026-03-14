@@ -29,6 +29,8 @@ jobs:
           googletest
         run: |
           set -e
+          export LANG=ru_RU.UTF-8
+          export MM_CHARSET=UTF-8
           meson setup -D tests=enabled -D compositor=enabled -D wayland=enabled -D drm=enabled -D man=true -D desktop=true -D bash=enabled -D zsh=enabled -D exif=enabled -D exr=enabled -D gif=enabled -D heif=auto -D jpeg=enabled -D jxl=enabled -D raw=enabled -D sixel=enabled -D svg=enabled -D webp=enabled --prefix=/usr --werror ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           meson test --verbose -C ${{ env.BUILD_PATH }}

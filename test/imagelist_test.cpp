@@ -150,6 +150,36 @@ TEST(ImageListTest, SortAlpha)
     EXPECT_ILEQ(il, paths);
 }
 
+TEST(ImageListTest, SortAlphaUnicode)
+{
+    ImageList il;
+    il.set_order(ImageList::Order::Alpha);
+    il.set_reverse(false);
+
+    const std::vector<std::filesystem::path> paths = {
+        /* 0 */ "exec://a",
+        /* 1 */ "exec://b",
+        /* 2 */ "exec://е",
+        /* 3 */ "exec://ё",
+        /* 4 */ "exec://ж",
+        /* 5 */ "exec://я",
+    };
+    ImageEntryPtr entry = il.load({
+        paths[2],
+        paths[0],
+        paths[5],
+        paths[3],
+        paths[4],
+        paths[1],
+    });
+
+    ASSERT_TRUE(entry);
+    EXPECT_TRUE(*entry);
+    EXPECT_NE(entry->index, 0UL);
+    EXPECT_EQ(entry->path, paths[2]);
+    EXPECT_ILEQ(il, paths);
+}
+
 TEST(ImageListTest, SortAlphaReverse)
 {
     ImageList il;

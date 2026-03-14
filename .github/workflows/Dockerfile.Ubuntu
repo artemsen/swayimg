@@ -24,8 +24,12 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libwebp-dev \
     libxkbcommon-dev \
     libluajit-5.1-dev \
+    locales \
     meson \
     pkg-config \
     wayland-protocols
+
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 USER ubuntu

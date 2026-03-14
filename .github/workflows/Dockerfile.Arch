@@ -25,6 +25,9 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     wayland \
     wayland-protocols
 
+RUN sed -e 's/^#\(en_US.UTF-8*\)/\1/' -i /etc/locale.gen && locale-gen
+ENV LANG=en_US.UTF-8
+
 RUN useradd --create-home builder
 
 ENV USER=builder

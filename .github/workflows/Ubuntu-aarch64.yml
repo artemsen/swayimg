@@ -44,12 +44,15 @@ jobs:
           libwayland-dev
           libwebp-dev
           libxkbcommon-dev
+          locales
           meson
           pkg-config
           wayland-protocols
 
         run: |
           set -e
+          locale-gen en_US.UTF-8
+          export LANG=en_US.UTF-8
           meson setup --werror -D tests=enabled -D heif=enabled -D bash=enabled -D exif=enabled -D exr=auto -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
           meson compile -C ${{ env.BUILD_PATH }}
           meson test --verbose -C ${{ env.BUILD_PATH }}
