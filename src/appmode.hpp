@@ -113,7 +113,7 @@ public:
      * Check if current mode is active.
      * @return true if current mode is active
      */
-    bool is_active() const;
+    [[nodiscard]] bool is_active() const;
 
     /**
      * Subscribe to the image switch event.

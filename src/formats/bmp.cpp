@@ -86,10 +86,10 @@ private:
      * @param val source value
      * @return number of zero bits
      */
-    constexpr size_t right_zeros(const uint32_t val) const
+    [[nodiscard]] constexpr size_t right_zeros(const uint32_t val) const
     {
         size_t count = sizeof(uint32_t) * BITS_PER_BYTE;
-        const size_t value = val & -(int32_t)val;
+        const size_t value = val & -static_cast<int32_t>(val);
         if (value) {
             --count;
         }
@@ -116,7 +116,7 @@ private:
      * @param val source value
      * @return number of bits set
      */
-    constexpr size_t bits_set(const uint32_t val) const
+    [[nodiscard]] constexpr size_t bits_set(const uint32_t val) const
     {
         size_t bits = val - ((val >> 1) & 0x55555555);
         bits = (bits & 0x33333333) + ((bits >> 2) & 0x33333333);
@@ -128,7 +128,7 @@ private:
      * @param val color channel mask
      * @return shift size: positive=right, negative=left
      */
-    constexpr ssize_t mask_shift(const uint32_t mask) const
+    [[nodiscard]] constexpr ssize_t mask_shift(const uint32_t mask) const
     {
         const ssize_t start = right_zeros(mask) + bits_set(mask);
         return start - BITS_PER_BYTE;
@@ -171,9 +171,9 @@ private:
                 const uint8_t* src = src_y + x * (bmp.bpp / BITS_PER_BYTE);
                 uint32_t m, r, g, b, a;
                 if (bmp.bpp == 32) {
-                    m = *(uint32_t*)src;
+                    m = *reinterpret_cast<const uint32_t*>(src);
                 } else if (bmp.bpp == 16) {
-                    m = *(uint16_t*)src;
+                    m = *reinterpret_cast<const uint16_t*>(src);
                 } else {
                     return false;
                 }
@@ -413,7 +413,7 @@ public:
             Mask mask {};
             const uint32_t* mask_location;
             if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
-                mask_location = (const uint32_t*)(bmp + 1);
+                mask_location = reinterpret_cast<const uint32_t*>(bmp + 1);
             } else {
                 mask_location =
                     (color_data_sz >= 3 * sizeof(uint32_t) ? color_data

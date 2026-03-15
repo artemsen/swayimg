@@ -52,7 +52,7 @@ public:
      * @param path path to write the file
      * @return true on success
      */
-    bool save(const std::filesystem::path& path) const;
+    [[nodiscard]] bool save(const std::filesystem::path& path) const;
 
     /**
      * Free pixmap.
@@ -63,25 +63,25 @@ public:
      * Get pixmap width.
      * @return pixmap width in pixels
      */
-    inline size_t width() const { return pm_width; }
+    [[nodiscard]] inline size_t width() const { return pm_width; }
 
     /**
      * Get pixmap height.
      * @return pixmap height in pixels
      */
-    inline size_t height() const { return pm_height; }
+    [[nodiscard]] inline size_t height() const { return pm_height; }
 
     /**
      * Get stride (size of a sinlow line in bytes).
      * @return stride size in bytes
      */
-    inline size_t stride() const { return pm_stride; }
+    [[nodiscard]] inline size_t stride() const { return pm_stride; }
 
     /**
      * Get pixmap format.
      * @return pixmap format
      */
-    inline Format format() const { return pm_format; }
+    [[nodiscard]] inline Format format() const { return pm_format; }
 
     /**
      * Check if there is data in the pixmap.
@@ -120,7 +120,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return pointer to the pixel
      */
-    inline const void* ptr(const size_t x, const size_t y) const
+    [[nodiscard]] inline const void* ptr(const size_t x, const size_t y) const
     {
         assert(x < pm_width);
         assert(y < pm_height);
@@ -134,7 +134,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return reference to the pixel
      */
-    inline argb_t& at(const size_t x, const size_t y)
+    [[nodiscard]] inline argb_t& at(const size_t x, const size_t y)
     {
         assert(format() == Format::RGB || format() == Format::ARGB);
         return *reinterpret_cast<argb_t*>(ptr(x, y));
@@ -145,7 +145,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return const reference to the pixel
      */
-    inline const argb_t& at(const size_t x, const size_t y) const
+    [[nodiscard]] inline const argb_t& at(const size_t x, const size_t y) const
     {
         assert(format() == Format::RGB || format() == Format::ARGB);
         return *reinterpret_cast<const argb_t*>(ptr(x, y));

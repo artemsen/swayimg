@@ -70,8 +70,8 @@ bool UiDrm::FrameBuffer::create(const int fd, const Size& sz)
     }
 
     // create memory map
-    data = mmap(0, dumb_create.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
-                dumb_map.offset);
+    data = mmap(nullptr, dumb_create.size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                fd, dumb_map.offset);
     if (data == MAP_FAILED) {
         Log::error(errno, "Unable to create mmap");
         return false;

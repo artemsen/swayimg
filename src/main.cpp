@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
     }
 
     for (int i = argn; i < argc; ++i) {
-        Application::self().sparams.sources.push_back(argv[i]);
+        Application::self().sparams.sources.emplace_back(argv[i]);
     }
 
     return Application::self().run();

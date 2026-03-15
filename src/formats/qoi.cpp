@@ -108,9 +108,9 @@ public:
                     } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
                         pixel = color_map[tag & 0x3f];
                     } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
-                        pixel.r += (int8_t)((tag >> 4) & 3) - 2;
-                        pixel.g += (int8_t)((tag >> 2) & 3) - 2;
-                        pixel.b += (int8_t)(tag & 3) - 2;
+                        pixel.r += static_cast<int8_t>((tag >> 4) & 3) - 2;
+                        pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
+                        pixel.b += static_cast<int8_t>(tag & 3) - 2;
                     } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
                         uint8_t diff;
                         int8_t diff_green;
@@ -118,7 +118,7 @@ public:
                             return false;
                         }
                         diff = data[pos++];
-                        diff_green = (int8_t)(tag & 0x3f) - 32;
+                        diff_green = static_cast<int8_t>(tag & 0x3f) - 32;
                         pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
                         pixel.g += diff_green;
                         pixel.b += diff_green - 8 + (diff & 0x0f);

@@ -496,7 +496,7 @@ struct ColorAccum {
      * @param weight weight of the components
      * @return ARGB color
      */
-    inline argb_t argb(const double weight) const
+    [[nodiscard]] inline argb_t argb(const double weight) const
     {
         const argb_t::channel cr =
             std::clamp(r * weight, static_cast<double>(argb_t::min),
@@ -507,7 +507,7 @@ struct ColorAccum {
         const argb_t::channel cb =
             std::clamp(b * weight, static_cast<double>(argb_t::min),
                        static_cast<double>(argb_t::max));
-        return argb_t(argb_t::max, cr, cg, cb);
+        return { argb_t::max, cr, cg, cb };
     }
 
     double r, g, b;
@@ -626,8 +626,8 @@ static void apply(Pixmap& pm, const Rectangle& exclude, ThreadPool& tpool)
 
     // multi-pass blur filter
     auto blur_fn = [](Pixmap& pm) {
-        for (size_t i = 0; i < BLUR_SIZE; ++i) {
-            const size_t radius = (blur_box[i] - 1) / 2;
+        for (const size_t i : blur_box) {
+            const size_t radius = (i - 1) / 2;
             apply_hor(pm, radius);
             apply_ver(pm, radius);
         }

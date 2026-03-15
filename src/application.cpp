@@ -149,12 +149,12 @@ AppMode* Application::current_mode()
 
 void Application::add_fdpoll(int fd, const FdEventHandler& handler)
 {
-    fds.push_back(std::make_pair(fd, handler));
+    fds.emplace_back(fd, handler);
 }
 
 void Application::add_event(const AppEvent::Holder& event)
 {
-    const std::lock_guard lock(event_mutex);
+    const std::scoped_lock lock(event_mutex);
 
     // check if redraw event already exists
     const bool has_redraw = !event_queue.empty() &&

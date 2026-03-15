@@ -9,6 +9,7 @@
 #include <fontconfig/fontconfig.h>
 
 #include <memory>
+#include <utility>
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)
@@ -134,7 +135,7 @@ Pixmap Font::render(const std::string& text) const
     // convert text to wide-character string
     std::wstring wide(len + 1, 0);
     len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
-    if (len == static_cast<size_t>(-1)) {
+    if (std::cmp_equal(len, -1)) {
         abort();
         return {};
     }

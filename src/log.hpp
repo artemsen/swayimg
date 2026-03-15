@@ -104,7 +104,7 @@ public:
          * Get elapsed time in seconds.
          * @return elapsed time
          */
-        float time() const
+        [[nodiscard]] float time() const
         {
             if (begin_time.tv_sec || begin_time.tv_nsec) {
                 timespec end_time;

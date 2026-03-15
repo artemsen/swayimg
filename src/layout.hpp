@@ -61,13 +61,13 @@ public:
      * Get number of columns in layout scheme.
      * @return number of columns
      */
-    inline size_t get_columns() const { return columns; }
+    [[nodiscard]] inline size_t get_columns() const { return columns; }
 
     /**
      * Get number of rows in layout scheme.
      * @return number of rows
      */
-    inline size_t get_rows() const { return rows; }
+    [[nodiscard]] inline size_t get_rows() const { return rows; }
 
     /**
      * Set currently selected thumbnail.
@@ -94,19 +94,19 @@ public:
      * @param pos position within the layout (window)
      * @return thumbnail description or nullptr if not thumbnail not exists
      */
-    const Thumbnail* at(const Point& pos) const;
+    [[nodiscard]] const Thumbnail* at(const Point& pos) const;
 
     /**
      * Get currently selected thumbnail.
      * @return currently selected thumbnail
      */
-    ImageEntryPtr get_selected() const;
+    [[nodiscard]] ImageEntryPtr get_selected() const;
 
     /**
      * Get layout scheme.
      * @return array with thumbnails layout description
      */
-    const std::vector<Thumbnail>& get_scheme() const;
+    [[nodiscard]] const std::vector<Thumbnail>& get_scheme() const;
 
 private:
     size_t thumb_size = 200;       ///< Size of thumbnail in pixels

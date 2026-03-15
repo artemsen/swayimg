@@ -71,7 +71,7 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
                 value.erase(0, 1);
             }
         }
-        block.data.push_back({ Line(key), Line(value) });
+        block.data.emplace_back(Line(std::move(key)), Line(std::move(value)));
     }
 }
 

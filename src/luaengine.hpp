@@ -55,7 +55,8 @@ private:
      * @param entry image entry to convert
      * @return Lua table object
      */
-    luabridge::LuaRef entry_to_table(const ImageEntry& entry) const;
+    [[nodiscard]] luabridge::LuaRef
+    entry_to_table(const ImageEntry& entry) const;
 
     /**
      * Add reference to Lua object.

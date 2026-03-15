@@ -139,7 +139,7 @@ static void read_exif(ImagePtr& image, const std::vector<uint8_t>& data)
         // read EXIF data
         Exiv2::Image::UniquePtr eimg =
             Exiv2::ImageFactory::open(data.data(), data.size());
-        if (eimg.get() == 0) {
+        if (!eimg) {
             return;
         }
         eimg->readMetadata();

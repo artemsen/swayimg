@@ -19,7 +19,7 @@
 /** DRM based user interface. */
 class UiDrm : public Ui {
 public:
-    ~UiDrm();
+    ~UiDrm() override;
 
     /**
      * Initialize DRM UI.

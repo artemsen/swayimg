@@ -54,5 +54,5 @@ public:
      * Get the remaining time.
      * @return remaining time in milliseconds, 0 if stopped
      */
-    size_t remain(int fd) const;
+    [[nodiscard]] size_t remain(int fd) const;
 };

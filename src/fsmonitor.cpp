@@ -60,7 +60,8 @@ void FsMonitor::initialize()
                     break; // something went wrong
                 }
                 ssize_t pos = 0;
-                while (pos + sizeof(struct inotify_event) <= (size_t)len) {
+                while (pos + sizeof(struct inotify_event) <=
+                       static_cast<size_t>(len)) {
                     const inotify_event* event =
                         reinterpret_cast<const inotify_event*>(&buffer[pos]);
                     handle_event(event);

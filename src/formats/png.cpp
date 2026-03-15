@@ -62,7 +62,6 @@ class PngObject {
 public:
     PngObject(const bool rm)
         : read_mode(rm)
-        , info(nullptr)
     {
         if (read_mode) {
             png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
@@ -91,8 +90,8 @@ public:
     operator png_info*() { return info; }
 
     bool read_mode;
-    png_struct* png;
-    png_info* info;
+    png_struct* png = nullptr;
+    png_info* info = nullptr;
 };
 
 /* Portable Network Graphics (PNG) image. */
@@ -105,7 +104,7 @@ private:
      */
     static std::vector<png_bytep> bind_pixmap(Pixmap& pm)
     {
-        std::vector<png_bytep> pbind(pm.height(), 0);
+        std::vector<png_bytep> pbind(pm.height(), nullptr);
         for (size_t i = 0; i < pm.height(); ++i) {
             pbind[i] = reinterpret_cast<png_bytep>(&pm.at(0, i));
         }
@@ -340,7 +339,7 @@ std::vector<uint8_t> encode(const Pixmap& pm)
     }
 
     // bind pixmap
-    std::vector<png_bytep> bind(pm.height(), 0);
+    std::vector<png_bytep> bind(pm.height(), nullptr);
     for (size_t i = 0; i < pm.height(); ++i) {
         bind[i] =
             reinterpret_cast<png_bytep>(const_cast<argb_t*>(&pm.at(0, i)));

@@ -24,7 +24,7 @@ public:
      * Get currently focused window position and size.
      * @return currently focused window position and size
      */
-    Rectangle get_focus() const;
+    [[nodiscard]] Rectangle get_focus() const;
 
     /**
      * Set rules to create overlay (floating) window.

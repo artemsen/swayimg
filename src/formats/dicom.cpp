@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <limits>
+#include <utility>
 
 // register format in factory
 class ImageDicom;
@@ -202,7 +203,8 @@ private:
         }
 
         return image.data && image.height && image.width &&
-            image.data_sz == image.width * image.height * (image.bpp / 8);
+            std::cmp_equal(image.data_sz,
+                           image.width * image.height * (image.bpp / 8));
     }
 
 public:

@@ -7,6 +7,7 @@
 #include "imagelist.hpp"
 
 #include <cassert>
+#include <utility>
 
 void Layout::update()
 {
@@ -181,7 +182,7 @@ bool Layout::select(const Direction dir)
     if (next) {
         if (col < 0) {
             --row;
-        } else if (col >= static_cast<ssize_t>(columns)) {
+        } else if (std::cmp_greater_equal(col, columns)) {
             ++row;
         }
         if (row < 0) {

@@ -17,9 +17,9 @@ public:
     Slideshow();
 
     // app mode interface implementation
-    virtual void initialize() override;
-    virtual void activate(const ImageEntryPtr& entry, const Size& wnd) override;
-    virtual void deactivate() override;
+    void initialize() override;
+    void activate(const ImageEntryPtr& entry, const Size& wnd) override;
+    void deactivate() override;
 
 public:
     size_t duration = 5000; ///< Image display time (ms)

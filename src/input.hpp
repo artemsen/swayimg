@@ -22,7 +22,7 @@ struct InputKeyboard {
      * Get key combination description.
      * @return text description of key combination
      */
-    std::string to_string() const;
+    [[nodiscard]] std::string to_string() const;
 
     /** Compare operator. */
     bool operator<(const InputKeyboard& other) const;
@@ -49,7 +49,7 @@ struct InputMouse {
      * Get buttons combination description.
      * @return text description of buttons combination
      */
-    std::string to_string() const;
+    [[nodiscard]] std::string to_string() const;
 
     /** Compare operator. */
     bool operator<(const InputMouse& other) const;
@@ -91,7 +91,7 @@ struct InputSignal {
      * Get signal description.
      * @return text description of signal
      */
-    std::string to_string() const;
+    [[nodiscard]] std::string to_string() const;
 
     /** Compare operator. */
     bool operator<(const InputSignal& other) const;

@@ -621,7 +621,7 @@ bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
         return true; // reuse existing
     }
 
-    const std::lock_guard lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     destroy();
 
@@ -648,7 +648,7 @@ bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
     }
 
     // get data pointer of the shared mem
-    void* data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    void* data = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
         Log::error(errno, "Unable to map shared file {}", path);
         return false;

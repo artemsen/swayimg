@@ -25,7 +25,7 @@
 /** Generic Wayland object. */
 template <typename T> struct WaylandObject {
 public:
-    typedef void (*fn_destroy)(T*);
+    using fn_destroy = void (*)(T*);
 
     WaylandObject(fn_destroy fn)
         : destroy(fn)

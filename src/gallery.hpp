@@ -47,7 +47,10 @@ public:
      * Set thumbnail size.
      * @param size new thumbnail size in pixels
      */
-    size_t get_thumb_size() const { return layout.get_thumb_size(); }
+    [[nodiscard]] inline size_t get_thumb_size() const
+    {
+        return layout.get_thumb_size();
+    }
 
     /**
      * Set thumbnail size.
@@ -176,7 +179,7 @@ private:
      * @param entry image entry for thumbnail
      * @return pixmap with thumbnail
      */
-    Pixmap pstore_load(const ImageEntryPtr& entry) const;
+    [[nodiscard]] Pixmap pstore_load(const ImageEntryPtr& entry) const;
 
     /**
      * Save thumbnail on persistent storage.

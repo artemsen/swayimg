@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <memory>
+#include <utility>
 
 // register format in factory
 class ImageHeif;
@@ -77,7 +78,7 @@ public:
                                                                   : Pixmap::RGB,
                   heif_image_get_primary_width(himg.get()),
                   heif_image_get_primary_height(himg.get()));
-        if (stride == static_cast<int>(pm.stride())) {
+        if (std::cmp_equal(stride, pm.stride())) {
             std::memcpy(pm.ptr(0, 0), decoded, pm.stride() * pm.height());
         } else {
             for (size_t y = 0; y < pm.height(); ++y) {

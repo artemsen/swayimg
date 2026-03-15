@@ -7,6 +7,7 @@
 #include <sixel.h>
 
 #include <cstdlib>
+#include <utility>
 
 // register format in factory
 class ImageSixel;
@@ -47,7 +48,7 @@ public:
                 argb_t& dst = pm.at(x, y);
                 dst.a = argb_t::max;
                 const uint8_t color = pixels[y * width + x];
-                if (color <= ncolors) {
+                if (std::cmp_less_equal(color, ncolors)) {
                     const uint8_t* rgb = &palette[color * 3];
                     dst.r = rgb[0];
                     dst.g = rgb[1];

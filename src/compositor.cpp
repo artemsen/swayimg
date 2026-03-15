@@ -83,8 +83,8 @@ public:
         size_t read = 0;
 
         while (read < size) {
-            const ssize_t rc =
-                recv(fd, ((uint8_t*)buffer) + read, size - read, 0);
+            const ssize_t rc = recv(
+                fd, reinterpret_cast<uint8_t*>(buffer) + read, size - read, 0);
             if (rc == 0) {
                 break;
             }
@@ -115,7 +115,7 @@ public:
                 return false;
             }
             len -= written;
-            buf = ((uint8_t*)buf) + written;
+            buf = reinterpret_cast<const uint8_t*>(buf) + written;
         }
         return true;
     }
@@ -198,7 +198,7 @@ public:
                         getpid(), wnd.x, wnd.y),
         };
         for (const auto& it : rules) {
-            ipc.request(RunCommand, it);
+            std::ignore = ipc.request(RunCommand, it);
         }
 
         return true;
@@ -241,7 +241,8 @@ private:
      * @param payload payload data
      * @return response as JSON object
      */
-    json request(IpcType mt, const std::string& payload) const
+    [[nodiscard]] const json request(IpcType mt,
+                                     const std::string& payload) const
     {
         IpcHeader header;
         std::memcpy(header.magic, ipc_magic, sizeof(ipc_magic));
@@ -278,7 +279,7 @@ private:
      * @param node parent JSON node
      * @return pointer to focused window node
      */
-    const json find_focused(const json& node) const
+    [[nodiscard]] const json find_focused(const json& node) const
     {
         if (node.contains("focused")) {
             const auto& focused = node["focused"];
@@ -311,7 +312,7 @@ private:
      * @param node JSON node
      * @return rectangle geometry
      */
-    Rectangle get_rect(const json& node) const
+    [[nodiscard]] Rectangle get_rect(const json& node) const
     {
         Rectangle rect;
 

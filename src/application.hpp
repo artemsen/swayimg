@@ -72,7 +72,7 @@ public:
      * Switch mode (viewer/slideshow/gallery).
      * @param mode mode to set
      */
-    Mode get_mode() const { return active_mode; }
+    [[nodiscard]] Mode get_mode() const { return active_mode; }
 
     /**
      * Get currently active application mode instance.

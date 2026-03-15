@@ -55,7 +55,7 @@ protected:
         return nullptr;
     }
 
-    std::tuple<size_t, size_t> GetSelection() const
+    [[nodiscard]] std::tuple<size_t, size_t> GetSelection() const
     {
         for (auto& it : layout.get_scheme()) {
             if (it.img == layout.get_selected()) {

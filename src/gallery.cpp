@@ -14,6 +14,9 @@
 
 #include <sys/stat.h>
 
+#include <array>
+#include <utility>
+
 // Limits for thumbnail size and other parameters
 constexpr size_t THIMB_SIZE_MIN = 10;
 constexpr size_t THIMB_SIZE_MAX = 10000;
@@ -30,29 +33,27 @@ constexpr size_t THUMB_LOAD_THREADS = 4;
  */
 std::filesystem::path pstore_defpath()
 {
-    const std::pair<const char*, const char*> env_paths[] = {
-        { "XDG_CACHE_HOME", "swayimg"        },
-        { "HOME",           ".cache/swayimg" }
-    };
+    static constexpr std::array env_paths =
+        std::to_array<std::pair<const char*, const char*>>({
+            { "XDG_CACHE_HOME", "swayimg"        },
+            { "HOME",           ".cache/swayimg" }
+    });
 
-    for (size_t i = 0; i < sizeof(env_paths) / sizeof(env_paths[0]); ++i) {
+    for (auto [env_name, postfix] : env_paths) {
         std::filesystem::path path;
-
-        const char* env = env_paths[i].first;
-        if (env) {
-            env = std::getenv(env);
-            if (!env) {
-                continue;
-            }
-            // use only the first directory if prefix is a list
-            const char* delim = strchr(env, ':');
-            if (!delim) {
-                path = env;
-            } else {
-                path = std::string(env, delim - 1);
-            }
+        const char* env = std::getenv(env_name);
+        if (!env) {
+            continue;
         }
-        path /= env_paths[i].second;
+        // use only the first directory if prefix is a list
+        const char* delim = strchr(env, ':');
+        if (!delim) {
+            path = env;
+        } else {
+            path = std::string(env, delim - 1);
+        }
+
+        path /= postfix;
 
         return std::filesystem::absolute(path).lexically_normal();
     }
@@ -359,7 +360,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
 {
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
-        const std::lock_guard lock(mutex);
+        const std::scoped_lock lock(mutex);
         auto it = std::find_if(cache.begin(), cache.end(),
                                [&entry](const ThumbEntry& thumb) {
                                    return entry == thumb.entry;
@@ -383,7 +384,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
 
 void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 {
-    const std::lock_guard lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     const bool selected = (tlay.img == layout.get_selected());
     const Size wnd_size = wnd;
@@ -404,13 +405,13 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
         if (tile.x + tile.width + border_size > wnd_size.width) {
             tile.x = wnd_size.width - tile.width - border_size;
         }
-        if (tile.x < static_cast<ssize_t>(border_size)) {
+        if (std::cmp_less(tile.x, border_size)) {
             tile.x = border_size;
         }
         if (tile.y + tile.height + border_size > wnd_size.height) {
             tile.y = wnd_size.height - tile.height - border_size;
         }
-        if (tile.y < static_cast<ssize_t>(border_size)) {
+        if (std::cmp_less(tile.y, border_size)) {
             tile.y = border_size;
         }
     }
@@ -479,7 +480,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
 void Gallery::load_thumbnails()
 {
-    const std::lock_guard lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     tpool.cancel();
     queue.clear();
@@ -533,7 +534,7 @@ void Gallery::load_thumbnails()
 
 void Gallery::clear_thumbnails()
 {
-    const std::lock_guard lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
 
@@ -563,7 +564,7 @@ const Pixmap* Gallery::get_thumbnail(const ImageEntryPtr& entry)
 void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
-        const std::lock_guard lock(mutex);
+        const std::scoped_lock lock(mutex);
         active.insert(entry);
         queue.erase(entry);
     }
@@ -604,7 +605,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
         }
     }
 
-    const std::lock_guard lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     if (thumb.pm) {
         thumb.entry = entry;
@@ -649,5 +650,5 @@ void Gallery::pstore_save(const ImageEntryPtr& entry, const Pixmap& thumb) const
     std::filesystem::path thumb_path = pstore_path;
     thumb_path.concat(entry->path.string());
     std::filesystem::create_directories(thumb_path.parent_path());
-    thumb.save(thumb_path);
+    std::ignore = thumb.save(thumb_path);
 }

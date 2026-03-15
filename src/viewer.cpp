@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <format>
+#include <utility>
 
 /** Max scale factor. */
 constexpr double MAX_SCALE = 100.0;
@@ -205,8 +206,8 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     ImagePtr next_image = nullptr;
 
     {
-        // get file form history/preload cache
-        const std::lock_guard lock(image_pool.mutex);
+        // get file from history/preload cache
+        const std::scoped_lock lock(image_pool.mutex);
         next_image = image_pool.preload.get(next_entry);
         if (!next_image) {
             next_image = image_pool.history.get(next_entry);
@@ -229,7 +230,7 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     if (next_image) {
         // put to history
         if (image) {
-            const std::lock_guard lock(image_pool.mutex);
+            const std::scoped_lock lock(image_pool.mutex);
             image_pool.history.put(image);
         }
 
@@ -262,7 +263,9 @@ size_t Viewer::prev_frame()
 void Viewer::export_frame(const std::filesystem::path& path) const
 {
     const Pixmap& pm = image->frames[frame_index].pm;
-    pm.save(path);
+    if (!pm.save(path)) {
+        Text::self().set_status("Failed to export image");
+    }
 }
 
 void Viewer::set_scale(const Scale sc)
@@ -694,7 +697,7 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 {
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
-        const std::lock_guard lock(image_pool.mutex);
+        const std::scoped_lock lock(image_pool.mutex);
         image_pool.history.get(entry);
         image_pool.preload.get(entry);
     }
@@ -750,7 +753,7 @@ void Viewer::preloader_start()
             }
             if (!next_entry || next_entry == last_entry) {
                 // no more images to preload
-                const std::lock_guard lock(image_pool.mutex);
+                const std::scoped_lock lock(image_pool.mutex);
                 image_pool.preload.trim(counter);
                 break;
             }
@@ -759,7 +762,7 @@ void Viewer::preloader_start()
 
             // get existing image form history/preload cache
             {
-                const std::lock_guard lock(image_pool.mutex);
+                const std::scoped_lock lock(image_pool.mutex);
                 next_image = image_pool.preload.get(next_entry);
                 if (!next_image) {
                     next_image = image_pool.history.get(next_entry);
@@ -776,7 +779,7 @@ void Viewer::preloader_start()
             } else {
                 Log::verbose("Put image {} to cache",
                              next_entry->path.filename().string());
-                const std::lock_guard lock(image_pool.mutex);
+                const std::scoped_lock lock(image_pool.mutex);
                 image_pool.preload.put(next_image);
                 last_entry = next_image->entry;
                 ++counter;
@@ -797,13 +800,13 @@ void Viewer::fixup_position()
         if (position.x + static_cast<ssize_t>(scaled.width) < 0) {
             position.x = -static_cast<ssize_t>(scaled.width);
         }
-        if (position.x > static_cast<ssize_t>(window_size.width)) {
+        if (std::cmp_greater(position.x, window_size.width)) {
             position.x = window_size.width;
         }
         if (position.y + static_cast<ssize_t>(scaled.height) < 0) {
             position.y = -static_cast<ssize_t>(scaled.height);
         }
-        if (position.y > static_cast<ssize_t>(window_size.height)) {
+        if (std::cmp_greater(position.y, window_size.height)) {
             position.y = window_size.height;
         }
     } else {
@@ -813,12 +816,10 @@ void Viewer::fixup_position()
         } else {
             // prevent going outside the window
             const ssize_t right = position.x + scaled.width;
-            if (position.x > 0 &&
-                right > static_cast<ssize_t>(window_size.width)) {
+            if (position.x > 0 && std::cmp_greater(right, window_size.width)) {
                 position.x = 0;
             }
-            if (position.x < 0 &&
-                right < static_cast<ssize_t>(window_size.width)) {
+            if (position.x < 0 && std::cmp_less(right, window_size.width)) {
                 position.x = window_size.width - scaled.width;
             }
         }
@@ -830,11 +831,10 @@ void Viewer::fixup_position()
             // prevent going outside the window
             const ssize_t bottom = position.y + scaled.height;
             if (position.y > 0 &&
-                bottom > static_cast<ssize_t>(window_size.height)) {
+                std::cmp_greater(bottom, window_size.height)) {
                 position.y = 0;
             }
-            if (position.y < 0 &&
-                bottom < static_cast<ssize_t>(window_size.height)) {
+            if (position.y < 0 && std::cmp_less(bottom, window_size.height)) {
                 position.y = window_size.height - scaled.height;
             }
         }

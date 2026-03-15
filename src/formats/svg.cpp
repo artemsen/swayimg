@@ -13,10 +13,7 @@
 #include <cstring>
 #include <format>
 #include <memory>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include <numbers>
 
 // register format in factory
 class ImageSvg;
@@ -65,7 +62,7 @@ private:
      * Get canvas size.
      * @return output canvas rectangle
      */
-    RsvgRectangle get_canvas() const
+    [[nodiscard]] RsvgRectangle get_canvas() const
     {
         RsvgRectangle canvas {};
 
@@ -172,7 +169,7 @@ private:
     }
 
 public:
-    ~ImageSvg()
+    ~ImageSvg() override
     {
         if (svg) {
             g_object_unref(svg);
@@ -232,7 +229,8 @@ public:
 
             if (svg_rotation) {
                 cairo_rotate(cairo.get(),
-                             static_cast<double>(svg_rotation) * M_PI / 180.0);
+                             static_cast<double>(svg_rotation) *
+                                 std::numbers::pi / 180.0);
                 if (svg_rotation == 90 || svg_rotation == 270) {
                     // rescale to match landscape viewbox size
                     const double scale =

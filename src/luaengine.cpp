@@ -179,19 +179,19 @@ static void show_error(const std::format_string<Args...> fmt, Args&&... args)
  */
 static std::filesystem::path get_config_file()
 {
-    const std::pair<const char*, const char*> env_paths[] = {
-        { "XDG_CONFIG_HOME", "swayimg"          },
-        { "XDG_CONFIG_DIRS", "swayimg"          },
-        { "HOME",            ".config/swayimg"  },
-        { nullptr,           "/etc/xdg/swayimg" }
-    };
+    static constexpr std::array env_paths =
+        std::to_array<std::pair<const char*, const char*>>({
+            { "XDG_CONFIG_HOME", "swayimg"          },
+            { "XDG_CONFIG_DIRS", "swayimg"          },
+            { "HOME",            ".config/swayimg"  },
+            { nullptr,           "/etc/xdg/swayimg" }
+    });
 
-    for (size_t i = 0; i < sizeof(env_paths) / sizeof(env_paths[0]); ++i) {
+    for (auto [env_name, postfix] : env_paths) {
         std::filesystem::path path;
 
-        const char* env = env_paths[i].first;
-        if (env) {
-            env = std::getenv(env);
+        if (env_name) {
+            const char* env = std::getenv(env_name);
             if (!env) {
                 continue;
             }
@@ -203,7 +203,7 @@ static std::filesystem::path get_config_file()
                 path = std::string(env, delim - 1);
             }
         }
-        path /= env_paths[i].second;
+        path /= postfix;
         path /= "init.lua";
 
         if (std::filesystem::exists(path)) {

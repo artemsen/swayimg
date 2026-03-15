@@ -25,10 +25,16 @@ private:
 
     // Both assume positive arguments and evaluate b more than once
     // Divide, rounding to nearest (up on ties)
-    constexpr int div_near(int a, int b) const { return ((a) + (b) / 2) / (b); }
+    [[nodiscard]] constexpr int div_near(int a, int b) const
+    {
+        return ((a) + (b) / 2) / (b);
+    }
 
     // Divide, rounding up
-    constexpr int div_ceil(int a, int b) const { return ((a) + (b)-1) / (b); }
+    [[nodiscard]] constexpr int div_ceil(int a, int b) const
+    {
+        return ((a) + (b)-1) / (b);
+    }
 
     // PNM file types
     enum Type : uint8_t {

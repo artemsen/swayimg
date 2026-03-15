@@ -84,13 +84,13 @@ struct Rectangle : public Point, public Size {
      * @param other rectangle for intersection calculation
      * @return intersection description
      */
-    Rectangle intersect(const Rectangle& other) const;
+    [[nodiscard]] Rectangle intersect(const Rectangle& other) const;
 
     /**
      * Cut out area from rectangle.
      * @param cut rectangle to cut out
      * @return tuple with rest parts: top, bottom, left, right
      */
-    std::tuple<Rectangle, Rectangle, Rectangle, Rectangle>
+    [[nodiscard]] std::tuple<Rectangle, Rectangle, Rectangle, Rectangle>
     cutout(const Rectangle& cut) const;
 };

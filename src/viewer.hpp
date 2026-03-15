@@ -68,7 +68,7 @@ public:
      * Get currently showed image instance.
      * @return current image instance
      */
-    ImagePtr current_image() const { return image; }
+    [[nodiscard]] ImagePtr current_image() const { return image; }
 
     /**
      * Switch to next frame.
@@ -92,7 +92,7 @@ public:
      * Get current scale.
      * @return scale factor
      */
-    double get_scale() const { return scale; }
+    [[nodiscard]] double get_scale() const { return scale; }
 
     /**
      * Set fixed scale.
@@ -128,7 +128,7 @@ public:
      * Get image position on canvas.
      * @return image position
      */
-    Point get_position() const { return position; }
+    [[nodiscard]] Point get_position() const { return position; }
 
     /**
      * Flip image vertically.
@@ -202,17 +202,17 @@ public:
     void bind_image_drag(const InputMouse& input);
 
     // app mode interface implementation
-    virtual void initialize() override;
-    virtual void activate(const ImageEntryPtr& entry, const Size& wnd) override;
-    virtual void deactivate() override;
-    virtual ImageEntryPtr current_entry() override;
-    virtual void window_resize(const Size& wnd) override;
-    virtual void window_redraw(Pixmap& wnd) override;
-    virtual void handle_mmove(const InputMouse& input, const Point& pos,
-                              const Point& delta) override;
-    virtual void handle_pinch(const double scale_delta) override;
-    virtual void handle_imagelist(const ImageListEvent event,
-                                  const ImageEntryPtr& entry) override;
+    void initialize() override;
+    void activate(const ImageEntryPtr& entry, const Size& wnd) override;
+    void deactivate() override;
+    ImageEntryPtr current_entry() override;
+    void window_resize(const Size& wnd) override;
+    void window_redraw(Pixmap& wnd) override;
+    void handle_mmove(const InputMouse& input, const Point& pos,
+                      const Point& delta) override;
+    void handle_pinch(const double scale_delta) override;
+    void handle_imagelist(const ImageListEvent event,
+                          const ImageEntryPtr& entry) override;
 
 private:
     /**

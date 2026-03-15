@@ -132,7 +132,7 @@ public:
      * Check if text layer currently displayed.
      * @return true if layer is visible
      */
-    bool is_visible() const { return overall_tm.show; }
+    [[nodiscard]] bool is_visible() const { return overall_tm.show; }
 
     /**
      * Set status text.
@@ -173,7 +173,7 @@ public:
 private:
     /** Rendered text line. */
     struct Line {
-        Line(const std::string& scheme)
+        Line(std::string&& scheme)
             : scheme(scheme)
         {
         }
@@ -203,13 +203,13 @@ private:
          * Get width of the block.
          * @return tuple with key and value width in pixels
          */
-        std::tuple<size_t, size_t> width() const;
+        [[nodiscard]] std::tuple<size_t, size_t> width() const;
 
         /**
          * Get height of the block.
          * @return tuple with height of a single line and total height in pixels
          */
-        std::tuple<size_t, size_t> height() const;
+        [[nodiscard]] std::tuple<size_t, size_t> height() const;
 
         std::vector<KeyVal> data; ///< Block text data
     };

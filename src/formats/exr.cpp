@@ -26,7 +26,6 @@ struct MemoryIStream : public Imf::IStream {
     MemoryIStream(const std::vector<uint8_t>& raw_data)
         : Imf::IStream("MemoryIStream")
         , data(raw_data)
-        , position(0)
     {
     }
 
@@ -44,11 +43,11 @@ struct MemoryIStream : public Imf::IStream {
     uint64_t tellg() override { return position; }
     void seekg(uint64_t pos) override { position = pos; }
     void clear() override { position = 0; }
-    bool isMemoryMapped() const override { return false; }
+    [[nodiscard]] bool isMemoryMapped() const override { return false; }
 
 private:
     const std::vector<uint8_t>& data;
-    uint64_t position;
+    uint64_t position = 0;
 };
 
 /* EXR image. */

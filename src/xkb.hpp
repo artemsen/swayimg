@@ -53,13 +53,13 @@ public:
      * Get repeat description.
      * @return tuple with key code and number of repeats
      */
-    std::tuple<xkb_keysym_t, size_t> get_repeat() const;
+    [[nodiscard]] std::tuple<xkb_keysym_t, size_t> get_repeat() const;
 
     /**
      * Get repeat file descriptor.
      * @return repeat file descriptor
      */
-    int repeat_fd() const;
+    [[nodiscard]] int repeat_fd() const;
 
     /**
      * Update modifiers state.
@@ -77,7 +77,7 @@ public:
      * Get current modifiers state.
      * @return mask with active modifiers
      */
-    keymod_t get_modifiers() const;
+    [[nodiscard]] keymod_t get_modifiers() const;
 
     /**
      * Get keyboard symbol from its code.

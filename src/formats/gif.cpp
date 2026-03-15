@@ -7,6 +7,7 @@
 #include <gif_lib.h>
 
 #include <cstring>
+#include <utility>
 
 // register format in factory
 class ImageGif;
@@ -97,8 +98,8 @@ private:
             for (size_t x = 0; x < width; ++x) {
                 argb_t& pixel = frame.pm.at(x + desc->Left, y + desc->Top);
                 const uint8_t color = raster[x];
-                if (color != ctl.TransparentColor &&
-                    color < color_map->ColorCount) {
+                if (std::cmp_not_equal(color, ctl.TransparentColor) &&
+                    std::cmp_less(color, color_map->ColorCount)) {
                     const GifColorType* rgb = &color_map->Colors[color];
                     pixel.a = argb_t::max;
                     pixel.r = rgb->Red;
