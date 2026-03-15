@@ -65,8 +65,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.set_foreground](#swayimgtextset_foreground): Set foreground text color
   * [swayimg.text.set_background](#swayimgtextset_background): Set background text color
   * [swayimg.text.set_shadow](#swayimgtextset_shadow): Set shadow text color
-  * [swayimg.text.set_timout](#swayimgtextset_timout): Set a timeout after which the entire text layer will be hidden
-  * [swayimg.text.set_status_timout](#swayimgtextset_status_timout): Set a timeout after which the status message will be hidden
+  * [swayimg.text.set_timeout](#swayimgtextset_timeout): Set a timeout after which the entire text layer will be hidden
+  * [swayimg.text.set_status_timeout](#swayimgtextset_status_timeout): Set a timeout after which the status message will be hidden
   * [swayimg.text.set_status](#swayimgtextset_status): Show status message
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
@@ -498,10 +498,10 @@ Setting alpha channel to `0` disables shadows.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
-### swayimg.text.set_timout
+### swayimg.text.set_timeout
 
 ```lua
-swayimg.text.set_timout(seconds: number)
+swayimg.text.set_timeout(seconds: number)
 ```
 
 Set a timeout after which the entire text layer will be hidden.
@@ -511,10 +511,10 @@ to be displayed continuously.
 
 @_param_ `seconds` - Timeout in seconds
 
-### swayimg.text.set_status_timout
+### swayimg.text.set_status_timeout
 
 ```lua
-swayimg.text.set_status_timout(seconds: number)
+swayimg.text.set_status_timeout(seconds: number)
 ```
 
 Set a timeout after which the status message will be hidden.

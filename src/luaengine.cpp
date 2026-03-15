@@ -543,7 +543,7 @@ void LuaEngine::bind_text_api()
                      [](const double timeout) {
                          Text::self().set_overall_timer(timeout * 1000);
                      })
-        .addFunction("set_status_timout",
+        .addFunction("set_status_timeout",
                      [](const double timeout) {
                          Text::self().set_status_timer(timeout * 1000);
                      })
@@ -593,7 +593,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                      })
         .addFunction("get_image",
                      [this, check_active, mode]() {
-                         if (!check_active("current_image")) {
+                         if (!check_active("get_image")) {
                              return luabridge::newTable(lua_state);
                          }
                          ImagePtr image = mode->current_image();
@@ -895,7 +895,7 @@ void LuaEngine::bind_gallery_api()
         .addFunction(
             "get_image",
             [this, check_active]() {
-                if (!check_active("current_image")) {
+                if (!check_active("get_image")) {
                     return luabridge::newTable(lua_state);
                 }
                 luabridge::LuaRef table = entry_to_table(
@@ -1076,11 +1076,11 @@ void LuaEngine::bind_appmode_api(const char* name)
                     }
                 });
             })
-        .addFunction("on_change_image",
+        .addFunction("on_image_change",
                      [this, appmode, name](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
                              show_error(
-                                 "Invalid argument for {}.{}.on_change_image: "
+                                 "Invalid argument for {}.{}.on_image_change: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring().c_str());
                          } else {

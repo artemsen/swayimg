@@ -285,14 +285,14 @@ function swayimg.text.set_shadow(color) end
 ---Setting the timeout value to `0` disables the timer and causes the overlay
 ---to be displayed continuously.
 ---@param seconds number Timeout in seconds
-function swayimg.text.set_timout(seconds) end
+function swayimg.text.set_timeout(seconds) end
 
 ---Set a timeout after which the status message will be hidden.
 ---Setting the timeout value to `0` disables the timer and causes the status
 ---message to be displayed continuously.
 ---@see swayimg.text.set_status
 ---@param seconds number Timeout in seconds
-function swayimg.text.set_status_timout(seconds) end
+function swayimg.text.set_status_timeout(seconds) end
 
 ---Show status message.
 ---@see swayimg.text.set_status_timer
