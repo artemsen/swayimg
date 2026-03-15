@@ -17,7 +17,6 @@ Slideshow::Slideshow()
     // default settings
 
     set_history_limit(0);
-    set_window_background(Background::Auto);
     default_scale = Scale::FitWindow;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = { "{name}" };
