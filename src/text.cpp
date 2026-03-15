@@ -53,8 +53,7 @@ void Text::initialize()
     });
 }
 
-void Text::set_scheme(const Position pos,
-                      const std::vector<std::string>& scheme)
+void Text::set_scheme(const Position pos, const Scheme& scheme)
 {
     Block& block = blocks[static_cast<uint8_t>(pos)];
     block.data.clear();
@@ -237,7 +236,7 @@ void Text::draw(Pixmap& target) const
 
     // show text layer
     if (overall_tm.show) {
-        for (size_t i = 0; i < sizeof(blocks) / sizeof(blocks[0]); ++i) {
+        for (size_t i = 0; i < blocks.size(); ++i) {
             const Position pos = static_cast<Position>(i);
             draw(blocks[i], pos, target);
         }

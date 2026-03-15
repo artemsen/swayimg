@@ -8,6 +8,7 @@
 #include "font.hpp"
 #include "image.hpp"
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -22,6 +23,9 @@ public:
         BottomLeft,
         BottomRight,
     };
+
+    /** Block scheme description. */
+    using Scheme = std::vector<std::string>;
 
     // Field IDs
     static constexpr const char* FIELD_FILE_PATH = "path";
@@ -58,7 +62,7 @@ public:
      * @param pos block position
      * @param scheme scheme description
      */
-    void set_scheme(const Position pos, const std::vector<std::string>& scheme);
+    void set_scheme(const Position pos, const Scheme& scheme);
 
     /**
      * Set font face.
@@ -254,6 +258,6 @@ private:
 
     Pixmap status; ///< Status message
 
-    Block blocks[4]; ///< Four text blocks at window corners
+    std::array<Block, 4> blocks; ///< Four text blocks at window corners
     std::map<std::string, std::string> fields; ///< Data fields
 };

@@ -16,7 +16,7 @@ AppMode::AppMode()
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
     Text& text = Text::self();
-    for (size_t i = 0; i < sizeof(text_scheme) / sizeof(text_scheme[0]); ++i) {
+    for (size_t i = 0; i < text_scheme.size(); ++i) {
         text.set_scheme(static_cast<Text::Position>(i), text_scheme[i]);
     }
 }
@@ -70,7 +70,7 @@ void AppMode::set_mark_color(const argb_t& color)
 }
 
 void AppMode::set_text_scheme(const Text::Position pos,
-                              const std::vector<std::string>& scheme)
+                              const Text::Scheme& scheme)
 {
     text_scheme[static_cast<size_t>(pos)] = scheme;
     if (is_active()) {

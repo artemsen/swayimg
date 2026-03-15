@@ -8,8 +8,10 @@
 #include "input.hpp"
 #include "text.hpp"
 
+#include <array>
 #include <functional>
 #include <map>
+#include <vector>
 
 class AppMode {
 public:
@@ -20,8 +22,8 @@ public:
         Remove,
     };
 
+    /** Input event handler. */
     using InputCallback = std::function<void()>;
-
     /** Notification handler that is called when the image is switched. */
     using ImageSwitchNotify = std::function<void()>;
 
@@ -130,8 +132,7 @@ public:
      * @param pos block position
      * @param scheme scheme description
      */
-    void set_text_scheme(const Text::Position pos,
-                         const std::vector<std::string>& scheme);
+    void set_text_scheme(const Text::Position pos, const Text::Scheme& scheme);
 
     /**
      * Remove all bindings: keyboard/mouse/signals.
@@ -167,7 +168,7 @@ protected:
 
 protected:
     argb_t mark_color;                       ///< Mark icon color
-    std::vector<std::string> text_scheme[4]; ///< Text layer scheme
+    std::array<Text::Scheme, 4> text_scheme; ///< Text layer scheme
 
 private:
     std::vector<ImageSwitchNotify> img_switch;        ///< Image switch handlers

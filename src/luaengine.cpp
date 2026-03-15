@@ -1100,8 +1100,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 const auto bp = name_to_type(tbpositions, pos.c_str());
                 if (bp.has_value()) {
                     appmode->set_text_scheme(
-                        bp.value(),
-                        table.cast<std::vector<std::string>>().value());
+                        bp.value(), table.cast<Text::Scheme>().value());
                 } else {
                     show_error("Invalid argument {} for {}.{}.set_text", pos,
                                NS_SWAYIMG, name);
