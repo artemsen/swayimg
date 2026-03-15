@@ -607,7 +607,7 @@ void Viewer::on_open()
     previmg = image->frames[frame_index].pm;
 
     // start animation
-    if (animation_enable && is_animation) {
+    if (is_animation) {
         animation_resume();
     } else {
         animation_stop();
