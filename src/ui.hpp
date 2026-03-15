@@ -27,30 +27,30 @@ public:
     /**
      * Run user interface.
      */
-    virtual void run() { }
+    virtual void run() {}
 
     /**
      * Stop user interface.
      */
-    virtual void stop() { }
+    virtual void stop() {}
 
     /**
      * Set window title.
      * @param title title to set
      */
-    virtual void set_title(const char* /* title */) { }
+    virtual void set_title(const char* /* title */) {}
 
     /**
      * Set mouse pointer shape.
      * @param shape cursor shape to set
      */
-    virtual void set_cursor(CursorShape /* shape */) { }
+    virtual void set_cursor(CursorShape /* shape */) {}
 
     /**
      * Set surface content type.
      * @param ctype content type to set
      */
-    virtual void set_ctype(ContentType /* type */) { }
+    virtual void set_ctype(ContentType /* type */) {}
 
     /**
      * Toggle full screen mode.
@@ -68,7 +68,7 @@ public:
      * Set window size.
      * @param size window size in pixels
      */
-    virtual void set_window_size(const Size& /*size*/) { }
+    virtual void set_window_size(const Size& /*size*/) {}
 
     /**
      * Get mouse pointer position within the window.

@@ -15,10 +15,10 @@
 namespace AppEvent {
 
 /** Window close event. */
-struct WindowClose { };
+struct WindowClose {};
 
 /** Window redraw event. */
-struct WindowRedraw { };
+struct WindowRedraw {};
 
 /** Window resize event. */
 struct WindowResize {

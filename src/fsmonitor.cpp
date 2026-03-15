@@ -25,10 +25,10 @@ FsMonitor& FsMonitor::self()
 }
 
 #ifndef HAVE_INOTIFY
-FsMonitor::~FsMonitor() { }
-void FsMonitor::initialize() { }
-void FsMonitor::add(const std::filesystem::path&) { }
-void FsMonitor::handle_event(const inotify_event*) { }
+FsMonitor::~FsMonitor() {}
+void FsMonitor::initialize() {}
+void FsMonitor::add(const std::filesystem::path&) {}
+void FsMonitor::handle_event(const inotify_event*) {}
 #else
 
 FsMonitor::~FsMonitor()

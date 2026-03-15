@@ -68,7 +68,7 @@ struct BufferIO {
     }
 
     /** Buffer unmap: see TIFFUnmapFileProc for details. */
-    static void unmap(thandle_t, void*, toff_t) { }
+    static void unmap(thandle_t, void*, toff_t) {}
 
     const std::vector<uint8_t>& data;
     size_t position = 0;

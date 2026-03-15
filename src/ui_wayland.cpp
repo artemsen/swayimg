@@ -213,7 +213,7 @@ public:
         ui->set_cursor(Ui::CursorShape::Hide);
     }
 
-    static void on_idle_end(void*, struct ext_idle_notification_v1*) { }
+    static void on_idle_end(void*, struct ext_idle_notification_v1*) {}
 
     static constexpr const ext_idle_notification_v1_listener idle_listener = {
         .idled = on_idle_begin,
@@ -247,7 +247,7 @@ public:
     /***************************************************************************
      * Seat handlers
      **************************************************************************/
-    static void on_seat_name(void*, struct wl_seat*, const char*) { }
+    static void on_seat_name(void*, struct wl_seat*, const char*) {}
 
     static void on_seat_capabilities(void* data, struct wl_seat* seat,
                                      uint32_t cap)
@@ -339,13 +339,13 @@ public:
         close(fd);
     }
 
-    static void on_data_source_cancelled(void*, struct wl_data_source*) { }
+    static void on_data_source_cancelled(void*, struct wl_data_source*) {}
 
     static void on_data_source_dnd_drop_performed(void*, struct wl_data_source*)
     {
     }
 
-    static void on_data_source_dnd_finished(void*, struct wl_data_source*) { }
+    static void on_data_source_dnd_finished(void*, struct wl_data_source*) {}
 
     static void on_data_source_action(void*, struct wl_data_source*, uint32_t)
     {
@@ -395,7 +395,7 @@ public:
     {
     }
 
-    static void on_data_device_drop(void*, struct wl_data_device*) { }
+    static void on_data_device_drop(void*, struct wl_data_device*) {}
 
     static void on_data_device_selection(void*, struct wl_data_device*,
                                          struct wl_data_offer* offer)
@@ -602,7 +602,7 @@ public:
         }
     }
 
-    static void on_registry_remove(void*, struct wl_registry*, uint32_t) { }
+    static void on_registry_remove(void*, struct wl_registry*, uint32_t) {}
 
     static constexpr const wl_registry_listener registry_listener = {
         .global = on_registry_global,

@@ -11,7 +11,7 @@ class Fd {
 public:
     Fd() = default;
     Fd(int d)
-        : fd(d) { };
+        : fd(d) {};
 
     /** Destructor. */
     virtual ~Fd();

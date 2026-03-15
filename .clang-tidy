@@ -1,2 +1,4 @@
-Checks: 'clang-diagnostic-*,clang-analyzer-*,performance-*'
+Checks: 'clang-analyzer-*,performance-*'
+HeaderFilterRegex: 'src/.*\.hpp'
+ExcludeHeaderFilterRegex: 'external/.*'
 WarningsAsErrors: '*'

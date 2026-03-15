@@ -324,7 +324,7 @@ static void png_encoder_write(png_structp png, png_bytep buffer, size_t size)
 }
 
 // // PNG flusher callback, see `png_flush_ptr` in png.h
-static void png_encoder_flush(png_structp) { }
+static void png_encoder_flush(png_structp) {}
 
 std::vector<uint8_t> encode(const Pixmap& pm)
 {

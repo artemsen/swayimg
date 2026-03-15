@@ -290,7 +290,7 @@ void Gallery::set_pstore_path(const std::filesystem::path& path)
     pstore_path = path;
 }
 
-void Gallery::initialize() { }
+void Gallery::initialize() {}
 
 void Gallery::activate(const ImageEntryPtr& entry, const Size& wnd)
 {

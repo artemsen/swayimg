@@ -5,7 +5,8 @@
 #include "../imageloader.hpp"
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wexpansion-to-defined"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wc2y-extensions"
 #include <librsvg/rsvg.h>
 #pragma GCC diagnostic pop
 

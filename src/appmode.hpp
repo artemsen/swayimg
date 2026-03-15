@@ -54,7 +54,7 @@ public:
      * Window resize handler.
      * @param wnd window size
      */
-    virtual void window_resize(const Size& /*wnd*/) { }
+    virtual void window_resize(const Size& /*wnd*/) {}
 
     /**
      * Window resize handler.

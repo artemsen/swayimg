@@ -17,6 +17,7 @@ AllowShortLambdasOnASingleLine: Empty
 BreakBeforeBinaryOperators: None
 IndentCaseLabels: true
 InsertBraces: true
+SpaceInEmptyBraces: Never
 
 ForEachMacros: [dummy]
 

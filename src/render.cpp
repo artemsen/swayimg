@@ -216,9 +216,9 @@ static void init_mks2013_kernel(Kernel& kernel, size_t nin, size_t nout,
         // Ignore leading or trailing zeros
         size_t tfirst, tlast;
         for (tfirst = first; tfirst < last && int_weights[tfirst - first] == 0;
-             ++tfirst) { }
+             ++tfirst) {}
         for (tlast = last; tlast > tfirst && int_weights[tlast - first] == 0;
-             --tlast) { }
+             --tlast) {}
         if (tfirst < min_in) {
             min_in = tfirst;
         }
