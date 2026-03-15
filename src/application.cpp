@@ -69,7 +69,12 @@ int Application::run()
     }
 
     // initialize signal handler
-    sig_initialize();
+    std::signal(SIGUSR1, [](int) {
+        Application::self().add_event(AppEvent::Signal { InputSignal::USR1 });
+    });
+    std::signal(SIGUSR2, [](int) {
+        Application::self().add_event(AppEvent::Signal { InputSignal::USR2 });
+    });
 
     // initialize other subsystems
     Text::self().initialize();
@@ -271,18 +276,6 @@ bool Application::ui_initialize()
     return !!ui;
 }
 
-void Application::sig_initialize()
-{
-    struct sigaction sigact;
-    sigact.sa_handler = [](int signum) {
-        Application::self().add_event(AppEvent::Signal { signum });
-    };
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigaction(SIGUSR1, &sigact, nullptr);
-    sigaction(SIGUSR2, &sigact, nullptr);
-}
-
 void Application::event_loop()
 {
     // register app event handler
@@ -449,7 +442,11 @@ void Application::handle_event(const AppEvent::GesturePinch& event)
 
 void Application::handle_event(const AppEvent::Signal& event)
 {
-    current_mode()->handle_signal(event.signal);
+    if (!current_mode()->handle_signal(event.signal)) {
+        const std::string msg =
+            std::format("Unhandled signal {}", event.signal.to_string());
+        Text::self().set_status(msg);
+    }
 }
 
 void Application::handle_event(const AppEvent::FileCreate& event)

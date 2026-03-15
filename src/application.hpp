@@ -113,11 +113,6 @@ private:
     bool ui_initialize();
 
     /**
-     * Initialize signal handlers.
-     */
-    void sig_initialize();
-
-    /**
      * Application event loop handler.
      */
     void event_loop();
