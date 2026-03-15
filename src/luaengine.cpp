@@ -360,7 +360,7 @@ void LuaEngine::bind_root_api()
                                "expected function, but got {}",
                                NS_SWAYIMG, cb.tostring().c_str());
                 } else {
-                    luabridge::LuaRef* ref = add_ref(&cb);
+                    const luabridge::LuaRef* ref = add_ref(&cb);
                     Application::self().subscribe_window_resize([ref]() {
                         const luabridge::LuaResult result = (*ref)();
                         if (!result) {
@@ -404,7 +404,7 @@ void LuaEngine::bind_root_api()
                                  NS_SWAYIMG, cb.tostring().c_str());
                              return;
                          }
-                         luabridge::LuaRef* ref = add_ref(&cb);
+                         const luabridge::LuaRef* ref = add_ref(&cb);
                          Application::self().on_init_complete = [ref]() {
                              const luabridge::LuaResult result = (*ref)();
                              if (!result) {
@@ -596,13 +596,13 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (!check_active("get_image")) {
                              return luabridge::newTable(lua_state);
                          }
-                         ImagePtr image = mode->current_image();
+                         const ImagePtr image = mode->current_image();
                          luabridge::LuaRef tbl = entry_to_table(*image->entry);
                          tbl["format"] = image->format;
                          tbl["frames"] = image->frames.size();
                          tbl["width"] = image->frames[0].pm.width();
                          tbl["height"] = image->frames[0].pm.height();
-                         luabridge::LuaRef meta =
+                         const luabridge::LuaRef meta =
                              luabridge::newTable(lua_state);
                          for (const auto& [key, value] : image->meta) {
                              meta[key] = value;
@@ -772,7 +772,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (!check_active("set_meta")) {
                              return;
                          }
-                         ImagePtr image = mode->current_image();
+                         const ImagePtr image = mode->current_image();
                          const std::string meta_prefix = "meta.";
                          std::string meta_key = key;
                          if (meta_key.starts_with(meta_prefix)) {
@@ -987,7 +987,7 @@ void LuaEngine::bind_appmode_api(const char* name)
         .addFunction(
             "mark_image",
             [](const std::optional<bool>& state) {
-                ImageEntryPtr entry =
+                const ImageEntryPtr entry =
                     Application::self().current_mode()->current_entry();
                 if (state.has_value()) {
                     entry->mark = state.value();
@@ -1020,7 +1020,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
-                luabridge::LuaRef* ref = add_ref(&cb);
+                const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
@@ -1044,7 +1044,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
-                luabridge::LuaRef* ref = add_ref(&cb);
+                const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
@@ -1068,7 +1068,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
-                luabridge::LuaRef* ref = add_ref(&cb);
+                const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
@@ -1084,7 +1084,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring().c_str());
                          } else {
-                             luabridge::LuaRef* ref = add_ref(&cb);
+                             const luabridge::LuaRef* ref = add_ref(&cb);
                              appmode->subscribe_image_switch([ref]() {
                                  const luabridge::LuaResult result = (*ref)();
                                  if (!result) {

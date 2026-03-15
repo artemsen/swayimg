@@ -37,7 +37,7 @@ Application::Application()
 {
 #ifdef HAVE_COMPOSITOR
     // defaults for people with Sway compositor
-    Compositor compositor;
+    const Compositor compositor;
     if (compositor.type == Compositor::Sway) {
         sparams.use_overlay = true;
         sparams.decoration = false;
@@ -56,7 +56,7 @@ int Application::run()
 
     // initialize filemon and image list
     FsMonitor::self().initialize();
-    ImageEntryPtr first_entry = il_initialize();
+    const ImageEntryPtr first_entry = il_initialize();
     if (!first_entry) {
         Log::info("Image list is empty, exit");
         return 0;
@@ -113,7 +113,7 @@ void Application::set_mode(Mode mode)
         AppMode* app_mode;
 
         app_mode = current_mode();
-        ImageEntryPtr entry = app_mode->current_entry();
+        const ImageEntryPtr entry = app_mode->current_entry();
         app_mode->deactivate();
 
         active_mode = mode;
@@ -148,7 +148,7 @@ void Application::add_fdpoll(int fd, const FdEventHandler& handler)
 
 void Application::add_event(const AppEvent::Holder& event)
 {
-    std::lock_guard lock(event_mutex);
+    const std::lock_guard lock(event_mutex);
 
     // check if redraw event already exists
     const bool has_redraw = !event_queue.empty() &&
@@ -178,7 +178,7 @@ ImageEntryPtr Application::il_initialize()
 
     ImageEntryPtr first_entry = nullptr;
 
-    Log::PerfTimer timer;
+    const Log::PerfTimer timer;
 
     if (!sparams.from_file.empty()) {
         first_entry = il.load(sparams.from_file);
@@ -211,7 +211,7 @@ bool Application::ui_initialize()
 
 #ifdef HAVE_COMPOSITOR
     if (sparams.use_overlay || static_cast<Point>(window)) {
-        Compositor compositor;
+        const Compositor compositor;
         if (compositor.type == Compositor::None) {
             Log::error("Current compositor not supported for managing window "
                        "position");
@@ -306,12 +306,11 @@ void Application::event_loop()
     std::vector<pollfd> poll_fds;
     poll_fds.reserve(fds.size());
     for (auto& it : fds) {
-        pollfd pfd = {
+        poll_fds.push_back({
             .fd = it.first,
             .events = POLLIN,
             .revents = 0,
-        };
-        poll_fds.push_back(pfd);
+        });
     }
 
     // main loop: handle events
@@ -406,7 +405,7 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
 {
     Pixmap& wnd = ui->lock_surface();
     if (wnd) {
-        Log::PerfTimer timer;
+        const Log::PerfTimer timer;
 
         current_mode()->window_redraw(wnd);
         Text::self().draw(wnd);
@@ -473,7 +472,7 @@ void Application::handle_event(const AppEvent::FileModify& event)
 {
     if (!std::filesystem::is_directory(event.path)) {
         ImageList& il = ImageList::self();
-        ImageEntryPtr entry = il.find(event.path);
+        const ImageEntryPtr entry = il.find(event.path);
         if (entry) {
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Modify,
                                              entry);
@@ -485,7 +484,7 @@ void Application::handle_event(const AppEvent::FileRemove& event)
 {
     if (!std::filesystem::is_directory(event.path)) {
         ImageList& il = ImageList::self();
-        ImageEntryPtr entry = il.find(event.path);
+        const ImageEntryPtr entry = il.find(event.path);
         if (entry) {
             il.remove(entry);
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,

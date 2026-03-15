@@ -199,7 +199,7 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
 
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
 {
-    std::unique_lock lock(mutex);
+    const std::unique_lock lock(mutex);
     std::vector<ImageEntryPtr> entries = add(path, true);
     reindex();
 
@@ -214,7 +214,7 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
     ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
 
-    std::unique_lock lock(mutex);
+    const std::unique_lock lock(mutex);
 
     entries.remove(entry);
     duplicates.erase(entry->path);
@@ -253,7 +253,7 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
         search = std::filesystem::absolute(path).lexically_normal();
     }
 
-    std::shared_lock lock(mutex);
+    const std::shared_lock lock(mutex);
 
     auto it = std::find_if(entries.begin(), entries.end(),
                            [&search](const ImageEntryPtr& entry) {
@@ -264,7 +264,7 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
 
 std::vector<ImageEntry> ImageList::get_all()
 {
-    std::shared_lock lock(mutex);
+    const std::shared_lock lock(mutex);
 
     std::vector<ImageEntry> copy;
     copy.reserve(entries.size());
@@ -277,7 +277,7 @@ std::vector<ImageEntry> ImageList::get_all()
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
-    std::shared_lock lock(mutex);
+    const std::shared_lock lock(mutex);
 
     if (entries.empty()) {
         return nullptr;
@@ -352,7 +352,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
 {
-    std::shared_lock lock(mutex);
+    const std::shared_lock lock(mutex);
 
     assert(from && *from);
 
@@ -380,7 +380,7 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
     assert(from && *from);
     assert(to && *to);
 
-    std::shared_lock lock(mutex);
+    const std::shared_lock lock(mutex);
 
     ssize_t distance = 0;
     bool forward = true;
@@ -473,7 +473,7 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
                     entries.insert(entries.end(), added.begin(), added.end());
                 }
             } else {
-                ImageEntryPtr entry = add_file(sub_path, false);
+                const ImageEntryPtr entry = add_file(sub_path, false);
                 if (entry) {
                     entries.push_back(entry);
                 }
@@ -550,32 +550,30 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 
 void ImageList::sort(bool locked)
 {
-    auto unlocked_sort = [this]() {
-        if (order == Order::None) {
-            // nothing to do
-        } else if (order == Order::Random) {
-            // shuffle list
-            std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
-            std::random_device rdev;
-            std::mt19937 engine(rdev());
-            std::shuffle(tmp.begin(), tmp.end(), engine);
-            entries.assign(tmp.begin(), tmp.end());
-        } else {
-            entries.sort(
-                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
-                    const bool cmp = compare_entries(*l, *r, order);
-                    return reverse ? !cmp : cmp;
-                });
-        }
-    };
+    if (locked) {
+        mutex.lock();
+    }
+
+    if (order == Order::None) {
+        // nothing to do
+    } else if (order == Order::Random) {
+        // shuffle list
+        std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
+        std::random_device rdev;
+        std::mt19937 engine(rdev());
+        std::shuffle(tmp.begin(), tmp.end(), engine);
+        entries.assign(tmp.begin(), tmp.end());
+    } else {
+        entries.sort([this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
+            const bool cmp = compare_entries(*l, *r, order);
+            return reverse ? !cmp : cmp;
+        });
+    }
+
+    reindex();
 
     if (locked) {
-        std::unique_lock lock(mutex);
-        unlocked_sort();
-        reindex();
-    } else {
-        unlocked_sort();
-        reindex();
+        mutex.unlock();
     }
 }
 

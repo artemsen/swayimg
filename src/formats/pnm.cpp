@@ -110,7 +110,7 @@ private:
                 argb_t& dst = pm.at(x, y);
                 dst.a = argb_t::max;
                 if (type == pnm_pbm) {
-                    int bit = pnm_readint(it, 1);
+                    const int bit = pnm_readint(it, 1);
                     if (bit < 0) {
                         return bit;
                     }
@@ -181,8 +181,8 @@ private:
         // PGM and PPM use bpc (bytes per channel) bytes for each channel
         // depending on the max, with 1 channel for PGM and 3 for PPM; PBM pads
         // each row to the nearest whole byte
-        size_t bpc = maxval <= UINT8_MAX ? 1 : 2;
-        size_t rowsz = type == pnm_pbm
+        const size_t bpc = maxval <= UINT8_MAX ? 1 : 2;
+        const size_t rowsz = type == pnm_pbm
             ? div_ceil(pm.width(), 8)
             : pm.width() * bpc * (type == pnm_pgm ? 1 : 3);
         if (it->end < it->pos + pm.height() * rowsz) {

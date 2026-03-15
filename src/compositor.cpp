@@ -143,7 +143,7 @@ public:
      */
     static Rectangle get_focus()
     {
-        SwayIpc ipc;
+        const SwayIpc ipc;
         if (!ipc) {
             return {};
         }
@@ -154,8 +154,8 @@ public:
         const json focus = ipc.find_focused(response);
 
         if (focus.contains("rect") && focus.contains("window_rect")) {
-            Rectangle rect = ipc.get_rect(focus["rect"]);
-            Rectangle wrect = ipc.get_rect(focus["window_rect"]);
+            const Rectangle rect = ipc.get_rect(focus["rect"]);
+            const Rectangle wrect = ipc.get_rect(focus["window_rect"]);
             if (rect && wrect) {
                 wnd = rect;
                 wnd.x += wrect.x;
@@ -187,7 +187,7 @@ public:
             return false;
         }
 
-        SwayIpc ipc;
+        const SwayIpc ipc;
         if (!ipc) {
             return false;
         }

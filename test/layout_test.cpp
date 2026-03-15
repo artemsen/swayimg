@@ -111,7 +111,7 @@ TEST_F(LayoutTest, BaseScheme)
     ASSERT_EQ(layout.get_columns(), 5UL);
     ASSERT_EQ(layout.get_rows(), 4UL);
 
-    ImageEntryPtr selection = layout.get_selected();
+    const ImageEntryPtr selection = layout.get_selected();
     ASSERT_TRUE(selection);
     ASSERT_TRUE(*selection);
     ASSERT_EQ(selection->path, std::string(ImageEntry::SRC_EXEC) + "0");

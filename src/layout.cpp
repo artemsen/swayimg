@@ -15,7 +15,7 @@ void Layout::update()
     }
 
     ImageList& il = ImageList::self();
-    ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
+    const ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
 
     if (!sel_entry) {
         sel_entry = first_entry;
@@ -47,7 +47,7 @@ void Layout::update()
     const size_t max_thumb = rows * columns;
     ImageEntryPtr last_visible = il.get(first_visible, max_thumb - 1);
     if (!last_visible) {
-        ImageEntryPtr last_image = il.get(nullptr, ImageList::Dir::Last);
+        const ImageEntryPtr last_image = il.get(nullptr, ImageList::Dir::Last);
         last_visible = last_image;
         if (first_visible != first_entry) {
             // scroll to fill the entire window

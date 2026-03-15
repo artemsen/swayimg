@@ -54,14 +54,14 @@ struct BufferIO {
     /** Buffer size getter: see TIFFSizeProc for details. */
     static toff_t size(thandle_t data)
     {
-        BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
+        const BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
         return bufio->data.size();
     }
 
     /** Buffer map: see TIFFMapFileProc for details. */
     static int map(thandle_t data, void** base, toff_t* size)
     {
-        BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
+        const BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
         *base = const_cast<uint8_t*>(bufio->data.data());
         *size = bufio->data.size();
         return 0;

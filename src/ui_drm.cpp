@@ -115,7 +115,7 @@ bool UiDrm::initialize()
         }
     }
 
-    DrmResource resources(drmModeGetResources(fd), &drmModeFreeResources);
+    const DrmResource resources(drmModeGetResources(fd), &drmModeFreeResources);
     if (!resources) {
         Log::error(errno, "Unable to get DRM resources");
         return false;
@@ -134,7 +134,7 @@ bool UiDrm::initialize()
         return false;
     }
 
-    drmModeModeInfo* mode_info = get_mode(connector.get());
+    const drmModeModeInfo* mode_info = get_mode(connector.get());
     if (!mode_info) {
         Log::error("Unable to get any mode");
         return false;

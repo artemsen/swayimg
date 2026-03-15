@@ -9,17 +9,17 @@
 
 static ImagePtr load_image(const char* path)
 {
-    ImageEntryPtr entry = std::make_shared<ImageEntry>();
+    const ImageEntryPtr entry = std::make_shared<ImageEntry>();
     entry->path = path;
     return ImageLoader::load(entry);
 }
 
-#define TEST_IMAGE_LOAD(fmt)                                       \
-    TEST(ImageLoadTest, fmt)                                       \
-    {                                                              \
-        ImagePtr image = load_image(TEST_DATA_DIR "/image." #fmt); \
-        ASSERT_TRUE(image);                                        \
-        EXPECT_NE(image->frames.size(), 0UL);                      \
+#define TEST_IMAGE_LOAD(fmt)                                             \
+    TEST(ImageLoadTest, fmt)                                             \
+    {                                                                    \
+        const ImagePtr image = load_image(TEST_DATA_DIR "/image." #fmt); \
+        ASSERT_TRUE(image);                                              \
+        EXPECT_NE(image->frames.size(), 0UL);                            \
     }
 
 TEST_IMAGE_LOAD(bmp);
@@ -65,7 +65,7 @@ TEST_IMAGE_LOAD(svg);
 #if defined(HAVE_LIBJPEG) && defined(HAVE_LIBEXIV2)
 TEST(ImageTest, Exif)
 {
-    ImagePtr image = load_image(TEST_DATA_DIR "/exif.jpg");
+    const ImagePtr image = load_image(TEST_DATA_DIR "/exif.jpg");
     ASSERT_TRUE(image);
     EXPECT_EQ(image->meta["Exif.Image.Make"], "Google");
     EXPECT_EQ(image->meta["Exif.Image.Model"], "Pixel 7");

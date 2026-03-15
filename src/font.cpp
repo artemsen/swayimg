@@ -30,13 +30,13 @@ public:
      */
     std::string get_font_file(const char* name) const
     {
-        FcConfigPtr fc =
+        const FcConfigPtr fc =
             FcConfigPtr(FcInitLoadConfigAndFonts(), &FcConfigDestroy);
         if (!fc) {
             return {};
         }
 
-        FcPatternPtr fc_name =
+        const FcPatternPtr fc_name =
             FcPatternPtr(FcNameParse(reinterpret_cast<const FcChar8*>(name)),
                          FcPatternDestroy);
         if (!fc_name) {
@@ -46,7 +46,7 @@ public:
         FcDefaultSubstitute(fc_name.get());
 
         FcResult result;
-        FcPatternPtr fc_font = FcPatternPtr(
+        const FcPatternPtr fc_font = FcPatternPtr(
             FcFontMatch(fc.get(), fc_name.get(), &result), FcPatternDestroy);
         if (fc_font) {
             FcChar8* path = nullptr;

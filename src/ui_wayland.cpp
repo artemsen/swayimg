@@ -34,7 +34,7 @@ public:
     static void on_keyboard_leave(void* data, struct wl_keyboard*, uint32_t,
                                   struct wl_surface*)
     {
-        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         ui->xkb.stop_repeat();
     }
 
@@ -173,7 +173,7 @@ public:
     static void on_pointer_axis(void* data, struct wl_pointer*, uint32_t,
                                 uint32_t axis, wl_fixed_t value)
     {
-        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
         InputMouse::mouse_btn_t btn;
         const bool incr = value > 0;
@@ -621,7 +621,7 @@ bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
         return true; // reuse existing
     }
 
-    std::lock_guard lock(mutex);
+    const std::lock_guard lock(mutex);
 
     destroy();
 

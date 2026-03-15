@@ -66,7 +66,7 @@ static void draw(Pixmap& dst, const Pixmap& src, const Point& pos,
     std::vector<size_t> tids;
     tids.reserve(threads);
 
-    Point src_start { visible.x - image.x, visible.y - image.y };
+    const Point src_start { visible.x - image.x, visible.y - image.y };
     const size_t step = visible.height / threads;
 
     for (size_t i = 0; i < threads; ++i) {
@@ -203,7 +203,7 @@ static void init_mks2013_kernel(Kernel& kernel, size_t nin, size_t nout,
             weights[in - first] = w;
             sum += w;
         }
-        double norm = 1.0 / sum;
+        const double norm = 1.0 / sum;
         int16_t isum = 0;
         for (size_t in = first; in <= last; ++in) {
             const int16_t iw =
@@ -834,7 +834,7 @@ void Render::mirror_background(Pixmap& pm, const Rectangle& preserve)
             const size_t img_h = image.height();
             const size_t img_w = image.width();
             for (size_t y = 0; y < left.height; ++y) {
-                size_t img_y = y % img_h;
+                const size_t img_y = y % img_h;
                 for (size_t x = 0; x < left.width; ++x) {
                     const size_t off_x = img_w - (exclude.x % img_w);
                     const bool flip_x =
@@ -854,7 +854,7 @@ void Render::mirror_background(Pixmap& pm, const Rectangle& preserve)
             const size_t img_h = image.height();
             const size_t img_w = image.width();
             for (size_t y = 0; y < right.height; ++y) {
-                size_t img_y = y % img_h;
+                const size_t img_y = y % img_h;
                 for (size_t x = 0; x < right.width; ++x) {
                     const bool flip_x = (x / img_w) % 2 == 0;
                     size_t img_x = x % img_w;

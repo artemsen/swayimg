@@ -112,7 +112,7 @@ TEST(ImageListTest, Unordered)
         "exec://1",
     };
 
-    ImageEntryPtr entry = il.load(paths);
+    const ImageEntryPtr entry = il.load(paths);
     ASSERT_TRUE(entry);
     EXPECT_TRUE(*entry);
     EXPECT_NE(entry->index, 0UL);
@@ -134,7 +134,7 @@ TEST(ImageListTest, SortAlpha)
         /* 4 */ "exec://a/b/c/0",
         /* 5 */ "exec://ab/0",
     };
-    ImageEntryPtr entry = il.load({
+    const ImageEntryPtr entry = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -164,7 +164,7 @@ TEST(ImageListTest, SortAlphaUnicode)
         /* 4 */ "exec://ж",
         /* 5 */ "exec://я",
     };
-    ImageEntryPtr entry = il.load({
+    const ImageEntryPtr entry = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -194,7 +194,7 @@ TEST(ImageListTest, SortAlphaReverse)
         /* 4 */ "exec://a/1",
         /* 5 */ "exec://a/0",
     };
-    ImageEntryPtr entry = il.load({
+    const ImageEntryPtr entry = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -225,7 +225,7 @@ TEST(ImageListTest, SortNumeric)
         /* 5 */ "exec://a/10b10/a",
     };
 
-    ImageEntryPtr entry = il.load({
+    const ImageEntryPtr entry = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -256,7 +256,7 @@ TEST(ImageListTest, SortNumericReverse)
         /* 5 */ "exec://a/2",
     };
 
-    ImageEntryPtr entry = il.load({
+    const ImageEntryPtr entry = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -449,7 +449,7 @@ TEST(ImageListTest, Distance)
                           il.get(nullptr, ImageList::Dir::First)),
               -3);
 
-    ImageEntryPtr entry =
+    const ImageEntryPtr entry =
         il.get(il.get(nullptr, ImageList::Dir::First), ImageList::Dir::Next);
     EXPECT_EQ(il.distance(entry, entry), 0);
     EXPECT_EQ(il.distance(entry, il.get(nullptr, ImageList::Dir::Last)), 2);
@@ -465,7 +465,7 @@ TEST(ImageListTest, Find)
         "exec://3",
     }));
 
-    ImageEntryPtr entry = il.find("exec://2");
+    const ImageEntryPtr entry = il.find("exec://2");
     ASSERT_TRUE(entry);
     EXPECT_EQ(entry->path, "exec://2");
 
@@ -484,7 +484,7 @@ TEST(ImageListTest, Remove)
 
     ASSERT_EQ(il.size(), 3UL);
 
-    ImageEntryPtr entry = il.find("exec://2");
+    const ImageEntryPtr entry = il.find("exec://2");
     ASSERT_TRUE(entry);
     ASSERT_TRUE(*entry);
 

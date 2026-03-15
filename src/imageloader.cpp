@@ -237,7 +237,7 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
     // decode file
     for (const auto& it : get_registry()) {
         ImagePtr image = it.create();
-        Log::PerfTimer timer;
+        const Log::PerfTimer timer;
         if (image->load(data)) {
             if (Log::verbose_enable()) {
                 Log::verbose("Image {} loaded in {:.6f} sec",

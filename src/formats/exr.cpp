@@ -69,7 +69,7 @@ public:
         try {
             const char* image_type;
             MemoryIStream stream(data);
-            Imf::InputFile exr_file(stream, 0);
+            const Imf::InputFile exr_file(stream, 0);
             const Imf::Header& exr_header = exr_file.header();
 
             const Imath::Box2i& box = exr_header.dataWindow();

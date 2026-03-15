@@ -28,12 +28,12 @@ public:
                 break;
         }
 
-        JxlDecoderPtr jxl_dec = JxlDecoderMake(nullptr);
+        const JxlDecoderPtr jxl_dec = JxlDecoderMake(nullptr);
         if (!jxl_dec) {
             return false;
         }
 
-        JxlResizableParallelRunnerPtr jxl_prl =
+        const JxlResizableParallelRunnerPtr jxl_prl =
             JxlResizableParallelRunnerMake(nullptr);
 
         JxlDecoderSubscribeEvents(jxl_dec.get(),
@@ -53,7 +53,8 @@ public:
                                        .endianness = JXL_NATIVE_ENDIAN,
                                        .align = 0 };
         while (true) {
-            JxlDecoderStatus status = JxlDecoderProcessInput(jxl_dec.get());
+            const JxlDecoderStatus status =
+                JxlDecoderProcessInput(jxl_dec.get());
             if (status == JXL_DEC_ERROR) {
                 return false;
             } else if (status == JXL_DEC_NEED_MORE_INPUT) {

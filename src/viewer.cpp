@@ -70,7 +70,7 @@ Viewer::Viewer()
         Application::self().set_mode(Application::Mode::Slideshow);
     });
     bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        ImageEntryPtr entry = current_entry();
+        const ImageEntryPtr entry = current_entry();
         entry->mark = !entry->mark;
         Application::redraw();
     });
@@ -206,7 +206,7 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
 
     {
         // get file form history/preload cache
-        std::lock_guard lock(image_pool.mutex);
+        const std::lock_guard lock(image_pool.mutex);
         next_image = image_pool.preload.get(next_entry);
         if (!next_image) {
             next_image = image_pool.history.get(next_entry);
@@ -229,7 +229,7 @@ bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
     if (next_image) {
         // put to history
         if (image) {
-            std::lock_guard lock(image_pool.mutex);
+            const std::lock_guard lock(image_pool.mutex);
             image_pool.history.put(image);
         }
 
@@ -694,7 +694,7 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 {
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
-        std::lock_guard lock(image_pool.mutex);
+        const std::lock_guard lock(image_pool.mutex);
         image_pool.history.get(entry);
         image_pool.preload.get(entry);
     }
@@ -750,7 +750,7 @@ void Viewer::preloader_start()
             }
             if (!next_entry || next_entry == last_entry) {
                 // no more images to preload
-                std::lock_guard lock(image_pool.mutex);
+                const std::lock_guard lock(image_pool.mutex);
                 image_pool.preload.trim(counter);
                 break;
             }
@@ -759,7 +759,7 @@ void Viewer::preloader_start()
 
             // get existing image form history/preload cache
             {
-                std::lock_guard lock(image_pool.mutex);
+                const std::lock_guard lock(image_pool.mutex);
                 next_image = image_pool.preload.get(next_entry);
                 if (!next_image) {
                     next_image = image_pool.history.get(next_entry);
@@ -776,7 +776,7 @@ void Viewer::preloader_start()
             } else {
                 Log::verbose("Put image {} to cache",
                              next_entry->path.filename().string());
-                std::lock_guard lock(image_pool.mutex);
+                const std::lock_guard lock(image_pool.mutex);
                 image_pool.preload.put(next_image);
                 last_entry = next_image->entry;
                 ++counter;

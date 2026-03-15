@@ -68,7 +68,7 @@ void ThreadPool::wait(const std::vector<size_t>& tids)
 
 void ThreadPool::cancel()
 {
-    std::unique_lock lock(mutex);
+    const std::unique_lock lock(mutex);
     tasks.clear();
 }
 
@@ -111,7 +111,7 @@ void ThreadPool::run()
             break;
         }
         if (!tasks.empty()) {
-            Task task = std::move(tasks.front());
+            const Task task = std::move(tasks.front());
             tasks.pop_front();
             active.insert(task.id);
             lock.unlock();

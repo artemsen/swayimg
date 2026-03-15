@@ -78,7 +78,7 @@ private:
 
         // handle disposition
         if (ctl.DisposalMode == DISPOSE_PREVIOUS && index + 1 < frames.size()) {
-            Pixmap& curr = frame.pm;
+            const Pixmap& curr = frame.pm;
             Pixmap& next = frames[index + 1].pm;
             next.copy(curr, { 0, 0 });
         }
@@ -109,7 +109,7 @@ private:
         }
 
         if (ctl.DisposalMode == DISPOSE_DO_NOT && index + 1 < frames.size()) {
-            Pixmap& curr = frame.pm;
+            const Pixmap& curr = frame.pm;
             Pixmap& next = frames[index + 1].pm;
             next.copy(curr, { 0, 0 });
         }

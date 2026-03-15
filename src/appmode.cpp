@@ -106,7 +106,7 @@ void AppMode::bind_input(const InputSignal& input, const InputCallback& handler)
 
 void AppMode::switch_current()
 {
-    ImageEntryPtr current = current_entry();
+    const ImageEntryPtr current = current_entry();
 
     // set window title
     Ui* ui = Application::self().get_ui();

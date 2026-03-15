@@ -102,7 +102,7 @@ Gallery::Gallery()
         Application::self().set_mode(Application::Mode::Slideshow);
     });
     bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        ImageEntryPtr entry = current_entry();
+        const ImageEntryPtr entry = current_entry();
         entry->mark = !entry->mark;
         Application::redraw();
     });
@@ -359,7 +359,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
 {
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
-        std::lock_guard lock(mutex);
+        const std::lock_guard lock(mutex);
         auto it = std::find_if(cache.begin(), cache.end(),
                                [&entry](const ThumbEntry& thumb) {
                                    return entry == thumb.entry;
@@ -383,7 +383,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
 
 void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 {
-    std::lock_guard lock(mutex);
+    const std::lock_guard lock(mutex);
 
     const bool selected = (tlay.img == layout.get_selected());
     const Size wnd_size = wnd;
@@ -479,7 +479,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
 void Gallery::load_thumbnails()
 {
-    std::lock_guard lock(mutex);
+    const std::lock_guard lock(mutex);
 
     tpool.cancel();
     queue.clear();
@@ -533,7 +533,7 @@ void Gallery::load_thumbnails()
 
 void Gallery::clear_thumbnails()
 {
-    std::lock_guard lock(mutex);
+    const std::lock_guard lock(mutex);
 
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
 
@@ -563,7 +563,7 @@ const Pixmap* Gallery::get_thumbnail(const ImageEntryPtr& entry)
 void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
-        std::lock_guard lock(mutex);
+        const std::lock_guard lock(mutex);
         active.insert(entry);
         queue.erase(entry);
     }
@@ -579,7 +579,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     if (!thumb.pm) {
         // create thumbnail from original image
-        ImagePtr image = ImageLoader::load(entry);
+        const ImagePtr image = ImageLoader::load(entry);
         if (!image) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
         } else {
@@ -604,7 +604,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
         }
     }
 
-    std::lock_guard lock(mutex);
+    const std::lock_guard lock(mutex);
 
     if (thumb.pm) {
         thumb.entry = entry;
@@ -634,9 +634,9 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
     }
 
     // load thumbnail
-    ImageEntryPtr thumb_entry = std::make_shared<ImageEntry>();
+    const ImageEntryPtr thumb_entry = std::make_shared<ImageEntry>();
     thumb_entry->path = thumb_path;
-    ImagePtr thumb_image = ImageLoader::load(thumb_entry);
+    const ImagePtr thumb_image = ImageLoader::load(thumb_entry);
     if (thumb_image) {
         return thumb_image->frames[0].pm;
     }

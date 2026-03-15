@@ -35,7 +35,7 @@ public:
         }
 
         // open decoder
-        HeifContext hctx(heif_context_alloc(), &heif_context_free);
+        const HeifContext hctx(heif_context_alloc(), &heif_context_free);
         if (!hctx) {
             return false;
         }
@@ -53,7 +53,7 @@ public:
         if (err.code != heif_error_Ok) {
             return false;
         }
-        HeifImageHandle himh(pih, &heif_image_handle_release);
+        const HeifImageHandle himh(pih, &heif_image_handle_release);
 
         heif_image* him = nullptr;
         err = heif_decode_image(himh.get(), &him, heif_colorspace_RGB,
@@ -61,7 +61,7 @@ public:
         if (err.code != heif_error_Ok) {
             return false;
         }
-        HeifImage himg(him, &heif_image_release);
+        const HeifImage himg(him, &heif_image_release);
 
         int stride;
         const uint8_t* decoded = heif_image_get_plane_readonly(

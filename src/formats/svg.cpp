@@ -201,7 +201,7 @@ public:
     void draw(const size_t, Pixmap& target, const double scale, const ssize_t x,
               const ssize_t y) override
     {
-        Pixmap& pm = frames[0].pm;
+        const Pixmap& pm = frames[0].pm;
         const RsvgRectangle viewbox = {
             .x = x + scale * svg_offset_x,
             .y = y - scale * svg_offset_y,
@@ -210,7 +210,7 @@ public:
         };
 
         // prepare cairo surface
-        CairoSurface surface(
+        const CairoSurface surface(
             cairo_image_surface_create_for_data(
                 reinterpret_cast<unsigned char*>(&target.at(0, 0)),
                 CAIRO_FORMAT_ARGB32, target.width(), target.height(),
@@ -220,7 +220,7 @@ public:
             cairo_surface_status(surface.get()) != CAIRO_STATUS_SUCCESS) {
             return;
         }
-        Cairo cairo(cairo_create(surface.get()), &cairo_destroy);
+        const Cairo cairo(cairo_create(surface.get()), &cairo_destroy);
         if (!cairo || cairo_status(cairo.get()) != CAIRO_STATUS_SUCCESS) {
             return;
         }

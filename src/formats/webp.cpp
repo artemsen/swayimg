@@ -49,8 +49,8 @@ public:
         // open decoder
         const WebPData wepp_data = { .bytes = data.data(),
                                      .size = data.size() };
-        WebpDecoder webp_dec(WebPAnimDecoderNew(&wepp_data, &webp_opts),
-                             &WebPAnimDecoderDelete);
+        const WebpDecoder webp_dec(WebPAnimDecoderNew(&wepp_data, &webp_opts),
+                                   &WebPAnimDecoderDelete);
         if (!webp_dec) {
             return false;
         }
