@@ -7,8 +7,8 @@
 #include "../imageloader.hpp"
 
 #include <png.h>
-#include <setjmp.h>
 
+#include <csetjmp>
 #include <cstring>
 #include <format>
 

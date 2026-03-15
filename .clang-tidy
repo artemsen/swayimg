@@ -1,4 +1,4 @@
-Checks: 'clang-analyzer-*,performance-*,misc-const-correctness'
+Checks: 'clang-analyzer-*,performance-*,modernize-deprecated-*,misc-const-correctness'
 HeaderFilterRegex: 'src/*.hpp'
 ExcludeHeaderFilterRegex: 'external/*'
 WarningsAsErrors: '*'

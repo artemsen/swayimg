@@ -25,7 +25,8 @@
 #endif // HAVE_DRM
 
 #include <poll.h>
-#include <signal.h>
+
+#include <csignal>
 
 Application& Application::self()
 {

@@ -5,8 +5,8 @@
 #include "../imageloader.hpp"
 
 #include <jpeglib.h>
-#include <setjmp.h>
 
+#include <csetjmp>
 #include <format>
 
 // register format in factory
