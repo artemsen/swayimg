@@ -460,6 +460,10 @@ void Application::handle_event(const AppEvent::FileCreate& event)
     } else {
         entries = il.add(event.path);
     }
+    if (active_mode == Mode::Viewer) {
+        const ImageEntryPtr current = Viewer::self().current_entry();
+        Viewer::self().open_file(ImageList::Dir::First, current);
+    }
     for (auto& it : entries) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
     }
