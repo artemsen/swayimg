@@ -4,8 +4,9 @@
 
 #include "../imageloader.hpp"
 
-#include <climits>
 #include <format>
+#include <limits>
+#include <utility>
 
 // register format in factory
 class ImagePnm;
@@ -86,11 +87,11 @@ private:
         size_t i = 0;
         do {
             const uint8_t d = *it->pos - '0';
-            if (val > INT_MAX / 10) {
+            if (val > std::numeric_limits<int>::max() / 10) {
                 return PNM_ERNG;
             }
             val *= 10;
-            if (val > INT_MAX - d) {
+            if (val > std::numeric_limits<int>::max() - d) {
                 return PNM_ERNG;
             }
             val += d;
@@ -133,8 +134,10 @@ private:
                     if (v > maxval) {
                         return PNM_EOVF;
                     }
-                    if (maxval != UINT8_MAX) {
-                        v = div_near(v * UINT8_MAX, maxval);
+                    if (std::cmp_not_equal(
+                            maxval, std::numeric_limits<uint8_t>::max())) {
+                        v = div_near(v * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
                     }
                     dst.r = v;
                     dst.g = v;
@@ -161,10 +164,14 @@ private:
                     if (b > maxval) {
                         return PNM_EOVF;
                     }
-                    if (maxval != UINT8_MAX) {
-                        r = div_near(r * UINT8_MAX, maxval);
-                        g = div_near(g * UINT8_MAX, maxval);
-                        b = div_near(b * UINT8_MAX, maxval);
+                    if (std::cmp_not_equal(
+                            maxval, std::numeric_limits<uint8_t>::max())) {
+                        r = div_near(r * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
+                        g = div_near(g * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
+                        b = div_near(b * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
                     }
                     dst.r = r;
                     dst.g = g;
@@ -188,7 +195,10 @@ private:
         // PGM and PPM use bpc (bytes per channel) bytes for each channel
         // depending on the max, with 1 channel for PGM and 3 for PPM; PBM pads
         // each row to the nearest whole byte
-        const size_t bpc = maxval <= UINT8_MAX ? 1 : 2;
+        const size_t bpc =
+            std::cmp_less_equal(maxval, std::numeric_limits<uint8_t>::max())
+            ? 1
+            : 2;
         const size_t rowsz = type == pnm_pbm
             ? div_ceil(pm.width(), 8)
             : pm.width() * bpc * (type == pnm_pgm ? 1 : 3);
@@ -208,8 +218,10 @@ private:
                     if (v > maxval) {
                         return PNM_EOVF;
                     }
-                    if (maxval != UINT8_MAX) {
-                        v = div_near(v * UINT8_MAX, maxval);
+                    if (std::cmp_not_equal(
+                            maxval, std::numeric_limits<uint8_t>::max())) {
+                        v = div_near(v * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
                     }
                     dst.r = v;
                     dst.g = v;
@@ -228,10 +240,14 @@ private:
                     if (r > maxval || g > maxval || b > maxval) {
                         return PNM_EOVF;
                     }
-                    if (maxval != UINT8_MAX) {
-                        r = div_near(r * UINT8_MAX, maxval);
-                        g = div_near(g * UINT8_MAX, maxval);
-                        b = div_near(b * UINT8_MAX, maxval);
+                    if (std::cmp_not_equal(
+                            maxval, std::numeric_limits<uint8_t>::max())) {
+                        r = div_near(r * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
+                        g = div_near(g * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
+                        b = div_near(b * std::numeric_limits<uint8_t>::max(),
+                                     maxval);
                     }
                     dst.r = r;
                     dst.g = g;
@@ -291,7 +307,9 @@ public:
             if (maxval < 0) {
                 return false;
             }
-            if (!maxval || maxval > UINT16_MAX) {
+            if (!maxval ||
+                std::cmp_greater(maxval,
+                                 std::numeric_limits<uint16_t>::max())) {
                 return false;
             }
         }
