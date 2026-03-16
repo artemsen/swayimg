@@ -33,13 +33,12 @@ Text::Text()
     foreground = { 0xff, 0xcc, 0xcc, 0xcc };
     background = { 0x00, 0x00, 0x00, 0x00 };
     shadow = { 0xd0, 0x00, 0x00, 0x00 };
+
+    font.load("monospace");
 }
 
 void Text::initialize()
 {
-    if (!font) {
-        font.load("monospace");
-    }
     Application::self().add_fdpoll(overall_tm.fd, [this]() {
         overall_tm.fd.reset(0, 0);
         overall_tm.show = false;
