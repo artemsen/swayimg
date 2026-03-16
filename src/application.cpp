@@ -463,6 +463,14 @@ void Application::handle_event(const AppEvent::FileCreate& event)
     for (auto& it : entries) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
     }
+
+    // update image list text info
+    Text& text = Text::self();
+    text.set_field(Text::FIELD_LIST_INDEX,
+                   std::to_string(current_mode()->current_entry()->index));
+    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
+    text.update();
+
     redraw();
 }
 
@@ -487,6 +495,14 @@ void Application::handle_event(const AppEvent::FileRemove& event)
             il.remove(entry);
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
                                              entry);
+            // update image list text info
+            Text& text = Text::self();
+            text.set_field(
+                Text::FIELD_LIST_INDEX,
+                std::to_string(current_mode()->current_entry()->index));
+            text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
+            text.update();
+            redraw();
         }
     }
 }
