@@ -4,6 +4,7 @@
 
 #include "../imageloader.hpp"
 
+#include <climits>
 #include <format>
 
 // register format in factory
