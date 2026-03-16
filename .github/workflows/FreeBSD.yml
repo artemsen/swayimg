@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Check out source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -38,7 +38,7 @@ jobs:
           tar czf swayimg-freebsd.tar.gz -C ${{ env.INSTALL_PATH }} .
 
     - name: Upload binary package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: swayimg-freebsd.tar.gz
         path: swayimg-freebsd.tar.gz
