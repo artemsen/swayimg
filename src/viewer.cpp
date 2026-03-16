@@ -786,14 +786,6 @@ void Viewer::preloader_start()
             }
         }
 
-        // update image list text info
-        Text& text = Text::self();
-        text.set_field(Text::FIELD_LIST_INDEX,
-                       std::to_string(current_image->entry->index));
-        text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-        text.update();
-        Application::redraw();
-
         image_pool.stop = true;
     });
 }
