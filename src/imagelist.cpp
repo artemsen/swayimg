@@ -5,6 +5,7 @@
 #include "imagelist.hpp"
 
 #include "fsmonitor.hpp"
+#include "imageloader.hpp"
 #include "log.hpp"
 
 #include <algorithm>
@@ -496,6 +497,12 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
 
     if (!std::filesystem::is_regular_file(path)) {
         Log::warning("File {} is not a regular, skipped", path.string());
+        return nullptr;
+    }
+
+    if (!ImageLoader::check_header(path)) {
+        Log::verbose("File {} is not a supported image, skipped",
+                     path.string());
         return nullptr;
     }
 

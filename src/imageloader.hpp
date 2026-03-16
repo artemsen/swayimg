@@ -62,6 +62,14 @@ public:
      */
     static ImagePtr load(const ImageEntryPtr& entry);
 
+    /**
+     * Quick check if file has a supported image format header.
+     * Reads only the first few bytes to check magic signatures.
+     * @param path path to the file
+     * @return true if file header matches a known image format
+     */
+    static bool check_header(const std::filesystem::path& path);
+
 private:
     /**
      * Get array with loaders.
