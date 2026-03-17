@@ -25,17 +25,17 @@ private:
         std::unique_ptr<WebPAnimDecoder, decltype(&WebPAnimDecoderDelete)>;
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(signature) ||
-            std::memcmp(data.data(), signature, sizeof(signature))) {
+        if (data.size < sizeof(signature) ||
+            std::memcmp(data.data, signature, sizeof(signature))) {
             return false;
         }
 
         // get image properties
         WebPBitstreamFeatures webp_prop;
-        if (WebPGetFeatures(data.data(), data.size(), &webp_prop) !=
+        if (WebPGetFeatures(data.data, data.size, &webp_prop) !=
             VP8_STATUS_OK) {
             return false;
         }
@@ -47,8 +47,7 @@ public:
         webp_opts.use_threads = true;
 
         // open decoder
-        const WebPData wepp_data = { .bytes = data.data(),
-                                     .size = data.size() };
+        const WebPData wepp_data = { .bytes = data.data, .size = data.size };
         const WebpDecoder webp_dec(WebPAnimDecoderNew(&wepp_data, &webp_opts),
                                    &WebPAnimDecoderDelete);
         if (!webp_dec) {

@@ -20,11 +20,11 @@ static const ImageLoader::Registrator<ImageRaw>
 /* Raw image. */
 class ImageRaw : public Image {
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // open decoder
         LibRaw decoder(0);
-        if (decoder.open_buffer(data.data(), data.size()) != LIBRAW_SUCCESS ||
+        if (decoder.open_buffer(data.data, data.size) != LIBRAW_SUCCESS ||
             decoder.unpack() != LIBRAW_SUCCESS) {
             return false;
         }

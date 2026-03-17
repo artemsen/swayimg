@@ -41,19 +41,19 @@ private:
      * @param data image data
      * @return true if it is an SVG format
      */
-    static bool is_svg(const std::vector<uint8_t>& data)
+    static bool is_svg(const Data& data)
     {
         const uint8_t signature[] = { '<', 's', 'v', 'g' };
-        if (data.size() < sizeof(signature)) {
+        if (data.size < sizeof(signature)) {
             return false;
         }
 
         const size_t max_offset =
-            std::min(MAX_SIGNATURE_OFFSET, data.size() - sizeof(signature));
+            std::min(MAX_SIGNATURE_OFFSET, data.size - sizeof(signature));
 
         bool found = false;
         for (size_t i = 0; !found && i < max_offset; ++i) {
-            found = std::memcmp(&data[i], signature, sizeof(signature));
+            found = std::memcmp(&data.data[i], signature, sizeof(signature));
         }
         return found;
     }
@@ -254,14 +254,14 @@ public:
         rsvg_handle_render_document(svg, cairo.get(), &viewbox, nullptr);
     }
 
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         if (!is_svg(data)) {
             return false;
         }
 
         // open decoder
-        svg = rsvg_handle_new_from_data(data.data(), data.size(), nullptr);
+        svg = rsvg_handle_new_from_data(data.data, data.size, nullptr);
         if (!svg) {
             return false;
         }

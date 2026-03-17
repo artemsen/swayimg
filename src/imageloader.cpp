@@ -9,6 +9,8 @@
 
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -16,129 +18,17 @@
 
 #ifdef HAVE_LIBEXIV2
 #include <exiv2/exiv2.hpp>
-#endif
-
-/**
- * Read data from stream file.
- * @param fd file descriptor for read
- * @return data array, empty on errors
- */
-static std::vector<uint8_t> read_stream(int fd)
-{
-    std::vector<uint8_t> data;
-
-    while (true) {
-        uint8_t buffer[4096];
-        const ssize_t rc = read(fd, buffer, sizeof(buffer));
-        if (rc == 0) {
-            break;
-        }
-        if (rc == -1 && errno != EAGAIN) {
-            return {};
-        }
-        data.insert(data.end(), buffer, buffer + rc);
-    }
-
-    return data;
-}
-
-/**
- * Read data from file.
- * @param file path to the file to load
- * @return data array, empty on errors
- */
-static std::vector<uint8_t> read_file(const std::filesystem::path& file)
-{
-    const int fd = open(file.c_str(), O_RDONLY);
-    if (fd == -1) {
-        Log::error(errno, "Unable to open file {}", file.string());
-        return {};
-    }
-
-    std::vector<uint8_t> data = read_stream(fd);
-    if (data.empty()) {
-        Log::error(errno, "Unable to read file {}", file.string());
-    }
-
-    close(fd);
-
-    return data;
-}
-
-/**
- * Read data from stdout printed by external command.
- * @param cmd execution command to get stdout data
- * @return data array, empty on errors
- */
-static std::vector<uint8_t> read_stdout(const std::string& cmd)
-{
-    std::vector<uint8_t> data;
-
-    int fds_in[2], fds_out[2];
-    if (pipe(fds_in) == -1) {
-        return {};
-    }
-    if (pipe(fds_out) == -1) {
-        close(fds_in[0]);
-        close(fds_in[1]);
-        return {};
-    }
-
-    const char* shell = getenv("SHELL");
-    if (!shell || !*shell) {
-        shell = "/bin/sh";
-    }
-
-    const pid_t pid = fork();
-    switch (pid) {
-        case -1:
-            close(fds_in[0]);
-            close(fds_in[1]);
-            close(fds_out[0]);
-            close(fds_out[1]);
-            break;
-        case 0: // child process
-            close(fds_in[1]);
-            close(fds_out[0]);
-            // redirect stdio
-            dup2(fds_in[0], STDIN_FILENO);
-            close(fds_in[0]);
-            dup2(fds_out[1], STDOUT_FILENO);
-            close(fds_out[1]);
-
-            // skip clang-tidy check: we trust users's command
-            // NOLINTNEXTLINE(clang-analyzer-optin.taint.GenericTaint)
-            execlp(shell, shell, "-c", cmd.c_str(), nullptr);
-
-            exit(1); // unreachable
-            break;
-        default: // parent process
-            close(fds_in[0]);
-            close(fds_in[1]);
-            close(fds_out[1]);
-            data = read_stream(fds_out[0]);
-            close(fds_out[0]);
-            break;
-    }
-
-    if (data.empty()) {
-        Log::error("Unable to read stdout from command {}", cmd);
-    }
-    return data;
-}
-
-#ifdef HAVE_LIBEXIV2
 /**
  * Read and handle EXIF data.
  * @param image target image instance
  * @param data image file data
  */
-static void read_exif(ImagePtr& image, const std::vector<uint8_t>& data)
+static void read_exif(ImagePtr& image, const Image::Data& data)
 {
     try {
         // read EXIF data
         Exiv2::Image::UniquePtr eimg =
-            Exiv2::ImageFactory::open(data.data(), data.size());
+            Exiv2::ImageFactory::open(data.data, data.size);
         if (!eimg) {
             return;
         }
@@ -190,6 +80,151 @@ static void read_exif(ImagePtr& image, const std::vector<uint8_t>& data)
 }
 #endif // HAVE_LIBEXIV2
 
+/** Image data reader. */
+struct DataBuffer : public Image::Data {
+    ~DataBuffer()
+    {
+        if (container.empty() && data) {
+            munmap(data, size);
+        }
+    }
+
+    /**
+     * Read data from stream file.
+     * @param fd file descriptor for read
+     * @return true if data loaded
+     */
+    bool read_stream(int fd)
+    {
+        assert(!data && !size);
+
+        while (true) {
+            uint8_t buffer[4096];
+            const ssize_t rc = read(fd, buffer, sizeof(buffer));
+            if (rc == 0) {
+                break;
+            }
+            if (rc == -1 && errno != EAGAIN) {
+                Log::error(errno, "Unable to read stream");
+                container.clear();
+                return false;
+            }
+            container.insert(container.end(), buffer, buffer + rc);
+        }
+
+        data = container.data();
+        size = container.size();
+
+        return true;
+    }
+
+    /**
+     * Read data from file.
+     * @param file path to the file to load
+     * @return true if file loaded
+     */
+    bool read_file(const std::filesystem::path& file)
+    {
+        assert(!data && !size);
+
+        // get file size and checktype
+        struct stat st;
+        if (stat(file.c_str(), &st) == -1) {
+            Log::error(errno, "Unable to get stat for file {}", file.string());
+            return false;
+        }
+        if (!S_ISREG(st.st_mode)) {
+            Log::error("Not a regular file {}", file.string());
+            return false;
+        }
+
+        // open file and map it to memory
+        const int fd = open(file.c_str(), O_RDONLY);
+        if (fd == -1) {
+            Log::error(errno, "Unable to open file {}", file.string());
+            return false;
+        }
+        void* mdata = mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (mdata == MAP_FAILED) {
+            Log::error(errno, "Unable to map file {}", file.string());
+            close(fd);
+            return false;
+        }
+
+        close(fd);
+
+        data = reinterpret_cast<uint8_t*>(mdata);
+        size = st.st_size;
+
+        return true;
+    }
+
+    /**
+     * Read data from stdout printed by external command.
+     * @param cmd execution command to get stdout data
+     * @return true if data loaded
+     */
+    bool read_stdout(const std::string& cmd)
+    {
+        int fds_in[2], fds_out[2];
+        if (pipe(fds_in) == -1) {
+            Log::error(errno, "Unable to create pipes");
+            return {};
+        }
+        if (pipe(fds_out) == -1) {
+            Log::error(errno, "Unable to create pipes");
+            close(fds_in[0]);
+            close(fds_in[1]);
+            return {};
+        }
+
+        const char* shell = getenv("SHELL");
+        if (!shell || !*shell) {
+            shell = "/bin/sh";
+        }
+
+        bool rc = false;
+
+        const pid_t pid = fork();
+        switch (pid) {
+            case -1:
+                Log::error(errno, "Unable to fork");
+                close(fds_in[0]);
+                close(fds_in[1]);
+                close(fds_out[0]);
+                close(fds_out[1]);
+                break;
+            case 0: // child process
+                close(fds_in[1]);
+                close(fds_out[0]);
+                // redirect stdio
+                dup2(fds_in[0], STDIN_FILENO);
+                close(fds_in[0]);
+                dup2(fds_out[1], STDOUT_FILENO);
+                close(fds_out[1]);
+
+                // skip clang-tidy check: we trust users's command
+                // NOLINTNEXTLINE(clang-analyzer-optin.taint.GenericTaint)
+                execlp(shell, shell, "-c", cmd.c_str(), nullptr);
+                Log::error(errno, "Unable to call exec {}", cmd);
+                exit(1); // unreachable
+                break;
+            default: // parent process
+                close(fds_in[0]);
+                close(fds_in[1]);
+                close(fds_out[1]);
+                rc = read_stream(fds_out[0]);
+                close(fds_out[0]);
+                break;
+        }
+
+        return rc;
+    }
+
+private:
+    std::vector<uint8_t> container;
+};
+
 void ImageLoader::register_format(const char* name, Priority priority,
                                   const Constructor& creator)
 {
@@ -217,27 +252,30 @@ std::string ImageLoader::format_list()
 
 ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
 {
+    const Log::PerfTimer timer;
+
     // read file data
-    std::vector<uint8_t> data;
+    bool rc;
+    DataBuffer data;
     const std::string full_path = entry->path.string();
     if (full_path.starts_with(ImageEntry::SRC_STDIN)) {
-        data = read_stream(STDIN_FILENO);
-        if (data.empty()) {
-            Log::error(errno, "Unable to read stdout");
-        }
+        rc = data.read_stream(STDIN_FILENO);
     } else if (full_path.starts_with(ImageEntry::SRC_EXEC)) {
-        data = read_stdout(full_path.substr(strlen(ImageEntry::SRC_EXEC)));
+        rc = data.read_stdout(full_path.substr(strlen(ImageEntry::SRC_EXEC)));
     } else {
-        data = read_file(entry->path);
+        rc = data.read_file(entry->path);
     }
-    if (data.empty()) {
+    if (!rc) {
+        return nullptr;
+    }
+    if (data.size == 0) {
+        Log::error("No image data in {}", full_path);
         return nullptr;
     }
 
     // decode file
     for (const auto& it : get_registry()) {
         ImagePtr image = it.create();
-        const Log::PerfTimer timer;
         if (image->load(data)) {
             if (Log::verbose_enable()) {
                 Log::verbose("Image {} loaded in {:.6f} sec",
@@ -247,7 +285,7 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
                 full_path.starts_with(ImageEntry::SRC_EXEC)) {
                 entry->mtime = time(nullptr);
             }
-            entry->size = data.size();
+            entry->size = data.size;
 
             image->entry = entry;
 #ifdef HAVE_LIBEXIV2

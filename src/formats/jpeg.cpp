@@ -37,11 +37,11 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(signature) || data[0] != signature[0] ||
-            data[1] != signature[1]) {
+        if (data.size < sizeof(signature) || data.data[0] != signature[0] ||
+            data.data[1] != signature[1]) {
             return false;
         }
 
@@ -57,7 +57,7 @@ public:
         }
 
         jpeg_create_decompress(&jpg);
-        jpeg_mem_src(&jpg, data.data(), data.size());
+        jpeg_mem_src(&jpg, data.data, data.size);
         jpeg_read_header(&jpg, TRUE);
 
 #ifdef LIBJPEG_TURBO_VERSION

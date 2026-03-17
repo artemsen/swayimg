@@ -16,7 +16,7 @@ static const ImageLoader::Registrator<ImageGif>
 
 /** Memory buffer reader. */
 struct BufferReader {
-    BufferReader(const std::vector<uint8_t>& raw_data)
+    BufferReader(const Image::Data& raw_data)
         : data(raw_data)
     {
     }
@@ -25,15 +25,15 @@ struct BufferReader {
     static int read(GifFileType* gif, GifByteType* dst, int sz)
     {
         BufferReader* reader = reinterpret_cast<BufferReader*>(gif->UserData);
-        if (reader && sz >= 0 && reader->position + sz <= reader->data.size()) {
-            std::memcpy(dst, reader->data.data() + reader->position, sz);
+        if (reader && sz >= 0 && reader->position + sz <= reader->data.size) {
+            std::memcpy(dst, reader->data.data + reader->position, sz);
             reader->position += sz;
             return sz;
         }
         return -1;
     }
 
-    const std::vector<uint8_t>& data;
+    const Image::Data& data;
     size_t position = 0;
 };
 
@@ -123,11 +123,11 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(signature) ||
-            std::memcmp(data.data(), signature, sizeof(signature))) {
+        if (data.size < sizeof(signature) ||
+            std::memcmp(data.data, signature, sizeof(signature))) {
             return false;
         }
 

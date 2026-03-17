@@ -35,7 +35,7 @@ static const ImageLoader::Registrator<ImagePng>
 
 /** Memory buffer reader. */
 struct BufferReader {
-    BufferReader(const std::vector<uint8_t>& raw_data)
+    BufferReader(const Image::Data& raw_data)
         : data(raw_data)
     {
     }
@@ -45,15 +45,15 @@ struct BufferReader {
     {
         BufferReader* reader =
             reinterpret_cast<BufferReader*>(png_get_io_ptr(png));
-        if (reader && reader->position + size <= reader->data.size()) {
-            std::memcpy(buffer, reader->data.data() + reader->position, size);
+        if (reader && reader->position + size <= reader->data.size) {
+            std::memcpy(buffer, reader->data.data + reader->position, size);
             reader->position += size;
         } else {
             png_error(png, "No data in PNG reader");
         }
     }
 
-    const std::vector<uint8_t>& data;
+    const Image::Data& data;
     size_t position = 0;
 };
 
@@ -231,10 +231,10 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (png_sig_cmp(data.data(), 0, data.size()) != 0) {
+        if (png_sig_cmp(data.data, 0, data.size) != 0) {
             return false;
         }
 

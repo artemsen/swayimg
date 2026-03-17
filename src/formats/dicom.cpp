@@ -15,7 +15,7 @@ static const ImageLoader::Registrator<ImageDicom>
 
 /** Data input stream. */
 struct DataStream {
-    DataStream(const std::vector<uint8_t>& raw_data, size_t pos)
+    DataStream(const Image::Data& raw_data, size_t pos)
         : data(raw_data)
         , position(pos)
     {
@@ -31,8 +31,8 @@ struct DataStream {
         const uint8_t* ptr = nullptr;
         const size_t end = position + bytes;
 
-        if (end <= data.size()) {
-            ptr = data.data() + position;
+        if (end <= data.size) {
+            ptr = data.data + position;
             position = end;
         }
 
@@ -54,7 +54,7 @@ struct DataStream {
     }
 
 private:
-    const std::vector<uint8_t>& data;
+    const Image::Data& data;
     uint64_t position;
 };
 
@@ -208,11 +208,11 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < DICOM_SIGNATURE_OFFSET + sizeof(signature) ||
-            std::memcmp(data.data() + DICOM_SIGNATURE_OFFSET, signature,
+        if (data.size < DICOM_SIGNATURE_OFFSET + sizeof(signature) ||
+            std::memcmp(data.data + DICOM_SIGNATURE_OFFSET, signature,
                         sizeof(signature))) {
             return false;
         }

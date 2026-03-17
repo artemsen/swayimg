@@ -363,20 +363,20 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(Header) + sizeof(Info) ||
-            std::memcmp(data.data(), signature, sizeof(signature))) {
+        if (data.size < sizeof(Header) + sizeof(Info) ||
+            std::memcmp(data.data, signature, sizeof(signature))) {
             return false;
         }
 
-        const Header* hdr = reinterpret_cast<const Header*>(data.data());
+        const Header* hdr = reinterpret_cast<const Header*>(data.data);
         const Info* bmp =
-            reinterpret_cast<const Info*>(data.data() + sizeof(Header));
+            reinterpret_cast<const Info*>(data.data + sizeof(Header));
 
         // check format
-        if (hdr->offset >= data.size() ||
+        if (hdr->offset >= data.size ||
             hdr->offset < sizeof(Header) + sizeof(Info)) {
             return false;
         }
@@ -390,8 +390,8 @@ public:
         pm.create(bmp->bpp == 32 ? Pixmap::ARGB : Pixmap::RGB,
                   std::abs(bmp->width), std::abs(bmp->height));
 
-        const uint8_t* image_data = data.data() + hdr->offset;
-        const size_t image_data_sz = data.size() - hdr->offset;
+        const uint8_t* image_data = data.data + hdr->offset;
+        const size_t image_data_sz = data.size - hdr->offset;
 
         // palette
         const uint32_t* color_data = reinterpret_cast<const uint32_t*>(

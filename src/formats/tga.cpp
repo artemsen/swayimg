@@ -188,12 +188,12 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
-        const Header* tga = reinterpret_cast<const Header*>(data.data());
+        const Header* tga = reinterpret_cast<const Header*>(data.data);
 
         // check type
-        if (data.size() < sizeof(Header) ||
+        if (data.size < sizeof(Header) ||
             (tga->image_type != TGA_UNC_CM && tga->image_type != TGA_UNC_TC &&
              tga->image_type != TGA_UNC_GS && tga->image_type != TGA_RLE_CM &&
              tga->image_type != TGA_RLE_TC && tga->image_type != TGA_RLE_GS)) {
@@ -218,7 +218,7 @@ public:
                 }
                 colormap_sz = tga->cm_size *
                     (tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0));
-                colormap = data.data() + sizeof(Header) + tga->id_len;
+                colormap = data.data + sizeof(Header) + tga->id_len;
                 break;
             default:
                 if (tga->clrmap_type & TGA_COLORMAP || tga->cm_size ||
@@ -230,11 +230,11 @@ public:
 
         // get pixel array offset
         const size_t data_offset = sizeof(Header) + tga->id_len + colormap_sz;
-        if (data_offset >= data.size()) {
+        if (data_offset >= data.size) {
             return false;
         }
-        const uint8_t* pix_ptr = data.data() + data_offset;
-        const size_t pix_sz = data.size() - data_offset;
+        const uint8_t* pix_ptr = data.data + data_offset;
+        const size_t pix_sz = data.size - data_offset;
 
         // decode image
         frames.resize(1);

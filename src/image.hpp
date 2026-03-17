@@ -44,12 +44,18 @@ class Image {
 public:
     virtual ~Image() = default;
 
+    /** Image source data. */
+    struct Data {
+        uint8_t* data = nullptr; ///< Data buffer
+        size_t size = 0;         ///< Buffer size
+    };
+
     /**
      * Load (decode) image from raw buffer.
      * @param data raw buffer with image data
      * @return true if image was loaded
      */
-    virtual bool load(const std::vector<uint8_t>& data) = 0;
+    virtual bool load(const Data& data) = 0;
 
     /**
      * Draw image on pixmap surface.

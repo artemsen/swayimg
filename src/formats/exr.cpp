@@ -23,7 +23,7 @@ static const ImageLoader::Registrator<ImageExr>
 
 /** Memory input stream. */
 struct MemoryIStream : public Imf::IStream {
-    MemoryIStream(const std::vector<uint8_t>& raw_data)
+    MemoryIStream(const Image::Data& raw_data)
         : Imf::IStream("MemoryIStream")
         , data(raw_data)
     {
@@ -31,22 +31,22 @@ struct MemoryIStream : public Imf::IStream {
 
     bool read(char c[], int n) override
     {
-        if (position + n > data.size()) {
+        if (position + n > data.size) {
             throw std::runtime_error("No more data");
         }
-        std::memcpy(c, data.data() + position, n);
+        std::memcpy(c, data.data + position, n);
         position += n;
-        return position < data.size();
+        return position < data.size;
     }
 
-    int64_t size() override { return data.size(); }
+    int64_t size() override { return data.size; }
     uint64_t tellg() override { return position; }
     void seekg(uint64_t pos) override { position = pos; }
     void clear() override { position = 0; }
     [[nodiscard]] bool isMemoryMapped() const override { return false; }
 
 private:
-    const std::vector<uint8_t>& data;
+    const Image::Data& data;
     uint64_t position = 0;
 };
 
@@ -57,11 +57,11 @@ private:
     static constexpr const uint8_t signature[] = { 0x76, 0x2f, 0x31, 0x01 };
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(signature) ||
-            std::memcmp(data.data(), signature, sizeof(signature))) {
+        if (data.size < sizeof(signature) ||
+            std::memcmp(data.data, signature, sizeof(signature))) {
             return false;
         }
 

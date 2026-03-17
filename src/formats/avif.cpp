@@ -61,11 +61,11 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < signature_offset + sizeof(signature) ||
-            std::memcmp(data.data() + signature_offset, signature,
+        if (data.size < signature_offset + sizeof(signature) ||
+            std::memcmp(data.data + signature_offset, signature,
                         sizeof(signature))) {
             return false;
         }
@@ -76,7 +76,7 @@ public:
             return false;
         }
         avifResult rc;
-        rc = avifDecoderSetIOMemory(avif.get(), data.data(), data.size());
+        rc = avifDecoderSetIOMemory(avif.get(), data.data, data.size);
         if (rc != AVIF_RESULT_OK) {
             return false;
         }

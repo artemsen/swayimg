@@ -17,10 +17,10 @@ static const ImageLoader::Registrator<ImageSixel>
 /* Sixel image. */
 class ImageSixel : public Image {
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature: sixel always starts with Esc code
-        if (data[0] != 0x1b) {
+        if (data.data[0] != 0x1b) {
             return false;
         }
 
@@ -29,9 +29,9 @@ public:
         uint8_t* pixels = nullptr;
         uint8_t* palette = nullptr;
         int width = 0, height = 0, ncolors = 0;
-        status = sixel_decode_raw(const_cast<uint8_t*>(data.data()),
-                                  data.size(), &pixels, &width, &height,
-                                  &palette, &ncolors, nullptr);
+        status = sixel_decode_raw(const_cast<uint8_t*>(data.data), data.size,
+                                  &pixels, &width, &height, &palette, &ncolors,
+                                  nullptr);
         if (SIXEL_FAILED(status) || width == 0 || height == 0) {
             std::free(pixels);
             std::free(palette);

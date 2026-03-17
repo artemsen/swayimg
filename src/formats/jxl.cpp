@@ -17,10 +17,10 @@ static const ImageLoader::Registrator<ImageJxl>
 /* JPEG XL image. */
 class ImageJxl : public Image {
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        switch (JxlSignatureCheck(data.data(), data.size())) {
+        switch (JxlSignatureCheck(data.data, data.size)) {
             case JXL_SIG_NOT_ENOUGH_BYTES:
             case JXL_SIG_INVALID:
                 return false;
@@ -42,7 +42,7 @@ public:
         JxlDecoderSetParallelRunner(jxl_dec.get(), JxlResizableParallelRunner,
                                     jxl_prl.get());
 
-        JxlDecoderSetInput(jxl_dec.get(), data.data(), data.size());
+        JxlDecoderSetInput(jxl_dec.get(), data.data, data.size);
         JxlDecoderCloseInput(jxl_dec.get());
 
         size_t frame_index = std::numeric_limits<size_t>::max();

@@ -259,16 +259,16 @@ private:
     }
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature: PNM always starts with "P"
-        if (data.size() < 3 || data[0] != 'P') {
+        if (data.size < 3 || data.data[0] != 'P') {
             return false;
         }
 
         // get pnm type
         enum Type type;
-        switch (data[1]) {
+        switch (data.data[1]) {
             case '1':
             case '4':
                 type = pnm_pbm;
@@ -284,11 +284,11 @@ public:
             default:
                 return false;
         }
-        const bool plain = data[1] <= '3';
+        const bool plain = data.data[1] <= '3';
 
         struct pnm_iter it;
-        it.pos = data.data() + 2;
-        it.end = data.data() + data.size();
+        it.pos = data.data + 2;
+        it.end = data.data + data.size;
 
         const int width = pnm_readint(&it, 0);
         if (width < 0) {

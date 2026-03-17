@@ -36,12 +36,12 @@ private:
     };
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
-        const Header* header = reinterpret_cast<const Header*>(data.data());
+        const Header* header = reinterpret_cast<const Header*>(data.data);
 
         // check signature
-        if (data.size() < sizeof(Header) ||
+        if (data.size < sizeof(Header) ||
             std::memcmp(header->magic, signature, sizeof(signature))) {
             return false;
         }
@@ -49,7 +49,7 @@ public:
         // check for data enough
         const size_t width = htonl(header->width);
         const size_t height = htonl(header->height);
-        if (data.size() - sizeof(Header) < width * height * sizeof(Pixel)) {
+        if (data.size - sizeof(Header) < width * height * sizeof(Pixel)) {
             return false;
         }
 
@@ -60,7 +60,7 @@ public:
 
         // decode image
         const Pixel* src =
-            reinterpret_cast<const Pixel*>(data.data() + sizeof(Header));
+            reinterpret_cast<const Pixel*>(data.data + sizeof(Header));
         pm.foreach([&src](argb_t& pixel) {
             pixel.a = src->a;
             pixel.r = src->r;

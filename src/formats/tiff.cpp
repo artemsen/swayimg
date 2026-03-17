@@ -6,6 +6,7 @@
 
 #include <tiffio.h>
 
+#include <algorithm>
 #include <cstring>
 #include <format>
 
@@ -16,7 +17,7 @@ static const ImageLoader::Registrator<ImageTiff>
 
 /** Memory buffer I/O. */
 struct BufferIO {
-    BufferIO(const std::vector<uint8_t>& raw_data)
+    BufferIO(const Image::Data& raw_data)
         : data(raw_data)
     {
     }
@@ -26,11 +27,11 @@ struct BufferIO {
     {
         BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
         const tmsize_t rest =
-            static_cast<tmsize_t>(bufio->data.size()) - bufio->position;
+            static_cast<tmsize_t>(bufio->data.size) - bufio->position;
         if (size > rest) {
             size = rest;
         }
-        std::memcpy(buffer, bufio->data.data() + bufio->position, size);
+        std::memcpy(buffer, bufio->data.data + bufio->position, size);
         bufio->position += size;
         return size;
     }
@@ -42,7 +43,7 @@ struct BufferIO {
     static toff_t seek(thandle_t data, toff_t off, int)
     {
         BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
-        if (off < bufio->data.size()) {
+        if (off < bufio->data.size) {
             bufio->position = off;
         }
         return bufio->position;
@@ -55,22 +56,22 @@ struct BufferIO {
     static toff_t size(thandle_t data)
     {
         const BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
-        return bufio->data.size();
+        return bufio->data.size;
     }
 
     /** Buffer map: see TIFFMapFileProc for details. */
     static int map(thandle_t data, void** base, toff_t* size)
     {
         const BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
-        *base = const_cast<uint8_t*>(bufio->data.data());
-        *size = bufio->data.size();
+        *base = const_cast<uint8_t*>(bufio->data.data);
+        *size = bufio->data.size;
         return 0;
     }
 
     /** Buffer unmap: see TIFFUnmapFileProc for details. */
     static void unmap(thandle_t, void*, toff_t) {}
 
-    const std::vector<uint8_t>& data;
+    const Image::Data& data;
     size_t position = 0;
 };
 
@@ -103,13 +104,12 @@ private:
     static constexpr size_t LIBTIFF_ERRMSG_SZ = 1024;
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(signature1) ||
-            data.size() < sizeof(signature2) ||
-            (std::memcmp(data.data(), signature1, sizeof(signature1)) &&
-             std::memcmp(data.data(), signature2, sizeof(signature2)))) {
+        if (data.size < sizeof(std::max(signature1, signature2)) ||
+            (std::memcmp(data.data, signature1, sizeof(signature1)) &&
+             std::memcmp(data.data, signature2, sizeof(signature2)))) {
             return false;
         }
 

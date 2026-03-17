@@ -28,9 +28,9 @@ private:
         std::unique_ptr<heif_image, decltype(&heif_image_release)>;
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
-        if (heif_check_filetype(data.data(), data.size()) !=
+        if (heif_check_filetype(data.data, data.size) !=
             heif_filetype_yes_supported) {
             return false;
         }
@@ -43,8 +43,8 @@ public:
 
         // decode image
         heif_error err;
-        err = heif_context_read_from_memory(hctx.get(), data.data(),
-                                            data.size(), nullptr);
+        err = heif_context_read_from_memory(hctx.get(), data.data, data.size,
+                                            nullptr);
         if (err.code != heif_error_Ok) {
             return false;
         }

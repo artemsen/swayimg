@@ -51,16 +51,16 @@ private:
     };
 
 public:
-    bool load(const std::vector<uint8_t>& data) override
+    bool load(const Data& data) override
     {
         // check signature
-        if (data.size() < sizeof(Header) ||
-            std::memcmp(data.data(), signature, sizeof(signature))) {
+        if (data.size < sizeof(Header) ||
+            std::memcmp(data.data, signature, sizeof(signature))) {
             return false;
         }
 
         const struct Header* qoi =
-            reinterpret_cast<const struct Header*>(data.data());
+            reinterpret_cast<const struct Header*>(data.data);
 
         // check format
         if (qoi->width == 0 || qoi->height == 0 || qoi->channels < 3 ||
@@ -86,25 +86,25 @@ public:
                 if (rlen > 0) {
                     --rlen;
                 } else {
-                    if (pos >= data.size()) {
+                    if (pos >= data.size) {
                         break;
                     }
-                    const uint8_t tag = data[pos++];
+                    const uint8_t tag = data.data[pos++];
                     if (tag == QOI_OP_RGB) {
-                        if (pos + 3 >= data.size()) {
+                        if (pos + 3 >= data.size) {
                             return false;
                         }
-                        pixel.r = data[pos++];
-                        pixel.g = data[pos++];
-                        pixel.b = data[pos++];
+                        pixel.r = data.data[pos++];
+                        pixel.g = data.data[pos++];
+                        pixel.b = data.data[pos++];
                     } else if (tag == QOI_OP_RGBA) {
-                        if (pos + 4 >= data.size()) {
+                        if (pos + 4 >= data.size) {
                             return false;
                         }
-                        pixel.r = data[pos++];
-                        pixel.g = data[pos++];
-                        pixel.b = data[pos++];
-                        pixel.a = data[pos++];
+                        pixel.r = data.data[pos++];
+                        pixel.g = data.data[pos++];
+                        pixel.b = data.data[pos++];
+                        pixel.a = data.data[pos++];
                     } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
                         pixel = color_map[tag & 0x3f];
                     } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
@@ -114,10 +114,10 @@ public:
                     } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
                         uint8_t diff;
                         int8_t diff_green;
-                        if (pos + 1 >= data.size()) {
+                        if (pos + 1 >= data.size) {
                             return false;
                         }
-                        diff = data[pos++];
+                        diff = data.data[pos++];
                         diff_green = static_cast<int8_t>(tag & 0x3f) - 32;
                         pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
                         pixel.g += diff_green;
