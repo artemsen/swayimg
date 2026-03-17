@@ -11,14 +11,14 @@
 #include <memory>
 #include <utility>
 
-constexpr const char* DEFAULT_FONT = "monospace"; // default font face
+constexpr const char *DEFAULT_FONT = "monospace"; // default font face
 
-constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
+constexpr size_t POINT_FACTOR = 64; // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)
 
 /** Font config wrapper.*/
 class FontConfig {
-public:
+  public:
     using FcConfigPtr = std::unique_ptr<FcConfig, decltype(&FcConfigDestroy)>;
     using FcPatternPtr =
         std::unique_ptr<FcPattern, decltype(&FcPatternDestroy)>;
@@ -31,17 +31,17 @@ public:
      * @param name font name
      * @return path to the file or empty string if font not found
      */
-    std::string get_font_file(const char* name) const
-    {
+    std::string get_font_file(const char *name) const {
         const FcConfigPtr fc =
             FcConfigPtr(FcInitLoadConfigAndFonts(), &FcConfigDestroy);
         if (!fc) {
             return {};
         }
 
-        const FcPatternPtr fc_name =
-            FcPatternPtr(FcNameParse(reinterpret_cast<const FcChar8*>(name)),
-                         FcPatternDestroy);
+        const FcPatternPtr fc_name = FcPatternPtr(
+            FcNameParse(reinterpret_cast<const FcChar8 *>(name)),
+            FcPatternDestroy
+        );
         if (!fc_name) {
             return {};
         }
@@ -50,12 +50,13 @@ public:
 
         FcResult result;
         const FcPatternPtr fc_font = FcPatternPtr(
-            FcFontMatch(fc.get(), fc_name.get(), &result), FcPatternDestroy);
+            FcFontMatch(fc.get(), fc_name.get(), &result), FcPatternDestroy
+        );
         if (fc_font) {
-            FcChar8* path = nullptr;
+            FcChar8 *path = nullptr;
             if (FcPatternGetString(fc_font.get(), FC_FILE, 0, &path) ==
                 FcResultMatch) {
-                return reinterpret_cast<const char*>(path);
+                return reinterpret_cast<const char *>(path);
             }
         }
 
@@ -63,8 +64,7 @@ public:
     }
 };
 
-Font::~Font()
-{
+Font::~Font() {
     if (ft_face) {
         FT_Done_Face(ft_face);
     }
@@ -73,8 +73,7 @@ Font::~Font()
     }
 }
 
-bool Font::load(const std::string& name)
-{
+bool Font::load(const std::string &name) {
     // get font file via Fontconfig
     const std::string path = FontConfig().get_font_file(name.c_str());
     if (path.empty()) {
@@ -94,7 +93,7 @@ bool Font::load(const std::string& name)
 
     // load font
     FT_Face new_face = nullptr;
-    rc = FT_New_Face(ft_lib, path.c_str(), 0, &new_face);
+    rc               = FT_New_Face(ft_lib, path.c_str(), 0, &new_face);
     if (rc != 0) {
         Log::error("Unable to load font from {} ({})", path, rc);
         return false;
@@ -109,22 +108,23 @@ bool Font::load(const std::string& name)
     return true;
 }
 
-void Font::set_size(const size_t size)
-{
+void Font::set_size(const size_t size) {
     this->size = size;
     if (ft_face) {
         FT_Set_Pixel_Sizes(ft_face, 0, size * scale);
     }
 }
 
-void Font::set_scale(const double scale)
-{
+void Font::set_height_factor(const double hf) {
+    this->height_factor = hf;
+}
+
+void Font::set_scale(const double scale) {
     this->scale = scale;
     set_size(size);
 }
 
-Pixmap Font::render(const std::string& text)
-{
+Pixmap Font::render(const std::string &text) {
     if (!ft_face && !load(DEFAULT_FONT)) {
         return {};
     }
@@ -158,10 +158,21 @@ Pixmap Font::render(const std::string& text)
 
     // calculate text height in pixels
     const size_t height_base = ft_face->size->metrics.height / POINT_FACTOR;
-    const size_t height = height_base + height_base / 3; // dirty hack
+    const size_t height      = height_base * this->height_factor;
 
-    // horizontal padding
-    const size_t hpadding = height_base / 3;
+    // Centered line spacing scaling done by adding the extra space
+    // not used to print the char equally divided to the top and bottom
+    // (same for the horizontal padding to keep the corners on a 45° diagonal)
+
+    // Descender letters (gpqy) use some extra space at the bottom (saved as
+    // a negative value).
+    const size_t hpadding = height_base * (this->height_factor - 1) / 2 -
+        ft_face->descender / (short) POINT_FACTOR;
+    // To make the text appear symmetrical we adjust the empty space above the
+    // letters by shifting them up by the same amount as the size of the bottom.
+    const size_t y_base = height_base * (this->height_factor - 1) / 2 +
+        (ft_face->size->metrics.height + ft_face->descender) /
+            (short) POINT_FACTOR;
 
     Pixmap pm;
     pm.create(Pixmap::GS, width + hpadding * 2, height);
@@ -173,14 +184,14 @@ Pixmap Font::render(const std::string& text)
             continue; // something wrong
         }
         const FT_GlyphSlot glyph = ft_face->glyph;
-        const FT_Bitmap* bmp = &glyph->bitmap;
-        const size_t x_start = x + glyph->bitmap_left;
-        const size_t y_start = height_base - glyph->bitmap_top;
+        const FT_Bitmap *bmp     = &glyph->bitmap;
+        const size_t x_start     = x + glyph->bitmap_left;
+        const size_t y_start     = y_base - glyph->bitmap_top;
         for (size_t y = 0; y < bmp->rows; ++y) {
             if (y + y_start < pm.height() &&
                 x_start + bmp->width < pm.width()) {
-                uint8_t* dst =
-                    reinterpret_cast<uint8_t*>(pm.ptr(x_start, y + y_start));
+                uint8_t *dst =
+                    reinterpret_cast<uint8_t *>(pm.ptr(x_start, y + y_start));
                 std::memcpy(dst, &bmp->buffer[y * bmp->pitch], bmp->width);
             }
         }

@@ -77,6 +77,12 @@ public:
     void set_size(const size_t size);
 
     /**
+     * Set font line height factor.
+     * @param hf new font height scale factor
+     */
+    void set_height_factor(const double hf);
+
+    /**
      * Set font scale based on Wayland scale.
      * @param scale the scale factor to multiply by
      */

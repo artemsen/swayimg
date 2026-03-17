@@ -38,6 +38,12 @@ public:
     void set_size(const size_t size);
 
     /**
+     * Set font line height factor.
+     * @param hf new font height scale factor
+     */
+    void set_height_factor(const double hf);
+
+    /**
      * Set font scale based on Wayland scale.
      * @param scale the scale factor to multiply by
      */
@@ -54,6 +60,7 @@ private:
     FT_Library ft_lib = nullptr; ///< Font lib instance
     FT_Face ft_face = nullptr;   ///< Font face instance
 
-    size_t size = 24;   ///< Font size in pixels
-    double scale = 1.0; ///< Font scale
+    size_t size = 24;           ///< Font size in pixels
+    double height_factor = 1.0; ///< Font height multiplier
+    double scale = 1.0;         ///< Font scale
 };
