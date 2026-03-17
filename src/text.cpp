@@ -87,6 +87,12 @@ void Text::set_size(const size_t size)
     refresh();
 }
 
+void Text::set_height_factor(const double hf)
+{
+    font.set_height_factor(hf);
+    refresh();
+}
+
 void Text::set_scale(const double scale)
 {
     font.set_scale(scale);

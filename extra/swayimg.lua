@@ -264,6 +264,10 @@ function swayimg.text.set_font(name) end
 ---@param size integer Font size in pixels
 function swayimg.text.set_size(size) end
 
+---Set font line height scale.
+---@param hf number Font line height factor
+function swayimg.text.set_height_factor(hf) end
+
 ---Set the padding from the window edges.
 ---@param size integer Padding size in pixels
 function swayimg.text.set_padding(size) end

@@ -8,6 +8,7 @@
 
 #include <fontconfig/fontconfig.h>
 
+#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -115,6 +116,11 @@ void Font::set_size(const size_t size)
     }
 }
 
+void Font::set_height_factor(const double hf)
+{
+    this->height_factor = hf;
+}
+
 void Font::set_scale(const double scale)
 {
     this->scale = scale;
@@ -156,10 +162,19 @@ Pixmap Font::render(const std::string& text) const
 
     // calculate text height in pixels
     const size_t height_base = ft_face->size->metrics.height / POINT_FACTOR;
-    const size_t height = height_base + height_base / 3; // dirty hack
+    const size_t height = height_base * this->height_factor;
 
-    // horizontal padding
-    const size_t hpadding = height_base / 3;
+    // Chars use a 1/6 extra space above an bellow the normal line (ygpq, ČÓŮ).
+    // We scale without it to be able to set the horizontal padding to
+    // the exact same value by offsetting it after scaling as well.
+
+    // Using /2 to keep the text centered
+    // and using the 1/6 to keep the fixed offset
+    const size_t hpadding =
+        height_base * ((this->height_factor - 1) / 2.0 + 1.0 / 6);
+    // same, but adjusting base bottom of the text by 1/6 up (1-1/6 = 5/6)
+    const size_t y_base =
+        height_base * ((this->height_factor - 1) / 2.0 + 5.0 / 6);
 
     Pixmap pm;
     pm.create(Pixmap::GS, width + hpadding * 2, height);
@@ -173,7 +188,7 @@ Pixmap Font::render(const std::string& text) const
         const FT_GlyphSlot glyph = ft_face->glyph;
         const FT_Bitmap* bmp = &glyph->bitmap;
         const size_t x_start = x + glyph->bitmap_left;
-        const size_t y_start = height_base - glyph->bitmap_top;
+        const size_t y_start = y_base - glyph->bitmap_top;
         for (size_t y = 0; y < bmp->rows; ++y) {
             if (y + y_start < pm.height() &&
                 x_start + bmp->width < pm.width()) {
