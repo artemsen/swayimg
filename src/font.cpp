@@ -137,8 +137,7 @@ Pixmap Font::render(const std::string& text)
     // convert text to wide-character string
     std::wstring wide(len + 1, 0);
     len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
-    if (std::cmp_equal(len, -1)) {
-        abort();
+    if (len == std::wstring::npos) {
         return {};
     }
     wide.resize(len);
