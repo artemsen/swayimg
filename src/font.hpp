@@ -60,7 +60,7 @@ private:
     FT_Library ft_lib = nullptr; ///< Font lib instance
     FT_Face ft_face = nullptr;   ///< Font face instance
 
-    size_t size = 24;             ///< Font size in pixels
-    double height_factor = 4.0 / 3; ///< Font height multiplier
-    double scale = 1.0;           ///< Font scale
+    size_t size = 24;           ///< Font size in pixels
+    double height_factor = 1.0; ///< Font height multiplier
+    double scale = 1.0;         ///< Font scale
 };
