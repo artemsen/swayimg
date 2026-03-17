@@ -8,7 +8,6 @@
 
 #include <fontconfig/fontconfig.h>
 
-#include <iostream>
 #include <memory>
 #include <utility>
 
