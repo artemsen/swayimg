@@ -48,7 +48,7 @@ public:
      * @param text string to print
      * @return masked surface
      */
-    [[nodiscard]] Pixmap render(const std::string& text) const;
+    [[nodiscard]] Pixmap render(const std::string& text);
 
 private:
     FT_Library ft_lib = nullptr; ///< Font lib instance

@@ -11,6 +11,8 @@
 #include <memory>
 #include <utility>
 
+constexpr const char* DEFAULT_FONT = "monospace"; // default font face
+
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)
 
@@ -94,7 +96,7 @@ bool Font::load(const std::string& name)
     FT_Face new_face = nullptr;
     rc = FT_New_Face(ft_lib, path.c_str(), 0, &new_face);
     if (rc != 0) {
-        Log::error("Unable to load font from %s (%d)", path, rc);
+        Log::error("Unable to load font from {} ({})", path, rc);
         return false;
     }
     if (ft_face) {
@@ -121,9 +123,9 @@ void Font::set_scale(const double scale)
     set_size(size);
 }
 
-Pixmap Font::render(const std::string& text) const
+Pixmap Font::render(const std::string& text)
 {
-    if (!ft_face) {
+    if (!ft_face && !load(DEFAULT_FONT)) {
         return {};
     }
 

@@ -183,7 +183,7 @@ private:
          * @param font font instance
          * @param fields fields values
          */
-        void update(const Font& font,
+        void update(Font& font,
                     const std::map<std::string, std::string>& fields);
 
         std::string scheme;  ///< Line scheme

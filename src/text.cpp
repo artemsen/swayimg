@@ -37,9 +37,6 @@ Text::Text()
 
 void Text::initialize()
 {
-    if (!font) {
-        font.load("monospace");
-    }
     Application::self().add_fdpoll(overall_tm.fd, [this]() {
         overall_tm.fd.reset(0, 0);
         overall_tm.show = false;
@@ -324,7 +321,7 @@ void Text::draw(const Pixmap& text, Pixmap& target, const Point& pos) const
     target.mask(text, pos, foreground);
 }
 
-void Text::Line::update(const Font& font,
+void Text::Line::update(Font& font,
                         const std::map<std::string, std::string>& fields)
 {
     std::string output = scheme;
