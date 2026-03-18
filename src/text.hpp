@@ -218,6 +218,7 @@ private:
 
     /**
      * Get block dimensions.
+     * @param block block to calculate
      * @return block dimensions
      */
     [[nodiscard]] Dimension get_dimension(const Block& block) const;
@@ -229,7 +230,6 @@ private:
 
     /**
      * Draw text overlay on the window.
-     * @param block block to draw
      * @param pos block position
      * @param target destination pixmap (window)
      */
