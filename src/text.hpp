@@ -77,6 +77,12 @@ public:
     void set_size(const size_t size);
 
     /**
+     * Set line spacing.
+     * @param size line spacing in pixels
+     */
+    void set_spacing(const ssize_t size);
+
+    /**
      * Set font scale based on Wayland scale.
      * @param scale the scale factor to multiply by
      */
@@ -198,21 +204,23 @@ private:
     };
 
     /** Text block. */
-    struct Block {
-        /**
-         * Get width of the block.
-         * @return tuple with key and value width in pixels
-         */
-        [[nodiscard]] std::tuple<size_t, size_t> width() const;
+    using Block = std::vector<KeyVal>;
 
-        /**
-         * Get height of the block.
-         * @return tuple with height of a single line and total height in pixels
-         */
-        [[nodiscard]] std::tuple<size_t, size_t> height() const;
-
-        std::vector<KeyVal> data; ///< Block text data
+    /** Block dimension. */
+    struct Dimension {
+        size_t key_width;     ///< Key size in pixels
+        size_t val_width;     ///< Value size in pixels
+        size_t total_width;   ///< Total block width in pixels
+        size_t total_height;  ///< Total block height in pixels
+        size_t line_height;   ///< Height of single line
+        ssize_t line_spacing; ///< Line spaceing in pixels
     };
+
+    /**
+     * Get block dimensions.
+     * @return block dimensions
+     */
+    [[nodiscard]] Dimension get_dimension(const Block& block) const;
 
     /**
      * Reinitialize pixmaps.
@@ -225,7 +233,7 @@ private:
      * @param pos block position
      * @param target destination pixmap (window)
      */
-    void draw(const Block& block, const Position pos, Pixmap& target) const;
+    void draw(const Position pos, Pixmap& target) const;
 
     /**
      * Draw text line.
@@ -250,7 +258,8 @@ private:
 
     Font font; ///< Font instance
 
-    size_t padding; ///< Text padding
+    ssize_t spacing; ///< Line spacing in pixels
+    size_t padding;  ///< Text padding
 
     argb_t foreground; ///< Text foreground color
     argb_t background; ///< Text background color

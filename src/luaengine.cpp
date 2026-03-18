@@ -530,6 +530,10 @@ void LuaEngine::bind_text_api()
                      [](const size_t sz) {
                          Text::self().set_size(sz);
                      })
+        .addFunction("set_spacing",
+                     [](const ssize_t sz) {
+                         Text::self().set_spacing(sz);
+                     })
         .addFunction("set_padding",
                      [](const size_t sz) {
                          Text::self().set_padding(sz);

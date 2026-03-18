@@ -28,6 +28,7 @@ Text::Text()
     status_tm.delay = 3000;
     status_tm.show = true;
 
+    spacing = 0;
     padding = 10;
 
     foreground = { 0xff, 0xcc, 0xcc, 0xcc };
@@ -52,9 +53,9 @@ void Text::initialize()
 
 void Text::set_scheme(const Position pos, const Scheme& scheme)
 {
-    Block& block = blocks[static_cast<uint8_t>(pos)];
-    block.data.clear();
-    block.data.reserve(scheme.size());
+    Block& block = blocks[static_cast<size_t>(pos)];
+    block.clear();
+    block.reserve(scheme.size());
 
     for (auto& line : scheme) {
         std::string key, value;
@@ -68,7 +69,7 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
                 value.erase(0, 1);
             }
         }
-        block.data.emplace_back(Line(std::move(key)), Line(std::move(value)));
+        block.emplace_back(Line(std::move(key)), Line(std::move(value)));
     }
 }
 
@@ -83,6 +84,12 @@ void Text::set_size(const size_t size)
 {
     font.set_size(size);
     refresh();
+}
+
+void Text::set_spacing(const ssize_t size)
+{
+    spacing = size;
+    Application::redraw();
 }
 
 void Text::set_scale(const double scale)
@@ -214,8 +221,8 @@ void Text::set_field(const std::string& field, const std::string& value)
 
 void Text::update()
 {
-    for (auto& blk : blocks) {
-        for (auto& kv : blk.data) {
+    for (auto& block : blocks) {
+        for (auto& kv : block) {
             kv.key.update(font, fields);
             kv.value.update(font, fields);
         }
@@ -234,16 +241,15 @@ void Text::draw(Pixmap& target) const
     // show text layer
     if (overall_tm.show) {
         for (size_t i = 0; i < blocks.size(); ++i) {
-            const Position pos = static_cast<Position>(i);
-            draw(blocks[i], pos, target);
+            draw(static_cast<Position>(i), target);
         }
     }
 }
 
 void Text::refresh()
 {
-    for (auto& blk : blocks) {
-        for (auto& [key, value] : blk.data) {
+    for (auto& block : blocks) {
+        for (auto& [key, value] : block) {
             if (!key.display.empty()) {
                 key.pm = font.render(key.display);
             }
@@ -255,12 +261,38 @@ void Text::refresh()
     Application::redraw();
 }
 
-void Text::draw(const Block& block, const Position pos, Pixmap& target) const
+Text::Dimension Text::get_dimension(const Block& block) const
 {
-    // get block size in pixels
-    const auto [key_width, val_width] = block.width();
-    const size_t total_width = key_width + val_width;
-    const auto [single_height, total_height] = block.height();
+    Dimension dim {};
+
+    size_t visible_lines = 0;
+    for (const auto& [key, value] : block) {
+        if (value.pm) {
+            ++visible_lines;
+            dim.key_width = std::max(dim.key_width, key.pm.width());
+            dim.val_width = std::max(dim.val_width, value.pm.width());
+            if (!dim.line_height) {
+                dim.line_height = value.pm.height();
+            }
+        }
+    }
+
+    if (visible_lines) {
+        dim.line_spacing =
+            std::clamp(spacing, -static_cast<ssize_t>(dim.line_height),
+                       static_cast<ssize_t>(dim.line_height));
+        dim.total_width = dim.key_width + dim.val_width;
+        dim.total_height = dim.line_height * visible_lines;
+        dim.total_height += dim.line_spacing * (visible_lines - 1);
+    }
+
+    return dim;
+}
+
+void Text::draw(const Position pos, Pixmap& target) const
+{
+    const Block& block = blocks[static_cast<size_t>(pos)];
+    const Dimension dim = get_dimension(block);
 
     // calculate initial position
     ssize_t x = 0;
@@ -271,16 +303,20 @@ void Text::draw(const Block& block, const Position pos, Pixmap& target) const
             y = padding;
             break;
         case Position::TopRight:
-            x = static_cast<ssize_t>(target.width()) - total_width - padding;
+            x = static_cast<ssize_t>(target.width()) - dim.total_width -
+                padding;
             y = padding;
             break;
         case Position::BottomLeft:
             x = padding;
-            y = static_cast<ssize_t>(target.height()) - total_height - padding;
+            y = static_cast<ssize_t>(target.height()) - dim.total_height -
+                padding;
             break;
         case Position::BottomRight:
-            x = static_cast<ssize_t>(target.width()) - total_width - padding;
-            y = static_cast<ssize_t>(target.height()) - total_height - padding;
+            x = static_cast<ssize_t>(target.width()) - dim.total_width -
+                padding;
+            y = static_cast<ssize_t>(target.height()) - dim.total_height -
+                padding;
             break;
     }
     x = std::max(static_cast<ssize_t>(0), x);
@@ -288,10 +324,11 @@ void Text::draw(const Block& block, const Position pos, Pixmap& target) const
 
     // draw background
     if (background.a != argb_t::min) {
-        target.fill_blend({ x, y, total_width, total_height }, background);
+        target.fill_blend({ x, y, dim.total_width, dim.total_height },
+                          background);
     }
 
-    for (const auto& [key, value] : block.data) {
+    for (const auto& [key, value] : block) {
         if (!value.pm) {
             continue; // skip empty lines
         }
@@ -301,11 +338,12 @@ void Text::draw(const Block& block, const Position pos, Pixmap& target) const
             draw(key.pm, target, tpos);
         }
         if (value.pm) {
-            tpos.x += key_width;
+            tpos.x += dim.key_width;
             draw(value.pm, target, tpos);
         }
 
-        y += single_height;
+        y += dim.line_height;
+        y += dim.line_spacing;
     }
 }
 
@@ -355,35 +393,4 @@ void Text::Line::update(Font& font,
             pm = font.render(display);
         }
     }
-}
-
-std::tuple<size_t, size_t> Text::Block::width() const
-{
-    size_t key_width = 0;
-    size_t val_width = 0;
-
-    for (const auto& [key, value] : data) {
-        if (value.pm) {
-            key_width = std::max(key_width, key.pm.width());
-            val_width = std::max(val_width, value.pm.width());
-        }
-    }
-
-    return std::make_tuple(key_width, val_width);
-}
-
-std::tuple<size_t, size_t> Text::Block::height() const
-{
-    size_t visible_lines = 0;
-    size_t single_height = 0;
-    for (const auto& [key, value] : data) {
-        if (value.pm) {
-            ++visible_lines;
-            if (!single_height) {
-                single_height = value.pm.height();
-            }
-        }
-    }
-
-    return std::make_tuple(single_height, single_height * visible_lines);
 }

@@ -61,6 +61,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.visible](#swayimgtextvisible): Check if text layer is visible
   * [swayimg.text.set_font](#swayimgtextset_font): Set font face
   * [swayimg.text.set_size](#swayimgtextset_size): Set font size
+  * [swayimg.text.set_spacing](#swayimgtextset_spacing): Set line spacing
   * [swayimg.text.set_padding](#swayimgtextset_padding): Set the padding from the window edges
   * [swayimg.text.set_foreground](#swayimgtextset_foreground): Set foreground text color
   * [swayimg.text.set_background](#swayimgtextset_background): Set background text color
@@ -446,6 +447,16 @@ swayimg.text.set_size(size: integer)
 Set font size.
 
 @_param_ `size` - Font size in pixels
+
+### swayimg.text.set_spacing
+
+```lua
+swayimg.text.set_spacing(size: integer)
+```
+
+Set line spacing.
+
+@_param_ `size` - Line spacing in pixels, can be negative
 
 ### swayimg.text.set_padding
 

@@ -264,6 +264,10 @@ function swayimg.text.set_font(name) end
 ---@param size integer Font size in pixels
 function swayimg.text.set_size(size) end
 
+---Set line spacing.
+---@param size integer Line spacing in pixels, can be negative
+function swayimg.text.set_spacing(size) end
+
 ---Set the padding from the window edges.
 ---@param size integer Padding size in pixels
 function swayimg.text.set_padding(size) end
