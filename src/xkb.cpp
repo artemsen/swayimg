@@ -40,11 +40,13 @@ void Xkb::setup_mapping(const int fd, const size_t size)
             XKB_KEYMAP_COMPILE_NO_FLAGS);
         munmap(km, size);
 
-        if (state) {
-            xkb_state_unref(state);
-            state = nullptr;
+        if (keymap) {
+            if (state) {
+                xkb_state_unref(state);
+                state = nullptr;
+            }
+            state = xkb_state_new(keymap);
         }
-        state = xkb_state_new(keymap);
     }
 }
 
