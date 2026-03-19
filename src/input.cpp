@@ -38,6 +38,11 @@ static constexpr std::array mouse_buttons =
         { InputMouse::SCROLL_RIGHT,  "ScrollRight" },
 });
 
+/**
+ * Convert modifier flags to string representation.
+ * @param mods combined modifier flags
+ * @return text representation
+ */
 static std::string modifiers_to_string(keymod_t mods)
 {
     std::string name;
@@ -52,6 +57,11 @@ static std::string modifiers_to_string(keymod_t mods)
     return name;
 }
 
+/**
+ * Extract modifier flags from tokens and remove them from the vector.
+ * @param tokens vector of string tokens to process
+ * @return combined modifier flags
+ */
 static keymod_t modifiers_from_string(std::vector<std::string>& tokens)
 {
     keymod_t mods = KEYMOD_NONE;
@@ -72,6 +82,11 @@ static keymod_t modifiers_from_string(std::vector<std::string>& tokens)
     return mods;
 }
 
+/**
+ * Split a string into tokens using delimiter characters.
+ * @param text input string to split
+ * @return vector of tokens
+ */
 static std::vector<std::string> split(const std::string& text)
 {
     const std::string delimiters = "+- ";
