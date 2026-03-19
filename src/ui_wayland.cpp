@@ -160,6 +160,9 @@ public:
                 }
                 ui->wl.datasrc = wl_data_device_manager_create_data_source(
                     ui->wl.datadev_mgr);
+                if (!ui->wl.datasrc) {
+                    return;
+                }
                 wl_data_source_add_listener(
                     ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
                 wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
@@ -230,7 +233,10 @@ public:
         if (ui->scale != factor) {
             ui->scale = factor;
             const Size window = ui->get_window_size();
-            ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height);
+            if (!ui->wnd_buffer.realloc(ui->wl.shm, window.width,
+                                        window.height)) {
+                return;
+            }
             Application::self().add_event(
                 AppEvent::WindowRescale { static_cast<double>(ui->scale) /
                                           UiWayland::FRACTION_SCALE_DEN });
@@ -256,7 +262,10 @@ public:
 
         if (cap & WL_SEAT_CAPABILITY_KEYBOARD) {
             ui->wl.keyboard = wl_seat_get_keyboard(seat);
-            wl_keyboard_add_listener(ui->wl.keyboard, &keyboard_listener, ui);
+            if (ui->wl.keyboard) {
+                wl_keyboard_add_listener(ui->wl.keyboard, &keyboard_listener,
+                                         ui);
+            }
         } else if (ui->wl.keyboard) {
             wl_keyboard_destroy(ui->wl.keyboard);
             ui->wl.keyboard = nullptr;
@@ -264,15 +273,20 @@ public:
 
         if (cap & WL_SEAT_CAPABILITY_POINTER) {
             ui->wl.pointer = wl_seat_get_pointer(seat);
-            wl_pointer_add_listener(ui->wl.pointer, &pointer_listener, ui);
+            if (ui->wl.pointer) {
+                wl_pointer_add_listener(ui->wl.pointer, &pointer_listener, ui);
 
-            // register gesures handler
-            if (ui->wl.gestures_mgr) {
-                ui->wl.gestures_pinch =
-                    zwp_pointer_gestures_v1_get_pinch_gesture(
-                        ui->wl.gestures_mgr, ui->wl.pointer);
-                zwp_pointer_gesture_pinch_v1_add_listener(
-                    ui->wl.gestures_pinch, &WaylandHandler::pinch_listener, ui);
+                // register gestures handler
+                if (ui->wl.gestures_mgr) {
+                    ui->wl.gestures_pinch =
+                        zwp_pointer_gestures_v1_get_pinch_gesture(
+                            ui->wl.gestures_mgr, ui->wl.pointer);
+                    if (ui->wl.gestures_pinch) {
+                        zwp_pointer_gesture_pinch_v1_add_listener(
+                            ui->wl.gestures_pinch,
+                            &WaylandHandler::pinch_listener, ui);
+                    }
+                }
             }
         } else if (ui->wl.pointer) {
             wl_pointer_destroy(ui->wl.pointer);
@@ -283,8 +297,10 @@ public:
         if (ui->wl.idle_mgr) {
             ui->wl.idle = ext_idle_notifier_v1_get_idle_notification(
                 ui->wl.idle_mgr, ui->cursor_hide, ui->wl.seat);
-            ext_idle_notification_v1_add_listener(ui->wl.idle, &idle_listener,
-                                                  ui);
+            if (ui->wl.idle) {
+                ext_idle_notification_v1_add_listener(ui->wl.idle,
+                                                      &idle_listener, ui);
+            }
         }
     }
 
@@ -461,7 +477,9 @@ public:
         wl_callback_destroy(ui->wl.callback);
         ui->wl.callback.ptr = nullptr;
         ui->wl.callback = wl_surface_frame(ui->wl.surface);
-        wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
+        if (ui->wl.callback) {
+            wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
+        }
 
         ui->frame_mutex.unlock();
     }
@@ -505,7 +523,10 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         const Size window = ui->get_window_size();
 
-        ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height);
+        if (!ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height)) {
+            return;
+        }
+
         if (ui->wl.viewport) {
             wp_viewport_set_destination(ui->wl.viewport, ui->width, ui->height);
         }
