@@ -559,8 +559,8 @@ void ImageList::sort(bool locked)
     } else if (order == Order::Random) {
         // shuffle list
         std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
-        std::random_device rdev;
-        std::mt19937 engine(rdev());
+        static std::random_device rdev;
+        static std::mt19937 engine(rdev());
         std::shuffle(tmp.begin(), tmp.end(), engine);
         entries.assign(tmp.begin(), tmp.end());
     } else {
