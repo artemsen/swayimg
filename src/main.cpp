@@ -10,10 +10,13 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <clocale>
 #include <cstdlib>
 #include <format>
 #include <functional>
+#include <limits>
+#include <string>
 #include <vector>
 
 /** Command line arguments. */
@@ -24,7 +27,7 @@ public:
     /** Print arguments list. */
     void print() const
     {
-        for (auto& it : arguments) {
+        for (const auto& it : arguments) {
             std::string opt = it.long_opt;
             if (it.format) {
                 opt += '=';
@@ -42,7 +45,7 @@ public:
      * Add argument.
      * @param short_opt short option character
      * @param long_opt long option name
-     * @param format format descriptionr
+     * @param format format description
      * @param help help string
      * @param handler argument handler
      */
@@ -178,8 +181,13 @@ int main(int argc, char* argv[])
 
     args.add('f', "from-file", "FILE", "load file list from file",
              [](const char* arg) {
-                 Application::self().sparams.from_file =
-                     std::filesystem::absolute(arg);
+                 try {
+                     Application::self().sparams.from_file =
+                         std::filesystem::absolute(arg);
+                 } catch (const std::exception&) {
+                     Log::error("Invalid file path \"{}\"", arg);
+                     exit(EXIT_FAILURE);
+                 }
              });
 
 #ifdef HAVE_COMPOSITOR
