@@ -9,7 +9,6 @@
 #include <fontconfig/fontconfig.h>
 
 #include <memory>
-#include <utility>
 
 constexpr const char* DEFAULT_FONT = "monospace"; // default font face
 
