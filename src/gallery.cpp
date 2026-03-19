@@ -325,14 +325,14 @@ void Gallery::window_redraw(Pixmap& wnd)
     const ImageEntryPtr current = layout.get_selected();
 
     // draw all exclude the currently selected
-    for (auto& it : layout.get_scheme()) {
+    for (const auto& it : layout.get_scheme()) {
         if (it.img != current) {
             draw(it, wnd);
         }
     }
 
     // draw only currently selected
-    for (auto& it : layout.get_scheme()) {
+    for (const auto& it : layout.get_scheme()) {
         if (it.img == current) {
             draw(it, wnd);
             break;
