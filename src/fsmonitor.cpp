@@ -133,7 +133,7 @@ void FsMonitor::handle_event(const inotify_event* event)
                (IN_DELETE | IN_MOVED_FROM | IN_DELETE_SELF | IN_MOVE_SELF)) {
         Log::verbose("FSMON: Remove {}", path.c_str());
         app.add_event(AppEvent::FileRemove { path });
-    } else if (event->mask & IN_CLOSE) {
+    } else if (event->mask & IN_CLOSE_WRITE) {
         Log::verbose("FSMON: Modify {}", path.c_str());
         app.add_event(AppEvent::FileModify { path });
     } else {
