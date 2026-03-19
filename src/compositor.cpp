@@ -16,7 +16,7 @@
 
 using json = nlohmann::json;
 
-/** UNIX socket. */
+/** UNIX socket wrapper for IPC communication. */
 class UnixSocket {
 public:
     /**
@@ -72,7 +72,7 @@ public:
 
     /**
      * Read data from socket connection.
-     * @param buf buffer for destination data
+     * @param buffer buffer for destination data
      * @param size max number of bytes to read
      * @return number of bytes read
      */
@@ -80,11 +80,11 @@ public:
     {
         assert(fd != -1);
 
-        size_t read = 0;
+        size_t read_bytes = 0;
 
-        while (read < size) {
-            const ssize_t rc = recv(
-                fd, reinterpret_cast<uint8_t*>(buffer) + read, size - read, 0);
+        while (read_bytes < size) {
+            void* dst = reinterpret_cast<uint8_t*>(buffer) + read_bytes;
+            const ssize_t rc = recv(fd, dst, size - read_bytes, 0);
             if (rc == 0) {
                 break;
             }
@@ -92,15 +92,15 @@ public:
                 Log::error(errno, "Unable to read IPC socket");
                 break;
             }
-            read += rc;
+            read_bytes += rc;
         }
 
-        return read;
+        return read_bytes;
     }
 
     /**
      * Write data to the socket.
-     * @param buf buffer of data of send
+     * @param buf buffer of data to send
      * @param len number of bytes to write
      * @return true if operation completed successfully
      */
