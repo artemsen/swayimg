@@ -849,7 +849,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                      [mode](const size_t size) {
                          mode->set_preload_limit(size);
                      })
-        .addFunction("limit_preload",
+        .addFunction("limit_history",
                      [mode](const size_t size) {
                          mode->set_history_limit(size);
                      })
