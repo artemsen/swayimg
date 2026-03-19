@@ -104,7 +104,11 @@ bool Pixmap::save(const std::filesystem::path& path) const
         ptr += written;
     }
 
-    close(fd);
+    if (close(fd) == -1) {
+        Log::error(errno, "Failed to close file {}", path.string());
+        return false;
+    }
+
     return true;
 #else
     (void)path;
