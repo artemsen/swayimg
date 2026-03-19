@@ -169,13 +169,13 @@ struct DataBuffer : public Image::Data {
         int fds_in[2], fds_out[2];
         if (pipe(fds_in) == -1) {
             Log::error(errno, "Unable to create pipes");
-            return {};
+            return false;
         }
         if (pipe(fds_out) == -1) {
             Log::error(errno, "Unable to create pipes");
             close(fds_in[0]);
             close(fds_in[1]);
-            return {};
+            return false;
         }
 
         const char* shell = getenv("SHELL");
@@ -193,7 +193,7 @@ struct DataBuffer : public Image::Data {
                 close(fds_in[1]);
                 close(fds_out[0]);
                 close(fds_out[1]);
-                break;
+                return false;
             case 0: // child process
                 close(fds_in[1]);
                 close(fds_out[0]);
@@ -207,7 +207,7 @@ struct DataBuffer : public Image::Data {
                 // NOLINTNEXTLINE(clang-analyzer-optin.taint.GenericTaint)
                 execlp(shell, shell, "-c", cmd.c_str(), nullptr);
                 Log::error(errno, "Unable to call exec {}", cmd);
-                exit(1); // unreachable
+                _exit(1);
                 break;
             default: // parent process
                 close(fds_in[0]);
@@ -215,6 +215,7 @@ struct DataBuffer : public Image::Data {
                 close(fds_out[1]);
                 rc = read_stream(fds_out[0]);
                 close(fds_out[0]);
+                waitpid(pid, nullptr, 0);
                 break;
         }
 
