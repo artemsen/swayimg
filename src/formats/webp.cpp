@@ -47,8 +47,8 @@ public:
         webp_opts.use_threads = true;
 
         // open decoder
-        const WebPData wepp_data = { .bytes = data.data, .size = data.size };
-        const WebpDecoder webp_dec(WebPAnimDecoderNew(&wepp_data, &webp_opts),
+        const WebPData webp_data = { .bytes = data.data, .size = data.size };
+        const WebpDecoder webp_dec(WebPAnimDecoderNew(&webp_data, &webp_opts),
                                    &WebPAnimDecoderDelete);
         if (!webp_dec) {
             return false;
@@ -63,8 +63,8 @@ public:
 
         // decode frames
         int prev_timestamp = 0;
-        for (auto& it : frames) {
-            Pixmap& pm = it.pm;
+        for (auto& frame : frames) {
+            Pixmap& pm = frame.pm;
             pm.create(webp_prop.has_alpha ? Pixmap::ARGB : Pixmap::RGB,
                       webp_info.canvas_width, webp_info.canvas_height);
 
@@ -78,9 +78,9 @@ public:
             // set frame duration
             if (webp_info.frame_count > 1) {
                 if (timestamp > prev_timestamp) {
-                    it.duration = timestamp - prev_timestamp;
+                    frame.duration = timestamp - prev_timestamp;
                 } else {
-                    it.duration = 100;
+                    frame.duration = 100;
                 }
                 prev_timestamp = timestamp;
             }

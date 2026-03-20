@@ -4,6 +4,7 @@
 
 #include "../imageloader.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <utility>
@@ -193,9 +194,9 @@ private:
             } else if (el.tag == TAG_BIT_ALLOCATED && el.vr == VR_US) {
                 image.bpp = *reinterpret_cast<const uint16_t*>(el.data);
             } else if (el.tag == TAG_SMALL_PIXEL_VAL && el.vr == VR_SS) {
-                image.px_min = *reinterpret_cast<const uint16_t*>(el.data);
+                image.px_min = *reinterpret_cast<const int16_t*>(el.data);
             } else if (el.tag == TAG_BIG_PIXEL_VAL && el.vr == VR_SS) {
-                image.px_max = *reinterpret_cast<const uint16_t*>(el.data);
+                image.px_max = *reinterpret_cast<const int16_t*>(el.data);
             } else if (el.tag == TAG_PIXEL_DATA && el.vr == VR_OW) {
                 image.data = el.data;
                 image.data_sz = el.size;
@@ -226,25 +227,26 @@ public:
             return false;
         }
 
-        // calculate min/max color value if not set yet
-        if (dicom.px_max == 0 || dicom.px_max <= dicom.px_min) {
-            dicom.px_min = std::numeric_limits<int16_t>::max();
-            for (size_t i = 0; i < dicom.data_sz; i += sizeof(int16_t)) {
-                const int16_t color =
-                    *reinterpret_cast<const int16_t*>(dicom.data + i);
-                if (dicom.px_max < color) {
-                    dicom.px_max = color;
-                }
-                if (dicom.px_min > color) {
-                    dicom.px_min = color;
-                }
-            }
-        }
-
         // allocate pixmap
         frames.resize(1);
         Pixmap& pm = frames[0].pm;
         pm.create(Pixmap::RGB, dicom.width, dicom.height);
+
+        // calculate min/max color value if not set yet
+        if (dicom.px_max == 0 || dicom.px_max <= dicom.px_min) {
+            dicom.px_min = std::numeric_limits<int16_t>::max();
+            dicom.px_max = std::numeric_limits<int16_t>::min();
+
+            const int16_t* pixel_data =
+                reinterpret_cast<const int16_t*>(dicom.data);
+            const size_t num_pixels = dicom.width * dicom.height;
+
+            for (size_t i = 0; i < num_pixels; ++i) {
+                const int16_t color = pixel_data[i];
+                dicom.px_min = std::min(dicom.px_min, color);
+                dicom.px_max = std::max(dicom.px_max, color);
+            }
+        }
 
         // calculate coefficient for converting 16-bit color to 8-bit
         double pixel_coeff;
@@ -257,12 +259,12 @@ public:
         // decode image
         const int16_t* ptr = reinterpret_cast<const int16_t*>(dicom.data);
         pm.foreach([&ptr, dicom, pixel_coeff](argb_t& pixel) {
-            int16_t color = *ptr++;
-            color -= dicom.px_min;
-            color *= pixel_coeff;
-            pixel = { argb_t::max, static_cast<uint8_t>(color),
-                      static_cast<uint8_t>(color),
-                      static_cast<uint8_t>(color) };
+            int16_t src_color = *ptr++;
+            src_color -= dicom.px_min;
+            src_color *= pixel_coeff;
+            const uint8_t dst_color = static_cast<uint8_t>(std::clamp(
+                src_color, static_cast<int16_t>(0), static_cast<int16_t>(255)));
+            pixel = { argb_t::max, dst_color, dst_color, dst_color };
         });
 
         format = "DICOM";

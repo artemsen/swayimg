@@ -67,7 +67,7 @@ private:
         uint32_t clr_important;
     };
 
-    // Masks used for for 16bit images
+    // Masks used for 16bit images
     struct __attribute__((__packed__)) Mask {
         uint32_t red;
         uint32_t green;
@@ -266,6 +266,7 @@ private:
                         pm.at(x, y) = palette.table[index];
                         ++x;
                     }
+                    // Handle padding for 16-bit alignment
                     if ((bmp.compression == BI_RLE8 && rle2 & 1) ||
                         (bmp.compression == BI_RLE4 &&
                          ((rle2 & 3) == 1 || (rle2 & 3) == 2))) {
@@ -308,15 +309,15 @@ private:
         return false;
     }
 
-    // /**
-    //  * Decode uncompressed bitmap.
-    //  * @param pm target pixmap
-    //  * @param palette color palette
-    //  * @param buffer input bitmap buffer
-    //  * @param buffer_sz size of buffer
-    //  * @param decoded output data buffer
-    //  * @return false if input buffer has errors
-    //  */
+    /**
+     * Decode uncompressed bitmap.
+     * @param pm target pixmap
+     * @param bmp bitmap info
+     * @param palette color palette
+     * @param buffer input bitmap buffer
+     * @param buffer_sz size of buffer
+     * @return false if input buffer has errors
+     */
     bool decode_rgb(Pixmap& pm, const Info& bmp, const Palette& palette,
                     const uint8_t* buffer, const size_t buffer_sz) const
     {
