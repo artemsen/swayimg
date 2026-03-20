@@ -72,6 +72,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
   * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
+  * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
   * [swayimg.viewer.get_scale](#swayimgviewerget_scale): Get current image scale
   * [swayimg.viewer.set_abs_scale](#swayimgviewerset_abs_scale): Set absolute image scale
   * [swayimg.viewer.set_fix_scale](#swayimgviewerset_fix_scale): Set fixed scale for currently displayed image
@@ -82,6 +83,10 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_default_position](#swayimgviewerset_default_position): Set default image position for newly opened images
   * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
   * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.viewer.animation_stop](#swayimgvieweranimation_stop): Stop animation
+  * [swayimg.viewer.animation_resume](#swayimgvieweranimation_resume): Resume animation
+  * [swayimg.viewer.flip_vertical](#swayimgviewerflip_vertical): Flip image vertically
+  * [swayimg.viewer.flip_horizontal](#swayimgviewerflip_horizontal): Flip image horizontally
   * [swayimg.viewer.rotate](#swayimgviewerrotate): Rotate image
   * [swayimg.viewer.export](#swayimgviewerexport): Export currently displayed frame to PNG file
   * [swayimg.viewer.set_meta](#swayimgviewerset_meta): Add/replace/remove meta info for currently displayed image
@@ -95,6 +100,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.limit_history](#swayimgviewerlimit_history): Set max number of previously viewed images stored in the cache
   * [swayimg.viewer.mark_image](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color): Set mark icon color
+  * [swayimg.viewer.bind_reset](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal](#swayimgvieweron_signal): Bind the signal event to a handler
@@ -580,6 +586,14 @@ Get information about currently displayed image.
 
 @_return_ - Currently displayed image
 
+### swayimg.viewer.reset
+
+```lua
+swayimg.viewer.reset()
+```
+
+Reset position and scale to default values.
+
 ### swayimg.viewer.get_scale
 
 ```lua
@@ -729,6 +743,38 @@ Show previous frame from multi-frame image (animation).
 This function stops the animation.
 
 @_return_ - Index of the currently shown frame
+
+### swayimg.viewer.animation_stop
+
+```lua
+swayimg.viewer.animation_stop()
+```
+
+Stop animation.
+
+### swayimg.viewer.animation_resume
+
+```lua
+swayimg.viewer.animation_resume()
+```
+
+Resume animation.
+
+### swayimg.viewer.flip_vertical
+
+```lua
+swayimg.viewer.flip_vertical()
+```
+
+Flip image vertically.
+
+### swayimg.viewer.flip_horizontal
+
+```lua
+swayimg.viewer.flip_horizontal()
+```
+
+Flip image horizontally.
 
 ### swayimg.viewer.rotate
 
@@ -894,6 +940,14 @@ Set mark icon color.
 
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+
+### swayimg.viewer.bind_reset
+
+```lua
+swayimg.viewer.bind_reset()
+```
+
+Remove all existing key/mouse/signal bindings.
 
 ### swayimg.viewer.on_key
 
