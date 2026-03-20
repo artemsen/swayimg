@@ -973,6 +973,8 @@ The following fields are supported:
 * `{scale}`: Current image scale in percent
 * `{list.index}`: Current index of image in the image list
 * `{list.total}`: Total number of files in the image list
+- `{frame.index}`: Current frame index
+- `{frame.total}`: Total number of frames
 * `{frame.width}`: Current frame width in pixels
 * `{frame.height}`: Current frame height in pixels
 * `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
@@ -1415,6 +1417,8 @@ The following fields are supported:
 * `{scale}`: Current image scale in percent
 * `{list.index}`: Current index of image in the image list
 * `{list.total}`: Total number of files in the image list
+- `{frame.index}`: Current frame index
+- `{frame.total}`: Total number of frames
 * `{frame.width}`: Current frame width in pixels
 * `{frame.height}`: Current frame height in pixels
 * `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
