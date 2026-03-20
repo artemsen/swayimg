@@ -15,8 +15,7 @@ static const ImageLoader::Registrator<ImageTga>
 /* Truevision TGA image. */
 class ImageTga : public Image {
 private:
-    static constexpr uint8_t TGA_COLORMAP = 1; // color map present flag
-
+    // TGA image type constants
     static constexpr uint8_t TGA_UNC_CM = 1;  // uncompressed color-mapped
     static constexpr uint8_t TGA_UNC_TC = 2;  // uncompressed true-color
     static constexpr uint8_t TGA_UNC_GS = 3;  // uncompressed grayscale
@@ -24,9 +23,10 @@ private:
     static constexpr uint8_t TGA_RLE_TC = 10; // run-length encoded true-color
     static constexpr uint8_t TGA_RLE_GS = 11; // run-length encoded grayscale
 
+    // TGA descriptor flags
+    static constexpr uint8_t TGA_COLORMAP = 1;         // color map present flag
     static constexpr uint8_t TGA_ORDER_R2L = (1 << 4); // right-to-left
     static constexpr uint8_t TGA_ORDER_T2B = (1 << 5); // top-to-bottom
-
     static constexpr uint8_t TGA_PACKET_RLE = (1 << 7); // rle/raw field
     static constexpr uint8_t TGA_PACKET_LEN = 0x7f;     // length mask
 
@@ -66,12 +66,14 @@ private:
                 pixel.b = data[0];
                 break;
             case 15:
-            case 16:
+            case 16: {
+                const uint16_t src = *reinterpret_cast<const uint16_t*>(data);
+                const uint8_t bit_repeat = argb_t::max / 31;
+                pixel.b = (src & 0x001f) * bit_repeat;
+                pixel.g = ((src & 0x03e0) >> 5) * bit_repeat;
+                pixel.r = ((src & 0x7c00) >> 10) * bit_repeat;
                 pixel.a = argb_t::max;
-                pixel.r = (data[1] & 0x3e) << 2;
-                pixel.g = data[0] & 0xf8;
-                pixel.b = (data[0] << 5) | ((data[1] & 0xc0) >> 2);
-                break;
+            } break;
             case 24:
                 pixel.a = argb_t::max;
                 pixel.r = data[2];
@@ -187,33 +189,58 @@ private:
         return true;
     }
 
+    /**
+     * Validate TGA header parameters.
+     * @param tga pointer to TGA header
+     * @return true if valid
+     */
+    static bool validate_header(const Header* tga)
+    {
+        // check basic image parameters
+        if (tga->width == 0 || tga->height == 0) {
+            return false;
+        }
+
+        // check bits per pixel
+        if (tga->bpp != 8 && tga->bpp != 15 && tga->bpp != 16 &&
+            tga->bpp != 24 && tga->bpp != 32) {
+            return false;
+        }
+
+        // check image type
+        switch (tga->image_type) {
+            case TGA_UNC_CM:
+            case TGA_UNC_TC:
+            case TGA_UNC_GS:
+            case TGA_RLE_CM:
+            case TGA_RLE_TC:
+            case TGA_RLE_GS:
+                return true;
+        }
+
+        return false;
+    }
+
 public:
     bool load(const Data& data) override
     {
-        const Header* tga = reinterpret_cast<const Header*>(data.data);
-
-        // check type
-        if (data.size < sizeof(Header) ||
-            (tga->image_type != TGA_UNC_CM && tga->image_type != TGA_UNC_TC &&
-             tga->image_type != TGA_UNC_GS && tga->image_type != TGA_RLE_CM &&
-             tga->image_type != TGA_RLE_TC && tga->image_type != TGA_RLE_GS)) {
+        if (data.size < sizeof(Header)) {
             return false;
         }
-        // check image params
-        if (tga->width == 0 || tga->height == 0 ||
-            (tga->bpp != 8 && tga->bpp != 15 && tga->bpp != 16 &&
-             tga->bpp != 24 && tga->bpp != 32)) {
+        const Header* tga = reinterpret_cast<const Header*>(data.data);
+        if (!validate_header(tga)) {
             return false;
         }
 
         // get color map
         const uint8_t* colormap = nullptr;
         size_t colormap_sz = 0;
+        const bool has_colormap =
+            (tga->clrmap_type & TGA_COLORMAP) && tga->cm_size && tga->cm_bpc;
         switch (tga->image_type) {
             case TGA_UNC_CM:
             case TGA_RLE_CM:
-                if (!(tga->clrmap_type & TGA_COLORMAP) || !tga->cm_size ||
-                    !tga->cm_bpc) {
+                if (!has_colormap) {
                     return false;
                 }
                 colormap_sz = tga->cm_size *
@@ -221,8 +248,7 @@ public:
                 colormap = data.data + sizeof(Header) + tga->id_len;
                 break;
             default:
-                if (tga->clrmap_type & TGA_COLORMAP || tga->cm_size ||
-                    tga->cm_bpc) {
+                if (has_colormap) {
                     return false;
                 }
                 break;
