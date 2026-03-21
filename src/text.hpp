@@ -9,6 +9,7 @@
 #include "image.hpp"
 
 #include <array>
+#include <list>
 #include <map>
 #include <string>
 #include <vector>
@@ -265,7 +266,7 @@ private:
     argb_t background; ///< Text background color
     argb_t shadow;     ///< Text shadow color
 
-    Pixmap status; ///< Status message
+    std::list<Pixmap> status; ///< Status message
 
     std::array<Block, 4> blocks; ///< Four text blocks at window corners
     std::map<std::string, std::string> fields; ///< Data fields

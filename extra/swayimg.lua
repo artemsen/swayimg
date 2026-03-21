@@ -301,6 +301,7 @@ function swayimg.text.set_timeout(seconds) end
 function swayimg.text.set_status_timeout(seconds) end
 
 ---Show status message.
+---Multi-line text is separated by `\n`.
 ---@see swayimg.text.set_status_timer
 ---@param status string Status text to show
 function swayimg.text.set_status(status) end

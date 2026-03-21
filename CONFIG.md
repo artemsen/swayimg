@@ -580,6 +580,8 @@ swayimg.text.set_status(status: string)
 
 Show status message.
 
+Multi-line text is separated by `\n`.
+
 See [swayimg.text.set_status_timer](swayimgtextset_status_timer)
 
 @_param_ `status` - Status text to show

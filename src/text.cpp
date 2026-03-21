@@ -7,6 +7,7 @@
 #include "application.hpp"
 #include "imagelist.hpp"
 
+#include <algorithm>
 #include <ctime>
 #include <format>
 
@@ -44,9 +45,9 @@ void Text::initialize()
         Application::redraw();
     });
     Application::self().add_fdpoll(status_tm.fd, [this]() {
+        status.clear();
         status_tm.fd.reset(0, 0);
         status_tm.show = false;
-        status.free();
         Application::redraw();
     });
 }
@@ -153,9 +154,19 @@ void Text::hide()
 
 void Text::set_status(const std::string& msg)
 {
-    status = font.render(msg);
+    status.clear();
+
+    size_t last = 0;
+    size_t next = 0;
+    while ((next = msg.find('\n', last)) != std::string::npos) {
+        status.emplace_back(font.render(msg.substr(last, next - last)));
+        last = next + 1;
+    }
+    status.emplace_back(font.render(msg.substr(last)));
+
     status_tm.show = true;
     status_tm.fd.reset(status_tm.delay, 0);
+
     Application::redraw();
 }
 
@@ -232,10 +243,20 @@ void Text::update()
 void Text::draw(Pixmap& target) const
 {
     // show status message
-    if (status_tm.show && status) {
-        const Point pos(target.width() / 2 - status.width() / 2,
-                        target.height() - status.height() - padding);
-        draw(status, target, pos);
+    if (status_tm.show && !status.empty()) {
+        // calculate total height
+        const ssize_t lspacing =
+            std::clamp(spacing, -static_cast<ssize_t>(status.front().height()),
+                       static_cast<ssize_t>(status.front().height()));
+        const size_t height = status.front().height() * status.size() +
+            lspacing * (status.size() - 1);
+        // draw status text
+        Point pos(0, target.height() - height - padding);
+        for (const auto& line : status) {
+            pos.x = target.width() / 2 - line.width() / 2;
+            draw(line, target, pos);
+            pos.y += line.height() + lspacing;
+        }
     }
 
     // show text layer
