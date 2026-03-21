@@ -12,7 +12,7 @@ swayimg.set_mode("viewer")                -- mode at startup
 swayimg.enable_antialiasing(true)         -- anti-aliasing
 swayimg.enable_decoration(true)           -- window title/buttons/borders
 swayimg.enable_overlay(false)             -- window overlay mode
-swayimg.set_dnd_button("MouseRight")      -- drag-and-drom mouse button
+swayimg.set_dnd_button("MouseRight")      -- drag-and-drop mouse button
 
 -- Image list configuration
 swayimg.imagelist.set_order("numeric")    -- list order
@@ -80,7 +80,7 @@ swayimg.viewer.on_mouse("Ctrl-ScrollUp", function()
 end)
 
 
--- Slide show mode, same config as for viewer mode with the followinf defaults:
+-- Slide show mode, same config as for viewer mode with the following defaults:
 swayimg.slideshow.set_timeout(5)                    -- timeout to switch image
 swayimg.slideshow.set_default_scale("fit")          -- default image scale
 swayimg.slideshow.set_window_background("auto")     -- window background mode
@@ -101,16 +101,16 @@ swayimg.gallery.set_window_color(0xff000000)        -- window background color
 swayimg.gallery.limit_cache(100)                    -- number of thumbnails stored in memory
 swayimg.gallery.enable_preload(false)               -- preloading invisible thumbnails
 swayimg.gallery.enable_pstore(false)                -- enable persistent storage for thumbnails
-swayimg.gallery.set_text("topleft", {             -- top left text block scheme
+swayimg.gallery.set_text("topleft", {               -- top left text block scheme
   "File: {name}"
 })
-swayimg.gallery.set_text("topright", {            -- top right text block scheme
+swayimg.gallery.set_text("topright", {              -- top right text block scheme
   "{list.index} of {list.total}"
 })
 
 -- Key and mouse bindings in gallery mode (example only, not all):
 
--- bind Enter key to open imag in viewer
+-- bind Enter key to open image in viewer
 swayimg.gallery.on_key("Return", function()
   swayimg.set_mode("viewer")
 end)
