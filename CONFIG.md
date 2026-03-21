@@ -58,6 +58,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
   * [swayimg.imagelist.enable_adjacent](#swayimgimagelistenable_adjacent): Enable or disable adding adjacent files from the same directory
 * Text layer
+  * [swayimg.text.show](#swayimgtextshow): Force show the text layer
+  * [swayimg.text.hide](#swayimgtexthide): Hide the text layer
   * [swayimg.text.visible](#swayimgtextvisible): Check if text layer is visible
   * [swayimg.text.set_font](#swayimgtextset_font): Set font face
   * [swayimg.text.set_size](#swayimgtextset_size): Set font size
@@ -72,6 +74,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
   * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
+  * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
   * [swayimg.viewer.get_scale](#swayimgviewerget_scale): Get current image scale
   * [swayimg.viewer.set_abs_scale](#swayimgviewerset_abs_scale): Set absolute image scale
   * [swayimg.viewer.set_fix_scale](#swayimgviewerset_fix_scale): Set fixed scale for currently displayed image
@@ -82,6 +85,10 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_default_position](#swayimgviewerset_default_position): Set default image position for newly opened images
   * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
   * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.viewer.animation_stop](#swayimgvieweranimation_stop): Stop animation
+  * [swayimg.viewer.animation_resume](#swayimgvieweranimation_resume): Resume animation
+  * [swayimg.viewer.flip_vertical](#swayimgviewerflip_vertical): Flip image vertically
+  * [swayimg.viewer.flip_horizontal](#swayimgviewerflip_horizontal): Flip image horizontally
   * [swayimg.viewer.rotate](#swayimgviewerrotate): Rotate image
   * [swayimg.viewer.export](#swayimgviewerexport): Export currently displayed frame to PNG file
   * [swayimg.viewer.set_meta](#swayimgviewerset_meta): Add/replace/remove meta info for currently displayed image
@@ -95,6 +102,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.limit_history](#swayimgviewerlimit_history): Set max number of previously viewed images stored in the cache
   * [swayimg.viewer.mark_image](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color): Set mark icon color
+  * [swayimg.viewer.bind_reset](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal](#swayimgvieweron_signal): Bind the signal event to a handler
@@ -104,6 +112,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
   * [swayimg.slideshow.switch_image](#swayimgslideshowswitch_image): Open the next file in the specified direction
   * [swayimg.slideshow.get_image](#swayimgslideshowget_image): Get information about currently displayed image
+  * [swayimg.slideshow.reset](#swayimgslideshowreset): Reset position and scale to default values
   * [swayimg.slideshow.get_scale](#swayimgslideshowget_scale): Get current image scale
   * [swayimg.slideshow.set_abs_scale](#swayimgslideshowset_abs_scale): Set absolute image scale
   * [swayimg.slideshow.set_fix_scale](#swayimgslideshowset_fix_scale): Set fixed scale for currently displayed image
@@ -114,6 +123,10 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_default_position](#swayimgslideshowset_default_position): Set default image position for newly opened images
   * [swayimg.slideshow.next_frame](#swayimgslideshownext_frame): Show next frame from multi-frame image (animation)
   * [swayimg.slideshow.prev_frame](#swayimgslideshowprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.slideshow.animation_stop](#swayimgslideshowanimation_stop): Stop animation
+  * [swayimg.slideshow.animation_resume](#swayimgslideshowanimation_resume): Resume animation
+  * [swayimg.slideshow.flip_vertical](#swayimgslideshowflip_vertical): Flip image vertically
+  * [swayimg.slideshow.flip_horizontal](#swayimgslideshowflip_horizontal): Flip image horizontally
   * [swayimg.slideshow.rotate](#swayimgslideshowrotate): Rotate image
   * [swayimg.slideshow.export](#swayimgslideshowexport): Export currently displayed frame to PNG file
   * [swayimg.slideshow.set_meta](#swayimgslideshowset_meta): Add/replace/remove meta info for currently displayed image
@@ -127,6 +140,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.limit_history](#swayimgslideshowlimit_history): Set max number of previously viewed images stored in the cache
   * [swayimg.slideshow.mark_image](#swayimgslideshowmark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.slideshow.set_mark_color](#swayimgslideshowset_mark_color): Set mark icon color
+  * [swayimg.slideshow.bind_reset](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.slideshow.on_key](#swayimgslideshowon_key): Bind the key press event to a handler
   * [swayimg.slideshow.on_mouse](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.on_signal](#swayimgslideshowon_signal): Bind the signal event to a handler
@@ -151,6 +165,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_pstore_path](#swayimggalleryset_pstore_path): Set custom path for persistent storage for thumbnails
   * [swayimg.gallery.mark_image](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color): Set mark icon color
+  * [swayimg.gallery.bind_reset](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal](#swayimggalleryon_signal): Bind the signal event to a handler
@@ -418,6 +433,26 @@ This function can only be called at program startup.
 
 ## Text layer
 
+### swayimg.text.show
+
+```lua
+swayimg.text.show()
+```
+
+Force show the text layer.
+
+This function restarts the timer.
+
+See [swayimg.text.set_timer](swayimgtextset_timer)
+
+### swayimg.text.hide
+
+```lua
+swayimg.text.hide()
+```
+
+Hide the text layer.
+
 ### swayimg.text.visible
 
 ```lua
@@ -580,6 +615,18 @@ Get information about currently displayed image.
 
 @_return_ - Currently displayed image
 
+### swayimg.viewer.reset
+
+```lua
+swayimg.viewer.reset()
+```
+
+Reset position and scale to default values.
+
+See [swayimg.viewer.set_default_scale](swayimgviewerset_default_scale)
+
+See [swayimg.viewer.set_default_position](swayimgviewerset_default_position)
+
 ### swayimg.viewer.get_scale
 
 ```lua
@@ -729,6 +776,38 @@ Show previous frame from multi-frame image (animation).
 This function stops the animation.
 
 @_return_ - Index of the currently shown frame
+
+### swayimg.viewer.animation_stop
+
+```lua
+swayimg.viewer.animation_stop()
+```
+
+Stop animation.
+
+### swayimg.viewer.animation_resume
+
+```lua
+swayimg.viewer.animation_resume()
+```
+
+Resume animation.
+
+### swayimg.viewer.flip_vertical
+
+```lua
+swayimg.viewer.flip_vertical()
+```
+
+Flip image vertically.
+
+### swayimg.viewer.flip_horizontal
+
+```lua
+swayimg.viewer.flip_horizontal()
+```
+
+Flip image horizontally.
 
 ### swayimg.viewer.rotate
 
@@ -895,6 +974,14 @@ Set mark icon color.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
+### swayimg.viewer.bind_reset
+
+```lua
+swayimg.viewer.bind_reset()
+```
+
+Remove all existing key/mouse/signal bindings.
+
 ### swayimg.viewer.on_key
 
 ```lua
@@ -973,8 +1060,8 @@ The following fields are supported:
 * `{scale}`: Current image scale in percent
 * `{list.index}`: Current index of image in the image list
 * `{list.total}`: Total number of files in the image list
-- `{frame.index}`: Current frame index
-- `{frame.total}`: Total number of frames
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
 * `{frame.width}`: Current frame width in pixels
 * `{frame.height}`: Current frame height in pixels
 * `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
@@ -1023,6 +1110,18 @@ swayimg.slideshow.get_image() -> swayimg.image
 Get information about currently displayed image.
 
 @_return_ - Currently displayed image
+
+### swayimg.slideshow.reset
+
+```lua
+swayimg.slideshow.reset()
+```
+
+Reset position and scale to default values.
+
+See [swayimg.viewer.set_default_scale](swayimgviewerset_default_scale)
+
+See [swayimg.viewer.set_default_position](swayimgviewerset_default_position)
 
 ### swayimg.slideshow.get_scale
 
@@ -1173,6 +1272,38 @@ Show previous frame from multi-frame image (animation).
 This function stops the animation.
 
 @_return_ - Index of the currently shown frame
+
+### swayimg.slideshow.animation_stop
+
+```lua
+swayimg.slideshow.animation_stop()
+```
+
+Stop animation.
+
+### swayimg.slideshow.animation_resume
+
+```lua
+swayimg.slideshow.animation_resume()
+```
+
+Resume animation.
+
+### swayimg.slideshow.flip_vertical
+
+```lua
+swayimg.slideshow.flip_vertical()
+```
+
+Flip image vertically.
+
+### swayimg.slideshow.flip_horizontal
+
+```lua
+swayimg.slideshow.flip_horizontal()
+```
+
+Flip image horizontally.
 
 ### swayimg.slideshow.rotate
 
@@ -1339,6 +1470,14 @@ Set mark icon color.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
+### swayimg.slideshow.bind_reset
+
+```lua
+swayimg.slideshow.bind_reset()
+```
+
+Remove all existing key/mouse/signal bindings.
+
 ### swayimg.slideshow.on_key
 
 ```lua
@@ -1417,8 +1556,8 @@ The following fields are supported:
 * `{scale}`: Current image scale in percent
 * `{list.index}`: Current index of image in the image list
 * `{list.total}`: Total number of files in the image list
-- `{frame.index}`: Current frame index
-- `{frame.total}`: Total number of frames
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
 * `{frame.width}`: Current frame width in pixels
 * `{frame.height}`: Current frame height in pixels
 * `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be
@@ -1639,6 +1778,14 @@ Set mark icon color.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
+### swayimg.gallery.bind_reset
+
+```lua
+swayimg.gallery.bind_reset()
+```
+
+Remove all existing key/mouse/signal bindings.
+
 ### swayimg.gallery.on_key
 
 ```lua
@@ -1717,6 +1864,8 @@ The following fields are supported:
 * `{scale}`: Current image scale in percent
 * `{list.index}`: Current index of image in the image list
 * `{list.total}`: Total number of files in the image list
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
 * `{frame.width}`: Current frame width in pixels
 * `{frame.height}`: Current frame height in pixels
 * `{meta.*}`: Image meta info: EXIF, tags etc. List of available tags can be

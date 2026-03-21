@@ -48,7 +48,7 @@ class LuaAliasValue:
 
     RE = re.compile(r'^---\s*\|\s*([^\s]+)\s+#\s*(.*)$')
 
-    def __new__(cls, line: str):
+    def __new__(cls, line):
         match = LuaAliasValue.RE.search(line)
         if not match:
             return None
@@ -77,16 +77,16 @@ class LuaAlias:
     @staticmethod
     def print(name, aliases):
         """Print alias description in markdown format."""
-        name = re.sub(r'[\[\]]', '', name)
-        for name in name.split('|'):
-            if name in aliases:
-                alias = aliases[name]
+        names = re.sub(r'[\[\]]', '', name)
+        for an in names.split('|'):
+            if an in aliases:
+                alias = aliases[an]
                 if alias.values:
-                    print(f'\n`{name}`, {alias.description}:')
+                    print(f'\n`{an}`, {alias.description}:')
                     for av in alias.values:
                         print(f'* `{av.name}`: {av.description}')
                 else:
-                    print(f'\n`{name}`:\n{alias.description}')
+                    print(f'\n`{an}`:\n{alias.description}')
 
 
 class LuaField:
@@ -176,6 +176,11 @@ class LuaFunction:
         self.title: str = None
         self.description: str = None
 
+    def merge(self, fn):
+        """Merge with other description."""
+        self.params = fn.params
+        self.retval = fn.retval
+
     def get_class_name(self):
         """Get class name."""
         return self.name[:self.name.rfind('.')]
@@ -217,18 +222,20 @@ class LuaFunction:
             self.retval.print(aliases)
             print()
 
-    def parse(self, line, comment):
+    @staticmethod
+    def parse(line, comment):
         """Parse Lua annotation line."""
         match = LuaFunction.RE.search(line)
         if match:
-            self.name = match.group(1)
-            self.title = comment.split('\n', 1)[0]
-            if self.title.endswith('.'):
-                self.title = self.title[:-1]
+            fn = LuaFunction()
+            fn.name = match.group(1)
+            fn.title = comment.split('\n', 1)[0]
+            if fn.title.endswith('.'):
+                fn.title = fn.title[:-1]
             if '\n' in comment:
-                self.description = comment.split('\n', 1)[1]
-            return True
-        return False
+                fn.description = comment.split('\n', 1)[1]
+            return fn
+        return None
 
 
 class LuaClass:
@@ -324,9 +331,12 @@ def parse(file):
             cur_func.retval = fnret
             continue
 
-        if cur_func and cur_func.parse(line, cur_comment):
-            classes[cur_func.get_class_name()].functions.append(cur_func)
-            cur_func = None
+        fn = LuaFunction.parse(line, cur_comment)
+        if fn:
+            if cur_func:
+                fn.merge(cur_func)
+                cur_func = None
+            classes[fn.get_class_name()].functions.append(fn)
             cur_comment = ''
             continue
 
