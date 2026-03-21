@@ -418,14 +418,12 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
     // draw background
     Rectangle bkg = tile;
-    if (pm && aspect == Aspect::Keep) {
-        const double scale_w = static_cast<double>(tile.width) / pm->width();
-        const double scale_h = static_cast<double>(tile.height) / pm->height();
-        bkg.width /= scale_w;
-        bkg.height /= scale_h;
-        if (selected) {
-            bkg.width *= selected_scale;
-            bkg.height *= selected_scale;
+    if (aspect == Aspect::Keep && pm && pm->width() != pm->height()) {
+        const double ratio = static_cast<double>(pm->width()) / pm->height();
+        if (ratio > 1.0) {
+            bkg.height /= ratio;
+        } else {
+            bkg.width *= ratio;
         }
         bkg.x += tile.width / 2 - bkg.width / 2;
         bkg.y += tile.height / 2 - bkg.height / 2;
