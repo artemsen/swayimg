@@ -11,6 +11,7 @@
 #include <memory>
 
 constexpr const char* DEFAULT_FONT = "monospace"; // default font face
+constexpr const char FALLBACK_CHR = '?'; // character used for absent glyphs
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)
@@ -136,10 +137,16 @@ Pixmap Font::render(const std::string& text)
     // convert text to wide-character string
     std::wstring wide(len + 1, 0);
     len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
-    if (len == std::wstring::npos) {
-        return {};
+    if (len != std::wstring::npos) {
+        wide.resize(len);
+    } else {
+        // something wrong with locale, try to convert ASCII
+        wide.clear();
+        for (const auto chr : text) {
+            wide += chr < ' ' || chr > '~' ? FALLBACK_CHR : chr;
+        }
+        len = wide.length();
     }
-    wide.resize(len);
     if (len > MAX_TEXT_LEN) {
         wide.resize(MAX_TEXT_LEN - 1);
         wide += L'…';
@@ -148,10 +155,13 @@ Pixmap Font::render(const std::string& text)
     // calculate total width in pixels
     size_t width = 0;
     for (const wchar_t ch : wide) {
-        if (FT_Load_Char(ft_face, ch, FT_LOAD_RENDER) == 0) {
-            const FT_GlyphSlot glyph = ft_face->glyph;
-            width += glyph->advance.x / POINT_FACTOR;
+        const FT_UInt index = FT_Get_Char_Index(ft_face, ch);
+        if (index == 0 ||
+            FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
+            FT_Load_Char(ft_face, FALLBACK_CHR, FT_LOAD_RENDER);
         }
+        const FT_GlyphSlot glyph = ft_face->glyph;
+        width += glyph->advance.x / POINT_FACTOR;
     }
 
     // calculate text height in pixels
@@ -167,8 +177,10 @@ Pixmap Font::render(const std::string& text)
     // draw glyphs
     size_t x = hpadding;
     for (const wchar_t ch : wide) {
-        if (FT_Load_Char(ft_face, ch, FT_LOAD_RENDER) != 0) {
-            continue; // something wrong
+        const FT_UInt index = FT_Get_Char_Index(ft_face, ch);
+        if (index == 0 ||
+            FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
+            FT_Load_Char(ft_face, FALLBACK_CHR, FT_LOAD_RENDER);
         }
         const FT_GlyphSlot glyph = ft_face->glyph;
         const FT_Bitmap* bmp = &glyph->bitmap;
