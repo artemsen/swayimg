@@ -69,7 +69,7 @@ end)
 swayimg.viewer.on_key("Left", function()
   local wnd = swayimg.get_window_size()
   local pos = swayimg.viewer.get_position()
-  swayimg.viewer.set_abs_position(math.floor(pos.x - wnd.width / 10), pos.y);
+  swayimg.viewer.set_abs_position(math.floor(pos.x + wnd.width / 10), pos.y);
 end)
 -- bind mouse vertical scroll button with pressed Ctrl to zoom in the image at mouse pointer coordinates
 swayimg.viewer.on_mouse("Ctrl-ScrollUp", function()

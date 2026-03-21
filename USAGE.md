@@ -77,14 +77,14 @@ stdin and external commands, and is highly customizable via Lua scripting.
 - `[`: Rotate the image 90 degrees counterclockwise
 - `m`: Flip image vertically
 - `Shift-m`: Flip image horizontally
-- `i`: Show/hide text info layer
+- `t`: Show/hide text info layer
 - `PgDown`: Show next image
 - `PgUp`: Show previous image
 - `Shift-PgDown`: Show next frame
 - `Shift-PgUp`: Show previous image
 - `+`: Zoom in
 - `-`: Zoom out
-- `Left/Right/Up/Down`: Move image
+- `Left/Right/Up/Down`: Move around the image
 - `Backspace`: Reset scale and image position to defaults
 
 Mouse bindings:
@@ -112,7 +112,7 @@ Mouse bindings:
 - `a`: Enable/disable anti-aliasing
 - `+`: Increase thumbnail size
 - `-`: Decrease thumbnail size
-- `i`: Show/hide text info layer
+- `t`: Show/hide text info layer
 
 Mouse bindings:
 - `MouseLeft`: Open currently selected image in viewer

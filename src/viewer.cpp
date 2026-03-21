@@ -97,7 +97,7 @@ Viewer::Viewer()
         flip_horizontal();
     });
     // text layer
-    bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_NONE }, []() {
+    bind_input(InputKeyboard { XKB_KEY_t, KEYMOD_NONE }, []() {
         Text& text = Text::self();
         if (text.is_visible()) {
             text.hide();
@@ -136,23 +136,23 @@ Viewer::Viewer()
     });
     // image position
     bind_input(InputKeyboard { XKB_KEY_Left, KEYMOD_NONE }, [this]() {
+        set_position(get_position() +
+                     Point { static_cast<ssize_t>(window_size.width / 10), 0 });
+    });
+    bind_input(InputKeyboard { XKB_KEY_Right, KEYMOD_NONE }, [this]() {
         set_position(
             get_position() +
             Point { -static_cast<ssize_t>(window_size.width / 10), 0 });
     });
-    bind_input(InputKeyboard { XKB_KEY_Right, KEYMOD_NONE }, [this]() {
-        set_position(get_position() +
-                     Point { static_cast<ssize_t>(window_size.width / 10), 0 });
-    });
     bind_input(InputKeyboard { XKB_KEY_Up, KEYMOD_NONE }, [this]() {
         set_position(
             get_position() +
-            Point { 0, -static_cast<ssize_t>(window_size.height / 10) });
+            Point { 0, static_cast<ssize_t>(window_size.height / 10) });
     });
     bind_input(InputKeyboard { XKB_KEY_Down, KEYMOD_NONE }, [this]() {
         set_position(
             get_position() +
-            Point { 0, static_cast<ssize_t>(window_size.height / 10) });
+            Point { 0, -static_cast<ssize_t>(window_size.height / 10) });
     });
     // mouse
     bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_NONE }, [this]() {

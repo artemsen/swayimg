@@ -154,7 +154,7 @@ Gallery::Gallery()
         select(Layout::PgUp);
     });
     // text layer
-    bind_input(InputKeyboard { XKB_KEY_i, KEYMOD_NONE }, []() {
+    bind_input(InputKeyboard { XKB_KEY_t, KEYMOD_NONE }, []() {
         Text& text = Text::self();
         if (text.is_visible()) {
             text.hide();
