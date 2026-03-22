@@ -20,7 +20,10 @@ Slideshow::Slideshow()
     set_window_background(Background::Auto);
     default_scale = Scale::FitWindow;
 
+    text_scheme[static_cast<size_t>(Text::TopRight)].clear();
     text_scheme[static_cast<size_t>(Text::TopLeft)] = { "{name}" };
+    text_scheme[static_cast<size_t>(Text::BottomLeft)].clear();
+    text_scheme[static_cast<size_t>(Text::BottomRight)].clear();
 
     bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
         Application::self().set_mode(Application::Mode::Viewer);
