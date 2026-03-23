@@ -12,6 +12,7 @@ swayimg.set_mode("viewer")                -- mode at startup
 swayimg.enable_antialiasing(true)         -- anti-aliasing
 swayimg.enable_decoration(true)           -- window title/buttons/borders
 swayimg.enable_overlay(false)             -- window overlay mode
+swayimg.enable_exif_orientation(true)     -- image orientation by EXIF
 swayimg.set_dnd_button("MouseRight")      -- drag-and-drop mouse button
 
 -- Image list configuration

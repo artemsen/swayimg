@@ -45,6 +45,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.on_initialized](#swayimgon_initialized): Add a callback function called when all subsystems have been initialized
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
+  * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
   * [swayimg.set_dnd_button](#swayimgset_dnd_button): Set mouse button used for drag-and-drop image file to external apps
@@ -298,6 +299,16 @@ swayimg.enable_antialiasing(enable: boolean)
 Enable or disable antialiasing.
 
 @_param_ `enable` - Enable/disable antialiasing
+
+### swayimg.enable_exif_orientation
+
+```lua
+swayimg.enable_exif_orientation(enable: boolean)
+```
+
+Enable or disable changing orientation based on EXIF.
+
+@_param_ `enable` - Enable/disable orientation change
 
 ### swayimg.enable_decoration
 

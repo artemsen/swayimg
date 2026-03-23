@@ -179,6 +179,10 @@ function swayimg.on_initialized(fn) end
 ---@param enable boolean Enable/disable antialiasing
 function swayimg.enable_antialiasing(enable) end
 
+---Enable or disable changing orientation based on EXIF.
+---@param enable boolean Enable/disable orientation change
+function swayimg.enable_exif_orientation(enable) end
+
 ---Enable or disable window decoration (title, border, buttons).
 ---This function can only be called at program startup.
 ---Applicable only in Wayland, the corresponding protocol must be supported by

@@ -69,6 +69,9 @@ private:
     void register_format(const char* name, Priority priority,
                          const Constructor& creator);
 
+public:
+    bool fix_orientation = true; ///< Fix orientation by EXIF
+
 private:
     std::vector<Instance> registry; ///< Loaders
 };
