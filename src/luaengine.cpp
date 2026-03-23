@@ -602,7 +602,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                          const auto dir = name_to_type(ildirs, dname.c_str());
                          if (dir.has_value()) {
-                             mode->open_file(dir.value());
+                             mode->open(dir.value());
                          } else {
                              show_error(
                                  "Invalid argument {} for {}.{}.switch_image",
@@ -627,6 +627,12 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                          tbl["meta"] = meta;
                          return tbl;
+                     })
+        .addFunction("reload",
+                     [check_active, mode]() {
+                         if (check_active("reload")) {
+                             mode->reload();
+                         }
                      })
         .addFunction("reset",
                      [check_active, mode]() {

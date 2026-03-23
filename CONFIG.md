@@ -75,6 +75,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
   * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
+  * [swayimg.viewer.reload](#swayimgviewerreload): Reload current image
   * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
   * [swayimg.viewer.get_scale](#swayimgviewerget_scale): Get current image scale
   * [swayimg.viewer.set_abs_scale](#swayimgviewerset_abs_scale): Set absolute image scale
@@ -113,6 +114,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
   * [swayimg.slideshow.switch_image](#swayimgslideshowswitch_image): Open the next file in the specified direction
   * [swayimg.slideshow.get_image](#swayimgslideshowget_image): Get information about currently displayed image
+  * [swayimg.slideshow.reload](#swayimgslideshowreload): Reload current image
   * [swayimg.slideshow.reset](#swayimgslideshowreset): Reset position and scale to default values
   * [swayimg.slideshow.get_scale](#swayimgslideshowget_scale): Get current image scale
   * [swayimg.slideshow.set_abs_scale](#swayimgslideshowset_abs_scale): Set absolute image scale
@@ -628,6 +630,14 @@ Get information about currently displayed image.
 
 @_return_ - Currently displayed image
 
+### swayimg.viewer.reload
+
+```lua
+swayimg.viewer.reload()
+```
+
+Reload current image.
+
 ### swayimg.viewer.reset
 
 ```lua
@@ -1123,6 +1133,14 @@ swayimg.slideshow.get_image() -> swayimg.image
 Get information about currently displayed image.
 
 @_return_ - Currently displayed image
+
+### swayimg.slideshow.reload
+
+```lua
+swayimg.slideshow.reload()
+```
+
+Reload current image.
 
 ### swayimg.slideshow.reset
 

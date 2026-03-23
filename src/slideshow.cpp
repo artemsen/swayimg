@@ -35,7 +35,7 @@ void Slideshow::initialize()
     Viewer::initialize();
 
     Application::self().add_fdpoll(timer, [this]() {
-        open_file(ImageList::Dir::Next);
+        open(ImageList::Dir::Next);
         timer.reset(duration, 0);
     });
 }

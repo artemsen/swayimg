@@ -56,13 +56,17 @@ public:
     Viewer();
 
     /**
-     * Switch to the next image file.
-     * @param pos next entry position
-     * @param from first entry
+     * Open next image file.
+     * @param dir next entry direction
      * @return true if image was loaded
      */
-    bool open_file(const ImageList::Dir pos,
-                   const ImageEntryPtr& from = nullptr);
+    bool open(const ImageList::Dir dir);
+
+    /**
+     * Reload current image.
+     * @return true if image was reloaded
+     */
+    bool reload();
 
     /**
      * Get currently showed image instance.
@@ -216,6 +220,21 @@ public:
 
 private:
     /**
+     * Open next image file.
+     * @param dir next entry direction
+     * @param entry starting entry
+     * @return true if image was opened
+     */
+    bool open(const ImageList::Dir dir, const ImageEntryPtr& entry);
+
+    /**
+     * Load and switch to next image.
+     * @param from entry to load
+     * @return true if image was loaded
+     */
+    bool load(const ImageEntryPtr& entry);
+
+    /**
      * Switch to specified frame.
      * @param index frame index to activate.
      */
@@ -233,11 +252,6 @@ private:
      * @param what type of updated data
      */
     void update_text(const TextUpdate what) const;
-
-    /**
-     * Image open post processing.
-     */
-    void on_open();
 
     /**
      * Fix up image position.

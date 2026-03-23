@@ -107,10 +107,10 @@ Viewer::Viewer()
     });
     // next/prev image
     bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_NONE }, [this]() {
-        open_file(ImageList::Dir::Next);
+        open(ImageList::Dir::Next);
     });
     bind_input(InputKeyboard { XKB_KEY_Prior, KEYMOD_NONE }, [this]() {
-        open_file(ImageList::Dir::Prev);
+        open(ImageList::Dir::Prev);
     });
     // next/prev frame
     bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_SHIFT }, [this]() {
@@ -179,67 +179,20 @@ Viewer::Viewer()
     bind_image_drag(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE });
 }
 
-bool Viewer::open_file(const ImageList::Dir pos, const ImageEntryPtr& from)
+bool Viewer::open(const ImageList::Dir dir)
 {
-    ImageList& il = ImageList::self();
+    return open(dir, nullptr);
+}
 
-    ImageEntryPtr next_entry = from ? from : il.get(image->entry, pos);
-
-    const bool forward =
-        pos != ImageList::Dir::Prev && pos != ImageList::Dir::PrevParent;
-
-    if (!next_entry && imagelist_loop) {
-        // reshuffle random on new loop
-        if (il.get_order() == ImageList::Order::Random) {
-            il.set_order(ImageList::Order::Random);
-        }
-        next_entry = il.get(
-            nullptr, forward ? ImageList::Dir::First : ImageList::Dir::Last);
-        if (next_entry == image->entry) {
-            next_entry = il.get(next_entry, pos);
-        }
-        if (!next_entry) {
-            return false;
-        }
+bool Viewer::reload()
+{
+    if (!load(image->entry) && !open(ImageList::Dir::Next) &&
+        !open(ImageList::Dir::Prev)) {
+        Log::info("No more images to view, exit");
+        Application::self().exit(0);
+        return false;
     }
-
-    ImagePtr next_image = nullptr;
-
-    {
-        // get file from history/preload cache
-        const std::scoped_lock lock(image_pool.mutex);
-        next_image = image_pool.preload.get(next_entry);
-        if (!next_image) {
-            next_image = image_pool.history.get(next_entry);
-        }
-    }
-    if (next_image) {
-        Log::verbose("Get image {} from cache",
-                     next_entry->path.filename().string());
-    }
-
-    while (next_entry && !next_image) {
-        next_image = ImageLoader::load(next_entry);
-        if (!next_image) {
-            next_entry = il.remove(next_entry, forward);
-        }
-        if (!next_entry && imagelist_loop) {
-            next_entry = il.get(nullptr, ImageList::Dir::First);
-        }
-    }
-    if (next_image) {
-        // put to history
-        if (image) {
-            const std::scoped_lock lock(image_pool.mutex);
-            image_pool.history.put(image);
-        }
-
-        // switch to new image
-        image = next_image;
-        on_open();
-    }
-
-    return !!next_image;
+    return true;
 }
 
 size_t Viewer::next_frame()
@@ -513,14 +466,10 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     window_size = wnd;
 
-    if (!image || image->entry != entry) {
-        if (!open_file(ImageList::Dir::Next, entry)) {
-            Log::info("No more images to view, exit");
-            Application::self().exit(0); // no images
-            return;
-        }
-    } else {
-        on_open();
+    if (!open(ImageList::Dir::Next, entry) &&
+        !open(ImageList::Dir::Prev, entry)) {
+        Log::info("No more images to view, exit");
+        Application::self().exit(0);
     }
 }
 
@@ -532,91 +481,6 @@ void Viewer::deactivate()
     Ui* ui = Application::self().get_ui();
     ui->set_ctype(Ui::ContentType::Static);
     ui->set_cursor(Ui::CursorShape::Default);
-}
-
-void Viewer::set_frame(const size_t index)
-{
-    assert(index < image->frames.size());
-
-    frame_index = index;
-    update_text(TextUpdate::Frame);
-    Application::redraw();
-}
-
-void Viewer::update_text(const TextUpdate what) const
-{
-    Text& text = Text::self();
-
-    if (what == TextUpdate::All) {
-        text.reset(image);
-    }
-
-    if (what == TextUpdate::All || what == TextUpdate::Frame) {
-        const Pixmap& pm = image->frames[frame_index].pm;
-        text.set_field(Text::FIELD_FRAME_INDEX,
-                       std::to_string(frame_index + 1));
-        text.set_field(Text::FIELD_FRAME_WIDTH, std::to_string(pm.width()));
-        text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_string(pm.height()));
-    }
-
-    if (what == TextUpdate::All || what == TextUpdate::Scale) {
-        std::string tscale;
-        if (scale >= 0.1) {
-            tscale = std::format("{}%", static_cast<size_t>(scale * 100));
-        } else {
-            tscale = std::format("{:.02}%", scale * 100);
-        }
-        text.set_field(Text::FIELD_SCALE, tscale);
-    }
-
-    text.update();
-}
-
-void Viewer::on_open()
-{
-    const bool is_animation =
-        image->frames.size() > 1 && image->frames[0].duration;
-    frame_index = 0;
-
-    // set content type
-    Ui* ui = Application::self().get_ui();
-    ui->set_ctype(is_animation ? Ui::ContentType::Animation
-                               : Ui::ContentType::Static);
-
-    if (std::holds_alternative<Scale>(default_scale) &&
-        std::get<Scale>(default_scale) == Scale::Keep && previmg) {
-        // handle "keep scale" mode
-        const Pixmap& pm = image->frames[frame_index].pm;
-        const ssize_t diff_w = static_cast<ssize_t>(previmg.width) -
-            static_cast<ssize_t>(pm.width());
-        const ssize_t diff_h = static_cast<ssize_t>(previmg.height) -
-            static_cast<ssize_t>(pm.height());
-        position.x += std::floor(scale * diff_w) / 2.0;
-        position.y += std::floor(scale * diff_h) / 2.0;
-        fixup_position();
-    } else {
-        if (std::holds_alternative<Scale>(default_scale)) {
-            set_scale(std::get<Scale>(default_scale));
-        } else {
-            set_scale(std::get<double>(default_scale));
-        }
-
-        set_position(default_pos);
-    }
-
-    previmg = image->frames[frame_index].pm;
-
-    // start animation
-    if (is_animation) {
-        animation_resume();
-    } else {
-        animation_stop();
-    }
-
-    preloader_start();
-
-    switch_current();
-    update_text(TextUpdate::All);
 }
 
 ImageEntryPtr Viewer::current_entry()
@@ -707,20 +571,241 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             preloader_start();
             break;
         case ImageListEvent::Modify:
-            if (entry == image->entry &&
-                !open_file(ImageList::Dir::Next, image->entry)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
+            if (entry == image->entry) {
+                reload();
             }
             break;
         case ImageListEvent::Remove:
-            if (entry == image->entry &&
-                !open_file(ImageList::Dir::Next, nullptr)) {
+            if (entry == image->entry && !open(ImageList::Dir::Next) &&
+                !open(ImageList::Dir::Prev)) {
                 Log::info("No more images to view, exit");
                 Application::self().exit(0);
             }
             break;
     }
+}
+
+bool Viewer::open(const ImageList::Dir dir, const ImageEntryPtr& entry)
+{
+    assert(image || entry);
+
+    ImageList& il = ImageList::self();
+
+    ImageEntryPtr next_entry = entry ? entry : il.get(image->entry, dir);
+
+    const bool forward =
+        dir != ImageList::Dir::Prev && dir != ImageList::Dir::PrevParent;
+
+    while (true) {
+        if (!next_entry && imagelist_loop) {
+            // reshuffle random on new loop
+            if (il.get_order() == ImageList::Order::Random) {
+                il.set_order(ImageList::Order::Random);
+            }
+
+            next_entry =
+                il.get(nullptr,
+                       forward ? ImageList::Dir::First : ImageList::Dir::Last);
+
+            if (image && image->entry == next_entry &&
+                il.get_order() == ImageList::Order::Random) {
+                next_entry = il.get(next_entry, dir);
+            }
+        }
+        if (!next_entry) {
+            break; // no more entries
+        }
+        if (image && image->entry == next_entry) {
+            break; // loop complete
+        }
+
+        if (load(next_entry)) {
+            return true;
+        }
+
+        next_entry = il.remove(next_entry, forward);
+    }
+
+    return false;
+}
+
+bool Viewer::load(const ImageEntryPtr& entry)
+{
+    ImagePtr new_image = nullptr;
+
+    if (image && image->entry == entry) {
+        // remove entry from cache in reloading mode
+        const std::scoped_lock lock(image_pool.mutex);
+        image_pool.history.get(entry);
+        image_pool.preload.get(entry);
+    } else {
+        // get file from history/preload cache
+        const std::scoped_lock lock(image_pool.mutex);
+        new_image = image_pool.preload.get(entry);
+        if (new_image) {
+            Log::verbose("Got image {} from preloading cache",
+                         entry->path.filename().string());
+        } else {
+            new_image = image_pool.history.get(entry);
+            if (new_image) {
+                Log::verbose("Got image {} from history cache",
+                             entry->path.filename().string());
+            }
+        }
+    }
+
+    if (!new_image) {
+        new_image = ImageLoader::load(entry);
+        if (!new_image) {
+            return false; // failed to load
+        }
+    }
+
+    if (image && image->entry == entry) {
+        // put current image to history
+        const std::scoped_lock lock(image_pool.mutex);
+        image_pool.history.put(image);
+    }
+
+    // switch to new image
+    image = new_image;
+
+    const bool is_animation =
+        image->frames.size() > 1 && image->frames[0].duration;
+    frame_index = 0;
+
+    // set content type
+    Ui* ui = Application::self().get_ui();
+    ui->set_ctype(is_animation ? Ui::ContentType::Animation
+                               : Ui::ContentType::Static);
+
+    if (std::holds_alternative<Scale>(default_scale) &&
+        std::get<Scale>(default_scale) == Scale::Keep && previmg) {
+        // handle "keep scale" mode
+        const Pixmap& pm = image->frames[frame_index].pm;
+        const ssize_t diff_w = static_cast<ssize_t>(previmg.width) -
+            static_cast<ssize_t>(pm.width());
+        const ssize_t diff_h = static_cast<ssize_t>(previmg.height) -
+            static_cast<ssize_t>(pm.height());
+        position.x += std::floor(scale * diff_w) / 2.0;
+        position.y += std::floor(scale * diff_h) / 2.0;
+        fixup_position();
+    } else {
+        if (std::holds_alternative<Scale>(default_scale)) {
+            set_scale(std::get<Scale>(default_scale));
+        } else {
+            set_scale(std::get<double>(default_scale));
+        }
+
+        set_position(default_pos);
+    }
+
+    previmg = image->frames[frame_index].pm;
+
+    // start animation
+    if (is_animation) {
+        animation_resume();
+    } else {
+        animation_stop();
+    }
+
+    preloader_start();
+
+    switch_current();
+    update_text(TextUpdate::All);
+
+    return true;
+}
+
+void Viewer::set_frame(const size_t index)
+{
+    assert(index < image->frames.size());
+
+    frame_index = index;
+    update_text(TextUpdate::Frame);
+    Application::redraw();
+}
+
+void Viewer::update_text(const TextUpdate what) const
+{
+    Text& text = Text::self();
+
+    if (what == TextUpdate::All) {
+        text.reset(image);
+    }
+
+    if (what == TextUpdate::All || what == TextUpdate::Frame) {
+        const Pixmap& pm = image->frames[frame_index].pm;
+        text.set_field(Text::FIELD_FRAME_INDEX,
+                       std::to_string(frame_index + 1));
+        text.set_field(Text::FIELD_FRAME_WIDTH, std::to_string(pm.width()));
+        text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_string(pm.height()));
+    }
+
+    if (what == TextUpdate::All || what == TextUpdate::Scale) {
+        std::string tscale;
+        if (scale >= 0.1) {
+            tscale = std::format("{}%", static_cast<size_t>(scale * 100));
+        } else {
+            tscale = std::format("{:.02}%", scale * 100);
+        }
+        text.set_field(Text::FIELD_SCALE, tscale);
+    }
+
+    text.update();
+}
+
+void Viewer::fixup_position()
+{
+    const Pixmap& pm = image->frames[frame_index].pm;
+    const Size scaled = static_cast<Size>(pm) * scale;
+
+    if (!auto_center) {
+        // don't let canvas to be far out of window
+        if (position.x + static_cast<ssize_t>(scaled.width) < 0) {
+            position.x = -static_cast<ssize_t>(scaled.width);
+        }
+        if (std::cmp_greater(position.x, window_size.width)) {
+            position.x = window_size.width;
+        }
+        if (position.y + static_cast<ssize_t>(scaled.height) < 0) {
+            position.y = -static_cast<ssize_t>(scaled.height);
+        }
+        if (std::cmp_greater(position.y, window_size.height)) {
+            position.y = window_size.height;
+        }
+    } else {
+        if (scaled.width <= window_size.width) {
+            // entire image fits horizontally, center it
+            position.x = window_size.width / 2 - scaled.width / 2;
+        } else {
+            // prevent going outside the window
+            const ssize_t right = position.x + scaled.width;
+            if (position.x > 0 && std::cmp_greater(right, window_size.width)) {
+                position.x = 0;
+            }
+            if (position.x < 0 && std::cmp_less(right, window_size.width)) {
+                position.x = window_size.width - scaled.width;
+            }
+        }
+
+        if (scaled.height <= window_size.height) {
+            // entire image fits vertically, center it
+            position.y = window_size.height / 2 - scaled.height / 2;
+        } else {
+            // prevent going outside the window
+            const ssize_t bottom = position.y + scaled.height;
+            if (position.y > 0 &&
+                std::cmp_greater(bottom, window_size.height)) {
+                position.y = 0;
+            }
+            if (position.y < 0 && std::cmp_less(bottom, window_size.height)) {
+                position.y = window_size.height - scaled.height;
+            }
+        }
+    }
+
+    Application::redraw();
 }
 
 void Viewer::preloader_start()
@@ -788,59 +873,6 @@ void Viewer::preloader_start()
 
         image_pool.stop = true;
     });
-}
-
-void Viewer::fixup_position()
-{
-    const Pixmap& pm = image->frames[frame_index].pm;
-    const Size scaled = static_cast<Size>(pm) * scale;
-
-    if (!auto_center) {
-        // don't let canvas to be far out of window
-        if (position.x + static_cast<ssize_t>(scaled.width) < 0) {
-            position.x = -static_cast<ssize_t>(scaled.width);
-        }
-        if (std::cmp_greater(position.x, window_size.width)) {
-            position.x = window_size.width;
-        }
-        if (position.y + static_cast<ssize_t>(scaled.height) < 0) {
-            position.y = -static_cast<ssize_t>(scaled.height);
-        }
-        if (std::cmp_greater(position.y, window_size.height)) {
-            position.y = window_size.height;
-        }
-    } else {
-        if (scaled.width <= window_size.width) {
-            // entire image fits horizontally, center it
-            position.x = window_size.width / 2 - scaled.width / 2;
-        } else {
-            // prevent going outside the window
-            const ssize_t right = position.x + scaled.width;
-            if (position.x > 0 && std::cmp_greater(right, window_size.width)) {
-                position.x = 0;
-            }
-            if (position.x < 0 && std::cmp_less(right, window_size.width)) {
-                position.x = window_size.width - scaled.width;
-            }
-        }
-
-        if (scaled.height <= window_size.height) {
-            // entire image fits vertically, center it
-            position.y = window_size.height / 2 - scaled.height / 2;
-        } else {
-            // prevent going outside the window
-            const ssize_t bottom = position.y + scaled.height;
-            if (position.y > 0 &&
-                std::cmp_greater(bottom, window_size.height)) {
-                position.y = 0;
-            }
-            if (position.y < 0 && std::cmp_less(bottom, window_size.height)) {
-                position.y = window_size.height - scaled.height;
-            }
-        }
-    }
-
-    Application::redraw();
 }
 
 void Viewer::preloader_stop()

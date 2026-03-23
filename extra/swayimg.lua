@@ -365,6 +365,9 @@ function swayimg.viewer.switch_image(dir) end
 ---@return swayimg.image # Currently displayed image
 function swayimg.viewer.get_image() end
 
+---Reload current image.
+function swayimg.viewer.reload() end
+
 ---Reset position and scale to default values.
 ---@see swayimg.viewer.set_default_scale
 ---@see swayimg.viewer.set_default_position
