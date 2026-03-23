@@ -5,6 +5,8 @@
 #pragma once
 
 #include "image.hpp"
+#include "log.hpp"
+#include "text.hpp"
 
 // clang-format off
 // lua headers must be included in this order
@@ -15,6 +17,7 @@
 // clang-format on
 
 #include <filesystem>
+#include <format>
 #include <vector>
 
 /** Lua integration. */
@@ -64,6 +67,32 @@ private:
      * @return created reference to use in future
      */
     luabridge::LuaRef* add_ref(const luabridge::LuaRef* obj);
+
+    /**
+     * Print Lua error message with stack trace.
+     * @param fmt format description
+     * @param ... format arguments
+     */
+    template <typename... Args>
+    void print_error(const std::format_string<Args...> fmt,
+                     Args&&... args) const
+    {
+        const std::string message =
+            std::vformat(fmt.get(), std::make_format_args(args...));
+        Log::error("{}", message);
+        Text::self().set_status(message);
+
+        // print stack trace
+        lua_Debug entry;
+        int level = 0;
+        while (lua_getstack(lua_state, level, &entry)) {
+            if (lua_getinfo(lua_state, "Sl", &entry) &&
+                entry.currentline >= 0) {
+                Log::error("  {}:{}", entry.short_src, entry.currentline);
+            }
+            level++;
+        }
+    }
 
 private:
     lua_State* lua_state = nullptr;       ///< Lua state

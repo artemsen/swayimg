@@ -161,20 +161,6 @@ type_to_name(const std::array<std::pair<T, const char*>, N>& arr, const T& type)
 }
 
 /**
- * Print Lua error message.
- * @param fmt format description
- * @param ... format arguments
- */
-template <typename... Args>
-static void show_error(const std::format_string<Args...> fmt, Args&&... args)
-{
-    const std::string message =
-        std::vformat(fmt.get(), std::make_format_args(args...));
-    Log::error("{}", message);
-    Text::self().set_status(message);
-}
-
-/**
  * Get path to config file (init.lua).
  * @return path to initial config file
  */
@@ -273,11 +259,11 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     // load config file
     if (!config_file.empty()) {
         if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
-            show_error("Failed to load config file: {}",
-                       lua_tostring(lua_state, -1));
+            print_error("Failed to load config file: {}",
+                        lua_tostring(lua_state, -1));
         } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-            show_error("Failed to execute config file: {}",
-                       lua_tostring(lua_state, -1));
+            print_error("Failed to execute config file: {}",
+                        lua_tostring(lua_state, -1));
         }
     }
 }
@@ -287,11 +273,11 @@ void LuaEngine::execute(const std::string& script)
     assert(lua_state);
 
     if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
-        show_error("Failed to load script line: {}",
-                   lua_tostring(lua_state, -1));
+        print_error("Failed to load script line: {}",
+                    lua_tostring(lua_state, -1));
     } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        show_error("Failed to execute script line: {}",
-                   lua_tostring(lua_state, -1));
+        print_error("Failed to execute script line: {}",
+                    lua_tostring(lua_state, -1));
     }
 }
 
@@ -304,12 +290,12 @@ void LuaEngine::bind_root_api()
                          Application::self().exit(code ? *code : 0);
                      })
         .addFunction("set_mode",
-                     [](const std::string& name) {
+                     [this](const std::string& name) {
                          const auto mode = name_to_type(appmodes, name.c_str());
                          if (mode.has_value()) {
                              Application::self().set_mode(mode.value());
                          } else {
-                             show_error("Invalid mode: {}", name);
+                             print_error("Invalid mode: {}", name);
                          }
                      })
         .addFunction("get_mode",
@@ -338,9 +324,9 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction(
             "set_window_size",
-            [](const size_t width, const size_t height) {
+            [this](const size_t width, const size_t height) {
                 if (!width || !height || width > 32767 || height > 32767) {
-                    show_error(
+                    print_error(
                         "Invalid arguments ({}, {}) for {} .set_window_size ",
                         width, height, NS_SWAYIMG);
                     return;
@@ -360,15 +346,15 @@ void LuaEngine::bind_root_api()
             "on_window_resize",
             [this](const luabridge::LuaRef& cb) {
                 if (!cb.isFunction()) {
-                    show_error("Invalid argument for {}.on_window_resize: "
-                               "expected function, but got {}",
-                               NS_SWAYIMG, cb.tostring().c_str());
+                    print_error("Invalid argument for {}.on_window_resize: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, cb.tostring().c_str());
                 } else {
                     const luabridge::LuaRef* ref = add_ref(&cb);
-                    Application::self().subscribe_window_resize([ref]() {
+                    Application::self().subscribe_window_resize([this, ref]() {
                         const luabridge::LuaResult result = (*ref)();
                         if (!result) {
-                            show_error("{}", result.errorMessage());
+                            print_error("{}", result.errorMessage());
                         }
                     });
                 }
@@ -402,17 +388,17 @@ void LuaEngine::bind_root_api()
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
-                             show_error(
+                             print_error(
                                  "Invalid argument for {}.on_initialized: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, cb.tostring().c_str());
                              return;
                          }
                          const luabridge::LuaRef* ref = add_ref(&cb);
-                         Application::self().on_init_complete = [ref]() {
+                         Application::self().on_init_complete = [this, ref]() {
                              const luabridge::LuaResult result = (*ref)();
                              if (!result) {
-                                 show_error("{}", result.errorMessage());
+                                 print_error("{}", result.errorMessage());
                              }
                          };
                      })
@@ -435,11 +421,11 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction(
             "set_dnd_button",
-            [](const std::string& button) {
+            [this](const std::string& button) {
                 std::optional<InputMouse> input = InputMouse::load(button);
                 if (!input) {
-                    show_error("Invalid button for {}.set_drag_button: {}",
-                               NS_SWAYIMG, button);
+                    print_error("Invalid button for {}.set_drag_button: {}",
+                                NS_SWAYIMG, button);
                     return;
                 }
                 Application::self().sparams.dnd = input.value();
@@ -488,13 +474,13 @@ void LuaEngine::bind_imagelist_api()
                              AppEvent::FileRemove { abs_path });
                      })
         .addFunction("set_order",
-                     [](const std::string& name) {
+                     [this](const std::string& name) {
                          const auto order =
                              name_to_type(ilorders, name.c_str());
                          if (order.has_value()) {
                              ImageList::self().set_order(order.value());
                          } else {
-                             show_error("Invalid image list order: {}", name);
+                             print_error("Invalid image list order: {}", name);
                          }
                      })
         .addFunction("enable_reverse",
@@ -588,32 +574,33 @@ void LuaEngine::bind_viewer_api(const char* name)
     bind_appmode_api(name);
 
     // check if required mode is active
-    auto check_active = [mode, name](const char* fname) {
+    auto check_active = [this, mode, name](const char* fname) {
         if (Application::self().current_mode() == mode) {
             return true;
         }
-        show_error("Unable to execute {}.{}.{}: {} mode is not active",
-                   NS_SWAYIMG, name, fname, name);
+        print_error("Unable to execute {}.{}.{}: {} mode is not active",
+                    NS_SWAYIMG, name, fname, name);
         return false;
     };
 
     luabridge::getGlobalNamespace(lua_state)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
-        .addFunction("switch_image",
-                     [check_active, mode, name](const std::string& dname) {
-                         if (!check_active("switch_image")) {
-                             return;
-                         }
-                         const auto dir = name_to_type(ildirs, dname.c_str());
-                         if (dir.has_value()) {
-                             mode->open(dir.value());
-                         } else {
-                             show_error(
-                                 "Invalid argument {} for {}.{}.switch_image",
-                                 dname, NS_SWAYIMG, name);
-                         }
-                     })
+        .addFunction(
+            "switch_image",
+            [this, check_active, mode, name](const std::string& dname) {
+                if (!check_active("switch_image")) {
+                    return;
+                }
+                const auto dir = name_to_type(ildirs, dname.c_str());
+                if (dir.has_value()) {
+                    mode->open(dir.value());
+                } else {
+                    print_error(
+                        "Invalid argument \"{}\" for {}.{}.switch_image", dname,
+                        NS_SWAYIMG, name);
+                }
+            })
         .addFunction("get_image",
                      [this, check_active, mode]() {
                          if (!check_active("get_image")) {
@@ -665,7 +652,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                      })
         .addFunction(
             "set_fix_scale",
-            [check_active, mode, name](const std::string& scname) {
+            [this, check_active, mode, name](const std::string& scname) {
                 if (!check_active("set_fix_scale")) {
                     return;
                 }
@@ -673,12 +660,13 @@ void LuaEngine::bind_viewer_api(const char* name)
                 if (scale.has_value()) {
                     mode->set_scale(scale.value());
                 } else {
-                    show_error("Invalid argument {} for {}.{}.set_fix_scale",
-                               scname, NS_SWAYIMG, name);
+                    print_error(
+                        "Invalid argument \"{}\" for {}.{}.set_fix_scale",
+                        scname, NS_SWAYIMG, name);
                 }
             })
         .addFunction("set_default_scale",
-                     [mode, name](const luabridge::LuaRef& val) {
+                     [this, mode, name](const luabridge::LuaRef& val) {
                          if (val.isString()) {
                              const std::string str = val;
                              const auto scale =
@@ -686,9 +674,9 @@ void LuaEngine::bind_viewer_api(const char* name)
                              if (scale.has_value()) {
                                  mode->default_scale = scale.value();
                              } else {
-                                 show_error("Invalid argument {} for "
-                                            "{}.{}.set_default_scale",
-                                            str, NS_SWAYIMG, name);
+                                 print_error("Invalid argument \"{}\" for "
+                                             "{}.{}.set_default_scale",
+                                             str, NS_SWAYIMG, name);
                              }
                          } else if (val.isNumber()) {
                              mode->default_scale = static_cast<double>(val);
@@ -712,29 +700,29 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("set_fix_position",
-                     [check_active, mode, name](const std::string& fpos) {
+                     [this, check_active, mode, name](const std::string& fpos) {
                          if (check_active("set_fix_position")) {
                              const auto pos =
                                  name_to_type(imgpositions, fpos.c_str());
                              if (pos.has_value()) {
                                  mode->set_position(pos.value());
                              } else {
-                                 show_error("Invalid argument {} for "
-                                            "{}.{}.set_fix_position",
-                                            fpos, NS_SWAYIMG, name);
+                                 print_error("Invalid argument \"{}\" for "
+                                             "{}.{}.set_fix_position",
+                                             fpos, NS_SWAYIMG, name);
                              }
                          }
                      })
         .addFunction("set_default_position",
-                     [mode, name](const std::string& fpos) {
+                     [this, mode, name](const std::string& fpos) {
                          const auto pos =
                              name_to_type(imgpositions, fpos.c_str());
                          if (pos.has_value()) {
                              mode->default_pos = pos.value();
                          } else {
-                             show_error("Invalid argument {} for "
-                                        "{}.{}.set_default_position",
-                                        fpos, NS_SWAYIMG, name);
+                             print_error("Invalid argument \"{}\" for "
+                                         "{}.{}.set_default_position",
+                                         fpos, NS_SWAYIMG, name);
                          }
                      })
         .addFunction("next_frame",
@@ -778,15 +766,16 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("rotate",
-                     [check_active, mode, name](const size_t angle) {
+                     [this, check_active, mode, name](const size_t angle) {
                          if (!check_active("rotate")) {
                              return;
                          }
                          if (angle == 90 || angle == 180 || angle == 270) {
                              mode->rotate(angle);
                          } else {
-                             show_error("Invalid argument {} for {}.{}.rotate",
-                                        angle, NS_SWAYIMG, name);
+                             print_error(
+                                 "Invalid argument \"{}\" for {}.{}.rotate",
+                                 angle, NS_SWAYIMG, name);
                          }
                      })
         .addFunction("export",
@@ -796,8 +785,8 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("set_meta",
-                     [check_active, mode, name](const std::string& key,
-                                                const std::string& val) {
+                     [this, check_active, mode, name](const std::string& key,
+                                                      const std::string& val) {
                          if (!check_active("set_meta")) {
                              return;
                          }
@@ -808,8 +797,8 @@ void LuaEngine::bind_viewer_api(const char* name)
                              meta_key.erase(0, meta_prefix.length());
                          }
                          if (meta_key.empty()) {
-                             show_error("Empty key for {}.{}.set_meta",
-                                        NS_SWAYIMG, name);
+                             print_error("Empty key for {}.{}.set_meta",
+                                         NS_SWAYIMG, name);
                              return;
                          }
                          if (val.empty()) {
@@ -820,27 +809,27 @@ void LuaEngine::bind_viewer_api(const char* name)
                      })
         .addFunction(
             "set_drag_button",
-            [mode, name](const std::string& state) {
+            [this, mode, name](const std::string& state) {
                 std::optional<InputMouse> input = InputMouse::load(state);
                 if (input) {
                     mode->bind_image_drag(input.value());
                 } else {
-                    show_error("Invalid button for {}.{}.set_drag_button: {}",
-                               NS_SWAYIMG, name, state);
+                    print_error("Invalid button for {}.{}.set_drag_button: {}",
+                                NS_SWAYIMG, name, state);
                 }
             })
         .addFunction(
             "set_window_background",
-            [mode, name](const luabridge::LuaRef& val) {
+            [this, mode, name](const luabridge::LuaRef& val) {
                 if (val.isString()) {
                     const std::string str = val;
                     const auto bgmode = name_to_type(wndbkgs, str.c_str());
                     if (bgmode.has_value()) {
                         mode->set_window_background(bgmode.value());
                     } else {
-                        show_error("Invalid argument {} for "
-                                   "{}.{}.set_window_background",
-                                   str, NS_SWAYIMG, name);
+                        print_error("Invalid argument \"{}\" for "
+                                    "{}.{}.set_window_background",
+                                    str, NS_SWAYIMG, name);
                     }
                 } else if (val.isNumber()) {
                     mode->set_window_background(static_cast<uint32_t>(val));
@@ -893,12 +882,12 @@ void LuaEngine::bind_slideshow_api()
 void LuaEngine::bind_gallery_api()
 {
     // check if required mode is active
-    auto check_active = [](const char* name) {
+    auto check_active = [this](const char* name) {
         if (Gallery::self().is_active()) {
             return true;
         }
-        show_error("Unable to execute {}.{}.{}: gallery mode is not active",
-                   NS_SWAYIMG, NS_GALLERY, name);
+        print_error("Unable to execute {}.{}.{}: gallery mode is not active",
+                    NS_SWAYIMG, NS_GALLERY, name);
         return false;
     };
 
@@ -907,20 +896,21 @@ void LuaEngine::bind_gallery_api()
     luabridge::getGlobalNamespace(lua_state)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(NS_GALLERY)
-        .addFunction("switch_image",
-                     [check_active](const std::string& name) {
-                         if (!check_active("select")) {
-                             return;
-                         }
-                         const auto dir = name_to_type(gldirs, name.c_str());
-                         if (dir.has_value()) {
-                             Gallery::self().select(dir.value());
-                         } else {
-                             show_error(
-                                 "Invalid argument {} for {}.{}.switch_image",
-                                 name, NS_SWAYIMG, NS_GALLERY);
-                         }
-                     })
+        .addFunction(
+            "switch_image",
+            [this, check_active](const std::string& name) {
+                if (!check_active("select")) {
+                    return;
+                }
+                const auto dir = name_to_type(gldirs, name.c_str());
+                if (dir.has_value()) {
+                    Gallery::self().select(dir.value());
+                } else {
+                    print_error(
+                        "Invalid argument \"{}\" for {}.{}.switch_image", name,
+                        NS_SWAYIMG, NS_GALLERY);
+                }
+            })
         .addFunction(
             "get_image",
             [this, check_active]() {
@@ -933,13 +923,13 @@ void LuaEngine::bind_gallery_api()
             })
         .addFunction(
             "set_aspect",
-            [](const std::string& name) {
+            [this](const std::string& name) {
                 const auto aspect = name_to_type(aspects, name.c_str());
                 if (aspect.has_value()) {
                     Gallery::self().set_thumb_aspect(aspect.value());
                 } else {
-                    show_error("Invalid argument {} for {}.{}.set_aspect", name,
-                               NS_SWAYIMG, NS_GALLERY);
+                    print_error("Invalid argument \"{}\" for {}.{}.set_aspect",
+                                name, NS_SWAYIMG, NS_GALLERY);
                 }
             })
         .addFunction("get_thumb_size",
@@ -1039,21 +1029,21 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputKeyboard> input = InputKeyboard::load(key);
                 if (!input) {
-                    show_error("Invalid key for {}.{}.on_key: {}", NS_SWAYIMG,
-                               name, key);
+                    print_error("Invalid key for {}.{}.on_key: {}", NS_SWAYIMG,
+                                name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    show_error("Invalid argument for {}.{}.on_key: "
-                               "expected function, but got {}",
-                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    print_error("Invalid argument for {}.{}.on_key: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->bind_input(*input, [ref]() {
+                appmode->bind_input(*input, [this, ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        show_error("{}", result.errorMessage());
+                        print_error("{}", result.errorMessage());
                     }
                 });
             })
@@ -1063,21 +1053,21 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputMouse> input = InputMouse::load(key);
                 if (!input) {
-                    show_error("Invalid button for {}.{}.on_mouse: {}",
-                               NS_SWAYIMG, name, key);
+                    print_error("Invalid button for {}.{}.on_mouse: {}",
+                                NS_SWAYIMG, name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    show_error("Invalid argument for {}.{}.on_mouse: "
-                               "expected function, but got {}",
-                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    print_error("Invalid argument for {}.{}.on_mouse: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->bind_input(*input, [ref]() {
+                appmode->bind_input(*input, [this, ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        show_error("{}", result.errorMessage());
+                        print_error("{}", result.errorMessage());
                     }
                 });
             })
@@ -1087,52 +1077,52 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputSignal> input = InputSignal::load(key);
                 if (!input) {
-                    show_error("Invalid signal for {}.{}.on_signal: {}",
-                               NS_SWAYIMG, name, key);
+                    print_error("Invalid signal for {}.{}.on_signal: {}",
+                                NS_SWAYIMG, name, key);
                     return;
                 }
                 if (!cb.isFunction()) {
-                    show_error("Invalid argument for {}.{}.on_signal: "
-                               "expected function, but got {}",
-                               NS_SWAYIMG, name, cb.tostring().c_str());
+                    print_error("Invalid argument for {}.{}.on_signal: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, name, cb.tostring().c_str());
                     return;
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->bind_input(*input, [ref]() {
+                appmode->bind_input(*input, [this, ref]() {
                     const luabridge::LuaResult result = (*ref)();
                     if (!result) {
-                        show_error("{}", result.errorMessage());
+                        print_error("{}", result.errorMessage());
                     }
                 });
             })
         .addFunction("on_image_change",
                      [this, appmode, name](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
-                             show_error(
+                             print_error(
                                  "Invalid argument for {}.{}.on_image_change: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring().c_str());
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
-                             appmode->subscribe_image_switch([ref]() {
+                             appmode->subscribe_image_switch([this, ref]() {
                                  const luabridge::LuaResult result = (*ref)();
                                  if (!result) {
-                                     show_error("{}", result.errorMessage());
+                                     print_error("{}", result.errorMessage());
                                  }
                              });
                          }
                      })
         .addFunction(
             "set_text",
-            [appmode, name](const std::string& pos,
-                            const luabridge::LuaRef& table) {
+            [this, appmode, name](const std::string& pos,
+                                  const luabridge::LuaRef& table) {
                 const auto bp = name_to_type(tbpositions, pos.c_str());
                 if (bp.has_value()) {
                     appmode->set_text_scheme(
                         bp.value(), table.cast<Text::Scheme>().value());
                 } else {
-                    show_error("Invalid argument {} for {}.{}.set_text", pos,
-                               NS_SWAYIMG, name);
+                    print_error("Invalid argument \"{}\" for {}.{}.set_text",
+                                pos, NS_SWAYIMG, name);
                 }
             })
         .endNamespace()
