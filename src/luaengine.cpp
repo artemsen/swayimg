@@ -232,15 +232,6 @@ LuaEngine::~LuaEngine()
 
 void LuaEngine::initialize(const std::filesystem::path& config)
 {
-    const std::filesystem::path config_file =
-        config.empty() ? get_config_file() : config;
-    if (config_file.empty()) {
-        Log::verbose("User config not found, use default settings");
-        return;
-    } else {
-        Log::verbose("Load user config from {}", config_file.c_str());
-    }
-
     // initialize lua
     lua_state = luaL_newstate();
     if (!lua_state) {
@@ -249,16 +240,26 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     }
     luaL_openlibs(lua_state);
 
+    const std::filesystem::path config_file =
+        config.empty() ? get_config_file() : config;
+    if (config_file.empty()) {
+        Log::verbose("User config not found, use default settings");
+    } else {
+        Log::verbose("Load user config from {}", config_file.c_str());
+    }
+
     // add config dir to lua runtime path
-    lua_getglobal(lua_state, "package");
-    lua_getfield(lua_state, -1, "path");
-    std::string pack_path = lua_tostring(lua_state, -1);
-    lua_pop(lua_state, 2);
-    pack_path += ";" + config_file.parent_path().string() + "/?.lua";
-    lua_getglobal(lua_state, "package");
-    lua_pushstring(lua_state, pack_path.c_str());
-    lua_setfield(lua_state, -2, "path");
-    lua_pop(lua_state, 1); // Pop package table
+    if (!config_file.empty()) {
+        lua_getglobal(lua_state, "package");
+        lua_getfield(lua_state, -1, "path");
+        std::string pack_path = lua_tostring(lua_state, -1);
+        lua_pop(lua_state, 2);
+        pack_path += ";" + config_file.parent_path().string() + "/?.lua";
+        lua_getglobal(lua_state, "package");
+        lua_pushstring(lua_state, pack_path.c_str());
+        lua_setfield(lua_state, -2, "path");
+        lua_pop(lua_state, 1); // Pop package table
+    }
 
     // register lua bindings
     bind_root_api();
@@ -269,12 +270,14 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     bind_gallery_api();
 
     // load config file
-    if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
-        show_error("Failed to load config file: {}",
-                   lua_tostring(lua_state, -1));
-    } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        show_error("Failed to execute config file: {}",
-                   lua_tostring(lua_state, -1));
+    if (!config_file.empty()) {
+        if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
+            show_error("Failed to load config file: {}",
+                       lua_tostring(lua_state, -1));
+        } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
+            show_error("Failed to execute config file: {}",
+                       lua_tostring(lua_state, -1));
+        }
     }
 }
 
