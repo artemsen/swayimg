@@ -34,38 +34,41 @@ public:
     template <typename T> struct Registrator {
         Registrator(const char* name, Priority priority)
         {
-            ImageLoader::register_format(name, priority, []() {
+            ImageLoader::self().register_format(name, priority, []() {
                 return std::make_shared<T>();
             });
         }
     };
 
     /**
-     * Register loader.
-     * @param name format name
-     * @param priority loader priority
-     * @param creator function to create image instance
+     * Get global instance of image loader.
+     * @return image loader instance
      */
-    static void register_format(const char* name, Priority priority,
-                                const Constructor& creator);
+    static ImageLoader& self();
 
     /**
      * Get list of supported loaders.
      * @return list of loaders in priority order
      */
-    static std::string format_list();
+    [[nodiscard]] std::string format_list() const;
 
     /**
      * Load image.
      * @param entry image entry to load
      * @return image instance or nullptr if image wasn't loaded
      */
-    static ImagePtr load(const ImageEntryPtr& entry);
+    [[nodiscard]] ImagePtr load(const ImageEntryPtr& entry) const;
 
 private:
     /**
-     * Get array with loaders.
-     * @return loaders array
+     * Register loader.
+     * @param name format name
+     * @param priority loader priority
+     * @param creator function to create image instance
      */
-    static std::vector<Instance>& get_registry();
+    void register_format(const char* name, Priority priority,
+                         const Constructor& creator);
+
+private:
+    std::vector<Instance> registry; ///< Loaders
 };

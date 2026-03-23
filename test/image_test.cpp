@@ -11,7 +11,7 @@ static ImagePtr load_image(const char* path)
 {
     const ImageEntryPtr entry = std::make_shared<ImageEntry>();
     entry->path = path;
-    return ImageLoader::load(entry);
+    return ImageLoader::self().load(entry);
 }
 
 #define TEST_IMAGE_LOAD(fmt)                                             \

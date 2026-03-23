@@ -655,7 +655,7 @@ bool Viewer::load(const ImageEntryPtr& entry)
     }
 
     if (!new_image) {
-        new_image = ImageLoader::load(entry);
+        new_image = ImageLoader::self().load(entry);
         if (!new_image) {
             return false; // failed to load
         }
@@ -856,7 +856,7 @@ void Viewer::preloader_start()
 
             // load image
             if (!next_image) {
-                next_image = ImageLoader::load(next_entry);
+                next_image = ImageLoader::self().load(next_entry);
             }
 
             if (!next_image) {

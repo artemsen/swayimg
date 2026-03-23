@@ -226,10 +226,15 @@ private:
     std::vector<uint8_t> container;
 };
 
+ImageLoader& ImageLoader::self()
+{
+    static ImageLoader singleton;
+    return singleton;
+}
+
 void ImageLoader::register_format(const char* name, Priority priority,
                                   const Constructor& creator)
 {
-    std::vector<ImageLoader::Instance>& registry = get_registry();
     const auto it = std::find_if(registry.begin(), registry.end(),
                                  [priority](const auto& it) {
                                      return priority < it.priority;
@@ -237,11 +242,11 @@ void ImageLoader::register_format(const char* name, Priority priority,
     registry.insert(it, { name, priority, creator });
 }
 
-std::string ImageLoader::format_list()
+std::string ImageLoader::format_list() const
 {
     std::string formats;
 
-    for (const auto& it : get_registry()) {
+    for (const auto& it : registry) {
         if (!formats.empty()) {
             formats += ", ";
         }
@@ -251,7 +256,7 @@ std::string ImageLoader::format_list()
     return formats;
 }
 
-ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
+ImagePtr ImageLoader::load(const ImageEntryPtr& entry) const
 {
     const Log::PerfTimer timer;
 
@@ -275,7 +280,7 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
     }
 
     // decode file
-    for (const auto& it : get_registry()) {
+    for (const auto& it : registry) {
         ImagePtr image = it.create();
         if (image->load(data)) {
             if (Log::verbose_enable()) {
@@ -298,10 +303,4 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry)
 
     Log::verbose("Unsupported image format in {}", entry->path.string());
     return nullptr;
-}
-
-std::vector<ImageLoader::Instance>& ImageLoader::get_registry()
-{
-    static std::vector<ImageLoader::Instance> singleton;
-    return singleton;
 }

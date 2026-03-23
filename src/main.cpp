@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
                  puts("swayimg version " APP_VERSION ".");
                  puts("https://github.com/artemsen/swayimg");
                  printf("Supported formats: %s.\n",
-                        ImageLoader::format_list().c_str());
+                        ImageLoader::self().format_list().c_str());
                  exit(EXIT_SUCCESS);
              });
 
