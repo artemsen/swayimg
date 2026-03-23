@@ -57,6 +57,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.imagelist.enable_reverse](#swayimgimagelistenable_reverse): Enable or disable reverse order
   * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
   * [swayimg.imagelist.enable_adjacent](#swayimgimagelistenable_adjacent): Enable or disable adding adjacent files from the same directory
+  * [swayimg.imagelist.enable_fsmon](#swayimgimagelistenable_fsmon): Enable or disable file system monitoring
 * Text layer
   * [swayimg.text.show](#swayimgtextshow): Force show the text layer
   * [swayimg.text.hide](#swayimgtexthide): Hide the text layer
@@ -430,6 +431,16 @@ Enable or disable adding adjacent files from the same directory.
 This function can only be called at program startup.
 
 @_param_ `enable` - Enable/disable adding adjacent files
+
+### swayimg.imagelist.enable_fsmon
+
+```lua
+swayimg.imagelist.enable_fsmon(enable: boolean)
+```
+
+Enable or disable file system monitoring.
+
+@_param_ `enable` - Enable/disable FS monitor
 
 ## Text layer
 

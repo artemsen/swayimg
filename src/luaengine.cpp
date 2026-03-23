@@ -504,6 +504,10 @@ void LuaEngine::bind_imagelist_api()
                      [](const bool enable) {
                          ImageList::self().adjacent = enable;
                      })
+        .addFunction("enable_fsmon",
+                     [](const bool enable) {
+                         ImageList::self().fsmon = enable;
+                     })
         .endNamespace()
         .endNamespace();
 }

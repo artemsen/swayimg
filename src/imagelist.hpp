@@ -191,4 +191,5 @@ private:
 public:
     bool recursive = false; ///< Read directories recursively
     bool adjacent = false;  ///< Open adjacent files from the same directory
+    bool fsmon = true;      ///< FS monitor usage
 };

@@ -19,6 +19,7 @@ swayimg.imagelist.set_order("numeric")    -- list order
 swayimg.imagelist.enable_reverse(false)   -- reverse order
 swayimg.imagelist.enable_recursive(false) -- recursive directory reading
 swayimg.imagelist.enable_adjacent(false)  -- add adjacent files from same dir
+swayimg.imagelist.enable_fsmon(true)      -- enable file system monitoring
 
 -- Text overlay configuration
 swayimg.text.set_font("monospace")        -- font name

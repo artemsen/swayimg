@@ -240,6 +240,10 @@ function swayimg.imagelist.enable_recursive(enable) end
 ---@param enable boolean Enable/disable adding adjacent files
 function swayimg.imagelist.enable_adjacent(enable) end
 
+---Enable or disable file system monitoring.
+---@param enable boolean Enable/disable FS monitor
+function swayimg.imagelist.enable_fsmon(enable) end
+
 --------------------------------------------------------------------------------
 
 ---Text overlay layer
