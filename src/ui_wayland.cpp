@@ -523,6 +523,11 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         const Size window = ui->get_window_size();
 
+        if (window.width == ui->wnd_buffer.pm.width() &&
+            window.height == ui->wnd_buffer.pm.height()) {
+            return; // reuse existing buffer
+        }
+
         if (!ui->wnd_buffer.realloc(ui->wl.shm, window.width, window.height)) {
             return;
         }
