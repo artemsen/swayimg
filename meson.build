@@ -396,6 +396,7 @@ if get_option('tests').enabled()
             'test/imagelist_test.cpp',
             'test/input_test.cpp',
             'test/layout_test.cpp',
+            'test/luaengine_test.cpp',
             'test/pixmap_test.cpp',
         ],
         include_directories: ['src', 'src/external'],

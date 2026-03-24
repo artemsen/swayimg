@@ -4,6 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes \
     bash-completion \
     build-essential \
+    fonts-dejavu \
     libavif-dev \
     libdrm-dev \
     libexiv2-dev \

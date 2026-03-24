@@ -21,7 +21,7 @@ RUN pacman --sync --sysupgrade --refresh --refresh --noconfirm \
     meson \
     openexr \
     pkgconf \
-    scdoc \
+    ttf-dejavu \
     wayland \
     wayland-protocols
 
