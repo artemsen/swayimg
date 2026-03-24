@@ -466,8 +466,10 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     window_size = wnd;
 
-    if (!open(ImageList::Dir::Next, entry) &&
-        !open(ImageList::Dir::Prev, entry)) {
+    if (image && image->entry == entry) {
+        reload();
+    } else if (!open(ImageList::Dir::Next, entry) &&
+               !open(ImageList::Dir::Prev, entry)) {
         Log::info("No more images to view, exit");
         Application::self().exit(0);
     }
