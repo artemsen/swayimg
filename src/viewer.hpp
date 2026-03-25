@@ -235,6 +235,12 @@ private:
     bool load(const ImageEntryPtr& entry);
 
     /**
+     * Set current image.
+     * @param img image instance to set as current
+     */
+    void set_image(const ImagePtr& img);
+
+    /**
      * Switch to specified frame.
      * @param index frame index to activate.
      */

@@ -467,7 +467,7 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
     window_size = wnd;
 
     if (image && image->entry == entry) {
-        reload();
+        set_image(image);
     } else if (!open(ImageList::Dir::Next, entry) &&
                !open(ImageList::Dir::Prev, entry)) {
         Log::info("No more images to view, exit");
@@ -663,18 +663,24 @@ bool Viewer::load(const ImageEntryPtr& entry)
         }
     }
 
-    if (image && image->entry == entry) {
+    set_image(new_image);
+    return true;
+}
+
+void Viewer::set_image(const ImagePtr& img)
+{
+    if (image && image != img) {
         // put current image to history
         const std::scoped_lock lock(image_pool.mutex);
         image_pool.history.put(image);
     }
 
-    // switch to new image
-    image = new_image;
+    image = img;
+    frame_index = 0;
+    const Pixmap& pm = image->frames[0].pm;
 
     const bool is_animation =
         image->frames.size() > 1 && image->frames[0].duration;
-    frame_index = 0;
 
     // set content type
     Ui* ui = Application::self().get_ui();
@@ -684,7 +690,6 @@ bool Viewer::load(const ImageEntryPtr& entry)
     if (std::holds_alternative<Scale>(default_scale) &&
         std::get<Scale>(default_scale) == Scale::Keep && previmg) {
         // handle "keep scale" mode
-        const Pixmap& pm = image->frames[frame_index].pm;
         const ssize_t diff_w = static_cast<ssize_t>(previmg.width) -
             static_cast<ssize_t>(pm.width());
         const ssize_t diff_h = static_cast<ssize_t>(previmg.height) -
@@ -702,7 +707,7 @@ bool Viewer::load(const ImageEntryPtr& entry)
         set_position(default_pos);
     }
 
-    previmg = image->frames[frame_index].pm;
+    previmg = pm;
 
     // start animation
     if (is_animation) {
@@ -715,8 +720,6 @@ bool Viewer::load(const ImageEntryPtr& entry)
 
     switch_current();
     update_text(TextUpdate::All);
-
-    return true;
 }
 
 void Viewer::set_frame(const size_t index)
