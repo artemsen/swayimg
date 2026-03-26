@@ -7,6 +7,7 @@
 #include <cstring>
 #include <format>
 #include <iostream>
+#include <string>
 
 class Log {
 public:
@@ -19,8 +20,9 @@ public:
     static void verbose(const std::format_string<Args...> fmt, Args&&... args)
     {
         if (verbose_enable()) {
-            std::cout << std::vformat(fmt.get(), std::make_format_args(args...))
-                      << '\n';
+            const std::string msg = sanitize(
+                std::vformat(fmt.get(), std::make_format_args(args...)));
+            std::cout << msg << '\n';
         }
     }
 
@@ -32,8 +34,9 @@ public:
     template <typename... Args>
     static void info(const std::format_string<Args...> fmt, Args&&... args)
     {
-        std::cout << std::vformat(fmt.get(), std::make_format_args(args...))
-                  << '\n';
+        const std::string msg =
+            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
+        std::cout << msg << '\n';
     }
 
     /**
@@ -44,9 +47,9 @@ public:
     template <typename... Args>
     static void warning(const std::format_string<Args...> fmt, Args&&... args)
     {
-        std::cerr << "WARNING: "
-                  << std::vformat(fmt.get(), std::make_format_args(args...))
-                  << '\n';
+        const std::string msg = "WARNING: " +
+            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
+        std::cerr << msg << '\n';
     }
 
     /**
@@ -57,9 +60,9 @@ public:
     template <typename... Args>
     static void error(const std::format_string<Args...> fmt, Args&&... args)
     {
-        std::cerr << "ERROR: "
-                  << std::vformat(fmt.get(), std::make_format_args(args...))
-                  << '\n';
+        const std::string msg = "ERROR: " +
+            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
+        std::cerr << msg << '\n';
     }
 
     /**
@@ -72,13 +75,13 @@ public:
     static void error(int code, const std::format_string<Args...> fmt,
                       Args&&... args)
     {
-        std::cerr << "ERROR: "
-                  << std::vformat(fmt.get(), std::make_format_args(args...));
+        std::string msg = "ERROR: " +
+            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
         if (code) {
-            std::cerr << ", error code [" << code << "] "
-                      << std::strerror(code);
+            msg +=
+                std::format(", error code [{}] {}", code, std::strerror(code));
         }
-        std::cerr << '\n';
+        std::cerr << msg << '\n';
     }
 
     /**
@@ -119,4 +122,49 @@ public:
 
         timespec begin_time = {};
     };
+
+private:
+    /**
+     * Strip terminal escape sequences and control characters from a log
+     * message. Prevents OSC injection (e.g. clipboard write via OSC 52),
+     * title manipulation (OSC 0), cursor position report (CSI 6n), and
+     * other terminal attacks through crafted filenames.
+     * @param msg the formatted log message
+     * @return sanitized copy safe for terminal output
+     */
+    static std::string sanitize(const std::string& msg)
+    {
+        const size_t len = msg.length();
+        std::string result;
+        result.reserve(len);
+
+        for (size_t i = 0; i < len; ++i) {
+            const unsigned char ch = msg[i];
+            if (ch == 0x1b) {
+                ++i; // ESC: skip the entire sequence
+                if (i < len && msg[i] == '[') {
+                    // CSI: ESC [ <params> <final byte 0x40-0x7E>
+                    for (++i; i < len && msg[i] < 0x40; ++i) {}
+                } else if (i < len && msg[i] == ']') {
+                    // OSC: ESC ] ... (BEL or ST)
+                    for (++i; i < len && msg[i] != 0x07 &&
+                         !(msg[i] == 0x1b && i + 1 < len && msg[i + 1] == '\\');
+                         ++i) {}
+                    if (i < len && msg[i] == 0x1b) {
+                        ++i; // skip the \ of ST
+                    }
+                } else if (i < len && msg[i] >= 0x40 && msg[i] <= 0x5f) {
+                    // other C1: skip introducer
+                }
+            } else if (ch < 0x20 && ch != '\n') {
+                // control character: drop
+            } else if (ch == 0x7f) {
+                // DEL: drop
+            } else {
+                result += msg[i];
+            }
+        }
+
+        return msg;
+    }
 };
