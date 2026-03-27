@@ -588,6 +588,21 @@ void LuaEngine::bind_viewer_api(const char* name)
                         NS_SWAYIMG, name);
                 }
             })
+        .addFunction("open",
+                     [check_active, mode](const std::string& path) {
+                         if (!check_active("open")) {
+                             return;
+                         }
+                         ImageEntryPtr entry =
+                             Application::self().add_image_entry(path);
+                         if (!entry) {
+                             // try to get existing entry
+                             entry = ImageList::self().find(path);
+                         }
+                         if (entry) {
+                             mode->open(entry);
+                         }
+                     })
         .addFunction("get_image",
                      [this, check_active, mode]() {
                          if (!check_active("get_image")) {

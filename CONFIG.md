@@ -75,6 +75,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.set_status](#swayimgtextset_status): Show status message
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
+  * [swayimg.viewer.open](#swayimgvieweropen): Open the file at the specified path
   * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
   * [swayimg.viewer.reload](#swayimgviewerreload): Reload current image
   * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
@@ -114,6 +115,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Slide show mode
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
   * [swayimg.slideshow.switch_image](#swayimgslideshowswitch_image): Open the next file in the specified direction
+  * [swayimg.slideshow.open](#swayimgslideshowopen): Open the file at the specified path
   * [swayimg.slideshow.get_image](#swayimgslideshowget_image): Get information about currently displayed image
   * [swayimg.slideshow.reload](#swayimgslideshowreload): Reload current image
   * [swayimg.slideshow.reset](#swayimgslideshowreset): Reset position and scale to default values
@@ -631,6 +633,18 @@ Open the next file in the specified direction.
 * `"prev_dir"`: Last file in previous directory
 * `"random"`: Random file in image list
 
+### swayimg.viewer.open
+
+```lua
+swayimg.viewer.open(path: string)
+```
+
+Open the file at the specified path.
+
+This function adds a file to the image list and then opens it in the viewer.
+
+@_param_ `path` - Path to the file
+
 ### swayimg.viewer.get_image
 
 ```lua
@@ -1134,6 +1148,18 @@ Open the next file in the specified direction.
 * `"next_dir"`: First file in next directory
 * `"prev_dir"`: Last file in previous directory
 * `"random"`: Random file in image list
+
+### swayimg.slideshow.open
+
+```lua
+swayimg.slideshow.open(path: string)
+```
+
+Open the file at the specified path.
+
+This function adds a file to the image list and then opens it in the viewer.
+
+@_param_ `path` - Path to the file
 
 ### swayimg.slideshow.get_image
 

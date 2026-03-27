@@ -164,8 +164,9 @@ private:
      * Add new entry to the list.
      * @param entry image entry to add
      * @param ordered flag to add new entry to ordered position in the list
+     * @return false if entry already exists
      */
-    void add_entry(ImageEntryPtr& entry, const bool ordered);
+    bool add_entry(ImageEntryPtr& entry, const bool ordered);
 
     /**
      * Sort image list.

@@ -365,6 +365,11 @@ swayimg.viewer = {}
 ---@param dir vdir_t Next file direction
 function swayimg.viewer.switch_image(dir) end
 
+---Open the file at the specified path.
+---This function adds a file to the image list and then opens it in the viewer.
+---@param path string Path to the file
+function swayimg.viewer.open(path) end
+
 ---Get information about currently displayed image.
 ---@return swayimg.image # Currently displayed image
 function swayimg.viewer.get_image() end

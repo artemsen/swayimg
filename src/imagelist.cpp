@@ -441,8 +441,9 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         entry->mtime = 0;
         entry->size = 0;
         entry->index = 0;
-        add_entry(entry, ordered);
-        entries.push_back(entry);
+        if (add_entry(entry, ordered)) {
+            entries.push_back(entry);
+        }
     } else {
         std::filesystem::path abs_path;
         try {
@@ -497,7 +498,7 @@ std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path,
     } catch (const std::filesystem::filesystem_error&) {
     }
 
-    if (ordered) {
+    if (!entries.empty() && ordered) {
         sort(false);
     }
 
@@ -526,19 +527,19 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     entry->mtime = tt_time;
     entry->size = std::filesystem::file_size(path);
     entry->index = 0;
-    add_entry(entry, ordered);
-
+    if (!add_entry(entry, ordered)) {
+        return nullptr;
+    }
     if (fsmon) {
         FsMonitor::self().add(path);
     }
-
     return entry;
 }
 
-void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
+bool ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 {
     if (duplicates.contains(entry->path)) {
-        return; // already exists
+        return false; // already exists
     }
     duplicates.insert(entry->path);
 
@@ -563,6 +564,8 @@ void ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
                                });
         entries.insert(it, entry);
     }
+
+    return true;
 }
 
 void ImageList::sort(bool locked)

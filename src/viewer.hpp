@@ -63,6 +63,13 @@ public:
     bool open(const ImageList::Dir dir);
 
     /**
+     * Load and switch to specified entry.
+     * @param from entry to load
+     * @return true if image was loaded
+     */
+    bool open(const ImageEntryPtr& entry);
+
+    /**
      * Reload current image.
      * @return true if image was reloaded
      */
@@ -225,14 +232,7 @@ private:
      * @param entry starting entry
      * @return true if image was opened
      */
-    bool open(const ImageList::Dir dir, const ImageEntryPtr& entry);
-
-    /**
-     * Load and switch to next image.
-     * @param from entry to load
-     * @return true if image was loaded
-     */
-    bool load(const ImageEntryPtr& entry);
+    bool switch_image(const ImageList::Dir dir, const ImageEntryPtr& entry);
 
     /**
      * Set current image.
