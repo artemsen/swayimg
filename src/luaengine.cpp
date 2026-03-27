@@ -371,11 +371,38 @@ void LuaEngine::bind_root_api()
                              { "y", pos.y },
                          };
                      })
-        .addFunction("toggle_fullscreen",
-                     []() {
+        .addFunction("set_fullscreen",
+                     [](const std::optional<bool>& enable) {
                          Ui* ui = Application::get_ui();
                          if (ui) {
-                             return ui->toggle_fullscreen();
+                             ui->set_fullscreen(
+                                 enable.value_or(!ui->get_fullscreen()));
+                         } else {
+                             std::optional<bool>& fullscreen =
+                                 Application::self().sparams.fullscreen;
+                             if (!fullscreen.has_value()) {
+                                 fullscreen = enable.value_or(true);
+                             }
+                         }
+                     })
+        .addFunction("get_fullscreen",
+                     []() {
+                         const Ui* ui = Application::get_ui();
+                         if (ui) {
+                             return ui->get_fullscreen();
+                         } else {
+                             const std::optional<bool>& fullscreen =
+                                 Application::self().sparams.fullscreen;
+                             return fullscreen.value_or(false);
+                         }
+                     })
+        .addFunction("toggle_fullscreen",
+                     [this]() {
+                         warn_deprecated("toggle_fullscreen", "set_fullscreen");
+                         Ui* ui = Application::get_ui();
+                         if (ui) {
+                             ui->set_fullscreen(!ui->get_fullscreen());
+                             return ui->get_fullscreen();
                          } else {
                              std::optional<bool>& fullscreen =
                                  Application::self().sparams.fullscreen;

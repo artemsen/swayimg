@@ -939,10 +939,9 @@ void UiWayland::set_ctype(ContentType type)
     wp_content_type_v1_set_content_type(wl.ctype, content_type);
 }
 
-bool UiWayland::toggle_fullscreen()
+void UiWayland::set_fullscreen(const bool enable)
 {
-    fullscreen = !fullscreen;
-
+    fullscreen = enable;
     if (wl.xtoplevel) {
         if (fullscreen) {
             xdg_toplevel_set_fullscreen(wl.xtoplevel, nullptr);
@@ -950,7 +949,10 @@ bool UiWayland::toggle_fullscreen()
             xdg_toplevel_unset_fullscreen(wl.xtoplevel);
         }
     }
+}
 
+bool UiWayland::get_fullscreen() const
+{
     return fullscreen;
 }
 

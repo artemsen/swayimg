@@ -42,6 +42,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
   * [swayimg.on_window_resize](#swayimgon_window_resize): Add a callback function called when main window is resized
   * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
+  * [swayimg.set_fullscreen](#swayimgset_fullscreen): Enable/disable or toggle full screen mode
+  * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
   * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.on_initialized](#swayimgon_initialized): Add a callback function called when all subsystems have been initialized
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
@@ -279,6 +281,26 @@ Get mouse pointer coordinates.
 
 @_return_ - Coordinates of the mouse pointer
 
+### swayimg.set_fullscreen
+
+```lua
+swayimg.set_fullscreen(enable?: boolean)
+```
+
+Enable/disable or toggle full screen mode.
+
+@_param_ `enable` - Enable/disable full screen, empty to toggle
+
+### swayimg.get_fullscreen
+
+```lua
+swayimg.get_fullscreen() -> boolean
+```
+
+Get current full screen mode status.
+
+@_return_ - True if full screen is enabled
+
 ### swayimg.toggle_fullscreen
 
 ```lua
@@ -286,6 +308,12 @@ swayimg.toggle_fullscreen() -> boolean
 ```
 
 Toggle full screen mode.
+
+WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
+
+See [swayimg.set_fullscreen](swayimgset_fullscreen)
+
+See [swayimg.get_fullscreen](swayimgget_fullscreen)
 
 @_return_ - True if full screen is enabled
 

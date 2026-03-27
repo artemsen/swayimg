@@ -167,7 +167,19 @@ function swayimg.on_window_resize(fn) end
 ---@return { x :integer, y: integer } # Coordinates of the mouse pointer
 function swayimg.get_mouse_pos() end
 
+---Enable/disable or toggle full screen mode.
+---@param enable? boolean Enable/disable full screen, empty to toggle
+function swayimg.set_fullscreen(enable) end
+
+---Get current full screen mode status.
+---@return boolean # True if full screen is enabled
+function swayimg.get_fullscreen() end
+
 ---Toggle full screen mode.
+---WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
+---@see swayimg.set_fullscreen
+---@see swayimg.get_fullscreen
+---@deprecated
 ---@return boolean # True if full screen is enabled
 function swayimg.toggle_fullscreen() end
 

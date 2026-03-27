@@ -53,10 +53,16 @@ public:
     virtual void set_ctype(ContentType /* type */) {}
 
     /**
-     * Toggle full screen mode.
+     * Enable/disable full screen mode.
+     * @param enable true to enable full screen mode
+     */
+    virtual void set_fullscreen(const bool /* enable */) {}
+
+    /**
+     * Get current full screen mode.
      * @return true if full screen mode enabled
      */
-    virtual bool toggle_fullscreen() { return false; }
+    [[nodiscard]] virtual bool get_fullscreen() const { return true; }
 
     /**
      * Get window size.

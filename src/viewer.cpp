@@ -76,7 +76,8 @@ Viewer::Viewer()
         Application::redraw();
     });
     bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
-        Application::get_ui()->toggle_fullscreen();
+        Ui* ui = Application::get_ui();
+        ui->set_fullscreen(!ui->get_fullscreen());
     });
     bind_input(InputKeyboard { XKB_KEY_a, KEYMOD_NONE }, []() {
         bool& antialiasing = Render::self().antialiasing;
