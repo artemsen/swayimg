@@ -106,6 +106,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.limit_history](#swayimgviewerlimit_history): Set max number of previously viewed images stored in the cache
   * [swayimg.viewer.mark_image](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color): Set mark icon color
+  * [swayimg.viewer.set_pinch_factor](#swayimgviewerset_pinch_factor): Set the pinch gesture factor
   * [swayimg.viewer.bind_reset](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
@@ -146,6 +147,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.limit_history](#swayimgslideshowlimit_history): Set max number of previously viewed images stored in the cache
   * [swayimg.slideshow.mark_image](#swayimgslideshowmark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.slideshow.set_mark_color](#swayimgslideshowset_mark_color): Set mark icon color
+  * [swayimg.slideshow.set_pinch_factor](#swayimgslideshowset_pinch_factor): Set the pinch gesture factor
   * [swayimg.slideshow.bind_reset](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.slideshow.on_key](#swayimgslideshowon_key): Bind the key press event to a handler
   * [swayimg.slideshow.on_mouse](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
@@ -171,6 +173,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_pstore_path](#swayimggalleryset_pstore_path): Set custom path for persistent storage for thumbnails
   * [swayimg.gallery.mark_image](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color): Set mark icon color
+  * [swayimg.gallery.set_pinch_factor](#swayimggalleryset_pinch_factor): Set the pinch gesture factor
   * [swayimg.gallery.bind_reset](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
@@ -1022,6 +1025,16 @@ Set mark icon color.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
+### swayimg.viewer.set_pinch_factor
+
+```lua
+swayimg.viewer.set_pinch_factor(factor: number)
+```
+
+Set the pinch gesture factor.
+
+@_param_ `factor` - Pinch gesture factor
+
 ### swayimg.viewer.bind_reset
 
 ```lua
@@ -1538,6 +1551,16 @@ Set mark icon color.
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
+### swayimg.slideshow.set_pinch_factor
+
+```lua
+swayimg.slideshow.set_pinch_factor(factor: number)
+```
+
+Set the pinch gesture factor.
+
+@_param_ `factor` - Pinch gesture factor
+
 ### swayimg.slideshow.bind_reset
 
 ```lua
@@ -1845,6 +1868,16 @@ Set mark icon color.
 
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+
+### swayimg.gallery.set_pinch_factor
+
+```lua
+swayimg.gallery.set_pinch_factor(factor: number)
+```
+
+Set the pinch gesture factor.
+
+@_param_ `factor` - Pinch gesture factor
 
 ### swayimg.gallery.bind_reset
 

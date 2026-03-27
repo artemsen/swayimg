@@ -328,6 +328,10 @@ function swayimg_appmode.mark_image(state) end
 ---@param color color_t Mark icon color
 function swayimg_appmode.set_mark_color(color) end
 
+---Set the pinch gesture factor.
+---@param factor number Pinch gesture factor
+function swayimg_appmode.set_pinch_factor(factor) end
+
 ---Remove all existing key/mouse/signal bindings.
 function swayimg_appmode.bind_reset() end
 

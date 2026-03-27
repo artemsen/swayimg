@@ -448,7 +448,7 @@ public:
 
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         const double fscale = wl_fixed_to_double(scale);
-        const double delta = 2.0 * (fscale - ui->pinch_scale);
+        const double delta = fscale - ui->pinch_scale;
 
         if (delta != 0.0) {
             ui->pinch_scale = fscale;

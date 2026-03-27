@@ -44,6 +44,7 @@ swayimg.viewer.enable_loop(true)                 -- enable image list loop mode
 swayimg.viewer.limit_preload(1)                  -- number of images to preload
 swayimg.viewer.limit_history(1)                  -- number of the history cache
 swayimg.viewer.set_mark_color(0xff808080)        -- mark icon color
+swayimg.viewer.set_pinch_factor(1.0)             -- pinch gesture factor
 swayimg.viewer.set_text("topleft", {             -- top left text block scheme
   "File: {name}",
   "Format: {format}",
@@ -100,6 +101,7 @@ swayimg.gallery.set_selected_scale(1.15)            -- scale for selected thumbn
 swayimg.gallery.set_selected_color(0xff404040)      -- background color for selected thumbnail
 swayimg.gallery.set_unselected_color(0xff202020)    -- background color for unselected thumbnail
 swayimg.gallery.set_window_color(0xff000000)        -- window background color
+swayimg.gallery.set_pinch_factor(100.0)             -- pinch gesture factor
 swayimg.gallery.limit_cache(100)                    -- number of thumbnails stored in memory
 swayimg.gallery.enable_preload(false)               -- preloading invisible thumbnails
 swayimg.gallery.enable_pstore(false)                -- enable persistent storage for thumbnails

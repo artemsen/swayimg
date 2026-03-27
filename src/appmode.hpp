@@ -128,6 +128,12 @@ public:
     void set_mark_color(const argb_t& color);
 
     /**
+     * Set the pinch gesture factor.
+     * @param factor pinch gesture factor
+     */
+    void set_pinch_factor(const double factor);
+
+    /**
      * Set text layer scheme.
      * @param pos block position
      * @param scheme scheme description
@@ -168,6 +174,7 @@ protected:
 
 protected:
     argb_t mark_color;                       ///< Mark icon color
+    double pinch_factor;                     ///< Pinch gesture factor
     std::array<Text::Scheme, 4> text_scheme; ///< Text layer scheme
 
 private:

@@ -75,6 +75,7 @@ Gallery::Gallery()
     aspect = Aspect::Fill;
     border_size = 5;
     selected_scale = 1.15;
+    pinch_factor = 100.0;
 
     clr_window = { argb_t::max, 0x00, 0x00, 0x00 };
     clr_background = { argb_t::max, 0x20, 0x20, 0x20 };
@@ -352,7 +353,7 @@ void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
 
 void Gallery::handle_pinch(const double scale_delta)
 {
-    set_thumb_size(get_thumb_size() + scale_delta * 100.0);
+    set_thumb_size(get_thumb_size() + scale_delta * pinch_factor);
 }
 
 void Gallery::handle_imagelist(const ImageListEvent event,

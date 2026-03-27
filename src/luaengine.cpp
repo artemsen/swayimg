@@ -1021,6 +1021,10 @@ void LuaEngine::bind_appmode_api(const char* name)
                      [appmode](const uint32_t color) {
                          appmode->set_mark_color(color);
                      })
+        .addFunction("set_pinch_factor",
+                     [appmode](const double factor) {
+                         appmode->set_pinch_factor(factor);
+                     })
         .addFunction("bind_reset",
                      [appmode]() {
                          appmode->bind_reset();

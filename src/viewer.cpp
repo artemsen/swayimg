@@ -591,7 +591,7 @@ void Viewer::handle_mmove(const InputMouse& input, const Point&,
 
 void Viewer::handle_pinch(const double scale_delta)
 {
-    set_scale(scale + scale_delta);
+    set_scale(scale + scale_delta * pinch_factor);
 }
 
 void Viewer::handle_imagelist(const ImageListEvent event,
