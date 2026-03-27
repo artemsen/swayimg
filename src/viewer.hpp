@@ -158,14 +158,16 @@ public:
     void rotate(const size_t angle);
 
     /**
-     * Resume animation.
+     * Stop/resume animation.
+     * @param enable state to set
      */
-    void animation_resume();
+    void enable_animation(const bool enable);
 
     /**
-     * Stop animation.
+     * Get current animation status.
+     * @return true if animation is running
      */
-    void animation_stop();
+    [[nodiscard]] bool animation_enabled() const { return animation; }
 
     /**
      * Set window background to solid color.
@@ -322,7 +324,7 @@ private:
     argb_t tr_cbcolor[2]; ///< Grid colors
     argb_t tr_bgcolor;    ///< Solid color
 
-    bool animation_enable;   ///< Flag to start animation automatically
+    bool animation;          ///< Flag to start animation automatically
     FdTimer animation_timer; ///< Animation timer
     size_t frame_index;      ///< Index of the currently displayed frame
 

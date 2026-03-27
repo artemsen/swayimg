@@ -431,10 +431,24 @@ function swayimg.viewer.next_frame() end
 ---@return integer # Index of the currently shown frame
 function swayimg.viewer.prev_frame() end
 
+---Stop/resume animation.
+---@param enable? boolean Enable/disable animation, empty to toggle
+function swayimg.viewer.set_animation(enable) end
+
+---Get current status of animation.
+---@return boolean # true if animation is running
+function swayimg.viewer.get_animation() end
+
 ---Stop animation.
+---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+---@see swayimg.viewer.enable_animation
+---@deprecated
 function swayimg.viewer.animation_stop() end
 
 ---Resume animation.
+---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+---@see swayimg.viewer.enable_animation
+---@deprecated
 function swayimg.viewer.animation_resume() end
 
 ---Flip image vertically.

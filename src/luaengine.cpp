@@ -730,7 +730,7 @@ void LuaEngine::bind_viewer_api(const char* name)
         .addFunction("next_frame",
                      [check_active, mode]() {
                          if (check_active("next_frame")) {
-                             mode->animation_stop();
+                             mode->enable_animation(false);
                              return mode->next_frame();
                          }
                          return static_cast<size_t>(0);
@@ -738,21 +738,35 @@ void LuaEngine::bind_viewer_api(const char* name)
         .addFunction("prev_frame",
                      [check_active, mode]() {
                          if (check_active("prev_frame")) {
-                             mode->animation_stop();
+                             mode->enable_animation(false);
                              return mode->prev_frame();
                          }
                          return static_cast<size_t>(0);
                      })
-        .addFunction("animation_stop",
+        .addFunction("set_animation",
+                     [check_active, mode](const std::optional<bool>& enable) {
+                         if (check_active("set_animation")) {
+                             mode->enable_animation(
+                                 enable.value_or(!mode->animation_enabled()));
+                         }
+                     })
+        .addFunction("get_animation",
                      [check_active, mode]() {
+                         return check_active("get_animation") &&
+                             mode->animation_enabled();
+                     })
+        .addFunction("animation_stop",
+                     [this, check_active, mode]() {
+                         warn_deprecated("animation_stop", "set_animation");
                          if (check_active("animation_stop")) {
-                             mode->animation_stop();
+                             mode->enable_animation(false);
                          }
                      })
         .addFunction("animation_resume",
-                     [check_active, mode]() {
+                     [this, check_active, mode]() {
+                         warn_deprecated("animation_resume", "set_animation");
                          if (check_active("animation_resume")) {
-                             mode->animation_resume();
+                             mode->enable_animation(true);
                          }
                      })
         .addFunction("flip_vertical",
@@ -1151,4 +1165,12 @@ luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
     luabridge::LuaRef* ref = new luabridge::LuaRef(*obj);
     refs.push_back(ref);
     return ref;
+}
+
+void LuaEngine::warn_deprecated(const char* name, const char* replacement) const
+{
+    Log::warning(
+        "Function \"{}\" is deprecated and will be removed in a future release,"
+        " use \"{}\" instead",
+        name, replacement);
 }

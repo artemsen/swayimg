@@ -43,7 +43,7 @@ Viewer::Viewer()
     tr_cbcolor[1] = { argb_t::max, 0x4c, 0x4c, 0x4c };
     tr_bgcolor = { argb_t::max, 0, 0, 0 };
 
-    animation_enable = true;
+    animation = true;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = {
         "File: {name}",
@@ -114,11 +114,11 @@ Viewer::Viewer()
     });
     // next/prev frame
     bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_SHIFT }, [this]() {
-        animation_stop();
+        enable_animation(false);
         next_frame();
     });
     bind_input(InputKeyboard { XKB_KEY_Prior, KEYMOD_SHIFT }, [this]() {
-        animation_stop();
+        enable_animation(false);
         prev_frame();
     });
     // scale
@@ -418,19 +418,11 @@ void Viewer::rotate(const size_t angle)
     fixup_position();
 }
 
-void Viewer::animation_resume()
+void Viewer::enable_animation(const bool enable)
 {
-    animation_enable = true;
-    const Image::Frame& frame = image->frames[frame_index];
-    if (image->frames.size() > 1 && frame.duration) {
-        animation_timer.reset(frame.duration, 0);
-    }
-}
-
-void Viewer::animation_stop()
-{
-    animation_enable = false;
-    animation_timer.reset(0, 0);
+    const size_t duration = image->frames[frame_index].duration;
+    animation = enable && image->frames.size() > 1 && duration;
+    animation_timer.reset(enable ? duration : 0, 0);
 }
 
 void Viewer::set_window_background(const argb_t& color)
@@ -492,7 +484,7 @@ void Viewer::initialize()
 {
     Application::self().add_fdpoll(animation_timer, [this]() {
         next_frame();
-        animation_resume();
+        enable_animation(true);
     });
 }
 
@@ -709,12 +701,7 @@ void Viewer::set_image(const ImagePtr& img)
 
     previmg = pm;
 
-    // start animation
-    if (is_animation) {
-        animation_resume();
-    } else {
-        animation_stop();
-    }
+    enable_animation(is_animation);
 
     preloader_start();
 

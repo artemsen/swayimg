@@ -69,6 +69,13 @@ private:
     luabridge::LuaRef* add_ref(const luabridge::LuaRef* obj);
 
     /**
+     * Print warning about using a deprecated function.
+     * @param name name of deprecated function
+     * @param replacement description of replacement
+     */
+    void warn_deprecated(const char* name, const char* replacement) const;
+
+    /**
      * Print Lua error message with stack trace.
      * @param fmt format description
      * @param ... format arguments

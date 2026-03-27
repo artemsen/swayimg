@@ -89,6 +89,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.set_default_position](#swayimgviewerset_default_position): Set default image position for newly opened images
   * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
   * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.viewer.set_animation](#swayimgviewerset_animation): Stop/resume animation
+  * [swayimg.viewer.get_animation](#swayimgviewerget_animation): Get current status of animation
   * [swayimg.viewer.animation_stop](#swayimgvieweranimation_stop): Stop animation
   * [swayimg.viewer.animation_resume](#swayimgvieweranimation_resume): Resume animation
   * [swayimg.viewer.flip_vertical](#swayimgviewerflip_vertical): Flip image vertically
@@ -130,6 +132,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_default_position](#swayimgslideshowset_default_position): Set default image position for newly opened images
   * [swayimg.slideshow.next_frame](#swayimgslideshownext_frame): Show next frame from multi-frame image (animation)
   * [swayimg.slideshow.prev_frame](#swayimgslideshowprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.slideshow.set_animation](#swayimgslideshowset_animation): Stop/resume animation
+  * [swayimg.slideshow.get_animation](#swayimgslideshowget_animation): Get current status of animation
   * [swayimg.slideshow.animation_stop](#swayimgslideshowanimation_stop): Stop animation
   * [swayimg.slideshow.animation_resume](#swayimgslideshowanimation_resume): Resume animation
   * [swayimg.slideshow.flip_vertical](#swayimgslideshowflip_vertical): Flip image vertically
@@ -828,6 +832,26 @@ This function stops the animation.
 
 @_return_ - Index of the currently shown frame
 
+### swayimg.viewer.set_animation
+
+```lua
+swayimg.viewer.set_animation(enable?: boolean)
+```
+
+Stop/resume animation.
+
+@_param_ `enable` - Enable/disable animation, empty to toggle
+
+### swayimg.viewer.get_animation
+
+```lua
+swayimg.viewer.get_animation() -> boolean
+```
+
+Get current status of animation.
+
+@_return_ - true if animation is running
+
 ### swayimg.viewer.animation_stop
 
 ```lua
@@ -836,6 +860,10 @@ swayimg.viewer.animation_stop()
 
 Stop animation.
 
+WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+
+See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+
 ### swayimg.viewer.animation_resume
 
 ```lua
@@ -843,6 +871,10 @@ swayimg.viewer.animation_resume()
 ```
 
 Resume animation.
+
+WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+
+See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
 
 ### swayimg.viewer.flip_vertical
 
@@ -1354,6 +1386,26 @@ This function stops the animation.
 
 @_return_ - Index of the currently shown frame
 
+### swayimg.slideshow.set_animation
+
+```lua
+swayimg.slideshow.set_animation(enable?: boolean)
+```
+
+Stop/resume animation.
+
+@_param_ `enable` - Enable/disable animation, empty to toggle
+
+### swayimg.slideshow.get_animation
+
+```lua
+swayimg.slideshow.get_animation() -> boolean
+```
+
+Get current status of animation.
+
+@_return_ - true if animation is running
+
 ### swayimg.slideshow.animation_stop
 
 ```lua
@@ -1362,6 +1414,10 @@ swayimg.slideshow.animation_stop()
 
 Stop animation.
 
+WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+
+See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+
 ### swayimg.slideshow.animation_resume
 
 ```lua
@@ -1369,6 +1425,10 @@ swayimg.slideshow.animation_resume()
 ```
 
 Resume animation.
+
+WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
+
+See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
 
 ### swayimg.slideshow.flip_vertical
 

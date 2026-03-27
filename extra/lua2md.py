@@ -340,10 +340,12 @@ def parse(file):
             cur_comment = ''
             continue
 
-        # comments
+        # comments and other annotations
         if line and line.startswith('---'):
             line = line[3:]
             line = line.rstrip()
+            if line.startswith('@deprecated'):
+                continue
             if line.startswith('@see '):
                 line = line[len('@see '):]
                 if '\n' in cur_comment:
