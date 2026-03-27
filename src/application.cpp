@@ -147,6 +147,51 @@ AppMode* Application::current_mode()
     return nullptr;
 }
 
+ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
+{
+    ImageList& il = ImageList::self();
+
+    const std::vector<ImageEntryPtr> entries = il.add(path);
+    if (entries.empty()) {
+        return nullptr;
+    }
+    for (auto& it : entries) {
+        current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
+    }
+
+    // update image list text info
+    Text& text = Text::self();
+    text.set_field(Text::FIELD_LIST_INDEX,
+                   std::to_string(current_mode()->current_entry()->index));
+    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
+    text.update();
+
+    redraw();
+
+    return entries.front();
+}
+
+void Application::remove_image_entry(const std::filesystem::path& path)
+{
+    ImageList& il = ImageList::self();
+    const ImageEntryPtr entry = il.find(path);
+    if (!entry) {
+        return;
+    }
+
+    il.remove(entry);
+    current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
+
+    // update image list text info
+    Text& text = Text::self();
+    text.set_field(Text::FIELD_LIST_INDEX,
+                   std::to_string(current_mode()->current_entry()->index));
+    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
+    text.update();
+
+    redraw();
+}
+
 void Application::add_fdpoll(int fd, const FdEventHandler& handler)
 {
     fds.emplace_back(fd, handler);
@@ -451,27 +496,10 @@ void Application::handle_event(const AppEvent::Signal& event)
 
 void Application::handle_event(const AppEvent::FileCreate& event)
 {
-    ImageList& il = ImageList::self();
-    std::vector<ImageEntryPtr> entries;
-    if (std::filesystem::is_directory(event.path)) {
-        if (il.recursive || event.force) {
-            entries = il.add(event.path);
-        }
-    } else {
-        entries = il.add(event.path);
+    const ImageList& il = ImageList::self();
+    if (!std::filesystem::is_directory(event.path) || il.recursive) {
+        add_image_entry(event.path);
     }
-    for (auto& it : entries) {
-        current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
-    }
-
-    // update image list text info
-    Text& text = Text::self();
-    text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index));
-    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-    text.update();
-
-    redraw();
 }
 
 void Application::handle_event(const AppEvent::FileModify& event)
@@ -488,21 +516,8 @@ void Application::handle_event(const AppEvent::FileModify& event)
 
 void Application::handle_event(const AppEvent::FileRemove& event)
 {
+    // ignore directories, files will be removed as standalone event
     if (!std::filesystem::is_directory(event.path)) {
-        ImageList& il = ImageList::self();
-        const ImageEntryPtr entry = il.find(event.path);
-        if (entry) {
-            il.remove(entry);
-            current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
-                                             entry);
-            // update image list text info
-            Text& text = Text::self();
-            text.set_field(
-                Text::FIELD_LIST_INDEX,
-                std::to_string(current_mode()->current_entry()->index));
-            text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-            text.update();
-            redraw();
-        }
+        remove_image_entry(event.path);
     }
 }

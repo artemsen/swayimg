@@ -452,26 +452,13 @@ void LuaEngine::bind_imagelist_api()
                          }
                          return table;
                      })
-        .addFunction(
-            "add",
-            [](const std::string& path) {
-                if (path.starts_with(ImageEntry::SRC_STDIN) ||
-                    path.starts_with(ImageEntry::SRC_EXEC)) {
-                    Application::self().add_event(
-                        AppEvent::FileCreate { path, true });
-                } else {
-                    const std::filesystem::path abs_path =
-                        std::filesystem::absolute(path).lexically_normal();
-                    Application::self().add_event(
-                        AppEvent::FileCreate { abs_path, true });
-                }
-            })
+        .addFunction("add",
+                     [](const std::string& path) {
+                         Application::self().add_image_entry(path);
+                     })
         .addFunction("remove",
                      [](const std::string& path) {
-                         const std::filesystem::path abs_path =
-                             std::filesystem::absolute(path).lexically_normal();
-                         Application::self().add_event(
-                             AppEvent::FileRemove { abs_path });
+                         Application::self().remove_image_entry(path);
                      })
         .addFunction("set_order",
                      [this](const std::string& name) {

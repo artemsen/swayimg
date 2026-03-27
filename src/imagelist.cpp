@@ -200,8 +200,11 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
 std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
 {
     const std::unique_lock lock(mutex);
+
     std::vector<ImageEntryPtr> entries = add(path, true);
-    reindex();
+    if (!entries.empty()) {
+        reindex();
+    }
 
     return entries;
 }
@@ -250,7 +253,11 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
     }
     if (!search.starts_with(ImageEntry::SRC_STDIN) &&
         !search.starts_with(ImageEntry::SRC_EXEC)) {
-        search = std::filesystem::absolute(path).lexically_normal();
+        try {
+            search = std::filesystem::absolute(path).lexically_normal();
+        } catch (...) {
+            return nullptr;
+        }
     }
 
     const std::shared_lock lock(mutex);
@@ -437,11 +444,16 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         add_entry(entry, ordered);
         entries.push_back(entry);
     } else {
+        std::filesystem::path abs_path;
+        try {
+            abs_path = std::filesystem::absolute(path).lexically_normal();
+        } catch (...) {
+            Log::warning("Invalid path {}, skipped", path.string());
+            return {};
+        }
         if (!std::filesystem::exists(path)) {
             Log::warning("File {} not found, skipped", path.string());
         } else {
-            const std::filesystem::path abs_path =
-                std::filesystem::absolute(path).lexically_normal();
             if (std::filesystem::is_directory(path)) {
                 entries = add_dir(abs_path, ordered);
             } else {

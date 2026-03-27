@@ -61,7 +61,6 @@ struct Signal {
 /** File create event. */
 struct FileCreate {
     std::filesystem::path path; ///< Path to the file
-    bool force;                 ///< Force add path to image list
 };
 
 /** File change event. */
