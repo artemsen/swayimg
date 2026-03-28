@@ -21,6 +21,8 @@ private:
     // HEIF decoder wrappers
     using HeifContext =
         std::unique_ptr<heif_context, decltype(&heif_context_free)>;
+    using HeifDecOpts = std::unique_ptr<heif_decoding_options,
+                                        decltype(&heif_decoding_options_free)>;
     using HeifImageHandle =
         std::unique_ptr<heif_image_handle,
                         decltype(&heif_image_handle_release)>;
@@ -56,9 +58,13 @@ public:
         }
         const HeifImageHandle himh(pih, &heif_image_handle_release);
 
+        HeifDecOpts hopt(heif_decoding_options_alloc(),
+                         &heif_decoding_options_free);
+        hopt->ignore_transformations = 1;
+
         heif_image* him = nullptr;
         err = heif_decode_image(himh.get(), &him, heif_colorspace_RGB,
-                                heif_chroma_interleaved_RGBA, nullptr);
+                                heif_chroma_interleaved_RGBA, hopt.get());
         if (err.code != heif_error_Ok) {
             return false;
         }
