@@ -101,6 +101,20 @@ TEST(ImageListTest, Duplicates)
     EXPECT_EQ(entry->path, "exec://2");
 }
 
+TEST(ImageListTest, OutOfRange)
+{
+    ImageList il;
+    il.set_order(ImageList::Order::Numeric);
+
+    const std::vector<std::filesystem::path> paths = {
+        "exec://712174062970435688724dab6dc3ceb.jpeg",
+        "exec://7152b8159cf6a64e8dda2ff3f8ed40f.jpeg",
+    };
+
+    const ImageEntryPtr entry = il.load(paths);
+    ASSERT_TRUE(entry);
+}
+
 TEST(ImageListTest, Unordered)
 {
     ImageList il;

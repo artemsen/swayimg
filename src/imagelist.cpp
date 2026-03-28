@@ -52,10 +52,17 @@ static int compare_strings(const std::string& l, const std::string& r,
 
             ls.erase(0, ldstart);
             rs.erase(0, rdstart);
-            const size_t lnum = std::stoull(ls);
-            const size_t rnum = std::stoull(rs);
-            if (lnum != rnum) {
-                cmp = lnum < rnum ? -1 : 1;
+
+            try {
+                const size_t lnum = std::stoull(ls);
+                const size_t rnum = std::stoull(rs);
+                if (lnum != rnum) {
+                    cmp = lnum < rnum ? -1 : 1;
+                    break;
+                }
+            } catch (const std::out_of_range&) {
+                cmp = coll.compare(l.data(), l.data() + l.length(), r.data(),
+                                   r.data() + r.length());
                 break;
             }
 
