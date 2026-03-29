@@ -135,47 +135,59 @@
 swayimg = {}
 
 ---Exit from application.
+---Since 5.0.
 ---@param code? integer Program exit code, `0` by default
 function swayimg.exit(code) end
 
 ---Switch to specified mode.
+---Since 5.0.
 ---@param mode appmode_t Mode to activate
 function swayimg.set_mode(mode) end
 
 ---Get current mode.
+---Since 5.0.
 ---@return appmode_t # Currently active mode
 function swayimg.get_mode() end
 
 ---Set title for main application window.
+---Since 5.0.
 ---@param title string Window title text
 function swayimg.set_title(title) end
 
 ---Get application window size.
+---Since 5.0.
 ---@return { width: integer, height: integer } # Window size in pixels
 function swayimg.get_window_size() end
 
 ---Set application window size.
+---Since 5.0.
 ---@param width integer Width of the window in pixels
 ---@param height integer Height of the window in pixels
 function swayimg.set_window_size(width, height) end
 
 ---Add a callback function called when main window is resized.
+---Since 5.0.
 ---@param fn function Window resize notification handler
 function swayimg.on_window_resize(fn) end
 
 ---Get mouse pointer coordinates.
+---Since 5.0.
 ---@return { x :integer, y: integer } # Coordinates of the mouse pointer
 function swayimg.get_mouse_pos() end
 
 ---Enable/disable or toggle full screen mode.
+---Since 5.2.
 ---@param enable? boolean Enable/disable full screen, empty to toggle
 function swayimg.set_fullscreen(enable) end
 
 ---Get current full screen mode status.
+---Since 5.2.
 ---@return boolean # True if full screen is enabled
 function swayimg.get_fullscreen() end
 
 ---Toggle full screen mode.
+---Since 5.0.
+---
 ---WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
 ---@see swayimg.set_fullscreen
 ---@see swayimg.get_fullscreen
@@ -184,18 +196,23 @@ function swayimg.get_fullscreen() end
 function swayimg.toggle_fullscreen() end
 
 ---Add a callback function called when all subsystems have been initialized.
+---Since 5.0.
 ---@param fn function Initialization completion notification handler
 function swayimg.on_initialized(fn) end
 
 ---Enable or disable antialiasing.
+---Since 5.0.
 ---@param enable boolean Enable/disable antialiasing
 function swayimg.enable_antialiasing(enable) end
 
 ---Enable or disable changing orientation based on EXIF.
+---Since 5.1.
 ---@param enable boolean Enable/disable orientation change
 function swayimg.enable_exif_orientation(enable) end
 
 ---Enable or disable window decoration (title, border, buttons).
+---Since 5.0.
+---
 ---This function can only be called at program startup.
 ---Applicable only in Wayland, the corresponding protocol must be supported by
 ---the composer.
@@ -204,6 +221,8 @@ function swayimg.enable_exif_orientation(enable) end
 function swayimg.enable_decoration(enable) end
 
 ---Enable or disable window overlay mode.
+---Since 5.0.
+---
 ---Create a floating window with the same coordinates and size as the currently
 ---focused window.
 ---This function can only be called at program startup.
@@ -213,6 +232,8 @@ function swayimg.enable_decoration(enable) end
 function swayimg.enable_overlay(enable) end
 
 ---Set mouse button used for drag-and-drop image file to external apps.
+---Since 5.0.
+---
 ---This function can only be called at program startup.
 ---@param button string Mouse button used for drag-n-drop, for example `MouseRight`
 function swayimg.set_dnd_button(button) end
@@ -224,39 +245,49 @@ function swayimg.set_dnd_button(button) end
 swayimg.imagelist = {}
 
 ---Get number of entries in the image list.
+---Since 5.0.
 ---@return integer # Size of the image list
 function swayimg.imagelist.size() end
 
 ---Get list of all entries in the image list.
+---Since 5.0.
 ---@return swayimg.entry[] # Array with all file entries
 function swayimg.imagelist.get() end
 
 ---Add entry to the image list.
+---Since 5.0.
 ---@param path string Path to add
 function swayimg.imagelist.add(path) end
 
 ---Remove entry from the image list.
+---Since 5.0.
 ---@param path string Path to remove
 function swayimg.imagelist.remove(path) end
 
 ---Set sort order of the image list.
+---Since 5.0.
 ---@param order order_t List order
 function swayimg.imagelist.set_order(order) end
 
 ---Enable or disable reverse order.
+---Since 5.0.
 ---@param enable boolean Enable/disable reverse order
 function swayimg.imagelist.enable_reverse(enable) end
 
 ---Enable or disable recursive directory reading.
+---Since 5.0.
 ---@param enable boolean Enable/disable recursive mode
 function swayimg.imagelist.enable_recursive(enable) end
 
 ---Enable or disable adding adjacent files from the same directory.
+---Since 5.0.
+---
 ---This function can only be called at program startup.
 ---@param enable boolean Enable/disable adding adjacent files
 function swayimg.imagelist.enable_adjacent(enable) end
 
 ---Enable or disable file system monitoring.
+---Since 5.1.
 ---@param enable boolean Enable/disable FS monitor
 function swayimg.imagelist.enable_fsmon(enable) end
 
@@ -267,53 +298,69 @@ function swayimg.imagelist.enable_fsmon(enable) end
 swayimg.text = {}
 
 ---Force show the text layer.
+---Since 5.0.
+---
 ---This function restarts the timer.
 ---@see swayimg.text.set_timer
 function swayimg.text.show() end
 
 ---Hide the text layer.
+---Since 5.0.
 function swayimg.text.hide() end
 
 ---Check if text layer is visible.
+---Since 5.0.
 ---@return boolean # `true` if text layer is visible
 function swayimg.text.visible() end
 
 ---Set font face.
+---Since 5.0.
 ---@param name string Font name
 function swayimg.text.set_font(name) end
 
 ---Set font size.
+---Since 5.0.
 ---@param size integer Font size in pixels
 function swayimg.text.set_size(size) end
 
 ---Set line spacing.
+---Since 5.0.
 ---@param size integer Line spacing in pixels, can be negative
 function swayimg.text.set_spacing(size) end
 
 ---Set the padding from the window edges.
+---Since 5.0.
 ---@param size integer Padding size in pixels
 function swayimg.text.set_padding(size) end
 
 ---Set foreground text color.
+---Since 5.0.
 ---@param color color_t Foreground text color
 function swayimg.text.set_foreground(color) end
 
 ---Set background text color.
+---Since 5.0.
 ---@param color color_t Background text color
 function swayimg.text.set_background(color) end
 
 ---Set shadow text color.
+---Since 5.0.
+---
 ---Setting alpha channel to `0` disables shadows.
 ---@param color color_t Shadow text color
 function swayimg.text.set_shadow(color) end
 
 ---Set a timeout after which the entire text layer will be hidden.
+---Since 5.0.
+---
 ---Setting the timeout value to `0` disables the timer and causes the overlay
 ---to be displayed continuously.
 ---@param seconds number Timeout in seconds
 function swayimg.text.set_timeout(seconds) end
 
 ---Set a timeout after which the status message will be hidden.
+---Since 5.0.
+---
 ---Setting the timeout value to `0` disables the timer and causes the status
 ---message to be displayed continuously.
 ---@see swayimg.text.set_status
@@ -321,6 +368,8 @@ function swayimg.text.set_timeout(seconds) end
 function swayimg.text.set_status_timeout(seconds) end
 
 ---Show status message.
+---Since 5.0.
+---
 ---Multi-line text is separated by `\n`.
 ---@see swayimg.text.set_status_timer
 ---@param status string Status text to show
@@ -333,40 +382,49 @@ function swayimg.text.set_status(status) end
 local swayimg_appmode = {}
 
 ---Set, clear or toggle mark for currently viewed/selected image.
+---Since 5.0.
 ---@param state? boolean Mark state to set, toggle if the state is not specified
 function swayimg_appmode.mark_image(state) end
 
 ---Set mark icon color.
+---Since 5.0.
 ---@param color color_t Mark icon color
 function swayimg_appmode.set_mark_color(color) end
 
 ---Set the pinch gesture factor.
+---Since 5.2.
 ---@param factor number Pinch gesture factor
 function swayimg_appmode.set_pinch_factor(factor) end
 
 ---Remove all existing key/mouse/signal bindings.
+---Since 5.0.
 function swayimg_appmode.bind_reset() end
 
 ---Bind the key press event to a handler.
+---Since 5.0.
 ---@param key string Key description, for example `Ctrl-a`
 ---@param fn function Key press handler
 function swayimg_appmode.on_key(key, fn) end
 
 ---Bind the mouse button press event to a handler.
+---Since 5.0.
 ---@param button string Button description, for example `Ctrl-Alt-MouseRight`
 ---@param fn function Button press handler
 function swayimg_appmode.on_mouse(button, fn) end
 
 ---Bind the signal event to a handler.
+---Since 5.0.
 ---@param signal string Signal name (`USR1` or `USR2`)
 ---@param fn function Signal handler
 function swayimg_appmode.on_signal(signal, fn) end
 
 ---Add a callback function called when a new image is opened/selected.
+---Since 5.0.
 ---@param fn function Handler for notifications about changing the current image
 function swayimg_appmode.on_image_change(fn) end
 
 ---Set text layer scheme.
+---Since 5.0.
 ---@param pos block_position_t Text block position
 ---@param scheme text_template_t[] Array of line templates with overlay scheme
 function swayimg_appmode.set_text(pos, scheme) end
@@ -378,124 +436,159 @@ function swayimg_appmode.set_text(pos, scheme) end
 swayimg.viewer = {}
 
 ---Open the next file in the specified direction.
+---Since 5.0.
 ---@param dir vdir_t Next file direction
 function swayimg.viewer.switch_image(dir) end
 
 ---Open the file at the specified path.
+---Since 5.2.
+---
 ---This function adds a file to the image list and then opens it in the viewer.
 ---@param path string Path to the file
 function swayimg.viewer.open(path) end
 
 ---Get information about currently displayed image.
+---Since 5.0.
 ---@return swayimg.image # Currently displayed image
 function swayimg.viewer.get_image() end
 
 ---Reload current image.
+---Since 5.1.
 function swayimg.viewer.reload() end
 
 ---Reset position and scale to default values.
+---Since 5.0.
 ---@see swayimg.viewer.set_default_scale
 ---@see swayimg.viewer.set_default_position
 function swayimg.viewer.reset() end
 
 ---Get current image scale.
+---Since 5.0.
 ---@return number # Absolute scale value (1.0 = 100%)
 function swayimg.viewer.get_scale() end
 
 ---Set absolute image scale.
+---Since 5.0.
 ---@param scale number Absolute value (1.0 = 100%)
 ---@param x? integer X coordinate of center point, empty for window center
 ---@param y? integer Y coordinate of center point, empty for window center
 function swayimg.viewer.set_abs_scale(scale, x, y) end
 
 ---Set fixed scale for currently displayed image.
+---Since 5.0.
 ---@param scale fixed_scale_t Fixed scale name
 function swayimg.viewer.set_fix_scale(scale) end
 
 ---Set default image scale for newly opened images.
+---Since 5.0.
 ---@param scale number|fixed_scale_t Absolute value (1.0 = 100%) or one the predefined names
 function swayimg.viewer.set_default_scale(scale) end
 
 ---Get image position.
+---Since 5.0.
 ---@return { x :integer, y: integer } # Image coordinates on the window
 function swayimg.viewer.get_position() end
 
 ---Set absolute image position.
+---Since 5.0.
 ---@param x integer Horizontal image position on the window
 ---@param y integer Vertical image position on the window
 function swayimg.viewer.set_abs_position(x, y) end
 
 ---Set fixed image position.
+---Since 5.0.
 ---@param pos fixed_position_t Fixed image position
 function swayimg.viewer.set_fix_position(pos) end
 
 ---Set default image position for newly opened images.
+---Since 5.0.
 ---@param pos fixed_position_t Fixed image position
 function swayimg.viewer.set_default_position(pos) end
 
 ---Show next frame from multi-frame image (animation).
+---Since 5.0.
+---
 ---This function stops the animation.
 ---@return integer # Index of the currently shown frame
 function swayimg.viewer.next_frame() end
 
 ---Show previous frame from multi-frame image (animation).
+---Since 5.0.
+---
 ---This function stops the animation.
 ---@return integer # Index of the currently shown frame
 function swayimg.viewer.prev_frame() end
 
 ---Stop/resume animation.
+---Since 5.2.
 ---@param enable? boolean Enable/disable animation, empty to toggle
 function swayimg.viewer.set_animation(enable) end
 
 ---Get current status of animation.
+---Since 5.2.
 ---@return boolean # true if animation is running
 function swayimg.viewer.get_animation() end
 
 ---Stop animation.
+---Since 5.0.
+---
 ---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 ---@see swayimg.viewer.enable_animation
 ---@deprecated
 function swayimg.viewer.animation_stop() end
 
 ---Resume animation.
+---Since 5.0.
+---
 ---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 ---@see swayimg.viewer.enable_animation
 ---@deprecated
 function swayimg.viewer.animation_resume() end
 
 ---Flip image vertically.
+---Since 5.0.
 function swayimg.viewer.flip_vertical() end
 
 ---Flip image horizontally.
+---Since 5.0.
 function swayimg.viewer.flip_horizontal() end
 
 ---Rotate image.
+---Since 5.0.
 ---@param angle rotation_t Rotation angle
 function swayimg.viewer.rotate(angle) end
 
 ---Export currently displayed frame to PNG file.
+---Since 5.0.
 ---@param path string Path to the file
 function swayimg.viewer.export(path) end
 
 ---Add/replace/remove meta info for currently displayed image.
+---Since 5.0.
 ---@param key string Meta key name
 ---@param value string Meta value, empty value to remove the record
 function swayimg.viewer.set_meta(key, value) end
 
 ---Set the mouse button used to drag the image around the window.
+---Since 5.0.
 ---@param button string Mouse button name, for example `MouseLeft`
 function swayimg.viewer.set_drag_button(button) end
 
 ---Set window background color and mode.
+---Since 5.0.
 ---@param bkg color_t|bkgmode_t Solid color or one of the predefined mode
 function swayimg.viewer.set_window_background(bkg) end
 
 ---Set background color for transparent images.
+---Since 5.0.
+---
 ---This disables chessboard drawing.
 ---@param color color_t Background color
 function swayimg.viewer.set_image_background(color) end
 
 ---Set parameters for chessboard used as background for transparent images.
+---Since 5.0.
+---
 ---This enables the chessboard if this feature was previously disabled.
 ---@param size integer Size of single grid cell in pixels
 ---@param color1 color_t First color
@@ -503,18 +596,22 @@ function swayimg.viewer.set_image_background(color) end
 function swayimg.viewer.set_image_chessboard(size, color1, color2) end
 
 ---Enable or disable automatic image centering.
+---Since 5.0.
 ---@param enable boolean Enable/disable automatic image centering
 function swayimg.viewer.enable_centering(enable) end
 
 ---Enable or disable image list loop mode.
+---Since 5.0.
 ---@param enable boolean Enable/disable flag to set
 function swayimg.viewer.enable_loop(enable) end
 
 ---Set max number of images to preload in background thread.
+---Since 5.0.
 ---@param size integer Number of images to preload
 function swayimg.viewer.limit_preload(size) end
 
 ---Set max number of previously viewed images stored in the cache.
+---Since 5.0.
 ---@param size integer Number of images to store
 function swayimg.viewer.limit_history(size) end
 
@@ -525,6 +622,7 @@ function swayimg.viewer.limit_history(size) end
 swayimg.slideshow = {}
 
 ---Set a timeout after which next image should be opened.
+---Since 5.0.
 ---@param seconds number Timeout in seconds
 function swayimg.slideshow.set_timeout(seconds) end
 
@@ -535,65 +633,81 @@ function swayimg.slideshow.set_timeout(seconds) end
 swayimg.gallery = {}
 
 ---Select the next thumbnail from the gallery.
+---Since 5.0.
 ---@param dir gdir_t Next thumbnail direction
 function swayimg.gallery.switch_image(dir) end
 
 ---Get information about currently selected image entry.
+---Since 5.0.
 ---@return swayimg.entry # Currently selected image entry
 function swayimg.gallery.get_image() end
 
 ---Set thumbnail aspect ratio.
+---Since 5.0.
 ---@param aspect aspect_t Thumbnail aspect ratio
 function swayimg.gallery.set_aspect(aspect) end
 
 ---Get thumbnail size.
+---Since 5.0.
 ---@return integer # Thumbnail size in pixels
 function swayimg.gallery.get_thumb_size() end
 
 ---Set thumbnail size.
+---Since 5.0.
 ---@param size integer Thumbnail size in pixels
 function swayimg.gallery.set_thumb_size(size) end
 
 ---Set the padding size between thumbnails.
+---Since 5.0.
 ---@param size integer Padding size in pixels
 function swayimg.gallery.set_padding_size(size) end
 
 ---Set the border size for currently selected thumbnail.
+---Since 5.0.
 ---@param size integer Border size in pixels
 function swayimg.gallery.set_border_size(size) end
 
 ---Set border color for currently selected thumbnail.
+---Since 5.0.
 ---@param color color_t Border color
 function swayimg.gallery.set_border_color(color) end
 
 ---Set the scale factor for currently selected thumbnail.
+---Since 5.0.
 ---@param scale number Scale factor, 1.0 = 100%
 function swayimg.gallery.set_selected_scale(scale) end
 
 ---Set background color for currently selected thumbnail.
+---Since 5.0.
 ---@param color color_t Background color
 function swayimg.gallery.set_selected_color(color) end
 
 ---Set background color for unselected thumbnails.
+---Since 5.0.
 ---@param color color_t Background color
 function swayimg.gallery.set_unselected_color(color) end
 
 ---Set window background color.
+---Since 5.0.
 ---@param color color_t Background color
 function swayimg.gallery.set_window_color(color) end
 
 ---Set max number of thumbnails stored in memory cache.
+---Since 5.0.
 ---@param size integer Cache size
 function swayimg.gallery.limit_cache(size) end
 
 ---Enable or disable preloading invisible thumbnails.
+---Since 5.0.
 ---@param enable boolean Enable/disable preloading invisible thumbnails
 function swayimg.gallery.enable_preload(enable) end
 
 ---Enable or disable persistent storage for thumbnails.
+---Since 5.0.
 ---@param enable boolean Enable/disable usage of persistent storage
 function swayimg.gallery.enable_pstore(enable) end
 
 ---Set custom path for persistent storage for thumbnails.
+---Since 5.0.
 ---@param path string Path to the directory
 function swayimg.gallery.set_pstore_path(path) end
