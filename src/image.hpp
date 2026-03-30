@@ -58,6 +58,11 @@ public:
     virtual bool load(const Data& data) = 0;
 
     /**
+     * Fix orientation by meat (EXIF) data.
+     */
+    virtual void fix_orientation();
+
+    /**
      * Draw image on pixmap surface.
      * @param frame frame index to draw
      * @param target surface to draw on

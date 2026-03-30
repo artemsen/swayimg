@@ -24,6 +24,11 @@ public:
     {
         // open decoder
         LibRaw decoder(0);
+
+        if (!ImageLoader::self().fix_orientation) {
+            decoder.imgdata.params.user_flip = 0;
+        }
+
         if (decoder.open_buffer(data.data, data.size) != LIBRAW_SUCCESS ||
             decoder.unpack() != LIBRAW_SUCCESS) {
             return false;
@@ -60,5 +65,10 @@ public:
         format = "RAW";
 
         return true;
+    }
+
+    void fix_orientation() override
+    {
+        // ignore, done by decoder
     }
 };

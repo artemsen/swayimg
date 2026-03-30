@@ -60,7 +60,9 @@ public:
 
         HeifDecOpts hopt(heif_decoding_options_alloc(),
                          &heif_decoding_options_free);
-        hopt->ignore_transformations = 1;
+        if (hopt && !ImageLoader::self().fix_orientation) {
+            hopt->ignore_transformations = 1;
+        }
 
         heif_image* him = nullptr;
         err = heif_decode_image(himh.get(), &him, heif_colorspace_RGB,
@@ -96,5 +98,10 @@ public:
 
         format = "HEIF";
         return true;
+    }
+
+    void fix_orientation() override
+    {
+        // ignore, done by decoder
     }
 };

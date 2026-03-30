@@ -22,9 +22,8 @@
  * Read and handle EXIF data.
  * @param image target image instance
  * @param data image file data
- * @param fo fix orientation
  */
-static void read_exif(ImagePtr& image, const Image::Data& data, const bool fo)
+static void read_exif(ImagePtr& image, const Image::Data& data)
 {
     try {
         // read EXIF data
@@ -33,6 +32,7 @@ static void read_exif(ImagePtr& image, const Image::Data& data, const bool fo)
         if (!eimg) {
             return;
         }
+
         eimg->readMetadata();
         const Exiv2::ExifData& exif = eimg->exifData();
         if (exif.empty()) {
@@ -42,41 +42,6 @@ static void read_exif(ImagePtr& image, const Image::Data& data, const bool fo)
         // import EXIF to meta container
         for (const auto& it : exif) {
             image->meta.insert(std::make_pair(it.key(), it.value().toString()));
-        }
-
-        if (fo) {
-            // fix orientation
-            const auto& orient =
-                exif.findKey(Exiv2::ExifKey("Exif.Image.Orientation"));
-            if (orient != exif.end()) {
-                switch (orient->toInt64()) {
-                    case 2: // flipped back-to-front
-                        image->flip_horizontal();
-                        break;
-                    case 3: // upside down
-                        image->rotate(180);
-                        break;
-                    case 4: // flipped back-to-front and upside down
-                        image->flip_vertical();
-                        break;
-                    case 5: // flipped back-to-front and on its side
-                        image->flip_horizontal();
-                        image->rotate(90);
-                        break;
-                    case 6: // on its side
-                        image->rotate(90);
-                        break;
-                    case 7: // flipped back-to-front and on its far side
-                        image->flip_vertical();
-                        image->rotate(270);
-                        break;
-                    case 8: // on its far side
-                        image->rotate(270);
-                        break;
-                    default:
-                        break;
-                }
-            }
         }
     } catch (Exiv2::Error&) {
     }
@@ -297,9 +262,14 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry) const
             entry->size = data.size;
 
             image->entry = entry;
+
 #ifdef HAVE_LIBEXIV2
-            read_exif(image, data, fix_orientation);
+            read_exif(image, data);
+            if (fix_orientation) {
+                image->fix_orientation();
+            }
 #endif // HAVE_LIBEXIV2
+
             return image;
         }
     }
