@@ -591,7 +591,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
             } else {
                 // zoom out original image
                 const double scale =
-                    std::min(static_cast<double>(thumb_size) / origin.width(),
+                    std::max(static_cast<double>(thumb_size) / origin.width(),
                              static_cast<double>(thumb_size) / origin.height());
                 thumb.pm.create(origin.format(), scale * origin.width(),
                                 scale * origin.height());
