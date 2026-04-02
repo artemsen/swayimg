@@ -88,7 +88,7 @@ Gallery::Gallery()
     preload = false;
     cache_size = 100;
 
-    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File: {name}" };
+    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File:\t{name}" };
     text_scheme[static_cast<size_t>(Text::TopRight)] = {
         "{list.index} of {list.total}"
     };

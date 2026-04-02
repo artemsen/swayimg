@@ -46,17 +46,17 @@ Viewer::Viewer()
     animation = true;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)] = {
-        "File: {name}",
-        "Format: {format}",
-        "File size: {sizehr}",
-        "File time: {time}",
-        "EXIF date: {meta.Exif.Photo.DateTimeOriginal}",
-        "EXIF camera: {meta.Exif.Image.Model}"
+        "File:\t{name}",
+        "Format:\t{format}",
+        "File size:\t{sizehr}",
+        "File time:\t{time}",
+        "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
+        "EXIF camera:\t{meta.Exif.Image.Model}"
     };
     text_scheme[static_cast<size_t>(Text::TopRight)] = {
-        "Image: {list.index} of {list.total}",
-        "Frame: {frame.index} of {frame.total}",
-        "Size: {frame.width}x{frame.height}"
+        "Image:\t{list.index} of {list.total}",
+        "Frame:\t{frame.index} of {frame.total}",
+        "Size:\t{frame.width}x{frame.height}"
     };
     text_scheme[static_cast<size_t>(Text::BottomLeft)] = { "Scale: {scale}" };
 

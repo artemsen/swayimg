@@ -60,15 +60,12 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
 
     for (auto& line : scheme) {
         std::string key, value;
-        const size_t delim = line.find(':');
+        const size_t delim = line.find('\t');
         if (delim == std::string::npos) {
             value = line;
         } else {
-            key = line.substr(0, delim + 1);
+            key = line.substr(0, delim);
             value = line.substr(delim + 1);
-            if (!value.empty() && value[0] == ' ') {
-                value.erase(0, 1);
-            }
         }
         block.emplace_back(Line(std::move(key)), Line(std::move(value)));
     }
