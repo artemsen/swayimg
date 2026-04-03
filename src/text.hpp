@@ -209,8 +209,7 @@ private:
 
     /** Block dimension. */
     struct Dimension {
-        size_t key_width;     ///< Key size in pixels
-        size_t val_width;     ///< Value size in pixels
+        size_t max_key_width; ///< Key width in pixels
         size_t total_width;   ///< Total block width in pixels
         size_t total_height;  ///< Total block height in pixels
         size_t line_height;   ///< Height of single line

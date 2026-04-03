@@ -284,11 +284,18 @@ Text::Dimension Text::get_dimension(const Block& block) const
     Dimension dim {};
 
     size_t visible_lines = 0;
+    size_t max_val_width = 0;
+    size_t max_line_width = 0;
+
     for (const auto& [key, value] : block) {
         if (value.pm) {
             ++visible_lines;
-            dim.key_width = std::max(dim.key_width, key.pm.width());
-            dim.val_width = std::max(dim.val_width, value.pm.width());
+            if (key.pm) {
+                dim.max_key_width = std::max(dim.max_key_width, key.pm.width());
+                max_val_width = std::max(max_val_width, value.pm.width());
+            } else {
+                max_line_width = std::max(max_line_width, value.pm.width());
+            }
             if (!dim.line_height) {
                 dim.line_height = value.pm.height();
             }
@@ -299,7 +306,8 @@ Text::Dimension Text::get_dimension(const Block& block) const
         dim.line_spacing =
             std::clamp(spacing, -static_cast<ssize_t>(dim.line_height),
                        static_cast<ssize_t>(dim.line_height));
-        dim.total_width = dim.key_width + dim.val_width;
+        dim.total_width =
+            std::max(max_line_width, dim.max_key_width + max_val_width);
         dim.total_height = dim.line_height * visible_lines;
         dim.total_height += dim.line_spacing * (visible_lines - 1);
     }
@@ -354,9 +362,9 @@ void Text::draw(const Position pos, Pixmap& target) const
         Point tpos { x, y };
         if (key.pm) {
             draw(key.pm, target, tpos);
+            tpos.x += dim.max_key_width;
         }
         if (value.pm) {
-            tpos.x += dim.key_width;
             draw(value.pm, target, tpos);
         }
 
