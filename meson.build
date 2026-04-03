@@ -297,6 +297,7 @@ sources = [
     'src/formats/farbfeld.cpp',
     'src/formats/pnm.cpp',
     'src/formats/qoi.cpp',
+    'src/formats/ottf.cpp',
     'src/formats/tga.cpp',
     wl_protocols,
 ]

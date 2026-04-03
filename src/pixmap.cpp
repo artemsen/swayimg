@@ -334,15 +334,21 @@ void Pixmap::mask(const Pixmap& pm, const Point& pos, const argb_t& color)
         return; // out of pixmap
     }
 
-    const size_t y_end = std::min(pm.height(), visible.height);
-    const size_t x_end = std::min(pm.width(), visible.width);
+    const size_t diff_x = visible.x - image.x;
+    const size_t diff_y = visible.y - image.y;
 
-    for (size_t y = 0; y < y_end; ++y) {
-        for (size_t x = 0; x < x_end; ++x) {
-            const uint8_t a = *reinterpret_cast<const uint8_t*>(pm.ptr(x, y));
-            const argb_t over { std::min(a, color.a), color.r, color.g,
-                                color.b };
-            at(x + visible.x, y + visible.y).blend(over);
+    argb_t over { argb_t::min, color.r, color.g, color.b };
+
+    for (size_t y = 0; y < visible.height; ++y) {
+        const ssize_t src_y = diff_y + y;
+        const ssize_t dst_y = visible.y + y;
+        for (size_t x = 0; x < visible.width; ++x) {
+            const ssize_t src_x = diff_x + x;
+            const ssize_t dst_x = visible.x + x;
+            const uint8_t a =
+                *reinterpret_cast<const uint8_t*>(pm.ptr(src_x, src_y));
+            over.a = std::min(a, color.a);
+            at(dst_x, dst_y).blend(over);
         }
     }
 }

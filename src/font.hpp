@@ -11,6 +11,7 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
+#include <filesystem>
 #include <string>
 
 /** Font render. */
@@ -25,11 +26,32 @@ public:
     inline operator bool() const { return ft_face; }
 
     /**
-     * Load font.
+     * Load font by name.
      * @param name font face name
      * @return false if font wasn't loaded
      */
     bool load(const std::string& name);
+
+    /**
+     * Load font from file.
+     * @param path path to font file
+     * @return false if font wasn't loaded
+     */
+    bool load(const std::filesystem::path& path);
+
+    /**
+     * Load font from memory buffer.
+     * @param data font data buffer
+     * @param data_size buffer size
+     * @return false if font wasn't loaded
+     */
+    bool load(const uint8_t* data, const size_t data_size);
+
+    /**
+     * Get font name.
+     * @return font name
+     */
+    [[nodiscard]] const char* name() const;
 
     /**
      * Set font size.
@@ -51,8 +73,14 @@ public:
     [[nodiscard]] Pixmap render(const std::string& text);
 
 private:
-    FT_Library ft_lib = nullptr; ///< Font lib instance
-    FT_Face ft_face = nullptr;   ///< Font face instance
+    /**
+     * Set new font face.
+     * @param face font face to set
+     */
+    void set_face(FT_Face face);
+
+private:
+    FT_Face ft_face = nullptr; ///< Font face instance
 
     size_t size = 24;   ///< Font size in pixels
     double scale = 1.0; ///< Font scale

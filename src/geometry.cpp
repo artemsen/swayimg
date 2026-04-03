@@ -42,8 +42,10 @@ Rectangle Rectangle::intersect(const Rectangle& other) const
 {
     const ssize_t x1 = std::max(x, other.x);
     const ssize_t y1 = std::max(y, other.y);
-    const ssize_t x2 = std::min(x + width, other.x + other.width);
-    const ssize_t y2 = std::min(y + height, other.y + other.height);
+    const ssize_t x2 = std::min(x + static_cast<ssize_t>(width),
+                                other.x + static_cast<ssize_t>(other.width));
+    const ssize_t y2 = std::min(y + static_cast<ssize_t>(height),
+                                other.y + static_cast<ssize_t>(other.height));
 
     if (x2 <= x1 || y2 <= y1) {
         return {};

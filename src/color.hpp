@@ -23,7 +23,7 @@ struct argb_t {
      * Constructor.
      * @param color color in little-endian
      */
-    argb_t(const uint32_t color)
+    constexpr argb_t(const uint32_t color)
         : b(color & max)
         , g((color >> 8) & max)
         , r((color >> 16) & max)
@@ -35,7 +35,8 @@ struct argb_t {
      * Constructor.
      * @param a,r,g,b color channels
      */
-    argb_t(const channel a, const channel r, const channel g, const channel b)
+    constexpr argb_t(const channel a, const channel r, const channel g,
+                     const channel b)
         : b(b)
         , g(g)
         , r(r)

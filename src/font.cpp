@@ -10,7 +10,7 @@
 
 #include <memory>
 
-constexpr const char* DEFAULT_FONT = "monospace"; // default font face
+constexpr const std::string DEFAULT_FONT = "monospace"; // default font face
 constexpr const char FALLBACK_CHR = '?'; // character used for absent glyphs
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
@@ -31,7 +31,7 @@ public:
      * @param name font name
      * @return path to the file or empty string if font not found
      */
-    std::string get_font_file(const char* name) const
+    std::filesystem::path get_font_file(const char* name) const
     {
         const FcConfigPtr fc =
             FcConfigPtr(FcInitLoadConfigAndFonts(), &FcConfigDestroy);
@@ -63,50 +63,104 @@ public:
     }
 };
 
+/** FreeType lib wrapper.*/
+struct FreeTypeLib {
+    FreeTypeLib()
+    {
+        FT_Error rc;
+        rc = FT_Init_FreeType(&lib);
+        if (rc != 0) {
+            Log::error("Unable to initialize FreeType: {}",
+                       FT_Error_String(rc));
+        }
+    }
+
+    ~FreeTypeLib()
+    {
+        if (lib) {
+            FT_Done_FreeType(lib);
+        }
+    }
+
+    inline operator FT_Library() { return lib; }
+
+private:
+    FT_Library lib = nullptr; ///< Font lib instance
+};
+
+static FreeTypeLib ft_lib;
+
 Font::~Font()
 {
     if (ft_face) {
         FT_Done_Face(ft_face);
     }
-    if (ft_lib) {
-        FT_Done_FreeType(ft_lib);
-    }
 }
 
 bool Font::load(const std::string& name)
 {
-    // get font file via Fontconfig
-    const std::string path = FontConfig().get_font_file(name.c_str());
+    if (!ft_lib) {
+        return false;
+    }
+
+    // get font file via FontConfig
+    const std::filesystem::path path = FontConfig().get_font_file(name.c_str());
     if (path.empty()) {
         Log::error("Unable to find font {}", name);
         return false;
     }
 
-    // init FreeType
-    FT_Error rc;
-    if (!ft_lib) {
-        rc = FT_Init_FreeType(&ft_lib);
-        if (rc != 0) {
-            Log::error("Unable to initialize freetype ({})", rc);
-            return false;
-        }
-    }
+    return load(path);
+}
 
-    // load font
-    FT_Face new_face = nullptr;
-    rc = FT_New_Face(ft_lib, path.c_str(), 0, &new_face);
-    if (rc != 0) {
-        Log::error("Unable to load font from {} ({})", path, rc);
+bool Font::load(const std::filesystem::path& path)
+{
+    if (!ft_lib) {
         return false;
     }
+
+    FT_Face face;
+    const FT_Error rc = FT_New_Face(ft_lib, path.c_str(), 0, &face);
+    if (rc != 0) {
+        Log::error("Unable to load font from {}: {}", path.string(),
+                   FT_Error_String(rc));
+        return false;
+    }
+    set_face(face);
+
+    return true;
+}
+
+bool Font::load(const uint8_t* data, const size_t data_size)
+{
+    if (!ft_lib) {
+        return false;
+    }
+
+    FT_Face face;
+    const FT_Error rc = FT_New_Memory_Face(ft_lib, data, data_size, 0, &face);
+    if (rc != 0) {
+        Log::error("Unable to load font: {}", FT_Error_String(rc));
+        return false;
+    }
+    set_face(face);
+
+    return true;
+}
+
+void Font::set_face(FT_Face face)
+{
     if (ft_face) {
         FT_Done_Face(ft_face);
     }
-    ft_face = new_face;
+    ft_face = face;
 
     set_size(size);
+}
 
-    return true;
+const char* Font::name() const
+{
+    return ft_face ? ft_face->family_name : nullptr;
 }
 
 void Font::set_size(const size_t size)

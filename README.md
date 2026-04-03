@@ -1,9 +1,6 @@
 # Swayimg: image viewer for Wayland and DRM
 
-Swayimg is a lightweight Wayland-native image viewer optimized for the Sway
-and Hyprland window managers, featuring an overlay mode that simulates terminal
-image display. The application supports slideshow and gallery modes, reads from
-stdin and external commands, and is highly customizable via [Lua scripting](CONFIG.md).
+Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) support.
 
 - Support for the most popular image formats:
   - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
@@ -18,15 +15,20 @@ stdin and external commands, and is highly customizable via [Lua scripting](CONF
   - Sixel (via [libsixel](https://github.com/saitoha/libsixel));
   - Raw: CRW/CR2, NEF, RAF, etc (via [libraw](https://www.libraw.org));
   - EXR (via [OpenEXR](https://openexr.com));
+  - TTF/OTF fonts preview (via [FreeType](https://freetype.org));
   - BMP (built-in);
   - PNM (built-in);
   - TGA (built-in);
   - QOI (built-in);
   - DICOM (built-in);
   - Farbfeld (built-in).
+- Native support for Wayland and DRM output;
 - Gallery and viewer modes with slideshow and animation support;
-- Loading images from files and pipes;
+- Loading images from files, pipes and external programs;
 - Preload images in a separate thread;
+- Support for the Sway and Hyprland window managers, including an overlay
+  feature that simulates displaying an image in the currently active window
+  (e.g. a terminal);
 - Fully customizable keyboard bindings, colors, and many other parameters via
   [Lua bindings](CONFIG.md).
 
