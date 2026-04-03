@@ -480,11 +480,20 @@ private:
             return {};
         }
 
-        // message exchange: send request and get response header
-        char response[4096] = { 0 };
-        if (!ipc.write(req.c_str(), req.length()) ||
-            !ipc.read(response, sizeof(response))) {
+        // send request
+        if (!ipc.write(req.c_str(), req.length())) {
             return {};
+        }
+
+        // get response header
+        std::string response;
+        while (true) {
+            char buf[1024];
+            const size_t sz = ipc.read(buf, sizeof(buf));
+            if (sz == 0) {
+                break;
+            }
+            response.append(buf, sz);
         }
 
         return json::parse(response, nullptr, false);
