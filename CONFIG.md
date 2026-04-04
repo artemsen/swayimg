@@ -333,9 +333,9 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
 
-See [swayimg.set_fullscreen](swayimgset_fullscreen)
+See [swayimg.set_fullscreen](#swayimgset_fullscreen)
 
-See [swayimg.get_fullscreen](swayimgget_fullscreen)
+See [swayimg.get_fullscreen](#swayimgget_fullscreen)
 
 @_return_ - True if full screen is enabled
 
@@ -558,7 +558,7 @@ Since 5.0.
 
 This function restarts the timer.
 
-See [swayimg.text.set_timer](swayimgtextset_timer)
+See [swayimg.text.set_timer](#swayimgtextset_timer)
 
 ### swayimg.text.hide
 
@@ -705,7 +705,7 @@ Since 5.0.
 Setting the timeout value to `0` disables the timer and causes the status
 message to be displayed continuously.
 
-See [swayimg.text.set_status](swayimgtextset_status)
+See [swayimg.text.set_status](#swayimgtextset_status)
 
 @_param_ `seconds` - Timeout in seconds
 
@@ -721,7 +721,7 @@ Since 5.0.
 
 Multi-line text is separated by `\n`.
 
-See [swayimg.text.set_status_timer](swayimgtextset_status_timer)
+See [swayimg.text.set_status_timer](#swayimgtextset_status_timer)
 
 @_param_ `status` - Status text to show
 
@@ -794,9 +794,9 @@ Reset position and scale to default values.
 
 Since 5.0.
 
-See [swayimg.viewer.set_default_scale](swayimgviewerset_default_scale)
+See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
 
-See [swayimg.viewer.set_default_position](swayimgviewerset_default_position)
+See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position)
 
 ### swayimg.viewer.get_scale
 
@@ -1004,7 +1004,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
 
 ### swayimg.viewer.animation_resume
 
@@ -1018,7 +1018,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
 
 ### swayimg.viewer.flip_vertical
 
@@ -1439,9 +1439,9 @@ Reset position and scale to default values.
 
 Since 5.0.
 
-See [swayimg.viewer.set_default_scale](swayimgviewerset_default_scale)
+See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
 
-See [swayimg.viewer.set_default_position](swayimgviewerset_default_position)
+See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position)
 
 ### swayimg.slideshow.get_scale
 
@@ -1649,7 +1649,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
 
 ### swayimg.slideshow.animation_resume
 
@@ -1663,7 +1663,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
 
 ### swayimg.slideshow.flip_vertical
 

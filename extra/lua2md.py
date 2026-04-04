@@ -350,7 +350,7 @@ def parse(file):
                 line = line[len('@see '):]
                 if '\n' in cur_comment:
                     cur_comment += '\n'
-                line = f'See [{line}]({line.replace(".", "")})'
+                line = f'See [{line}](#{line.replace(".", "")})'
             if cur_comment:
                 cur_comment += '\n'
             cur_comment += line
