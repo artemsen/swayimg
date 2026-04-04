@@ -224,7 +224,11 @@ void Text::reset(const ImageEntryPtr& entry)
 
 void Text::set_field(const std::string& field, const std::string& value)
 {
-    fields.insert_or_assign(field, value);
+    if (!value.empty()) {
+        fields.insert_or_assign(field, value);
+    } else {
+        fields.erase(field);
+    }
 }
 
 void Text::update()

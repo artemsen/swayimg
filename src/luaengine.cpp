@@ -833,22 +833,34 @@ void LuaEngine::bind_viewer_api(const char* name)
                          if (!check_active("set_meta")) {
                              return;
                          }
-                         const ImagePtr image = mode->current_image();
-                         const std::string meta_prefix = "meta.";
-                         std::string meta_key = key;
-                         if (meta_key.starts_with(meta_prefix)) {
-                             meta_key.erase(0, meta_prefix.length());
+                         // remove "meta." from key
+                         std::string meta_key;
+                         const std::string meta_prefix =
+                             std::string(Text::FIELD_META) + ".";
+                         if (key.starts_with(meta_prefix)) {
+                             meta_key = key.substr(meta_prefix.length());
+                         } else {
+                             meta_key = key;
                          }
                          if (meta_key.empty()) {
                              print_error("Empty key for {}.{}.set_meta",
                                          NS_SWAYIMG, name);
                              return;
                          }
+                         // update meta in image
+                         const ImagePtr image = mode->current_image();
                          if (val.empty()) {
                              image->meta.erase(meta_key);
                          } else {
                              image->meta.insert_or_assign(meta_key, val);
                          }
+                         // update text layer
+                         Text& text = Text::self();
+                         text.set_field(std::string(Text::FIELD_META) + "." +
+                                            meta_key,
+                                        val);
+                         text.update();
+                         Application::redraw();
                      })
         .addFunction(
             "set_drag_button",
