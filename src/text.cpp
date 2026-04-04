@@ -394,16 +394,25 @@ void Text::Line::update(Font& font,
 {
     std::string output = scheme;
 
-    size_t br_open = output.find('{');
-    while (br_open != std::string::npos) {
+    size_t br_open = 0;
+    while ((br_open = output.find('{', br_open)) != std::string::npos) {
+        // get position of closing bracket
         const size_t br_close = output.find('}', br_open + 1);
         if (br_close == std::string::npos) {
             break;
         }
 
+        // handle escaping case
+        if (br_open + 1 < output.length() && output[br_open + 1] == '{') {
+            br_open += 2;
+            continue;
+        }
+
+        // get field name
         const size_t len = br_close - br_open;
         const std::string name = output.substr(br_open + 1, len - 1);
 
+        // replace field value inside output string
         const auto it = fields.find(name);
         if (it != fields.end()) {
             output.replace(br_open, len + 1, it->second);
@@ -411,10 +420,9 @@ void Text::Line::update(Font& font,
         } else {
             output.erase(br_open, len + 1);
         }
-
-        br_open = output.find('{', br_open);
     }
 
+    // update pixmap
     if (output != display) {
         display = output;
         if (display.empty()) {
