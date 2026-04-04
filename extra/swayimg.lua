@@ -540,7 +540,7 @@ function swayimg.viewer.get_animation() end
 ---Since 5.0.
 ---
 ---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
----@see swayimg.viewer.enable_animation
+---@see swayimg.viewer.set_animation
 ---@deprecated
 function swayimg.viewer.animation_stop() end
 
@@ -548,7 +548,7 @@ function swayimg.viewer.animation_stop() end
 ---Since 5.0.
 ---
 ---WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
----@see swayimg.viewer.enable_animation
+---@see swayimg.viewer.set_animation
 ---@deprecated
 function swayimg.viewer.animation_resume() end
 

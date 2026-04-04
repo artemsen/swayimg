@@ -1004,7 +1004,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+See [swayimg.viewer.set_animation](swayimgviewerset_animation)
 
 ### swayimg.viewer.animation_resume
 
@@ -1018,7 +1018,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+See [swayimg.viewer.set_animation](swayimgviewerset_animation)
 
 ### swayimg.viewer.flip_vertical
 
@@ -1649,7 +1649,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+See [swayimg.viewer.set_animation](swayimgviewerset_animation)
 
 ### swayimg.slideshow.animation_resume
 
@@ -1663,7 +1663,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.enable_animation](swayimgviewerenable_animation)
+See [swayimg.viewer.set_animation](swayimgviewerset_animation)
 
 ### swayimg.slideshow.flip_vertical
 
