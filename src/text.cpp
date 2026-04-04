@@ -396,16 +396,17 @@ void Text::Line::update(Font& font,
 
     size_t br_open = 0;
     while ((br_open = output.find('{', br_open)) != std::string::npos) {
+        // handle escaping case
+        if (br_open + 1 < output.length() && output[br_open + 1] == '{') {
+            output.erase(br_open, 1);
+            br_open += 1;
+            continue;
+        }
+
         // get position of closing bracket
         const size_t br_close = output.find('}', br_open + 1);
         if (br_close == std::string::npos) {
             break;
-        }
-
-        // handle escaping case
-        if (br_open + 1 < output.length() && output[br_open + 1] == '{') {
-            br_open += 2;
-            continue;
         }
 
         // get field name
