@@ -590,9 +590,14 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
                 thumb.pm = origin;
             } else {
                 // zoom out original image
-                const double scale =
-                    std::max(static_cast<double>(thumb_size) / origin.width(),
-                             static_cast<double>(thumb_size) / origin.height());
+                const double scale_w =
+                    static_cast<double>(thumb_size) / origin.width();
+                const double scale_h =
+                    static_cast<double>(thumb_size) / origin.height();
+                const double scale = aspect == Aspect::Fill
+                    ? std::max(scale_w, scale_h)
+                    : std::min(scale_w, scale_h);
+
                 thumb.pm.create(origin.format(), scale * origin.width(),
                                 scale * origin.height());
                 Render::self().draw(thumb.pm, origin, { 0, 0 }, scale);
