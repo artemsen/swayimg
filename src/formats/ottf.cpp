@@ -22,7 +22,7 @@ private:
                                           argb_t::max };
     // Text to render
     static constexpr const char* TEXT =
-        "The quick brown fox jumps over the lazy dog";
+        "The quick brown fox jumps over the lazy dog 0123456789";
 
 public:
     bool load(const Data& data) override
@@ -46,8 +46,8 @@ public:
 
         // render text
         size_t y = 0;
-        for (size_t i = 0; y < pm.height(); ++i) {
-            font.set_size(12 + i * 14);
+        for (size_t i = 1; y < pm.height(); ++i) {
+            font.set_size(12 + i * i);
             const Pixmap pm_text = font.render(TEXT);
             pm.mask(pm_text, { 0, static_cast<ssize_t>(y) }, COLOR);
             y += pm_text.height();
