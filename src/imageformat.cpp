@@ -6,6 +6,7 @@
 
 #include "buildconf.hpp"
 #include "log.hpp"
+#include "render.hpp"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -57,6 +58,33 @@ struct DataBuffer : public ImageFormat::Data {
         }
     }
 
+    /**
+     * Load source data.
+     * @param entry image entry to load
+     * @return true if data was loaded
+     */
+    bool load(const ImageEntryPtr& entry)
+    {
+        bool rc;
+
+        const std::string full_path = entry->path.string();
+        if (full_path.starts_with(ImageEntry::SRC_STDIN)) {
+            rc = read_stream(STDIN_FILENO);
+        } else if (full_path.starts_with(ImageEntry::SRC_EXEC)) {
+            rc = read_stdout(full_path.substr(strlen(ImageEntry::SRC_EXEC)));
+        } else {
+            rc = read_file(entry->path);
+        }
+
+        if (rc && size == 0) {
+            Log::error("No image data in {}", full_path);
+            rc = false;
+        }
+
+        return rc;
+    }
+
+private:
     /**
      * Read data from stream file.
      * @param fd file descriptor for read
@@ -201,6 +229,37 @@ ImageFormat::ImageFormat(const Priority load_priority, const char* format_name)
     FormatFactory::self().add(this);
 }
 
+Pixmap ImageFormat::preview(const Data& data, const size_t sz,
+                            const bool max_sz)
+{
+    ImagePtr image = decode(data);
+    if (!image) {
+        return {};
+    }
+#ifdef HAVE_LIBEXIV2
+    read_exif(image, data);
+    if (FormatFactory::self().fix_orientation) {
+        image->fix_orientation();
+    }
+#endif // HAVE_LIBEXIV2
+
+    const Pixmap& origin = image->frames[0].pm;
+
+    // get target scale
+    const double scale_w = static_cast<double>(sz) / origin.width();
+    const double scale_h = static_cast<double>(sz) / origin.height();
+    const double scale =
+        max_sz ? std::max(scale_w, scale_h) : std::min(scale_w, scale_h);
+
+    // create thumbnail
+    Pixmap thumb;
+    thumb.create(origin.format(), scale * origin.width(),
+                 scale * origin.height());
+    Render::self().draw(thumb, origin, { 0, 0 }, scale);
+
+    return thumb;
+}
+
 FormatFactory& FormatFactory::self()
 {
     static FormatFactory singleton;
@@ -244,21 +303,8 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
     const Log::PerfTimer timer;
 
     // read file data
-    bool rc;
     DataBuffer data;
-    const std::string full_path = entry->path.string();
-    if (full_path.starts_with(ImageEntry::SRC_STDIN)) {
-        rc = data.read_stream(STDIN_FILENO);
-    } else if (full_path.starts_with(ImageEntry::SRC_EXEC)) {
-        rc = data.read_stdout(full_path.substr(strlen(ImageEntry::SRC_EXEC)));
-    } else {
-        rc = data.read_file(entry->path);
-    }
-    if (!rc) {
-        return nullptr;
-    }
-    if (data.size == 0) {
-        Log::error("No image data in {}", full_path);
+    if (!data.load(entry)) {
         return nullptr;
     }
 
@@ -273,10 +319,13 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
             Log::verbose("Image {} loaded in {:.6f} sec",
                          entry->path.filename().string(), timer.time());
         }
-        if (full_path.starts_with(ImageEntry::SRC_STDIN) ||
-            full_path.starts_with(ImageEntry::SRC_EXEC)) {
+
+        const std::string path = entry->path.string();
+        if (path.starts_with(ImageEntry::SRC_STDIN) ||
+            path.starts_with(ImageEntry::SRC_EXEC)) {
             entry->mtime = time(nullptr);
         }
+
         entry->size = data.size;
 
         image->entry = entry;
@@ -293,4 +342,22 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
 
     Log::verbose("Unsupported image format in {}", entry->path.string());
     return nullptr;
+}
+
+Pixmap FormatFactory::preview(const ImageEntryPtr& entry, const size_t sz,
+                              const bool max_sz) const
+{
+    DataBuffer data;
+    if (!data.load(entry)) {
+        return {};
+    }
+
+    for (const auto& it : formats) {
+        Pixmap pm = it->preview(data, sz, max_sz);
+        if (pm) {
+            return pm;
+        }
+    }
+
+    return {};
 }

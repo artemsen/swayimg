@@ -46,10 +46,15 @@ public:
      */
     virtual std::vector<uint8_t> encode(const Pixmap& /* pm */) { return {}; }
 
-    // virtual Pixmap preview(const Data& /*data*/, const size_t /* sz */)
-    // {
-    //     return {};
-    // }
+    /**
+     * Get preview (thumbnail).
+     * @param data source image data
+     * @param sz thumbnail size
+     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @return encoded image data, empty array on errors
+     */
+    virtual Pixmap preview(const Data& data, const size_t sz,
+                           const bool max_sz);
 
 protected:
     /**
@@ -87,6 +92,16 @@ public:
      * @return image instance or nullptr if image wasn't loaded
      */
     [[nodiscard]] ImagePtr load(const ImageEntryPtr& entry) const;
+
+    /**
+     * Get preview (thumbnail).
+     * @param entry image entry to load
+     * @param sz thumbnail size
+     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @return encoded image data, empty array on errors
+     */
+    [[nodiscard]] Pixmap preview(const ImageEntryPtr& entry, const size_t sz,
+                                 const bool max_sz) const;
 
     /**
      * Register format.

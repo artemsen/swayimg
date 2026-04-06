@@ -579,34 +579,12 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     }
 
     if (!thumb.pm) {
-        // create thumbnail from original image
-        const ImagePtr image = FormatFactory::self().load(entry);
-        if (!image) {
+        thumb.pm = FormatFactory::self().preview(entry, thumb_size,
+                                                 aspect == Aspect::Fill);
+        if (!thumb.pm) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
-        } else {
-            const Pixmap& origin = image->frames[0].pm;
-            if (origin.width() < thumb_size && origin.height() < thumb_size) {
-                // original image is too small, use it as thumbnail
-                thumb.pm = origin;
-            } else {
-                // zoom out original image
-                const double scale_w =
-                    static_cast<double>(thumb_size) / origin.width();
-                const double scale_h =
-                    static_cast<double>(thumb_size) / origin.height();
-                const double scale = aspect == Aspect::Fill
-                    ? std::max(scale_w, scale_h)
-                    : std::min(scale_w, scale_h);
-
-                thumb.pm.create(origin.format(), scale * origin.width(),
-                                scale * origin.height());
-                Render::self().draw(thumb.pm, origin, { 0, 0 }, scale);
-
-                // save thumbnail to persistent storage
-                if (pstore_enable) {
-                    pstore_save(entry, thumb.pm);
-                }
-            }
+        } else if (pstore_enable) {
+            pstore_save(entry, thumb.pm);
         }
     }
 
