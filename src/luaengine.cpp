@@ -6,8 +6,8 @@
 
 #include "application.hpp"
 #include "gallery.hpp"
+#include "imageformat.hpp"
 #include "imagelist.hpp"
-#include "imageloader.hpp"
 #include "log.hpp"
 #include "render.hpp"
 #include "slideshow.hpp"
@@ -436,7 +436,7 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction("enable_exif_orientation",
                      [](const bool enable) {
-                         ImageLoader::self().fix_orientation = enable;
+                         FormatFactory::self().fix_orientation = enable;
                      })
         .addFunction("enable_decoration",
                      [](const bool enable) {

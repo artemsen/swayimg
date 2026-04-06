@@ -279,8 +279,8 @@ sources = [
     'src/gallery.cpp',
     'src/geometry.cpp',
     'src/image.cpp',
+    'src/imageformat.cpp',
     'src/imagelist.cpp',
-    'src/imageloader.cpp',
     'src/input.cpp',
     'src/layout.cpp',
     'src/luaengine.cpp',
@@ -297,8 +297,8 @@ sources = [
     'src/formats/farbfeld.cpp',
     'src/formats/pnm.cpp',
     'src/formats/qoi.cpp',
-    'src/formats/ottf.cpp',
     'src/formats/tga.cpp',
+    'src/formats/ttf.cpp',
     wl_protocols,
 ]
 

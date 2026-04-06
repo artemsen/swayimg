@@ -1,48 +1,26 @@
 // SPDX-License-Identifier: MIT
-// JPEG format decoder.
+// JPEG image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
+#include "../log.hpp"
 
 #include <jpeglib.h>
 
 #include <csetjmp>
 #include <format>
 
-// register format in factory
-class ImageJpg;
-static const ImageLoader::Registrator<ImageJpg>
-    image_format_registartion("JPG", ImageLoader::Priority::Highest);
-
-/* JPEG image. */
-class ImageJpg : public Image {
-private:
-    // JPEG signature
-    static constexpr const uint8_t signature[] = { 0xff, 0xd8 };
-
-    /** JPG error description. */
-    struct Error {
-        jpeg_error_mgr manager;
-        jmp_buf jump;
-    };
-
-    /** JPEG error callback. */
-    static void jpg_error_exit(j_common_ptr jpg)
+class ImageFormatJpeg : public ImageFormat {
+public:
+    ImageFormatJpeg()
+        : ImageFormat(Priority::Highest, "jpg")
     {
-        Error* err = reinterpret_cast<Error*>(jpg->err);
-        char msg[JMSG_LENGTH_MAX] = { 0 };
-        (*(jpg->err->format_message))(jpg, msg);
-        fprintf(stderr, "JPEG: %s\n", msg);
-        longjmp(err->jump, 1);
     }
 
-public:
-    bool load(const Data& data) override
+    ImagePtr decode(const Data& data) override
     {
-        // check signature
-        if (data.size < sizeof(signature) || data.data[0] != signature[0] ||
-            data.data[1] != signature[1]) {
-            return false;
+        if (!check_signature(data, { 0xff, 0xd8 })) {
+            return nullptr;
         }
 
         jpeg_decompress_struct jpg;
@@ -53,7 +31,7 @@ public:
         err.manager.error_exit = jpg_error_exit;
         if (setjmp(err.jump)) {
             jpeg_destroy_decompress(&jpg);
-            return false;
+            return nullptr;
         }
 
         jpeg_create_decompress(&jpg);
@@ -76,8 +54,10 @@ public:
 
         jpeg_start_decompress(&jpg);
 
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
         pm.create(Pixmap::RGB, jpg.output_width, jpg.output_height);
 
         while (jpg.output_scanline < jpg.output_height) {
@@ -122,11 +102,31 @@ public:
             }
         }
 
-        format = std::format("JPEG {}bit", jpg.num_components * 8);
+        image->format = std::format("JPEG {}bit", jpg.num_components * 8);
 
         jpeg_finish_decompress(&jpg);
         jpeg_destroy_decompress(&jpg);
 
-        return true;
+        return image;
+    }
+
+private:
+    /** JPG error description. */
+    struct Error {
+        jpeg_error_mgr manager;
+        jmp_buf jump;
+    };
+
+    /** JPEG error callback. */
+    static void jpg_error_exit(j_common_ptr jpg)
+    {
+        Error* err = reinterpret_cast<Error*>(jpg->err);
+        char msg[JMSG_LENGTH_MAX] = { 0 };
+        (*(jpg->err->format_message))(jpg, msg);
+        Log::error("JPEG: {}", msg);
+        longjmp(err->jump, 1);
     }
 };
+
+// register format in factory
+static ImageFormatJpeg format_jpeg;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// SVG format decoder.
+// SVG image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
@@ -15,26 +15,46 @@
 #include <memory>
 #include <numbers>
 
-// register format in factory
-class ImageSvg;
-static const ImageLoader::Registrator<ImageSvg>
-    image_format_registartion("SVG", ImageLoader::Priority::Low);
+class ImageFormatSvg : public ImageFormat {
+public:
+    ImageFormatSvg()
+        : ImageFormat(Priority::Low, "svg")
+    {
+    }
 
-/* SVG image. */
-class ImageSvg : public Image {
+    ImagePtr decode(const Data& data) override
+    {
+        if (!is_svg(data)) {
+            return nullptr;
+        }
+
+        // open decoder
+        RsvgHandle* svg =
+            rsvg_handle_new_from_data(data.data, data.size, nullptr);
+        if (!svg) {
+            return nullptr;
+        }
+
+        const RsvgRectangle canvas = get_canvas(svg);
+
+        // allocate image and fram that will be used for export
+        ImagePtr image = std::make_shared<ImageSvg>(svg, canvas);
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(Pixmap::ARGB, canvas.width, canvas.height);
+
+        image->draw(0, pm, 1.0, 0, 0);
+
+        image->format = get_format(svg);
+
+        return image;
+    }
+
 private:
-    // Max offset of the root svg node in xml file
-    static constexpr size_t MAX_SIGNATURE_OFFSET = 1024;
-
     // Canvas sizes
     static constexpr size_t CANVAS_SIZE_MIN_PX = 500;
     static constexpr size_t CANVAS_SIZE_MAX_PX = 2000;
     static constexpr size_t CANVAS_SIZE_DEF_PX = 1000;
-
-    // Cairo wrappers
-    using Cairo = std::unique_ptr<cairo_t, decltype(&cairo_destroy)>;
-    using CairoSurface =
-        std::unique_ptr<cairo_surface_t, decltype(&cairo_surface_destroy)>;
 
     /**
      * Check if data is SVG.
@@ -49,7 +69,7 @@ private:
         }
 
         const size_t max_offset =
-            std::min(MAX_SIGNATURE_OFFSET, data.size - sizeof(signature));
+            std::min(static_cast<size_t>(1024), data.size - sizeof(signature));
 
         bool found = false;
         for (size_t i = 0; !found && i < max_offset; ++i) {
@@ -60,9 +80,10 @@ private:
 
     /**
      * Get canvas size.
+     * @param svg SVG descriptor
      * @return output canvas rectangle
      */
-    [[nodiscard]] RsvgRectangle get_canvas() const
+    [[nodiscard]] RsvgRectangle get_canvas(RsvgHandle* svg) const
     {
         RsvgRectangle canvas {};
 
@@ -106,8 +127,9 @@ private:
 
     /**
      * Set format description.
+     * @param svg SVG descriptor
      */
-    void set_format()
+    std::string get_format(RsvgHandle* svg) const
     {
         RsvgLength svg_w, svg_h;
         RsvgRectangle viewbox;
@@ -161,136 +183,123 @@ private:
             units = "%";
         }
 
-        format = "SVG";
+        std::string format = "SVG";
         if (units) {
             format += std::format(" {}x{}{}", static_cast<int>(svg_w.length),
                                   static_cast<int>(svg_h.length), units);
         }
-    }
-
-public:
-    ~ImageSvg() override
-    {
-        if (svg) {
-            g_object_unref(svg);
-        }
-    }
-
-    void flip_vertical() override
-    {
-        Image::flip_vertical();
-        svg_flip_v = !svg_flip_v;
-    }
-
-    void flip_horizontal() override
-    {
-        Image::flip_horizontal();
-        svg_flip_h = !svg_flip_h;
-    }
-
-    void rotate(const size_t angle) override
-    {
-        Image::rotate(angle);
-        svg_rotation += angle;
-        svg_rotation %= 360;
-    }
-
-    void draw(const size_t, Pixmap& target, const double scale, const ssize_t x,
-              const ssize_t y) override
-    {
-        const Pixmap& pm = frames[0].pm;
-        const RsvgRectangle viewbox = {
-            .x = x + scale * svg_offset_x,
-            .y = y - scale * svg_offset_y,
-            .width = scale * pm.width(),
-            .height = scale * pm.height(),
-        };
-
-        // prepare cairo surface
-        const CairoSurface surface(
-            cairo_image_surface_create_for_data(
-                reinterpret_cast<unsigned char*>(&target.at(0, 0)),
-                CAIRO_FORMAT_ARGB32, target.width(), target.height(),
-                target.stride()),
-            &cairo_surface_destroy);
-        if (!surface ||
-            cairo_surface_status(surface.get()) != CAIRO_STATUS_SUCCESS) {
-            return;
-        }
-        const Cairo cairo(cairo_create(surface.get()), &cairo_destroy);
-        if (!cairo || cairo_status(cairo.get()) != CAIRO_STATUS_SUCCESS) {
-            return;
-        }
-
-        // transform svg
-        if (svg_rotation || svg_flip_h || svg_flip_v) {
-            cairo_translate(cairo.get(), viewbox.width / 2 + x,
-                            viewbox.height / 2 + y);
-
-            if (svg_rotation) {
-                cairo_rotate(cairo.get(),
-                             static_cast<double>(svg_rotation) *
-                                 std::numbers::pi / 180.0);
-                if (svg_rotation == 90 || svg_rotation == 270) {
-                    // rescale to match landscape viewbox size
-                    const double scale =
-                        static_cast<double>(pm.height()) / pm.width();
-                    cairo_scale(cairo.get(), scale, scale);
-                }
-            }
-
-            if (svg_flip_h) {
-                cairo_scale(cairo.get(), -1.0, 1.0);
-            }
-            if (svg_flip_v) {
-                cairo_scale(cairo.get(), 1.0, -1.0);
-            }
-
-            cairo_translate(cairo.get(), -viewbox.width / 2 - x,
-                            -viewbox.height / 2 - y);
-        }
-
-        // render svg to cairo surface
-        rsvg_handle_render_document(svg, cairo.get(), &viewbox, nullptr);
-    }
-
-    bool load(const Data& data) override
-    {
-        if (!is_svg(data)) {
-            return false;
-        }
-
-        // open decoder
-        svg = rsvg_handle_new_from_data(data.data, data.size, nullptr);
-        if (!svg) {
-            return false;
-        }
-
-        // get canvas size and offsets
-        const RsvgRectangle canvas = get_canvas();
-        if (canvas.x) {
-            svg_offset_x = canvas.width / canvas.x;
-        }
-        if (canvas.y) {
-            svg_offset_y = canvas.height / canvas.y;
-        }
-
-        // render to pixmap that will be used in the export action
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
-        pm.create(Pixmap::ARGB, canvas.width, canvas.height);
-        draw(0, pm, 1.0, 0, 0);
-
-        set_format();
-
-        return true;
+        return format;
     }
 
 private:
-    RsvgHandle* svg = nullptr; ///< RSVG handle containing the image data
-    double svg_offset_x = 0.0; ///< Horizontal offset relative to canvas
-    double svg_offset_y = 0.0; ///< Vertical offset relative to canvas
-    size_t svg_rotation = 0;   ///< Rotation in degrees (90/180/270)
-    bool svg_flip_v = false;   ///< Whether to flip the image vertically
-    bool svg_flip_h = false;   ///< Whether to flip the image horizontally
+    /* SVG image. */
+    class ImageSvg : public Image {
+    public:
+        // Cairo wrappers
+        using Cairo = std::unique_ptr<cairo_t, decltype(&cairo_destroy)>;
+        using CairoSurface =
+            std::unique_ptr<cairo_surface_t, decltype(&cairo_surface_destroy)>;
+
+        ImageSvg(RsvgHandle* rsvg, const RsvgRectangle& canvas)
+            : svg(rsvg)
+        {
+            if (canvas.x) {
+                svg_offset_x = canvas.width / canvas.x;
+            }
+            if (canvas.y) {
+                svg_offset_y = canvas.height / canvas.y;
+            }
+        }
+
+        ~ImageSvg() override { g_object_unref(svg); }
+
+        void flip_vertical() override
+        {
+            Image::flip_vertical();
+            svg_flip_v = !svg_flip_v;
+        }
+
+        void flip_horizontal() override
+        {
+            Image::flip_horizontal();
+            svg_flip_h = !svg_flip_h;
+        }
+
+        void rotate(const size_t angle) override
+        {
+            Image::rotate(angle);
+            svg_rotation += angle;
+            svg_rotation %= 360;
+        }
+
+        void draw(const size_t, Pixmap& target, const double scale,
+                  const ssize_t x, const ssize_t y) override
+        {
+            const Pixmap& pm = frames[0].pm;
+            const RsvgRectangle viewbox = {
+                .x = x + scale * svg_offset_x,
+                .y = y - scale * svg_offset_y,
+                .width = scale * pm.width(),
+                .height = scale * pm.height(),
+            };
+
+            // prepare cairo surface
+            const CairoSurface surface(
+                cairo_image_surface_create_for_data(
+                    reinterpret_cast<unsigned char*>(&target.at(0, 0)),
+                    CAIRO_FORMAT_ARGB32, target.width(), target.height(),
+                    target.stride()),
+                &cairo_surface_destroy);
+            if (!surface ||
+                cairo_surface_status(surface.get()) != CAIRO_STATUS_SUCCESS) {
+                return;
+            }
+            const Cairo cairo(cairo_create(surface.get()), &cairo_destroy);
+            if (!cairo || cairo_status(cairo.get()) != CAIRO_STATUS_SUCCESS) {
+                return;
+            }
+
+            // transform svg
+            if (svg_rotation || svg_flip_h || svg_flip_v) {
+                cairo_translate(cairo.get(), viewbox.width / 2 + x,
+                                viewbox.height / 2 + y);
+
+                if (svg_rotation) {
+                    cairo_rotate(cairo.get(),
+                                 static_cast<double>(svg_rotation) *
+                                     std::numbers::pi / 180.0);
+                    if (svg_rotation == 90 || svg_rotation == 270) {
+                        // rescale to match landscape viewbox size
+                        const double scale =
+                            static_cast<double>(pm.height()) / pm.width();
+                        cairo_scale(cairo.get(), scale, scale);
+                    }
+                }
+
+                if (svg_flip_h) {
+                    cairo_scale(cairo.get(), -1.0, 1.0);
+                }
+                if (svg_flip_v) {
+                    cairo_scale(cairo.get(), 1.0, -1.0);
+                }
+
+                cairo_translate(cairo.get(), -viewbox.width / 2 - x,
+                                -viewbox.height / 2 - y);
+            }
+
+            // render svg to cairo surface
+            rsvg_handle_render_document(svg, cairo.get(), &viewbox, nullptr);
+        }
+
+    private:
+        RsvgHandle* svg;           ///< RSVG handle containing the image data
+        double svg_offset_x = 0.0; ///< Horizontal offset relative to canvas
+        double svg_offset_y = 0.0; ///< Vertical offset relative to canvas
+        size_t svg_rotation = 0;   ///< Rotation in degrees (90/180/270)
+        bool svg_flip_v = false;   ///< Whether to flip the image vertically
+        bool svg_flip_h = false;   ///< Whether to flip the image horizontally
+    };
 };
+
+// register format in factory
+static ImageFormatSvg format_svg;

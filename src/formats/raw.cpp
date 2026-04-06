@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Raw camera format decoder.
+// Raw camera image format.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -12,30 +12,29 @@
 #include <cstring>
 #include <memory>
 
-// register format in factory
-class ImageRaw;
-static const ImageLoader::Registrator<ImageRaw>
-    image_format_registartion("RAW", ImageLoader::Priority::Normal);
-
-/* Raw image. */
-class ImageRaw : public Image {
+class ImageFormatRaw : public ImageFormat {
 public:
-    bool load(const Data& data) override
+    ImageFormatRaw()
+        : ImageFormat(Priority::Normal, "raw")
+    {
+    }
+
+    ImagePtr decode(const Data& data) override
     {
         // open decoder
         LibRaw decoder(0);
 
-        if (!ImageLoader::self().fix_orientation) {
+        if (!FormatFactory::self().fix_orientation) {
             decoder.imgdata.params.user_flip = 0;
         }
 
         if (decoder.open_buffer(data.data, data.size) != LIBRAW_SUCCESS ||
             decoder.unpack() != LIBRAW_SUCCESS) {
-            return false;
+            return nullptr;
         }
         decoder.output_params_ptr()->output_bps = 8; // 8-bit color
         if (decoder.dcraw_process() != LIBRAW_SUCCESS) {
-            return false;
+            return nullptr;
         }
 
         // decode image
@@ -44,13 +43,16 @@ public:
         RawImage img(decoder.dcraw_make_mem_image(), &libraw_dcraw_clear_mem);
         if (img->type != LIBRAW_IMAGE_BITMAP || img->colors != 3 ||
             img->bits != 8) {
-            return false;
+            return nullptr;
         }
 
-        // copy data to image frame
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
+        // allocate image and frame
+        ImagePtr image = std::make_shared<ImageRaw>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
         pm.create(Pixmap::RGB, img->width, img->height);
+
+        // copy data to image frame
         for (size_t y = 0; y < pm.height(); ++y) {
             for (size_t x = 0; x < pm.width(); ++x) {
                 const uint8_t* src = img->data + (y * img->width + x) * 3;
@@ -62,13 +64,18 @@ public:
             }
         }
 
-        format = "RAW";
+        image->format = "RAW";
 
-        return true;
+        return image;
     }
 
-    void fix_orientation() override
-    {
-        // ignore, done by decoder
-    }
+private:
+    class ImageRaw : public Image {
+    public:
+        // should be ignored, done by decoder
+        void fix_orientation() override {}
+    };
 };
+
+// register format in factory
+static ImageFormatRaw format_raw;

@@ -1,31 +1,93 @@
 // SPDX-License-Identifier: MIT
-// AV1 (AVIF/AVIFS) format decoder.
+// AV1 (AVIF/AVIFS) image format.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <avif/avif.h>
 
-#include <cstring>
 #include <format>
 #include <memory>
 
-// register format in factory
-class ImageAvif;
-static const ImageLoader::Registrator<ImageAvif>
-    image_format_registartion("AVIF", ImageLoader::Priority::High);
+class ImageFormatAvif : public ImageFormat {
+public:
+    ImageFormatAvif()
+        : ImageFormat(Priority::High, "avif")
+    {
+    }
 
-/* AVIF image. */
-class ImageAvif : public Image {
-private:
-    // AVIF signature
-    static constexpr const uint8_t signature[] = { 'f', 't', 'y', 'p' };
-    static constexpr const size_t signature_offset = 4;
-
-    // AVIF decoder wrapper
     using AvifDecoder =
         std::unique_ptr<avifDecoder, decltype(&avifDecoderDestroy)>;
 
+    ImagePtr decode(const Data& data) override
+    {
+        if (!check_signature(data, { 'f', 't', 'y', 'p' }, 4)) {
+            return nullptr;
+        }
+
+        avifResult rc;
+
+        // open decoder
+        AvifDecoder avif(avifDecoderCreate(), &avifDecoderDestroy);
+        if (!avif) {
+            return nullptr;
+        }
+        rc = avifDecoderSetIOMemory(avif.get(), data.data, data.size);
+        if (rc != AVIF_RESULT_OK) {
+            return nullptr;
+        }
+        rc = avifDecoderParse(avif.get());
+        if (rc != AVIF_RESULT_OK) {
+            return nullptr;
+        }
+
+        // allocate image and frames
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(avif->imageCount);
+
+        // decode images
+        if (avif->imageCount == 1) {
+            // single image
+            rc = avifDecoderNextImage(avif.get());
+            if (rc != AVIF_RESULT_OK) {
+                return nullptr;
+            }
+            rc = decode_frame(avif, image->frames[0].pm);
+            if (rc != AVIF_RESULT_OK) {
+                return nullptr;
+            }
+        } else {
+            // multiple images
+            for (int i = 0; i < avif->imageCount; ++i) {
+                Image::Frame& frame = image->frames[i];
+
+                rc = avifDecoderNthImage(avif.get(), i);
+                if (rc != AVIF_RESULT_OK) {
+                    return nullptr;
+                }
+                rc = decode_frame(avif, frame.pm);
+                if (rc != AVIF_RESULT_OK) {
+                    return nullptr;
+                }
+
+                avifImageTiming timing;
+                rc = avifDecoderNthImageTiming(avif.get(), i, &timing);
+                if (rc != AVIF_RESULT_OK) {
+                    return nullptr;
+                }
+                frame.duration =
+                    1000.0 / timing.timescale * timing.durationInTimescales;
+            }
+        }
+
+        image->format =
+            std::format("AV1 {}bpc {}", avif->image->depth,
+                        avifPixelFormatToString(avif->image->yuvFormat));
+
+        return image;
+    }
+
+private:
     /**
      * Decode single frame.
      * @param avif decoder instance
@@ -59,73 +121,7 @@ private:
 
         return rc;
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature
-        if (data.size < signature_offset + sizeof(signature) ||
-            std::memcmp(data.data + signature_offset, signature,
-                        sizeof(signature))) {
-            return false;
-        }
-
-        // open decoder
-        AvifDecoder avif(avifDecoderCreate(), &avifDecoderDestroy);
-        if (!avif) {
-            return false;
-        }
-        avifResult rc;
-        rc = avifDecoderSetIOMemory(avif.get(), data.data, data.size);
-        if (rc != AVIF_RESULT_OK) {
-            return false;
-        }
-        rc = avifDecoderParse(avif.get());
-        if (rc != AVIF_RESULT_OK) {
-            return false;
-        }
-
-        // allocate frames
-        frames.resize(avif->imageCount);
-
-        // decode images
-        if (avif->imageCount == 1) {
-            // single image
-            rc = avifDecoderNextImage(avif.get());
-            if (rc != AVIF_RESULT_OK) {
-                return false;
-            }
-            rc = decode_frame(avif, frames[0].pm);
-            if (rc != AVIF_RESULT_OK) {
-                return false;
-            }
-        } else {
-            // multiple images
-            for (int i = 0; i < avif->imageCount; ++i) {
-                Frame& frame = frames[i];
-
-                rc = avifDecoderNthImage(avif.get(), i);
-                if (rc != AVIF_RESULT_OK) {
-                    return false;
-                }
-                rc = decode_frame(avif, frame.pm);
-                if (rc != AVIF_RESULT_OK) {
-                    return false;
-                }
-
-                avifImageTiming timing;
-                rc = avifDecoderNthImageTiming(avif.get(), i, &timing);
-                if (rc != AVIF_RESULT_OK) {
-                    return false;
-                }
-                frame.duration =
-                    1000.0 / timing.timescale * timing.durationInTimescales;
-            }
-        }
-
-        format = std::format("AV1 {}bpc {}", avif->image->depth,
-                             avifPixelFormatToString(avif->image->yuvFormat));
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatAvif format_avif;

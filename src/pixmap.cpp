@@ -4,11 +4,8 @@
 
 #include "pixmap.hpp"
 
-#include "buildconf.hpp"
+#include "imageformat.hpp"
 #include "log.hpp"
-
-#ifdef HAVE_LIBPNG
-#include "formats/png.hpp"
 
 #include <fcntl.h>
 #include <sys/file.h>
@@ -16,7 +13,6 @@
 #include <unistd.h>
 
 #include <cerrno>
-#endif // HAVE_LIBPNG
 
 Pixmap::Pixmap(const Format format, const size_t width, const size_t height,
                void* data)
@@ -72,8 +68,13 @@ void Pixmap::attach(const Format format, const size_t width,
 
 bool Pixmap::save(const std::filesystem::path& path) const
 {
-#ifdef HAVE_LIBPNG
-    const std::vector<uint8_t> data = Png::encode(*this);
+    ImageFormat* png = FormatFactory::self().get("png");
+    if (!png) {
+        Log::error("Unable to export pixmap, PNG not supported");
+        return false;
+    }
+
+    const std::vector<uint8_t> data = png->encode(*this);
     if (data.empty()) {
         Log::error("Unable to export pixmap, PNG encode failed");
         return false;
@@ -110,11 +111,6 @@ bool Pixmap::save(const std::filesystem::path& path) const
     }
 
     return true;
-#else
-    (void)path;
-    Log::error("Unable to export pixmap, PNG not supported");
-    return false;
-#endif // HAVE_LIBPNG
 }
 
 void Pixmap::free()

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// EXR format decoder.
+// EXR image format.
 // Copyright (C) 2023 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -16,53 +16,17 @@
 #include <cstring>
 #include <format>
 
-// register format in factory
-class ImageExr;
-static const ImageLoader::Registrator<ImageExr>
-    image_format_registartion("EXR", ImageLoader::Priority::Low);
-
-/** Memory input stream. */
-struct MemoryIStream : public Imf::IStream {
-    MemoryIStream(const Image::Data& raw_data)
-        : Imf::IStream("MemoryIStream")
-        , data(raw_data)
-    {
-    }
-
-    bool read(char c[], int n) override
-    {
-        if (position + n > data.size) {
-            throw std::runtime_error("No more data");
-        }
-        std::memcpy(c, data.data + position, n);
-        position += n;
-        return position < data.size;
-    }
-
-    int64_t size() override { return data.size; }
-    uint64_t tellg() override { return position; }
-    void seekg(uint64_t pos) override { position = pos; }
-    void clear() override { position = 0; }
-    [[nodiscard]] bool isMemoryMapped() const override { return false; }
-
-private:
-    const Image::Data& data;
-    uint64_t position = 0;
-};
-
-/* EXR image. */
-class ImageExr : public Image {
-private:
-    // EXR signature
-    static constexpr const uint8_t signature[] = { 0x76, 0x2f, 0x31, 0x01 };
-
+class ImageFormatExr : public ImageFormat {
 public:
-    bool load(const Data& data) override
+    ImageFormatExr()
+        : ImageFormat(Priority::Low, "exr")
     {
-        // check signature
-        if (data.size < sizeof(signature) ||
-            std::memcmp(data.data, signature, sizeof(signature))) {
-            return false;
+    }
+
+    ImagePtr decode(const Data& data) override
+    {
+        if (!check_signature(data, { 0x76, 0x2f, 0x31, 0x01 })) {
+            return nullptr;
         }
 
         try {
@@ -95,9 +59,10 @@ public:
                 rgba_file.readPixels(box.min.y, box.max.y);
             }
 
-            // allocate frame
-            frames.resize(1);
-            Pixmap& pm = frames[0].pm;
+            // allocate image and frame
+            ImagePtr image = std::make_shared<Image>();
+            image->frames.resize(1);
+            Pixmap& pm = image->frames[0].pm;
             pm.create(Pixmap::ARGB, width, height);
 
             // put image to pixmap
@@ -122,12 +87,46 @@ public:
 
             std::string compression;
             getCompressionNameFromId(exr_header.compression(), compression);
-            format = std::format("EXR ({}, {})", image_type, compression);
+            image->format =
+                std::format("EXR ({}, {})", image_type, compression);
 
+            return image;
         } catch (const std::exception&) {
-            return false;
         }
 
-        return true;
+        return nullptr;
     }
+
+private:
+    /** Memory input stream. */
+    struct MemoryIStream : public Imf::IStream {
+        MemoryIStream(const Data& raw_data)
+            : Imf::IStream("MemoryIStream")
+            , data(raw_data)
+        {
+        }
+
+        bool read(char c[], int n) override
+        {
+            if (position + n > data.size) {
+                throw std::runtime_error("No more data");
+            }
+            std::memcpy(c, data.data + position, n);
+            position += n;
+            return position < data.size;
+        }
+
+        int64_t size() override { return data.size; }
+        uint64_t tellg() override { return position; }
+        void seekg(uint64_t pos) override { position = pos; }
+        void clear() override { position = 0; }
+        [[nodiscard]] bool isMemoryMapped() const override { return false; }
+
+    private:
+        const Data& data;
+        uint64_t position = 0;
+    };
 };
+
+// register format in factory
+static ImageFormatExr format_exr;

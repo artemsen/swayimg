@@ -1,37 +1,38 @@
 // SPDX-License-Identifier: MIT
-// JPEG XL format decoder.
+// JPEG XL image format.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <jxl/decode_cxx.h>
 #include <jxl/resizable_parallel_runner_cxx.h>
 
 #include <format>
 
-// register format in factory
-class ImageJxl;
-static const ImageLoader::Registrator<ImageJxl>
-    image_format_registartion("JXL", ImageLoader::Priority::High);
-
-/* JPEG XL image. */
-class ImageJxl : public Image {
+class ImageFormatJxl : public ImageFormat {
 public:
-    bool load(const Data& data) override
+    ImageFormatJxl()
+        : ImageFormat(Priority::High, "jxl")
+    {
+    }
+
+    ImagePtr decode(const Data& data) override
     {
         // check signature
         switch (JxlSignatureCheck(data.data, data.size)) {
             case JXL_SIG_NOT_ENOUGH_BYTES:
             case JXL_SIG_INVALID:
-                return false;
+                return nullptr;
             default:
                 break;
         }
 
         const JxlDecoderPtr jxl_dec = JxlDecoderMake(nullptr);
         if (!jxl_dec) {
-            return false;
+            return nullptr;
         }
+
+        ImagePtr image = std::make_shared<Image>();
 
         const JxlResizableParallelRunnerPtr jxl_prl =
             JxlResizableParallelRunnerMake(nullptr);
@@ -56,13 +57,13 @@ public:
             const JxlDecoderStatus status =
                 JxlDecoderProcessInput(jxl_dec.get());
             if (status == JXL_DEC_ERROR) {
-                return false;
+                return nullptr;
             } else if (status == JXL_DEC_NEED_MORE_INPUT) {
-                return false;
+                return nullptr;
             } else if (status == JXL_DEC_BASIC_INFO) {
                 if (JxlDecoderGetBasicInfo(jxl_dec.get(), &jxl_inf) !=
                     JXL_DEC_SUCCESS) {
-                    return false;
+                    return nullptr;
                 }
                 JxlResizableParallelRunnerSetThreads(
                     jxl_prl.get(),
@@ -73,16 +74,16 @@ public:
                 if (JxlDecoderImageOutBufferSize(jxl_dec.get(), &jxl_fmt,
                                                  &buffer_size) !=
                     JXL_DEC_SUCCESS) {
-                    return false;
+                    return nullptr;
                 }
-                Pixmap& pm = frames[frame_index].pm;
+                Pixmap& pm = image->frames[frame_index].pm;
                 if (buffer_size != pm.stride() * pm.height()) {
-                    return false;
+                    return nullptr;
                 }
                 if (JxlDecoderSetImageOutBuffer(jxl_dec.get(), &jxl_fmt,
                                                 &pm.at(0, 0), buffer_size) !=
                     JXL_DEC_SUCCESS) {
-                    return false;
+                    return nullptr;
                 }
             } else if (status == JXL_DEC_FRAME) {
                 // allocate new frame
@@ -91,8 +92,8 @@ public:
                 } else {
                     ++frame_index;
                 }
-                frames.resize(frame_index + 1);
-                Frame& frame = frames[frame_index];
+                image->frames.resize(frame_index + 1);
+                Image::Frame& frame = image->frames[frame_index];
                 frame.pm.create(jxl_inf.alpha_bits ? Pixmap::ARGB : Pixmap::RGB,
                                 jxl_inf.xsize, jxl_inf.ysize);
                 // calculate frame timing
@@ -106,18 +107,21 @@ public:
                     }
                 }
             } else if (status == JXL_DEC_FULL_IMAGE) {
-                frames[frame_index].pm.abgr_to_argb();
+                image->frames[frame_index].pm.abgr_to_argb();
             } else if (status == JXL_DEC_SUCCESS) {
                 break; // finally!
             } else {
-                return false; // unknown status
+                return nullptr; // unknown status
             }
         }
 
-        format =
+        image->format =
             std::format("JPEG XL {}bpp",
                         jxl_inf.bits_per_sample * jxl_inf.num_color_channels +
                             jxl_inf.alpha_bits);
-        return true;
+        return image;
     }
 };
+
+// register format in factory
+static ImageFormatJxl format_jxl;

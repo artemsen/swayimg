@@ -1,77 +1,115 @@
 // SPDX-License-Identifier: MIT
-// GIF format decoder.
+// GIF image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <gif_lib.h>
 
 #include <cstring>
 #include <utility>
 
-// register format in factory
-class ImageGif;
-static const ImageLoader::Registrator<ImageGif>
-    image_format_registartion("GIF", ImageLoader::Priority::Normal);
-
-/** Memory buffer reader. */
-struct BufferReader {
-    BufferReader(const Image::Data& raw_data)
-        : data(raw_data)
-    {
-    }
-
-    // GIF reader callback, see `InputFunc` in gif_lib.h
-    static int read(GifFileType* gif, GifByteType* dst, int sz)
-    {
-        BufferReader* reader = reinterpret_cast<BufferReader*>(gif->UserData);
-        if (reader && sz >= 0 && reader->position + sz <= reader->data.size) {
-            std::memcpy(dst, reader->data.data + reader->position, sz);
-            reader->position += sz;
-            return sz;
-        }
-        return -1;
-    }
-
-    const Image::Data& data;
-    size_t position = 0;
-};
-
-/** GIF decoder wrapper. */
-class Gif {
+class ImageFormatGif : public ImageFormat {
 public:
-    Gif(GifFileType* ptr)
-        : gif(ptr)
+    ImageFormatGif()
+        : ImageFormat(Priority::Normal, "gif")
     {
     }
 
-    ~Gif()
+    ImagePtr decode(const Data& data) override
     {
-        if (gif) {
-            DGifCloseFile(gif, nullptr);
+        if (!check_signature(data, { 'G', 'I', 'F' })) {
+            return nullptr;
         }
+
+        // open decoder
+        int err;
+        BufferReader buf_reader(data);
+        Gif gif(DGifOpen(&buf_reader, &BufferReader::read, &err));
+        if (!gif) {
+            return nullptr;
+        }
+        if (DGifSlurp(gif) != GIF_OK) {
+            return nullptr;
+        }
+
+        // allocate image and frames
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(gif->ImageCount);
+        for (auto& it : image->frames) {
+            it.pm.create(Pixmap::ARGB, gif->SWidth, gif->SHeight);
+        }
+
+        // decode frames
+        for (size_t i = 0; i < image->frames.size(); ++i) {
+            decode_frame(gif, image->frames, i);
+        }
+
+        image->format = "GIF";
+        if (gif->ImageCount > 1) {
+            image->format += " animation";
+        }
+
+        return image;
     }
 
-    operator GifFileType*() { return gif; }
-    GifFileType* operator->() { return gif; }
-
-    GifFileType* gif;
-};
-
-/* GIF image. */
-class ImageGif : public Image {
 private:
-    // GIF signatures
-    static constexpr const uint8_t signature[] = { 'G', 'I', 'F' };
+    /** Memory buffer reader. */
+    struct BufferReader {
+        BufferReader(const Data& raw_data)
+            : data(raw_data)
+        {
+        }
+
+        // GIF reader callback, see `InputFunc` in gif_lib.h
+        static int read(GifFileType* gif, GifByteType* dst, int sz)
+        {
+            BufferReader* reader =
+                reinterpret_cast<BufferReader*>(gif->UserData);
+            if (reader && sz >= 0 &&
+                reader->position + sz <= reader->data.size) {
+                std::memcpy(dst, reader->data.data + reader->position, sz);
+                reader->position += sz;
+                return sz;
+            }
+            return -1;
+        }
+
+        const Data& data;
+        size_t position = 0;
+    };
+
+    /** GIF decoder wrapper. */
+    class Gif {
+    public:
+        Gif(GifFileType* ptr)
+            : gif(ptr)
+        {
+        }
+
+        ~Gif()
+        {
+            if (gif) {
+                DGifCloseFile(gif, nullptr);
+            }
+        }
+
+        operator GifFileType*() { return gif; }
+        GifFileType* operator->() { return gif; }
+
+        GifFileType* gif;
+    };
 
     /**
      * Decode single GIF frame.
      * @param gif GIF decoder
+     * @param frames all image frames
      * @param index number of the frame to load
      */
-    void decode_frame(Gif& gif, const size_t index)
+    void decode_frame(Gif& gif, std::vector<Image::Frame>& frames,
+                      const size_t index)
     {
-        Frame& frame = frames[index];
+        Image::Frame& frame = frames[index];
 
         GraphicsControlBlock ctl {};
         ctl.TransparentColor = NO_TRANSPARENT_COLOR;
@@ -121,41 +159,7 @@ private:
             frame.duration = 100;
         }
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature
-        if (data.size < sizeof(signature) ||
-            std::memcmp(data.data, signature, sizeof(signature))) {
-            return false;
-        }
-
-        // open decoder
-        int err;
-        BufferReader buf_reader(data);
-        Gif gif(DGifOpen(&buf_reader, &BufferReader::read, &err));
-        if (!gif) {
-            return false;
-        }
-        if (DGifSlurp(gif) != GIF_OK) {
-            return false;
-        }
-
-        // allocate and decode frames
-        frames.resize(gif->ImageCount);
-        for (auto& it : frames) {
-            it.pm.create(Pixmap::ARGB, gif->SWidth, gif->SHeight);
-        }
-        for (size_t i = 0; i < frames.size(); ++i) {
-            decode_frame(gif, i);
-        }
-
-        format = "GIF";
-        if (gif->ImageCount > 1) {
-            format += " animation";
-        }
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatGif format_gif;

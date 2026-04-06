@@ -1,43 +1,36 @@
 // SPDX-License-Identifier: MIT
-// WebP format decoder.
+// WebP image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <webp/demux.h>
 
 #include <cstring>
 #include <memory>
 
-// register format in factory
-class ImageWebp;
-static const ImageLoader::Registrator<ImageWebp>
-    image_format_registartion("WebP", ImageLoader::Priority::High);
-
-/* WebP image. */
-class ImageWebp : public Image {
-private:
-    // WebP signature
-    static constexpr const uint8_t signature[] = { 'R', 'I', 'F', 'F' };
+class ImageFormatWebp : public ImageFormat {
+public:
+    ImageFormatWebp()
+        : ImageFormat(Priority::High, "webp")
+    {
+    }
 
     // WebP decoder wrapper
     using WebpDecoder =
         std::unique_ptr<WebPAnimDecoder, decltype(&WebPAnimDecoderDelete)>;
 
-public:
-    bool load(const Data& data) override
+    ImagePtr decode(const Data& data) override
     {
-        // check signature
-        if (data.size < sizeof(signature) ||
-            std::memcmp(data.data, signature, sizeof(signature))) {
-            return false;
+        if (!check_signature(data, { 'R', 'I', 'F', 'F' })) {
+            return nullptr;
         }
 
         // get image properties
         WebPBitstreamFeatures webp_prop;
         if (WebPGetFeatures(data.data, data.size, &webp_prop) !=
             VP8_STATUS_OK) {
-            return false;
+            return nullptr;
         }
 
         // setup decoder
@@ -51,19 +44,21 @@ public:
         const WebpDecoder webp_dec(WebPAnimDecoderNew(&webp_data, &webp_opts),
                                    &WebPAnimDecoderDelete);
         if (!webp_dec) {
-            return false;
+            return nullptr;
         }
 
-        // allocate frames
         WebPAnimInfo webp_info;
         if (!WebPAnimDecoderGetInfo(webp_dec.get(), &webp_info)) {
-            return false;
+            return nullptr;
         }
-        frames.resize(webp_info.frame_count);
+
+        // allocate image and frames
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(webp_info.frame_count);
 
         // decode frames
         int prev_timestamp = 0;
-        for (auto& frame : frames) {
+        for (auto& frame : image->frames) {
             Pixmap& pm = frame.pm;
             pm.create(webp_prop.has_alpha ? Pixmap::ARGB : Pixmap::RGB,
                       webp_info.canvas_width, webp_info.canvas_height);
@@ -71,7 +66,7 @@ public:
             uint8_t* buffer;
             int timestamp;
             if (!WebPAnimDecoderGetNext(webp_dec.get(), &buffer, &timestamp)) {
-                return false;
+                return nullptr;
             }
             std::memcpy(pm.ptr(0, 0), buffer, pm.stride() * pm.height());
 
@@ -87,19 +82,22 @@ public:
         }
 
         // set format description
-        format = "WebP";
+        image->format = "WebP";
         if (webp_prop.format == 1) {
-            format += " lossy";
+            image->format += " lossy";
         } else if (webp_prop.format == 2) {
-            format += " lossless";
+            image->format += " lossless";
         }
         if (webp_prop.has_alpha) {
-            format += ", alpha";
+            image->format += ", alpha";
         }
         if (webp_prop.has_animation) {
-            format += ", animation";
+            image->format += ", animation";
         }
 
-        return true;
+        return image;
     }
 };
+
+// register format in factory
+static ImageFormatWebp format_webp;

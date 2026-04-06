@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// HEIF format decoder.
+// HEIF image format.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <libheif/heif.h>
 
@@ -10,37 +10,24 @@
 #include <memory>
 #include <utility>
 
-// register format in factory
-class ImageHeif;
-static const ImageLoader::Registrator<ImageHeif>
-    image_format_registartion("HEIF", ImageLoader::Priority::Normal);
-
-/* HEIF image. */
-class ImageHeif : public Image {
-private:
-    // HEIF decoder wrappers
-    using HeifContext =
-        std::unique_ptr<heif_context, decltype(&heif_context_free)>;
-    using HeifDecOpts = std::unique_ptr<heif_decoding_options,
-                                        decltype(&heif_decoding_options_free)>;
-    using HeifImageHandle =
-        std::unique_ptr<heif_image_handle,
-                        decltype(&heif_image_handle_release)>;
-    using HeifImage =
-        std::unique_ptr<heif_image, decltype(&heif_image_release)>;
-
+class ImageFormatHeif : public ImageFormat {
 public:
-    bool load(const Data& data) override
+    ImageFormatHeif()
+        : ImageFormat(Priority::Normal, "heif")
+    {
+    }
+
+    ImagePtr decode(const Data& data) override
     {
         if (heif_check_filetype(data.data, data.size) !=
             heif_filetype_yes_supported) {
-            return false;
+            return nullptr;
         }
 
         // open decoder
         const HeifContext hctx(heif_context_alloc(), &heif_context_free);
         if (!hctx) {
-            return false;
+            return nullptr;
         }
 
         // decode image
@@ -48,19 +35,19 @@ public:
         err = heif_context_read_from_memory(hctx.get(), data.data, data.size,
                                             nullptr);
         if (err.code != heif_error_Ok) {
-            return false;
+            return nullptr;
         }
 
         heif_image_handle* pih = nullptr;
         err = heif_context_get_primary_image_handle(hctx.get(), &pih);
         if (err.code != heif_error_Ok) {
-            return false;
+            return nullptr;
         }
         const HeifImageHandle himh(pih, &heif_image_handle_release);
 
         HeifDecOpts hopt(heif_decoding_options_alloc(),
                          &heif_decoding_options_free);
-        if (hopt && !ImageLoader::self().fix_orientation) {
+        if (hopt && !FormatFactory::self().fix_orientation) {
             hopt->ignore_transformations = 1;
         }
 
@@ -68,7 +55,7 @@ public:
         err = heif_decode_image(himh.get(), &him, heif_colorspace_RGB,
                                 heif_chroma_interleaved_RGBA, hopt.get());
         if (err.code != heif_error_Ok) {
-            return false;
+            return nullptr;
         }
         const HeifImage himg(him, &heif_image_release);
 
@@ -76,12 +63,15 @@ public:
         const uint8_t* decoded = heif_image_get_plane_readonly(
             himg.get(), heif_channel_interleaved, &stride);
         if (!decoded) {
-            return false;
+            return nullptr;
         }
 
+        // allocate image and frame
+        ImagePtr image = std::make_shared<ImageHeif>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+
         // put decoded data into pixmap
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
         pm.create(heif_image_handle_has_alpha_channel(himh.get()) ? Pixmap::ARGB
                                                                   : Pixmap::RGB,
                   heif_image_get_primary_width(himg.get()),
@@ -96,12 +86,29 @@ public:
         }
         pm.abgr_to_argb();
 
-        format = "HEIF";
-        return true;
+        image->format = "HEIF";
+        return image;
     }
 
-    void fix_orientation() override
-    {
-        // ignore, done by decoder
-    }
+private:
+    // HEIF decoder wrappers
+    using HeifContext =
+        std::unique_ptr<heif_context, decltype(&heif_context_free)>;
+    using HeifDecOpts = std::unique_ptr<heif_decoding_options,
+                                        decltype(&heif_decoding_options_free)>;
+    using HeifImageHandle =
+        std::unique_ptr<heif_image_handle,
+                        decltype(&heif_image_handle_release)>;
+    using HeifImage =
+        std::unique_ptr<heif_image, decltype(&heif_image_release)>;
+
+    /* HEIF image. */
+    class ImageHeif : public Image {
+    public:
+        // should be ignored, done by decoder
+        void fix_orientation() override {}
+    };
 };
+
+// register format in factory
+static ImageFormatHeif format_heif;

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Portable Network Graphics (PNG) format support.
+// PNG (Portable Network Graphics) image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "png.hpp"
-
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <png.h>
 
@@ -28,81 +26,198 @@
 #endif
 #endif // PNG_APNG_SUPPORTED
 
-// register format in factory
-class ImagePng;
-static const ImageLoader::Registrator<ImagePng>
-    image_format_registartion("PNG", ImageLoader::Priority::Highest);
-
-/** Memory buffer reader. */
-struct BufferReader {
-    BufferReader(const Image::Data& raw_data)
-        : data(raw_data)
-    {
-    }
-
-    // PNG reader callback, see `png_rw_ptr` in png.h
-    static void read(png_structp png, png_bytep buffer, size_t size)
-    {
-        BufferReader* reader =
-            reinterpret_cast<BufferReader*>(png_get_io_ptr(png));
-        if (reader && reader->position + size <= reader->data.size) {
-            std::memcpy(buffer, reader->data.data + reader->position, size);
-            reader->position += size;
-        } else {
-            png_error(png, "No data in PNG reader");
-        }
-    }
-
-    const Image::Data& data;
-    size_t position = 0;
-};
-
-/** PNG decoder/encoder wrapper. */
-class PngObject {
+class ImageFormatPng : public ImageFormat {
 public:
-    PngObject(const bool rm)
-        : read_mode(rm)
+    ImageFormatPng()
+        : ImageFormat(Priority::Highest, "png")
     {
-        if (read_mode) {
-            png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
-                                         nullptr, nullptr);
-        } else {
-            png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr,
-                                          nullptr, nullptr);
-        }
-        if (png) {
-            info = png_create_info_struct(png);
-        }
     }
 
-    ~PngObject()
+    ImagePtr decode(const Data& data) override
     {
-        if (png) {
-            if (read_mode) {
-                png_destroy_read_struct(&png, info ? &info : nullptr, nullptr);
-            } else {
-                png_destroy_write_struct(&png, info ? &info : nullptr);
+        if (png_sig_cmp(data.data, 0, data.size) != 0) {
+            return nullptr;
+        }
+
+        // create decoder
+        PngObject png(true);
+        if (!png.png || !png.info) {
+            return nullptr;
+        }
+
+        // setup error handling
+        if (setjmp(png_jmpbuf(png))) {
+            return nullptr;
+        }
+
+        // register reader and get general image info
+        BufferReader buf_reader(data);
+        png_set_read_fn(png, &buf_reader, &BufferReader::read);
+        png_read_info(png, png);
+
+        // setup decoder
+        const png_byte color_type = png_get_color_type(png, png);
+        const png_byte bit_depth = png_get_bit_depth(png, png);
+        if (png_get_interlace_type(png, png) != PNG_INTERLACE_NONE) {
+            png_set_interlace_handling(png);
+        }
+        if (color_type == PNG_COLOR_TYPE_PALETTE) {
+            png_set_palette_to_rgb(png);
+        }
+        if (color_type == PNG_COLOR_TYPE_GRAY ||
+            color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+            png_set_gray_to_rgb(png);
+            if (bit_depth < 8) {
+                png_set_expand_gray_1_2_4_to_8(png);
             }
         }
+        if (png_get_valid(png, png, PNG_INFO_tRNS)) {
+            png_set_tRNS_to_alpha(png);
+        }
+        if (bit_depth == 16) {
+            png_set_strip_16(png);
+        }
+        png_set_filler(png, 0xff, PNG_FILLER_AFTER);
+        png_set_packing(png);
+        png_set_packswap(png);
+        png_set_bgr(png);
+        png_set_expand(png);
+
+        png_read_update_info(png, png);
+
+        ImagePtr image = std::make_shared<Image>();
+
+        // decode image
+#ifdef PNG_APNG_SUPPORTED
+        if (png_get_valid(png, png, PNG_INFO_acTL) &&
+            png_get_num_frames(png, png) > 1) {
+            decode_multiple(png, image->frames);
+        } else {
+            decode_single(png, image->frames);
+        }
+#else
+        decode_single(png, image->frames);
+#endif // PNG_APNG_SUPPORTED
+
+        // read text info
+        png_text* txt;
+        int total;
+        if (png_get_text(png, png, &txt, &total)) {
+            for (int i = 0; i < total; ++i) {
+                image->meta.insert(std::make_pair(txt[i].key, txt[i].text));
+            }
+        }
+
+        image->format = std::format("PNG {}bit", bit_depth * 4);
+
+        return image;
     }
 
-    operator png_struct*() { return png; }
-    operator png_info*() { return info; }
+    std::vector<uint8_t> encode(const Pixmap& pm) override
+    {
+        // create encoder
+        PngObject png(false);
+        if (!png.png || !png.info) {
+            return {};
+        }
 
-    bool read_mode;
-    png_struct* png = nullptr;
-    png_info* info = nullptr;
-};
+        // setup error handling
+        if (setjmp(png_jmpbuf(png))) {
+            return {};
+        }
 
-/* Portable Network Graphics (PNG) image. */
-class ImagePng : public Image {
+        // bind pixmap
+        std::vector<png_bytep> bind(pm.height(), nullptr);
+        for (size_t i = 0; i < pm.height(); ++i) {
+            bind[i] =
+                reinterpret_cast<png_bytep>(const_cast<argb_t*>(&pm.at(0, i)));
+        }
+
+        // setup output: 8bit RGBA
+        png_set_IHDR(png, png, pm.width(), pm.height(), 8,
+                     PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+                     PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png_set_bgr(png);
+
+        // encode png
+        std::vector<uint8_t> data;
+        png_set_write_fn(png, &data, &png_encoder_write, &png_encoder_flush);
+        png_write_info(png, png);
+        png_write_image(png, bind.data());
+        png_write_end(png, nullptr);
+
+        return data;
+    }
+
 private:
+    /** Memory buffer reader. */
+    struct BufferReader {
+        BufferReader(const Data& raw_data)
+            : data(raw_data)
+        {
+        }
+
+        // PNG reader callback, see `png_rw_ptr` in png.h
+        static void read(png_structp png, png_bytep buffer, size_t size)
+        {
+            BufferReader* reader =
+                reinterpret_cast<BufferReader*>(png_get_io_ptr(png));
+            if (reader && reader->position + size <= reader->data.size) {
+                std::memcpy(buffer, reader->data.data + reader->position, size);
+                reader->position += size;
+            } else {
+                png_error(png, "No data in PNG reader");
+            }
+        }
+
+        const Data& data;
+        size_t position = 0;
+    };
+
+    /** PNG decoder/encoder wrapper. */
+    class PngObject {
+    public:
+        PngObject(const bool rm)
+            : read_mode(rm)
+        {
+            if (read_mode) {
+                png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
+                                             nullptr, nullptr);
+            } else {
+                png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr,
+                                              nullptr, nullptr);
+            }
+            if (png) {
+                info = png_create_info_struct(png);
+            }
+        }
+
+        ~PngObject()
+        {
+            if (png) {
+                if (read_mode) {
+                    png_destroy_read_struct(&png, info ? &info : nullptr,
+                                            nullptr);
+                } else {
+                    png_destroy_write_struct(&png, info ? &info : nullptr);
+                }
+            }
+        }
+
+        operator png_struct*() { return png; }
+        operator png_info*() { return info; }
+
+        bool read_mode;
+        png_struct* png = nullptr;
+        png_info* info = nullptr;
+    };
+
     /**
      * Bind pixmap with PNG line-reading decoder.
      * @param pm pixmap to bind
      * @return array of pointers to pixmap data
      */
-    static std::vector<png_bytep> bind_pixmap(Pixmap& pm)
+    std::vector<png_bytep> bind_pixmap(Pixmap& pm) const
     {
         std::vector<png_bytep> pbind(pm.height(), nullptr);
         for (size_t i = 0; i < pm.height(); ++i) {
@@ -115,9 +230,11 @@ private:
     /**
      * Decode single PNG frame.
      * @param png PNG decoder
+     * @param frames image frames
      * @param index number of the frame to load
      */
-    void decode_frame(PngObject& png, const size_t index)
+    void decode_frame(PngObject& png, std::vector<Image::Frame>& frames,
+                      const size_t index) const
     {
         // get frame params
         png_uint_32 width = 0;
@@ -191,8 +308,10 @@ private:
     /**
      * Decode multi framed image.
      * @param png PNG decoder
+     * @param frames image frames
      */
-    void decode_multiple(PngObject& png)
+    void decode_multiple(PngObject& png,
+                         std::vector<Image::Frame>& frames) const
     {
         // allocate frames
         const png_uint_32 width = png_get_image_width(png, png);
@@ -205,7 +324,7 @@ private:
 
         // decode frames
         for (png_uint_32 i = 0; i < nframes; ++i) {
-            decode_frame(png, i);
+            decode_frame(png, frames, i);
         }
 
         if (png_get_first_frame_is_hidden(png, png) && nframes > 1) {
@@ -217,8 +336,9 @@ private:
     /**
      * Decode single framed image.
      * @param png PNG decoder
+     * @param frames image frames
      */
-    void decode_single(PngObject& png)
+    void decode_single(PngObject& png, std::vector<Image::Frame>& frames) const
     {
         const png_uint_32 width = png_get_image_width(png, png);
         const png_uint_32 height = png_get_image_height(png, png);
@@ -230,135 +350,19 @@ private:
         png_read_image(png, bind.data());
     }
 
-public:
-    bool load(const Data& data) override
+    // PNG writer callback, see `png_rw_ptr` in png.h
+    static void png_encoder_write(png_structp png, png_bytep buffer,
+                                  size_t size)
     {
-        // check signature
-        if (png_sig_cmp(data.data, 0, data.size) != 0) {
-            return false;
-        }
-
-        // create decoder
-        PngObject png(true);
-        if (!png.png || !png.info) {
-            return false;
-        }
-
-        // setup error handling
-        if (setjmp(png_jmpbuf(png))) {
-            return false;
-        }
-
-        // register reader and get general image info
-        BufferReader buf_reader(data);
-        png_set_read_fn(png, &buf_reader, &BufferReader::read);
-        png_read_info(png, png);
-
-        // setup decoder
-        const png_byte color_type = png_get_color_type(png, png);
-        const png_byte bit_depth = png_get_bit_depth(png, png);
-        if (png_get_interlace_type(png, png) != PNG_INTERLACE_NONE) {
-            png_set_interlace_handling(png);
-        }
-        if (color_type == PNG_COLOR_TYPE_PALETTE) {
-            png_set_palette_to_rgb(png);
-        }
-        if (color_type == PNG_COLOR_TYPE_GRAY ||
-            color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
-            png_set_gray_to_rgb(png);
-            if (bit_depth < 8) {
-                png_set_expand_gray_1_2_4_to_8(png);
-            }
-        }
-        if (png_get_valid(png, png, PNG_INFO_tRNS)) {
-            png_set_tRNS_to_alpha(png);
-        }
-        if (bit_depth == 16) {
-            png_set_strip_16(png);
-        }
-        png_set_filler(png, 0xff, PNG_FILLER_AFTER);
-        png_set_packing(png);
-        png_set_packswap(png);
-        png_set_bgr(png);
-        png_set_expand(png);
-
-        png_read_update_info(png, png);
-
-        // decode image
-#ifdef PNG_APNG_SUPPORTED
-        if (png_get_valid(png, png, PNG_INFO_acTL) &&
-            png_get_num_frames(png, png) > 1) {
-            decode_multiple(png);
-        } else {
-            decode_single(png);
-        }
-#else
-        decode_single(png);
-#endif // PNG_APNG_SUPPORTED
-
-        // read text info
-        png_text* txt;
-        int total;
-        if (png_get_text(png, png, &txt, &total)) {
-            for (int i = 0; i < total; ++i) {
-                meta.insert(std::make_pair(txt[i].key, txt[i].text));
-            }
-        }
-
-        format = std::format("PNG {}bit", bit_depth * 4);
-
-        return true;
+        std::vector<uint8_t>* out =
+            reinterpret_cast<std::vector<uint8_t>*>(png_get_io_ptr(png));
+        out->reserve(out->size() + size);
+        out->insert(out->end(), buffer, buffer + size);
     }
+
+    // // PNG flusher callback, see `png_flush_ptr` in png.h
+    static void png_encoder_flush(png_structp) {}
 };
 
-namespace Png {
-
-// PNG writer callback, see `png_rw_ptr` in png.h
-static void png_encoder_write(png_structp png, png_bytep buffer, size_t size)
-{
-    std::vector<uint8_t>* out =
-        reinterpret_cast<std::vector<uint8_t>*>(png_get_io_ptr(png));
-    out->reserve(out->size() + size);
-    out->insert(out->end(), buffer, buffer + size);
-}
-
-// // PNG flusher callback, see `png_flush_ptr` in png.h
-static void png_encoder_flush(png_structp) {}
-
-std::vector<uint8_t> encode(const Pixmap& pm)
-{
-    // create encoder
-    PngObject png(false);
-    if (!png.png || !png.info) {
-        return {};
-    }
-
-    // setup error handling
-    if (setjmp(png_jmpbuf(png))) {
-        return {};
-    }
-
-    // bind pixmap
-    std::vector<png_bytep> bind(pm.height(), nullptr);
-    for (size_t i = 0; i < pm.height(); ++i) {
-        bind[i] =
-            reinterpret_cast<png_bytep>(const_cast<argb_t*>(&pm.at(0, i)));
-    }
-
-    // setup output: 8bit RGBA
-    png_set_IHDR(png, png, pm.width(), pm.height(), 8, PNG_COLOR_TYPE_RGB_ALPHA,
-                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
-                 PNG_FILTER_TYPE_DEFAULT);
-    png_set_bgr(png);
-
-    // encode png
-    std::vector<uint8_t> data;
-    png_set_write_fn(png, &data, &png_encoder_write, &png_encoder_flush);
-    png_write_info(png, png);
-    png_write_image(png, bind.data());
-    png_write_end(png, nullptr);
-
-    return data;
-}
-
-}; // namespace Png
+// register format in factory
+static ImageFormatPng format_png;

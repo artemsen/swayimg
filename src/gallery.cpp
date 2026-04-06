@@ -5,8 +5,8 @@
 #include "gallery.hpp"
 
 #include "application.hpp"
+#include "imageformat.hpp"
 #include "imagelist.hpp"
-#include "imageloader.hpp"
 #include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
@@ -580,7 +580,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     if (!thumb.pm) {
         // create thumbnail from original image
-        const ImagePtr image = ImageLoader::self().load(entry);
+        const ImagePtr image = FormatFactory::self().load(entry);
         if (!image) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
         } else {
@@ -642,7 +642,7 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
     // load thumbnail
     const ImageEntryPtr thumb_entry = std::make_shared<ImageEntry>();
     thumb_entry->path = thumb_path;
-    const ImagePtr thumb_image = ImageLoader::self().load(thumb_entry);
+    const ImagePtr thumb_image = FormatFactory::self().load(thumb_entry);
     if (thumb_image) {
         return thumb_image->frames[0].pm;
     }

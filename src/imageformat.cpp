@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Image loader.
-// Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
+// Image format interface.
+// Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
-#include "imageloader.hpp"
+#include "imageformat.hpp"
 
 #include "buildconf.hpp"
 #include "log.hpp"
@@ -23,7 +23,7 @@
  * @param image target image instance
  * @param data image file data
  */
-static void read_exif(ImagePtr& image, const Image::Data& data)
+static void read_exif(ImagePtr& image, const ImageFormat::Data& data)
 {
     try {
         // read EXIF data
@@ -39,7 +39,7 @@ static void read_exif(ImagePtr& image, const Image::Data& data)
             return;
         }
 
-        // import EXIF to meta container
+        // export EXIF data to meta container
         for (const auto& it : exif) {
             image->meta.insert(std::make_pair(it.key(), it.value().toString()));
         }
@@ -49,7 +49,7 @@ static void read_exif(ImagePtr& image, const Image::Data& data)
 #endif // HAVE_LIBEXIV2
 
 /** Image data reader. */
-struct DataBuffer : public Image::Data {
+struct DataBuffer : public ImageFormat::Data {
     ~DataBuffer()
     {
         if (container.empty() && data) {
@@ -194,37 +194,52 @@ private:
     std::vector<uint8_t> container;
 };
 
-ImageLoader& ImageLoader::self()
+ImageFormat::ImageFormat(const Priority load_priority, const char* format_name)
+    : priority(load_priority)
+    , name(format_name)
 {
-    static ImageLoader singleton;
+    FormatFactory::self().add(this);
+}
+
+FormatFactory& FormatFactory::self()
+{
+    static FormatFactory singleton;
     return singleton;
 }
 
-void ImageLoader::register_format(const char* name, Priority priority,
-                                  const Constructor& creator)
+void FormatFactory::add(ImageFormat* fmt)
 {
-    const auto it = std::find_if(registry.begin(), registry.end(),
-                                 [priority](const auto& it) {
-                                     return priority < it.priority;
-                                 });
-    registry.insert(it, { name, priority, creator });
+    const auto it =
+        std::find_if(formats.begin(), formats.end(), [fmt](const auto& it) {
+            return fmt->priority < it->priority;
+        });
+    formats.insert(it, fmt);
 }
 
-std::string ImageLoader::format_list() const
+ImageFormat* FormatFactory::get(const char* name)
 {
-    std::string formats;
+    auto it =
+        std::find_if(formats.begin(), formats.end(), [name](const auto& it) {
+            return strcmp(name, it->name) == 0;
+        });
+    return it == formats.end() ? nullptr : *it;
+}
 
-    for (const auto& it : registry) {
-        if (!formats.empty()) {
-            formats += ", ";
+std::string FormatFactory::list() const
+{
+    std::string fmt;
+
+    for (const auto& it : formats) {
+        if (!fmt.empty()) {
+            fmt += ", ";
         }
-        formats += it.name;
+        fmt += it->name;
     }
 
-    return formats;
+    return fmt;
 }
 
-ImagePtr ImageLoader::load(const ImageEntryPtr& entry) const
+ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
 {
     const Log::PerfTimer timer;
 
@@ -248,30 +263,32 @@ ImagePtr ImageLoader::load(const ImageEntryPtr& entry) const
     }
 
     // decode file
-    for (const auto& it : registry) {
-        ImagePtr image = it.create();
-        if (image->load(data)) {
-            if (Log::verbose_enable()) {
-                Log::verbose("Image {} loaded in {:.6f} sec",
-                             entry->path.filename().string(), timer.time());
-            }
-            if (full_path.starts_with(ImageEntry::SRC_STDIN) ||
-                full_path.starts_with(ImageEntry::SRC_EXEC)) {
-                entry->mtime = time(nullptr);
-            }
-            entry->size = data.size;
+    for (const auto& it : formats) {
+        ImagePtr image = it->decode(data);
+        if (!image) {
+            continue;
+        }
 
-            image->entry = entry;
+        if (Log::verbose_enable()) {
+            Log::verbose("Image {} loaded in {:.6f} sec",
+                         entry->path.filename().string(), timer.time());
+        }
+        if (full_path.starts_with(ImageEntry::SRC_STDIN) ||
+            full_path.starts_with(ImageEntry::SRC_EXEC)) {
+            entry->mtime = time(nullptr);
+        }
+        entry->size = data.size;
+
+        image->entry = entry;
 
 #ifdef HAVE_LIBEXIV2
-            read_exif(image, data);
-            if (fix_orientation) {
-                image->fix_orientation();
-            }
+        read_exif(image, data);
+        if (fix_orientation) {
+            image->fix_orientation();
+        }
 #endif // HAVE_LIBEXIV2
 
-            return image;
-        }
+        return image;
     }
 
     Log::verbose("Unsupported image format in {}", entry->path.string());

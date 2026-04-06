@@ -1,70 +1,130 @@
 // SPDX-License-Identifier: MIT
-// DICOM format decoder.
+// DICOM image format.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <algorithm>
 #include <cstring>
 #include <limits>
 #include <utility>
 
-// register format in factory
-class ImageDicom;
-static const ImageLoader::Registrator<ImageDicom>
-    image_format_registartion("DICOM", ImageLoader::Priority::Low);
-
-/** Data input stream. */
-struct DataStream {
-    DataStream(const Image::Data& raw_data, size_t pos)
-        : data(raw_data)
-        , position(pos)
+class ImageFormatDicom : public ImageFormat {
+public:
+    ImageFormatDicom()
+        : ImageFormat(Priority::Low, "dicom")
     {
     }
 
-    /**
-     * Read data from the stream.
-     * @param bytes number of bytes to consume
-     * @return pointer to the data or nullptr on End of stream
-     */
-    const uint8_t* consume(const size_t bytes)
-    {
-        const uint8_t* ptr = nullptr;
-        const size_t end = position + bytes;
+    static constexpr const uint8_t SIG_DATA[] = { 'D', 'I', 'C', 'M' };
+    static constexpr const size_t SIG_OFFSET = 128;
 
-        if (end <= data.size) {
-            ptr = data.data + position;
-            position = end;
+    ImagePtr decode(const Data& data) override
+    {
+        if (!check_signature(data, SIG_DATA, SIG_OFFSET)) {
+            return nullptr;
         }
 
-        return ptr;
-    }
+        DataStream stream(data, SIG_OFFSET + sizeof(SIG_DATA));
 
-    /**
-     * Read data from the stream.
-     * @param value buffer for data to read
-     * @return false on End of stream
-     */
-    template <typename T> bool read(T& value)
-    {
-        const uint8_t* ptr = consume(sizeof(T));
-        if (ptr) {
-            value = *reinterpret_cast<const T*>(ptr);
+        // get image description
+        DicomImage dicom {};
+        if (!get_image(stream, dicom) || dicom.spp != 1 /* monochrome */ ||
+            dicom.bpp != 16 /* 2 bytes per pixel */) {
+            return nullptr;
         }
-        return ptr;
+
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(Pixmap::RGB, dicom.width, dicom.height);
+
+        // calculate min/max color value if not set yet
+        if (dicom.px_max == 0 || dicom.px_max <= dicom.px_min) {
+            dicom.px_min = std::numeric_limits<int16_t>::max();
+            dicom.px_max = std::numeric_limits<int16_t>::min();
+
+            const int16_t* pixel_data =
+                reinterpret_cast<const int16_t*>(dicom.data);
+            const size_t num_pixels = dicom.width * dicom.height;
+
+            for (size_t i = 0; i < num_pixels; ++i) {
+                const int16_t color = pixel_data[i];
+                dicom.px_min = std::min(dicom.px_min, color);
+                dicom.px_max = std::max(dicom.px_max, color);
+            }
+        }
+
+        // calculate coefficient for converting 16-bit color to 8-bit
+        double pixel_coeff;
+        if (dicom.px_max <= dicom.px_min) {
+            pixel_coeff = 1.0;
+        } else {
+            pixel_coeff = 256.0 / (dicom.px_max - dicom.px_min);
+        }
+
+        // decode image
+        const int16_t* ptr = reinterpret_cast<const int16_t*>(dicom.data);
+        pm.foreach([&ptr, dicom, pixel_coeff](argb_t& pixel) {
+            int16_t src_color = *ptr++;
+            src_color -= dicom.px_min;
+            src_color *= pixel_coeff;
+            const uint8_t dst_color = static_cast<uint8_t>(std::clamp(
+                src_color, static_cast<int16_t>(0), static_cast<int16_t>(255)));
+            pixel = { argb_t::max, dst_color, dst_color, dst_color };
+        });
+
+        image->format = "DICOM";
+
+        return image;
     }
 
 private:
-    const Image::Data& data;
-    uint64_t position;
-};
+    /** Data input stream. */
+    struct DataStream {
+        DataStream(const Data& raw_data, size_t pos)
+            : data(raw_data)
+            , position(pos)
+        {
+        }
 
-/* DICOM image. */
-class ImageDicom : public Image {
-private:
-    // DICOM signature
-    static constexpr const uint8_t signature[] = { 'D', 'I', 'C', 'M' };
-    static constexpr const size_t DICOM_SIGNATURE_OFFSET = 128;
+        /**
+         * Read data from the stream.
+         * @param bytes number of bytes to consume
+         * @return pointer to the data or nullptr on End of stream
+         */
+        const uint8_t* consume(const size_t bytes)
+        {
+            const uint8_t* ptr = nullptr;
+            const size_t end = position + bytes;
+
+            if (end <= data.size) {
+                ptr = data.data + position;
+                position = end;
+            }
+
+            return ptr;
+        }
+
+        /**
+         * Read data from the stream.
+         * @param value buffer for data to read
+         * @return false on End of stream
+         */
+        template <typename T> bool read(T& value)
+        {
+            const uint8_t* ptr = consume(sizeof(T));
+            if (ptr) {
+                value = *reinterpret_cast<const T*>(ptr);
+            }
+            return ptr;
+        }
+
+    private:
+        const Data& data;
+        uint64_t position;
+    };
 
     // DICOM tags
     static constexpr const uint32_t TAG_SAMPLES_PER_PIXEL = 0x00280002;
@@ -207,68 +267,7 @@ private:
             std::cmp_equal(image.data_sz,
                            image.width * image.height * (image.bpp / 8));
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature
-        if (data.size < DICOM_SIGNATURE_OFFSET + sizeof(signature) ||
-            std::memcmp(data.data + DICOM_SIGNATURE_OFFSET, signature,
-                        sizeof(signature))) {
-            return false;
-        }
-
-        DataStream stream(data, DICOM_SIGNATURE_OFFSET + sizeof(signature));
-
-        // get image description
-        DicomImage dicom {};
-        if (!get_image(stream, dicom) || dicom.spp != 1 /* monochrome */ ||
-            dicom.bpp != 16 /* 2 bytes per pixel */) {
-            return false;
-        }
-
-        // allocate pixmap
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
-        pm.create(Pixmap::RGB, dicom.width, dicom.height);
-
-        // calculate min/max color value if not set yet
-        if (dicom.px_max == 0 || dicom.px_max <= dicom.px_min) {
-            dicom.px_min = std::numeric_limits<int16_t>::max();
-            dicom.px_max = std::numeric_limits<int16_t>::min();
-
-            const int16_t* pixel_data =
-                reinterpret_cast<const int16_t*>(dicom.data);
-            const size_t num_pixels = dicom.width * dicom.height;
-
-            for (size_t i = 0; i < num_pixels; ++i) {
-                const int16_t color = pixel_data[i];
-                dicom.px_min = std::min(dicom.px_min, color);
-                dicom.px_max = std::max(dicom.px_max, color);
-            }
-        }
-
-        // calculate coefficient for converting 16-bit color to 8-bit
-        double pixel_coeff;
-        if (dicom.px_max <= dicom.px_min) {
-            pixel_coeff = 1.0;
-        } else {
-            pixel_coeff = 256.0 / (dicom.px_max - dicom.px_min);
-        }
-
-        // decode image
-        const int16_t* ptr = reinterpret_cast<const int16_t*>(dicom.data);
-        pm.foreach([&ptr, dicom, pixel_coeff](argb_t& pixel) {
-            int16_t src_color = *ptr++;
-            src_color -= dicom.px_min;
-            src_color *= pixel_coeff;
-            const uint8_t dst_color = static_cast<uint8_t>(std::clamp(
-                src_color, static_cast<int16_t>(0), static_cast<int16_t>(255)));
-            pixel = { argb_t::max, dst_color, dst_color, dst_color };
-        });
-
-        format = "DICOM";
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatDicom format_dicom;

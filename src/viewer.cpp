@@ -5,7 +5,7 @@
 #include "viewer.hpp"
 
 #include "application.hpp"
-#include "imageloader.hpp"
+#include "imageformat.hpp"
 #include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
@@ -211,7 +211,7 @@ bool Viewer::open(const ImageEntryPtr& entry)
     }
 
     if (!new_image) {
-        new_image = ImageLoader::self().load(entry);
+        new_image = FormatFactory::self().load(entry);
         if (!new_image) {
             return false; // failed to load
         }
@@ -849,7 +849,7 @@ void Viewer::preloader_start()
 
             // load image
             if (!next_image) {
-                next_image = ImageLoader::self().load(next_entry);
+                next_image = FormatFactory::self().load(next_entry);
             }
 
             if (!next_image) {

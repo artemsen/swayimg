@@ -4,7 +4,7 @@
 
 #include "application.hpp"
 #include "buildconf.hpp"
-#include "imageloader.hpp"
+#include "imageformat.hpp"
 #include "log.hpp"
 
 #include <getopt.h>
@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
                  puts("swayimg version " APP_VERSION ".");
                  puts("https://github.com/artemsen/swayimg");
                  printf("Supported formats: %s.\n",
-                        ImageLoader::self().format_list().c_str());
+                        FormatFactory::self().list().c_str());
                  exit(EXIT_SUCCESS);
              });
 

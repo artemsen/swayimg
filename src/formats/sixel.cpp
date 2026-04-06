@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: MIT
-// Sixel format decoder.
+// Sixel image format.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <sixel.h>
 
 #include <cstdlib>
 #include <utility>
 
-// register format in factory
-class ImageSixel;
-static const ImageLoader::Registrator<ImageSixel>
-    image_format_registartion("Sixel", ImageLoader::Priority::Low);
-
-/* Sixel image. */
-class ImageSixel : public Image {
+class ImageFormatSixel : public ImageFormat {
 public:
-    bool load(const Data& data) override
+    ImageFormatSixel()
+        : ImageFormat(Priority::Low, "sixel")
+    {
+    }
+
+    ImagePtr decode(const Data& data) override
     {
         // check signature: sixel always starts with Esc code
         if (data.data[0] != 0x1b) {
-            return false;
+            return nullptr;
         }
 
         // decode image
@@ -35,11 +34,13 @@ public:
         if (SIXEL_FAILED(status) || width == 0 || height == 0) {
             std::free(pixels);
             std::free(palette);
-            return false;
+            return nullptr;
         }
 
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
         pm.create(Pixmap::RGB, width, height);
 
         // convert palette to real pixels
@@ -57,11 +58,14 @@ public:
             }
         }
 
-        format = "Sixel";
+        image->format = "Sixel";
 
         std::free(pixels);
         std::free(palette);
 
-        return true;
+        return image;
     }
 };
+
+// register format in factory
+static ImageFormatSixel format_sixel;

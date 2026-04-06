@@ -1,23 +1,108 @@
 // SPDX-License-Identifier: MIT
-// BMP format decoder.
+// BMP image format.
 // Copyright (C) 2020 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <cstdlib>
 #include <format>
 
-// register format in factory
-class ImageBmp;
-static const ImageLoader::Registrator<ImageBmp>
-    image_format_registartion("BMP", ImageLoader::Priority::Low);
+class ImageFormatBmp : public ImageFormat {
+public:
+    ImageFormatBmp()
+        : ImageFormat(Priority::Low, "bmp")
+    {
+    }
 
-/* BMP image. */
-class ImageBmp : public Image {
+    ImagePtr decode(const Data& data) override
+    {
+        if (!check_signature(data, { 'B', 'M' })) {
+            return nullptr;
+        }
+
+        const Header* hdr = reinterpret_cast<const Header*>(data.data);
+        const Info* bmp =
+            reinterpret_cast<const Info*>(data.data + sizeof(Header));
+
+        // check format
+        if (hdr->offset >= data.size ||
+            hdr->offset < sizeof(Header) + sizeof(Info)) {
+            return nullptr;
+        }
+        if (bmp->dib_size > hdr->offset) {
+            return nullptr;
+        }
+
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(bmp->bpp == 32 ? Pixmap::ARGB : Pixmap::RGB,
+                  std::abs(bmp->width), std::abs(bmp->height));
+
+        const uint8_t* image_data = data.data + hdr->offset;
+        const size_t image_data_sz = data.size - hdr->offset;
+
+        // palette
+        const uint32_t* color_data = reinterpret_cast<const uint32_t*>(
+            reinterpret_cast<const uint8_t*>(bmp) + bmp->dib_size);
+        const size_t color_data_sz =
+            hdr->offset - sizeof(Header) - bmp->dib_size;
+        const Palette palette {
+            .table = color_data,
+            .size = color_data_sz / sizeof(uint32_t),
+        };
+
+        image->format = std::format("BMP {}bit ", bmp->bpp);
+
+        // decode bitmap
+        if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
+            image->format += "masked";
+
+            // create mask
+            Mask mask {};
+            const uint32_t* mask_location;
+            if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
+                mask_location = reinterpret_cast<const uint32_t*>(bmp + 1);
+            } else {
+                mask_location =
+                    (color_data_sz >= 3 * sizeof(uint32_t) ? color_data
+                                                           : nullptr);
+            }
+            if (mask_location) {
+                mask.red = mask_location[0];
+                mask.green = mask_location[1];
+                mask.blue = mask_location[2];
+                mask.alpha = bmp->dib_size > BITMAPINFOV2HEADER_SIZE
+                    ? mask_location[3]
+                    : 0;
+            }
+
+            if (!decode_masked(pm, *bmp, mask, image_data, image_data_sz)) {
+                return nullptr;
+            }
+        } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
+            image->format += "RLE";
+            if (!decode_rle(pm, *bmp, palette, image_data, image_data_sz)) {
+                return nullptr;
+            }
+        } else if (bmp->compression == BI_RGB) {
+            image->format += "uncompressed";
+            if (!decode_rgb(pm, *bmp, palette, image_data, image_data_sz)) {
+                return nullptr;
+            }
+        } else {
+            return nullptr;
+        }
+
+        if (bmp->height > 0) {
+            pm.flip_vertical();
+        }
+
+        return image;
+    }
+
 private:
-    // BMP signature
-    static constexpr const uint8_t signature[] = { 'B', 'M' };
-
     // Compression types
     static constexpr const uint8_t BI_RGB = 0;
     static constexpr const uint8_t BI_RLE8 = 1;
@@ -362,94 +447,7 @@ private:
 
         return true;
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature
-        if (data.size < sizeof(Header) + sizeof(Info) ||
-            std::memcmp(data.data, signature, sizeof(signature))) {
-            return false;
-        }
-
-        const Header* hdr = reinterpret_cast<const Header*>(data.data);
-        const Info* bmp =
-            reinterpret_cast<const Info*>(data.data + sizeof(Header));
-
-        // check format
-        if (hdr->offset >= data.size ||
-            hdr->offset < sizeof(Header) + sizeof(Info)) {
-            return false;
-        }
-        if (bmp->dib_size > hdr->offset) {
-            return false;
-        }
-
-        // allocate pixmap
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
-        pm.create(bmp->bpp == 32 ? Pixmap::ARGB : Pixmap::RGB,
-                  std::abs(bmp->width), std::abs(bmp->height));
-
-        const uint8_t* image_data = data.data + hdr->offset;
-        const size_t image_data_sz = data.size - hdr->offset;
-
-        // palette
-        const uint32_t* color_data = reinterpret_cast<const uint32_t*>(
-            reinterpret_cast<const uint8_t*>(bmp) + bmp->dib_size);
-        const size_t color_data_sz =
-            hdr->offset - sizeof(Header) - bmp->dib_size;
-        const Palette palette {
-            .table = color_data,
-            .size = color_data_sz / sizeof(uint32_t),
-        };
-
-        format = std::format("BMP {}bit ", bmp->bpp);
-
-        // decode bitmap
-        if (bmp->compression == BI_BITFIELDS || bmp->bpp == 16) {
-            format += "masked";
-
-            // create mask
-            Mask mask {};
-            const uint32_t* mask_location;
-            if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
-                mask_location = reinterpret_cast<const uint32_t*>(bmp + 1);
-            } else {
-                mask_location =
-                    (color_data_sz >= 3 * sizeof(uint32_t) ? color_data
-                                                           : nullptr);
-            }
-            if (mask_location) {
-                mask.red = mask_location[0];
-                mask.green = mask_location[1];
-                mask.blue = mask_location[2];
-                mask.alpha = bmp->dib_size > BITMAPINFOV2HEADER_SIZE
-                    ? mask_location[3]
-                    : 0;
-            }
-
-            if (!decode_masked(pm, *bmp, mask, image_data, image_data_sz)) {
-                return false;
-            }
-        } else if (bmp->compression == BI_RLE8 || bmp->compression == BI_RLE4) {
-            format += "RLE";
-            if (!decode_rle(pm, *bmp, palette, image_data, image_data_sz)) {
-                return false;
-            }
-        } else if (bmp->compression == BI_RGB) {
-            format += "uncompressed";
-            if (!decode_rgb(pm, *bmp, palette, image_data, image_data_sz)) {
-                return false;
-            }
-        } else {
-            return false;
-        }
-
-        if (bmp->height > 0) {
-            pm.flip_vertical();
-        }
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatBmp format_bmp;

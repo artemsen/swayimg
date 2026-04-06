@@ -1,19 +1,116 @@
 // SPDX-License-Identifier: MIT
-// Truevision TGA format decoder.
+// TGA (Truevision TARGA) image format.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <cstring>
 #include <format>
 
-// register format in factory
-class ImageTga;
-static const ImageLoader::Registrator<ImageTga>
-    image_format_registartion("TGA", ImageLoader::Priority::Lowest);
+class ImageFormatTga : public ImageFormat {
+public:
+    ImageFormatTga()
+        : ImageFormat(Priority::Lowest, "tga")
+    {
+    }
 
-/* Truevision TGA image. */
-class ImageTga : public Image {
+    ImagePtr decode(const Data& data) override
+    {
+        if (data.size < sizeof(Header)) {
+            return nullptr;
+        }
+        const Header* tga = reinterpret_cast<const Header*>(data.data);
+        if (!validate_header(tga)) {
+            return nullptr;
+        }
+
+        // get color map
+        const uint8_t* colormap = nullptr;
+        size_t colormap_sz = 0;
+        const bool has_colormap =
+            (tga->clrmap_type & TGA_COLORMAP) && tga->cm_size && tga->cm_bpc;
+        switch (tga->image_type) {
+            case TGA_UNC_CM:
+            case TGA_RLE_CM:
+                if (!has_colormap) {
+                    return nullptr;
+                }
+                colormap_sz = tga->cm_size *
+                    (tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0));
+                colormap = data.data + sizeof(Header) + tga->id_len;
+                break;
+            default:
+                if (has_colormap) {
+                    return nullptr;
+                }
+                break;
+        }
+
+        // get pixel array offset
+        const size_t data_offset = sizeof(Header) + tga->id_len + colormap_sz;
+        if (data_offset >= data.size) {
+            return nullptr;
+        }
+        const uint8_t* pix_ptr = data.data + data_offset;
+        const size_t pix_sz = data.size - data_offset;
+
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(tga->bpp == 32 ? Pixmap::ARGB : Pixmap::RGB, tga->width,
+                  tga->height);
+        bool rc = false;
+        switch (tga->image_type) {
+            case TGA_UNC_CM:
+            case TGA_UNC_TC:
+            case TGA_UNC_GS:
+                rc = decode_unc(pm, tga, colormap, pix_ptr, pix_sz);
+                break;
+            case TGA_RLE_CM:
+            case TGA_RLE_TC:
+            case TGA_RLE_GS:
+                rc = decode_rle(pm, tga, colormap, pix_ptr, pix_sz);
+                break;
+        }
+        if (!rc) {
+            return nullptr;
+        }
+
+        // fix orientation
+        if (!(tga->desc & TGA_ORDER_T2B)) {
+            pm.flip_vertical();
+        }
+        if (tga->desc & TGA_ORDER_R2L) {
+            pm.flip_horizontal();
+        }
+
+        // set image format info
+        image->format = std::format("TARGA {}bpp, ", tga->bpp);
+        switch (tga->image_type) {
+            case TGA_UNC_CM:
+                image->format += "uncompressed color-mapped";
+                break;
+            case TGA_UNC_TC:
+                image->format += "uncompressed true-color";
+                break;
+            case TGA_UNC_GS:
+                image->format += "uncompressed grayscale";
+                break;
+            case TGA_RLE_CM:
+                image->format += "RLE color-mapped";
+                break;
+            case TGA_RLE_TC:
+                image->format += "RLE true-color";
+                break;
+            case TGA_RLE_GS:
+                image->format += "RLE grayscale";
+                break;
+        }
+
+        return image;
+    }
+
 private:
     // TGA image type constants
     static constexpr uint8_t TGA_UNC_CM = 1;  // uncompressed color-mapped
@@ -54,7 +151,7 @@ private:
      * @param bpp bits per pixel
      * @return color
      */
-    static inline argb_t get_pixel(const uint8_t* data, const size_t bpp)
+    inline argb_t get_pixel(const uint8_t* data, const size_t bpp) const
     {
         argb_t pixel;
 
@@ -97,9 +194,8 @@ private:
      * @param size size of image data in bytes
      * @return true if image decoded successfully
      */
-    static bool decode_unc(Pixmap& pm, const Header* tga,
-                           const uint8_t* colormap, const uint8_t* data,
-                           const size_t size)
+    bool decode_unc(Pixmap& pm, const Header* tga, const uint8_t* colormap,
+                    const uint8_t* data, const size_t size) const
     {
         const uint8_t bytes_per_pixel = tga->bpp / 8 + (tga->bpp % 8 ? 1 : 0);
         const size_t num_pixels = pm.width() * pm.height();
@@ -144,9 +240,8 @@ private:
      * @param size size of image data in bytes
      * @return true if image decoded successfully
      */
-    static bool decode_rle(Pixmap& pm, const Header* tga,
-                           const uint8_t* colormap, const uint8_t* data,
-                           const size_t size)
+    bool decode_rle(Pixmap& pm, const Header* tga, const uint8_t* colormap,
+                    const uint8_t* data, const size_t size) const
     {
         const uint8_t cm_bpp = tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0);
         const uint8_t bytes_per_pixel = tga->bpp / 8 + (tga->bpp % 8 ? 1 : 0);
@@ -194,7 +289,7 @@ private:
      * @param tga pointer to TGA header
      * @return true if valid
      */
-    static bool validate_header(const Header* tga)
+    bool validate_header(const Header* tga) const
     {
         // check basic image parameters
         if (tga->width == 0 || tga->height == 0) {
@@ -220,100 +315,7 @@ private:
 
         return false;
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        if (data.size < sizeof(Header)) {
-            return false;
-        }
-        const Header* tga = reinterpret_cast<const Header*>(data.data);
-        if (!validate_header(tga)) {
-            return false;
-        }
-
-        // get color map
-        const uint8_t* colormap = nullptr;
-        size_t colormap_sz = 0;
-        const bool has_colormap =
-            (tga->clrmap_type & TGA_COLORMAP) && tga->cm_size && tga->cm_bpc;
-        switch (tga->image_type) {
-            case TGA_UNC_CM:
-            case TGA_RLE_CM:
-                if (!has_colormap) {
-                    return false;
-                }
-                colormap_sz = tga->cm_size *
-                    (tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0));
-                colormap = data.data + sizeof(Header) + tga->id_len;
-                break;
-            default:
-                if (has_colormap) {
-                    return false;
-                }
-                break;
-        }
-
-        // get pixel array offset
-        const size_t data_offset = sizeof(Header) + tga->id_len + colormap_sz;
-        if (data_offset >= data.size) {
-            return false;
-        }
-        const uint8_t* pix_ptr = data.data + data_offset;
-        const size_t pix_sz = data.size - data_offset;
-
-        // decode image
-        frames.resize(1);
-        frames[0].pm.create(tga->bpp == 32 ? Pixmap::ARGB : Pixmap::RGB,
-                            tga->width, tga->height);
-        bool rc = false;
-        switch (tga->image_type) {
-            case TGA_UNC_CM:
-            case TGA_UNC_TC:
-            case TGA_UNC_GS:
-                rc = decode_unc(frames[0].pm, tga, colormap, pix_ptr, pix_sz);
-                break;
-            case TGA_RLE_CM:
-            case TGA_RLE_TC:
-            case TGA_RLE_GS:
-                rc = decode_rle(frames[0].pm, tga, colormap, pix_ptr, pix_sz);
-                break;
-        }
-        if (!rc) {
-            return false;
-        }
-
-        // fix orientation
-        if (!(tga->desc & TGA_ORDER_T2B)) {
-            frames[0].pm.flip_vertical();
-        }
-        if (tga->desc & TGA_ORDER_R2L) {
-            frames[0].pm.flip_horizontal();
-        }
-
-        // set image format info
-        format = std::format("TARGA {}bpp, ", tga->bpp);
-        switch (tga->image_type) {
-            case TGA_UNC_CM:
-                format += "uncompressed color-mapped";
-                break;
-            case TGA_UNC_TC:
-                format += "uncompressed true-color";
-                break;
-            case TGA_UNC_GS:
-                format += "uncompressed grayscale";
-                break;
-            case TGA_RLE_CM:
-                format += "RLE color-mapped";
-                break;
-            case TGA_RLE_TC:
-                format += "RLE true-color";
-                break;
-            case TGA_RLE_GS:
-                format += "RLE grayscale";
-                break;
-        }
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatTga format_tga;

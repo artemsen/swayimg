@@ -1,25 +1,106 @@
 // SPDX-License-Identifier: MIT
-// QOI format decoder.
+// QOI image format.
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <arpa/inet.h>
 
 #include <cstring>
 #include <format>
 
-// register format in factory
-class ImageQoi;
-static const ImageLoader::Registrator<ImageQoi>
-    image_format_registartion("QOI", ImageLoader::Priority::Low);
+class ImageFormatQoi : public ImageFormat {
+public:
+    ImageFormatQoi()
+        : ImageFormat(Priority::Low, "qoi")
+    {
+    }
 
-/* QOI image. */
-class ImageQoi : public Image {
+    ImagePtr decode(const Data& data) override
+    {
+        if (!check_signature(data, { 'q', 'o', 'i', 'f' })) {
+            return nullptr;
+        }
+
+        const struct Header* qoi =
+            reinterpret_cast<const struct Header*>(data.data);
+
+        // check format
+        if (qoi->width == 0 || qoi->height == 0 || qoi->channels < 3 ||
+            qoi->channels > 4) {
+            return nullptr;
+        }
+
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(qoi->channels == 4 ? Pixmap::ARGB : Pixmap::RGB,
+                  htonl(qoi->width), htonl(qoi->height));
+
+        // initialize decoder state
+        argb_t color_map[QOI_CLRMAP_SIZE] = {};
+        argb_t pixel { argb_t::max, 0, 0, 0 };
+        size_t rlen = 0;
+        size_t pos = sizeof(struct Header);
+
+        // decode image
+        for (size_t y = 0; y < pm.height(); ++y) {
+            for (size_t x = 0; x < pm.width(); ++x) {
+                if (rlen > 0) {
+                    --rlen;
+                } else {
+                    if (pos >= data.size) {
+                        break;
+                    }
+                    const uint8_t tag = data.data[pos++];
+                    if (tag == QOI_OP_RGB) {
+                        if (pos + 3 >= data.size) {
+                            return nullptr;
+                        }
+                        pixel.r = data.data[pos++];
+                        pixel.g = data.data[pos++];
+                        pixel.b = data.data[pos++];
+                    } else if (tag == QOI_OP_RGBA) {
+                        if (pos + 4 >= data.size) {
+                            return nullptr;
+                        }
+                        pixel.r = data.data[pos++];
+                        pixel.g = data.data[pos++];
+                        pixel.b = data.data[pos++];
+                        pixel.a = data.data[pos++];
+                    } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
+                        pixel = color_map[tag & 0x3f];
+                    } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
+                        pixel.r += static_cast<int8_t>((tag >> 4) & 3) - 2;
+                        pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
+                        pixel.b += static_cast<int8_t>(tag & 3) - 2;
+                    } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
+                        uint8_t diff;
+                        int8_t diff_green;
+                        if (pos + 1 >= data.size) {
+                            return nullptr;
+                        }
+                        diff = data.data[pos++];
+                        diff_green = static_cast<int8_t>(tag & 0x3f) - 32;
+                        pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
+                        pixel.g += diff_green;
+                        pixel.b += diff_green - 8 + (diff & 0x0f);
+                    } else if ((tag & QOI_MASK_2) == QOI_OP_RUN) {
+                        rlen = (tag & 0x3f);
+                    }
+                    color_map[colormap_index(pixel)] = pixel;
+                }
+                pm.at(x, y) = pixel;
+            }
+        }
+
+        image->format = std::format("QOI {}bpp", qoi->channels * 8);
+
+        return image;
+    }
+
 private:
-    // QOI signature
-    static constexpr const uint8_t signature[] = { 'q', 'o', 'i', 'f' };
-
     // Chunk tags
     static constexpr const uint8_t QOI_OP_INDEX = 0x00;
     static constexpr const uint8_t QOI_OP_DIFF = 0x40;
@@ -49,90 +130,7 @@ private:
         uint8_t channels;   // Number of color channels: 3 = RGB, 4 = RGBA
         uint8_t colorspace; // 0: sRGB with linear alpha, 1: all channels linear
     };
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature
-        if (data.size < sizeof(Header) ||
-            std::memcmp(data.data, signature, sizeof(signature))) {
-            return false;
-        }
-
-        const struct Header* qoi =
-            reinterpret_cast<const struct Header*>(data.data);
-
-        // check format
-        if (qoi->width == 0 || qoi->height == 0 || qoi->channels < 3 ||
-            qoi->channels > 4) {
-            return false;
-        }
-
-        // allocate pixmap
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
-        pm.create(qoi->channels == 4 ? Pixmap::ARGB : Pixmap::RGB,
-                  htonl(qoi->width), htonl(qoi->height));
-
-        // initialize decoder state
-        argb_t color_map[QOI_CLRMAP_SIZE] = {};
-        argb_t pixel { argb_t::max, 0, 0, 0 };
-        size_t rlen = 0;
-        size_t pos = sizeof(struct Header);
-
-        // decode image
-        for (size_t y = 0; y < pm.height(); ++y) {
-            for (size_t x = 0; x < pm.width(); ++x) {
-                if (rlen > 0) {
-                    --rlen;
-                } else {
-                    if (pos >= data.size) {
-                        break;
-                    }
-                    const uint8_t tag = data.data[pos++];
-                    if (tag == QOI_OP_RGB) {
-                        if (pos + 3 >= data.size) {
-                            return false;
-                        }
-                        pixel.r = data.data[pos++];
-                        pixel.g = data.data[pos++];
-                        pixel.b = data.data[pos++];
-                    } else if (tag == QOI_OP_RGBA) {
-                        if (pos + 4 >= data.size) {
-                            return false;
-                        }
-                        pixel.r = data.data[pos++];
-                        pixel.g = data.data[pos++];
-                        pixel.b = data.data[pos++];
-                        pixel.a = data.data[pos++];
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
-                        pixel = color_map[tag & 0x3f];
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
-                        pixel.r += static_cast<int8_t>((tag >> 4) & 3) - 2;
-                        pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
-                        pixel.b += static_cast<int8_t>(tag & 3) - 2;
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
-                        uint8_t diff;
-                        int8_t diff_green;
-                        if (pos + 1 >= data.size) {
-                            return false;
-                        }
-                        diff = data.data[pos++];
-                        diff_green = static_cast<int8_t>(tag & 0x3f) - 32;
-                        pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
-                        pixel.g += diff_green;
-                        pixel.b += diff_green - 8 + (diff & 0x0f);
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_RUN) {
-                        rlen = (tag & 0x3f);
-                    }
-                    color_map[colormap_index(pixel)] = pixel;
-                }
-                pm.at(x, y) = pixel;
-            }
-        }
-
-        format = std::format("QOI {}bpp", qoi->channels * 8);
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatQoi format_qoi;

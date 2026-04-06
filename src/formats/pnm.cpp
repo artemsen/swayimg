@@ -1,20 +1,109 @@
 // SPDX-License-Identifier: MIT
-// PNM formats decoder
+// PNM image format.
 // Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
 
-#include "../imageloader.hpp"
+#include "../imageformat.hpp"
 
 #include <format>
 #include <limits>
 #include <utility>
 
-// register format in factory
-class ImagePnm;
-static const ImageLoader::Registrator<ImagePnm>
-    image_format_registartion("PNM", ImageLoader::Priority::Low);
+class ImageFormatPnm : public ImageFormat {
+public:
+    ImageFormatPnm()
+        : ImageFormat(Priority::Low, "pnm")
+    {
+    }
 
-/* PNM image. */
-class ImagePnm : public Image {
+    ImagePtr decode(const Data& data) override
+    {
+        // check signature: PNM always starts with "P"
+        if (data.size < 3 || data.data[0] != 'P') {
+            return nullptr;
+        }
+
+        // get pnm type
+        enum Type type;
+        const char* type_name;
+        switch (data.data[1]) {
+            case '1':
+            case '4':
+                type = pnm_pbm;
+                type_name = "PBM";
+                break;
+            case '2':
+            case '5':
+                type = pnm_pgm;
+                type_name = "PGM";
+                break;
+            case '3':
+            case '6':
+                type = pnm_ppm;
+                type_name = "PPM";
+                break;
+            default:
+                return nullptr;
+        }
+        const bool is_ascii = data.data[1] <= '3';
+
+        PnmIterator it;
+        it.pos = data.data + 2;
+        it.end = data.data + data.size;
+
+        const int width = pnm_readint(&it, 0);
+        if (width < 0) {
+            return nullptr;
+        }
+        const int height = pnm_readint(&it, 0);
+        if (height < 0) {
+            return nullptr;
+        }
+
+        int maxval;
+        if (type == pnm_pbm) {
+            maxval = 1;
+        } else {
+            maxval = pnm_readint(&it, 0);
+            if (maxval < 0) {
+                return nullptr;
+            }
+            if (!maxval ||
+                std::cmp_greater(maxval,
+                                 std::numeric_limits<uint16_t>::max())) {
+                return nullptr;
+            }
+        }
+
+        if (!is_ascii) {
+            // Again, the specifications technically allow for comments here,
+            // but no other parsers support that (they treat that comment as
+            // image data), so we won't allow one either
+            const char c = *it.pos;
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                return nullptr;
+            }
+            ++it.pos;
+        }
+
+        // allocate image and frame
+        ImagePtr image = std::make_shared<Image>();
+        image->frames.resize(1);
+        Pixmap& pm = image->frames[0].pm;
+        pm.create(Pixmap::RGB, width, height);
+
+        const int ret = is_ascii ? decode_ascii(pm, &it, type, maxval)
+                                 : decode_raw(pm, &it, type, maxval);
+        if (ret < 0) {
+            return nullptr;
+        }
+
+        // set format description
+        image->format =
+            std::format("{} ({})", type_name, is_ascii ? "ASCII" : "raw");
+
+        return image;
+    }
+
 private:
     // Error conditions
     static constexpr const int PNM_EEOF = -1;
@@ -279,92 +368,7 @@ private:
         }
         return 0;
     }
-
-public:
-    bool load(const Data& data) override
-    {
-        // check signature: PNM always starts with "P"
-        if (data.size < 3 || data.data[0] != 'P') {
-            return false;
-        }
-
-        // get pnm type
-        enum Type type;
-        const char* type_name;
-        switch (data.data[1]) {
-            case '1':
-            case '4':
-                type = pnm_pbm;
-                type_name = "PBM";
-                break;
-            case '2':
-            case '5':
-                type = pnm_pgm;
-                type_name = "PGM";
-                break;
-            case '3':
-            case '6':
-                type = pnm_ppm;
-                type_name = "PPM";
-                break;
-            default:
-                return false;
-        }
-        const bool is_ascii = data.data[1] <= '3';
-
-        PnmIterator it;
-        it.pos = data.data + 2;
-        it.end = data.data + data.size;
-
-        const int width = pnm_readint(&it, 0);
-        if (width < 0) {
-            return false;
-        }
-        const int height = pnm_readint(&it, 0);
-        if (height < 0) {
-            return false;
-        }
-
-        int maxval;
-        if (type == pnm_pbm) {
-            maxval = 1;
-        } else {
-            maxval = pnm_readint(&it, 0);
-            if (maxval < 0) {
-                return false;
-            }
-            if (!maxval ||
-                std::cmp_greater(maxval,
-                                 std::numeric_limits<uint16_t>::max())) {
-                return false;
-            }
-        }
-
-        if (!is_ascii) {
-            // Again, the specifications technically allow for comments here,
-            // but no other parsers support that (they treat that comment as
-            // image data), so we won't allow one either
-            const char c = *it.pos;
-            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-                return false;
-            }
-            ++it.pos;
-        }
-
-        // allocate pixmap
-        frames.resize(1);
-        Pixmap& pm = frames[0].pm;
-        pm.create(Pixmap::RGB, width, height);
-
-        const int ret = is_ascii ? decode_ascii(pm, &it, type, maxval)
-                                 : decode_raw(pm, &it, type, maxval);
-        if (ret < 0) {
-            return false;
-        }
-
-        // set format description
-        format = std::format("{} ({})", type_name, is_ascii ? "ASCII" : "raw");
-
-        return true;
-    }
 };
+
+// register format in factory
+static ImageFormatPnm format_pnm;
