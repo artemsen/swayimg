@@ -236,6 +236,12 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
     return next;
 }
 
+size_t ImageList::size()
+{
+    const std::shared_lock lock(mutex);
+    return entries.size();
+}
+
 void ImageList::set_order(const Order new_order)
 {
     if (order != new_order || new_order == Order::Random) {

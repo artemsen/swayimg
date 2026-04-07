@@ -76,7 +76,7 @@ public:
      * Get number of entries in the image list.
      * @return image list size
      */
-    size_t size() const { return entries.size(); }
+    size_t size();
 
     /**
      * Get image list order.
