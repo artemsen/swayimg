@@ -29,7 +29,7 @@ public:
 
     // Implementation of UI generic interface
     Size get_window_size() override;
-    Pixmap& lock_surface() override;
+    Pixmap* lock_surface() override;
     void commit_surface() override;
 
 private:

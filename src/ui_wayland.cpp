@@ -481,7 +481,7 @@ public:
             wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
         }
 
-        ui->frame_mutex.unlock();
+        ui->wnd_buffer.frame_complete();
     }
 
     static constexpr const wl_callback_listener frame_listener = {
@@ -523,8 +523,8 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         const Size window = ui->get_window_size();
 
-        if (window.width == ui->wnd_buffer.pm.width() &&
-            window.height == ui->wnd_buffer.pm.height()) {
+        if (window.width == ui->wnd_buffer.width() &&
+            window.height == ui->wnd_buffer.height()) {
             return; // reuse existing buffer
         }
 
@@ -643,9 +643,7 @@ WaylandBuffer::~WaylandBuffer()
 
 bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
 {
-    if (width == pm.width() && height == pm.height()) {
-        return true; // reuse existing
-    }
+    assert(width != pm.width() || height != pm.height());
 
     const std::scoped_lock lock(mutex);
 
@@ -694,6 +692,39 @@ bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
     pm.attach(Pixmap::ARGB, width, height, data);
 
     return true;
+}
+
+Pixmap* WaylandBuffer::lock()
+{
+    mutex.lock();
+    if (buffer) {
+        frame_drawn = false;
+        return &pm;
+    }
+    // not yet created
+    mutex.unlock();
+    return nullptr;
+}
+
+void WaylandBuffer::unlock()
+{
+    assert(buffer);
+    mutex.unlock();
+
+    if (!frame_drawn) {
+        // wait until frame is finished rendering
+        std::unique_lock lock(frame_mutex);
+        frame_cv.wait(lock, [this] {
+            return frame_drawn;
+        });
+    }
+}
+
+void WaylandBuffer::frame_complete()
+{
+    const std::scoped_lock lock(frame_mutex);
+    frame_drawn = true;
+    frame_cv.notify_one();
 }
 
 void WaylandBuffer::destroy()
@@ -857,10 +888,9 @@ void UiWayland::run()
             // buffer flush
             if (fds[2].revents & POLLIN) {
                 flush_event.reset();
-                wl_surface_attach(wl.surface, wnd_buffer, 0, 0);
-                wl_surface_damage_buffer(wl.surface, 0, 0,
-                                         wnd_buffer.pm.width(),
-                                         wnd_buffer.pm.height());
+                wl_surface_attach(wl.surface, wnd_buffer.get(), 0, 0);
+                wl_surface_damage_buffer(wl.surface, 0, 0, wnd_buffer.width(),
+                                         wnd_buffer.height());
                 wl_surface_commit(wl.surface);
             }
 
@@ -979,19 +1009,13 @@ Point UiWayland::get_mouse()
     return mouse_pos;
 }
 
-Pixmap& UiWayland::lock_surface()
+Pixmap* UiWayland::lock_surface()
 {
-    if (wnd_buffer) {
-        frame_mutex.lock();
-        wnd_buffer.mutex.lock();
-    }
-    return wnd_buffer.pm;
+    return wnd_buffer.lock();
 }
 
 void UiWayland::commit_surface()
 {
-    if (wnd_buffer) {
-        wnd_buffer.mutex.unlock();
-        flush_event.set();
-    }
+    flush_event.set();
+    wnd_buffer.unlock();
 }

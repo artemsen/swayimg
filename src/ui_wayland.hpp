@@ -19,6 +19,7 @@
 #include <xdg-shell-client-protocol.h>
 
 #include <cassert>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -96,15 +97,53 @@ struct WaylandBuffer {
     bool realloc(struct wl_shm* shm, size_t width, size_t height);
 
     /**
-     * Destroy buffer.
+     * Lock and get pixmap of the buffer.
+     * @return pixmap or nullptr if not yet initialized
+     */
+    Pixmap* lock();
+
+    /**
+     * Unlock and wait rendering to finish.
+     */
+    void unlock();
+
+    /**
+     * Set rendering finish state.
+     */
+    void frame_complete();
+
+    /**
+     * Get buffer width.
+     * @return buffer width in pixels
+     */
+    [[nodiscard]] inline size_t width() const { return pm.width(); }
+
+    /**
+     * Get buffer height.
+     * @return buffer height in pixels
+     */
+    [[nodiscard]] inline size_t height() const { return pm.height(); }
+
+    /**
+     * Get wayland buffer object.
+     * @return wayland buffer
+     */
+    wl_buffer* get() { return buffer; }
+
+private:
+    /**
+     * Destroy buffers.
      */
     void destroy();
 
-    operator wl_buffer*() { return buffer; }
-
+private:
     std::mutex mutex;            ///< Buffer lock
     wl_buffer* buffer = nullptr; ///< Wayland buffer
     Pixmap pm;                   ///< Pixmap attached to the buffer
+
+    std::mutex frame_mutex;           ///< Frame state mutex
+    std::condition_variable frame_cv; ///< Frame state condition
+    bool frame_drawn = true;          ///< Frame state flag (true if rendered)
 };
 
 /** Wayland based user interface. */
@@ -130,7 +169,7 @@ public:
     Size get_window_size() override;
     void set_window_size(const Size& size) override;
     Point get_mouse() override;
-    Pixmap& lock_surface() override;
+    Pixmap* lock_surface() override;
     void commit_surface() override;
 
 private:
@@ -173,9 +212,7 @@ private:
         WLOBJ_DECLARE(ext_idle_notification_v1) idle;
     } wl;
 
-    WaylandBuffer wnd_buffer; ///< Window buffers (double buffering)
-
-    std::mutex frame_mutex; ///< Draw frame lock
+    WaylandBuffer wnd_buffer; ///< Window buffer
 
     uint32_t scale = FRACTION_SCALE_DEN; ///< Window scale factor (WL format)
 

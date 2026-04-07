@@ -442,12 +442,12 @@ void Application::handle_event(const AppEvent::WindowRescale& event)
 
 void Application::handle_event(const AppEvent::WindowRedraw&)
 {
-    Pixmap& wnd = ui->lock_surface();
+    Pixmap* wnd = ui->lock_surface();
     if (wnd) {
         const Log::PerfTimer timer;
 
-        current_mode()->window_redraw(wnd);
-        Text::self().draw(wnd);
+        current_mode()->window_redraw(*wnd);
+        Text::self().draw(*wnd);
         ui->commit_surface();
 
         if (Log::verbose_enable()) {

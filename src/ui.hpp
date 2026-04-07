@@ -84,9 +84,9 @@ public:
 
     /**
      * Begin window redraw procedure.
-     * @return window surface pixmap
+     * @return window surface pixmap, nullptr if window not yet created
      */
-    virtual Pixmap& lock_surface() = 0;
+    virtual Pixmap* lock_surface() = 0;
 
     /**
      * Finalize window redraw procedure.
