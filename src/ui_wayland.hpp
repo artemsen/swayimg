@@ -18,8 +18,8 @@
 #include <xdg-decoration-unstable-v1-client-protocol.h>
 #include <xdg-shell-client-protocol.h>
 
+#include <atomic>
 #include <cassert>
-#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -108,9 +108,9 @@ struct WaylandBuffer {
     void unlock();
 
     /**
-     * Set rendering finish state.
+     * Notify about finishing draw.
      */
-    void frame_complete();
+    void draw_complete();
 
     /**
      * Get buffer width.
@@ -137,13 +137,10 @@ private:
     void destroy();
 
 private:
-    std::mutex mutex;            ///< Buffer lock
-    wl_buffer* buffer = nullptr; ///< Wayland buffer
-    Pixmap pm;                   ///< Pixmap attached to the buffer
-
-    std::mutex frame_mutex;           ///< Frame state mutex
-    std::condition_variable frame_cv; ///< Frame state condition
-    bool frame_drawn = true;          ///< Frame state flag (true if rendered)
+    std::atomic<bool> drawn = true; ///< Frame draw complete flag
+    std::mutex mutex;               ///< Buffer lock
+    wl_buffer* buffer = nullptr;    ///< Wayland buffer
+    Pixmap pm;                      ///< Pixmap attached to the buffer
 };
 
 /** Wayland based user interface. */

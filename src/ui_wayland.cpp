@@ -481,7 +481,7 @@ public:
             wl_callback_add_listener(ui->wl.callback, &frame_listener, ui);
         }
 
-        ui->wnd_buffer.frame_complete();
+        ui->wnd_buffer.draw_complete();
     }
 
     static constexpr const wl_callback_listener frame_listener = {
@@ -696,35 +696,30 @@ bool WaylandBuffer::realloc(struct wl_shm* shm, size_t width, size_t height)
 
 Pixmap* WaylandBuffer::lock()
 {
-    mutex.lock();
-    if (buffer) {
-        frame_drawn = false;
-        return &pm;
+    if (!drawn) {
+        drawn.wait(false); // wait until frame is finished rendering
     }
-    // not yet created
-    mutex.unlock();
-    return nullptr;
+
+    mutex.lock();
+    if (!buffer) {
+        mutex.unlock();
+        return nullptr; // not yet created
+    }
+
+    drawn = false;
+    return &pm;
 }
 
 void WaylandBuffer::unlock()
 {
     assert(buffer);
     mutex.unlock();
-
-    if (!frame_drawn) {
-        // wait until frame is finished rendering
-        std::unique_lock lock(frame_mutex);
-        frame_cv.wait(lock, [this] {
-            return frame_drawn;
-        });
-    }
 }
 
-void WaylandBuffer::frame_complete()
+void WaylandBuffer::draw_complete()
 {
-    const std::scoped_lock lock(frame_mutex);
-    frame_drawn = true;
-    frame_cv.notify_one();
+    drawn = true;
+    drawn.notify_one();
 }
 
 void WaylandBuffer::destroy()
