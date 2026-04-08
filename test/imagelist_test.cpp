@@ -164,6 +164,7 @@ TEST(ImageListTest, SortAlpha)
     EXPECT_ILEQ(il, paths);
 }
 
+#ifdef __linux__
 TEST(ImageListTest, SortAlphaUnicode)
 {
     ImageList il;
@@ -193,6 +194,7 @@ TEST(ImageListTest, SortAlphaUnicode)
     EXPECT_EQ(entry->path, paths[2]);
     EXPECT_ILEQ(il, paths);
 }
+#endif // __linux__
 
 TEST(ImageListTest, SortAlphaReverse)
 {
