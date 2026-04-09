@@ -19,34 +19,6 @@
 
 #ifdef HAVE_LIBEXIV2
 #include <exiv2/exiv2.hpp>
-/**
- * Read and handle EXIF data.
- * @param image target image instance
- * @param data image file data
- */
-static void read_exif(ImagePtr& image, const ImageFormat::Data& data)
-{
-    try {
-        // read EXIF data
-        Exiv2::Image::UniquePtr eimg =
-            Exiv2::ImageFactory::open(data.data, data.size);
-        if (!eimg) {
-            return;
-        }
-
-        eimg->readMetadata();
-        const Exiv2::ExifData& exif = eimg->exifData();
-        if (exif.empty()) {
-            return;
-        }
-
-        // export EXIF data to meta container
-        for (const auto& it : exif) {
-            image->meta.insert(std::make_pair(it.key(), it.value().toString()));
-        }
-    } catch (Exiv2::Error&) {
-    }
-}
 #endif // HAVE_LIBEXIV2
 
 /** Image data reader. */
@@ -236,28 +208,106 @@ Pixmap ImageFormat::preview(const Data& data, const size_t sz,
     if (!image) {
         return {};
     }
-#ifdef HAVE_LIBEXIV2
-    read_exif(image, data);
-    if (FormatFactory::self().fix_orientation) {
-        image->fix_orientation();
+
+    if (read_exif(data, image) && FormatFactory::self().fix_orientation) {
+        fix_orientation(image);
     }
-#endif // HAVE_LIBEXIV2
 
-    const Pixmap& origin = image->frames[0].pm;
+    return make_thumb(image->frames[0].pm, sz, max_sz);
+}
 
+Pixmap ImageFormat::make_thumb(const Pixmap& pm, const size_t sz,
+                               const bool max_sz) const
+{
     // get target scale
-    const double scale_w = static_cast<double>(sz) / origin.width();
-    const double scale_h = static_cast<double>(sz) / origin.height();
+    const double scale_w = static_cast<double>(sz) / pm.width();
+    const double scale_h = static_cast<double>(sz) / pm.height();
     const double scale =
         max_sz ? std::max(scale_w, scale_h) : std::min(scale_w, scale_h);
 
     // create thumbnail
     Pixmap thumb;
-    thumb.create(origin.format(), scale * origin.width(),
-                 scale * origin.height());
-    Render::self().draw(thumb, origin, { 0, 0 }, scale);
+    thumb.create(pm.format(), scale * pm.width(), scale * pm.height());
+    Render::self().draw(thumb, pm, { 0, 0 }, scale);
 
     return thumb;
+}
+
+void ImageFormat::fix_orientation(ImagePtr& image, const int orientation) const
+{
+    int exif_orient = orientation;
+    if (exif_orient < 0) {
+        const auto& it = image->meta.find("Exif.Image.Orientation");
+        if (it != image->meta.end()) {
+            exif_orient = std::atoi(it->second.c_str());
+        }
+    }
+    if (exif_orient > 0) {
+        for (auto& it : image->frames) {
+            fix_orientation(it.pm, exif_orient);
+        }
+    }
+}
+
+void ImageFormat::fix_orientation(Pixmap& pm, const int orientation) const
+{
+    switch (orientation) {
+        case 2: // flipped back-to-front
+            pm.flip_horizontal();
+            break;
+        case 3: // upside down
+            pm.rotate(180);
+            break;
+        case 4: // flipped back-to-front and upside down
+            pm.flip_vertical();
+            break;
+        case 5: // flipped back-to-front and on its side
+            pm.rotate(90);
+            pm.flip_horizontal();
+            break;
+        case 6: // on its side
+            pm.rotate(90);
+            break;
+        case 7: // flipped back-to-front and on its far side
+            pm.rotate(90);
+            pm.flip_vertical();
+            break;
+        case 8: // on its far side
+            pm.rotate(270);
+            break;
+    }
+}
+
+bool ImageFormat::read_exif(const Data& data, ImagePtr& image) const
+{
+#ifdef HAVE_LIBEXIV2
+    try {
+        // read EXIF data
+        Exiv2::Image::UniquePtr exif_img =
+            Exiv2::ImageFactory::open(data.data, data.size);
+        if (!exif_img) {
+            return false;
+        }
+
+        exif_img->readMetadata();
+        const Exiv2::ExifData& exif_data = exif_img->exifData();
+        if (exif_data.empty()) {
+            return false;
+        }
+
+        // export EXIF data to meta container
+        for (const auto& it : exif_data) {
+            image->meta.insert(std::make_pair(it.key(), it.value().toString()));
+        }
+
+        return true;
+    } catch (Exiv2::Error&) {
+    }
+#else
+    (void)data;
+    (void)exif;
+#endif // HAVE_LIBEXIV2
+    return false;
 }
 
 FormatFactory& FormatFactory::self()
@@ -302,19 +352,15 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
 {
     const Log::PerfTimer timer;
 
-    // read file data
     DataBuffer data;
     if (!data.load(entry)) {
         return nullptr;
     }
 
-    // decode file
-    for (const auto& it : formats) {
-        ImagePtr image = it->decode(data);
-        if (!image) {
-            continue;
-        }
-
+    ImagePtr image = decode(data);
+    if (!image) {
+        Log::verbose("Unsupported image format in {}", entry->path.string());
+    } else {
         if (Log::verbose_enable()) {
             Log::verbose("Image {} loaded in {:.6f} sec",
                          entry->path.filename().string(), timer.time());
@@ -325,22 +371,28 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
             path.starts_with(ImageEntry::SRC_EXEC)) {
             entry->mtime = time(nullptr);
         }
-
         entry->size = data.size;
-
         image->entry = entry;
+    }
 
-#ifdef HAVE_LIBEXIV2
-        read_exif(image, data);
-        if (fix_orientation) {
-            image->fix_orientation();
+    return image;
+}
+
+ImagePtr FormatFactory::decode(const ImageFormat::Data& data) const
+{
+    for (const auto& it : formats) {
+        ImagePtr image = it->decode(data);
+        if (!image) {
+            continue;
         }
-#endif // HAVE_LIBEXIV2
+
+        if (it->read_exif(data, image) && fix_orientation) {
+            it->fix_orientation(image);
+        }
 
         return image;
     }
 
-    Log::verbose("Unsupported image format in {}", entry->path.string());
     return nullptr;
 }
 

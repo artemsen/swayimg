@@ -7,7 +7,7 @@
 #include <tiffio.h>
 
 #include <cstring>
-#include <format>
+#include <memory>
 
 class ImageFormatTiff : public ImageFormat {
 public:
@@ -30,19 +30,20 @@ public:
         TIFFSetErrorHandler(nullptr);
         TIFFSetWarningHandler(nullptr);
 
-        Tiff tiff;
         BufferIO bio(data);
-
-        tiff.tiff =
-            TIFFClientOpen("", "r", &bio, &BufferIO::read, &BufferIO::write,
-                           &BufferIO::seek, &BufferIO::close, &BufferIO::size,
-                           &BufferIO::map, &BufferIO::unmap);
-        if (!tiff.tiff) {
+        const TiffImage tiff(TIFFClientOpen("", "r", &bio, &BufferIO::read,
+                                            &BufferIO::write, &BufferIO::seek,
+                                            &BufferIO::close, &BufferIO::size,
+                                            &BufferIO::map, &BufferIO::unmap),
+                             &TIFFClose);
+        if (!tiff) {
             return nullptr;
         }
 
-        char err[LIBTIFF_ERRMSG_SZ] = { 0 };
-        if (!TIFFRGBAImageBegin(tiff, tiff, 0, err)) {
+        // get image size
+        uint32_t width, height;
+        if (!TIFFGetField(tiff.get(), TIFFTAG_IMAGEWIDTH, &width) ||
+            !TIFFGetField(tiff.get(), TIFFTAG_IMAGELENGTH, &height)) {
             return nullptr;
         }
 
@@ -50,26 +51,31 @@ public:
         ImagePtr image = std::make_shared<Image>();
         image->frames.resize(1);
         Pixmap& pm = image->frames[0].pm;
-        pm.create(Pixmap::ARGB, tiff.img.width, tiff.img.height);
+        pm.create(Pixmap::ARGB, width, height);
 
         // decode image
-        if (!TIFFRGBAImageGet(tiff, reinterpret_cast<uint32_t*>(pm.ptr(0, 0)),
-                              tiff.img.width, tiff.img.height)) {
-            return nullptr;
-        }
+        TIFFReadRGBAImageOriented(tiff.get(), width, height,
+                                  reinterpret_cast<uint32_t*>(pm.ptr(0, 0)),
+                                  ORIENTATION_TOPLEFT, 1);
         pm.abgr_to_argb();
 
-        if (tiff.img.orientation == ORIENTATION_TOPLEFT) {
-            image->flip_vertical();
+        // something strange, but i don't know how to deal with it
+        uint32_t orientation;
+        if (TIFFGetField(tiff.get(), TIFFTAG_ORIENTATION, &orientation)) {
+            if (orientation == ORIENTATION_RIGHTTOP) {
+                image->flip_horizontal();
+            }
         }
 
-        image->format = std::format(
-            "TIFF {}bpp", tiff.img.bitspersample * tiff.img.samplesperpixel);
+        image->format = "TIFF";
 
         return image;
     }
 
 private:
+    // Tiff image wrapper
+    using TiffImage = std::unique_ptr<TIFF, decltype(&TIFFClose)>;
+
     /** Memory buffer I/O. */
     struct BufferIO {
         BufferIO(const Data& raw_data)
@@ -128,24 +134,6 @@ private:
 
         const Data& data;
         size_t position = 0;
-    };
-
-    /** TIFF decoder wrapper. */
-    class Tiff {
-    public:
-        ~Tiff()
-        {
-            if (tiff) {
-                TIFFRGBAImageEnd(&img);
-                TIFFClose(tiff);
-            }
-        }
-
-        operator TIFF*() { return tiff; }
-        operator TIFFRGBAImage*() { return &img; }
-
-        TIFF* tiff = nullptr;
-        TIFFRGBAImage img = {};
     };
 };
 

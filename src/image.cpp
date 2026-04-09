@@ -22,39 +22,6 @@ ImageEntry::operator bool() const
     return index != INVALID_INDEX;
 }
 
-void Image::fix_orientation()
-{
-    const auto& it = meta.find("Exif.Image.Orientation");
-    if (it != meta.end()) {
-        const int orientation = std::atoi(it->second.c_str());
-        switch (orientation) {
-            case 2: // flipped back-to-front
-                flip_horizontal();
-                break;
-            case 3: // upside down
-                rotate(180);
-                break;
-            case 4: // flipped back-to-front and upside down
-                flip_vertical();
-                break;
-            case 5: // flipped back-to-front and on its side
-                flip_horizontal();
-                rotate(90);
-                break;
-            case 6: // on its side
-                rotate(90);
-                break;
-            case 7: // flipped back-to-front and on its far side
-                flip_vertical();
-                rotate(270);
-                break;
-            case 8: // on its far side
-                rotate(270);
-                break;
-        }
-    }
-}
-
 void Image::draw(const size_t frame, Pixmap& target, const double scale,
                  const ssize_t x, const ssize_t y)
 {

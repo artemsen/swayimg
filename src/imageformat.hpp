@@ -56,6 +56,28 @@ public:
     virtual Pixmap preview(const Data& data, const size_t sz,
                            const bool max_sz);
 
+    /**
+     * Fix orientation by EXIF data.
+     * @param image source image to re-orient
+     * @param orientation EXIF orientation, -1 to get from image meta data
+     */
+    virtual void fix_orientation(ImagePtr& image,
+                                 const int orientation = -1) const;
+
+    /**
+     * Fix orientation by EXIF data.
+     * @param pm pixmap to re-orient
+     * @param orientation EXIF orientation
+     */
+    void fix_orientation(Pixmap& pm, const int orientation) const;
+
+    /**
+     * Read EXIF data to image meta data.
+     * @param data source image data
+     * @param image target image instance
+     */
+    bool read_exif(const Data& data, ImagePtr& image) const;
+
 protected:
     /**
      * Check signature existence in source data buffer.
@@ -71,6 +93,9 @@ protected:
         return data.size > offset + S &&
             std::memcmp(data.data + offset, signature, S) == 0;
     }
+
+    [[nodiscard]] Pixmap make_thumb(const Pixmap& pm, const size_t sz,
+                                    const bool max_sz) const;
 
 public:
     Priority priority; ///< Format priority
@@ -92,6 +117,13 @@ public:
      * @return image instance or nullptr if image wasn't loaded
      */
     [[nodiscard]] ImagePtr load(const ImageEntryPtr& entry) const;
+
+    /**
+     * Decode raw image data.
+     * @param data source data to decode
+     * @return image instance or nullptr on errors
+     */
+    [[nodiscard]] ImagePtr decode(const ImageFormat::Data& data) const;
 
     /**
      * Get preview (thumbnail).

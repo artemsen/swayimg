@@ -45,11 +45,6 @@ public:
     virtual ~Image() = default;
 
     /**
-     * Fix orientation by meat (EXIF) data.
-     */
-    virtual void fix_orientation();
-
-    /**
      * Draw image on pixmap surface.
      * @param frame frame index to draw
      * @param target surface to draw on

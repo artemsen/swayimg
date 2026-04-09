@@ -67,7 +67,7 @@ public:
         }
 
         // allocate image and frame
-        ImagePtr image = std::make_shared<ImageHeif>();
+        ImagePtr image = std::make_shared<Image>();
         image->frames.resize(1);
         Pixmap& pm = image->frames[0].pm;
 
@@ -90,6 +90,9 @@ public:
         return image;
     }
 
+    // ignore, done by decoder
+    void fix_orientation(ImagePtr&, const int) const override {}
+
 private:
     // HEIF decoder wrappers
     using HeifContext =
@@ -101,13 +104,6 @@ private:
                         decltype(&heif_image_handle_release)>;
     using HeifImage =
         std::unique_ptr<heif_image, decltype(&heif_image_release)>;
-
-    /* HEIF image. */
-    class ImageHeif : public Image {
-    public:
-        // should be ignored, done by decoder
-        void fix_orientation() override {}
-    };
 };
 
 // register format in factory
