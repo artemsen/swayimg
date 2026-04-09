@@ -282,7 +282,7 @@ private:
             if (index == 0) {
                 dispose = PNG_fcTL_DISPOSE_OP_BACKGROUND;
             } else if (index + 1 < frames.size()) {
-                Pixmap& curr = frames[index].pm;
+                const Pixmap& curr = frames[index].pm;
                 Pixmap& next = frames[index + 1].pm;
                 next.copy(curr, { 0, 0 });
             }
@@ -299,7 +299,7 @@ private:
 
         // handle dispose
         if (dispose == PNG_fcTL_DISPOSE_OP_NONE && index + 1 < frames.size()) {
-            Pixmap& curr = frames[index].pm;
+            const Pixmap& curr = frames[index].pm;
             Pixmap& next = frames[index + 1].pm;
             next.copy(curr, { 0, 0 });
         }
