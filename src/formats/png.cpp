@@ -108,7 +108,25 @@ public:
             }
         }
 
-        image->format = std::format("PNG {}bit", bit_depth * 4);
+        image->format = "PNG ";
+        switch (color_type) {
+            case PNG_COLOR_TYPE_GRAY:
+                image->format += "Grayscale ";
+                break;
+            case PNG_COLOR_TYPE_PALETTE:
+                image->format += "Palette ";
+                break;
+            case PNG_COLOR_TYPE_RGB:
+                image->format += "RGB ";
+                break;
+            case PNG_COLOR_TYPE_RGB_ALPHA:
+                image->format += "RGBA ";
+                break;
+            case PNG_COLOR_TYPE_GRAY_ALPHA:
+                image->format += "Grayscale+Alpha ";
+                break;
+        }
+        image->format += std::format("{}bit", bit_depth);
 
         return image;
     }
