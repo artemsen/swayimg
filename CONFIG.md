@@ -175,6 +175,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_window_color](#swayimggalleryset_window_color): Set window background color
   * [swayimg.gallery.limit_cache](#swayimggallerylimit_cache): Set max number of thumbnails stored in memory cache
   * [swayimg.gallery.enable_preload](#swayimggalleryenable_preload): Enable or disable preloading invisible thumbnails
+  * [swayimg.gallery.enable_embedded_thumb](#swayimggalleryenable_embedded_thumb): Enable or disable using embedded thumbnails
   * [swayimg.gallery.enable_pstore](#swayimggalleryenable_pstore): Enable or disable persistent storage for thumbnails
   * [swayimg.gallery.set_pstore_path](#swayimggalleryset_pstore_path): Set custom path for persistent storage for thumbnails
   * [swayimg.gallery.mark_image](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
@@ -2199,6 +2200,20 @@ Enable or disable preloading invisible thumbnails.
 Since 5.0.
 
 @_param_ `enable` - Enable/disable preloading invisible thumbnails
+
+### swayimg.gallery.enable_embedded_thumb
+
+```lua
+swayimg.gallery.enable_embedded_thumb(enable: boolean)
+```
+
+Enable or disable using embedded thumbnails.
+
+Since 5.3.
+
+Currently only applicable to RAW images.
+
+@_param_ `enable` - Enable/disable embedded thumbnails
 
 ### swayimg.gallery.enable_pstore
 

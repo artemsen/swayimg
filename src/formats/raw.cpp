@@ -70,6 +70,10 @@ public:
     Pixmap preview(const Data& data, const size_t sz,
                    const bool max_sz) override
     {
+        if (!FormatFactory::self().embedded_thumb) {
+            return ImageFormat::preview(data, sz, max_sz);
+        }
+
         LibRaw decoder(0);
 
         if (!FormatFactory::self().fix_orientation) {

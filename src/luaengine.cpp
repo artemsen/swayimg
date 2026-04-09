@@ -1031,6 +1031,10 @@ void LuaEngine::bind_gallery_api()
                      [](const bool enable) {
                          Gallery::self().enable_preload(enable);
                      })
+        .addFunction("enable_embedded_thumb",
+                     [](const bool enable) {
+                         FormatFactory::self().embedded_thumb = enable;
+                     })
         .addFunction("enable_pstore",
                      [](const bool enable) {
                          Gallery::self().enable_pstore(enable);

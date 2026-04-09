@@ -156,6 +156,7 @@ public:
 
 public:
     bool fix_orientation = true; ///< Fix orientation by EXIF
+    bool embedded_thumb = true;  ///< Use embedded thumbnails
 
 private:
     std::vector<ImageFormat*> formats; ///< Format handlers

@@ -709,6 +709,13 @@ function swayimg.gallery.limit_cache(size) end
 ---@param enable boolean Enable/disable preloading invisible thumbnails
 function swayimg.gallery.enable_preload(enable) end
 
+---Enable or disable using embedded thumbnails.
+---Since 5.3.
+---
+---Currently only applicable to RAW images.
+---@param enable boolean Enable/disable embedded thumbnails
+function swayimg.gallery.enable_embedded_thumb(enable) end
+
 ---Enable or disable persistent storage for thumbnails.
 ---Since 5.0.
 ---@param enable boolean Enable/disable usage of persistent storage
