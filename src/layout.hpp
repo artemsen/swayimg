@@ -46,16 +46,40 @@ public:
     void set_thumb_size(const size_t size);
 
     /**
-     * Get thumbnail size.
-     * @return thumbnail size in pixels
+     * Set fixed number of columns in the visible grid.
+     * @param count number of columns, 0 to use automatic layout
      */
-    inline size_t get_thumb_size() const { return thumb_size; }
+    void set_columns(const size_t count);
+
+    /**
+     * Get thumbnail size.
+     * @return current thumbnail size in pixels
+     */
+    inline size_t get_thumb_size() const { return current_thumb_size; }
+
+    /**
+     * Get current thumbnail width.
+     * @return thumbnail width in pixels
+     */
+    inline size_t get_thumb_width() const { return current_thumb_width; }
+
+    /**
+     * Get current thumbnail height.
+     * @return thumbnail height in pixels
+     */
+    inline size_t get_thumb_height() const { return current_thumb_height; }
 
     /**
      * Set padding size.
      * @param padding new padding size in pixels
      */
     void set_padding(const size_t padding);
+
+    /**
+     * Set fixed number of rows in the visible grid.
+     * @param count number of rows, 0 to use automatic layout
+     */
+    void set_rows(const size_t count);
 
     /**
      * Get number of columns in layout scheme.
@@ -109,9 +133,14 @@ public:
     [[nodiscard]] const std::vector<Thumbnail>& get_scheme() const;
 
 private:
-    size_t thumb_size = 200;       ///< Size of thumbnail in pixels
-    size_t thumb_padding = 5;      ///< Padding between thumbnails in pixels
-    std::vector<Thumbnail> scheme; ///< Layout scheme of visible thumbnails
+    size_t thumb_size = 200;           ///< Size of thumbnail in pixels
+    size_t current_thumb_size = 200;   ///< Effective thumbnail size in pixels
+    size_t current_thumb_width = 200;  ///< Effective thumbnail width in pixels
+    size_t current_thumb_height = 200; ///< Effective thumbnail height in pixels
+    size_t thumb_padding = 5;          ///< Padding between thumbnails in pixels
+    size_t fixed_columns = 0;          ///< Fixed number of columns, 0 for auto
+    size_t fixed_rows = 0;             ///< Fixed number of rows, 0 for auto
+    std::vector<Thumbnail> scheme;     ///< Layout scheme of visible thumbnails
 
     Size window;          ///< Layout size (output window)
     size_t columns, rows; ///< Size of the layout in thumbnails

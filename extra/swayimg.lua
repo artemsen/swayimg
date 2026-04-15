@@ -664,10 +664,20 @@ function swayimg.gallery.get_thumb_size() end
 ---@param size integer Thumbnail size in pixels
 function swayimg.gallery.set_thumb_size(size) end
 
+---Set fixed number of visible columns.
+---Since 5.3.
+---@param count integer Number of columns, 0 for automatic layout
+function swayimg.gallery.set_columns(count) end
+
 ---Set the padding size between thumbnails.
 ---Since 5.0.
 ---@param size integer Padding size in pixels
 function swayimg.gallery.set_padding_size(size) end
+
+---Set fixed number of visible rows.
+---Since 5.3.
+---@param count integer Number of rows, 0 for automatic layout
+function swayimg.gallery.set_rows(count) end
 
 ---Set the border size for currently selected thumbnail.
 ---Since 5.0.

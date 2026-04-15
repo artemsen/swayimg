@@ -59,10 +59,22 @@ public:
     void set_thumb_size(const size_t size);
 
     /**
+     * Set fixed number of visible columns.
+     * @param count number of columns, 0 for automatic layout
+     */
+    void set_columns(const size_t count);
+
+    /**
      * Set padding size.
      * @param size new padding size in pixels
      */
     void set_padding_size(const size_t size);
+
+    /**
+     * Set fixed number of visible rows.
+     * @param count number of rows, 0 for automatic layout
+     */
+    void set_rows(const size_t count);
 
     /**
      * Set border size for selected thumbnail.

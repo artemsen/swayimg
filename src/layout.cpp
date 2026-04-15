@@ -23,10 +23,38 @@ void Layout::update()
     }
     assert(*sel_entry);
 
-    columns = std::max(static_cast<size_t>(1),
-                       window.width / (thumb_size + thumb_padding));
-    rows = std::max(static_cast<size_t>(1),
-                    window.height / (thumb_size + thumb_padding));
+    current_thumb_size = thumb_size;
+    current_thumb_width = thumb_size;
+    current_thumb_height = thumb_size;
+    if (fixed_columns || fixed_rows) {
+        if (fixed_columns) {
+            const size_t fitted = window.width / fixed_columns;
+            current_thumb_width = fitted > thumb_padding ? fitted - thumb_padding
+                                                         : 1;
+        }
+        if (fixed_rows) {
+            const size_t fitted = window.height / fixed_rows;
+            current_thumb_height =
+                fitted > thumb_padding ? fitted - thumb_padding : 1;
+        }
+        if (!fixed_columns) {
+            current_thumb_width = thumb_size;
+        }
+        if (!fixed_rows) {
+            current_thumb_height = thumb_size;
+        }
+        current_thumb_size =
+            std::max(current_thumb_width, current_thumb_height);
+    }
+
+    columns = fixed_columns
+        ? fixed_columns
+        : std::max(static_cast<size_t>(1),
+                   window.width / (current_thumb_width + thumb_padding));
+    rows = fixed_rows
+        ? fixed_rows
+        : std::max(static_cast<size_t>(1),
+                   window.height / (current_thumb_height + thumb_padding));
 
     // set preliminary position for the currently selected image
     ssize_t distance = il.distance(first_entry, sel_entry);
@@ -71,9 +99,11 @@ void Layout::update()
     const size_t used_cols = std::min(columns, total_visible);
     const size_t used_rows = (total_visible + columns - 1) / columns;
     const size_t mid_x =
-        std::min(window.width, used_cols * (thumb_size + thumb_padding));
+        std::min(window.width,
+                 used_cols * (current_thumb_width + thumb_padding));
     const size_t mid_y =
-        std::min(window.height, used_rows * (thumb_size + thumb_padding));
+        std::min(window.height,
+                 used_rows * (current_thumb_height + thumb_padding));
     const size_t offset_x = (window.width - mid_x) / 2;
     const size_t offset_y = (window.height - mid_y) / 2;
 
@@ -84,9 +114,9 @@ void Layout::update()
         Thumbnail thumb;
         thumb.col = i % columns;
         thumb.row = i / columns;
-        thumb.pos.x = offset_x + thumb.col * thumb_size;
+        thumb.pos.x = offset_x + thumb.col * current_thumb_width;
         thumb.pos.x += thumb_padding * (thumb.col + 1);
-        thumb.pos.y = offset_y + thumb.row * thumb_size;
+        thumb.pos.y = offset_y + thumb.row * current_thumb_height;
         thumb.pos.y += thumb_padding * (thumb.row + 1);
         thumb.img = img;
         scheme.emplace_back(thumb);
@@ -108,9 +138,21 @@ void Layout::set_thumb_size(const size_t size)
     update();
 }
 
+void Layout::set_columns(const size_t count)
+{
+    fixed_columns = count;
+    update();
+}
+
 void Layout::set_padding(const size_t padding)
 {
     thumb_padding = padding;
+    update();
+}
+
+void Layout::set_rows(const size_t count)
+{
+    fixed_rows = count;
     update();
 }
 
@@ -215,9 +257,9 @@ const Layout::Thumbnail* Layout::at(const Point& pos) const
 {
     for (const auto& it : scheme) {
         if (pos.x >= it.pos.x &&
-            pos.x < it.pos.x + static_cast<ssize_t>(thumb_size) &&
+            pos.x < it.pos.x + static_cast<ssize_t>(current_thumb_width) &&
             pos.y >= it.pos.y &&
-            pos.y < it.pos.y + static_cast<ssize_t>(thumb_size)) {
+            pos.y < it.pos.y + static_cast<ssize_t>(current_thumb_height)) {
             return &it;
         }
     }

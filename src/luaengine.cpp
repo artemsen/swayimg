@@ -995,9 +995,17 @@ void LuaEngine::bind_gallery_api()
                      [](const size_t size) {
                          Gallery::self().set_thumb_size(size);
                      })
+        .addFunction("set_columns",
+                     [](const size_t count) {
+                         Gallery::self().set_columns(count);
+                     })
         .addFunction("set_padding_size",
                      [](const size_t size) {
                          Gallery::self().set_padding_size(size);
+                     })
+        .addFunction("set_rows",
+                     [](const size_t count) {
+                         Gallery::self().set_rows(count);
                      })
         .addFunction("set_border_size",
                      [](const size_t size) {

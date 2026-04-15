@@ -166,7 +166,9 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_aspect](#swayimggalleryset_aspect): Set thumbnail aspect ratio
   * [swayimg.gallery.get_thumb_size](#swayimggalleryget_thumb_size): Get thumbnail size
   * [swayimg.gallery.set_thumb_size](#swayimggalleryset_thumb_size): Set thumbnail size
+  * [swayimg.gallery.set_columns](#swayimggalleryset_columns): Set fixed number of visible columns
   * [swayimg.gallery.set_padding_size](#swayimggalleryset_padding_size): Set the padding size between thumbnails
+  * [swayimg.gallery.set_rows](#swayimggalleryset_rows): Set fixed number of visible rows
   * [swayimg.gallery.set_border_size](#swayimggalleryset_border_size): Set the border size for currently selected thumbnail
   * [swayimg.gallery.set_border_color](#swayimggalleryset_border_color): Set border color for currently selected thumbnail
   * [swayimg.gallery.set_selected_scale](#swayimggalleryset_selected_scale): Set the scale factor for currently selected thumbnail
@@ -2081,6 +2083,20 @@ Since 5.0.
 
 @_param_ `size` - Thumbnail size in pixels
 
+### swayimg.gallery.set_columns
+
+```lua
+swayimg.gallery.set_columns(count: integer)
+```
+
+Set fixed number of visible columns.
+
+Since 5.3.
+
+Set `0` to restore automatic column count.
+
+@_param_ `count` - Number of visible columns
+
 ### swayimg.gallery.set_padding_size
 
 ```lua
@@ -2092,6 +2108,20 @@ Set the padding size between thumbnails.
 Since 5.0.
 
 @_param_ `size` - Padding size in pixels
+
+### swayimg.gallery.set_rows
+
+```lua
+swayimg.gallery.set_rows(count: integer)
+```
+
+Set fixed number of visible rows.
+
+Since 5.3.
+
+Set `0` to restore automatic row count.
+
+@_param_ `count` - Number of visible rows
 
 ### swayimg.gallery.set_border_size
 
@@ -2392,4 +2422,3 @@ If the value cannot be output (for example, the specified EXIF tag is
 missing), then the entire string including the key is ignored upon printing.
 
 Example: `Path to image:\t{path}`
-

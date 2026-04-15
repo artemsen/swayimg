@@ -94,6 +94,8 @@ swayimg.slideshow.set_text("topleft", { "{name}" }) -- top left text block schem
 -- Gallery mode
 swayimg.gallery.set_aspect("fill")                  -- thumbnail aspect ratio
 swayimg.gallery.set_thumb_size(200)                 -- thumbnail size in pixels
+swayimg.gallery.set_columns(0)                      -- fixed visible columns (0=auto)
+swayimg.gallery.set_rows(0)                         -- fixed visible rows (0=auto)
 swayimg.gallery.set_padding_size(5)                 -- padding between thumbnails
 swayimg.gallery.set_border_size(5)                  -- border size for selected thumbnail
 swayimg.gallery.set_border_color(0xffaaaaaa)        -- border color for selected thumbnail

@@ -217,9 +217,25 @@ void Gallery::set_thumb_size(const size_t size)
     }
 }
 
+void Gallery::set_columns(const size_t count)
+{
+    layout.set_columns(count);
+    if (is_active()) {
+        Application::redraw();
+    }
+}
+
 void Gallery::set_padding_size(const size_t size)
 {
     layout.set_padding(std::min(size, PADDING_SIZE_MAX));
+    if (is_active()) {
+        Application::redraw();
+    }
+}
+
+void Gallery::set_rows(const size_t count)
+{
+    layout.set_rows(count);
     if (is_active()) {
         Application::redraw();
     }
@@ -390,18 +406,19 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
     const bool selected = (tlay.img == layout.get_selected());
     const Size wnd_size = wnd;
-    const size_t tile_size = layout.get_thumb_size();
+    const size_t tile_width = layout.get_thumb_width();
+    const size_t tile_height = layout.get_thumb_height();
     const Pixmap* pm = get_thumbnail(tlay.img);
 
     // calculate tile position/size
     Rectangle tile {
-        tlay.pos, { tile_size, tile_size }
+        tlay.pos, { tile_width, tile_height }
     };
     if (selected) {
         tile.width *= selected_scale;
         tile.height *= selected_scale;
-        tile.x -= tile.width / 2 - tile_size / 2;
-        tile.y -= tile.height / 2 - tile_size / 2;
+        tile.x -= tile.width / 2 - tile_width / 2;
+        tile.y -= tile.height / 2 - tile_height / 2;
 
         // prevent going beyond the window
         if (tile.x + tile.width + border_size > wnd_size.width) {
@@ -569,7 +586,8 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
         queue.erase(entry);
     }
 
-    const size_t thumb_size = layout.get_thumb_size();
+    const size_t thumb_size =
+        std::max(layout.get_thumb_width(), layout.get_thumb_height());
 
     ThumbEntry thumb;
     thumb.entry = entry;
