@@ -217,6 +217,16 @@ function swayimg.enable_antialiasing(enable) end
 ---@param enable boolean Enable/disable orientation change
 function swayimg.enable_exif_orientation(enable) end
 
+---Setting format parameters.
+---Since 5.3.
+---
+---Supported parameters:
+---* `raw`:
+---  * `auto_bw`: Use camera white balance
+---@param name string Format name (e.g. `raw`)
+---@param params table Table of parameters (e.g. `{ auto_bw = true }`)
+function swayimg.set_format_params(name, params) end
+
 ---Enable or disable window decoration (title, border, buttons).
 ---Since 5.0.
 ---

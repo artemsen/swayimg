@@ -7,6 +7,8 @@
 #include "image.hpp"
 
 #include <cstring>
+#include <string>
+#include <unordered_map>
 
 class ImageFormat {
 public:
@@ -33,9 +35,17 @@ public:
     ImageFormat(const Priority load_priority, const char* format_name);
 
     /**
+     * Set decode parameters for the format.
+     * @param params format parameters
+     * @return false if not supported
+     */
+    virtual bool
+    set_params(const std::unordered_map<std::string, bool>& params);
+
+    /**
      * Decode raw image data.
      * @param data source data to decode
-     * @return image ensance or nulptr on errors
+     * @return image instance or nulptr on errors
      */
     virtual ImagePtr decode(const Data& data) = 0;
 

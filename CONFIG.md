@@ -48,6 +48,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.on_initialized](#swayimgon_initialized): Add a callback function called when all subsystems have been initialized
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
+  * [swayimg.set_format_params](#swayimgset_format_params): Setting format parameters
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
   * [swayimg.set_dnd_button](#swayimgset_dnd_button): Set mouse button used for drag-and-drop image file to external apps
@@ -375,6 +376,24 @@ Enable or disable changing orientation based on EXIF.
 Since 5.1.
 
 @_param_ `enable` - Enable/disable orientation change
+
+### swayimg.set_format_params
+
+```lua
+swayimg.set_format_params(name: string, params: table)
+```
+
+Setting format parameters.
+
+Since 5.3.
+
+Supported parameters:
+* `raw`:
+  * `auto_bw`: Use camera white balance
+
+@_param_ `name` - Format name (e.g. `raw`)
+
+@_param_ `params` - Table of parameters (e.g. `{ auto_bw = true }`)
 
 ### swayimg.enable_decoration
 

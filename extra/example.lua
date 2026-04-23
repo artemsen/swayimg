@@ -15,6 +15,9 @@ swayimg.enable_overlay(false)             -- window overlay mode
 swayimg.enable_exif_orientation(true)     -- image orientation by EXIF
 swayimg.set_dnd_button("MouseRight")      -- drag-and-drop mouse button
 
+-- Format specific parameters
+swayimg.set_format_params('raw', { auto_bw = true }) -- automatic B/W level
+
 -- Image list configuration
 swayimg.imagelist.set_order("numeric")    -- list order
 swayimg.imagelist.enable_reverse(false)   -- reverse order

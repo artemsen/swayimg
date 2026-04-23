@@ -19,6 +19,17 @@ public:
     {
     }
 
+    bool
+    set_params(const std::unordered_map<std::string, bool>& params) override
+    {
+        for (const auto& [name, value] : params) {
+            if (name == "auto_bw") {
+                auto_bw = value;
+            }
+        }
+        return true;
+    }
+
     ImagePtr decode(const Data& data) override
     {
         // open decoder
@@ -32,12 +43,17 @@ public:
             decoder.unpack() != LIBRAW_SUCCESS) {
             return nullptr;
         }
-        decoder.output_params_ptr()->output_bps = 8; // 8-bit color
-        if (decoder.dcraw_process() != LIBRAW_SUCCESS) {
-            return nullptr;
+
+        libraw_output_params_t* out_params = decoder.output_params_ptr();
+        out_params->output_bps = 8; // 8-bit color
+        if (auto_bw) {
+            out_params->use_camera_wb = 1;
         }
 
         // decode image
+        if (decoder.dcraw_process() != LIBRAW_SUCCESS) {
+            return nullptr;
+        }
         RawImage img(decoder.dcraw_make_mem_image(), &libraw_dcraw_clear_mem);
         if (img->type != LIBRAW_IMAGE_BITMAP || img->colors != 3 ||
             img->bits != 8) {
@@ -126,6 +142,9 @@ public:
 private:
     using RawImage = std::unique_ptr<libraw_processed_image_t,
                                      decltype(&libraw_dcraw_clear_mem)>;
+
+private:
+    bool auto_bw = true; ///< Automatic white balance
 };
 
 // register format in factory

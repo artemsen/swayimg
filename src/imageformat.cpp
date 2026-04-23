@@ -201,6 +201,11 @@ ImageFormat::ImageFormat(const Priority load_priority, const char* format_name)
     FormatFactory::self().add(this);
 }
 
+bool ImageFormat::set_params(const std::unordered_map<std::string, bool>&)
+{
+    return false;
+}
+
 Pixmap ImageFormat::preview(const Data& data, const size_t sz,
                             const bool max_sz)
 {

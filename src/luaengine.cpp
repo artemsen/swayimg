@@ -438,6 +438,22 @@ void LuaEngine::bind_root_api()
                      [](const bool enable) {
                          FormatFactory::self().fix_orientation = enable;
                      })
+        .addFunction(
+            "set_format_params",
+            [this](const std::string& name,
+                   const std::unordered_map<std::string, bool>& params) {
+                ImageFormat* fmt = FormatFactory::self().get(name.c_str());
+                if (!fmt) {
+                    print_error("Unsupported format {} for {}.on_initialized",
+                                name, NS_SWAYIMG);
+                    return;
+                }
+                if (!fmt->set_params(params)) {
+                    print_error("Unsupported parameters for format {} in "
+                                "{}.on_initialized",
+                                name, NS_SWAYIMG);
+                }
+            })
         .addFunction("enable_decoration",
                      [](const bool enable) {
                          Application::self().sparams.decoration = enable;
