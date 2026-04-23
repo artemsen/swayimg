@@ -33,6 +33,7 @@ jobs:
           libgif-dev
           libgtest-dev
           libheif-dev
+          libheif-plugins-all
           libjpeg-dev
           libjxl-dev
           libluajit-5.1-dev
