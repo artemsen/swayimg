@@ -23,8 +23,8 @@ public:
     set_params(const std::unordered_map<std::string, bool>& params) override
     {
         for (const auto& [name, value] : params) {
-            if (name == "auto_bw") {
-                auto_bw = value;
+            if (name == "camera_wb") {
+                camera_wb = value;
             }
         }
         return true;
@@ -46,7 +46,7 @@ public:
 
         libraw_output_params_t* out_params = decoder.output_params_ptr();
         out_params->output_bps = 8; // 8-bit color
-        if (auto_bw) {
+        if (camera_wb) {
             out_params->use_camera_wb = 1;
         }
 
@@ -144,7 +144,7 @@ private:
                                      decltype(&libraw_dcraw_clear_mem)>;
 
 private:
-    bool auto_bw = true; ///< Automatic white balance
+    bool camera_wb = true; ///< Fix colors using white balance from camera
 };
 
 // register format in factory

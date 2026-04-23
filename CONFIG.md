@@ -389,11 +389,11 @@ Since 5.3.
 
 Supported parameters:
 * `raw`:
-  * `auto_bw`: Use camera white balance
+  * `camera_wb`: Fix colors using white balance from camera
 
 @_param_ `name` - Format name (e.g. `raw`)
 
-@_param_ `params` - Table of parameters (e.g. `{ auto_bw = true }`)
+@_param_ `params` - Table of parameters (e.g. `{ camera_wb = true }`)
 
 ### swayimg.enable_decoration
 
