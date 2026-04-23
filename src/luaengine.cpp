@@ -259,11 +259,11 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     // load config file
     if (!config_file.empty()) {
         if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
-            print_error("Failed to load config file: {}",
-                        lua_tostring(lua_state, -1));
+            const char* msg = lua_tostring(lua_state, -1);
+            print_error("Failed to load config file: {}", msg ? msg : "<?>");
         } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-            print_error("Failed to execute config file: {}",
-                        lua_tostring(lua_state, -1));
+            const char* msg = lua_tostring(lua_state, -1);
+            print_error("Failed to execute config file: {}", msg ? msg : "<?>");
         }
     }
 }
