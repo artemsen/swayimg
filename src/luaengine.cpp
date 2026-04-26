@@ -982,6 +982,12 @@ void LuaEngine::bind_gallery_api()
                         NS_SWAYIMG, NS_GALLERY);
                 }
             })
+        .addFunction("reload",
+                     [check_active]() {
+                         if (check_active("reload")) {
+                             Gallery::self().reload();
+                         }
+                     })
         .addFunction(
             "get_image",
             [this, check_active]() {

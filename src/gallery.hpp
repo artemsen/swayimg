@@ -38,6 +38,11 @@ public:
     bool select(const Layout::Direction dir);
 
     /**
+     * Reload thumbnails
+     */
+    void reload();
+
+    /**
      * Set thumbnail aspect ratio.
      * @param ratio aspect ratio
      */

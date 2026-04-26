@@ -654,6 +654,10 @@ swayimg.gallery = {}
 ---@param dir gdir_t Next thumbnail direction
 function swayimg.gallery.switch_image(dir) end
 
+---Reload thumbnails.
+---Since 5.3.
+function swayimg.gallery.reload() end
+
 ---Get information about currently selected image entry.
 ---Since 5.0.
 ---@return swayimg.entry # Currently selected image entry

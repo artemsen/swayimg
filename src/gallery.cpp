@@ -201,6 +201,19 @@ bool Gallery::select(const Layout::Direction dir)
     return true;
 }
 
+void Gallery::reload()
+{
+    // stop loader
+    tpool.cancel();
+    tpool.wait();
+
+    // clear cache
+    const std::scoped_lock lock(mutex);
+    cache.clear();
+
+    Application::redraw();
+}
+
 void Gallery::set_thumb_aspect(const Aspect ratio)
 {
     aspect = ratio;

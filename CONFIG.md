@@ -163,6 +163,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_text](#swayimgslideshowset_text): Set text layer scheme
 * Gallery mode
   * [swayimg.gallery.switch_image](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
+  * [swayimg.gallery.reload](#swayimggalleryreload): Reload thumbnails
   * [swayimg.gallery.get_image](#swayimggalleryget_image): Get information about currently selected image entry
   * [swayimg.gallery.set_aspect](#swayimggalleryset_aspect): Set thumbnail aspect ratio
   * [swayimg.gallery.get_thumb_size](#swayimggalleryget_thumb_size): Get thumbnail size
@@ -2046,6 +2047,16 @@ Since 5.0.
 * `"right"`: Select the thumbnail to the right of the current one
 * `"pgup"`: Select the thumbnail on the previous page
 * `"pgdown"`: Select the thumbnail on the next page
+
+### swayimg.gallery.reload
+
+```lua
+swayimg.gallery.reload()
+```
+
+Reload thumbnails.
+
+Since 5.3.
 
 ### swayimg.gallery.get_image
 
