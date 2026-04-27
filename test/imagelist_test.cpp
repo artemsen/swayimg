@@ -48,6 +48,10 @@ static std::string to_string(ImageList& il)
 
 TEST(ImageListTest, LoadFile)
 {
+    // NOTE: hack to set the locale before before imagelist gets used (and the
+    // sorter within initializes)
+    std::locale::global(std::locale("en_US.UTF-8"));
+
     ImageList il;
 
     ImageEntryPtr entry = il.load(TEST_DATA_DIR "/filelist.txt");

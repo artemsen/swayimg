@@ -227,6 +227,14 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     }
     luaL_openlibs(lua_state);
 
+    // cache debug.traceback for stack traces in callback errors
+    lua_getglobal(lua_state, "debug");
+    lua_getfield(lua_state, -1, "traceback");
+    traceback_fn = lua_tocfunction(lua_state, -1);
+    // for some weird reason popping both at once makes lua C++ errors invisible
+    lua_pop(lua_state, 1); // pop traceback
+    lua_pop(lua_state, 1); // pop debug table
+
     const std::filesystem::path config_file =
         config.empty() ? get_config_file() : config;
     if (config_file.empty()) {
@@ -261,9 +269,10 @@ void LuaEngine::initialize(const std::filesystem::path& config)
         if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
             const char* msg = lua_tostring(lua_state, -1);
             print_error("Failed to load config file: {}", msg ? msg : "<?>");
-        } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-            const char* msg = lua_tostring(lua_state, -1);
-            print_error("Failed to execute config file: {}", msg ? msg : "<?>");
+        } else {
+            const auto chunk = luabridge::LuaRef::fromStack(lua_state, -1);
+            lua_pop(lua_state, 1);
+            exec_lua(&chunk);
         }
     }
 }
@@ -275,9 +284,10 @@ void LuaEngine::execute(const std::string& script)
     if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
         print_error("Failed to load script line: {}",
                     lua_tostring(lua_state, -1));
-    } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        print_error("Failed to execute script line: {}",
-                    lua_tostring(lua_state, -1));
+    } else {
+        const auto chunk = luabridge::LuaRef::fromStack(lua_state, -1);
+        lua_pop(lua_state, 1);
+        exec_lua(&chunk);
     }
 }
 
@@ -352,10 +362,7 @@ void LuaEngine::bind_root_api()
                 } else {
                     const luabridge::LuaRef* ref = add_ref(&cb);
                     Application::self().subscribe_window_resize([this, ref]() {
-                        const luabridge::LuaResult result = (*ref)();
-                        if (!result) {
-                            print_error("{}", result.errorMessage());
-                        }
+                        exec_lua(ref);
                     });
                 }
             })
@@ -423,10 +430,7 @@ void LuaEngine::bind_root_api()
                          }
                          const luabridge::LuaRef* ref = add_ref(&cb);
                          Application::self().on_init_complete = [this, ref]() {
-                             const luabridge::LuaResult result = (*ref)();
-                             if (!result) {
-                                 print_error("{}", result.errorMessage());
-                             }
+                             exec_lua(ref);
                          };
                      })
         .addFunction("enable_antialiasing",
@@ -594,6 +598,21 @@ void LuaEngine::bind_text_api()
         .endNamespace();
 }
 
+// generate lambda for checking if required mode is active
+auto mk_mode_checker(lua_State* L, const char* mode_name)
+{
+    auto mode = name_to_type(appmodes, mode_name).value();
+    return [L, mode, mode_name](const char* fname) {
+        if (Application::self().get_mode() == mode) {
+            return true;
+        }
+
+        throw luabridge::raise_lua_error(
+            L, "Unable to execute %s.%s.%s - mode not active", NS_SWAYIMG,
+            mode_name, fname);
+    };
+}
+
 void LuaEngine::bind_viewer_api(const char* name)
 {
     assert(strcmp(name, NS_VIEWER) == 0 || strcmp(name, NS_SLIDESHOW) == 0);
@@ -604,24 +623,15 @@ void LuaEngine::bind_viewer_api(const char* name)
     bind_appmode_api(name);
 
     // check if required mode is active
-    auto check_active = [this, mode, name](const char* fname) {
-        if (Application::self().current_mode() == mode) {
-            return true;
-        }
-        print_error("Unable to execute {}.{}.{}: {} mode is not active",
-                    NS_SWAYIMG, name, fname, name);
-        return false;
-    };
+    auto assert_active = mk_mode_checker(lua_state, name);
 
     luabridge::getGlobalNamespace(lua_state)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
         .addFunction(
             "switch_image",
-            [this, check_active, mode, name](const std::string& dname) {
-                if (!check_active("switch_image")) {
-                    return;
-                }
+            [this, assert_active, mode, name](const std::string& dname) {
+                assert_active("switch_image");
                 const auto dir = name_to_type(ildirs, dname.c_str());
                 if (dir.has_value()) {
                     mode->open(dir.value());
@@ -632,10 +642,8 @@ void LuaEngine::bind_viewer_api(const char* name)
                 }
             })
         .addFunction("open",
-                     [check_active, mode](const std::string& path) {
-                         if (!check_active("open")) {
-                             return;
-                         }
+                     [assert_active, mode](const std::string& path) {
+                         assert_active("open");
                          ImageEntryPtr entry =
                              Application::self().add_image_entry(path);
                          if (!entry) {
@@ -647,10 +655,8 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("get_image",
-                     [this, check_active, mode]() {
-                         if (!check_active("get_image")) {
-                             return luabridge::newTable(lua_state);
-                         }
+                     [this, assert_active, mode]() {
+                         assert_active("get_image");
                          const ImagePtr image = mode->current_image();
                          luabridge::LuaRef tbl = entry_to_table(*image->entry);
                          tbl["format"] = image->format;
@@ -666,28 +672,24 @@ void LuaEngine::bind_viewer_api(const char* name)
                          return tbl;
                      })
         .addFunction("reload",
-                     [check_active, mode]() {
-                         if (check_active("reload")) {
-                             mode->reload();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("reload");
+                         mode->reload();
                      })
         .addFunction("reset",
-                     [check_active, mode]() {
-                         if (check_active("reset")) {
-                             mode->reset();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("reset");
+                         mode->reset();
                      })
         .addFunction("get_scale",
                      [mode]() {
                          return mode->get_scale();
                      })
         .addFunction("set_abs_scale",
-                     [check_active, mode](const double scale,
-                                          const std::optional<ssize_t>& x,
-                                          const std::optional<ssize_t>& y) {
-                         if (!check_active("set_abs_scale")) {
-                             return;
-                         }
+                     [assert_active, mode](const double scale,
+                                           const std::optional<ssize_t>& x,
+                                           const std::optional<ssize_t>& y) {
+                         assert_active("set_abs_scale");
                          Point preserve;
                          if (x.has_value() && y.has_value()) {
                              preserve.x = x.value();
@@ -697,10 +699,8 @@ void LuaEngine::bind_viewer_api(const char* name)
                      })
         .addFunction(
             "set_fix_scale",
-            [this, check_active, mode, name](const std::string& scname) {
-                if (!check_active("set_fix_scale")) {
-                    return;
-                }
+            [this, assert_active, mode, name](const std::string& scname) {
+                assert_active("set_fix_scale");
                 const auto scale = name_to_type(scales, scname.c_str());
                 if (scale.has_value()) {
                     mode->set_scale(scale.value());
@@ -728,36 +728,32 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("get_position",
-                     [check_active, mode]() {
-                         Point pos;
-                         if (check_active("get_position")) {
-                             pos = mode->get_position();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("get_position");
+                         Point pos = mode->get_position();
                          return std::unordered_map<std::string, ssize_t> {
                              { "x", pos.x },
                              { "y", pos.y },
                          };
                      })
         .addFunction("set_abs_position",
-                     [check_active, mode](const ssize_t x, const ssize_t y) {
-                         if (check_active("set_abs_position")) {
-                             mode->set_position({ x, y });
-                         }
+                     [assert_active, mode](const ssize_t x, const ssize_t y) {
+                         assert_active("set_abs_position");
+                         mode->set_position({ x, y });
                      })
-        .addFunction("set_fix_position",
-                     [this, check_active, mode, name](const std::string& fpos) {
-                         if (check_active("set_fix_position")) {
-                             const auto pos =
-                                 name_to_type(imgpositions, fpos.c_str());
-                             if (pos.has_value()) {
-                                 mode->set_position(pos.value());
-                             } else {
-                                 print_error("Invalid argument \"{}\" for "
-                                             "{}.{}.set_fix_position",
-                                             fpos, NS_SWAYIMG, name);
-                             }
-                         }
-                     })
+        .addFunction(
+            "set_fix_position",
+            [this, assert_active, mode, name](const std::string& fpos) {
+                assert_active("set_fix_position");
+                const auto pos = name_to_type(imgpositions, fpos.c_str());
+                if (pos.has_value()) {
+                    mode->set_position(pos.value());
+                } else {
+                    print_error("Invalid argument \"{}\" for "
+                                "{}.{}.set_fix_position",
+                                fpos, NS_SWAYIMG, name);
+                }
+            })
         .addFunction("set_default_position",
                      [this, mode, name](const std::string& fpos) {
                          const auto pos =
@@ -771,64 +767,54 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("next_frame",
-                     [check_active, mode]() {
-                         if (check_active("next_frame")) {
-                             mode->enable_animation(false);
-                             return mode->next_frame();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("next_frame");
+                         mode->enable_animation(false);
+                         return mode->next_frame();
                          return static_cast<size_t>(0);
                      })
         .addFunction("prev_frame",
-                     [check_active, mode]() {
-                         if (check_active("prev_frame")) {
-                             mode->enable_animation(false);
-                             return mode->prev_frame();
-                         }
-                         return static_cast<size_t>(0);
+                     [assert_active, mode]() {
+                         assert_active("prev_frame");
+                         mode->enable_animation(false);
+                         return mode->prev_frame();
                      })
         .addFunction("set_animation",
-                     [check_active, mode](const std::optional<bool>& enable) {
-                         if (check_active("set_animation")) {
-                             mode->enable_animation(
-                                 enable.value_or(!mode->animation_enabled()));
-                         }
+                     [assert_active, mode](const std::optional<bool>& enable) {
+                         assert_active("set_animation");
+                         mode->enable_animation(
+                             enable.value_or(!mode->animation_enabled()));
                      })
         .addFunction("get_animation",
-                     [check_active, mode]() {
-                         return check_active("get_animation") &&
-                             mode->animation_enabled();
+                     [assert_active, mode]() {
+                         assert_active("get_animation");
+                         return mode->animation_enabled();
                      })
         .addFunction("animation_stop",
-                     [this, check_active, mode]() {
+                     [this, assert_active, mode]() {
                          warn_deprecated("animation_stop", "set_animation");
-                         if (check_active("animation_stop")) {
-                             mode->enable_animation(false);
-                         }
+                         assert_active("animation_stop");
+                         mode->enable_animation(false);
                      })
         .addFunction("animation_resume",
-                     [this, check_active, mode]() {
+                     [this, assert_active, mode]() {
                          warn_deprecated("animation_resume", "set_animation");
-                         if (check_active("animation_resume")) {
-                             mode->enable_animation(true);
-                         }
+                         assert_active("animation_resume");
+                         mode->enable_animation(true);
                      })
         .addFunction("flip_vertical",
-                     [check_active, mode]() {
-                         if (check_active("flip_vertical")) {
-                             mode->flip_vertical();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("flip_vertical");
+                         mode->flip_vertical();
                      })
         .addFunction("flip_horizontal",
-                     [check_active, mode]() {
-                         if (check_active("flip_horizontal")) {
-                             mode->flip_horizontal();
-                         }
+                     [assert_active, mode]() {
+                         assert_active("flip_horizontal");
+                         mode->flip_horizontal();
                      })
         .addFunction("rotate",
-                     [this, check_active, mode, name](const size_t angle) {
-                         if (!check_active("rotate")) {
-                             return;
-                         }
+                     [this, assert_active, mode, name](const size_t angle) {
+                         assert_active("rotate");
                          if (angle == 90 || angle == 180 || angle == 270) {
                              mode->rotate(angle);
                          } else {
@@ -838,17 +824,14 @@ void LuaEngine::bind_viewer_api(const char* name)
                          }
                      })
         .addFunction("export",
-                     [check_active, mode](const std::string& path) {
-                         if (check_active("export")) {
-                             mode->export_frame(path);
-                         }
+                     [assert_active, mode](const std::string& path) {
+                         assert_active("export");
+                         mode->export_frame(path);
                      })
         .addFunction("set_meta",
-                     [this, check_active, mode, name](const std::string& key,
-                                                      const std::string& val) {
-                         if (!check_active("set_meta")) {
-                             return;
-                         }
+                     [this, assert_active, mode, name](const std::string& key,
+                                                       const std::string& val) {
+                         assert_active("set_meta");
                          // remove "meta." from key
                          std::string meta_key;
                          const std::string meta_prefix =
@@ -953,14 +936,7 @@ void LuaEngine::bind_slideshow_api()
 void LuaEngine::bind_gallery_api()
 {
     // check if required mode is active
-    auto check_active = [this](const char* name) {
-        if (Gallery::self().is_active()) {
-            return true;
-        }
-        print_error("Unable to execute {}.{}.{}: gallery mode is not active",
-                    NS_SWAYIMG, NS_GALLERY, name);
-        return false;
-    };
+    auto assert_active = mk_mode_checker(lua_state, NS_GALLERY);
 
     bind_appmode_api(NS_GALLERY);
 
@@ -969,10 +945,8 @@ void LuaEngine::bind_gallery_api()
         .beginNamespace(NS_GALLERY)
         .addFunction(
             "switch_image",
-            [this, check_active](const std::string& name) {
-                if (!check_active("select")) {
-                    return;
-                }
+            [this, assert_active](const std::string& name) {
+                assert_active("select");
                 const auto dir = name_to_type(gldirs, name.c_str());
                 if (dir.has_value()) {
                     Gallery::self().select(dir.value());
@@ -983,17 +957,14 @@ void LuaEngine::bind_gallery_api()
                 }
             })
         .addFunction("reload",
-                     [check_active]() {
-                         if (check_active("reload")) {
-                             Gallery::self().reload();
-                         }
+                     [assert_active]() {
+                         assert_active("reload");
+                         Gallery::self().reload();
                      })
         .addFunction(
             "get_image",
-            [this, check_active]() {
-                if (!check_active("get_image")) {
-                    return luabridge::newTable(lua_state);
-                }
+            [this, assert_active]() {
+                assert_active("get_image");
                 luabridge::LuaRef table = entry_to_table(
                     *Application::self().current_mode()->current_entry());
                 return table;
@@ -1130,10 +1101,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction(
@@ -1154,10 +1122,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction(
@@ -1178,10 +1143,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction("on_image_change",
@@ -1194,10 +1156,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
                              appmode->subscribe_image_switch([this, ref]() {
-                                 const luabridge::LuaResult result = (*ref)();
-                                 if (!result) {
-                                     print_error("{}", result.errorMessage());
-                                 }
+                                 exec_lua(ref);
                              });
                          }
                      })
@@ -1216,6 +1175,18 @@ void LuaEngine::bind_appmode_api(const char* name)
             })
         .endNamespace()
         .endNamespace();
+}
+
+void LuaEngine::exec_lua(const luabridge::LuaRef* ref) const
+{
+    lua_pushcfunction(lua_state, traceback_fn);
+    ref->push();
+    // on error, debug.traceback returns the full Lua stack trace
+    if (const int code = lua_pcall(lua_state, 0, 0, -2); code != LUA_OK) {
+        const char* msg = lua_tostring(lua_state, -1);
+        print_error("{}", msg ? msg : "<?>");
+        lua_pop(lua_state, 1);
+    }
 }
 
 luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const
