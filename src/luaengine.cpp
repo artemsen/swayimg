@@ -227,6 +227,12 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     }
     luaL_openlibs(lua_state);
 
+    // cache debug.traceback for stack traces in callback errors
+    lua_getglobal(lua_state, "debug");
+    lua_getfield(lua_state, -1, "traceback");
+    traceback_fn = lua_tocfunction(lua_state, -1);
+    lua_pop(lua_state, 1); // pop debug table
+
     const std::filesystem::path config_file =
         config.empty() ? get_config_file() : config;
     if (config_file.empty()) {
@@ -261,9 +267,10 @@ void LuaEngine::initialize(const std::filesystem::path& config)
         if (luaL_loadfile(lua_state, config_file.c_str()) != LUA_OK) {
             const char* msg = lua_tostring(lua_state, -1);
             print_error("Failed to load config file: {}", msg ? msg : "<?>");
-        } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-            const char* msg = lua_tostring(lua_state, -1);
-            print_error("Failed to execute config file: {}", msg ? msg : "<?>");
+        } else {
+            const auto chunk = luabridge::LuaRef::fromStack(lua_state, -1);
+            lua_pop(lua_state, 1);
+            exec_lua(&chunk);
         }
     }
 }
@@ -275,9 +282,10 @@ void LuaEngine::execute(const std::string& script)
     if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
         print_error("Failed to load script line: {}",
                     lua_tostring(lua_state, -1));
-    } else if (lua_pcall(lua_state, 0, 0, 0) != LUA_OK) {
-        print_error("Failed to execute script line: {}",
-                    lua_tostring(lua_state, -1));
+    } else {
+        const auto chunk = luabridge::LuaRef::fromStack(lua_state, -1);
+        lua_pop(lua_state, 1);
+        exec_lua(&chunk);
     }
 }
 
@@ -352,10 +360,7 @@ void LuaEngine::bind_root_api()
                 } else {
                     const luabridge::LuaRef* ref = add_ref(&cb);
                     Application::self().subscribe_window_resize([this, ref]() {
-                        const luabridge::LuaResult result = (*ref)();
-                        if (!result) {
-                            print_error("{}", result.errorMessage());
-                        }
+                        exec_lua(ref);
                     });
                 }
             })
@@ -423,10 +428,7 @@ void LuaEngine::bind_root_api()
                          }
                          const luabridge::LuaRef* ref = add_ref(&cb);
                          Application::self().on_init_complete = [this, ref]() {
-                             const luabridge::LuaResult result = (*ref)();
-                             if (!result) {
-                                 print_error("{}", result.errorMessage());
-                             }
+                             exec_lua(ref);
                          };
                      })
         .addFunction("enable_antialiasing",
@@ -1130,10 +1132,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction(
@@ -1154,10 +1153,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction(
@@ -1178,10 +1174,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
                 appmode->bind_input(*input, [this, ref]() {
-                    const luabridge::LuaResult result = (*ref)();
-                    if (!result) {
-                        print_error("{}", result.errorMessage());
-                    }
+                    exec_lua(ref);
                 });
             })
         .addFunction("on_image_change",
@@ -1194,10 +1187,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
                              appmode->subscribe_image_switch([this, ref]() {
-                                 const luabridge::LuaResult result = (*ref)();
-                                 if (!result) {
-                                     print_error("{}", result.errorMessage());
-                                 }
+                                 exec_lua(ref);
                              });
                          }
                      })
@@ -1216,6 +1206,18 @@ void LuaEngine::bind_appmode_api(const char* name)
             })
         .endNamespace()
         .endNamespace();
+}
+
+void LuaEngine::exec_lua(const luabridge::LuaRef* ref) const
+{
+    lua_pushcfunction(lua_state, traceback_fn);
+    ref->push();
+    // on error, debug.traceback returns the full Lua stack trace
+    if (const int code = lua_pcall(lua_state, 0, 0, -2); code != LUA_OK) {
+        const char* msg = lua_tostring(lua_state, -1);
+        print_error("{}", msg ? msg : "<?>");
+        lua_pop(lua_state, 1);
+    }
 }
 
 luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const

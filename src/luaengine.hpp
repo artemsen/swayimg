@@ -62,6 +62,12 @@ private:
     entry_to_table(const ImageEntry& entry) const;
 
     /**
+     * Call a Lua function with debug.traceback as error handler.
+     * @param ref reference to the Lua function to call
+     */
+    void exec_lua(const luabridge::LuaRef* ref) const;
+
+    /**
      * Add reference to Lua object.
      * @param obj Lua reference to increment
      * @return created reference to use in future
@@ -87,21 +93,11 @@ private:
         const std::string message =
             std::vformat(fmt.get(), std::make_format_args(args...));
         Log::error("{}", message);
-        Text::self().set_status(message);
-
-        // print stack trace
-        lua_Debug entry;
-        int level = 0;
-        while (lua_getstack(lua_state, level, &entry)) {
-            if (lua_getinfo(lua_state, "Sl", &entry) &&
-                entry.currentline >= 0) {
-                Log::error("  {}:{}", entry.short_src, entry.currentline);
-            }
-            level++;
-        }
+        Text::self().set_status(message.substr(0, message.find_first_of('\n')));
     }
 
 private:
     lua_State* lua_state = nullptr;       ///< Lua state
     std::vector<luabridge::LuaRef*> refs; ///< Own Lua references
+    lua_CFunction traceback_fn; ///< debug.traceback for error stack traces
 };
