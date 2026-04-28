@@ -126,7 +126,8 @@ static inline std::pair<ssize_t, ssize_t> get_bounds(size_t out, double scale)
     // not their edges
     const double c = (out + 0.5) / scale - 0.5;
     const double d = WINDOW_SIZE / std::fmin(scale, 1.0);
-    return std::make_pair(std::floor(c - d), std::ceil(c + d));
+    return std::make_pair(static_cast<ssize_t>(std::floor(c - d)),
+                          static_cast<ssize_t>(std::ceil(c + d)));
 }
 
 // Magic Kernel Sharp 2013
