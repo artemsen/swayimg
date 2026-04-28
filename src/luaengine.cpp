@@ -1045,6 +1045,10 @@ void LuaEngine::bind_gallery_api()
                      [](const uint32_t& color) {
                          Gallery::self().set_window_color(color);
                      })
+        .addFunction("enable_hover",
+                     [](const bool enable) {
+                         Gallery::self().enable_hover(enable);
+                     })
         .addFunction("limit_cache",
                      [](const size_t size) {
                          Gallery::self().set_cache_size(size);

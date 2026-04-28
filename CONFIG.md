@@ -175,6 +175,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.set_selected_color](#swayimggalleryset_selected_color): Set background color for currently selected thumbnail
   * [swayimg.gallery.set_unselected_color](#swayimggalleryset_unselected_color): Set background color for unselected thumbnails
   * [swayimg.gallery.set_window_color](#swayimggalleryset_window_color): Set window background color
+  * [swayimg.gallery.enable_hover](#swayimggalleryenable_hover): Enable or disable thumbnail selection on mouse hover
   * [swayimg.gallery.limit_cache](#swayimggallerylimit_cache): Set max number of thumbnails stored in memory cache
   * [swayimg.gallery.enable_preload](#swayimggalleryenable_preload): Enable or disable preloading invisible thumbnails
   * [swayimg.gallery.enable_embedded_thumb](#swayimggalleryenable_embedded_thumb): Enable or disable using embedded thumbnails
@@ -2206,6 +2207,18 @@ Since 5.0.
 
 `color_t`:
 ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+
+### swayimg.gallery.enable_hover
+
+```lua
+swayimg.gallery.enable_hover(enable: boolean)
+```
+
+Enable or disable thumbnail selection on mouse hover.
+
+Since 5.3.
+
+@_param_ `enable` - Enable/disable mouse hover selection
 
 ### swayimg.gallery.limit_cache
 

@@ -713,6 +713,11 @@ function swayimg.gallery.set_unselected_color(color) end
 ---@param color color_t Background color
 function swayimg.gallery.set_window_color(color) end
 
+---Enable or disable thumbnail selection on mouse hover.
+---Since 5.3.
+---@param enable boolean Enable/disable mouse hover selection
+function swayimg.gallery.enable_hover(enable) end
+
 ---Set max number of thumbnails stored in memory cache.
 ---Since 5.0.
 ---@param size integer Cache size

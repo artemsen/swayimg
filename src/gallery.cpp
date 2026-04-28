@@ -82,6 +82,8 @@ Gallery::Gallery()
     clr_select = { argb_t::max, 0x40, 0x40, 0x40 };
     clr_border = { argb_t::max, 0xaa, 0xaa, 0xaa };
 
+    hover_select = true;
+
     pstore_enable = false;
     pstore_path = pstore_defpath();
 
@@ -286,6 +288,11 @@ void Gallery::set_window_color(const argb_t& color)
     }
 }
 
+void Gallery::enable_hover(const bool enable)
+{
+    hover_select = enable;
+}
+
 void Gallery::set_cache_size(const size_t size)
 {
     cache_size = size;
@@ -360,7 +367,7 @@ void Gallery::window_redraw(Pixmap& wnd)
 
 void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
 {
-    if (layout.select(pos)) {
+    if (hover_select && layout.select(pos)) {
         switch_current();
     }
 }

@@ -112,6 +112,12 @@ public:
     void set_mark_color(const argb_t& color);
 
     /**
+     * Enable/disable mouse hover selection.
+     * @param enable flag to set
+     */
+    void enable_hover(const bool enable);
+
+    /**
      * Set number of thumbnails stored in memory cache.
      * @param size max number of thumbnails stored in memory cache
      */
@@ -203,6 +209,8 @@ private:
     argb_t clr_background; ///< Tile background
     argb_t clr_select;     ///< Selected tile background for transparent images
     argb_t clr_border;     ///< Selected tile border
+
+    bool hover_select; ///< Mouse hover selection
 
     ThreadPool tpool; ///< Loading threads
 

@@ -105,8 +105,9 @@ swayimg.gallery.set_selected_color(0xff404040)      -- background color for sele
 swayimg.gallery.set_unselected_color(0xff202020)    -- background color for unselected thumbnail
 swayimg.gallery.set_window_color(0xff000000)        -- window background color
 swayimg.gallery.set_pinch_factor(100.0)             -- pinch gesture factor
+swayimg.gallery.enable_hover(true)                  -- enable mouse following
 swayimg.gallery.limit_cache(100)                    -- number of thumbnails stored in memory
-swayimg.gallery.enable_embedded_thumb(true)         -- use embedded thumnails
+swayimg.gallery.enable_embedded_thumb(true)         -- use embedded thumbnails
 swayimg.gallery.enable_preload(false)               -- preloading invisible thumbnails
 swayimg.gallery.enable_pstore(false)                -- enable persistent storage for thumbnails
 swayimg.gallery.set_text("topleft", {               -- top left text block scheme
