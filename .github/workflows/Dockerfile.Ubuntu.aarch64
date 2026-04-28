@@ -1,0 +1,38 @@
+FROM ubuntu:26.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN dpkg --add-architecture arm64
+RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes \
+    g++-aarch64-linux-gnu \
+    meson \
+    wayland-protocols \
+    fonts-dejavu \
+    bash-completion \
+    qemu-user \
+    locales \
+    libavif-dev:arm64 \
+    libdrm-dev:arm64 \
+    libexiv2-dev:arm64 \
+    libfontconfig-dev:arm64 \
+    libfreetype-dev:arm64 \
+    libgif-dev:arm64 \
+    libgtest-dev:arm64 \
+    libheif-dev:arm64 \
+    libheif-plugins-all:arm64 \
+    libjpeg-dev:arm64 \
+    libjson-c-dev:arm64 \
+    libjxl-dev:arm64 \
+    libopenexr-dev:arm64 \
+    libraw-dev:arm64 \
+    librsvg2-dev:arm64 \
+    libsixel-dev:arm64 \
+    libtiff-dev:arm64 \
+    libwayland-dev:arm64 \
+    libwebp-dev:arm64 \
+    libxkbcommon-dev:arm64 \
+    libluajit-5.1-dev:arm64
+
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+
+USER ubuntu

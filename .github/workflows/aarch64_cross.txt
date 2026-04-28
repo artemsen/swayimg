@@ -1,0 +1,13 @@
+[binaries]
+c = 'aarch64-linux-gnu-gcc'
+cpp = 'aarch64-linux-gnu-g++'
+ar = 'aarch64-linux-gnu-ar'
+strip = 'aarch64-linux-gnu-strip'
+pkg-config = 'aarch64-linux-gnu-pkg-config'
+exe_wrapper = ['qemu-aarch64', '-cpu', 'max', '-L', '/usr/aarch64-linux-gnu/lib']
+
+[host_machine]
+system = 'linux'
+cpu_family = 'arm'
+cpu = 'arm'
+endian = 'little'

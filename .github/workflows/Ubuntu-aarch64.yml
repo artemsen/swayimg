@@ -6,55 +6,58 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_PATH: /tmp/build
-      INSTALL_PATH: /tmp/install
 
     steps:
+
     - name: Check out source code
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: Build and check
-      uses: uraimo/run-on-arch-action@v3
-      with:
-        arch: aarch64
-        distro: ubuntu_rolling
+    - name: Get swayimg version
+      run: echo "VERSION=$(git describe --tags --long --always | sed 's/^v//;s/-/./')" >> $GITHUB_OUTPUT
+      id: version
 
-        install: >
-          apt update && apt install --no-install-recommends --yes
-          bash-completion
-          build-essential
-          fonts-dejavu
-          libavif-dev
-          libdrm-dev
-          libexiv2-dev
-          libfontconfig-dev
-          libfreetype-dev
-          libgif-dev
-          libgtest-dev
-          libheif-dev
-          libheif-plugins-all
-          libjpeg-dev
-          libjxl-dev
-          libluajit-5.1-dev
-          libopenexr-dev
-          libraw-dev
-          librsvg2-dev
-          libsixel-dev
-          libtiff-dev
-          libwayland-dev
-          libwebp-dev
-          libxkbcommon-dev
-          locales
-          meson
-          pkg-config
-          wayland-protocols
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Ubuntu.aarch64 .
 
-        run: |
-          set -e
-          locale-gen en_US.UTF-8
-          export LANG=en_US.UTF-8
-          meson setup --werror -D tests=enabled -D heif=enabled -D bash=enabled -D exif=enabled -D exr=auto -D gif=enabled -D jpeg=enabled -D jxl=enabled -D svg=enabled -D tiff=enabled -D raw=enabled -D sixel=enabled -D webp=enabled -D man=true -D desktop=true --prefix=/usr ${{ env.BUILD_PATH }}
-          meson compile -C ${{ env.BUILD_PATH }}
-          meson test --verbose -C ${{ env.BUILD_PATH }}
-          DESTDIR=${{ env.INSTALL_PATH }} meson install -C ${{ env.BUILD_PATH }}
+    - name: Run docker container
+      run: docker run --tty --detach --name=swayimg --volume=$PWD:$PWD:ro --workdir=$PWD swayimg
+
+    - name: Configure
+      run: >
+        docker exec swayimg
+        meson setup
+        --cross-file=.github/workflows/aarch64_cross.txt
+        -D version=${{steps.version.outputs.VERSION}}
+        -D compositor=enabled
+        -D wayland=enabled
+        -D drm=enabled
+        -D man=true
+        -D desktop=true
+        -D bash=enabled
+        -D zsh=enabled
+        -D exif=enabled
+        -D exr=auto
+        -D gif=enabled
+        -D heif=enabled
+        -D jpeg=enabled
+        -D jxl=enabled
+        -D raw=enabled
+        -D sixel=enabled
+        -D svg=enabled
+        -D webp=enabled
+        -D tests=enabled
+        --prefix=/usr
+        --werror
+        ${{ env.BUILD_PATH }}
+
+    - name: Compile and link
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_PATH }}
+
+    - name: Run unit tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_PATH }}

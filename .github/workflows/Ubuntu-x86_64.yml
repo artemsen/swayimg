@@ -20,7 +20,7 @@ jobs:
       id: version
 
     - name: Build docker image
-      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Ubuntu .
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Ubuntu.x86_64 .
 
     - name: Run docker container
       run: docker run --tty --detach --name=swayimg --volume=$PWD:$PWD:ro --workdir=$PWD swayimg

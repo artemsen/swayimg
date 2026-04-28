@@ -2,9 +2,12 @@ FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes \
-    bash-completion \
-    build-essential \
+    g++ \
+    meson \
+    wayland-protocols \
     fonts-dejavu \
+    bash-completion \
+    locales \
     libavif-dev \
     libdrm-dev \
     libexiv2-dev \
@@ -25,11 +28,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libwayland-dev \
     libwebp-dev \
     libxkbcommon-dev \
-    libluajit-5.1-dev \
-    locales \
-    meson \
-    pkg-config \
-    wayland-protocols
+    libluajit-5.1-dev
 
 RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
