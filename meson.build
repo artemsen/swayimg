@@ -404,5 +404,5 @@ if get_option('tests').enabled()
         dependencies: dependencies + gtest,
         cpp_args: '-DTEST_DATA_DIR="' + meson.current_source_dir() + '/test/data"',
     )
-    test('Unit tests', test_exe)
+    test('Unit tests', test_exe, env: ['LC_COLLATE=en_US.UTF-8'])
 endif
