@@ -65,7 +65,7 @@ private:
      * Call a Lua function with debug.traceback as error handler.
      * @param ref reference to the Lua function to call
      */
-    void exec_lua(const luabridge::LuaRef* ref) const;
+    void execute(const luabridge::LuaRef* ref) const;
 
     /**
      * Add reference to Lua object.
@@ -94,6 +94,21 @@ private:
             std::vformat(fmt.get(), std::make_format_args(args...));
         Log::error("{}", message);
         Text::self().set_status(message.substr(0, message.find_first_of('\n')));
+    }
+
+    /**
+     * Throw an exception with Lua error info.
+     * @param fmt format description
+     * @param ... format arguments
+     */
+    template <typename... Args>
+    [[noreturn]]
+    void raise_error(const std::format_string<Args...> fmt,
+                     Args&&... args) const
+    {
+        const std::string message =
+            std::vformat(fmt.get(), std::make_format_args(args...));
+        throw luabridge::raise_lua_error(lua_state, "%s", message.c_str());
     }
 
 private:

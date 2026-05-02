@@ -161,7 +161,7 @@ private:
  */
 int main(int argc, char* argv[])
 {
-    std::locale::global(std::locale(""));
+    std::setlocale(LC_ALL, "");
     std::srand(getpid());
 
     Args args;
