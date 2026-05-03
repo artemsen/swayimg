@@ -143,7 +143,7 @@ TEST(ImageListTest, SortAlpha)
     const std::vector<std::filesystem::path> paths = {
         /* 0 */ "exec://a/0",
         /* 1 */ "exec://a/1",
-        /* 2 */ "exec://a/b0",
+        /* 2 */ "exec://a/2",
         /* 3 */ "exec://a/b/0",
         /* 4 */ "exec://a/b/c/0",
         /* 5 */ "exec://ab/0",
@@ -206,7 +206,7 @@ TEST(ImageListTest, SortAlphaReverse)
         /* 0 */ "exec://ab/0",
         /* 1 */ "exec://a/b/c/0",
         /* 2 */ "exec://a/b/0",
-        /* 3 */ "exec://a/b0",
+        /* 3 */ "exec://a/2",
         /* 4 */ "exec://a/1",
         /* 5 */ "exec://a/0",
     };
