@@ -605,11 +605,10 @@ void LuaEngine::bind_viewer_api(const char* name)
 
     // check if required mode is active
     auto ensure_active = [this, mode, name](const char* fname) {
-        if (Application::self().current_mode() == mode) {
-            return;
+        if (Application::self().current_mode() != mode) {
+            raise_error("Unable to execute {}.{}.{}: mode not active",
+                        NS_SWAYIMG, name, fname);
         }
-        raise_error("Unable to execute {}.{}.{} - mode not active", NS_SWAYIMG,
-                    name, fname);
     };
 
     luabridge::getGlobalNamespace(lua_state)
@@ -916,10 +915,9 @@ void LuaEngine::bind_gallery_api()
     // check if required mode is active
     auto ensure_active = [this](const char* fname) {
         if (!Gallery::self().is_active()) {
-            return;
+            raise_error("Unable to execute {}.{}.{}: mode not active",
+                        NS_SWAYIMG, NS_GALLERY, fname);
         }
-        raise_error("Unable to execute {}.{}.{} - mode not active", NS_SWAYIMG,
-                    NS_GALLERY, fname);
     };
 
     bind_appmode_api(NS_GALLERY);
