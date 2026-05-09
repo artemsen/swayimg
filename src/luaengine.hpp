@@ -54,18 +54,18 @@ private:
     void bind_appmode_api(const char* name);
 
     /**
+     * Call a Lua function with debug.traceback as error handler.
+     * @param ref reference to the Lua function to call
+     */
+    void execute(const luabridge::LuaRef* ref) const;
+
+    /**
      * Convert image entry to Lua table.
      * @param entry image entry to convert
      * @return Lua table object
      */
     [[nodiscard]] luabridge::LuaRef
     entry_to_table(const ImageEntry& entry) const;
-
-    /**
-     * Call a Lua function with debug.traceback as error handler.
-     * @param ref reference to the Lua function to call
-     */
-    void execute(const luabridge::LuaRef* ref) const;
 
     /**
      * Add reference to Lua object.
@@ -82,8 +82,8 @@ private:
     void warn_deprecated(const char* name, const char* replacement) const;
 
     /**
-     * Print Lua error message with stack trace.
-     * @param fmt format description
+     * Print Lua error message.
+     * @param fmt error text format
      * @param ... format arguments
      */
     template <typename... Args>
@@ -92,13 +92,15 @@ private:
     {
         const std::string message =
             std::vformat(fmt.get(), std::make_format_args(args...));
+        const std::string status =
+            message.substr(0, message.find_first_of('\n'));
         Log::error("{}", message);
-        Text::self().set_status(message.substr(0, message.find_first_of('\n')));
+        Text::self().set_status(status);
     }
 
     /**
-     * Throw an exception with Lua error info.
-     * @param fmt format description
+     * Raise Lua error.
+     * @param fmt error text format
      * @param ... format arguments
      */
     template <typename... Args>

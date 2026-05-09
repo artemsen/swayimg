@@ -283,8 +283,8 @@ void LuaEngine::execute(const std::string& script)
     assert(lua_state);
 
     if (luaL_loadstring(lua_state, script.c_str()) != LUA_OK) {
-        print_error("Failed to load script line: {}",
-                    lua_tostring(lua_state, -1));
+        const char* msg = lua_tostring(lua_state, -1);
+        print_error("Failed to load script line: {}", msg ? msg : "<?>");
     } else {
         const luabridge::LuaRef chunk =
             luabridge::LuaRef::fromStack(lua_state, -1);
@@ -752,7 +752,6 @@ void LuaEngine::bind_viewer_api(const char* name)
                          ensure_active("next_frame");
                          mode->enable_animation(false);
                          return mode->next_frame();
-                         return static_cast<size_t>(0);
                      })
         .addFunction("prev_frame",
                      [ensure_active, mode]() {
@@ -1154,7 +1153,8 @@ void LuaEngine::execute(const luabridge::LuaRef* ref) const
     lua_pushcfunction(lua_state, traceback_fn);
     ref->push();
     // on error, debug.traceback returns the full Lua stack trace
-    if (const int code = lua_pcall(lua_state, 0, 0, -2); code != LUA_OK) {
+    const int code = lua_pcall(lua_state, 0, 0, -2);
+    if (code != LUA_OK) {
         const char* msg = lua_tostring(lua_state, -1);
         print_error("{}", msg ? msg : "<?>");
         lua_pop(lua_state, 1);
