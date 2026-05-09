@@ -493,12 +493,24 @@ public:
      **************************************************************************/
     static void handle_xdg_toplevel_configure(void* data, struct xdg_toplevel*,
                                               int32_t width, int32_t height,
-                                              struct wl_array*)
+                                              struct wl_array* states)
     {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+
         if (width > 0 && height > 0) {
-            UiWayland* ui = reinterpret_cast<UiWayland*>(data);
             ui->width = width;
             ui->height = height;
+        }
+
+        // get current fullscreen state
+        ui->fullscreen = false;
+        const uint32_t* wlstates =
+            reinterpret_cast<const uint32_t*>(states->data);
+        for (size_t i = 0; i < states->size / sizeof(uint32_t); ++i) {
+            if (wlstates[i] == XDG_TOPLEVEL_STATE_FULLSCREEN) {
+                ui->fullscreen = true;
+                break;
+            }
         }
     }
 
@@ -966,9 +978,8 @@ void UiWayland::set_ctype(ContentType type)
 
 void UiWayland::set_fullscreen(const bool enable)
 {
-    fullscreen = enable;
     if (wl.xtoplevel) {
-        if (fullscreen) {
+        if (enable) {
             xdg_toplevel_set_fullscreen(wl.xtoplevel, nullptr);
         } else {
             xdg_toplevel_unset_fullscreen(wl.xtoplevel);
