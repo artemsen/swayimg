@@ -8,6 +8,7 @@
 
 #include <ctime>
 #include <filesystem>
+#include <list>
 #include <shared_mutex>
 #include <vector>
 
@@ -58,9 +59,9 @@ public:
     /**
      * Add file or special source to the list.
      * @param path path to the file or special source
-     * @return array of added entries
+     * @return list of added entries
      */
-    std::vector<ImageEntryPtr> add(const std::filesystem::path& path);
+    std::list<ImageEntryPtr> add(const std::filesystem::path& path);
 
     /**
      * Remove image entry from the list.
@@ -134,20 +135,17 @@ private:
     /**
      * Add file or special source to the list.
      * @param path path to the file or special source
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return array of added entries
+     * @return list of added entries
      */
-    std::vector<ImageEntryPtr> add(const std::filesystem::path& path,
-                                   const bool ordered);
+    std::list<ImageEntryPtr> add(const std::filesystem::path& path,
+                                 const bool ordered);
 
     /**
      * Add files from the directory to the list.
      * @param path path to the directory
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return array with added entries
+     * @return list with added entries
      */
-    std::vector<ImageEntryPtr> add_dir(const std::filesystem::path& path,
-                                       const bool ordered);
+    std::list<ImageEntryPtr> add_dir(const std::filesystem::path& path);
 
     /**
      * Add file to the list.
@@ -157,6 +155,15 @@ private:
      */
     ImageEntryPtr add_file(const std::filesystem::path& path,
                            const bool ordered);
+
+    /**
+     * Add a special source (stdin://, exec://) to the list.
+     * @param path path representing the special source
+     * @param ordered flag to add new entry to ordered position in the list
+     * @return added entry (nullptr if already exists)
+     */
+    ImageEntryPtr add_special_source(const std::filesystem::path& path,
+                                     const bool ordered);
 
     /**
      * Add new entry to the list.
@@ -170,7 +177,7 @@ private:
      * Sort image list.
      * @param locked flag to lock the list before processing
      */
-    void sort(bool locked);
+    void sort(const bool locked);
 
     /**
      * Reindex the image list.
