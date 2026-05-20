@@ -208,9 +208,6 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
     const std::unique_lock lock(mutex);
 
     std::vector<ImageEntryPtr> entries = add(path, true);
-    if (!entries.empty()) {
-        reindex();
-    }
 
     return entries;
 }
@@ -227,9 +224,9 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
     entry_map.erase(entry->path);
     entries.erase(entries.begin() + entry->index);
-    entry->remove();
+    reindex(entry->index);
 
-    reindex();
+    entry->remove();
 
     return next;
 }
@@ -341,7 +338,6 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
     }
 
     auto it = entries.begin() + index;
-    assert(it != entries.end());
 
     const std::filesystem::path from_parent = from->path.parent_path();
     if (dir == Dir::NextParent) {
@@ -529,7 +525,9 @@ bool ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
                               });
         }
 
+        entry->index = it == entries.end() ? entries.size() : (*it)->index;
         entries.insert(it, entry);
+        reindex(entry->index + 1); // reindex all entries after this one
     }
 
     return true;
@@ -558,17 +556,18 @@ void ImageList::sort(bool locked)
                   });
     }
 
-    reindex();
+    reindex(0);
 
     if (locked) {
         mutex.unlock();
     }
 }
 
-void ImageList::reindex()
+void ImageList::reindex(size_t index)
 {
-    size_t index = 0;
-    for (auto& it : entries) {
-        it->index = index++;
+    auto end = entries.end();
+    auto it = entries.begin() + index;
+    while (it != end) {
+        (*it++)->index = index++;
     }
 }
