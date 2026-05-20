@@ -214,7 +214,7 @@ Pixmap ImageFormat::preview(const Data& data, const size_t sz,
         return {};
     }
 
-    if (read_exif(data, image) && FormatFactory::self().fix_orientation) {
+    if (read_metadata(data, image) && FormatFactory::self().fix_orientation) {
         fix_orientation(image);
     }
 
@@ -283,34 +283,42 @@ void ImageFormat::fix_orientation(Pixmap& pm, const int orientation) const
     }
 }
 
-bool ImageFormat::read_exif(const Data& data, ImagePtr& image) const
+bool ImageFormat::read_metadata(const Data& data, ImagePtr& image) const
 {
 #ifdef HAVE_LIBEXIV2
     try {
         // read EXIF data
-        Exiv2::Image::UniquePtr exif_img =
+        Exiv2::Image::UniquePtr exiv2 =
             Exiv2::ImageFactory::open(data.data, data.size);
-        if (!exif_img) {
+        if (!exiv2) {
             return false;
         }
+        exiv2->readMetadata();
 
-        exif_img->readMetadata();
-        const Exiv2::ExifData& exif_data = exif_img->exifData();
-        if (exif_data.empty()) {
-            return false;
-        }
-
-        // export EXIF data to meta container
+        // put EXIF data to meta container
+        const Exiv2::ExifData& exif_data = exiv2->exifData();
         for (const auto& it : exif_data) {
             image->meta.insert(std::make_pair(it.key(), it.value().toString()));
         }
 
-        return true;
+        // put IPTC data to meta container
+        const Exiv2::IptcData& iptc_data = exiv2->iptcData();
+        for (const auto& it : iptc_data) {
+            image->meta.insert(std::make_pair(it.key(), it.value().toString()));
+        }
+
+        // put XMP data to meta container
+        const Exiv2::XmpData& xmp_data = exiv2->xmpData();
+        for (const auto& it : xmp_data) {
+            image->meta.insert(std::make_pair(it.key(), it.value().toString()));
+        }
+
+        return !exif_data.empty() || !iptc_data.empty() || !xmp_data.empty();
     } catch (Exiv2::Error&) {
     }
 #else
     (void)data;
-    (void)exif;
+    (void)image;
 #endif // HAVE_LIBEXIV2
     return false;
 }
@@ -391,7 +399,7 @@ ImagePtr FormatFactory::decode(const ImageFormat::Data& data) const
             continue;
         }
 
-        if (it->read_exif(data, image) && fix_orientation) {
+        if (it->read_metadata(data, image) && fix_orientation) {
             it->fix_orientation(image);
         }
 

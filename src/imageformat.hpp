@@ -82,11 +82,11 @@ public:
     void fix_orientation(Pixmap& pm, const int orientation) const;
 
     /**
-     * Read EXIF data to image meta data.
+     * Read meta data from image (EXIF, IPTC, XMP).
      * @param data source image data
      * @param image target image instance
      */
-    bool read_exif(const Data& data, ImagePtr& image) const;
+    bool read_metadata(const Data& data, ImagePtr& image) const;
 
 protected:
     /**

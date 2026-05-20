@@ -23,7 +23,9 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
   - DICOM (built-in);
   - Farbfeld (built-in).
 - Native support for Wayland and DRM output;
-- Gallery and viewer modes with slideshow and animation support;
+- Gallery and viewer modes with slideshow;
+- Image animation support;
+- EXIF, XMP and IPTC tags support;
 - Loading images from files, pipes and external programs;
 - Preload images in a separate thread;
 - Support for the Sway and Hyprland window managers, including an overlay
