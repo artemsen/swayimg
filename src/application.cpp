@@ -151,7 +151,7 @@ ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
 {
     ImageList& il = ImageList::self();
 
-    const std::vector<ImageEntryPtr> entries = il.add(path);
+    const std::list<ImageEntryPtr> entries = il.add(path);
     if (entries.empty()) {
         return nullptr;
     }
