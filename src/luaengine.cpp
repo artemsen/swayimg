@@ -245,7 +245,9 @@ void LuaEngine::initialize(const std::filesystem::path& config)
 
     // add config dir to lua runtime path
     if (!config_file.empty()) {
-        std::string pack_path = config_file.parent_path().string() + "/?.lua;";
+        const std::filesystem::path config_dir = config_file.parent_path();
+        std::string pack_path = config_dir / "?.lua;";
+        pack_path += config_dir / "?.so;";
         lua_getglobal(lua_state, "package");
         lua_getfield(lua_state, -1, "path");
         pack_path += lua_tostring(lua_state, -1);
