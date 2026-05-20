@@ -9,9 +9,9 @@
 #include "layout.hpp"
 #include "threadpool.hpp"
 
-#include <deque>
 #include <mutex>
 #include <set>
+#include <unordered_map>
 
 class Gallery : public AppMode {
 public:
@@ -168,9 +168,9 @@ private:
     void load_thumbnails();
 
     /**
-     * Remove unused thumbnails from the cache.
+     * Remove invisible thumbnails from the cache.
      */
-    void clear_thumbnails();
+    void clear_invisible_thumbnails();
 
     /**
      * Get thumbnail pixmap for specified image.
@@ -217,12 +217,11 @@ private:
     bool pstore_enable; ///< Use persistent storage for thumbnails
     std::filesystem::path pstore_path; ///< Persistent storage path
 
-    /** Thumbnail entry. */
-    struct ThumbEntry {
-        ImageEntryPtr entry;
-        Pixmap pm;
-    };
-    std::deque<ThumbEntry> cache;   ///< Thumbnails cache
+    /**
+     * Thumbnails cache.
+     * ImageEntry caching allows determining the current index of the thumbnail.
+     */
+    std::unordered_map<ImageEntryPtr, Pixmap> cache;
     std::set<ImageEntryPtr> queue;  ///< Loading queue
     std::set<ImageEntryPtr> active; ///< Currently loading
 

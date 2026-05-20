@@ -362,7 +362,7 @@ void Gallery::window_redraw(Pixmap& wnd)
     }
 
     load_thumbnails();
-    clear_thumbnails();
+    clear_invisible_thumbnails();
 }
 
 void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
@@ -383,13 +383,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
         const std::scoped_lock lock(mutex);
-        auto it = std::find_if(cache.begin(), cache.end(),
-                               [&entry](const ThumbEntry& thumb) {
-                                   return entry == thumb.entry;
-                               });
-        if (it != cache.end()) {
-            cache.erase(it);
-        }
+        cache.erase(entry);
     }
 
     if (event == ImageListEvent::Remove && entry == layout.get_selected()) {
@@ -552,7 +546,7 @@ void Gallery::load_thumbnails()
     }
 }
 
-void Gallery::clear_thumbnails()
+void Gallery::clear_invisible_thumbnails()
 {
     const std::scoped_lock lock(mutex);
 
@@ -565,20 +559,19 @@ void Gallery::clear_thumbnails()
             visible_first > cache_size / 2 ? visible_first - cache_size / 2 : 1;
         const size_t store_max = visible_last + cache_size - cache_size / 2;
 
-        std::erase_if(cache, [store_min, store_max](const ThumbEntry& thumb) {
-            return thumb.entry->index < store_min ||
-                thumb.entry->index > store_max;
-        });
+        std::erase_if(cache,
+                      [store_min, store_max](
+                          const std::pair<ImageEntryPtr, Pixmap>& key_value) {
+                          return key_value.first->index < store_min ||
+                              key_value.first->index > store_max;
+                      });
     }
 }
 
 const Pixmap* Gallery::get_thumbnail(const ImageEntryPtr& entry)
 {
-    const auto it = std::find_if(cache.begin(), cache.end(),
-                                 [&entry](const ThumbEntry& th) {
-                                     return entry == th.entry;
-                                 });
-    return it == cache.end() ? nullptr : &it->pm;
+    const auto it = cache.find(entry);
+    return it == cache.end() ? nullptr : &it->second;
 }
 
 void Gallery::load_thumbnail(const ImageEntryPtr& entry)
@@ -591,28 +584,26 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     const size_t thumb_size = layout.get_thumb_size();
 
-    ThumbEntry thumb;
-    thumb.entry = entry;
+    Pixmap pm;
 
     if (pstore_enable) {
-        thumb.pm = pstore_load(entry);
+        pm = pstore_load(entry);
     }
 
-    if (!thumb.pm) {
-        thumb.pm = FormatFactory::self().preview(entry, thumb_size,
-                                                 aspect == Aspect::Fill);
-        if (!thumb.pm) {
+    if (!pm) {
+        pm = FormatFactory::self().preview(entry, thumb_size,
+                                           aspect == Aspect::Fill);
+        if (!pm) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
         } else if (pstore_enable) {
-            pstore_save(entry, thumb.pm);
+            pstore_save(entry, pm);
         }
     }
 
     const std::scoped_lock lock(mutex);
 
-    if (thumb.pm) {
-        thumb.entry = entry;
-        cache.emplace_back(thumb);
+    if (pm) {
+        cache.insert_or_assign(entry, pm);
     }
     active.erase(entry);
 
