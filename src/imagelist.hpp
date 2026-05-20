@@ -174,8 +174,9 @@ private:
 
     /**
      * Reindex the image list.
+     * @param index (0-based) to start reindexing from
      */
-    void reindex();
+    void reindex(size_t index);
 
 private:
     std::vector<ImageEntryPtr> entries; ///< List of image entries
