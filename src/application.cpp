@@ -162,7 +162,7 @@ ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
     // update image list text info
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index));
+                   std::to_string(current_mode()->current_entry()->index + 1));
     text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
     text.update();
 
@@ -185,7 +185,7 @@ void Application::remove_image_entry(const std::filesystem::path& path)
     // update image list text info
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index));
+                   std::to_string(current_mode()->current_entry()->index + 1));
     text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
     text.update();
 

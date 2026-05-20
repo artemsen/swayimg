@@ -195,7 +195,7 @@ void Text::reset(const ImageEntryPtr& entry)
     set_field(FIELD_FRAME_INDEX, {});
     set_field(FIELD_FRAME_TOTAL, {});
     set_field(FIELD_FILE_SIZE, std::to_string(entry->size));
-    set_field(FIELD_LIST_INDEX, std::to_string(entry->index));
+    set_field(FIELD_LIST_INDEX, std::to_string(entry->index + 1));
     set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
     set_field(FIELD_SCALE, {});
 
