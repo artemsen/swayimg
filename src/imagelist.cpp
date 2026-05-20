@@ -225,9 +225,8 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
 
     const std::unique_lock lock(mutex);
 
+    entry_map.erase(entry->path);
     entries.erase(entries.begin() + entry->index);
-    duplicates.erase(entry->path);
-
     entry->remove();
 
     reindex();
@@ -274,11 +273,8 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
 
     const std::shared_lock lock(mutex);
 
-    auto it = std::find_if(entries.begin(), entries.end(),
-                           [&search](const ImageEntryPtr& entry) {
-                               return search == entry->path;
-                           });
-    return it == entries.end() ? nullptr : *it;
+    auto it = entry_map.find(search);
+    return it == entry_map.end() ? nullptr : it->second;
 }
 
 std::vector<ImageEntry> ImageList::get_all()
@@ -509,10 +505,11 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
 
 bool ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
 {
-    if (duplicates.contains(entry->path)) {
+    auto [it, inserted] = entry_map.insert({ entry->path, entry });
+
+    if (!inserted) {
         return false; // already exists
     }
-    duplicates.insert(entry->path);
 
     if (!ordered || entries.empty() || order == Order::None) {
         entry->index = entries.size();
