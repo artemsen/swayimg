@@ -1186,7 +1186,7 @@ luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const
 {
     luabridge::LuaRef table = luabridge::newTable(lua_state);
     table["path"] = entry.path.string();
-    table["index"] = entry.index;
+    table["index"] = entry.index + 1;
     table["size"] = entry.size;
     table["mtime"] = entry.mtime;
     table["mark"] = entry.mark;

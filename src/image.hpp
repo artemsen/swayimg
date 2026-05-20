@@ -17,7 +17,7 @@ struct ImageEntry {
     std::filesystem::path path; ///< Path to the image file
     std::time_t mtime;          ///< File modification time
     size_t size;                ///< Size of the image file
-    size_t index;               ///< Image index in image list
+    size_t index;               ///< Image index in image list (0-based)
     bool mark;                  ///< Marked image flag
 
     /**

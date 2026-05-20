@@ -57,19 +57,19 @@ TEST(ImageListTest, LoadFile)
     entry = il.get(nullptr, ImageList::Dir::First);
     ASSERT_TRUE(entry);
     EXPECT_TRUE(*entry);
-    EXPECT_NE(entry->index, 0UL);
+    EXPECT_EQ(entry->index, 0UL);
     EXPECT_EQ(entry->path, "exec://1");
 
     entry = il.get(entry, ImageList::Dir::Next);
     ASSERT_TRUE(entry);
     EXPECT_TRUE(*entry);
-    EXPECT_NE(entry->index, 0UL);
+    EXPECT_EQ(entry->index, 1UL);
     EXPECT_EQ(entry->path, "exec://2 ");
 
     entry = il.get(entry, ImageList::Dir::Next);
     ASSERT_TRUE(entry);
     EXPECT_TRUE(*entry);
-    EXPECT_NE(entry->index, 0UL);
+    EXPECT_EQ(entry->index, 2UL);
     EXPECT_EQ(entry->path, "exec://3\t");
 }
 
@@ -129,7 +129,6 @@ TEST(ImageListTest, Unordered)
     const ImageEntryPtr entry = il.load(paths);
     ASSERT_TRUE(entry);
     EXPECT_TRUE(*entry);
-    EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, "exec://2");
     EXPECT_ILEQ(il, paths);
 }

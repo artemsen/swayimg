@@ -180,8 +180,8 @@ private:
     void reindex();
 
 private:
-    std::list<ImageEntryPtr> entries; ///< List of image entries
-    std::shared_mutex mutex;          ///< Image list mutex
+    std::vector<ImageEntryPtr> entries; ///< List of image entries
+    std::shared_mutex mutex;            ///< Image list mutex
 
     /** Set of paths used for searching duplicates. */
     std::unordered_set<std::filesystem::path> duplicates;
