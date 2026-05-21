@@ -35,6 +35,13 @@ struct ImageEntry {
     static constexpr const char* SRC_STDIN = "stdin://";
     // Special prefix used to load images from external command output
     static constexpr const char* SRC_EXEC = "exec://";
+
+    /**
+     * Check if path is a special source.
+     * @param path path to check for special source format
+     * @return true if path starts with stdin:// or exec://
+     */
+    static bool is_special(const std::string& path);
 };
 
 using ImageEntryPtr = std::shared_ptr<ImageEntry>;

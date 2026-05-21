@@ -22,6 +22,12 @@ ImageEntry::operator bool() const
     return index != INVALID_INDEX;
 }
 
+bool ImageEntry::is_special(const std::string& path)
+{
+    return path.starts_with(ImageEntry::SRC_STDIN) ||
+        path.starts_with(ImageEntry::SRC_EXEC);
+}
+
 void Image::draw(const size_t frame, Pixmap& target, const double scale,
                  const ssize_t x, const ssize_t y)
 {

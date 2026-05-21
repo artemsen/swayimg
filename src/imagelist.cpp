@@ -256,8 +256,7 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
     if (search.empty()) {
         return nullptr;
     }
-    if (!search.starts_with(ImageEntry::SRC_STDIN) &&
-        !search.starts_with(ImageEntry::SRC_EXEC)) {
+    if (!ImageEntry::is_special(search)) {
         try {
             search = std::filesystem::absolute(path).lexically_normal();
         } catch (...) {
@@ -392,14 +391,8 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
 std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                         const bool ordered)
 {
-    if (path.string().starts_with(ImageEntry::SRC_STDIN) ||
-        path.string().starts_with(ImageEntry::SRC_EXEC)) {
-        ImageEntryPtr entry = std::make_shared<ImageEntry>();
-        entry->path = path;
-        entry->mtime = 0;
-        entry->size = 0;
-        entry->index = 0;
-        if (add_entry(entry, ordered)) {
+    if (ImageEntry::is_special(path)) {
+        if (const ImageEntryPtr& entry = add_special_source(path, ordered)) {
             return { entry };
         }
         return {};
@@ -433,9 +426,8 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         if (const ImageEntryPtr& entry = add_file(abs_path, ordered)) {
             return { entry };
         }
+        return {};
     }
-
-    return {};
 }
 
 std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
@@ -495,6 +487,22 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
         FsMonitor::self().add(path);
     }
     return entry;
+}
+
+ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
+                                            const bool ordered)
+{
+    assert(is_special_source(path));
+
+    ImageEntryPtr entry = std::make_shared<ImageEntry>();
+    entry->path = path;
+    entry->mtime = 0;
+    entry->size = 0;
+    entry->index = 0;
+    if (add_entry(entry, ordered)) {
+        return entry;
+    }
+    return nullptr;
 }
 
 bool ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
