@@ -72,7 +72,7 @@ public:
     [[nodiscard]] inline size_t height() const { return pm_height; }
 
     /**
-     * Get stride (size of a sinlow line in bytes).
+     * Get stride (size of a single line in bytes).
      * @return stride size in bytes
      */
     [[nodiscard]] inline size_t stride() const { return pm_stride; }
@@ -102,7 +102,7 @@ public:
     Pixmap submap(const Rectangle& rect);
 
     /**
-     * Get pinter to the pixel at specified offset.
+     * Get pointer to the pixel at specified offset.
      * @param x,y pixel position within the pixmap
      * @return pointer to the pixel
      */
@@ -116,7 +116,7 @@ public:
     }
 
     /**
-     * Get pinter to the pixel at specified offset.
+     * Get pointer to the pixel at specified offset.
      * @param x,y pixel position within the pixmap
      * @return pointer to the pixel
      */
