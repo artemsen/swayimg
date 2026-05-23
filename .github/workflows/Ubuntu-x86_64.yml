@@ -42,6 +42,7 @@ jobs:
         -D gif=enabled
         -D heif=enabled
         -D jpeg=enabled
+        -D jp2=enabled
         -D jxl=enabled
         -D raw=enabled
         -D sixel=enabled

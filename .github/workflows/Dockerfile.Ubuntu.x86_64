@@ -21,6 +21,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libjson-c-dev \
     libjxl-dev \
     libopenexr-dev \
+    libopenjp2-7-dev \
     libraw-dev \
     librsvg2-dev \
     libsixel-dev \

@@ -23,6 +23,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libjson-c-dev:arm64 \
     libjxl-dev:arm64 \
     libopenexr-dev:arm64 \
+    libopenjp2-7-dev:arm64 \
     libraw-dev:arm64 \
     librsvg2-dev:arm64 \
     libsixel-dev:arm64 \

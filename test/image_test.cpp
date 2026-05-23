@@ -43,6 +43,9 @@ TEST_IMAGE_LOAD(avif);
 #ifdef HAVE_LIBJPEG
 TEST_IMAGE_LOAD(jpg);
 #endif
+#ifdef HAVE_LIBJP2
+TEST_IMAGE_LOAD(jp2);
+#endif
 #ifdef HAVE_LIBJXL
 TEST_IMAGE_LOAD(jxl);
 #endif

@@ -17,5 +17,6 @@ RUN apk add \
     libxkbcommon-dev \
     luajit-dev \
     meson \
+    openjpeg-dev \
     wayland-dev \
     wayland-protocols

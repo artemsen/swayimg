@@ -5,6 +5,7 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
 - Support for the most popular image formats:
   - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
   - JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
+  - JPEG 2000 (via [OpenJPEG](https://www.openjpeg.org));
   - PNG (via [libpng](http://www.libpng.org));
   - GIF (via [giflib](http://giflib.sourceforge.net));
   - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));

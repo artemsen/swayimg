@@ -91,6 +91,7 @@ exr = dependency('OpenEXR', version: '>=3.4', required: get_option('exr'))
 heif = dependency('libheif', required: get_option('heif'))
 avif = dependency('libavif', version: '>=1.0', required: get_option('avif'))
 jpeg = dependency('libjpeg', required: get_option('jpeg'))
+jp2 = dependency('libopenjp2', required: get_option('jp2'))
 jxl = dependency('libjxl', required: get_option('jxl'))
 jxl_threads = dependency('libjxl_threads', required: get_option('jxl'))
 png = dependency('libpng', required: get_option('png'))
@@ -137,6 +138,7 @@ conf.set('HAVE_LIBGIF', gif.found())
 conf.set('HAVE_LIBHEIF', heif.found())
 conf.set('HAVE_LIBAVIF', avif.found())
 conf.set('HAVE_LIBJPEG', jpeg.found())
+conf.set('HAVE_LIBJP2', jp2.found())
 conf.set('HAVE_LIBJXL', jxl.found() and jxl_threads.found())
 conf.set('HAVE_LIBPNG', png.found())
 conf.set('HAVE_LIBRSVG', rsvg.found())
@@ -326,6 +328,9 @@ endif
 if jpeg.found()
     sources += 'src/formats/jpeg.cpp'
 endif
+if jp2.found()
+    sources += 'src/formats/jp2.cpp'
+endif
 if jxl.found()
     sources += 'src/formats/jxl.cpp'
 endif
@@ -366,6 +371,7 @@ dependencies = [
     gif,
     heif,
     jpeg,
+    jp2,
     jxl,
     jxl_threads,
     png,

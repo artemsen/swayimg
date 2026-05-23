@@ -30,6 +30,12 @@ option(
     description: 'Enable JPEG format support',
 )
 option(
+    'jp2',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable JPEG 2000 format support',
+)
+option(
     'jxl',
     type: 'feature',
     value: 'auto',
