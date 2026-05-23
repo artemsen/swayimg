@@ -154,14 +154,14 @@ public:
         std::vector<std::filesystem::path> sources; ///< Image list
         std::optional<Mode> mode;                   ///< Initial mode
         InputMouse dnd { InputMouse::BUTTON_RIGHT,
-                         KEYMOD_NONE }; ///< Mouse used for drag-and-drop
-        Rectangle window;               ///< Main window position/size
-        bool use_overlay = false;       ///< Use overlay mode (Wayland only)
-        std::optional<bool> fullscreen; ///< Full screen mode (Wayland only)
-        bool decoration = true;         ///< Window decoration (Wayland only)
-        uint32_t cursor_hide = 3000;    ///< Cursor hide time (Wayland only)
-        std::string app_id = "swayimg"; ///< Window class name (Wayland only)
-        size_t drm_freq = 0;            ///< Display frequency (DRM only)
+                         KEYMOD_NONE };    ///< Mouse used for drag-and-drop
+        Rectangle window;                  ///< Main window position/size
+        bool use_overlay = false;          ///< Use overlay mode (Wayland only)
+        std::optional<bool> fullscreen;    ///< Full screen mode (Wayland only)
+        bool decoration = true;            ///< Window decoration (Wayland only)
+        uint32_t cursor_hide = 3000;       ///< Cursor hide time (Wayland only)
+        std::optional<std::string> app_id; ///< Window class name (Wayland only)
+        size_t drm_freq = 0;               ///< Display frequency (DRM only)
     } sparams;
 
     /** Initialization complete callback. */

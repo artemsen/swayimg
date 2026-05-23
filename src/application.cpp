@@ -258,7 +258,7 @@ bool Application::ui_initialize()
     Rectangle window = sparams.window;
 
 #ifdef HAVE_WAYLAND
-    std::string app_id = sparams.app_id;
+    std::string app_id = sparams.app_id.value_or("swayimg");
 
 #ifdef HAVE_COMPOSITOR
     if (sparams.use_overlay || static_cast<Point>(window)) {
@@ -279,6 +279,7 @@ bool Application::ui_initialize()
                 }
             }
             compositor.set_overlay(window, app_id);
+            sparams.app_id = app_id;
         }
     }
 #endif // HAVE_COMPOSITOR

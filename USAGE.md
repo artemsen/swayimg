@@ -57,8 +57,8 @@ stdin and external commands, and is highly customizable via Lua scripting.
 *-e, --execute*=_LUA_
     Execute the specified Lua script after loading the configuration.
 
-*--class*=_NAME_
-    Set window class name (application ID).
+*--appid*=_ID_
+    Set application Id.
 
 *--verbose*
     Enable verbose output.

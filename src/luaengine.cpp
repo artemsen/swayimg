@@ -466,6 +466,25 @@ void LuaEngine::bind_root_api()
                      [](const bool enable) {
                          Application::self().sparams.use_overlay = enable;
                      })
+        .addFunction("set_appid",
+                     [this](const std::string& app_id) {
+                         if (Application::get_ui()) { // already initialized
+                             raise_error(
+                                 "Application ID can be set only at startup");
+                         }
+                         if (app_id.empty()) {
+                             raise_error("Application ID can not be empty");
+                         }
+                         std::optional<std::string>& aid =
+                             Application::self().sparams.app_id;
+                         if (!aid.has_value()) {
+                             aid = app_id;
+                         }
+                     })
+        .addFunction("get_appid",
+                     []() {
+                         return Application::self().sparams.app_id.value();
+                     })
         .addFunction(
             "set_dnd_button",
             [this](const std::string& button) {

@@ -248,6 +248,19 @@ function swayimg.enable_decoration(enable) end
 ---@param enable boolean Enable/disable overlay mode
 function swayimg.enable_overlay(enable) end
 
+---Set application Id, default is `swayimg`.
+---Since 5.3.
+---
+---This function can only be called at program startup.
+---@param appid string Application ID
+function swayimg.set_appid(appid) end
+
+---Get application Id.
+---Since 5.3.
+---
+---@return string # Application ID
+function swayimg.get_appid() end
+
 ---Set mouse button used for drag-and-drop image file to external apps.
 ---Since 5.0.
 ---

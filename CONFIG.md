@@ -51,6 +51,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.set_format_params](#swayimgset_format_params): Setting format parameters
   * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
   * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
+  * [swayimg.set_appid](#swayimgset_appid): Set application Id, default is `swayimg`
+  * [swayimg.get_appid](#swayimgget_appid): Get application Id
   * [swayimg.set_dnd_button](#swayimgset_dnd_button): Set mouse button used for drag-and-drop image file to external apps
 * Image list
   * [swayimg.imagelist.size](#swayimgimagelistsize): Get number of entries in the image list
@@ -431,6 +433,33 @@ Applicable only in Sway and Hyprland compositors.
 By default enabled in Sway and disabled in other compositors.
 
 @_param_ `enable` - Enable/disable overlay mode
+
+### swayimg.set_appid
+
+```lua
+swayimg.set_appid(appid: string)
+```
+
+Set application Id, default is `swayimg`.
+
+Since 5.3.
+
+This function can only be called at program startup.
+
+@_param_ `appid` - Application ID
+
+### swayimg.get_appid
+
+```lua
+swayimg.get_appid() -> string
+```
+
+Get application Id.
+
+Since 5.3.
+
+
+@_return_ - Application ID
 
 ### swayimg.set_dnd_button
 

@@ -230,14 +230,13 @@ int main(int argc, char* argv[])
                  Application::self().sparams.lua_script = arg;
              });
 
-    args.add(0, "class", "NAME", "set window class/app_id",
-             [](const char* arg) {
-                 if (!*arg) {
-                     Log::error("Empty window class name");
-                     exit(EXIT_FAILURE);
-                 }
-                 Application::self().sparams.app_id = arg;
-             });
+    args.add(0, "appid", "ID", "set application id", [](const char* arg) {
+        if (!*arg) {
+            Log::error("Empty application id");
+            exit(EXIT_FAILURE);
+        }
+        Application::self().sparams.app_id = arg;
+    });
 
     args.add(0, "verbose", nullptr, "enable verbose output", [](const char*) {
         Log::verbose_enable() = true;
