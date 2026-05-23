@@ -153,6 +153,13 @@ void Text::set_status(const std::string& msg)
 {
     status.clear();
 
+    if (msg.empty()) {
+        // force hide status message
+        status_tm.fd.reset(0, 0);
+        status_tm.show = false;
+        return;
+    }
+
     size_t last = 0;
     size_t next = 0;
     while ((next = msg.find('\n', last)) != std::string::npos) {
@@ -245,18 +252,29 @@ void Text::draw(Pixmap& target) const
 {
     // show status message
     if (status_tm.show && !status.empty()) {
-        // calculate total height
+        // calculate line spacing
         const ssize_t lspacing =
             std::clamp(spacing, -static_cast<ssize_t>(status.front().height()),
                        static_cast<ssize_t>(status.front().height()));
-        const size_t height = status.front().height() * status.size() +
-            lspacing * (status.size() - 1);
+        // calculate height of a single line
+        size_t line_height = 0;
+        for (const auto& line : status) {
+            if (line && !line_height) {
+                line_height = line.height();
+                break;
+            }
+        }
+        // calculate total height
+        const size_t height =
+            line_height * status.size() + lspacing * (status.size() - 1);
         // draw status text
         Point pos(0, target.height() - height - padding);
         for (const auto& line : status) {
             pos.x = target.width() / 2 - line.width() / 2;
-            draw(line, target, pos);
-            pos.y += line.height() + lspacing;
+            if (line) {
+                draw(line, target, pos);
+            }
+            pos.y += line_height + lspacing;
         }
     }
 
