@@ -108,9 +108,7 @@ public:
                        comp0.dy == 1 && comp1.dy == 1 && comp2.dy == 1) {
                 cspace = Jp2ColorSpace::YUV444;
             } else {
-                Log::error("{}: Unsupported YUV chroma subsampling",
-                           LOG_PREFIX);
-                return nullptr;
+                cspace = Jp2ColorSpace::SRGB; // use as fallback
             }
         } else if (opj_image->numcomps >= 3 &&
                    opj_image->comps[0].dx == opj_image->comps[1].dx &&
@@ -136,7 +134,6 @@ public:
         ImagePtr image = std::make_shared<Image>();
         image->frames.resize(1);
         Pixmap& pm = image->frames[0].pm;
-        pm.create(Pixmap::RGB, opj_image->comps[0].w, opj_image->comps[0].h);
 
         // load image to RGB pixmap
         const char* cs_name = nullptr;
@@ -292,11 +289,14 @@ private:
      */
     static void load_grayscale(const opj_image_t& img, Pixmap& pm)
     {
-        for (size_t y = 0; y < pm.height(); ++y) {
-            for (size_t x = 0; x < pm.width(); ++x) {
+        pm.create(Pixmap::RGB, img.comps[0].w, img.comps[0].h);
+        for (size_t y = 0; y < img.comps[0].h; ++y) {
+            const size_t offset_y = y * img.comps[0].w;
+            for (size_t x = 0; x < img.comps[0].w; ++x) {
+                const size_t offset = offset_y + x;
                 argb_t& dst = pm.at(x, y);
                 dst.a = argb_t::max;
-                dst.r = dst.g = dst.b = img.comps[0].data[y * pm.width() + x];
+                dst.r = dst.g = dst.b = img.comps[0].data[offset];
             }
         }
     }
@@ -308,14 +308,18 @@ private:
      */
     static void load_srgb(const opj_image_t& img, Pixmap& pm)
     {
-        for (size_t y = 0; y < pm.height(); ++y) {
-            for (size_t x = 0; x < pm.width(); ++x) {
-                const size_t offset = y * pm.width() + x;
+        const bool use_alpha = img.numcomps > 3;
+        pm.create(use_alpha ? Pixmap::ARGB : Pixmap::RGB, img.comps[0].w,
+                  img.comps[0].h);
+        for (size_t y = 0; y < img.comps[0].h; ++y) {
+            const size_t offset_y = y * img.comps[0].w;
+            for (size_t x = 0; x < img.comps[0].w; ++x) {
+                const size_t offset = offset_y + x;
                 argb_t& dst = pm.at(x, y);
-                dst.a = argb_t::max;
                 dst.r = img.comps[0].data[offset];
                 dst.g = img.comps[1].data[offset];
                 dst.b = img.comps[2].data[offset];
+                dst.a = use_alpha ? img.comps[3].data[offset] : argb_t::max;
             }
         }
     }
@@ -341,6 +345,8 @@ private:
         const OPJ_INT32* y = img.comps[0].data;
         const OPJ_INT32* cb = img.comps[1].data;
         const OPJ_INT32* cr = img.comps[2].data;
+
+        pm.create(Pixmap::RGB, width, height);
         argb_t* px = &pm.at(0, 0);
 
         if (off_y > 0) {
@@ -444,6 +450,8 @@ private:
         const OPJ_INT32* y = img.comps[0].data;
         const OPJ_INT32* cb = img.comps[1].data;
         const OPJ_INT32* cr = img.comps[2].data;
+
+        pm.create(Pixmap::RGB, img.comps[0].w, img.comps[0].h);
         argb_t* px = &pm.at(0, 0);
 
         for (OPJ_UINT32 yy = 0; yy < img.comps[0].h; ++yy) {
@@ -489,6 +497,8 @@ private:
         const OPJ_INT32* y = img.comps[0].data;
         const OPJ_INT32* cb = img.comps[1].data;
         const OPJ_INT32* cr = img.comps[2].data;
+
+        pm.create(Pixmap::RGB, img.comps[0].w, img.comps[0].h);
         pm.foreach([&](argb_t& px) {
             px = yuv_to_rgb(*y, *cb, *cr);
             ++y;
