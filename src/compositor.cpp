@@ -355,7 +355,7 @@ public:
     static Rectangle get_focus()
     {
         Rectangle wnd;
-        int monitor_id;
+        int monitor_id = 0;
 
         // get clients list
         const json clients = HyprlandIpc::request("j/clients");
