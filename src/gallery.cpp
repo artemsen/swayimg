@@ -346,20 +346,19 @@ void Gallery::window_redraw(Pixmap& wnd)
 
     const ImageEntryPtr current = layout.get_selected();
 
+    const auto& scheme = layout.get_scheme();
+    size_t selected_scheme_idx = 0;
+    size_t i = 0;
     // draw all exclude the currently selected
-    for (const auto& it : layout.get_scheme()) {
-        if (it.img != current) {
-            draw(it, wnd);
-        }
-    }
-
-    // draw only currently selected
-    for (const auto& it : layout.get_scheme()) {
+    for (const auto& it : scheme) {
         if (it.img == current) {
+            selected_scheme_idx = i;
+        } else {
             draw(it, wnd);
-            break;
+            i++;
         }
     }
+    draw(scheme[selected_scheme_idx], wnd);
 
     load_thumbnails();
     clear_invisible_thumbnails();
