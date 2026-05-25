@@ -144,6 +144,7 @@ private:
     void handle_event(const AppEvent::FileCreate& event);
     void handle_event(const AppEvent::FileModify& event);
     void handle_event(const AppEvent::FileRemove& event);
+    void handle_event(const AppEvent::FileDrop& event);
 
     // Signal handler, see std::signal for details
     static void signal_handler(int signal);

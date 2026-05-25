@@ -26,6 +26,8 @@ public:
     using InputCallback = std::function<void()>;
     /** Notification handler that is called when the image is switched. */
     using ImageSwitchNotify = std::function<void()>;
+    /** Notification handler that is called when files are dropped. */
+    using FileDropNotify = std::function<void(const std::vector<std::string>&)>;
 
     AppMode();
 
@@ -122,6 +124,18 @@ public:
     void subscribe_image_switch(const ImageSwitchNotify& cb);
 
     /**
+     * Subscribe to the file drop event.
+     * @param cb event handler
+     */
+    void subscribe_file_drop(const FileDropNotify& cb);
+
+    /**
+     * Invoke the file drop event handlers.
+     * @param paths dropped file paths
+     */
+    void notify_file_drop(const std::vector<std::string>& paths);
+
+    /**
      * Set mark icon color.
      * @param color mark icon color
      */
@@ -179,6 +193,7 @@ protected:
 
 private:
     std::vector<ImageSwitchNotify> img_switch;        ///< Image switch handlers
+    std::vector<FileDropNotify> file_drop;            ///< File drop handlers
     std::map<InputKeyboard, InputCallback> kbindings; ///< Keyboard bindings
     std::map<InputMouse, InputCallback> mbindings;    ///< Mouse bindings
     std::map<InputSignal, InputCallback> sbindings;   ///< Signal bindings

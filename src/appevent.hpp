@@ -9,7 +9,9 @@
 
 #include <filesystem>
 #include <functional>
+#include <string>
 #include <variant>
+#include <vector>
 
 /** Application event. */
 namespace AppEvent {
@@ -73,6 +75,11 @@ struct FileRemove {
     std::filesystem::path path; ///< Path to the file
 };
 
+/** File drop event (drag-and-drop receive). */
+struct FileDrop {
+    std::vector<std::string> paths; ///< Dropped file paths
+};
+
 // clang-format off
 using Holder = std::variant<WindowClose,
                             WindowRedraw,
@@ -85,7 +92,8 @@ using Holder = std::variant<WindowClose,
                             Signal,
                             FileCreate,
                             FileModify,
-                            FileRemove>;
+                            FileRemove,
+                            FileDrop>;
 // clang-format on
 
 // event handler

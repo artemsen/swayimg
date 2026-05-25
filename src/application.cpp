@@ -403,6 +403,9 @@ void Application::handle_event(const AppEvent::Holder& event)
             } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::FileRemove&>) {
                 handle_event(event);
+            } else if constexpr (std::is_same_v<decltype(event),
+                                                const AppEvent::FileDrop&>) {
+                handle_event(event);
             } else {
                 assert(false && "unhnadled event type");
                 handle_event(event);
@@ -511,6 +514,11 @@ void Application::handle_event(const AppEvent::FileRemove& event)
     if (!std::filesystem::is_directory(event.path)) {
         remove_image_entry(event.path);
     }
+}
+
+void Application::handle_event(const AppEvent::FileDrop& event)
+{
+    current_mode()->notify_file_drop(event.paths);
 }
 
 void Application::signal_handler(int signal)

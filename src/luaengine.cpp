@@ -1154,6 +1154,20 @@ void LuaEngine::bind_appmode_api(const char* name)
                          });
                      })
         .addFunction(
+            "on_file_drop",
+            [this, appmode, name](const luabridge::LuaRef& cb) {
+                if (!cb.isFunction()) {
+                    raise_error("Invalid argument for {}.{}.on_file_drop: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, name, cb.tostring());
+                }
+                const luabridge::LuaRef* ref = add_ref(&cb);
+                appmode->subscribe_file_drop(
+                    [this, ref](const std::vector<std::string>& paths) {
+                        execute(ref, paths);
+                    });
+            })
+        .addFunction(
             "set_text",
             [this, appmode, name](const std::string& pos,
                                   const luabridge::LuaRef& table) {
@@ -1175,6 +1189,24 @@ void LuaEngine::execute(const luabridge::LuaRef* ref) const
     ref->push();
     // on error, debug.traceback returns the full Lua stack trace
     const int code = lua_pcall(lua_state, 0, 0, -2);
+    if (code != LUA_OK) {
+        const char* msg = lua_tostring(lua_state, -1);
+        print_error("{}", msg ? msg : "<?>");
+        lua_pop(lua_state, 1);
+    }
+}
+
+void LuaEngine::execute(const luabridge::LuaRef* ref,
+                        const std::vector<std::string>& args) const
+{
+    lua_pushcfunction(lua_state, traceback_fn);
+    ref->push();
+    const luabridge::LuaRef table = luabridge::newTable(lua_state);
+    for (size_t i = 0; i < args.size(); ++i) {
+        table[static_cast<int>(i + 1)] = args[i];
+    }
+    table.push();
+    const int code = lua_pcall(lua_state, 1, 0, -3);
     if (code != LUA_OK) {
         const char* msg = lua_tostring(lua_state, -1);
         print_error("{}", msg ? msg : "<?>");

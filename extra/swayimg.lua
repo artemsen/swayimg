@@ -453,6 +453,11 @@ function swayimg_appmode.on_signal(signal, fn) end
 ---@param fn function Handler for notifications about changing the current image
 function swayimg_appmode.on_image_change(fn) end
 
+---Add a callback function called when files are dropped on the window.
+---Since 5.2.
+---@param fn fun(paths: string[]) Handler receiving an array of dropped file paths
+function swayimg_appmode.on_file_drop(fn) end
+
 ---Set text layer scheme.
 ---Since 5.0.
 ---@param pos block_position_t Text block position

@@ -15,6 +15,7 @@
 
 #include <cstring>
 #include <format>
+#include <sstream>
 
 // supported MIME types for drag-and-drop
 static const char* MIME_URI_LIST = "text/uri-list";
@@ -391,10 +392,14 @@ public:
         *get_datadev_offer() = offer;
     }
 
-    static void on_data_device_enter(void*, struct wl_data_device*, uint32_t,
-                                     struct wl_surface*, wl_fixed_t, wl_fixed_t,
-                                     struct wl_data_offer*)
+    static void on_data_device_enter(void*, struct wl_data_device*,
+                                     uint32_t serial, struct wl_surface*,
+                                     wl_fixed_t, wl_fixed_t,
+                                     struct wl_data_offer* offer)
     {
+        if (offer) {
+            wl_data_offer_accept(offer, serial, MIME_URI_LIST);
+        }
     }
 
     static void on_data_device_leave(void*, struct wl_data_device*)
@@ -411,7 +416,85 @@ public:
     {
     }
 
-    static void on_data_device_drop(void*, struct wl_data_device*) {}
+    static void on_data_device_drop(void* data, struct wl_data_device*)
+    {
+        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        wl_data_offer** offer = get_datadev_offer();
+        if (!*offer) {
+            return;
+        }
+
+        int fds[2];
+        if (pipe2(fds, O_CLOEXEC) == -1) {
+            Log::warning(
+                "failed to create pipe to receive drag-and-drop data: error {}",
+                errno);
+            return;
+        }
+
+        wl_data_offer_receive(*offer, MIME_URI_LIST, fds[1]);
+        close(fds[1]);
+
+        // flush display so the source receives the request
+        wl_display_flush(ui->wl.display);
+
+        // read dropped data from pipe
+        std::string data_str;
+        char buf[4096];
+        ssize_t n;
+        while ((n = read(fds[0], buf, sizeof(buf))) != 0) {
+            if (n == -1) {
+                Log::warning(
+                    "failed to read drag-and-drop data from pipe: error {}",
+                    errno);
+            }
+            data_str.append(buf, n);
+        }
+        close(fds[0]);
+
+        wl_data_offer_destroy(*offer);
+        *offer = nullptr;
+
+        // parse URI list (RFC 2483: lines ending with \r\n)
+        std::vector<std::string> paths;
+        std::istringstream stream(data_str);
+        std::string line;
+        while (std::getline(stream, line)) {
+            // strip trailing \r
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty() || line[0] == '#') {
+                continue; // skip empty lines and comments
+            }
+            // strip file:// prefix and decode %XX sequences
+            if (line.starts_with("file://")) {
+                line = line.substr(7);
+                std::string decoded;
+                decoded.reserve(line.size());
+                for (size_t i = 0; i < line.size(); ++i) {
+                    if (line[i] == '%' && i + 2 < line.size()) {
+                        const char hex[3] = { line[i + 1], line[i + 2], '\0' };
+                        char* end = nullptr;
+                        const long val = strtol(hex, &end, 16);
+                        if (end == hex + 2) {
+                            decoded += static_cast<char>(val);
+                            i += 2;
+                            continue;
+                        }
+                    }
+                    decoded += line[i];
+                }
+                line = std::move(decoded);
+            }
+            paths.push_back(std::move(line));
+        }
+
+        if (!paths.empty()) {
+            Application::self().add_event(
+                AppEvent::FileDrop { std::move(paths) });
+        }
+    }
 
     static void on_data_device_selection(void*, struct wl_data_device*,
                                          struct wl_data_offer* offer)

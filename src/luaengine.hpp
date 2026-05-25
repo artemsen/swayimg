@@ -60,6 +60,14 @@ private:
     void execute(const luabridge::LuaRef* ref) const;
 
     /**
+     * Call a Lua function with a string list argument.
+     * @param ref reference to the Lua function to call
+     * @param args string list to pass as first argument (Lua table)
+     */
+    void execute(const luabridge::LuaRef* ref,
+                 const std::vector<std::string>& args) const;
+
+    /**
      * Convert image entry to Lua table.
      * @param entry image entry to convert
      * @return Lua table object

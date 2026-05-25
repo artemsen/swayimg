@@ -73,6 +73,18 @@ void AppMode::subscribe_image_switch(const ImageSwitchNotify& cb)
     img_switch.push_back(cb);
 }
 
+void AppMode::subscribe_file_drop(const FileDropNotify& cb)
+{
+    file_drop.push_back(cb);
+}
+
+void AppMode::notify_file_drop(const std::vector<std::string>& paths)
+{
+    for (auto& cb : file_drop) {
+        cb(paths);
+    }
+}
+
 void AppMode::set_mark_color(const argb_t& color)
 {
     mark_color = color;

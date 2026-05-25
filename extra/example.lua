@@ -159,3 +159,10 @@ swayimg.gallery.on_key("Ctrl-p", function()
     end
   end
 end)
+
+-- open a dropped file in the viewer
+swayimg.viewer.on_file_drop(function(paths)
+  if #paths == 1 then
+    swayimg.viewer.open(paths[1])
+  end
+end)
