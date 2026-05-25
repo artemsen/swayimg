@@ -1037,7 +1037,7 @@ void LuaEngine::bind_gallery_api()
                          Gallery::self().enable_pstore(enable);
                      })
         .addFunction("set_pstore_path",
-                     [](const std::filesystem::path& path) {
+                     [](const std::string& path) {
                          Gallery::self().set_pstore_path(path);
                      })
         .endNamespace()
