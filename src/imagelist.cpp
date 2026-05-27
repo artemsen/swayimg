@@ -209,7 +209,7 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
     return add(path, true);
 }
 
-ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, bool forward)
+ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 {
     assert(entry);
 
@@ -505,7 +505,7 @@ ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
     return nullptr;
 }
 
-bool ImageList::add_entry(ImageEntryPtr& entry, const bool ordered)
+bool ImageList::add_entry(const ImageEntryPtr& entry, const bool ordered)
 {
     auto [it, inserted] = entry_map.insert({ entry->path, entry });
 
@@ -562,18 +562,17 @@ void ImageList::sort(const bool locked)
                   });
     }
 
-    reindex(0);
+    reindex();
 
     if (locked) {
         mutex.unlock();
     }
 }
 
-void ImageList::reindex(size_t index)
+void ImageList::reindex(const size_t index)
 {
-    auto end = entries.end();
-    auto it = entries.begin() + index;
-    while (it != end) {
-        (*it++)->index = index++;
+    // i-- to reindex also at the actual index
+    for (size_t i = entries.size(); i-- > index;) {
+        entries[i]->index = i;
     }
 }
