@@ -69,7 +69,7 @@ public:
      * @param forward direction of nearest returned entry
      * @return valid nearest entry or nullptr if list is empty
      */
-    ImageEntryPtr remove(const ImageEntryPtr& entry, bool forward = true);
+    ImageEntryPtr remove(const ImageEntryPtr& entry, const bool forward = true);
 
     /**
      * Get number of entries in the image list.
@@ -171,7 +171,7 @@ private:
      * @param ordered flag to add new entry to ordered position in the list
      * @return false if entry already exists
      */
-    bool add_entry(ImageEntryPtr& entry, const bool ordered);
+    bool add_entry(const ImageEntryPtr& entry, const bool ordered);
 
     /**
      * Sort image list.
@@ -183,7 +183,7 @@ private:
      * Reindex the image list.
      * @param index (0-based) to start reindexing from
      */
-    void reindex(size_t index);
+    void reindex(const size_t index = 0);
 
 private:
     std::vector<ImageEntryPtr> entries; ///< List of image entries
