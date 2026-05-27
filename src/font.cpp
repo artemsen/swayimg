@@ -148,7 +148,7 @@ bool Font::load(const uint8_t* data, const size_t data_size)
     return true;
 }
 
-void Font::set_face(FT_Face face)
+void Font::set_face(const FT_Face face)
 {
     if (ft_face) {
         FT_Done_Face(ft_face);

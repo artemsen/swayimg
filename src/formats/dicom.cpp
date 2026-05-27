@@ -19,7 +19,7 @@ public:
     static constexpr const uint8_t SIG_DATA[] = { 'D', 'I', 'C', 'M' };
     static constexpr const size_t SIG_OFFSET = 128;
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, SIG_DATA, SIG_OFFSET)) {
             return nullptr;

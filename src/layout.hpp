@@ -49,7 +49,7 @@ public:
      * Get thumbnail size.
      * @return thumbnail size in pixels
      */
-    inline size_t get_thumb_size() const { return thumb_size; }
+    [[nodiscard]] inline size_t get_thumb_size() const { return thumb_size; }
 
     /**
      * Set padding size.

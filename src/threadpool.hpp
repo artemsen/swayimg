@@ -35,7 +35,7 @@ public:
      * Get number of threads in the pool.
      * @return number of threads
      */
-    inline size_t size() const { return threads; }
+    [[nodiscard]] inline size_t size() const { return threads; }
 
     /**
      * Add task to execution queue.

@@ -19,7 +19,7 @@ public:
     // Size of buffer for error messages, see libtiff for details
     static constexpr size_t LIBTIFF_ERRMSG_SZ = 1024;
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 0x49, 0x49, 0x2a, 0x00 }) &&
             !check_signature(data, { 0x4d, 0x4d, 0x00, 0x2a })) {

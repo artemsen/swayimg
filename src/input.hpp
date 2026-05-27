@@ -43,7 +43,7 @@ struct InputMouse {
 
     // * The button is a button code as defined in the Linux kernel's
     // * linux/input-event-codes.h header file, e.g. BTN_LEFT.
-    static mouse_btn_t to_button(uint16_t code);
+    static mouse_btn_t to_button(const uint16_t code);
 
     /**
      * Get buttons combination description.

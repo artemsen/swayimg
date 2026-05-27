@@ -15,7 +15,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         // check signature: PNM always starts with "P"
         if (data.size < 3 || data.data[0] != 'P') {

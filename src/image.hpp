@@ -68,7 +68,7 @@ public:
      * Rotate image.
      * @param angle rotation angle (only 90, 180, or 270)
      */
-    virtual void rotate(size_t angle);
+    virtual void rotate(const size_t angle);
 
 public:
     /** Image frame. */

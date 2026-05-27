@@ -16,7 +16,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         // check signature
         switch (JxlSignatureCheck(data.data, data.size)) {

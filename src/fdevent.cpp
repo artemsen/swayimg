@@ -55,7 +55,7 @@ void FdTimer::reset(const size_t delay, const size_t interval) const
     timerfd_settime(fd, 0, &ts, nullptr);
 }
 
-size_t FdTimer::remain(int fd) const
+size_t FdTimer::remain(const int fd) const
 {
     size_t ms = 0;
     itimerspec ts;

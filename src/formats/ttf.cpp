@@ -20,7 +20,7 @@ public:
     static constexpr const char* TEXT =
         "The quick brown fox jumps over the lazy dog 0123456789";
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 0x00, 0x01, 0x00, 0x00 })) {
             return nullptr;

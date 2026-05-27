@@ -43,7 +43,7 @@ static constexpr std::array mouse_buttons =
  * @param mods combined modifier flags
  * @return text representation
  */
-static std::string modifiers_to_string(keymod_t mods)
+static std::string modifiers_to_string(const keymod_t mods)
 {
     std::string name;
     for (const auto& it : modifiers_name) {
@@ -165,7 +165,7 @@ std::optional<InputMouse> InputMouse::load(const std::string& expression)
     return InputMouse { buttons, mods };
 }
 
-InputMouse::mouse_btn_t InputMouse::to_button(uint16_t code)
+InputMouse::mouse_btn_t InputMouse::to_button(const uint16_t code)
 {
     switch (code) {
         case BTN_LEFT:

@@ -17,7 +17,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (heif_check_filetype(data.data, data.size) !=
             heif_filetype_yes_supported) {

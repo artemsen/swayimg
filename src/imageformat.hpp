@@ -47,7 +47,7 @@ public:
      * @param data source data to decode
      * @return image instance or nulptr on errors
      */
-    virtual ImagePtr decode(const Data& data) = 0;
+    [[nodiscard]] virtual ImagePtr decode(const Data& data) const = 0;
 
     /**
      * Encode pixel map.
@@ -63,8 +63,8 @@ public:
      * @param max_sz size type: true if sz contains max size of the thumbnail
      * @return encoded image data, empty array on errors
      */
-    virtual Pixmap preview(const Data& data, const size_t sz,
-                           const bool max_sz);
+    [[nodiscard]] virtual Pixmap preview(const Data& data, const size_t sz,
+                                         const bool max_sz) const;
 
     /**
      * Fix orientation by EXIF data.

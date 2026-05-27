@@ -14,7 +14,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (data.size < sizeof(Header)) {
             return nullptr;

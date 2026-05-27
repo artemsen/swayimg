@@ -60,13 +60,13 @@ public:
      * Exit from application.
      * @param rc result code to set
      */
-    void exit(int rc);
+    void exit(const int rc);
 
     /**
      * Switch mode (viewer/slideshow/gallery).
      * @param mode mode to set
      */
-    void set_mode(Mode mode);
+    void set_mode(const Mode mode);
 
     /**
      * Switch mode (viewer/slideshow/gallery).
@@ -98,7 +98,7 @@ public:
      * @param fd file descriptor to watch
      * @param handler callback
      */
-    void add_fdpoll(int fd, const FdEventHandler& handler);
+    void add_fdpoll(const int fd, const FdEventHandler& handler);
 
     /**
      * Add application event to the queue.

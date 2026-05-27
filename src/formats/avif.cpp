@@ -19,7 +19,7 @@ public:
     using AvifDecoder =
         std::unique_ptr<avifDecoder, decltype(&avifDecoderDestroy)>;
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 'f', 't', 'y', 'p' }, 4)) {
             return nullptr;

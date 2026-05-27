@@ -10,7 +10,6 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <clocale>
 #include <cstdlib>
 #include <format>
@@ -68,7 +67,7 @@ public:
      * @param argv arguments array
      * @return index of the first non option argument
      */
-    int process(int argc, char* argv[])
+    int process(const int argc, char* argv[])
     {
         // fill options
         std::string optstring;

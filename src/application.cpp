@@ -99,14 +99,14 @@ int Application::run()
     return exit_code;
 }
 
-void Application::exit(int rc)
+void Application::exit(const int rc)
 {
     stop_flag = true;
     exit_code = rc;
     exit_event.set();
 }
 
-void Application::set_mode(Mode mode)
+void Application::set_mode(const Mode mode)
 {
     if (!initialized) {
         if (!sparams.mode.has_value()) {
@@ -192,7 +192,7 @@ void Application::remove_image_entry(const std::filesystem::path& path)
     redraw();
 }
 
-void Application::add_fdpoll(int fd, const FdEventHandler& handler)
+void Application::add_fdpoll(const int fd, const FdEventHandler& handler)
 {
     fds.emplace_back(fd, handler);
 }

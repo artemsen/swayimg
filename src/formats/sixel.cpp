@@ -16,7 +16,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         // check signature: sixel always starts with Esc code
         if (data.data[0] != 0x1b) {
