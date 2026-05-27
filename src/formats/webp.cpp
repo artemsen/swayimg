@@ -20,7 +20,7 @@ public:
     using WebpDecoder =
         std::unique_ptr<WebPAnimDecoder, decltype(&WebPAnimDecoderDelete)>;
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 'R', 'I', 'F', 'F' })) {
             return nullptr;

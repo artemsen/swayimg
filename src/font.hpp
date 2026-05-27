@@ -77,7 +77,7 @@ private:
      * Set new font face.
      * @param face font face to set
      */
-    void set_face(FT_Face face);
+    void set_face(const FT_Face face);
 
 private:
     FT_Face ft_face = nullptr; ///< Font face instance

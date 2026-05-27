@@ -72,7 +72,7 @@ public:
      * @param ... format arguments
      */
     template <typename... Args>
-    static void error(int code, const std::format_string<Args...> fmt,
+    static void error(const int code, const std::format_string<Args...> fmt,
                       Args&&... args)
     {
         std::string msg = "ERROR: " +

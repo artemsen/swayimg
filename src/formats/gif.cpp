@@ -16,7 +16,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 'G', 'I', 'F' })) {
             return nullptr;
@@ -107,7 +107,7 @@ private:
      * @param index number of the frame to load
      */
     void decode_frame(Gif& gif, std::vector<Image::Frame>& frames,
-                      const size_t index)
+                      const size_t index) const
     {
         Image::Frame& frame = frames[index];
 

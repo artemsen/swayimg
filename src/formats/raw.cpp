@@ -30,7 +30,7 @@ public:
         return true;
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         // open decoder
         LibRaw decoder(0);
@@ -83,8 +83,8 @@ public:
         return image;
     }
 
-    Pixmap preview(const Data& data, const size_t sz,
-                   const bool max_sz) override
+    [[nodiscard]] Pixmap preview(const Data& data, const size_t sz,
+                                 const bool max_sz) const override
     {
         if (!FormatFactory::self().embedded_thumb) {
             return ImageFormat::preview(data, sz, max_sz);

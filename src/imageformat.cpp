@@ -207,7 +207,7 @@ bool ImageFormat::set_params(const std::unordered_map<std::string, bool>&)
 }
 
 Pixmap ImageFormat::preview(const Data& data, const size_t sz,
-                            const bool max_sz)
+                            const bool max_sz) const
 {
     ImagePtr image = decode(data);
     if (!image) {

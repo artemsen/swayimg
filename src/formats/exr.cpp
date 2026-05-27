@@ -23,7 +23,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 0x76, 0x2f, 0x31, 0x01 })) {
             return nullptr;

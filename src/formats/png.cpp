@@ -33,7 +33,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (png_sig_cmp(data.data, 0, data.size) != 0) {
             return nullptr;

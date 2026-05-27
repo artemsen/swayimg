@@ -18,7 +18,7 @@ public:
     {
     }
 
-    ImagePtr decode(const Data& data) override
+    [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         // check signature and get codec type
         OPJ_CODEC_FORMAT codec_fmt;

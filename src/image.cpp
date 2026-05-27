@@ -43,7 +43,7 @@ void Image::flip_horizontal()
     }
 }
 
-void Image::rotate(size_t angle)
+void Image::rotate(const size_t angle)
 {
     for (auto& it : frames) {
         it.pm.rotate(angle);

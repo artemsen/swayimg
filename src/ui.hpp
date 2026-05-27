@@ -44,13 +44,13 @@ public:
      * Set mouse pointer shape.
      * @param shape cursor shape to set
      */
-    virtual void set_cursor(CursorShape /* shape */) {}
+    virtual void set_cursor(const CursorShape /* shape */) {}
 
     /**
      * Set surface content type.
      * @param ctype content type to set
      */
-    virtual void set_ctype(ContentType /* type */) {}
+    virtual void set_ctype(const ContentType /* type */) {}
 
     /**
      * Enable/disable full screen mode.
