@@ -343,20 +343,19 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
                 return *it;
             }
         }
-    } else if (dir == Dir::PrevParent && index > 0) {
+        return nullptr;
+    }
+    if (dir == Dir::PrevParent) {
         const auto start = entries.begin();
-        while (true) {
-            it--;
+        while (it-- != start) {
             if (from_parent != (*it)->path.parent_path()) {
                 return *it;
             }
-
-            if (it == start) {
-                break;
-            }
         }
+        return nullptr;
     }
 
+    assert(false && "unhandled iterating position");
     return nullptr;
 }
 
@@ -392,7 +391,8 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                         const bool ordered)
 {
     if (ImageEntry::is_special(path)) {
-        if (const ImageEntryPtr& entry = add_special_source(path, ordered)) {
+        const ImageEntryPtr entry = add_special_source(path, ordered);
+        if (entry) {
             return { entry };
         }
         return {};
@@ -405,25 +405,26 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         Log::warning("Invalid path {}, skipped", path.string());
         return {};
     }
-    if (!std::filesystem::exists(path)) {
-        Log::warning("File {} not found, skipped", path.string());
+    if (!std::filesystem::exists(abs_path)) {
+        Log::warning("File {} not found, skipped", abs_path.string());
         return {};
     }
 
-    if (std::filesystem::is_directory(path)) {
-        auto ret = add_dir(abs_path);
-        if (!ret.empty() && ordered) {
+    if (std::filesystem::is_directory(abs_path)) {
+        std::list<ImageEntryPtr> added = add_dir(abs_path);
+        if (!added.empty() && ordered) {
             sort(false);
         }
-        return ret;
+        return added;
     } else if (adjacent) {
-        auto ret = add_dir(abs_path.parent_path());
-        if (!ret.empty() && ordered) {
+        std::list<ImageEntryPtr> added = add_dir(abs_path.parent_path());
+        if (!added.empty() && ordered) {
             sort(false);
         }
-        return ret;
+        return added;
     } else {
-        if (const ImageEntryPtr& entry = add_file(abs_path, ordered)) {
+        const ImageEntryPtr entry = add_file(abs_path, ordered);
+        if (entry) {
             return { entry };
         }
         return {};
@@ -492,7 +493,7 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
 ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
                                             const bool ordered)
 {
-    assert(is_special_source(path));
+    assert(ImageEntry::is_special(path));
 
     ImageEntryPtr entry = std::make_shared<ImageEntry>();
     entry->path = path;
