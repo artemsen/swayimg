@@ -335,7 +335,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         } break;
         case Dir::PrevParent: {
             const std::filesystem::path from_parent = from->path.parent_path();
-            for (ssize_t i = static_cast<ssize_t>(from->index) - 1; i > 0;
+            for (ssize_t i = static_cast<ssize_t>(from->index) - 1; i >= 0;
                  --i) {
                 if (from_parent != entries[i]->path.parent_path()) {
                     entry = entries[i];
