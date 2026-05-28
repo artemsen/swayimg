@@ -315,7 +315,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
             entry = entries.back();
             break;
         case Dir::Next:
-            if (entries.size() > 1 && from->index + 1 < entries.size()) {
+            if (from->index + 1 < entries.size()) {
                 entry = entries[from->index + 1];
             }
             break;
