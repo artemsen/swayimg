@@ -285,35 +285,17 @@ std::vector<ImageEntry> ImageList::get_all()
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
+    assert(from || dir == Dir::First || dir == Dir::Last);
+
     const std::shared_lock lock(mutex);
 
     if (entries.empty()) {
         return nullptr;
     }
 
-    if (dir == Dir::First) {
-        return entries.front();
-    }
-    if (dir == Dir::Last) {
-        return entries.back();
-    }
-
-    assert(from);
-
-    if (*from && entries.size() == 1) {
-        return nullptr;
-    }
-
-    if (dir == Dir::Random) {
-        ImageEntryPtr random = from;
-        while (random == from) {
-            random = entries[rand() % entries.size()];
-        }
-        return random;
-    }
-
     // handle removed entry: return nearest entry
-    if (!*from) {
+    if (from && !*from) {
+        assert(dir == Dir::Next || dir == Dir::Prev);
         const auto it = std::find_if(entries.begin(), entries.end(),
                                      [&from, this](const ImageEntryPtr& entry) {
                                          const bool cmp = compare_entries(
@@ -323,40 +305,55 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         return it == entries.end() ? entries.front() : *it;
     }
 
-    const size_t index = from->index;
-    assert(index < entries.size());
+    ImageEntryPtr entry = nullptr;
 
-    if (dir == Dir::Next) {
-        return index == entries.size() - 1 ? nullptr : entries[index + 1];
-    }
-    if (dir == Dir::Prev) {
-        return index == 0 ? nullptr : entries[index - 1];
-    }
-
-    auto it = entries.begin() + index;
-
-    const std::filesystem::path from_parent = from->path.parent_path();
-    if (dir == Dir::NextParent) {
-        const auto end = entries.end();
-        while (++it != end) {
-            if (from_parent != (*it)->path.parent_path()) {
-                return *it;
+    switch (dir) {
+        case Dir::First:
+            entry = entries.front();
+            break;
+        case Dir::Last:
+            entry = entries.back();
+            break;
+        case Dir::Next:
+            if (entries.size() > 1 && from->index + 1 < entries.size()) {
+                entry = entries[from->index + 1];
             }
-        }
-        return nullptr;
-    }
-    if (dir == Dir::PrevParent) {
-        const auto start = entries.begin();
-        while (it-- != start) {
-            if (from_parent != (*it)->path.parent_path()) {
-                return *it;
+            break;
+        case Dir::Prev:
+            if (entries.size() > 1 && from->index > 0) {
+                entry = entries[from->index - 1];
             }
-        }
-        return nullptr;
+            break;
+        case Dir::NextParent: {
+            const std::filesystem::path from_parent = from->path.parent_path();
+            for (size_t i = from->index + 1; i < entries.size(); ++i) {
+                if (from_parent != entries[i]->path.parent_path()) {
+                    entry = entries[i];
+                    break;
+                }
+            }
+        } break;
+        case Dir::PrevParent: {
+            const std::filesystem::path from_parent = from->path.parent_path();
+            for (ssize_t i = static_cast<ssize_t>(from->index) - 1; i > 0;
+                 --i) {
+                if (from_parent != entries[i]->path.parent_path()) {
+                    entry = entries[i];
+                    break;
+                }
+            }
+        } break;
+        case Dir::Random:
+            if (entries.size() > 1) {
+                entry = from;
+                while (entry == from) {
+                    entry = entries[rand() % entries.size()];
+                }
+            }
+            break;
     }
 
-    assert(false && "unhandled iterating position");
-    return nullptr;
+    return entry;
 }
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
