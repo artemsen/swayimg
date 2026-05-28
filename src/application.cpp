@@ -7,6 +7,7 @@
 #include "buildconf.hpp"
 #include "fsmonitor.hpp"
 #include "gallery.hpp"
+#include "image.hpp"
 #include "imagelist.hpp"
 #include "log.hpp"
 #include "luaengine.hpp"
@@ -149,15 +150,15 @@ AppMode* Application::current_mode()
 
 ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
 {
-    const std::list<ImageEntryPtr> entries = ImageList::self().add(path);
-    if (!entries.empty()) {
-        AppMode* mode = current_mode();
-        for (auto& it : entries) {
-            mode->handle_imagelist(AppMode::ImageListEvent::Create, it);
-        }
+    AppMode::ChangeTracker tracker;
+    tracker.added.splice(tracker.added.end(), ImageList::self().add(path));
+
+    if (tracker.added.empty()) {
+        current_mode()->handle_imagelist(tracker);
         redraw();
-        return entries.front();
+        return tracker.added.front();
     }
+
     return nullptr;
 }
 
@@ -165,10 +166,13 @@ void Application::remove_image_entry(const std::filesystem::path& path)
 {
     ImageList& il = ImageList::self();
     const ImageEntryPtr entry = il.find(path);
+
     if (entry) {
         il.remove(entry);
-        AppMode* mode = current_mode();
-        mode->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
+
+        AppMode::ChangeTracker tracker;
+        tracker.removed.push_back(entry);
+        current_mode()->handle_imagelist(tracker);
         redraw();
     }
 }
@@ -493,8 +497,9 @@ void Application::handle_event(const AppEvent::FileModify& event)
         ImageList& il = ImageList::self();
         const ImageEntryPtr entry = il.find(event.path);
         if (entry) {
-            current_mode()->handle_imagelist(AppMode::ImageListEvent::Modify,
-                                             entry);
+            AppMode::ChangeTracker tracker;
+            tracker.modified.push_back(entry);
+            current_mode()->handle_imagelist(tracker);
         }
     }
 }

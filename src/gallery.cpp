@@ -10,7 +10,6 @@
 #include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
-#include "text.hpp"
 
 #include <sys/stat.h>
 
@@ -376,25 +375,41 @@ void Gallery::handle_pinch(const double scale_delta)
     set_thumb_size(get_thumb_size() + scale_delta * pinch_factor);
 }
 
-void Gallery::handle_imagelist(const ImageListEvent event,
-                               const ImageEntryPtr& entry)
+void Gallery::handle_imagelist(const AppMode::ChangeTracker& tracker)
 {
-    AppMode::handle_imagelist(event, entry);
+    AppMode::handle_imagelist(tracker);
 
-    if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
-        // remove entry from cache
-        const std::scoped_lock lock(mutex);
-        cache.erase(entry);
-    }
+    // clear cache of invalidated entries, update selected if it was cleared
+    if (!tracker.removed.empty()) {
+        const auto current_entry = layout.get_selected();
+        bool has_selected = false;
+        {
+            const std::scoped_lock lock(mutex);
 
-    if (event == ImageListEvent::Remove && entry == layout.get_selected()) {
-        if (!layout.select(Layout::Right) && !layout.select(Layout::Left)) {
+            for (const auto& entry : tracker.removed) {
+                if (entry == current_entry) {
+                    has_selected = true;
+                }
+                cache.erase(entry);
+            }
+        }
+
+        if (has_selected && !layout.select(Layout::Right) &&
+            !layout.select(Layout::Left)) {
             Log::info("No more images to view, exit");
             Application::self().exit(0);
             return;
         }
-        switch_current();
     }
+
+    if (!tracker.modified.empty()) {
+        const std::scoped_lock lock(mutex);
+
+        for (const auto& entry : tracker.modified) {
+            cache.erase(entry);
+        }
+    }
+
     layout.update();
     Application::redraw();
 }

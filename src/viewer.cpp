@@ -9,7 +9,6 @@
 #include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
-#include "text.hpp"
 
 #include <cmath>
 #include <format>
@@ -587,34 +586,43 @@ void Viewer::handle_pinch(const double scale_delta)
     set_scale(scale + scale_delta * pinch_factor);
 }
 
-void Viewer::handle_imagelist(const ImageListEvent event,
-                              const ImageEntryPtr& entry)
+void Viewer::handle_imagelist(const AppMode::ChangeTracker& tracker)
 {
-    AppMode::handle_imagelist(event, entry);
+    AppMode::handle_imagelist(tracker);
 
-    if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
-        // remove entry from cache
-        const std::scoped_lock lock(image_pool.mutex);
-        image_pool.history.get(entry);
-        image_pool.preload.get(entry);
+    // clear cache of invalidated entries, true if selected was cleared
+    const auto clear_cache = [this](const std::list<ImageEntryPtr>& to_clear) {
+        const auto current_entry = image->entry;
+        bool has_selected = false;
+        {
+            const std::scoped_lock lock(image_pool.mutex);
+
+            for (const auto& entry : to_clear) {
+                if (entry == current_entry) {
+                    has_selected = true;
+                }
+                // getting the image unloads it from storage unless added back
+                image_pool.history.get(entry);
+                image_pool.preload.get(entry);
+            }
+        }
+        return has_selected;
+    };
+
+    if (!tracker.removed.empty() && clear_cache(tracker.removed)) {
+        if (!open(ImageList::Dir::Next) && !open(ImageList::Dir::Prev)) {
+            Log::info("No more images to view, exit");
+            Application::self().exit(0);
+            return;
+        }
     }
 
-    switch (event) {
-        case ImageListEvent::Create:
-            preloader_start();
-            break;
-        case ImageListEvent::Modify:
-            if (entry == image->entry) {
-                reload();
-            }
-            break;
-        case ImageListEvent::Remove:
-            if (entry == image->entry && !open(ImageList::Dir::Next) &&
-                !open(ImageList::Dir::Prev)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
-            }
-            break;
+    if (!tracker.modified.empty() && clear_cache(tracker.modified)) {
+        reload();
+    }
+
+    if (!tracker.added.empty()) {
+        preloader_start();
     }
 }
 

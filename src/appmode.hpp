@@ -15,11 +15,11 @@
 
 class AppMode {
 public:
-    /** Image list event types. */
-    enum class ImageListEvent : uint8_t {
-        Create,
-        Modify,
-        Remove,
+    /** Image list change tracking. */
+    struct ChangeTracker {
+        std::list<ImageEntryPtr> added;
+        std::list<ImageEntryPtr> removed;
+        std::list<ImageEntryPtr> modified;
     };
 
     /** Input event handler. */
@@ -103,11 +103,9 @@ public:
 
     /**
      * Handle image list changes.
-     * @param event event type
-     * @param entry updated image entry
+     * @param tracker object with info about what has changed
      */
-    virtual void handle_imagelist(const ImageListEvent event,
-                                  const ImageEntryPtr& entry);
+    virtual void handle_imagelist(const ChangeTracker& tracker);
 
     /**
      * Check if current mode is active.
