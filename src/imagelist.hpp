@@ -141,17 +141,10 @@ private:
                                  const bool ordered);
 
     /**
-     * Add files from the directory to the list.
-     * @param path path to the directory
-     * @return list with added entries
-     */
-    std::list<ImageEntryPtr> add_dir(const std::filesystem::path& path);
-
-    /**
      * Add file to the list.
      * @param path path to the file
      * @param ordered flag to add new entry to ordered position in the list
-     * @return added entry
+     * @return added entry (nullptr if already exists)
      */
     ImageEntryPtr add_file(const std::filesystem::path& path,
                            const bool ordered);

@@ -135,6 +135,28 @@ static bool compare_entries(const ImageEntry& l, const ImageEntry& r,
     return false;
 }
 
+static void
+iterate_dir(const std::function<void(const std::filesystem::path&)>& action,
+            const std::filesystem::path& source, const bool recursive,
+            const bool fsmon)
+{
+    if (fsmon) {
+        FsMonitor::self().add(source);
+    }
+    try {
+        for (const auto& it : std::filesystem::directory_iterator(source)) {
+            if (std::filesystem::is_directory(it)) {
+                if (recursive) {
+                    iterate_dir(action, it, true, fsmon);
+                }
+            } else if (std::filesystem::is_regular_file(it)) {
+                action(it);
+            }
+        }
+    } catch (const std::filesystem::filesystem_error&) {
+    }
+}
+
 ImageList& ImageList::self()
 {
     static ImageList singleton;
@@ -414,52 +436,23 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         return {};
     }
 
-    if (std::filesystem::is_directory(abs_path)) {
-        std::list<ImageEntryPtr> added = add_dir(abs_path);
-        if (!added.empty() && ordered) {
-            sort();
-        }
-        return added;
-    } else if (adjacent) {
-        std::list<ImageEntryPtr> added = add_dir(abs_path.parent_path());
-        if (!added.empty() && ordered) {
-            sort();
-        }
-        return added;
-    } else {
-        const ImageEntryPtr entry = add_file(abs_path, ordered);
-        if (entry) {
-            return { entry };
-        }
-        return {};
-    }
-}
-
-std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
-{
     std::list<ImageEntryPtr> added;
+    const bool is_dir = std::filesystem::is_directory(abs_path);
+    if (is_dir || adjacent) {
+        iterate_dir(
+            [&](const std::filesystem::path& abs_path) {
+                added.emplace_back(add_file(abs_path, false));
+            },
+            is_dir ? abs_path : abs_path.parent_path(), recursive, fsmon);
 
-    if (fsmon) {
-        FsMonitor::self().add(path);
-    }
-
-    try {
-        for (const auto& it : std::filesystem::directory_iterator(path)) {
-            const std::filesystem::path& sub_path = it.path();
-            if (std::filesystem::is_directory(sub_path)) {
-                if (recursive) {
-                    added.splice(added.end(), add_dir(sub_path));
-                }
-            } else {
-                const ImageEntryPtr entry = add_file(sub_path, false);
-                if (entry) {
-                    added.emplace_back(entry);
-                }
-            }
+        if (!added.empty() && ordered) {
+            sort();
         }
-    } catch (const std::filesystem::filesystem_error&) {
+    } else if (!std::filesystem::is_regular_file(abs_path)) {
+        Log::warning("File {} is not regular, skipped", abs_path.string());
+    } else {
+        added.emplace_back(add_file(abs_path, ordered));
     }
-
     return added;
 }
 
@@ -467,11 +460,6 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
                                   const bool ordered)
 {
     assert(path.is_absolute());
-
-    if (!std::filesystem::is_regular_file(path)) {
-        Log::warning("File {} is not a regular, skipped", path.string());
-        return nullptr;
-    }
 
     const auto fs_time = std::filesystem::last_write_time(path);
     auto sys_time =
