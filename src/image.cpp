@@ -28,6 +28,38 @@ bool ImageEntry::is_special(const std::string& path)
         path.starts_with(ImageEntry::SRC_EXEC);
 }
 
+ImageEntryPtr ImageEntry::from_special(const std::filesystem::path& path)
+{
+    assert(ImageEntry::is_special(path));
+
+    ImageEntryPtr entry = std::make_shared<ImageEntry>();
+    entry->path = path;
+    entry->mtime = 0;
+    entry->size = 0;
+    entry->index = 0;
+    return entry;
+}
+
+ImageEntryPtr ImageEntry::from_file(const std::filesystem::path& path)
+{
+    assert(path.is_absolute());
+    assert(std::filesystem::is_regular_file(path));
+
+    const auto fs_time = std::filesystem::last_write_time(path);
+    auto sys_time =
+        std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            fs_time - std::filesystem::file_time_type::clock::now() +
+            std::chrono::system_clock::now());
+    const std::time_t tt_time = std::chrono::system_clock::to_time_t(sys_time);
+
+    ImageEntryPtr entry = std::make_shared<ImageEntry>();
+    entry->path = path;
+    entry->mtime = tt_time;
+    entry->size = std::filesystem::file_size(path);
+    entry->index = 0;
+    return entry;
+}
+
 void Image::draw(const size_t frame, Pixmap& target, const double scale,
                  const ssize_t x, const ssize_t y)
 {

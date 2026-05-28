@@ -141,24 +141,6 @@ private:
                                  const bool ordered);
 
     /**
-     * Add file to the list.
-     * @param path path to the file
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return added entry (nullptr if already exists)
-     */
-    ImageEntryPtr add_file(const std::filesystem::path& path,
-                           const bool ordered);
-
-    /**
-     * Add a special source (stdin://, exec://) to the list.
-     * @param path path representing the special source
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return added entry (nullptr if already exists)
-     */
-    ImageEntryPtr add_special_source(const std::filesystem::path& path,
-                                     const bool ordered);
-
-    /**
      * Add new entry to the list.
      * @param entry image entry to add
      * @param ordered flag to add new entry to ordered position in the list

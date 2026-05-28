@@ -417,8 +417,8 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                         const bool ordered)
 {
     if (ImageEntry::is_special(path)) {
-        const ImageEntryPtr entry = add_special_source(path, ordered);
-        if (entry) {
+        const ImageEntryPtr entry = ImageEntry::from_special(path);
+        if (add_entry(entry, ordered)) {
             return { entry };
         }
         return {};
@@ -441,7 +441,10 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     if (is_dir || adjacent) {
         iterate_dir(
             [&](const std::filesystem::path& abs_path) {
-                added.emplace_back(add_file(abs_path, false));
+                const ImageEntryPtr entry = ImageEntry::from_file(abs_path);
+                if (add_entry(entry, false)) {
+                    added.emplace_back(entry);
+                }
             },
             is_dir ? abs_path : abs_path.parent_path(), recursive, fsmon);
 
@@ -451,51 +454,15 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     } else if (!std::filesystem::is_regular_file(abs_path)) {
         Log::warning("File {} is not regular, skipped", abs_path.string());
     } else {
-        added.emplace_back(add_file(abs_path, ordered));
+        const ImageEntryPtr entry = ImageEntry::from_file(abs_path);
+        if (add_entry(entry, ordered)) {
+            if (fsmon) {
+                FsMonitor::self().add(path);
+            }
+            added.emplace_back(entry);
+        }
     }
     return added;
-}
-
-ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
-                                  const bool ordered)
-{
-    assert(path.is_absolute());
-
-    const auto fs_time = std::filesystem::last_write_time(path);
-    auto sys_time =
-        std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-            fs_time - std::filesystem::file_time_type::clock::now() +
-            std::chrono::system_clock::now());
-    const std::time_t tt_time = std::chrono::system_clock::to_time_t(sys_time);
-
-    ImageEntryPtr entry = std::make_shared<ImageEntry>();
-    entry->path = path;
-    entry->mtime = tt_time;
-    entry->size = std::filesystem::file_size(path);
-    entry->index = 0;
-    if (!add_entry(entry, ordered)) {
-        return nullptr;
-    }
-    if (fsmon) {
-        FsMonitor::self().add(path);
-    }
-    return entry;
-}
-
-ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
-                                            const bool ordered)
-{
-    assert(ImageEntry::is_special(path));
-
-    ImageEntryPtr entry = std::make_shared<ImageEntry>();
-    entry->path = path;
-    entry->mtime = 0;
-    entry->size = 0;
-    entry->index = 0;
-    if (add_entry(entry, ordered)) {
-        return entry;
-    }
-    return nullptr;
 }
 
 bool ImageList::add_entry(const ImageEntryPtr& entry, const bool ordered)

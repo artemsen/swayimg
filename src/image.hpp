@@ -42,6 +42,24 @@ struct ImageEntry {
      * @return true if path starts with stdin:// or exec://
      */
     static bool is_special(const std::string& path);
+
+    /**
+     * Create a new stdin:// or exec:// entry.
+     * @param path path representing the special source
+     * @param ordered flag to add new entry to ordered position in the list
+     * @return pointer to created entry
+     */
+    static std::shared_ptr<ImageEntry>
+    from_special(const std::filesystem::path& path);
+
+    /**
+     * Create a new path entry.
+     * @param path path to the file
+     * @param ordered flag to add new entry to ordered position in the list
+     * @return pointer to created entry
+     */
+    static std::shared_ptr<ImageEntry>
+    from_file(const std::filesystem::path& path);
 };
 
 using ImageEntryPtr = std::shared_ptr<ImageEntry>;
