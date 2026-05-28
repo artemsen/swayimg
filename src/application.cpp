@@ -177,6 +177,18 @@ void Application::remove_image_entry(const std::filesystem::path& path)
     }
 }
 
+void Application::set_image_entries(const std::vector<std::string>& sources)
+{
+    ImageList& il = ImageList::self();
+
+    AppMode::ChangeTracker tracker;
+    il.set_entries(tracker.added, tracker.removed, sources);
+    if (!tracker.added.empty() || !tracker.removed.empty()) {
+        current_mode()->handle_imagelist(tracker);
+        redraw();
+    }
+}
+
 void Application::add_fdpoll(const int fd, const FdEventHandler& handler)
 {
     fds.emplace_back(fd, handler);

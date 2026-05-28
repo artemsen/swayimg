@@ -525,6 +525,10 @@ void LuaEngine::bind_imagelist_api()
                      [](const std::string& path) {
                          Application::self().remove_image_entry(path);
                      })
+        .addFunction("set",
+                     [](const std::vector<std::string>& paths) {
+                         Application::self().set_image_entries(paths);
+                     })
         .addFunction("set_order",
                      [this](const std::string& name) {
                          const auto order =

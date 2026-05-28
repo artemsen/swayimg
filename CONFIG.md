@@ -57,6 +57,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Image list
   * [swayimg.imagelist.size](#swayimgimagelistsize): Get number of entries in the image list
   * [swayimg.imagelist.get](#swayimgimagelistget): Get list of all entries in the image list
+  * [swayimg.imagelist.set](#swayimgimagelistset): Set list of images to given entries
   * [swayimg.imagelist.add](#swayimgimagelistadd): Add entry to the image list
   * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove entry from the image list
   * [swayimg.imagelist.set_order](#swayimgimagelistset_order): Set sort order of the image list
@@ -500,6 +501,18 @@ Get list of all entries in the image list.
 Since 5.0.
 
 @_return_ - Array with all file entries
+
+### swayimg.imagelist.set
+
+```lua
+swayimg.imagelist.set(entries: string[])
+```
+
+Set list of images to given entries.
+
+Since 5.3.
+
+@_param_ `entries` - # New list of image entries (directories get ignored)
 
 ### swayimg.imagelist.add
 

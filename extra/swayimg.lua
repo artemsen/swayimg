@@ -284,6 +284,11 @@ function swayimg.imagelist.size() end
 ---@return swayimg.entry[] # Array with all file entries
 function swayimg.imagelist.get() end
 
+---Set list of images to given sources.
+---Since 5.3.
+---@param entries string[] # New list of sources
+function swayimg.imagelist.set(entries) end
+
 ---Add entry to the image list.
 ---Since 5.0.
 ---@param path string Path to add

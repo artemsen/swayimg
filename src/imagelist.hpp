@@ -57,6 +57,17 @@ public:
     ImageEntryPtr load(const std::filesystem::path& list_file);
 
     /**
+     * Replace all entries in the list with new sources.
+     * @param sources list of sources to set
+     * @param on_added callback invoked for each added entry
+     * @param on_removed callback invoked for each removed entry
+     * @return first entry from source list
+     */
+    ImageEntryPtr set_entries(std::list<ImageEntryPtr>& added,
+                              std::list<ImageEntryPtr>& removed,
+                              const std::vector<std::string>& sources);
+
+    /**
      * Add file or special source to the list.
      * @param path path to the file or special source
      * @return list of added entries

@@ -94,6 +94,12 @@ public:
     void remove_image_entry(const std::filesystem::path& path);
 
     /**
+     * Replace all entries in the image list.
+     * @param sources list of sources to set
+     */
+    void set_image_entries(const std::vector<std::string>& sources);
+
+    /**
      * Add file descriptor to monitor.
      * @param fd file descriptor to watch
      * @param handler callback

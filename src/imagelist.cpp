@@ -13,6 +13,7 @@
 #include <mutex>
 #include <random>
 #include <string>
+#include <unordered_set>
 
 /**
  * Comparison of two localized strings.
@@ -141,6 +142,8 @@ ImageList& ImageList::self()
     return singleton;
 }
 
+// TODO: consider a refactor of set_entries to allow also loading directories
+// which would fully replace this
 ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
 {
     if (sources.empty()) {
@@ -207,6 +210,91 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
     file.close();
 
     return load(sources);
+}
+
+ImageEntryPtr ImageList::set_entries(std::list<ImageEntryPtr>& added,
+                                     std::list<ImageEntryPtr>& removed,
+                                     const std::vector<std::string>& sources)
+{
+    std::unordered_set<std::filesystem::path> valid_paths;
+    std::vector<std::filesystem::path> source_order;
+    // ensure no unnecessary copying will happen
+    valid_paths.reserve(sources.size());
+    source_order.reserve(sources.size());
+
+    // First pass: gather source paths
+    for (auto& it : sources) {
+        if (ImageEntry::is_special(it)) {
+            valid_paths.insert(it);
+            source_order.emplace_back(it);
+        }
+
+        std::filesystem::path abs_path;
+        try {
+            abs_path = std::filesystem::absolute(it).lexically_normal();
+        } catch (...) {
+            Log::warning("Invalid path {}, skipped", it);
+            continue;
+        }
+        if (!std::filesystem::exists(abs_path)) {
+            Log::warning("File {} not found, skipped", abs_path.string());
+            continue;
+        }
+
+        const bool is_dir = std::filesystem::is_directory(abs_path);
+        if (is_dir || adjacent) {
+            iterate_dir(
+                [&](const std::filesystem::path& abs_path) {
+                    valid_paths.insert(abs_path);
+                    source_order.emplace_back(abs_path);
+                },
+                is_dir ? abs_path : abs_path.parent_path(), recursive, fsmon);
+        } else {
+            valid_paths.insert(abs_path);
+            source_order.emplace_back(abs_path);
+        }
+    }
+
+    const std::unique_lock lock(mutex);
+
+    // Second pass: remove entries not in filtered sources
+    entries.clear();
+    auto it = entry_map.begin();
+    while (it != entry_map.end()) {
+        // entry not in new sources -> remove it
+        // TODO: check perf vs .contains
+        if (valid_paths.erase(it->second->path) == 0) {
+            removed.push_back(it->second);
+            it->second->remove();
+            it = entry_map.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+    // Third pass: add all entries in source order
+    entries.reserve(source_order.size());
+    for (const auto& src_path : source_order) {
+        const auto entry_it = entry_map.find(src_path);
+        if (entry_it != entry_map.end()) { // put back existing entry
+            entries.emplace_back(entry_it->second);
+        } else { // create and add new entry
+            const ImageEntryPtr entry = ImageEntry::is_special(src_path)
+                ? add_special_source(src_path, false)
+                : add_file(src_path, false);
+            if (entry) {
+                added.push_back(entry);
+            }
+        }
+    }
+
+    ImageEntryPtr first = entries.front();
+    sort(false);
+
+    // disable to prevent loading whole directories when user calls add()
+    adjacent = false;
+
+    return first;
 }
 
 std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
