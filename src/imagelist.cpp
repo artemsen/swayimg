@@ -429,6 +429,9 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     } else {
         const ImageEntryPtr entry = add_file(abs_path, ordered);
         if (entry) {
+            if (fsmon) {
+                FsMonitor::self().add(path);
+            }
             return { entry };
         }
         return {};
@@ -487,9 +490,6 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     entry->index = 0;
     if (!add_entry(entry, ordered)) {
         return nullptr;
-    }
-    if (fsmon) {
-        FsMonitor::self().add(path);
     }
     return entry;
 }

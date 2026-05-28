@@ -151,7 +151,7 @@ private:
      * Add file to the list.
      * @param path path to the file
      * @param ordered flag to add new entry to ordered position in the list
-     * @return added entry
+     * @return added entry (nullptr if already exists)
      */
     ImageEntryPtr add_file(const std::filesystem::path& path,
                            const bool ordered);
