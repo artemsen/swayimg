@@ -5,7 +5,8 @@
 #pragma once
 
 #include <filesystem>
-#include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 struct inotify_event;
 
@@ -42,5 +43,6 @@ private:
     int fd = -1; ///< inotify file descriptor
 
     /** Watch descriptors linked to path. */
-    std::map<int, std::filesystem::path> watch;
+    std::unordered_map<int, std::filesystem::path> watch;
+    std::unordered_set<std::filesystem::path> watched;
 };

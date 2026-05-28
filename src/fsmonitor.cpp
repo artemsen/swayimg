@@ -81,15 +81,10 @@ void FsMonitor::add(const std::filesystem::path& path)
     assert(path.is_absolute());
 
     // check if file is already watched by its parent
-    if (std::filesystem::is_regular_file(path)) {
-        const std::filesystem::path& parent = path.parent_path();
-        const auto it =
-            std::find_if(watch.begin(), watch.end(), [&parent](const auto& it) {
-                return parent == it.second.parent_path();
-            });
-        if (it != watch.end()) {
-            return; // already watched
-        }
+    if (watched.contains(std::filesystem::is_regular_file(path)
+                             ? path.parent_path()
+                             : path)) {
+        return;
     }
 
     const int wd =
@@ -102,21 +97,20 @@ void FsMonitor::add(const std::filesystem::path& path)
     }
 
     watch.insert(std::make_pair(wd, path));
+    watched.insert(path);
 }
 
 void FsMonitor::handle_event(const inotify_event* event)
 {
+    const auto it = watch.find(event->wd);
     if (event->mask & IN_IGNORED) {
         // remove from the watch list
-        watch.erase(event->wd);
+        watched.erase(it->second);
+        watch.erase(it);
         return;
     }
 
-    const auto it = watch.find(event->wd);
     assert(it != watch.end());
-    if (it == watch.end()) {
-        return;
-    }
 
     // compose full path
     std::filesystem::path path = it->second;
