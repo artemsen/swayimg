@@ -159,15 +159,7 @@ ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
     }
 
-    // update image list text info
-    Text& text = Text::self();
-    text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index + 1));
-    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-    text.update();
-
-    redraw();
-
+    Text::self().update_list_info();
     return entries.front();
 }
 
@@ -181,15 +173,7 @@ void Application::remove_image_entry(const std::filesystem::path& path)
 
     il.remove(entry);
     current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
-
-    // update image list text info
-    Text& text = Text::self();
-    text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index + 1));
-    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-    text.update();
-
-    redraw();
+    Text::self().update_list_info();
 }
 
 void Application::add_fdpoll(const int fd, const FdEventHandler& handler)

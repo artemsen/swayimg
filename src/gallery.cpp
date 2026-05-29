@@ -556,7 +556,7 @@ void Gallery::clear_invisible_thumbnails()
         const size_t visible_last = scheme.back().img->index;
         const size_t store_min =
             visible_first > cache_size / 2 ? visible_first - cache_size / 2 : 1;
-        const size_t store_max = visible_last + cache_size - cache_size / 2;
+        const size_t store_max = visible_last + (cache_size + 1) / 2;
 
         std::erase_if(cache,
                       [store_min, store_max](

@@ -159,6 +159,11 @@ public:
      */
     void reset(const ImageEntryPtr& entry);
 
+    /*
+     * Update image list info fields.
+     */
+    void update_list_info();
+
     /**
      * Set filed value.
      * @param field field name

@@ -229,6 +229,17 @@ void Text::reset(const ImageEntryPtr& entry)
     update();
 }
 
+void Text::update_list_info()
+{
+    Application& app = Application::self();
+    const ImageEntryPtr& entry = app.current_mode()->current_entry();
+    set_field(Text::FIELD_LIST_INDEX, std::to_string(entry->index + 1));
+    set_field(Text::FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
+    update();
+
+    app.redraw();
+}
+
 void Text::set_field(const std::string& field, const std::string& value)
 {
     if (!value.empty()) {
