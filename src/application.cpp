@@ -307,14 +307,17 @@ void Application::event_loop()
 {
     // register app event handler
     add_fdpoll(event_notify, [this]() {
-        std::unique_lock lock(event_mutex);
-        assert(!event_queue.empty());
-        const AppEvent::Holder event = event_queue.front();
-        event_queue.pop_front();
-        if (event_queue.empty()) {
-            event_notify.reset();
+        AppEvent::Holder event;
+        {
+            const std::scoped_lock lock(event_mutex);
+            assert(!event_queue.empty());
+            event = event_queue.front();
+            event_queue.pop_front();
+            if (event_queue.empty()) {
+                event_notify.reset();
+            }
         }
-        lock.unlock();
+
         handle_event(event);
     });
 
