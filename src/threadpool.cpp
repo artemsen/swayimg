@@ -68,7 +68,7 @@ void ThreadPool::wait(const std::vector<size_t>& tids)
 
 void ThreadPool::cancel()
 {
-    const std::unique_lock lock(mutex);
+    const std::scoped_lock lock(mutex);
     tasks.clear();
 }
 

@@ -147,13 +147,13 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
         return nullptr;
     }
 
-    mutex.lock();
-    entries_arr.reserve(sources.size());
-    for (auto& it : sources) {
-        add(it, false);
+    {
+        const std::scoped_lock lock(mutex);
+        for (auto& it : sources) {
+            add(it, false);
+        }
+        sort();
     }
-    sort();
-    mutex.unlock();
 
     // disable loading of adjacent files, otherwise fs mon will add unnecessary
     // files to the list
@@ -211,7 +211,7 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
 
 std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
 {
-    const std::unique_lock lock(mutex);
+    const std::scoped_lock lock(mutex);
     return add(path, true);
 }
 
@@ -223,7 +223,7 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 
     ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
 
-    const std::unique_lock lock(mutex);
+    const std::scoped_lock lock(mutex);
 
     entries_map.erase(entry->path);
     entries_arr.erase(entries_arr.begin() + entry->index);
@@ -244,7 +244,7 @@ void ImageList::set_order(const Order new_order)
 {
     if (order != new_order || new_order == Order::Random) {
         order = new_order;
-        const std::unique_lock lock(mutex);
+        const std::scoped_lock lock(mutex);
         sort();
     }
 }
@@ -253,7 +253,7 @@ void ImageList::set_reverse(const bool enable)
 {
     if (reverse != enable) {
         reverse = enable;
-        const std::unique_lock lock(mutex);
+        const std::scoped_lock lock(mutex);
         sort();
     }
 }

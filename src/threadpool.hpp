@@ -51,10 +51,11 @@ public:
         auto task_fn =
             std::bind(std::forward<F>(fn), std::forward<Args>(args)...);
 
-        mutex.lock();
-        task_id = ++last_id;
-        tasks.emplace_back(Task { task_id, task_fn });
-        mutex.unlock();
+        {
+            const std::scoped_lock lock(mutex);
+            task_id = ++last_id;
+            tasks.emplace_back(Task { task_id, task_fn });
+        }
 
         tnotify.notify_one();
 
