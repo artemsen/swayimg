@@ -107,7 +107,7 @@ public:
      * @param entry updated image entry
      */
     virtual void handle_imagelist(const ImageListEvent event,
-                                  const ImageEntryPtr& entry) = 0;
+                                  const ImageEntryPtr& entry);
 
     /**
      * Check if current mode is active.

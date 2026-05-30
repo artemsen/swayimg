@@ -379,6 +379,8 @@ void Gallery::handle_pinch(const double scale_delta)
 void Gallery::handle_imagelist(const ImageListEvent event,
                                const ImageEntryPtr& entry)
 {
+    AppMode::handle_imagelist(event, entry);
+
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
         const std::scoped_lock lock(mutex);

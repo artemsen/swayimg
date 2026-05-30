@@ -149,47 +149,28 @@ AppMode* Application::current_mode()
 
 ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
 {
-    ImageList& il = ImageList::self();
-
-    const std::list<ImageEntryPtr> entries = il.add(path);
-    if (entries.empty()) {
-        return nullptr;
+    const std::list<ImageEntryPtr> entries = ImageList::self().add(path);
+    if (!entries.empty()) {
+        AppMode* mode = current_mode();
+        for (auto& it : entries) {
+            mode->handle_imagelist(AppMode::ImageListEvent::Create, it);
+        }
+        redraw();
+        return entries.front();
     }
-    for (auto& it : entries) {
-        current_mode()->handle_imagelist(AppMode::ImageListEvent::Create, it);
-    }
-
-    // update image list text info
-    Text& text = Text::self();
-    text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index + 1));
-    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-    text.update();
-
-    redraw();
-
-    return entries.front();
+    return nullptr;
 }
 
 void Application::remove_image_entry(const std::filesystem::path& path)
 {
     ImageList& il = ImageList::self();
     const ImageEntryPtr entry = il.find(path);
-    if (!entry) {
-        return;
+    if (entry) {
+        il.remove(entry);
+        AppMode* mode = current_mode();
+        mode->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
+        redraw();
     }
-
-    il.remove(entry);
-    current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
-
-    // update image list text info
-    Text& text = Text::self();
-    text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_mode()->current_entry()->index + 1));
-    text.set_field(Text::FIELD_LIST_TOTAL, std::to_string(il.size()));
-    text.update();
-
-    redraw();
 }
 
 void Application::add_fdpoll(const int fd, const FdEventHandler& handler)

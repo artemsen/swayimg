@@ -5,6 +5,7 @@
 #include "appmode.hpp"
 
 #include "application.hpp"
+#include "imagelist.hpp"
 
 #include <format>
 
@@ -50,6 +51,16 @@ bool AppMode::handle_signal(const InputSignal& input)
         return true;
     }
     return false;
+}
+
+void AppMode::handle_imagelist(const ImageListEvent, const ImageEntryPtr&)
+{
+    Text& text = Text::self();
+    text.set_field(Text::FIELD_LIST_INDEX,
+                   std::to_string(current_entry()->index + 1));
+    text.set_field(Text::FIELD_LIST_TOTAL,
+                   std::to_string(ImageList::self().size()));
+    text.update();
 }
 
 bool AppMode::is_active() const
