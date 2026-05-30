@@ -34,7 +34,7 @@ void FsMonitor::handle_event(const inotify_event*) {}
 FsMonitor::~FsMonitor()
 {
     if (fd != -1) {
-        for (const auto& wd : std::views::keys(watch)) {
+        for (const auto& wd : std::views::keys(fds)) {
             inotify_rm_watch(fd, wd);
         }
         close(fd);
@@ -81,9 +81,9 @@ void FsMonitor::add(const std::filesystem::path& path)
     assert(path.is_absolute());
 
     // check if file is already watched by its parent
-    if (watched.contains(std::filesystem::is_regular_file(path)
-                             ? path.parent_path()
-                             : path)) {
+    if (paths.contains(std::filesystem::is_regular_file(path)
+                           ? path.parent_path()
+                           : path)) {
         return;
     }
 
@@ -96,21 +96,20 @@ void FsMonitor::add(const std::filesystem::path& path)
         return;
     }
 
-    watch.insert(std::make_pair(wd, path));
-    watched.insert(path);
+    fds.insert(std::make_pair(wd, path));
+    paths.insert(path);
 }
 
 void FsMonitor::handle_event(const inotify_event* event)
 {
-    const auto it = watch.find(event->wd);
+    const auto it = fds.find(event->wd);
     if (event->mask & IN_IGNORED) {
-        // remove from the watch list
-        watched.erase(it->second);
-        watch.erase(it);
+        paths.erase(it->second);
+        fds.erase(it);
         return;
     }
 
-    assert(it != watch.end());
+    assert(it != fds.end());
 
     // compose full path
     std::filesystem::path path = it->second;

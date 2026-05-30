@@ -42,7 +42,6 @@ private:
 private:
     int fd = -1; ///< inotify file descriptor
 
-    /** Watch descriptors linked to path. */
-    std::unordered_map<int, std::filesystem::path> watch;
-    std::unordered_set<std::filesystem::path> watched;
+    std::unordered_map<int, std::filesystem::path> fds; ///< FD to path map
+    std::unordered_set<std::filesystem::path> paths;    ///< Watched paths
 };
