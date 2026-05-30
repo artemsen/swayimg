@@ -179,7 +179,12 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
             }
         }
     }
-    return first ? first : entries.front();
+
+    if (!first && !entries.empty()) {
+        first = entries.front();
+    }
+
+    return first;
 }
 
 ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
