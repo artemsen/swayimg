@@ -148,10 +148,11 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
     }
 
     mutex.lock();
+    entries_arr.reserve(sources.size());
     for (auto& it : sources) {
         add(it, false);
     }
-    sort(false);
+    sort();
     mutex.unlock();
 
     // disable loading of adjacent files, otherwise fs mon will add unnecessary
@@ -169,19 +170,19 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
             const std::filesystem::path abs_path =
                 std::filesystem::absolute(path).lexically_normal();
             auto it =
-                std::find_if(entries.begin(), entries.end(),
+                std::find_if(entries_arr.begin(), entries_arr.end(),
                              [&abs_path](const ImageEntryPtr& entry) {
                                  return abs_path == entry->path.parent_path();
                              });
-            if (it != entries.end()) {
+            if (it != entries_arr.end()) {
                 first = *it;
                 break;
             }
         }
     }
 
-    if (!first && !entries.empty()) {
-        first = entries.front();
+    if (!first && !entries_arr.empty()) {
+        first = entries_arr.front();
     }
 
     return first;
@@ -224,8 +225,8 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 
     const std::unique_lock lock(mutex);
 
-    entry_map.erase(entry->path);
-    entries.erase(entries.begin() + entry->index);
+    entries_map.erase(entry->path);
+    entries_arr.erase(entries_arr.begin() + entry->index);
     reindex(entry->index);
 
     entry->remove();
@@ -236,14 +237,15 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 size_t ImageList::size()
 {
     const std::shared_lock lock(mutex);
-    return entries.size();
+    return entries_arr.size();
 }
 
 void ImageList::set_order(const Order new_order)
 {
     if (order != new_order || new_order == Order::Random) {
         order = new_order;
-        sort(true);
+        const std::unique_lock lock(mutex);
+        sort();
     }
 }
 
@@ -251,7 +253,8 @@ void ImageList::set_reverse(const bool enable)
 {
     if (reverse != enable) {
         reverse = enable;
-        sort(true);
+        const std::unique_lock lock(mutex);
+        sort();
     }
 }
 
@@ -264,15 +267,15 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
     if (!ImageEntry::is_special(search)) {
         try {
             search = std::filesystem::absolute(path).lexically_normal();
-        } catch (...) {
+        } catch (const std::filesystem::filesystem_error&) {
             return nullptr;
         }
     }
 
     const std::shared_lock lock(mutex);
 
-    auto it = entry_map.find(search);
-    return it == entry_map.end() ? nullptr : it->second;
+    auto it = entries_map.find(search);
+    return it == entries_map.end() ? nullptr : it->second;
 }
 
 std::vector<ImageEntry> ImageList::get_all()
@@ -280,8 +283,8 @@ std::vector<ImageEntry> ImageList::get_all()
     const std::shared_lock lock(mutex);
 
     std::vector<ImageEntry> copy;
-    copy.reserve(entries.size());
-    for (const auto& it : entries) {
+    copy.reserve(entries_arr.size());
+    for (const auto& it : entries_arr) {
         copy.emplace_back(*it);
     }
 
@@ -294,46 +297,46 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 
     const std::shared_lock lock(mutex);
 
-    if (entries.empty()) {
+    if (entries_arr.empty()) {
         return nullptr;
     }
 
     // handle removed entry: return nearest entry
     if (from && !*from) {
         assert(dir == Dir::Next || dir == Dir::Prev);
-        const auto it = std::find_if(entries.begin(), entries.end(),
+        const auto it = std::find_if(entries_arr.begin(), entries_arr.end(),
                                      [&from, this](const ImageEntryPtr& entry) {
                                          const bool cmp = compare_entries(
                                              *from, *entry, order);
                                          return reverse ? !cmp : cmp;
                                      });
-        return it == entries.end() ? entries.front() : *it;
+        return it == entries_arr.end() ? entries_arr.front() : *it;
     }
 
     ImageEntryPtr entry = nullptr;
 
     switch (dir) {
         case Dir::First:
-            entry = entries.front();
+            entry = entries_arr.front();
             break;
         case Dir::Last:
-            entry = entries.back();
+            entry = entries_arr.back();
             break;
         case Dir::Next:
-            if (from->index + 1 < entries.size()) {
-                entry = entries[from->index + 1];
+            if (from->index + 1 < entries_arr.size()) {
+                entry = entries_arr[from->index + 1];
             }
             break;
         case Dir::Prev:
-            if (entries.size() > 1 && from->index > 0) {
-                entry = entries[from->index - 1];
+            if (entries_arr.size() > 1 && from->index > 0) {
+                entry = entries_arr[from->index - 1];
             }
             break;
         case Dir::NextParent: {
             const std::filesystem::path from_parent = from->path.parent_path();
-            for (size_t i = from->index + 1; i < entries.size(); ++i) {
-                if (from_parent != entries[i]->path.parent_path()) {
-                    entry = entries[i];
+            for (size_t i = from->index + 1; i < entries_arr.size(); ++i) {
+                if (from_parent != entries_arr[i]->path.parent_path()) {
+                    entry = entries_arr[i];
                     break;
                 }
             }
@@ -342,17 +345,17 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
             const std::filesystem::path from_parent = from->path.parent_path();
             for (ssize_t i = static_cast<ssize_t>(from->index) - 1; i >= 0;
                  --i) {
-                if (from_parent != entries[i]->path.parent_path()) {
-                    entry = entries[i];
+                if (from_parent != entries_arr[i]->path.parent_path()) {
+                    entry = entries_arr[i];
                     break;
                 }
             }
         } break;
         case Dir::Random:
-            if (entries.size() > 1) {
+            if (entries_arr.size() > 1) {
                 entry = from;
                 while (entry == from) {
-                    entry = entries[rand() % entries.size()];
+                    entry = entries_arr[rand() % entries_arr.size()];
                 }
             }
             break;
@@ -368,23 +371,22 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
     assert(from && *from);
 
     const size_t index = from->index;
-    if (index + distance >= entries.size() ||
+    if (index + distance >= entries_arr.size() ||
         static_cast<ssize_t>(index) + distance < 0) {
         return nullptr;
     }
 
-    return entries[index + distance];
+    return entries_arr[index + distance];
 }
 
 ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
 {
-    assert(from && *from);
-    assert(to && *to);
-
     const std::shared_lock lock(mutex);
 
-    assert(from->index < entries.size());
-    assert(to->index < entries.size());
+    assert(from && *from);
+    assert(from->index < entries_arr.size());
+    assert(to && *to);
+    assert(to->index < entries_arr.size());
 
     return static_cast<ssize_t>(to->index) - static_cast<ssize_t>(from->index);
 }
@@ -403,7 +405,7 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     std::filesystem::path abs_path;
     try {
         abs_path = std::filesystem::absolute(path).lexically_normal();
-    } catch (...) {
+    } catch (const std::filesystem::filesystem_error&) {
         Log::warning("Invalid path {}, skipped", path.string());
         return {};
     }
@@ -415,13 +417,13 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     if (std::filesystem::is_directory(abs_path)) {
         std::list<ImageEntryPtr> added = add_dir(abs_path);
         if (!added.empty() && ordered) {
-            sort(false);
+            sort();
         }
         return added;
     } else if (adjacent) {
         std::list<ImageEntryPtr> added = add_dir(abs_path.parent_path());
         if (!added.empty() && ordered) {
-            sort(false);
+            sort();
         }
         return added;
     } else {
@@ -510,55 +512,52 @@ ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
 
 bool ImageList::add_entry(const ImageEntryPtr& entry, const bool ordered)
 {
-    auto [it, inserted] = entry_map.insert({ entry->path, entry });
-
-    if (!inserted) {
+    if (entries_map.contains(entry->path)) {
         return false; // already exists
     }
 
-    if (!ordered || entries.empty() || order == Order::None) {
-        entry->index = entries.size();
-        entries.push_back(entry);
-    } else {
-        std::vector<ImageEntryPtr>::iterator it;
+    // search the right place to insert new entry according to sort order
+    EntriesArray::const_iterator pos = entries_arr.end();
+    if (ordered && !entries_arr.empty()) {
         if (order == Order::Random) {
-            it = entries.begin() + rand() % entries.size();
-        } else {
-            // search the right place to insert new entry according to sort
-            // order
-            it = std::find_if(entries.begin(), entries.end(),
-                              [&entry, this](const ImageEntryPtr& it) {
-                                  const bool cmp =
-                                      compare_entries(*entry, *it, order);
-                                  return reverse ? !cmp : cmp;
-                              });
+            pos = entries_arr.begin() + rand() % entries_arr.size();
+        } else if (order != Order::None) {
+            pos = std::find_if(entries_arr.begin(), entries_arr.end(),
+                               [&entry, this](const ImageEntryPtr& it) {
+                                   const bool cmp =
+                                       compare_entries(*entry, *it, order);
+                                   return reverse ? !cmp : cmp;
+                               });
         }
+    }
 
-        entry->index = it == entries.end() ? entries.size() : (*it)->index;
-        entries.insert(it, entry);
+    // insert new entry
+    entries_map.insert({ entry->path, entry });
+    if (pos == entries_arr.end()) {
+        entry->index = entries_arr.size();
+        entries_arr.push_back(entry);
+    } else {
+        entry->index = (*pos)->index;
+        entries_arr.insert(pos, entry);
         reindex(entry->index + 1); // reindex all entries after this one
     }
 
     return true;
 }
 
-void ImageList::sort(const bool locked)
+void ImageList::sort()
 {
-    if (locked) {
-        mutex.lock();
-    }
-
     if (order == Order::None) {
         // nothing to do
     } else if (order == Order::Random) {
         // shuffle list
-        std::vector<ImageEntryPtr> tmp(entries.begin(), entries.end());
+        EntriesArray tmp(entries_arr.begin(), entries_arr.end());
         static std::random_device rdev;
         static std::mt19937 engine(rdev());
         std::shuffle(tmp.begin(), tmp.end(), engine);
-        entries.assign(tmp.begin(), tmp.end());
+        entries_arr.assign(tmp.begin(), tmp.end());
     } else {
-        std::sort(entries.begin(), entries.end(),
+        std::sort(entries_arr.begin(), entries_arr.end(),
                   [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
                       const bool cmp = compare_entries(*l, *r, order);
                       return reverse ? !cmp : cmp;
@@ -566,16 +565,12 @@ void ImageList::sort(const bool locked)
     }
 
     reindex();
-
-    if (locked) {
-        mutex.unlock();
-    }
 }
 
 void ImageList::reindex(const size_t index)
 {
-    // i-- to reindex also at the actual index
-    for (size_t i = entries.size(); i-- > index;) {
-        entries[i]->index = i;
+    const size_t sz = entries_arr.size();
+    for (size_t i = index; i < sz; ++i) {
+        entries_arr[i]->index = i;
     }
 }

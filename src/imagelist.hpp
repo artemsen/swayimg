@@ -175,9 +175,8 @@ private:
 
     /**
      * Sort image list.
-     * @param locked flag to lock the list before processing
      */
-    void sort(const bool locked);
+    void sort();
 
     /**
      * Reindex the image list.
@@ -186,11 +185,12 @@ private:
     void reindex(const size_t index = 0);
 
 private:
-    std::vector<ImageEntryPtr> entries; ///< List of image entries
-    std::shared_mutex mutex;            ///< Image list mutex
+    using EntriesArray = std::vector<ImageEntryPtr>;
+    using EntriesMap = std::unordered_map<std::filesystem::path, ImageEntryPtr>;
+    EntriesArray entries_arr; ///< Array of image entries
+    EntriesMap entries_map;   ///< Map of path to image entries
 
-    /** Map of entries by their paths for quick duplicate search. */
-    std::unordered_map<std::filesystem::path, ImageEntryPtr> entry_map;
+    std::shared_mutex mutex; ///< Image list mutex
 
     Order order = Order::Numeric; ///< Image list order
     bool reverse = false;         ///< Reverse order flag
