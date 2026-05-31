@@ -18,6 +18,7 @@ AppMode::AppMode()
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
     Text& text = Text::self();
+    text.clear();
     for (size_t i = 0; i < text_scheme.size(); ++i) {
         text.set_scheme(static_cast<Text::Position>(i), text_scheme[i]);
     }

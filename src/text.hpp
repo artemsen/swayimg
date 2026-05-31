@@ -136,6 +136,11 @@ public:
     void hide();
 
     /**
+     * Reset text overlay (remove all data except status message).
+     */
+    void clear();
+
+    /**
      * Check if text layer currently displayed.
      * @return true if layer is visible
      */
@@ -184,6 +189,11 @@ private:
             : scheme(scheme)
         {
         }
+
+        /**
+         * Clear line data.
+         */
+        void clear();
 
         /**
          * Update line.
