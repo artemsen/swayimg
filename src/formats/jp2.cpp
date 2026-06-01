@@ -11,10 +11,10 @@
 #include <format>
 #include <utility>
 
-class ImageFormatJpeg2000 : public ImageFormat {
+class ImageFormatJp2 : public ImageFormat {
 public:
-    ImageFormatJpeg2000()
-        : ImageFormat(Priority::Low, "jpeg2000")
+    ImageFormatJp2()
+        : ImageFormat(Priority::Low, "jp2")
     {
     }
 
@@ -559,4 +559,4 @@ private:
 };
 
 // register format in factory
-static ImageFormatJpeg2000 format_jpeg2000;
+static ImageFormatJp2 format_jp2;
