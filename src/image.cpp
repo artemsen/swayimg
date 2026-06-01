@@ -7,20 +7,6 @@
 #include "render.hpp"
 
 #include <cassert>
-#include <limits>
-
-// Image entry index used for removed entries.
-constexpr size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
-
-void ImageEntry::remove()
-{
-    index = INVALID_INDEX;
-}
-
-ImageEntry::operator bool() const
-{
-    return index != INVALID_INDEX;
-}
 
 bool ImageEntry::is_special(const std::string& path)
 {

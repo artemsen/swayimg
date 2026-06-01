@@ -21,7 +21,7 @@ void Layout::update()
     if (!sel_entry) {
         sel_entry = first_entry;
     }
-    assert(*sel_entry);
+    assert(!sel_entry->removed);
 
     columns = std::max(static_cast<size_t>(1),
                        window.width / (thumb_size + thumb_padding));

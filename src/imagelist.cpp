@@ -229,7 +229,7 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
     entries_arr.erase(entries_arr.begin() + entry->index);
     reindex(entry->index);
 
-    entry->remove();
+    entry->removed = true;
 
     return next;
 }
@@ -293,35 +293,38 @@ std::vector<ImageEntry> ImageList::get_all()
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
-    assert(from || dir == Dir::First || dir == Dir::Last);
-
     const std::shared_lock lock(mutex);
 
     if (entries_arr.empty()) {
         return nullptr;
     }
+    if (dir == Dir::First) {
+        return entries_arr.front();
+    }
+    if (dir == Dir::Last) {
+        return entries_arr.back();
+    }
+
+    assert(from);
 
     // handle removed entry: return nearest entry
-    if (from && !*from) {
-        assert(dir == Dir::Next || dir == Dir::Prev);
-        const auto it = std::find_if(entries_arr.begin(), entries_arr.end(),
-                                     [&from, this](const ImageEntryPtr& entry) {
-                                         const bool cmp = compare_entries(
-                                             *from, *entry, order);
-                                         return reverse ? !cmp : cmp;
-                                     });
-        return it == entries_arr.end() ? entries_arr.front() : *it;
+    if (from->removed) {
+        size_t index = from->index;
+        if (index &&
+            (dir == ImageList::Dir::Prev ||
+             dir == ImageList::Dir::PrevParent)) {
+            --index;
+        }
+        index = std::min(index, entries_arr.size() - 1);
+        return entries_arr[index];
     }
 
     ImageEntryPtr entry = nullptr;
 
     switch (dir) {
         case Dir::First:
-            entry = entries_arr.front();
-            break;
         case Dir::Last:
-            entry = entries_arr.back();
-            break;
+            break; // already handled
         case Dir::Next:
             if (from->index + 1 < entries_arr.size()) {
                 entry = entries_arr[from->index + 1];
@@ -368,7 +371,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
 {
     const std::shared_lock lock(mutex);
 
-    assert(from && *from);
+    assert(from && !from->removed);
 
     const size_t index = from->index;
     if (index + distance >= entries_arr.size() ||
@@ -383,9 +386,9 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
 {
     const std::shared_lock lock(mutex);
 
-    assert(from && *from);
+    assert(from && !from->removed);
     assert(from->index < entries_arr.size());
-    assert(to && *to);
+    assert(to && !to->removed);
     assert(to->index < entries_arr.size());
 
     return static_cast<ssize_t>(to->index) - static_cast<ssize_t>(from->index);
@@ -484,7 +487,6 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     entry->path = path;
     entry->mtime = tt_time;
     entry->size = std::filesystem::file_size(path);
-    entry->index = 0;
     if (!add_entry(entry, ordered)) {
         return nullptr;
     }
@@ -501,9 +503,6 @@ ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
 
     ImageEntryPtr entry = std::make_shared<ImageEntry>();
     entry->path = path;
-    entry->mtime = 0;
-    entry->size = 0;
-    entry->index = 0;
     if (add_entry(entry, ordered)) {
         return entry;
     }

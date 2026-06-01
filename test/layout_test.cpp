@@ -113,12 +113,12 @@ TEST_F(LayoutTest, BaseScheme)
 
     const ImageEntryPtr selection = layout.get_selected();
     ASSERT_TRUE(selection);
-    ASSERT_TRUE(*selection);
+    ASSERT_TRUE(!selection->removed);
     ASSERT_EQ(selection->path, std::string(ImageEntry::SRC_EXEC) + "0");
 
     ASSERT_EQ(layout.get_scheme().size(), 15UL);
     for (auto& it : layout.get_scheme()) {
-        ASSERT_TRUE(it.img && *it.img);
+        ASSERT_TRUE(it.img && !it.img->removed);
         if (it.img == selection) {
             ASSERT_EQ(it.col, 0UL);
             ASSERT_EQ(it.row, 0UL);

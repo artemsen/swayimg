@@ -7,6 +7,7 @@
 #include "pixmap.hpp"
 
 #include <filesystem>
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -14,22 +15,12 @@
 
 /** Image entry. */
 struct ImageEntry {
+    size_t index = std::numeric_limits<size_t>::max(); ///< Index in image list
     std::filesystem::path path; ///< Path to the image file
-    std::time_t mtime;          ///< File modification time
-    size_t size;                ///< Size of the image file
-    size_t index;               ///< Image index in image list (0-based)
-    bool mark;                  ///< Marked image flag
-
-    /**
-     * Remove entry (mark it as invalid).
-     */
-    void remove();
-
-    /**
-     * Check if the entry is valid.
-     * @return true if image entry valid
-     */
-    operator bool() const;
+    std::time_t mtime = 0;      ///< File modification time
+    size_t size = 0;            ///< Size of the image file
+    bool mark = false;          ///< Marked image flag
+    bool removed = false;       ///< State, true if removed from image list
 
     // File name used for image, that is read from stdin through pipe
     static constexpr const char* SRC_STDIN = "stdin://";
