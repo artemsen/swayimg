@@ -143,28 +143,41 @@ AppMode* Application::current_mode()
     return nullptr;
 }
 
-ImageEntryPtr Application::add_image_entry(const std::filesystem::path& path)
+ImageEntryPtr
+Application::add_images(const std::vector<std::filesystem::path>& paths)
 {
-    const std::list<ImageEntryPtr> entries = ImageList::self().add(path);
+    ImageList& il = ImageList::self();
+
+    std::list<ImageEntryPtr> entries;
+    for (const auto& path : paths) {
+        entries.splice(entries.end(), il.add(path));
+    }
+
     if (!entries.empty()) {
-        AppMode* mode = current_mode();
-        for (auto& it : entries) {
-            mode->handle_imagelist(AppMode::ImageListEvent::Create, it);
-        }
+        current_mode()->handle_imagelist(AppMode::ImageListEvent::Create,
+                                         entries);
         redraw();
         return entries.front();
     }
+
     return nullptr;
 }
 
-void Application::remove_image_entry(const std::filesystem::path& path)
+void Application::remove_images(const std::vector<std::filesystem::path>& paths)
 {
     ImageList& il = ImageList::self();
-    const ImageEntryPtr entry = il.find(path);
-    if (entry) {
-        il.remove(entry);
-        AppMode* mode = current_mode();
-        mode->handle_imagelist(AppMode::ImageListEvent::Remove, entry);
+
+    std::list<ImageEntryPtr> entries;
+    for (const auto& path : paths) {
+        const ImageEntryPtr entry = il.find(path);
+        if (entry) {
+            entries.push_back(entry);
+        }
+    }
+
+    if (!entries.empty()) {
+        current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
+                                         entries);
         redraw();
     }
 }
@@ -489,7 +502,7 @@ void Application::handle_event(const AppEvent::FileCreate& event)
 {
     const ImageList& il = ImageList::self();
     if (!std::filesystem::is_directory(event.path) || il.recursive) {
-        add_image_entry(event.path);
+        add_images({ event.path });
     }
 }
 
@@ -500,7 +513,7 @@ void Application::handle_event(const AppEvent::FileModify& event)
         const ImageEntryPtr entry = il.find(event.path);
         if (entry) {
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Modify,
-                                             entry);
+                                             { entry });
         }
     }
 }
@@ -509,7 +522,7 @@ void Application::handle_event(const AppEvent::FileRemove& event)
 {
     // ignore directories, files will be removed as standalone event
     if (!std::filesystem::is_directory(event.path)) {
-        remove_image_entry(event.path);
+        remove_images({ event.path });
     }
 }
 

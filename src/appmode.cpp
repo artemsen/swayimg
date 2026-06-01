@@ -53,7 +53,8 @@ bool AppMode::handle_signal(const InputSignal& input)
     return false;
 }
 
-void AppMode::handle_imagelist(const ImageListEvent, const ImageEntryPtr&)
+void AppMode::handle_imagelist(const ImageListEvent,
+                               const std::list<ImageEntryPtr>&)
 {
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,

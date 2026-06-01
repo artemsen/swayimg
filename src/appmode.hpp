@@ -10,6 +10,7 @@
 
 #include <array>
 #include <functional>
+#include <list>
 #include <map>
 #include <vector>
 
@@ -104,10 +105,10 @@ public:
     /**
      * Handle image list changes.
      * @param event event type
-     * @param entry updated image entry
+     * @param entries list of added/removed/updated image entries
      */
     virtual void handle_imagelist(const ImageListEvent event,
-                                  const ImageEntryPtr& entry);
+                                  const std::list<ImageEntryPtr>& entries);
 
     /**
      * Check if current mode is active.

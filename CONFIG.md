@@ -57,8 +57,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Image list
   * [swayimg.imagelist.size](#swayimgimagelistsize): Get number of entries in the image list
   * [swayimg.imagelist.get](#swayimgimagelistget): Get list of all entries in the image list
-  * [swayimg.imagelist.add](#swayimgimagelistadd): Add entry to the image list
-  * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove entry from the image list
+  * [swayimg.imagelist.add](#swayimgimagelistadd): Add entries to the image list
+  * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove entries from the image list
   * [swayimg.imagelist.set_order](#swayimgimagelistset_order): Set sort order of the image list
   * [swayimg.imagelist.enable_reverse](#swayimgimagelistenable_reverse): Enable or disable reverse order
   * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
@@ -504,26 +504,26 @@ Since 5.0.
 ### swayimg.imagelist.add
 
 ```lua
-swayimg.imagelist.add(path: string)
+swayimg.imagelist.add(paths: string|string[])
 ```
 
-Add entry to the image list.
+Add entries to the image list.
 
 Since 5.0.
 
-@_param_ `path` - Path to add
+@_param_ `paths` - Paths to add
 
 ### swayimg.imagelist.remove
 
 ```lua
-swayimg.imagelist.remove(path: string)
+swayimg.imagelist.remove(paths: string|string[])
 ```
 
-Remove entry from the image list.
+Remove entries from the image list.
 
 Since 5.0.
 
-@_param_ `path` - Path to remove
+@_param_ `paths` - Paths to remove
 
 ### swayimg.imagelist.set_order
 

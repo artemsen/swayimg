@@ -588,15 +588,17 @@ void Viewer::handle_pinch(const double scale_delta)
 }
 
 void Viewer::handle_imagelist(const ImageListEvent event,
-                              const ImageEntryPtr& entry)
+                              const std::list<ImageEntryPtr>& entries)
 {
-    AppMode::handle_imagelist(event, entry);
+    AppMode::handle_imagelist(event, entries);
 
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
-        // remove entry from cache
+        // remove entries from cache
         const std::scoped_lock lock(image_pool.mutex);
-        image_pool.history.get(entry);
-        image_pool.preload.get(entry);
+        for (const auto& entry : entries) {
+            image_pool.history.get(entry);
+            image_pool.preload.get(entry);
+        }
     }
 
     switch (event) {
@@ -604,15 +606,24 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             preloader_start();
             break;
         case ImageListEvent::Modify:
-            if (entry == image->entry) {
-                reload();
+            for (const auto& entry : entries) {
+                if (entry == image->entry) {
+                    reload();
+                    break;
+                }
             }
             break;
         case ImageListEvent::Remove:
-            if (entry == image->entry && !open(ImageList::Dir::Next) &&
-                !open(ImageList::Dir::Prev)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
+            for (const auto& entry : entries) {
+                if (entry == image->entry) {
+                    if (!open(ImageList::Dir::Next) &&
+                        !open(ImageList::Dir::Prev)) {
+                        Log::info("No more images to view, exit");
+                        Application::self().exit(0);
+                        return;
+                    }
+                    break;
+                }
             }
             break;
     }

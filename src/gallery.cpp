@@ -377,24 +377,32 @@ void Gallery::handle_pinch(const double scale_delta)
 }
 
 void Gallery::handle_imagelist(const ImageListEvent event,
-                               const ImageEntryPtr& entry)
+                               const std::list<ImageEntryPtr>& entries)
 {
-    AppMode::handle_imagelist(event, entry);
+    AppMode::handle_imagelist(event, entries);
 
     if (event == ImageListEvent::Modify || event == ImageListEvent::Remove) {
         // remove entry from cache
         const std::scoped_lock lock(mutex);
-        cache.erase(entry);
+        for (const auto& entry : entries) {
+            cache.erase(entry);
+        }
     }
 
-    if (event == ImageListEvent::Remove && entry == layout.get_selected()) {
-        if (!layout.select(Layout::Right) && !layout.select(Layout::Left)) {
-            Log::info("No more images to view, exit");
-            Application::self().exit(0);
-            return;
+    if (event == ImageListEvent::Remove) {
+        for (const auto& entry : entries) {
+            if (entry == layout.get_selected()) {
+                if (!layout.select(Layout::Right) &&
+                    !layout.select(Layout::Left)) {
+                    Log::info("No more images to view, exit");
+                    Application::self().exit(0);
+                    return;
+                }
+                switch_current();
+            }
         }
-        switch_current();
     }
+
     layout.update();
     Application::redraw();
 }

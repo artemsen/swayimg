@@ -518,12 +518,36 @@ void LuaEngine::bind_imagelist_api()
                          return table;
                      })
         .addFunction("add",
-                     [](const std::string& path) {
-                         Application::self().add_image_entry(path);
+                     [this](const luabridge::LuaRef& val) {
+                         std::vector<std::filesystem::path> paths;
+                         if (val.isString()) {
+                             paths.emplace_back(val.tostring());
+                         } else if (val.isTable()) {
+                             const size_t arr_sz = val.length();
+                             paths.reserve(arr_sz);
+                             for (size_t i = 1; i <= arr_sz; ++i) {
+                                 paths.emplace_back(val[i].tostring());
+                             }
+                         } else {
+                             raise_error("Invalid argument type");
+                         }
+                         Application::self().add_images(paths);
                      })
         .addFunction("remove",
-                     [](const std::string& path) {
-                         Application::self().remove_image_entry(path);
+                     [this](const luabridge::LuaRef& val) {
+                         std::vector<std::filesystem::path> paths;
+                         if (val.isString()) {
+                             paths.emplace_back(val.tostring());
+                         } else if (val.isTable()) {
+                             const size_t arr_sz = val.length();
+                             paths.reserve(arr_sz);
+                             for (size_t i = 1; i <= arr_sz; ++i) {
+                                 paths.emplace_back(val[i].tostring());
+                             }
+                         } else {
+                             raise_error("Invalid argument type");
+                         }
+                         Application::self().remove_images(paths);
                      })
         .addFunction("set_order",
                      [this](const std::string& name) {
@@ -651,7 +675,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                      [ensure_active, mode](const std::string& path) {
                          ensure_active("open");
                          ImageEntryPtr entry =
-                             Application::self().add_image_entry(path);
+                             Application::self().add_images({ path });
                          if (!entry) {
                              // try to get existing entry
                              entry = ImageList::self().find(path);

@@ -284,15 +284,15 @@ function swayimg.imagelist.size() end
 ---@return swayimg.entry[] # Array with all file entries
 function swayimg.imagelist.get() end
 
----Add entry to the image list.
+---Add entries to the image list.
 ---Since 5.0.
----@param path string Path to add
-function swayimg.imagelist.add(path) end
+---@param paths string|string[] Paths to add
+function swayimg.imagelist.add(paths) end
 
----Remove entry from the image list.
+---Remove entries from the image list.
 ---Since 5.0.
----@param path string Path to remove
-function swayimg.imagelist.remove(path) end
+---@param paths string|string[] Paths to remove
+function swayimg.imagelist.remove(paths) end
 
 ---Set sort order of the image list.
 ---Since 5.0.

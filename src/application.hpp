@@ -81,17 +81,17 @@ public:
     AppMode* current_mode();
 
     /**
-     * Add entry to image list.
-     * @param path image path
-     * @return added entry (first one for directory)
+     * Add entries to the image list.
+     * @param paths list of image paths to add
+     * @return first added entry
      */
-    ImageEntryPtr add_image_entry(const std::filesystem::path& path);
+    ImageEntryPtr add_images(const std::vector<std::filesystem::path>& paths);
 
     /**
-     * Remove entry from image list.
-     * @param path image path
+     * Remove entries from the image list.
+     * @param paths list of image paths to remove
      */
-    void remove_image_entry(const std::filesystem::path& path);
+    void remove_images(const std::vector<std::filesystem::path>& paths);
 
     /**
      * Add file descriptor to monitor.

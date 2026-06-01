@@ -225,7 +225,7 @@ public:
                       const Point& delta) override;
     void handle_pinch(const double scale_delta) override;
     void handle_imagelist(const ImageListEvent event,
-                          const ImageEntryPtr& entry) override;
+                          const std::list<ImageEntryPtr>& entries) override;
 
 private:
     /**
