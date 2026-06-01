@@ -84,6 +84,28 @@ struct WaylandDisplay : public WaylandObject<wl_display> {
         }                                                                   \
     }
 
+struct WaylandDataOffer : public WaylandObject<wl_data_offer> {
+    WaylandDataOffer(wl_data_offer* offer)
+        : WaylandObject(wl_data_offer_destroy)
+    {
+        this->ptr = offer;
+    }
+
+    WaylandDataOffer(WaylandDataOffer const&) = delete;
+
+    WaylandDataOffer(WaylandDataOffer&& other) noexcept
+        : WaylandDataOffer(other.ptr)
+    {
+        other.ptr = nullptr;
+    }
+
+    WaylandDataOffer& operator=(WaylandDataOffer&& other) noexcept
+    {
+        std::swap(ptr, other.ptr);
+        return *this;
+    }
+};
+
 /** Wayland window buffer. */
 struct WaylandBuffer {
     ~WaylandBuffer();
@@ -207,7 +229,13 @@ private:
         WLOBJ_DECLARE(zxdg_toplevel_decoration_v1) decor;
         WLOBJ_DECLARE(ext_idle_notifier_v1) idle_mgr;
         WLOBJ_DECLARE(ext_idle_notification_v1) idle;
+        std::optional<WaylandDataOffer>
+            drop_offer; ///< Data offer currently being dragged over the window.
     } wl;
+
+    ///  Flag to remember if we've started a drag-and-drop, so we don't accept
+    ///  our own offer.
+    bool providing_dragged_data = false;
 
     WaylandBuffer wnd_buffer; ///< Window buffer
 

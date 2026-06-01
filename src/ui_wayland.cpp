@@ -164,6 +164,7 @@ public:
                 if (!ui->wl.datasrc) {
                     return;
                 }
+                ui->providing_dragged_data = true;
                 wl_data_source_add_listener(
                     ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
                 wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
@@ -356,13 +357,21 @@ public:
         close(fd);
     }
 
-    static void on_data_source_cancelled(void*, struct wl_data_source*) {}
+    static void on_data_source_cancelled(void* data, struct wl_data_source*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->providing_dragged_data = false;
+    }
 
     static void on_data_source_dnd_drop_performed(void*, struct wl_data_source*)
     {
     }
 
-    static void on_data_source_dnd_finished(void*, struct wl_data_source*) {}
+    static void on_data_source_dnd_finished(void* data, struct wl_data_source*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->providing_dragged_data = false;
+    }
 
     static void on_data_source_action(void*, struct wl_data_source*, uint32_t)
     {
@@ -380,35 +389,32 @@ public:
     /***************************************************************************
      * Data device handlers
      **************************************************************************/
-    static wl_data_offer** get_datadev_offer()
-    {
-        static wl_data_offer* datadev_offer = nullptr;
-        return &datadev_offer;
-    }
-
     static void on_data_device_data_offer(void*, struct wl_data_device*,
-                                          struct wl_data_offer* offer)
+                                          struct wl_data_offer*)
     {
-        *get_datadev_offer() = offer;
     }
 
-    static void on_data_device_enter(void*, struct wl_data_device*,
+    static void on_data_device_enter(void* data, struct wl_data_device*,
                                      uint32_t serial, struct wl_surface*,
                                      wl_fixed_t, wl_fixed_t,
                                      struct wl_data_offer* offer)
     {
-        if (offer) {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        // Don't accept drops when we're providing drop data.
+        // Presumably, it's our own data, and the event loop will deadlock if we
+        // accept it.
+        if (ui->providing_dragged_data) {
+            wl_data_offer_destroy(offer);
+        } else if (offer) {
             wl_data_offer_accept(offer, serial, MIME_URI_LIST);
+            ui->wl.drop_offer = WaylandDataOffer(offer);
         }
     }
 
-    static void on_data_device_leave(void*, struct wl_data_device*)
+    static void on_data_device_leave(void* data, struct wl_data_device*)
     {
-        wl_data_offer** offer = get_datadev_offer();
-        if (*offer) {
-            wl_data_offer_destroy(*offer);
-            *offer = nullptr;
-        }
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->wl.drop_offer.reset();
     }
 
     static void on_data_device_motion(void*, struct wl_data_device*, uint32_t,
@@ -416,48 +422,95 @@ public:
     {
     }
 
-    static void on_data_device_drop(void* data, struct wl_data_device*)
+    /// Receive the data of a wayland data offer.
+    static std::optional<std::string> receive_data_offer(wl_display* display,
+                                                         wl_data_offer* offer,
+                                                         const char* mime_type)
     {
-        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
-        wl_data_offer** offer = get_datadev_offer();
-        if (!*offer) {
-            return;
-        }
-
+        // Create a pipe to transfer the data.
         int fds[2];
         if (pipe2(fds, O_CLOEXEC) == -1) {
             Log::warning(
                 "failed to create pipe to receive drag-and-drop data: error {}",
                 errno);
-            return;
+            return std::nullopt;
         }
 
-        wl_data_offer_receive(*offer, MIME_URI_LIST, fds[1]);
+        // Pass one end of the pipe to data offer and close our copy of it.
+        wl_data_offer_receive(offer, mime_type, fds[1]);
         close(fds[1]);
 
         // flush display so the source receives the request
-        wl_display_flush(ui->wl.display);
+        wl_display_flush(display);
 
-        // read dropped data from pipe
-        std::string data_str;
-        char buf[4096];
-        ssize_t n;
-        while ((n = read(fds[0], buf, sizeof(buf))) != 0) {
-            if (n == -1) {
-                Log::warning(
-                    "failed to read drag-and-drop data from pipe: error {}",
-                    errno);
+        auto poll_fd = pollfd {
+            .fd = fds[0],
+            .events = POLLIN,
+            .revents = 0,
+        };
+
+        // Make the output buffer.
+        std::string output;
+        std::size_t total_size = 0;
+
+        while (true) {
+            // Use poll() with a 100ms timeout to avoid blocking forever.
+            constexpr int POLL_TIMEOUT_MS = 100;
+            poll_fd.revents = 0;
+            const int ret = poll(&poll_fd, 1, POLL_TIMEOUT_MS);
+            if (ret == -1) {
+                Log::warning("failed to poll pipe to receive drag-and-drop "
+                             "data: error {}",
+                             errno);
+                close(fds[0]);
+                return std::nullopt;
+            } else if (ret == 0) {
+                Log::warning("timed-out waiting to receive drag-and-drop data");
+                close(fds[0]);
+                return std::nullopt;
             }
-            data_str.append(buf, n);
-        }
-        close(fds[0]);
 
-        wl_data_offer_destroy(*offer);
-        *offer = nullptr;
+            // Only polled one fd, so we don't need to check which one is ready.
+            // Just read from it now.
+            output.resize(total_size + 2048, 0);
+            const ssize_t n_read = read(fds[0], &output[total_size], 2048);
+            if (n_read > 0) {
+                total_size += n_read;
+            } else if (n_read == 0) {
+                break;
+            } else {
+                Log::warning("failed to read from pipe to receive "
+                             "drag-and-drop data: error {}",
+                             errno);
+                close(fds[0]);
+                return std::nullopt;
+            }
+        }
+
+        close(fds[0]);
+        output.resize(total_size);
+        return output;
+    }
+
+    static void on_data_device_drop(void* data, struct wl_data_device*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (!ui->wl.drop_offer) {
+            return;
+        }
+
+        // Receive the data and destroy the offer.
+        wl_data_offer* offer = ui->wl.drop_offer->ptr;
+        auto dropped_data =
+            receive_data_offer(ui->wl.display, offer, MIME_URI_LIST);
+        ui->wl.drop_offer.reset();
+        if (!dropped_data.has_value()) {
+            return;
+        }
 
         // parse URI list (RFC 2483: lines ending with \r\n)
         std::vector<std::string> paths;
-        std::istringstream stream(data_str);
+        std::istringstream stream(std::move(dropped_data).value());
         std::string line;
         while (std::getline(stream, line)) {
             // strip trailing \r
