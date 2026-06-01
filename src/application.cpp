@@ -68,13 +68,9 @@ int Application::run()
         return 1;
     }
 
-    // initialize signal handler
-    std::signal(SIGUSR1, [](int) {
-        Application::self().add_event(AppEvent::Signal { InputSignal::USR1 });
-    });
-    std::signal(SIGUSR2, [](int) {
-        Application::self().add_event(AppEvent::Signal { InputSignal::USR2 });
-    });
+    // set signal handlers
+    std::signal(SIGUSR1, &Application::signal_handler);
+    std::signal(SIGUSR2, &Application::signal_handler);
 
     // initialize other subsystems
     Text::self().initialize();
@@ -321,6 +317,16 @@ void Application::event_loop()
         handle_event(event);
     });
 
+    // register signal handlers
+    add_fdpoll(signal_fds[0], [this]() {
+        signal_fds[0].reset();
+        Application::self().add_event(AppEvent::Signal { InputSignal::USR1 });
+    });
+    add_fdpoll(signal_fds[1], [this]() {
+        signal_fds[1].reset();
+        Application::self().add_event(AppEvent::Signal { InputSignal::USR2 });
+    });
+
     // register exit handler
     add_fdpoll(exit_event, [this]() {
         stop_flag = true;
@@ -504,5 +510,17 @@ void Application::handle_event(const AppEvent::FileRemove& event)
     // ignore directories, files will be removed as standalone event
     if (!std::filesystem::is_directory(event.path)) {
         remove_image_entry(event.path);
+    }
+}
+
+void Application::signal_handler(int signal)
+{
+    switch (signal) {
+        case SIGUSR1:
+            Application::self().signal_fds[0].set();
+            break;
+        case SIGUSR2:
+            Application::self().signal_fds[1].set();
+            break;
     }
 }

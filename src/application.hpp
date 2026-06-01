@@ -145,6 +145,9 @@ private:
     void handle_event(const AppEvent::FileModify& event);
     void handle_event(const AppEvent::FileRemove& event);
 
+    // Signal handler, see std::signal for details
+    static void signal_handler(int signal);
+
 public:
     /** Application startup parameters. */
     struct StartupParams {
@@ -179,6 +182,7 @@ private:
     std::atomic<bool> stop_flag = false; ///< Application stop flag
     int exit_code = -1;                  ///< Application exit code
     FdEvent exit_event;                  ///< Application stop event
+    FdEvent signal_fds[2];               ///< Signal notifiers (USR1/USR2)
 
     std::vector<std::pair<int, FdEventHandler>>
         fds; ///< Monitored file descriptors
