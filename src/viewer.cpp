@@ -187,6 +187,8 @@ bool Viewer::open(const ImageList::Dir dir)
 
 bool Viewer::open(const ImageEntryPtr& entry)
 {
+    assert(entry && !entry->removed);
+
     ImagePtr new_image = nullptr;
 
     if (image && image->entry == entry) {
@@ -496,7 +498,7 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
     window_size = wnd;
 
     if (image && image->entry == entry) {
-        set_image(image);
+        set_image(image); // reinit state without reloading image
     } else if (!switch_image(ImageList::Dir::Next, entry) &&
                !switch_image(ImageList::Dir::Prev, entry)) {
         Log::info("No more images to view, exit");
@@ -635,39 +637,46 @@ bool Viewer::switch_image(const ImageList::Dir dir, const ImageEntryPtr& entry)
 
     ImageList& il = ImageList::self();
 
-    ImageEntryPtr next_entry = entry ? entry : il.get(image->entry, dir);
+    ImageEntryPtr next = entry;
+    if (!next && image) {
+        next = il.get(image->entry, dir);
+    }
+    if (next && next->removed) {
+        next = il.get(next, dir);
+    }
 
     const bool forward =
         dir != ImageList::Dir::Prev && dir != ImageList::Dir::PrevParent;
 
     while (true) {
-        if (!next_entry && imagelist_loop) {
+        if (!next && imagelist_loop) {
             // reshuffle random on new loop
             if (il.get_order() == ImageList::Order::Random) {
                 il.set_order(ImageList::Order::Random);
             }
 
-            next_entry =
+            next =
                 il.get(nullptr,
                        forward ? ImageList::Dir::First : ImageList::Dir::Last);
 
-            if (image && image->entry == next_entry &&
+            // avoid opening the same image in random mode
+            if (image && next && image->entry == next &&
                 il.get_order() == ImageList::Order::Random) {
-                next_entry = il.get(next_entry, dir);
+                next = il.get(next, dir);
             }
         }
-        if (!next_entry) {
+        if (!next) {
             break; // no more entries
         }
-        if (image && image->entry == next_entry) {
+        if (image && image->entry == next) {
             break; // loop complete
         }
 
-        if (open(next_entry)) {
+        if (open(next)) {
             return true;
         }
 
-        next_entry = il.remove(next_entry, forward);
+        next = il.remove(next, forward);
     }
 
     return false;

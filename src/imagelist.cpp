@@ -324,7 +324,8 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
     switch (dir) {
         case Dir::First:
         case Dir::Last:
-            break; // already handled
+            assert(false && "should be already handled");
+            break;
         case Dir::Next:
             if (from->index + 1 < entries_arr.size()) {
                 entry = entries_arr[from->index + 1];
