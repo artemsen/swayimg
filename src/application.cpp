@@ -172,6 +172,7 @@ void Application::remove_images(const std::vector<std::filesystem::path>& paths)
         const ImageEntryPtr entry = il.find(path);
         if (entry) {
             entries.push_back(entry);
+            il.remove(entry);
         }
     }
 
