@@ -231,16 +231,16 @@ ImageEntryPtr Application::il_initialize()
     }
     if (!sparams.sources.empty()) {
         if (sparams.sources.size() == 1 && sparams.sources[0] == "-") {
-            first_entry = il.load(std::vector<std::filesystem::path> {
-                                      ImageEntry::SRC_STDIN })
+            first_entry = il.add(std::vector<std::filesystem::path> {
+                                     ImageEntry::SRC_STDIN })
                               .front();
         } else {
-            first_entry = il.load(sparams.sources).front();
+            first_entry = il.add(sparams.sources).front();
         }
     }
     if (sparams.from_file.empty() && sparams.sources.empty()) {
         first_entry =
-            il.load(std::vector<std::filesystem::path> { "." }).front();
+            il.add(std::vector<std::filesystem::path> { "." }).front();
     }
 
     if (Log::verbose_enable()) {

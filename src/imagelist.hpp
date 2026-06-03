@@ -48,7 +48,7 @@ public:
      * @return list of added entries in source order
      */
     std::list<ImageEntryPtr>
-    load(const std::vector<std::filesystem::path>& sources);
+    add(const std::vector<std::filesystem::path>& sources);
 
     /**
      * Load image list from text file.

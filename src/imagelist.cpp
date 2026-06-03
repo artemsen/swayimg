@@ -159,12 +159,12 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
     }
     file.close();
 
-    std::list<ImageEntryPtr> added = load(sources);
+    std::list<ImageEntryPtr> added = add(sources);
     return added.empty() ? nullptr : added.front();
 }
 
 std::list<ImageEntryPtr>
-ImageList::load(const std::vector<std::filesystem::path>& sources)
+ImageList::add(const std::vector<std::filesystem::path>& sources)
 {
     // preserve order while inserting only if it can avoid sorting entire list
     const bool add_ordered = sources.size() == 1;
