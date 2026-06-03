@@ -134,7 +134,7 @@ TEST(ImageListTest, LoadFile)
 TEST(ImageListTest, AddDir)
 {
     ImageList il;
-    il.add(TEST_DATA_DIR);
+    il.add({ TEST_DATA_DIR });
     ASSERT_NE(il.size(), 0UL);
 }
 
@@ -371,7 +371,7 @@ TEST(ImageListTest, SortRandom)
     // clang-format on
 
     for (auto& it : paths) {
-        il.add(it);
+        il.add({ it });
     }
 
     ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
@@ -393,8 +393,8 @@ TEST(ImageListTest, GetFirstLast)
     ASSERT_FALSE(il.get(nullptr, ImageList::Dir::First));
     ASSERT_FALSE(il.get(nullptr, ImageList::Dir::Last));
 
-    il.add("exec://first");
-    il.add("exec://last");
+    il.add({ "exec://first" });
+    il.add({ "exec://last" });
 
     ASSERT_EQ(il.size(), 2UL);
 
@@ -411,8 +411,8 @@ TEST(ImageListTest, GetNextPrev)
 {
     ImageList il;
 
-    il.add("exec://first");
-    il.add("exec://last");
+    il.add({ "exec://first" });
+    il.add({ "exec://last" });
 
     ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
     ASSERT_TRUE(entry);

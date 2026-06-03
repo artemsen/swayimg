@@ -43,14 +43,6 @@ public:
     static ImageList& self();
 
     /**
-     * Load image list from specified sources.
-     * @param sources list of sources to load
-     * @return list of added entries in source order
-     */
-    std::list<ImageEntryPtr>
-    add(const std::vector<std::filesystem::path>& sources);
-
-    /**
      * Load image list from text file.
      * @param list_file path to the file to load
      * @return first entry from source list
@@ -58,11 +50,12 @@ public:
     ImageEntryPtr load(const std::filesystem::path& list_file);
 
     /**
-     * Add file or special source to the list.
-     * @param path path to the file or special source
-     * @return list of added entries
+     * Add all images in specified sources.
+     * @param sources list of sources to load
+     * @return list of added entries in source order
      */
-    std::list<ImageEntryPtr> add(const std::filesystem::path& path);
+    std::list<ImageEntryPtr>
+    add(const std::vector<std::filesystem::path>& sources);
 
     /**
      * Remove image entry from the list.

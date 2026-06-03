@@ -179,17 +179,7 @@ ImageList::add(const std::vector<std::filesystem::path>& sources)
         sort();
     }
 
-    // disable loading of adjacent files, otherwise fs mon will add unnecessary
-    // files to the list on every call after startup
-    adjacent = false;
-
     return added;
-}
-
-std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
-{
-    const std::scoped_lock lock(mutex);
-    return add(path, true);
 }
 
 ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
@@ -412,6 +402,9 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         }
 
         if (!adjacent) {
+            if (fsmon) {
+                FsMonitor::self().add(abs_path);
+            }
             return added;
         }
         abs_path = abs_path.parent_path();
@@ -490,9 +483,6 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     entry->size = std::filesystem::file_size(path);
     if (!add_entry(entry, ordered)) {
         return nullptr;
-    }
-    if (fsmon) {
-        FsMonitor::self().add(path);
     }
     return entry;
 }

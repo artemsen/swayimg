@@ -152,10 +152,7 @@ Application::add_images(const std::vector<std::filesystem::path>& paths)
 {
     ImageList& il = ImageList::self();
 
-    std::list<ImageEntryPtr> entries;
-    for (const auto& path : paths) {
-        entries.splice(entries.end(), il.add(path));
-    }
+    const std::list<ImageEntryPtr> entries = il.add(paths);
 
     if (!entries.empty()) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create,
@@ -246,6 +243,10 @@ ImageEntryPtr Application::il_initialize()
     if (Log::verbose_enable()) {
         Log::verbose("Image list loaded in {:.6f} sec", timer.time());
     }
+
+    // disable loading of adjacent files, otherwise fs mon will add unnecessary
+    // files to the list on every call after startup
+    il.adjacent = false;
 
     return first_entry;
 }
