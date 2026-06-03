@@ -36,7 +36,7 @@ protected:
     {
         ImageList& il = ImageList::self();
         for (size_t i = 0; i < total; ++i) {
-            il.add(std::string(ImageEntry::SRC_EXEC) + std::to_string(i));
+            il.add({ ImageEntry::SRC_EXEC + std::to_string(i) });
         }
         layout.set_window_size({ 80, 60 });
         layout.set_thumb_size(10);
