@@ -49,80 +49,59 @@ static std::string to_string(ImageList& il)
 TEST(ImageListTest, LoadEmpty)
 {
     ImageList il;
-    ASSERT_FALSE(il.load(std::vector<std::filesystem::path>()));
+    ASSERT_TRUE(il.load(std::vector<std::filesystem::path>()).empty());
+}
+
+static void test_first_loaded(const ImageList::Order order)
+{
+    // The first argument should always be returned first to make swayimg open
+    // it. This ensures order if input args is respected.
+
+    ImageList il;
+    il.set_order(order);
+    const std::vector<std::filesystem::path>& sources = {
+        "exec://3",
+        "exec://2",
+        "exec://1",
+    };
+    const std::list<ImageEntryPtr> added = il.load(sources);
+    EXPECT_EQ(added.size(), sources.size());
+    EXPECT_EQ(il.size(), sources.size());
+    EXPECT_EQ(added.front()->path, sources.front());
 }
 
 TEST(ImageListTest, LoadAlpha)
 {
-    ImageList il;
-    il.set_order(ImageList::Order::Alpha);
-    const ImageEntryPtr entry = il.load({
-        "exec://3",
-        "exec://2",
-        "exec://1",
-    });
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->path, "exec://3");
+    test_first_loaded(ImageList::Order::Alpha);
 }
 
 TEST(ImageListTest, LoadNumeric)
 {
-    ImageList il;
-    il.set_order(ImageList::Order::Numeric);
-    const ImageEntryPtr entry = il.load({
-        "exec://3",
-        "exec://2",
-        "exec://1",
-    });
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->path, "exec://3");
+    test_first_loaded(ImageList::Order::Numeric);
 }
 
 TEST(ImageListTest, LoadMtime)
 {
-    ImageList il;
-    il.set_order(ImageList::Order::Mtime);
-    const ImageEntryPtr entry = il.load({
-        "exec://3",
-        "exec://2",
-        "exec://1",
-    });
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->path, "exec://3");
+    test_first_loaded(ImageList::Order::Mtime);
 }
 
 TEST(ImageListTest, LoadNone)
 {
-    ImageList il;
-    il.set_order(ImageList::Order::None);
-    const ImageEntryPtr entry = il.load({
-        "exec://3",
-        "exec://2",
-        "exec://1",
-    });
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->path, "exec://3");
+    test_first_loaded(ImageList::Order::None);
 }
 
 TEST(ImageListTest, LoadRandom)
 {
-    ImageList il;
-    il.set_order(ImageList::Order::Random);
-    const ImageEntryPtr entry = il.load({
-        "exec://3",
-        "exec://2",
-        "exec://1",
-    });
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->path, "exec://3");
+    test_first_loaded(ImageList::Order::Random);
 }
 
 TEST(ImageListTest, LoadNotExists)
 {
     ImageList il;
     il.recursive = false;
-    ASSERT_FALSE(il.load(
-        std::vector<std::filesystem::path>({ TEST_DATA_DIR "/not_exists" })));
+    ASSERT_TRUE(il.load(std::vector<std::filesystem::path>(
+                            { TEST_DATA_DIR "/not_exists" }))
+                    .empty());
 }
 
 TEST(ImageListTest, LoadFile)
@@ -163,13 +142,12 @@ TEST(ImageListTest, Duplicates)
 {
     ImageList il;
     ASSERT_TRUE(il.load({
-        "exec://1",
-        "exec://1",
-        "exec://2",
-        "exec://2",
-    }));
-
-    ASSERT_EQ(il.size(), 2UL);
+                            "exec://1",
+                            "exec://1",
+                            "exec://2",
+                            "exec://2",
+                        })
+                    .size() == 2UL);
 
     ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
     ASSERT_TRUE(entry);
@@ -190,7 +168,7 @@ TEST(ImageListTest, OutOfRange)
         "exec://7152b8159cf6a64e8dda2ff3f8ed40f.jpeg",
     };
 
-    const ImageEntryPtr entry = il.load(paths);
+    const ImageEntryPtr entry = il.load(paths).front();
     ASSERT_TRUE(entry);
 }
 
@@ -205,7 +183,7 @@ TEST(ImageListTest, Unordered)
         "exec://1",
     };
 
-    const ImageEntryPtr entry = il.load(paths);
+    const ImageEntryPtr entry = il.load(paths).front();
     ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_EQ(entry->path, "exec://2");
@@ -226,7 +204,8 @@ TEST(ImageListTest, SortAlpha)
         /* 4 */ "exec://a/b/c/0",
         /* 5 */ "exec://ab/0",
     };
-    const ImageEntryPtr entry = il.load({
+
+    const std::list<ImageEntryPtr> added = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -234,8 +213,9 @@ TEST(ImageListTest, SortAlpha)
         paths[4],
         paths[1],
     });
+    ASSERT_FALSE(added.empty());
+    const ImageEntryPtr& entry = added.front();
 
-    ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, paths[2]);
@@ -257,7 +237,8 @@ TEST(ImageListTest, SortAlphaUnicode)
         /* 4 */ "exec://ж",
         /* 5 */ "exec://я",
     };
-    const ImageEntryPtr entry = il.load({
+
+    const std::list<ImageEntryPtr> added = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -265,8 +246,9 @@ TEST(ImageListTest, SortAlphaUnicode)
         paths[4],
         paths[1],
     });
+    ASSERT_FALSE(added.empty());
+    const ImageEntryPtr& entry = added.front();
 
-    ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, paths[2]);
@@ -288,7 +270,8 @@ TEST(ImageListTest, SortAlphaReverse)
         /* 4 */ "exec://a/1",
         /* 5 */ "exec://a/0",
     };
-    const ImageEntryPtr entry = il.load({
+
+    const std::list<ImageEntryPtr> added = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -296,8 +279,9 @@ TEST(ImageListTest, SortAlphaReverse)
         paths[4],
         paths[1],
     });
+    ASSERT_FALSE(added.empty());
+    const ImageEntryPtr& entry = added.front();
 
-    ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, paths[2]);
@@ -319,7 +303,7 @@ TEST(ImageListTest, SortNumeric)
         /* 5 */ "exec://a/10b10/a",
     };
 
-    const ImageEntryPtr entry = il.load({
+    const std::list<ImageEntryPtr> added = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -327,8 +311,9 @@ TEST(ImageListTest, SortNumeric)
         paths[4],
         paths[1],
     });
+    ASSERT_FALSE(added.empty());
+    const ImageEntryPtr& entry = added.front();
 
-    ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, paths[2]);
@@ -350,7 +335,7 @@ TEST(ImageListTest, SortNumericReverse)
         /* 5 */ "exec://a/2",
     };
 
-    const ImageEntryPtr entry = il.load({
+    const std::list<ImageEntryPtr> added = il.load({
         paths[2],
         paths[0],
         paths[5],
@@ -358,8 +343,9 @@ TEST(ImageListTest, SortNumericReverse)
         paths[4],
         paths[1],
     });
+    ASSERT_FALSE(added.empty());
+    const ImageEntryPtr& entry = added.front();
 
-    ASSERT_TRUE(entry);
     EXPECT_FALSE(entry->removed);
     EXPECT_NE(entry->index, 0UL);
     EXPECT_EQ(entry->path, paths[2]);
@@ -446,13 +432,13 @@ TEST(ImageListTest, GetNextPrev)
 TEST(ImageListTest, GetNextPrevParent)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://a/0",
         "exec://a/1",
         "exec://b/0",
         "exec://c/0",
         "exec://c/1",
-    }));
+    });
 
     ImageEntryPtr entry;
 
@@ -481,11 +467,11 @@ TEST(ImageListTest, GetNextPrevParent)
 TEST(ImageListTest, GetRandom)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://1",
         "exec://2",
         "exec://3",
-    }));
+    });
 
     ImageEntryPtr entry;
 
@@ -503,12 +489,12 @@ TEST(ImageListTest, GetRandom)
 TEST(ImageListTest, Advance)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://1",
         "exec://2",
         "exec://3",
         "exec://4",
-    }));
+    });
 
     EXPECT_FALSE(il.get(il.get(nullptr, ImageList::Dir::First), 100));
     EXPECT_FALSE(il.get(il.get(nullptr, ImageList::Dir::First), -100));
@@ -529,12 +515,12 @@ TEST(ImageListTest, Advance)
 TEST(ImageListTest, Distance)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://1",
         "exec://2",
         "exec://3",
         "exec://4",
-    }));
+    });
 
     EXPECT_EQ(il.distance(il.get(nullptr, ImageList::Dir::First),
                           il.get(nullptr, ImageList::Dir::Last)),
@@ -553,11 +539,11 @@ TEST(ImageListTest, Distance)
 TEST(ImageListTest, Find)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://1",
         "exec://2",
         "exec://3",
-    }));
+    });
 
     const ImageEntryPtr entry = il.find("exec://2");
     ASSERT_TRUE(entry);
@@ -570,13 +556,11 @@ TEST(ImageListTest, Find)
 TEST(ImageListTest, Remove)
 {
     ImageList il;
-    ASSERT_TRUE(il.load({
+    il.load({
         "exec://1",
         "exec://2",
         "exec://3",
-    }));
-
-    ASSERT_EQ(il.size(), 3UL);
+    });
 
     const ImageEntryPtr entry = il.find("exec://2");
     ASSERT_TRUE(entry);

@@ -141,53 +141,6 @@ ImageList& ImageList::self()
     return singleton;
 }
 
-ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
-{
-    if (sources.empty()) {
-        return nullptr;
-    }
-
-    {
-        const std::scoped_lock lock(mutex);
-        for (const auto& it : sources) {
-            add(it, false);
-        }
-        sort();
-    }
-
-    // disable loading of adjacent files, otherwise fs mon will add unnecessary
-    // files to the list
-    adjacent = false;
-
-    // get first entry of the source list (not of the contents of the sources)
-    ImageEntryPtr first = nullptr;
-    for (const auto& path : sources) {
-        first = find(path);
-        if (first) {
-            break;
-        }
-        if (std::filesystem::is_directory(path)) {
-            const std::filesystem::path abs_path =
-                std::filesystem::absolute(path).lexically_normal();
-            auto it =
-                std::find_if(entries_arr.begin(), entries_arr.end(),
-                             [&abs_path](const ImageEntryPtr& entry) {
-                                 return abs_path == entry->path.parent_path();
-                             });
-            if (it != entries_arr.end()) {
-                first = *it;
-                break;
-            }
-        }
-    }
-
-    if (!first && !entries_arr.empty()) {
-        first = entries_arr.front();
-    }
-
-    return first;
-}
-
 ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
 {
     std::ifstream file(list_file);
@@ -206,7 +159,31 @@ ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
     }
     file.close();
 
-    return load(sources);
+    std::list<ImageEntryPtr> added = load(sources);
+    return added.empty() ? nullptr : added.front();
+}
+
+std::list<ImageEntryPtr>
+ImageList::load(const std::vector<std::filesystem::path>& sources)
+{
+    // preserve order while inserting only if it can avoid sorting entire list
+    const bool add_ordered = sources.size() == 1;
+
+    std::list<ImageEntryPtr> added;
+    const std::scoped_lock lock(mutex);
+    for (const auto& path : sources) {
+        added.splice(added.end(), add(path, add_ordered));
+    }
+
+    if (!add_ordered) { // ensure result is sorted if it wasn't during insert
+        sort();
+    }
+
+    // disable loading of adjacent files, otherwise fs mon will add unnecessary
+    // files to the list on every call after startup
+    adjacent = false;
+
+    return added;
 }
 
 std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path)
@@ -390,14 +367,15 @@ ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,
     const std::filesystem::path from_parent = from->path.parent_path();
 
     const ssize_t size = static_cast<ssize_t>(entries_arr.size());
-    ssize_t index = static_cast<ssize_t>(from->index) + (forward ? 1 : -1);
+    const ssize_t direction_sign = forward ? 1 : -1;
+    ssize_t index = static_cast<ssize_t>(from->index) + direction_sign;
 
     while (index >= 0 && index < size) {
         ImageEntryPtr entry = entries_arr[index];
         if (from_parent != entry->path.parent_path()) {
             return entry;
         }
-        index += forward ? 1 : -1;
+        index += direction_sign;
     }
 
     return nullptr;
@@ -426,27 +404,39 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         return {};
     }
 
-    if (std::filesystem::is_directory(abs_path)) {
-        std::list<ImageEntryPtr> added = add_dir(abs_path);
-        if (!added.empty() && ordered) {
-            sort();
+    std::list<ImageEntryPtr> added;
+    if (!std::filesystem::is_directory(abs_path)) {
+        const ImageEntryPtr entry = add_file(abs_path, ordered);
+        if (entry) {
+            added.emplace_back(entry);
         }
-        return added;
+
+        if (!adjacent) {
+            return added;
+        }
+        abs_path = abs_path.parent_path();
     }
 
-    if (adjacent) {
-        std::list<ImageEntryPtr> added = add_dir(abs_path.parent_path());
-        if (!added.empty() && ordered) {
+    std::list<ImageEntryPtr> dir_entries = add_dir(abs_path);
+    if (!dir_entries.empty()) {
+        if (ordered) {
             sort();
         }
-        return added;
-    }
 
-    const ImageEntryPtr entry = add_file(abs_path, ordered);
-    if (entry) {
-        return { entry };
+        // ensure user is served the first file according to sort opts
+        if (added.empty()) {
+            auto first = std::min_element(
+                dir_entries.begin(), dir_entries.end(),
+                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
+                    const bool cmp = compare_entries(*l, *r, order);
+                    return reverse ? !cmp : cmp;
+                });
+            added.splice(added.begin(), dir_entries, first);
+        }
     }
-    return {};
+    added.splice(added.end(), dir_entries);
+
+    return added;
 }
 
 std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
