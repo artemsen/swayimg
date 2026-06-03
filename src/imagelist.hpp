@@ -45,9 +45,10 @@ public:
     /**
      * Load image list from specified sources.
      * @param sources list of sources to load
-     * @return first entry from source list
+     * @return list of added entries in source order
      */
-    ImageEntryPtr load(const std::vector<std::filesystem::path>& sources);
+    std::list<ImageEntryPtr>
+    load(const std::vector<std::filesystem::path>& sources);
 
     /**
      * Load image list from text file.
