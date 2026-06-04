@@ -33,14 +33,17 @@ public:
     {
     }
 
-    ~WaylandObject()
+    ~WaylandObject() { free(); }
+
+    operator T*() const { return ptr; };
+
+    void free()
     {
         if (ptr) {
             destroy(ptr);
+            ptr = nullptr;
         }
     }
-
-    operator T*() const { return ptr; };
 
     fn_destroy destroy;
     T* ptr = nullptr;
