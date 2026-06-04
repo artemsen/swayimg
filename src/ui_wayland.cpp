@@ -321,7 +321,7 @@ public:
                                     const char* mime_type, int32_t fd)
     {
         const ImageEntryPtr entry =
-            Application::self().current_mode()->current_entry();
+            Application::self().current_mode()->get_current();
         const std::string path = entry->path.string();
 
         int err_code = 0;

@@ -115,7 +115,7 @@ void Application::set_mode(const Mode mode)
         AppMode* app_mode;
 
         app_mode = current_mode();
-        const ImageEntryPtr entry = app_mode->current_entry();
+        const ImageEntryPtr entry = app_mode->get_current();
         app_mode->deactivate();
 
         active_mode = mode;
@@ -506,7 +506,7 @@ void Application::handle_event(const AppEvent::DragAndDrop& event)
 {
     const ImageEntryPtr first = add_images(event.paths);
     if (first) {
-        current_mode()->open_entry(first);
+        current_mode()->set_current(first);
     }
 }
 

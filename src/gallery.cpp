@@ -106,7 +106,7 @@ Gallery::Gallery()
         Application::self().set_mode(Application::Mode::Slideshow);
     });
     bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        const ImageEntryPtr entry = current_entry();
+        const ImageEntryPtr entry = get_current();
         entry->mark = !entry->mark;
         Application::redraw();
     });
@@ -329,12 +329,12 @@ void Gallery::deactivate()
     tpool.wait();
 }
 
-ImageEntryPtr Gallery::current_entry()
+ImageEntryPtr Gallery::get_current()
 {
     return layout.get_selected();
 }
 
-bool Gallery::open_entry(const ImageEntryPtr& /*entry*/)
+bool Gallery::set_current(const ImageEntryPtr& /*entry*/)
 {
     // not implemented yet
     return false;

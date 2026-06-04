@@ -51,14 +51,14 @@ public:
      * Get currently showed/selected image entry.
      * @return current image entry
      */
-    virtual ImageEntryPtr current_entry() = 0;
+    virtual ImageEntryPtr get_current() = 0;
 
     /**
-     * Open or select specified entry.
+     * Set currently showed/selected image entry.
      * @param entry desired image entry
-     * @return true if image was opened
+     * @return true if image was opened/selected
      */
-    virtual bool open_entry(const ImageEntryPtr& entry) = 0;
+    virtual bool set_current(const ImageEntryPtr& entry) = 0;
 
     /**
      * Window resize handler.

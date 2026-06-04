@@ -681,7 +681,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                              entry = ImageList::self().find(path);
                          }
                          if (entry) {
-                             mode->open_entry(entry);
+                             mode->set_current(entry);
                          }
                      })
         .addFunction("get_image",
@@ -991,7 +991,7 @@ void LuaEngine::bind_gallery_api()
             [this, ensure_active]() {
                 ensure_active("get_image");
                 luabridge::LuaRef table = entry_to_table(
-                    *Application::self().current_mode()->current_entry());
+                    *Application::self().current_mode()->get_current());
                 return table;
             })
         .addFunction(
@@ -1083,18 +1083,17 @@ void LuaEngine::bind_appmode_api(const char* name)
     luabridge::getGlobalNamespace(lua_state)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
-        .addFunction(
-            "mark_image",
-            [](const std::optional<bool>& state) {
-                const ImageEntryPtr entry =
-                    Application::self().current_mode()->current_entry();
-                if (state.has_value()) {
-                    entry->mark = state.value();
-                } else {
-                    entry->mark = !entry->mark;
-                }
-                Application::redraw();
-            })
+        .addFunction("mark_image",
+                     [](const std::optional<bool>& state) {
+                         const ImageEntryPtr entry =
+                             Application::self().current_mode()->get_current();
+                         if (state.has_value()) {
+                             entry->mark = state.value();
+                         } else {
+                             entry->mark = !entry->mark;
+                         }
+                         Application::redraw();
+                     })
         .addFunction("set_mark_color",
                      [appmode](const uint32_t color) {
                          appmode->set_mark_color(color);

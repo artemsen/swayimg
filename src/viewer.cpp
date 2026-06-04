@@ -71,7 +71,7 @@ Viewer::Viewer()
         Application::self().set_mode(Application::Mode::Slideshow);
     });
     bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        const ImageEntryPtr entry = current_entry();
+        const ImageEntryPtr entry = get_current();
         entry->mark = !entry->mark;
         Application::redraw();
     });
@@ -187,7 +187,7 @@ bool Viewer::open(const ImageList::Dir dir)
 
 bool Viewer::reload()
 {
-    if (!open_entry(image->entry) && !open(ImageList::Dir::Next) &&
+    if (!set_current(image->entry) && !open(ImageList::Dir::Next) &&
         !open(ImageList::Dir::Prev)) {
         Log::info("No more images to view, exit");
         Application::self().exit(0);
@@ -478,12 +478,12 @@ void Viewer::deactivate()
     ui->set_cursor(Ui::CursorShape::Default);
 }
 
-ImageEntryPtr Viewer::current_entry()
+ImageEntryPtr Viewer::get_current()
 {
     return image ? image->entry : nullptr;
 }
 
-bool Viewer::open_entry(const ImageEntryPtr& entry)
+bool Viewer::set_current(const ImageEntryPtr& entry)
 {
     assert(entry && !entry->removed);
 
@@ -672,7 +672,7 @@ bool Viewer::switch_image(const ImageList::Dir dir, const ImageEntryPtr& entry)
             break; // loop complete
         }
 
-        if (open_entry(next)) {
+        if (set_current(next)) {
             return true;
         }
 

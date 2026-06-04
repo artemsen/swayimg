@@ -59,7 +59,7 @@ void AppMode::handle_imagelist(const ImageListEvent,
 {
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(current_entry()->index + 1));
+                   std::to_string(get_current()->index + 1));
     text.set_field(Text::FIELD_LIST_TOTAL,
                    std::to_string(ImageList::self().size()));
     text.update();
@@ -127,7 +127,7 @@ void AppMode::bind_input(const InputSignal& input, const InputCallback& handler)
 
 void AppMode::switch_current()
 {
-    const ImageEntryPtr current = current_entry();
+    const ImageEntryPtr current = get_current();
 
     // set window title
     Ui* ui = Application::self().get_ui();
