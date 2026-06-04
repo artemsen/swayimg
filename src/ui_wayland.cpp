@@ -17,7 +17,7 @@
 #include <cstring>
 #include <format>
 
-// supported MIME types for drag-and-drop
+// MIME type for drag-and-drop of raw path
 static const char* MIME_TEXT_PLAIN = "text/plain";
 
 /** Static Wayland handlers. */
@@ -370,39 +370,85 @@ public:
     /***************************************************************************
      * Data device handlers
      **************************************************************************/
-    static wl_data_offer** get_datadev_offer()
-    {
-        static wl_data_offer* datadev_offer = nullptr;
-        return &datadev_offer;
-    }
-
     static void on_data_device_data_offer(void*, struct wl_data_device*,
-                                          struct wl_data_offer* offer)
-    {
-        *get_datadev_offer() = offer;
-    }
-
-    static void on_data_device_enter(void*, struct wl_data_device*, uint32_t,
-                                     struct wl_surface*, wl_fixed_t, wl_fixed_t,
-                                     struct wl_data_offer*)
+                                          struct wl_data_offer*)
     {
     }
 
-    static void on_data_device_leave(void*, struct wl_data_device*)
+    static void on_data_device_enter(void* data, struct wl_data_device*,
+                                     uint32_t serial, struct wl_surface*,
+                                     wl_fixed_t, wl_fixed_t,
+                                     struct wl_data_offer* offer)
     {
-        wl_data_offer** offer = get_datadev_offer();
-        if (*offer) {
-            wl_data_offer_destroy(*offer);
-            *offer = nullptr;
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->wl.datasrc) {
+            wl_data_offer_destroy(offer); // ignore own offers
+        } else if (offer) {
+            wl_data_offer_accept(offer, serial, URI_LIST_MIME);
+            ui->wl.dataoffer = offer;
         }
     }
+
+    static void on_data_device_leave(void*, struct wl_data_device*) {}
 
     static void on_data_device_motion(void*, struct wl_data_device*, uint32_t,
                                       wl_fixed_t, wl_fixed_t)
     {
     }
 
-    static void on_data_device_drop(void*, struct wl_data_device*) {}
+    static void on_data_device_drop(void* data, struct wl_data_device*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (!ui->wl.dataoffer) {
+            return;
+        }
+
+        // receive the data from the offer
+        int fds[2];
+        if (pipe2(fds, O_CLOEXEC) == -1) {
+            Log::error(errno, "Failed to create piep");
+            ui->wl.dataoffer.free();
+            return;
+        }
+        wl_data_offer_receive(ui->wl.dataoffer, URI_LIST_MIME, fds[1]);
+        close(fds[1]);
+        wl_display_flush(ui->wl.display);
+
+        pollfd pfd {
+            .fd = fds[0],
+            .events = POLLIN,
+            .revents = 0,
+        };
+        if (poll(&pfd, 1, 1000) <= 0) {
+            Log::error(errno, "Failed to poll pipe");
+            close(fds[0]);
+            ui->wl.dataoffer.free();
+            return;
+        }
+        std::string offer_data;
+        while (true) {
+            uint8_t buffer[512];
+            const ssize_t rc = read(fds[0], buffer, sizeof(buffer));
+            if (rc == 0) {
+                break;
+            }
+            if (rc == -1 && errno != EAGAIN) {
+                Log::error(errno, "Unable to read pipe");
+                close(fds[0]);
+                ui->wl.dataoffer.free();
+                return;
+            }
+            offer_data.insert(offer_data.end(), buffer, buffer + rc);
+        }
+        close(fds[0]);
+        ui->wl.dataoffer.free();
+
+        const std::vector<std::filesystem::path> paths =
+            urilist_parse(offer_data);
+        if (!paths.empty()) {
+            Application::self().add_event(AppEvent::DragAndDrop { paths });
+        }
+    }
 
     static void on_data_device_selection(void*, struct wl_data_device*,
                                          struct wl_data_offer* offer)

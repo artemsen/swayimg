@@ -194,6 +194,7 @@ private:
         WLOBJ_DECLARE(wl_data_device_manager) datadev_mgr;
         WLOBJ_DECLARE(wl_data_device) datadev;
         WLOBJ_DECLARE(wl_data_source) datasrc;
+        WLOBJ_DECLARE(wl_data_offer) dataoffer;
         WLOBJ_DECLARE(xdg_wm_base) xwmbase;
         WLOBJ_DECLARE(xdg_surface) xsurface;
         WLOBJ_DECLARE(xdg_toplevel) xtoplevel;
