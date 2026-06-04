@@ -6,6 +6,7 @@
 
 #include "application.hpp"
 #include "log.hpp"
+#include "urilist.hpp"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -17,7 +18,6 @@
 #include <format>
 
 // supported MIME types for drag-and-drop
-static const char* MIME_URI_LIST = "text/uri-list";
 static const char* MIME_TEXT_PLAIN = "text/plain";
 
 /** Static Wayland handlers. */
@@ -166,7 +166,7 @@ public:
                 wl_data_source_add_listener(
                     ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
                 wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
-                wl_data_source_offer(ui->wl.datasrc, MIME_URI_LIST);
+                wl_data_source_offer(ui->wl.datasrc, URI_LIST_MIME);
                 wl_data_device_start_drag(ui->wl.datadev, ui->wl.datasrc,
                                           ui->wl.surface, nullptr, serial);
             }
@@ -330,18 +330,9 @@ public:
             if (write(fd, path.c_str(), path.length()) == -1) {
                 err_code = errno;
             }
-        } else if (strcmp(mime_type, MIME_URI_LIST) == 0) {
-            std::string uri = "file://";
-            uri.reserve(uri.length() + path.length() + 16 /* spaces */);
-            for (const char chr : path) {
-                if (chr == ' ') {
-                    uri += "%20";
-                } else {
-                    uri += chr;
-                }
-            }
-            uri += "\r\n";
-            if (write(fd, uri.c_str(), uri.length()) == -1) {
+        } else if (strcmp(mime_type, URI_LIST_MIME) == 0) {
+            const std::string uri_list = urilist_create(path);
+            if (write(fd, uri_list.c_str(), uri_list.length()) == -1) {
                 err_code = errno;
             }
         } else {
