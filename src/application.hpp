@@ -141,6 +141,7 @@ private:
     void handle_event(const AppEvent::MouseMove& event);
     void handle_event(const AppEvent::GesturePinch& event);
     void handle_event(const AppEvent::Signal& event);
+    void handle_event(const AppEvent::DragAndDrop& event);
     void handle_event(const AppEvent::FileCreate& event);
     void handle_event(const AppEvent::FileModify& event);
     void handle_event(const AppEvent::FileRemove& event);

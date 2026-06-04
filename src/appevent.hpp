@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Applicataion event.
+// Application event.
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
 #pragma once
@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <functional>
 #include <variant>
+#include <vector>
 
 /** Application event. */
 namespace AppEvent {
@@ -58,6 +59,11 @@ struct Signal {
     InputSignal signal; ///< Signal description
 };
 
+/** File drop event (drag-and-drop receive). */
+struct DragAndDrop {
+    std::vector<std::filesystem::path> paths; ///< Paths to the files
+};
+
 /** File create event. */
 struct FileCreate {
     std::filesystem::path path; ///< Path to the file
@@ -83,6 +89,7 @@ using Holder = std::variant<WindowClose,
                             MouseMove,
                             GesturePinch,
                             Signal,
+                            DragAndDrop,
                             FileCreate,
                             FileModify,
                             FileRemove>;

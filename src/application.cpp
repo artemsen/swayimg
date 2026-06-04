@@ -409,6 +409,9 @@ void Application::handle_event(const AppEvent::Holder& event)
                                                 const AppEvent::Signal&>) {
                 handle_event(event);
             } else if constexpr (std::is_same_v<decltype(event),
+                                                const AppEvent::DragAndDrop&>) {
+                handle_event(event);
+            } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::FileCreate&>) {
                 handle_event(event);
             } else if constexpr (std::is_same_v<decltype(event),
@@ -496,6 +499,14 @@ void Application::handle_event(const AppEvent::Signal& event)
         const std::string msg =
             std::format("Unhandled signal {}", event.signal.to_string());
         Text::self().set_status(msg);
+    }
+}
+
+void Application::handle_event(const AppEvent::DragAndDrop& event)
+{
+    const ImageEntryPtr first = add_images(event.paths);
+    if (first) {
+        current_mode()->open_entry(first);
     }
 }
 
