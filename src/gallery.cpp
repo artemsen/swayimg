@@ -334,10 +334,10 @@ ImageEntryPtr Gallery::get_current()
     return layout.get_selected();
 }
 
-bool Gallery::set_current(const ImageEntryPtr& /*entry*/)
+bool Gallery::set_current(const ImageEntryPtr& entry)
 {
-    // not implemented yet
-    return false;
+    layout.select(entry);
+    return true;
 }
 
 void Gallery::window_resize(const Size& wnd)
