@@ -63,13 +63,6 @@ public:
     bool open(const ImageList::Dir dir);
 
     /**
-     * Load and switch to specified entry.
-     * @param from entry to load
-     * @return true if image was loaded
-     */
-    bool open(const ImageEntryPtr& entry);
-
-    /**
      * Reload current image.
      * @return true if image was reloaded
      */
@@ -219,6 +212,7 @@ public:
     void activate(const ImageEntryPtr& entry, const Size& wnd) override;
     void deactivate() override;
     ImageEntryPtr current_entry() override;
+    bool open_entry(const ImageEntryPtr& entry) override;
     void window_resize(const Size& wnd) override;
     void window_redraw(Pixmap& wnd) override;
     void handle_mmove(const InputMouse& input, const Point& pos,

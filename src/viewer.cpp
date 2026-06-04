@@ -185,47 +185,9 @@ bool Viewer::open(const ImageList::Dir dir)
     return switch_image(dir, nullptr);
 }
 
-bool Viewer::open(const ImageEntryPtr& entry)
-{
-    assert(entry && !entry->removed);
-
-    ImagePtr new_image = nullptr;
-
-    if (image && image->entry == entry) {
-        // remove entry from cache in reloading mode
-        const std::scoped_lock lock(image_pool.mutex);
-        image_pool.history.get(entry);
-        image_pool.preload.get(entry);
-    } else {
-        // get file from history/preload cache
-        const std::scoped_lock lock(image_pool.mutex);
-        new_image = image_pool.preload.get(entry);
-        if (new_image) {
-            Log::verbose("Got image {} from preloading cache",
-                         entry->path.filename().string());
-        } else {
-            new_image = image_pool.history.get(entry);
-            if (new_image) {
-                Log::verbose("Got image {} from history cache",
-                             entry->path.filename().string());
-            }
-        }
-    }
-
-    if (!new_image) {
-        new_image = FormatFactory::self().load(entry);
-        if (!new_image) {
-            return false; // failed to load
-        }
-    }
-
-    set_image(new_image);
-    return true;
-}
-
 bool Viewer::reload()
 {
-    if (!open(image->entry) && !open(ImageList::Dir::Next) &&
+    if (!open_entry(image->entry) && !open(ImageList::Dir::Next) &&
         !open(ImageList::Dir::Prev)) {
         Log::info("No more images to view, exit");
         Application::self().exit(0);
@@ -521,6 +483,44 @@ ImageEntryPtr Viewer::current_entry()
     return image ? image->entry : nullptr;
 }
 
+bool Viewer::open_entry(const ImageEntryPtr& entry)
+{
+    assert(entry && !entry->removed);
+
+    ImagePtr new_image = nullptr;
+
+    if (image && image->entry == entry) {
+        // remove entry from cache in reloading mode
+        const std::scoped_lock lock(image_pool.mutex);
+        image_pool.history.get(entry);
+        image_pool.preload.get(entry);
+    } else {
+        // get file from history/preload cache
+        const std::scoped_lock lock(image_pool.mutex);
+        new_image = image_pool.preload.get(entry);
+        if (new_image) {
+            Log::verbose("Got image {} from preloading cache",
+                         entry->path.filename().string());
+        } else {
+            new_image = image_pool.history.get(entry);
+            if (new_image) {
+                Log::verbose("Got image {} from history cache",
+                             entry->path.filename().string());
+            }
+        }
+    }
+
+    if (!new_image) {
+        new_image = FormatFactory::self().load(entry);
+        if (!new_image) {
+            return false; // failed to load
+        }
+    }
+
+    set_image(new_image);
+    return true;
+}
+
 void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
@@ -672,7 +672,7 @@ bool Viewer::switch_image(const ImageList::Dir dir, const ImageEntryPtr& entry)
             break; // loop complete
         }
 
-        if (open(next)) {
+        if (open_entry(next)) {
             return true;
         }
 

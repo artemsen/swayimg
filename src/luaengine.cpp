@@ -681,7 +681,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                              entry = ImageList::self().find(path);
                          }
                          if (entry) {
-                             mode->open(entry);
+                             mode->open_entry(entry);
                          }
                      })
         .addFunction("get_image",

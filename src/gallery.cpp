@@ -334,6 +334,12 @@ ImageEntryPtr Gallery::current_entry()
     return layout.get_selected();
 }
 
+bool Gallery::open_entry(const ImageEntryPtr& /*entry*/)
+{
+    // not implemented yet
+    return false;
+}
+
 void Gallery::window_resize(const Size& wnd)
 {
     layout.set_window_size(wnd);

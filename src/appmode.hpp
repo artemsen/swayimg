@@ -54,6 +54,13 @@ public:
     virtual ImageEntryPtr current_entry() = 0;
 
     /**
+     * Open or select specified entry.
+     * @param entry desired image entry
+     * @return true if image was opened
+     */
+    virtual bool open_entry(const ImageEntryPtr& entry) = 0;
+
+    /**
      * Window resize handler.
      * @param wnd window size
      */
