@@ -70,7 +70,7 @@ protected:
     {
         printf("  | ");
         for (size_t col = 0; col < layout.get_columns(); ++col) {
-            printf("%2ld ", col);
+            printf("%2zu ", col);
         }
         printf("\n--+");
         for (size_t col = 0; col < layout.get_columns(); ++col) {
@@ -81,7 +81,7 @@ protected:
         size_t index = 0;
         for (auto& it : layout.get_scheme()) {
             if ((index % layout.get_columns()) == 0) {
-                printf("%ld | ", index / layout.get_columns());
+                printf("%zu | ", index / layout.get_columns());
             }
             const std::string path =
                 it.img->path.string().substr(strlen(ImageEntry::SRC_EXEC));
