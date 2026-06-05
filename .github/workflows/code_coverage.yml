@@ -1,0 +1,65 @@
+name: Code coverage
+on: [push, pull_request]
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+
+    steps:
+
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        swayimg
+
+    - name: Setup
+      run: >
+        docker exec swayimg
+        meson setup
+        --auto-features=enabled
+        -D tests=enabled
+        -D b_coverage=true
+        ${{ env.BUILD_DIR }}
+
+    - name: Compile
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_DIR }}
+
+    - name: Run tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_DIR }}
+
+    - name: Generate report
+      run: >
+        docker exec swayimg
+        ninja -C ${{ env.BUILD_DIR }} coverage-html
+
+    - name: Pack report
+      run: >
+        docker exec swayimg
+        tar czf ${{ env.BUILD_DIR }}/coverage.tar.gz -C ${{ env.BUILD_DIR }}/meson-logs coveragereport
+
+    - name: Get report
+      run: docker cp swayimg:${{ env.BUILD_DIR }}/coverage.tar.gz .
+
+    - name: Upload report
+      uses: actions/upload-artifact@v7
+      with:
+        archive: false
+        name: coverage.tar.gz
+        path: coverage.tar.gz

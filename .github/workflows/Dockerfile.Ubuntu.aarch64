@@ -20,7 +20,6 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libheif-dev:arm64 \
     libheif-plugins-all:arm64 \
     libjpeg-dev:arm64 \
-    libjson-c-dev:arm64 \
     libjxl-dev:arm64 \
     libopenexr-dev:arm64 \
     libopenjp2-7-dev:arm64 \

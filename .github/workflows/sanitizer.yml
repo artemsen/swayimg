@@ -1,0 +1,75 @@
+name: Sanitizer
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+      INSTALL_DIR: /tmp/install
+
+    steps:
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Get app version
+      run: echo "VERSION=$(git describe --tags --long --always | sed 's/^v//;s/-/./')" >> $GITHUB_OUTPUT
+      id: version
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        --env="CFLAGS=-g -fsanitize=address"
+        --env="CXXFLAGS=-g -fsanitize=address"
+        --env="LDFLAGS=-fsanitize=address -fopenmp=libgomp"
+        swayimg
+
+    - name: Setup
+      run: >
+        docker exec swayimg
+        meson setup
+        --auto-features=enabled
+        --prefix=/usr
+        --werror
+        -D tests=enabled
+        -D version=${{steps.version.outputs.VERSION}}
+        ${{ env.BUILD_DIR }}
+
+    - name: Compile
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_DIR }}
+
+    - name: Run tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_DIR }}
+
+    - name: Install
+      run: >
+        docker exec swayimg
+        env DESTDIR=${{ env.INSTALL_DIR }}
+        meson install -C ${{ env.BUILD_DIR }}
+
+    - name: Run/version
+      run: >
+        docker exec swayimg
+        ${{ env.INSTALL_DIR }}/usr/bin/swayimg --version
+
+    - name: Run/help
+      run: >
+        docker exec swayimg
+        ${{ env.INSTALL_DIR }}/usr/bin/swayimg --help
+
+    - name: Run unit tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_DIR }}

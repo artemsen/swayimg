@@ -1,0 +1,40 @@
+name: Static analysis
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+
+    steps:
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        swayimg
+
+    - name: Setup
+      run: >
+        docker exec swayimg
+        meson setup --auto-features=enabled -D tests=enabled ${{ env.BUILD_DIR }}
+
+    - name: Compile
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_DIR }}
+
+    - name: Run analisys
+      run: >
+        docker exec swayimg
+        ninja -C ${{ env.BUILD_DIR }} clang-tidy

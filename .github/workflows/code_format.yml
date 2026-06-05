@@ -1,0 +1,30 @@
+name: Code format
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+
+    steps:
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Arch .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        swayimg
+
+    - name: Code format
+      run: >
+        docker exec swayimg
+        clang-format --Werror --dry-run src/*.cpp src/*.hpp src/formats/* test/*.cpp

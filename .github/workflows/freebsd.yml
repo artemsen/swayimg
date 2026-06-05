@@ -1,8 +1,8 @@
-name: FreeBSD/x86_64
+name: FreeBSD
 on: [push, pull_request]
 
 jobs:
-  check:
+  x86_64:
     runs-on: ubuntu-latest
     env:
       BUILD_PATH: /tmp/build
@@ -38,7 +38,7 @@ jobs:
           tar czf swayimg-freebsd.tar.gz -C ${{ env.INSTALL_PATH }} .
 
     - name: Upload binary package
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: swayimg-freebsd.tar.gz
         path: swayimg-freebsd.tar.gz

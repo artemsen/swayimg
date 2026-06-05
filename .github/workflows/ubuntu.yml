@@ -1,0 +1,92 @@
+name: Ubuntu
+on: [push, pull_request]
+
+jobs:
+  amd64:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+
+    steps:
+
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Ubuntu.amd64 .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        swayimg
+
+    - name: Setup
+      run: >
+        docker exec swayimg
+        meson setup
+        --prefix=/usr
+        --werror
+        -D tests=enabled
+        -D auto_features=enabled
+        -D exr=disabled
+        ${{ env.BUILD_DIR }}
+
+    - name: Compile
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_DIR }}
+
+    - name: Run unit tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_DIR }}
+
+  aarch64:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: /tmp/build
+
+    steps:
+
+    - name: Check out source code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Build docker image
+      run: docker build --tag=swayimg --file=.github/workflows/Dockerfile.Ubuntu.aarch64 .
+
+    - name: Run docker container
+      run: >
+        docker run --tty --detach
+        --name=swayimg
+        --volume=$PWD:$PWD:ro
+        --workdir=$PWD
+        swayimg
+
+    - name: Setup
+      run: >
+        docker exec swayimg
+        meson setup
+        --cross-file=.github/workflows/aarch64_cross.txt
+        --prefix=/usr
+        --werror
+        -D tests=enabled
+        -D auto_features=enabled
+        -D exr=disabled
+        ${{ env.BUILD_DIR }}
+
+    - name: Compile
+      run: >
+        docker exec swayimg
+        meson compile -C ${{ env.BUILD_DIR }}
+
+    - name: Run unit tests
+      run: >
+        docker exec swayimg
+        meson test --verbose -C ${{ env.BUILD_DIR }}
