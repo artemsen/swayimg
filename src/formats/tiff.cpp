@@ -6,6 +6,7 @@
 
 #include <tiffio.h>
 
+#include <algorithm>
 #include <cstring>
 #include <memory>
 
@@ -87,11 +88,9 @@ private:
         static tmsize_t read(thandle_t data, void* buffer, tmsize_t size)
         {
             BufferIO* bufio = reinterpret_cast<BufferIO*>(data);
-            const tmsize_t rest =
-                static_cast<tmsize_t>(bufio->data.size) - bufio->position;
-            if (size > rest) {
-                size = rest;
-            }
+            size = std::min(size,
+                            static_cast<tmsize_t>(bufio->data.size) -
+                                static_cast<tmsize_t>(bufio->position));
             std::memcpy(buffer, bufio->data.data + bufio->position, size);
             bufio->position += size;
             return size;

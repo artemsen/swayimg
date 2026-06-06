@@ -83,7 +83,7 @@ private:
      * @param svg SVG descriptor
      * @return output canvas rectangle
      */
-    [[nodiscard]] RsvgRectangle get_canvas(RsvgHandle* svg) const
+    static RsvgRectangle get_canvas(RsvgHandle* svg)
     {
         RsvgRectangle canvas {};
 
@@ -129,7 +129,7 @@ private:
      * Set format description.
      * @param svg SVG descriptor
      */
-    std::string get_format(RsvgHandle* svg) const
+    static std::string get_format(RsvgHandle* svg)
     {
         RsvgLength svg_w, svg_h;
         RsvgRectangle viewbox;

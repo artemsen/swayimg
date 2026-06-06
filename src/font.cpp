@@ -23,7 +23,13 @@ public:
     using FcPatternPtr =
         std::unique_ptr<FcPattern, decltype(&FcPatternDestroy)>;
 
-    FontConfig() { FcInit(); }
+    FontConfig()
+    {
+        if (!FcInit()) {
+            Log::error("Unable to initialize FontConfig");
+        }
+    }
+
     ~FontConfig() { FcFini(); }
 
     /**
@@ -31,7 +37,7 @@ public:
      * @param name font name
      * @return path to the file or empty string if font not found
      */
-    std::filesystem::path get_font_file(const char* name) const
+    static std::filesystem::path get_font_file(const char* name)
     {
         const FcConfigPtr fc =
             FcConfigPtr(FcInitLoadConfigAndFonts(), &FcConfigDestroy);
@@ -82,7 +88,7 @@ struct FreeTypeLib {
         }
     }
 
-    inline operator FT_Library() { return lib; }
+    operator FT_Library() { return lib; }
 
 private:
     FT_Library lib = nullptr; ///< Font lib instance
@@ -104,7 +110,8 @@ bool Font::load(const std::string& name)
     }
 
     // get font file via FontConfig
-    const std::filesystem::path path = FontConfig().get_font_file(name.c_str());
+    const FontConfig fcinit;
+    const std::filesystem::path path = FontConfig::get_font_file(name.c_str());
     if (path.empty()) {
         Log::error("Unable to find font {}", name);
         return false;
@@ -177,19 +184,11 @@ void Font::set_scale(const double scale)
     set_size(size);
 }
 
-Pixmap Font::render(const std::string& text)
+std::wstring Font::to_wide(const std::string& text)
 {
-    if (!ft_face && !load(DEFAULT_FONT)) {
-        return {};
-    }
-
     size_t len = text.length();
-    if (len == 0) {
-        return {};
-    }
-
-    // convert text to wide-character string
     std::wstring wide(len + 1, 0);
+
     len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
     if (len != std::wstring::npos) {
         wide.resize(len);
@@ -201,10 +200,22 @@ Pixmap Font::render(const std::string& text)
         }
         len = wide.length();
     }
+
     if (len > MAX_TEXT_LEN) {
         wide.resize(MAX_TEXT_LEN - 1);
         wide += L'…';
     }
+
+    return wide;
+}
+
+Pixmap Font::render(const std::string& text)
+{
+    if (text.empty() && !ft_face && !load(DEFAULT_FONT)) {
+        return {};
+    }
+
+    const std::wstring wide = to_wide(text);
 
     // calculate total width in pixels
     size_t width = 0;

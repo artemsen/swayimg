@@ -49,7 +49,7 @@ public:
      * Get thumbnail size.
      * @return thumbnail size in pixels
      */
-    [[nodiscard]] inline size_t get_thumb_size() const { return thumb_size; }
+    [[nodiscard]] size_t get_thumb_size() const { return thumb_size; }
 
     /**
      * Set padding size.
@@ -61,13 +61,13 @@ public:
      * Get number of columns in layout scheme.
      * @return number of columns
      */
-    [[nodiscard]] inline size_t get_columns() const { return columns; }
+    [[nodiscard]] size_t get_columns() const { return columns; }
 
     /**
      * Get number of rows in layout scheme.
      * @return number of rows
      */
-    [[nodiscard]] inline size_t get_rows() const { return rows; }
+    [[nodiscard]] size_t get_rows() const { return rows; }
 
     /**
      * Set currently selected thumbnail.

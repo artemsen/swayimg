@@ -52,7 +52,7 @@ public:
      * Set thumbnail size.
      * @param size new thumbnail size in pixels
      */
-    [[nodiscard]] inline size_t get_thumb_size() const
+    [[nodiscard]] size_t get_thumb_size() const
     {
         return layout.get_thumb_size();
     }
@@ -185,6 +185,12 @@ private:
      * @param entry image entry to load
      */
     void load_thumbnail(const ImageEntryPtr& entry);
+
+    /**
+     * Put thumbnail to loading queue.
+     * @param entry image entry to load
+     */
+    void queue_thumbnail(const ImageEntryPtr& entry);
 
     /**
      * Load thumbnail from persistent storage.

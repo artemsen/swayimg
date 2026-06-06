@@ -49,10 +49,4 @@ public:
      * @param interval time for periodic trigger (ms)
      */
     void reset(const size_t delay, const size_t interval) const;
-
-    /**
-     * Get the remaining time.
-     * @return remaining time in milliseconds, 0 if stopped
-     */
-    [[nodiscard]] size_t remain(const int fd) const;
 };

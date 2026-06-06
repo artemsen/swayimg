@@ -193,7 +193,7 @@ private:
      * @param element output element description
      * @return false if no more elements int the stream
      */
-    bool next_element(DataStream& stream, Element& element) const
+    static bool next_element(DataStream& stream, Element& element)
     {
         // read tag
         if (!stream.read(element.tag)) {
@@ -237,7 +237,7 @@ private:
      * @param image output image description
      * @return true if image description is valid
      */
-    bool get_image(DataStream& stream, DicomImage& image) const
+    static bool get_image(DataStream& stream, DicomImage& image)
     {
         Element el;
 

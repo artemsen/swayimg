@@ -75,13 +75,6 @@ private:
     luabridge::LuaRef* add_ref(const luabridge::LuaRef* obj);
 
     /**
-     * Print warning about using a deprecated function.
-     * @param name name of deprecated function
-     * @param replacement description of replacement
-     */
-    void warn_deprecated(const char* name, const char* replacement) const;
-
-    /**
      * Print Lua error message.
      * @param fmt error text format
      * @param ... format arguments
@@ -112,6 +105,13 @@ private:
             std::vformat(fmt.get(), std::make_format_args(args...));
         throw luabridge::raise_lua_error(lua_state, "%s", message.c_str());
     }
+
+    /**
+     * Print warning about using a deprecated function.
+     * @param name name of deprecated function
+     * @param replacement description of replacement
+     */
+    static void warn_deprecated(const char* name, const char* replacement);
 
 private:
     lua_State* lua_state = nullptr;       ///< Lua state

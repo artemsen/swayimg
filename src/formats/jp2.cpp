@@ -80,49 +80,7 @@ public:
             return nullptr;
         }
 
-        // get color space
-        Jp2ColorSpace cspace;
-        if (opj_image->color_space == OPJ_CLRSPC_SRGB) {
-            cspace = Jp2ColorSpace::SRGB;
-        } else if (opj_image->color_space == OPJ_CLRSPC_GRAY ||
-                   opj_image->numcomps <= 2) {
-            cspace = Jp2ColorSpace::Grayscale;
-        } else if (opj_image->color_space == OPJ_CLRSPC_EYCC) {
-            cspace = Jp2ColorSpace::EYCC;
-        } else if (opj_image->color_space == OPJ_CLRSPC_CMYK) {
-            cspace = Jp2ColorSpace::CMYK;
-        } else if (opj_image->color_space == OPJ_CLRSPC_SYCC ||
-                   (opj_image->numcomps == 3 &&
-                    opj_image->comps[0].dx == opj_image->comps[0].dy &&
-                    opj_image->comps[1].dx != 1)) {
-            const opj_image_comp_t& comp0 = opj_image->comps[0];
-            const opj_image_comp_t& comp1 = opj_image->comps[1];
-            const opj_image_comp_t& comp2 = opj_image->comps[2];
-            if (comp0.dx == 1 && comp1.dx == 2 && comp2.dx == 2 &&
-                comp0.dy == 1 && comp1.dy == 2 && comp2.dy == 2) {
-                cspace = Jp2ColorSpace::YUV420;
-            } else if (comp0.dx == 1 && comp1.dx == 2 && comp2.dx == 2 &&
-                       comp0.dy == 1 && comp1.dy == 1 && comp2.dy == 1) {
-                cspace = Jp2ColorSpace::YUV422;
-            } else if (comp0.dx == 1 && comp1.dx == 1 && comp2.dx == 1 &&
-                       comp0.dy == 1 && comp1.dy == 1 && comp2.dy == 1) {
-                cspace = Jp2ColorSpace::YUV444;
-            } else {
-                cspace = Jp2ColorSpace::SRGB; // use as fallback
-            }
-        } else if (opj_image->numcomps >= 3 &&
-                   opj_image->comps[0].dx == opj_image->comps[1].dx &&
-                   opj_image->comps[1].dx == opj_image->comps[2].dx &&
-                   opj_image->comps[0].dy == opj_image->comps[1].dy &&
-                   opj_image->comps[1].dy == opj_image->comps[2].dy &&
-                   opj_image->comps[0].prec == opj_image->comps[1].prec &&
-                   opj_image->comps[1].prec == opj_image->comps[2].prec &&
-                   opj_image->comps[0].sgnd == opj_image->comps[1].sgnd &&
-                   opj_image->comps[1].sgnd == opj_image->comps[2].sgnd) {
-            cspace = Jp2ColorSpace::SRGB;
-        } else {
-            cspace = Jp2ColorSpace::Grayscale;
-        }
+        const Jp2ColorSpace cspace = get_colorspace(*opj_image.get());
 
         // scale precision to 8 bit per component
         const OPJ_UINT32 origin_prec = opj_image->comps[0].prec;
@@ -214,6 +172,55 @@ private:
     }
 
     /**
+     * Get color space of the image.
+     * @param img jp2 image instance
+     * @return colorspace type
+     */
+    static Jp2ColorSpace get_colorspace(const opj_image_t& img)
+    {
+        Jp2ColorSpace cspace;
+        if (img.color_space == OPJ_CLRSPC_SRGB) {
+            cspace = Jp2ColorSpace::SRGB;
+        } else if (img.color_space == OPJ_CLRSPC_GRAY || img.numcomps <= 2) {
+            cspace = Jp2ColorSpace::Grayscale;
+        } else if (img.color_space == OPJ_CLRSPC_EYCC) {
+            cspace = Jp2ColorSpace::EYCC;
+        } else if (img.color_space == OPJ_CLRSPC_CMYK) {
+            cspace = Jp2ColorSpace::CMYK;
+        } else if (img.color_space == OPJ_CLRSPC_SYCC ||
+                   (img.numcomps == 3 && img.comps[0].dx == img.comps[0].dy &&
+                    img.comps[1].dx != 1)) {
+            const opj_image_comp_t& comp0 = img.comps[0];
+            const opj_image_comp_t& comp1 = img.comps[1];
+            const opj_image_comp_t& comp2 = img.comps[2];
+            if (comp0.dx == 1 && comp1.dx == 2 && comp2.dx == 2 &&
+                comp0.dy == 1 && comp1.dy == 2 && comp2.dy == 2) {
+                cspace = Jp2ColorSpace::YUV420;
+            } else if (comp0.dx == 1 && comp1.dx == 2 && comp2.dx == 2 &&
+                       comp0.dy == 1 && comp1.dy == 1 && comp2.dy == 1) {
+                cspace = Jp2ColorSpace::YUV422;
+            } else if (comp0.dx == 1 && comp1.dx == 1 && comp2.dx == 1 &&
+                       comp0.dy == 1 && comp1.dy == 1 && comp2.dy == 1) {
+                cspace = Jp2ColorSpace::YUV444;
+            } else {
+                cspace = Jp2ColorSpace::SRGB; // use as fallback
+            }
+        } else if (img.numcomps >= 3 && img.comps[0].dx == img.comps[1].dx &&
+                   img.comps[1].dx == img.comps[2].dx &&
+                   img.comps[0].dy == img.comps[1].dy &&
+                   img.comps[1].dy == img.comps[2].dy &&
+                   img.comps[0].prec == img.comps[1].prec &&
+                   img.comps[1].prec == img.comps[2].prec &&
+                   img.comps[0].sgnd == img.comps[1].sgnd &&
+                   img.comps[1].sgnd == img.comps[2].sgnd) {
+            cspace = Jp2ColorSpace::SRGB;
+        } else {
+            cspace = Jp2ColorSpace::Grayscale;
+        }
+        return cspace;
+    }
+
+    /**
      * Scale precision (bits per component) to 8 bits.
      * @param component JP2 component
      */
@@ -267,8 +274,8 @@ private:
      * @param y,cb,cr YUV components
      * @return ARGB color
      */
-    static inline argb_t yuv_to_rgb(const OPJ_INT32 y, const OPJ_INT32 cb,
-                                    const OPJ_INT32 cr)
+    static argb_t yuv_to_rgb(const OPJ_INT32 y, const OPJ_INT32 cb,
+                             const OPJ_INT32 cr)
     {
         constexpr const OPJ_INT32 offset = 128; // 8-bit components
         const OPJ_INT32 cb_off = cb - offset;
@@ -324,6 +331,7 @@ private:
         }
     }
 
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
     /**
      * Load pixmap from JP2 YUV 4:2:0 image.
      * @param img JP2 image
@@ -435,6 +443,7 @@ private:
             }
         }
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 
     /**
      * Load pixmap from JP2 YUV 4:2:2 image.
@@ -523,9 +532,7 @@ private:
             }
 
             const size_t rest = bufio->data.size - bufio->position;
-            if (size > rest) {
-                size = rest;
-            }
+            size = std::min(size, rest);
             std::memcpy(buffer, bufio->data.data + bufio->position, size);
             bufio->position += size;
             return size;

@@ -48,13 +48,13 @@ struct argb_t {
      * Check if color is set.
      * @return true if color has value
      */
-    inline operator bool() const { return a && r && g && b; }
+    operator bool() const { return a && r && g && b; }
 
     /**
      * Blend current color (background) with specified one.
      * @param color foreground color to add
      */
-    inline void blend(const argb_t& color) { *this = blend(*this, color); }
+    void blend(const argb_t& color) { *this = blend(*this, color); }
 
     /**
      * Blend colors.
@@ -62,7 +62,7 @@ struct argb_t {
      * @param fg foreground color
      * @return result color
      */
-    static inline argb_t blend(const argb_t& bg, const argb_t& fg)
+    static argb_t blend(const argb_t& bg, const argb_t& fg)
     {
         if (fg.a == argb_t::min) {
             return bg; // fully transparent

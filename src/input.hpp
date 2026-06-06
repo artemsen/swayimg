@@ -58,10 +58,7 @@ struct InputMouse {
     bool operator==(const InputMouse& other) const;
 
     /** Check if input state is valid. */
-    inline operator bool() const
-    {
-        return buttons != NONE || mods != KEYMOD_NONE;
-    }
+    operator bool() const { return buttons != NONE || mods != KEYMOD_NONE; }
 
     mouse_btn_t buttons = NONE;  ///< Mouse buttons
     keymod_t mods = KEYMOD_NONE; ///< Keyboard modifiers

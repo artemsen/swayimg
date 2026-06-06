@@ -117,7 +117,7 @@ public:
                     (begin_time.tv_sec * 1000000000 + begin_time.tv_nsec);
                 return static_cast<double>(ns) / 1000000000;
             }
-            return 0.0f;
+            return 0;
         }
 
         timespec begin_time = {};
@@ -134,34 +134,12 @@ private:
      */
     static std::string sanitize(const std::string& msg)
     {
-        const size_t len = msg.length();
         std::string result;
-        result.reserve(len);
+        result.reserve(msg.length());
 
-        for (size_t i = 0; i < len; ++i) {
-            const unsigned char ch = msg[i];
-            if (ch == 0x1b) {
-                ++i; // ESC: skip the entire sequence
-                if (i < len && msg[i] == '[') {
-                    // CSI: ESC [ <params> <final byte 0x40-0x7E>
-                    for (++i; i < len && msg[i] < 0x40; ++i) {}
-                } else if (i < len && msg[i] == ']') {
-                    // OSC: ESC ] ... (BEL or ST)
-                    for (++i; i < len && msg[i] != 0x07 &&
-                         !(msg[i] == 0x1b && i + 1 < len && msg[i + 1] == '\\');
-                         ++i) {}
-                    if (i < len && msg[i] == 0x1b) {
-                        ++i; // skip the \ of ST
-                    }
-                } else if (i < len && msg[i] >= 0x40 && msg[i] <= 0x5f) {
-                    // other C1: skip introducer
-                }
-            } else if (ch < 0x20 && ch != '\n') {
-                // control character: drop
-            } else if (ch == 0x7f) {
-                // DEL: drop
-            } else {
-                result += msg[i];
+        for (const char c : msg) {
+            if (c != 0x7f /* DEL */ && (c >= ' ' || c == '\n' || c == '\t')) {
+                result += c;
             }
         }
 

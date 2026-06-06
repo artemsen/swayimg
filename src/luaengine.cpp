@@ -295,6 +295,7 @@ void LuaEngine::execute(const std::string& script)
     }
 }
 
+// NOLINTBEGIN(readability-function-cognitive-complexity)
 void LuaEngine::bind_root_api()
 {
     luabridge::getGlobalNamespace(lua_state)
@@ -348,7 +349,7 @@ void LuaEngine::bind_root_api()
                     ui->set_window_size({ width, height });
                 } else {
                     Rectangle& wnd = Application::self().sparams.window;
-                    if (!static_cast<Size>(wnd)) {
+                    if (!wnd.size_valid()) {
                         wnd.width = width;
                         wnd.height = height;
                     }
@@ -398,27 +399,25 @@ void LuaEngine::bind_root_api()
                          const Ui* ui = Application::get_ui();
                          if (ui) {
                              return ui->get_fullscreen();
-                         } else {
-                             const std::optional<bool>& fullscreen =
-                                 Application::self().sparams.fullscreen;
-                             return fullscreen.value_or(false);
                          }
+                         const std::optional<bool>& fullscreen =
+                             Application::self().sparams.fullscreen;
+                         return fullscreen.value_or(false);
                      })
         .addFunction("toggle_fullscreen",
-                     [this]() {
+                     []() {
                          warn_deprecated("toggle_fullscreen", "set_fullscreen");
                          Ui* ui = Application::get_ui();
                          if (ui) {
                              ui->set_fullscreen(!ui->get_fullscreen());
                              return ui->get_fullscreen();
-                         } else {
-                             std::optional<bool>& fullscreen =
-                                 Application::self().sparams.fullscreen;
-                             if (!fullscreen.has_value()) {
-                                 fullscreen = true;
-                             }
-                             return fullscreen.value();
                          }
+                         std::optional<bool>& fullscreen =
+                             Application::self().sparams.fullscreen;
+                         if (!fullscreen.has_value()) {
+                             fullscreen = true;
+                         }
+                         return fullscreen.value();
                      })
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {
@@ -816,13 +815,13 @@ void LuaEngine::bind_viewer_api(const char* name)
                          return mode->animation_enabled();
                      })
         .addFunction("animation_stop",
-                     [this, ensure_active, mode]() {
+                     [ensure_active, mode]() {
                          warn_deprecated("animation_stop", "set_animation");
                          ensure_active("animation_stop");
                          mode->enable_animation(false);
                      })
         .addFunction("animation_resume",
-                     [this, ensure_active, mode]() {
+                     [ensure_active, mode]() {
                          warn_deprecated("animation_resume", "set_animation");
                          ensure_active("animation_resume");
                          mode->enable_animation(true);
@@ -911,7 +910,7 @@ void LuaEngine::bind_viewer_api(const char* name)
                 }
             })
         .addFunction("set_image_background",
-                     [mode](const uint32_t& val) {
+                     [mode](const uint32_t val) {
                          mode->set_image_background(val);
                      })
         .addFunction(
@@ -1021,7 +1020,7 @@ void LuaEngine::bind_gallery_api()
                          Gallery::self().set_border_size(size);
                      })
         .addFunction("set_border_color",
-                     [](const uint32_t& color) {
+                     [](const uint32_t color) {
                          Gallery::self().set_border_color(color);
                      })
         .addFunction("set_selected_scale",
@@ -1029,15 +1028,15 @@ void LuaEngine::bind_gallery_api()
                          Gallery::self().set_selected_scale(scale);
                      })
         .addFunction("set_selected_color",
-                     [](const uint32_t& color) {
+                     [](const uint32_t color) {
                          Gallery::self().set_selected_color(color);
                      })
         .addFunction("set_unselected_color",
-                     [](const uint32_t& color) {
+                     [](const uint32_t color) {
                          Gallery::self().set_background_color(color);
                      })
         .addFunction("set_window_color",
-                     [](const uint32_t& color) {
+                     [](const uint32_t color) {
                          Gallery::self().set_window_color(color);
                      })
         .addFunction("enable_hover",
@@ -1191,6 +1190,7 @@ void LuaEngine::bind_appmode_api(const char* name)
         .endNamespace()
         .endNamespace();
 }
+// NOLINTEND(readability-function-cognitive-complexity)
 
 void LuaEngine::execute(const luabridge::LuaRef* ref) const
 {
@@ -1223,7 +1223,7 @@ luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
     return ref;
 }
 
-void LuaEngine::warn_deprecated(const char* name, const char* replacement) const
+void LuaEngine::warn_deprecated(const char* name, const char* replacement)
 {
     Log::warning(
         "Function \"{}\" is deprecated and will be removed in a future release,"

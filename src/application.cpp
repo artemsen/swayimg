@@ -64,7 +64,11 @@ int Application::run()
     }
 
     // initialize UI
-    if (!ui_initialize()) {
+    ui.reset(ui_init_wayland());
+    if (!ui) {
+        ui.reset(ui_init_drm());
+    }
+    if (!ui) {
         return 1;
     }
 
@@ -244,15 +248,15 @@ ImageEntryPtr Application::il_initialize()
     return first_entry;
 }
 
-bool Application::ui_initialize()
+Ui* Application::ui_init_wayland()
 {
-    Rectangle window = sparams.window;
-
 #ifdef HAVE_WAYLAND
-    std::string app_id = sparams.app_id.value_or("swayimg");
+    if (!sparams.app_id.has_value()) {
+        sparams.app_id = "swayimg";
+    }
 
 #ifdef HAVE_COMPOSITOR
-    if (sparams.use_overlay || static_cast<Point>(window)) {
+    if (sparams.use_overlay || sparams.window.position_valid()) {
         const Compositor compositor;
         if (compositor.type == Compositor::None) {
             Log::error("Current compositor not supported for managing window "
@@ -260,25 +264,26 @@ bool Application::ui_initialize()
         } else {
             const Rectangle focused = compositor.get_focus();
             if (focused) {
-                if (!static_cast<Point>(window)) {
-                    window.x = focused.x;
-                    window.y = focused.y;
+                if (!sparams.window.position_valid()) {
+                    sparams.window.x = focused.x;
+                    sparams.window.y = focused.y;
                 }
-                if (!static_cast<Size>(window)) {
-                    window.width = focused.width;
-                    window.height = focused.height;
+                if (!sparams.window.size_valid()) {
+                    sparams.window.width = focused.width;
+                    sparams.window.height = focused.height;
                 }
             }
-            compositor.set_overlay(window, app_id);
+            std::string app_id = sparams.app_id.value();
+            compositor.set_overlay(sparams.window, app_id);
             sparams.app_id = app_id;
         }
     }
 #endif // HAVE_COMPOSITOR
 
     UiWayland* wayland = new UiWayland();
-    if (static_cast<Size>(window)) {
-        wayland->width = window.width;
-        wayland->height = window.height;
+    if (sparams.window.size_valid()) {
+        wayland->width = sparams.window.width;
+        wayland->height = sparams.window.height;
     }
     wayland->dnd = sparams.dnd;
     wayland->cursor_hide = sparams.cursor_hide;
@@ -286,31 +291,34 @@ bool Application::ui_initialize()
     if (sparams.fullscreen.has_value()) {
         wayland->fullscreen = sparams.fullscreen.value();
     }
-    if (wayland->initialize(app_id)) {
-        ui.reset(wayland);
-    } else {
+    if (!wayland->initialize(sparams.app_id.value_or("swayimg"))) {
         delete wayland;
+        wayland = nullptr;
     }
+    return wayland;
 
+#else
+    return nullptr;
 #endif // HAVE_WAYLAND
+}
 
+Ui* Application::ui_init_drm() const
+{
 #ifdef HAVE_DRM
-    if (!ui) {
-        UiDrm* drm = new UiDrm();
-        if (static_cast<Size>(window)) {
-            drm->width = window.width;
-            drm->height = window.height;
-        }
-        drm->freq = sparams.drm_freq;
-        if (drm->initialize()) {
-            ui.reset(drm);
-        } else {
-            delete drm;
-        }
+    UiDrm* drm = new UiDrm();
+    if (sparams.window.size_valid()) {
+        drm->width = sparams.window.width;
+        drm->height = sparams.window.height;
     }
+    drm->freq = sparams.drm_freq;
+    if (!drm->initialize()) {
+        delete drm;
+        drm = nullptr;
+    }
+    return drm;
+#else
+    return nullptr;
 #endif // HAVE_DRM
-
-    return !!ui;
 }
 
 void Application::event_loop()
@@ -442,6 +450,7 @@ void Application::handle_event(const AppEvent::WindowResize& event)
     }
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void Application::handle_event(const AppEvent::WindowRescale& event)
 {
     Text::self().set_scale(event.scale);

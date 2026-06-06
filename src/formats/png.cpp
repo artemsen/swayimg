@@ -134,7 +134,7 @@ public:
     std::vector<uint8_t> encode(const Pixmap& pm) override
     {
         // create encoder
-        PngObject png(false);
+        const PngObject png(false);
         if (!png.png || !png.info) {
             return {};
         }
@@ -222,8 +222,8 @@ private:
             }
         }
 
-        operator png_struct*() { return png; }
-        operator png_info*() { return info; }
+        operator png_struct*() const { return png; }
+        operator png_info*() const { return info; }
 
         bool read_mode;
         png_struct* png = nullptr;
@@ -235,7 +235,7 @@ private:
      * @param pm pixmap to bind
      * @return array of pointers to pixmap data
      */
-    std::vector<png_bytep> bind_pixmap(Pixmap& pm) const
+    static std::vector<png_bytep> bind_pixmap(Pixmap& pm)
     {
         std::vector<png_bytep> pbind(pm.height(), nullptr);
         for (size_t i = 0; i < pm.height(); ++i) {
@@ -251,8 +251,8 @@ private:
      * @param frames image frames
      * @param index number of the frame to load
      */
-    void decode_frame(PngObject& png, std::vector<Image::Frame>& frames,
-                      const size_t index) const
+    static void decode_frame(PngObject& png, std::vector<Image::Frame>& frames,
+                             const size_t index)
     {
         // get frame params
         png_uint_32 width = 0;
@@ -328,8 +328,8 @@ private:
      * @param png PNG decoder
      * @param frames image frames
      */
-    void decode_multiple(PngObject& png,
-                         std::vector<Image::Frame>& frames) const
+    static void decode_multiple(PngObject& png,
+                                std::vector<Image::Frame>& frames)
     {
         // allocate frames
         const png_uint_32 width = png_get_image_width(png, png);
@@ -356,7 +356,7 @@ private:
      * @param png PNG decoder
      * @param frames image frames
      */
-    void decode_single(PngObject& png, std::vector<Image::Frame>& frames) const
+    static void decode_single(PngObject& png, std::vector<Image::Frame>& frames)
     {
         const png_uint_32 width = png_get_image_width(png, png);
         const png_uint_32 height = png_get_image_height(png, png);

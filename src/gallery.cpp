@@ -337,6 +337,7 @@ ImageEntryPtr Gallery::get_current()
 bool Gallery::set_current(const ImageEntryPtr& entry)
 {
     layout.select(entry);
+    Application::redraw();
     return true;
 }
 
@@ -522,22 +523,12 @@ void Gallery::load_thumbnails()
 
     size_t preload_counter = preload ? cache_size : 0;
 
-    auto check_and_load = [this](ImageEntryPtr& entry) {
-        if (!get_thumbnail(entry) && !queue.contains(entry) &&
-            !active.contains(entry)) {
-            queue.insert(entry);
-            tpool.add([this, entry]() {
-                load_thumbnail(entry);
-            });
-        }
-    };
-
     ImageEntryPtr fwd = layout.get_selected();
     ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
 
     while (fwd || back) {
         if (fwd) {
-            check_and_load(fwd);
+            queue_thumbnail(fwd);
             fwd = il.get(fwd, ImageList::Dir::Next);
             if (fwd && fwd->index > index_last) {
                 if (preload_counter) {
@@ -548,7 +539,7 @@ void Gallery::load_thumbnails()
             }
         }
         if (back) {
-            check_and_load(back);
+            queue_thumbnail(back);
             back = il.get(back, ImageList::Dir::Prev);
             if (back && back->index < index_first) {
                 if (preload_counter) {
@@ -623,6 +614,18 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     active.erase(entry);
 
     Application::redraw();
+}
+
+void Gallery::queue_thumbnail(const ImageEntryPtr& entry)
+{
+    if (!get_thumbnail(entry) &&   // not yet loaded
+        !queue.contains(entry) &&  // not queued
+        !active.contains(entry)) { // not currently loading
+        queue.insert(entry);
+        tpool.add([this, entry]() {
+            load_thumbnail(entry);
+        });
+    }
 }
 
 Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const

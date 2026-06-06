@@ -18,7 +18,7 @@ struct Point {
      * Check if coordinates is valid.
      * @return true if coordinates is valid, false otherwise
      */
-    inline operator bool() const { return x != npos && y != npos; }
+    operator bool() const { return x != npos && y != npos; }
 
     /**
      * Shift coordinates.
@@ -43,7 +43,7 @@ struct Size {
      * Check if size is valid.
      * @return true if size is valid, false otherwise
      */
-    inline operator bool() const { return width > 0 && height > 0; }
+    operator bool() const { return width > 0 && height > 0; }
 
     /**
      * Scale size.
@@ -52,7 +52,12 @@ struct Size {
 };
 
 /** Rectangle: position and size. */
-struct Rectangle : public Point, public Size {
+struct Rectangle {
+    ssize_t x = npos;
+    ssize_t y = npos;
+    size_t width = 0;
+    size_t height = 0;
+
     Rectangle() = default;
 
     /**
@@ -74,10 +79,19 @@ struct Rectangle : public Point, public Size {
      * Check if rectangle is valid.
      * @return true if rectangle is valid, false otherwise
      */
-    inline operator bool() const
-    {
-        return Point::operator bool() && Size::operator bool();
-    }
+    operator bool() const { return position_valid() && size_valid(); }
+
+    /**
+     * Check if position is valid.
+     * @return true if position is valid, false otherwise
+     */
+    [[nodiscard]] bool position_valid() const { return x != npos && y != npos; }
+
+    /**
+     * Check if size is valid.
+     * @return true if size is valid, false otherwise
+     */
+    [[nodiscard]] bool size_valid() const { return width > 0 && height > 0; }
 
     /**
      * Get intersection of two rectangles.
@@ -93,4 +107,7 @@ struct Rectangle : public Point, public Size {
      */
     [[nodiscard]] std::tuple<Rectangle, Rectangle, Rectangle, Rectangle>
     cutout(const Rectangle& cut) const;
+
+    // Invalid position
+    static constexpr ssize_t npos = std::numeric_limits<ssize_t>::min();
 };

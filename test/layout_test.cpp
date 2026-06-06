@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+// NOLINTBEGIN(readability-function-cognitive-complexity)
+
 class LayoutTest : public ::testing::Test {
 protected:
     void SetUp() override
@@ -57,7 +59,7 @@ protected:
 
     [[nodiscard]] std::tuple<size_t, size_t> GetSelection() const
     {
-        for (auto& it : layout.get_scheme()) {
+        for (const auto& it : layout.get_scheme()) {
             if (it.img == layout.get_selected()) {
                 return std::make_tuple(it.col, it.row);
             }
@@ -79,7 +81,7 @@ protected:
         printf("\n");
 
         size_t index = 0;
-        for (auto& it : layout.get_scheme()) {
+        for (const auto& it : layout.get_scheme()) {
             if ((index % layout.get_columns()) == 0) {
                 printf("%zu | ", index / layout.get_columns());
             }
@@ -117,7 +119,7 @@ TEST_F(LayoutTest, BaseScheme)
     ASSERT_EQ(selection->path, std::string(ImageEntry::SRC_EXEC) + "0");
 
     ASSERT_EQ(layout.get_scheme().size(), 15UL);
-    for (auto& it : layout.get_scheme()) {
+    for (const auto& it : layout.get_scheme()) {
         ASSERT_TRUE(it.img && !it.img->removed);
         if (it.img == selection) {
             ASSERT_EQ(it.col, 0UL);
@@ -319,3 +321,5 @@ TEST_F(LayoutTest, SelectPageDown)
 
     ASSERT_FALSE(layout.select(Layout::PgDown));
 }
+
+// NOLINTEND(readability-function-cognitive-complexity)

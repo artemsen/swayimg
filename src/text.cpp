@@ -58,7 +58,7 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
     block.clear();
     block.reserve(scheme.size());
 
-    for (auto& line : scheme) {
+    for (const auto& line : scheme) {
         std::string key, value;
         const size_t delim = line.find('\t');
         if (delim == std::string::npos) {

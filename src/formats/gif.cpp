@@ -94,8 +94,8 @@ private:
             }
         }
 
-        operator GifFileType*() { return gif; }
-        GifFileType* operator->() { return gif; }
+        operator GifFileType*() const { return gif; }
+        GifFileType* operator->() const { return gif; }
 
         GifFileType* gif;
     };
@@ -106,8 +106,8 @@ private:
      * @param frames all image frames
      * @param index number of the frame to load
      */
-    void decode_frame(Gif& gif, std::vector<Image::Frame>& frames,
-                      const size_t index) const
+    static void decode_frame(Gif& gif, std::vector<Image::Frame>& frames,
+                             const size_t index)
     {
         Image::Frame& frame = frames[index];
 

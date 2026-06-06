@@ -42,12 +42,9 @@ void ThreadPool::wait(const size_t tid)
         if (active.contains(tid)) {
             return false;
         }
-        for (const auto& it : tasks) {
-            if (it.id == tid) {
-                return false;
-            }
-        }
-        return true;
+        return std::ranges::none_of(tasks, [tid](const auto& it) {
+            return it.id == tid;
+        });
     };
 
     std::unique_lock lock(mutex);

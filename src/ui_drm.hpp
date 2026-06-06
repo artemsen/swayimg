@@ -83,10 +83,10 @@ private:
         /**
          * Create frame buffer.
          * @param fd DRM file descriptor
-         * @param size frame buffer size in pixels
+         * @param sz frame buffer size in pixels
          * @return true if frame buffer was created successfully
          */
-        bool create(const int fd, const Size& size);
+        bool create(const int fd, const Size& sz);
 
         int fd = -1;          ///< DRM file handle
         void* data = nullptr; ///< Buffer data

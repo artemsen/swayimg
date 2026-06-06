@@ -133,6 +133,14 @@ public:
 
 private:
     /**
+     * Get the nearest entry with different parent.
+     * @param from starting image entry
+     * @param forward direction of nearest returned entry
+     * @return image entry or nullptr if entry not found
+     */
+    ImageEntryPtr get_diffparent(const ImageEntryPtr& from, const bool forward);
+
+    /**
      * Add file or special source to the list.
      * @param path path to the file or special source
      * @return list of added entries

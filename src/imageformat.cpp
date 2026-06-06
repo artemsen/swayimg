@@ -222,7 +222,7 @@ Pixmap ImageFormat::preview(const Data& data, const size_t sz,
 }
 
 Pixmap ImageFormat::make_thumb(const Pixmap& pm, const size_t sz,
-                               const bool max_sz) const
+                               const bool max_sz)
 {
     // get target scale
     const double scale_w = static_cast<double>(sz) / pm.width();
@@ -254,7 +254,7 @@ void ImageFormat::fix_orientation(ImagePtr& image, const int orientation) const
     }
 }
 
-void ImageFormat::fix_orientation(Pixmap& pm, const int orientation) const
+void ImageFormat::fix_orientation(Pixmap& pm, const int orientation)
 {
     switch (orientation) {
         case 2: // flipped back-to-front
@@ -283,7 +283,7 @@ void ImageFormat::fix_orientation(Pixmap& pm, const int orientation) const
     }
 }
 
-bool ImageFormat::read_metadata(const Data& data, ImagePtr& image) const
+bool ImageFormat::read_metadata(const Data& data, ImagePtr& image)
 {
 #ifdef HAVE_LIBEXIV2
     try {

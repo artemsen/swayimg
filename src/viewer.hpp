@@ -223,12 +223,12 @@ public:
 
 private:
     /**
-     * Open next image file.
-     * @param dir next entry direction
+     * Open specified entry o nearest to it.
      * @param entry starting entry
+     * @param forward next entry direction
      * @return true if image was opened
      */
-    bool switch_image(const ImageList::Dir dir, const ImageEntryPtr& entry);
+    bool open(const ImageEntryPtr& entry, const bool forward);
 
     /**
      * Set current image.
@@ -261,6 +261,16 @@ private:
     void fixup_position();
 
     /**
+     * Fix up image coordinate.
+     * @param pos origin position
+     * @param sz image size
+     * @param max_pos max position
+     * @retrun fixed position
+     */
+    static ssize_t fixup_position(const ssize_t pos, const size_t sz,
+                                  const size_t max_pos);
+
+    /**
      * Start preloader.
      */
     void preloader_start();
@@ -268,7 +278,13 @@ private:
     /**
      * Stop preloader.
      */
+
     void preloader_stop();
+
+    /**
+     * Preloader worker.
+     */
+    void preloader_work();
 
 private:
     /** Image cache. */

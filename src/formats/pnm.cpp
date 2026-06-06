@@ -116,13 +116,13 @@ private:
 
     // Both assume positive arguments and evaluate b more than once
     // Divide, rounding to nearest (up on ties)
-    [[nodiscard]] inline int div_near(const int a, const int b) const
+    static constexpr int div_near(const int a, const int b)
     {
         return (a + b / 2) / b;
     }
 
     // Divide, rounding up
-    [[nodiscard]] inline int div_ceil(const int a, const int b) const
+    static constexpr int div_ceil(const int a, const int b)
     {
         return (a + b - 1) / b;
     }
@@ -150,7 +150,7 @@ private:
      * this is not supported by any known parsers at the time of writing; thus,
      * we don't support it either
      */
-    int pnm_readint(PnmIterator* it, size_t digits) const
+    static int pnm_readint(PnmIterator* it, size_t digits)
     {
         if (!digits) {
             digits = MAX_INT_DIGITS;
@@ -203,8 +203,9 @@ private:
      * @param maxval maximum value for each sample
      * @return 0 on success, error code on failure
      */
-    int decode_ascii(Pixmap& pm, PnmIterator* it, enum Type type,
-                     int maxval) const
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
+    static int decode_ascii(Pixmap& pm, PnmIterator* it, enum Type type,
+                            int maxval)
     {
         for (size_t y = 0; y < pm.height(); ++y) {
             for (size_t x = 0; x < pm.width(); ++x) {
@@ -275,6 +276,7 @@ private:
         }
         return 0;
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 
     /**
      * Decode a raw/binary PNM file.
@@ -284,8 +286,9 @@ private:
      * @param maxval maximum value for each sample
      * @return 0 on success, error code on failure
      */
-    int decode_raw(Pixmap& pm, PnmIterator* it, enum Type type,
-                   int maxval) const
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
+    static int decode_raw(Pixmap& pm, PnmIterator* it, enum Type type,
+                          int maxval)
     {
         // Determine bytes per channel based on max value
         const size_t bytes_per_channel =
@@ -368,6 +371,7 @@ private:
         }
         return 0;
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 };
 
 // register format in factory

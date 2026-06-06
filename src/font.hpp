@@ -23,7 +23,7 @@ public:
      * Check if font was loaded.
      * @return true if font was loaded
      */
-    inline operator bool() const { return ft_face; }
+    operator bool() const { return ft_face; }
 
     /**
      * Load font by name.
@@ -78,6 +78,13 @@ private:
      * @param face font face to set
      */
     void set_face(const FT_Face face);
+
+    /**
+     * Convert text to wide-character string and trim to min acceptable lenght.
+     * @param text string to encode
+     * @return wide string
+     */
+    static std::wstring to_wide(const std::string& text);
 
 private:
     FT_Face ft_face = nullptr; ///< Font face instance

@@ -11,7 +11,7 @@
 CheckImageList(ImageList& il, const std::vector<std::filesystem::path>& expect)
 {
     ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
-    for (auto& it : expect) {
+    for (const auto& it : expect) {
         if (!entry) {
             return ::testing::AssertionFailure()
                 << "Image list too short: expected next " << it;

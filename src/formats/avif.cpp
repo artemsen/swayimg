@@ -94,7 +94,7 @@ private:
      * @param pm destination pixmap
      * @return decoding status
      */
-    avifResult decode_frame(AvifDecoder& avif, Pixmap& pm) const
+    static avifResult decode_frame(AvifDecoder& avif, Pixmap& pm)
     {
         avifResult rc;
         avifRGBImage rgb;

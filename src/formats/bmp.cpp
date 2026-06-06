@@ -14,6 +14,7 @@ public:
     {
     }
 
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
         if (!check_signature(data, { 'B', 'M' })) {
@@ -101,6 +102,7 @@ public:
 
         return image;
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 
 private:
     // Compression types
@@ -171,7 +173,7 @@ private:
      * @param val source value
      * @return number of zero bits
      */
-    [[nodiscard]] constexpr size_t right_zeros(const uint32_t val) const
+    static constexpr size_t right_zeros(const uint32_t val)
     {
         size_t count = sizeof(uint32_t) * BITS_PER_BYTE;
         const size_t value = val & -static_cast<int32_t>(val);
@@ -201,7 +203,7 @@ private:
      * @param val source value
      * @return number of bits set
      */
-    [[nodiscard]] constexpr size_t bits_set(const uint32_t val) const
+    static constexpr size_t bits_set(const uint32_t val)
     {
         size_t bits = val - ((val >> 1) & 0x55555555);
         bits = (bits & 0x33333333) + ((bits >> 2) & 0x33333333);
@@ -213,12 +215,13 @@ private:
      * @param val color channel mask
      * @return shift size: positive=right, negative=left
      */
-    [[nodiscard]] constexpr ssize_t mask_shift(const uint32_t mask) const
+    static constexpr ssize_t mask_shift(const uint32_t mask)
     {
         const ssize_t start = right_zeros(mask) + bits_set(mask);
         return start - BITS_PER_BYTE;
     }
 
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
     /**
      * Decode bitmap with masked colors.
      * @param pm target pixmap
@@ -228,8 +231,8 @@ private:
      * @param buffer_sz size of buffer
      * @return false if input buffer has errors
      */
-    bool decode_masked(Pixmap& pm, const Info& bmp, const Mask& mask,
-                       const uint8_t* buffer, const size_t buffer_sz) const
+    static bool decode_masked(Pixmap& pm, const Info& bmp, const Mask& mask,
+                              const uint8_t* buffer, const size_t buffer_sz)
     {
         const bool default_mask = mask.red == 0 && mask.green == 0 &&
             mask.blue == 0 && mask.alpha == 0;
@@ -286,7 +289,9 @@ private:
 
         return true;
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 
+    // NOLINTBEGIN(readability-function-cognitive-complexity)
     /**
      * Decode RLE compressed bitmap.
      * @param pm target pixmap
@@ -296,8 +301,8 @@ private:
      * @param buffer_sz size of buffer
      * @return false if input buffer has errors
      */
-    bool decode_rle(Pixmap& pm, const Info& bmp, const Palette& palette,
-                    const uint8_t* buffer, const size_t buffer_sz) const
+    static bool decode_rle(Pixmap& pm, const Info& bmp, const Palette& palette,
+                           const uint8_t* buffer, const size_t buffer_sz)
     {
         size_t x = 0, y = 0;
         size_t buffer_pos = 0;
@@ -393,6 +398,7 @@ private:
 
         return false;
     }
+    // NOLINTEND(readability-function-cognitive-complexity)
 
     /**
      * Decode uncompressed bitmap.
@@ -403,8 +409,8 @@ private:
      * @param buffer_sz size of buffer
      * @return false if input buffer has errors
      */
-    bool decode_rgb(Pixmap& pm, const Info& bmp, const Palette& palette,
-                    const uint8_t* buffer, const size_t buffer_sz) const
+    static bool decode_rgb(Pixmap& pm, const Info& bmp, const Palette& palette,
+                           const uint8_t* buffer, const size_t buffer_sz)
     {
         const size_t stride = 4 * ((bmp.width * bmp.bpp + 31) / 32);
 

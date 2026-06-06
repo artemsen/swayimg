@@ -149,7 +149,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
 
     {
         const std::scoped_lock lock(mutex);
-        for (auto& it : sources) {
+        for (const auto& it : sources) {
             add(it, false);
         }
         sort();
@@ -161,7 +161,7 @@ ImageEntryPtr ImageList::load(const std::vector<std::filesystem::path>& sources)
 
     // get first entry of the source list (not of the contents of the sources)
     ImageEntryPtr first = nullptr;
-    for (auto& path : sources) {
+    for (const auto& path : sources) {
         first = find(path);
         if (first) {
             break;
@@ -336,25 +336,12 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
                 entry = entries_arr[from->index - 1];
             }
             break;
-        case Dir::NextParent: {
-            const std::filesystem::path from_parent = from->path.parent_path();
-            for (size_t i = from->index + 1; i < entries_arr.size(); ++i) {
-                if (from_parent != entries_arr[i]->path.parent_path()) {
-                    entry = entries_arr[i];
-                    break;
-                }
-            }
-        } break;
-        case Dir::PrevParent: {
-            const std::filesystem::path from_parent = from->path.parent_path();
-            for (ssize_t i = static_cast<ssize_t>(from->index) - 1; i >= 0;
-                 --i) {
-                if (from_parent != entries_arr[i]->path.parent_path()) {
-                    entry = entries_arr[i];
-                    break;
-                }
-            }
-        } break;
+        case Dir::NextParent:
+            entry = get_diffparent(from, true);
+            break;
+        case Dir::PrevParent:
+            entry = get_diffparent(from, false);
+            break;
         case Dir::Random:
             if (entries_arr.size() > 1) {
                 entry = from;
@@ -395,6 +382,27 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
     return static_cast<ssize_t>(to->index) - static_cast<ssize_t>(from->index);
 }
 
+ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,
+                                        const bool forward)
+{
+    assert(from && !from->removed);
+
+    const std::filesystem::path from_parent = from->path.parent_path();
+
+    const ssize_t size = static_cast<ssize_t>(entries_arr.size());
+    ssize_t index = static_cast<ssize_t>(from->index) + (forward ? 1 : -1);
+
+    while (index >= 0 && index < size) {
+        ImageEntryPtr entry = entries_arr[index];
+        if (from_parent != entry->path.parent_path()) {
+            return entry;
+        }
+        index += forward ? 1 : -1;
+    }
+
+    return nullptr;
+}
+
 std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
                                         const bool ordered)
 {
@@ -424,19 +432,21 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
             sort();
         }
         return added;
-    } else if (adjacent) {
+    }
+
+    if (adjacent) {
         std::list<ImageEntryPtr> added = add_dir(abs_path.parent_path());
         if (!added.empty() && ordered) {
             sort();
         }
         return added;
-    } else {
-        const ImageEntryPtr entry = add_file(abs_path, ordered);
-        if (entry) {
-            return { entry };
-        }
-        return {};
     }
+
+    const ImageEntryPtr entry = add_file(abs_path, ordered);
+    if (entry) {
+        return { entry };
+    }
+    return {};
 }
 
 std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)

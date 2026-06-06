@@ -54,20 +54,3 @@ void FdTimer::reset(const size_t delay, const size_t interval) const
     ts.it_interval.tv_nsec = (interval % 1000) * 1000000;
     timerfd_settime(fd, 0, &ts, nullptr);
 }
-
-size_t FdTimer::remain(const int fd) const
-{
-    size_t ms = 0;
-    itimerspec ts;
-
-    if (timerfd_gettime(fd, &ts) == 0) {
-        if (ts.it_value.tv_sec || ts.it_value.tv_nsec) {
-            ms = ts.it_value.tv_sec * 1000 + ts.it_value.tv_nsec / 1000000;
-        } else if (ts.it_interval.tv_sec || ts.it_interval.tv_nsec) {
-            ms =
-                ts.it_interval.tv_sec * 1000 + ts.it_interval.tv_nsec / 1000000;
-        }
-    }
-
-    return ms;
-}

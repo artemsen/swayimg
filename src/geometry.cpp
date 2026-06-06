@@ -27,14 +27,18 @@ Size Size::operator*(double factor) const
 
 Rectangle::Rectangle(const ssize_t x, const ssize_t y, const size_t width,
                      const size_t height)
-    : Point(x, y)
-    , Size(width, height)
+    : x(x)
+    , y(y)
+    , width(width)
+    , height(height)
 {
 }
 
 Rectangle::Rectangle(const Point& pos, const Size& size)
-    : Point(pos)
-    , Size(size)
+    : x(pos.x)
+    , y(pos.y)
+    , width(size.width)
+    , height(size.height)
 {
 }
 

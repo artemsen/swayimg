@@ -67,7 +67,7 @@ static keymod_t modifiers_from_string(std::vector<std::string>& tokens)
     keymod_t mods = KEYMOD_NONE;
     for (auto it = tokens.begin(); it != tokens.end();) {
         const std::string& name = *it;
-        const auto kit =
+        const auto* const kit =
             std::find_if(modifiers_name.begin(), modifiers_name.end(),
                          [name](const std::pair<uint8_t, const char*>& it) {
                              return it.second == name;
@@ -146,7 +146,7 @@ std::optional<InputMouse> InputMouse::load(const std::string& expression)
     InputMouse::mouse_btn_t buttons = InputMouse::NONE;
     for (auto it = tokens.begin(); it != tokens.end();) {
         const std::string& name = *it;
-        const auto btnit = std::find_if(
+        const auto* const btnit = std::find_if(
             mouse_buttons.begin(), mouse_buttons.end(),
             [name](const std::pair<InputMouse::mouse_btn_t, const char*>& it) {
                 return it.second == name;

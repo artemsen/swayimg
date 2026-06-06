@@ -151,7 +151,7 @@ private:
      * @param bpp bits per pixel
      * @return color
      */
-    inline argb_t get_pixel(const uint8_t* data, const size_t bpp) const
+    static argb_t get_pixel(const uint8_t* data, const size_t bpp)
     {
         argb_t pixel;
 
@@ -194,8 +194,9 @@ private:
      * @param size size of image data in bytes
      * @return true if image decoded successfully
      */
-    bool decode_unc(Pixmap& pm, const Header* tga, const uint8_t* colormap,
-                    const uint8_t* data, const size_t size) const
+    static bool decode_unc(Pixmap& pm, const Header* tga,
+                           const uint8_t* colormap, const uint8_t* data,
+                           const size_t size)
     {
         const uint8_t bytes_per_pixel = tga->bpp / 8 + (tga->bpp % 8 ? 1 : 0);
         const size_t num_pixels = pm.width() * pm.height();
@@ -240,8 +241,9 @@ private:
      * @param size size of image data in bytes
      * @return true if image decoded successfully
      */
-    bool decode_rle(Pixmap& pm, const Header* tga, const uint8_t* colormap,
-                    const uint8_t* data, const size_t size) const
+    static bool decode_rle(Pixmap& pm, const Header* tga,
+                           const uint8_t* colormap, const uint8_t* data,
+                           const size_t size)
     {
         const uint8_t cm_bpp = tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0);
         const uint8_t bytes_per_pixel = tga->bpp / 8 + (tga->bpp % 8 ? 1 : 0);
@@ -289,7 +291,7 @@ private:
      * @param tga pointer to TGA header
      * @return true if valid
      */
-    bool validate_header(const Header* tga) const
+    static bool validate_header(const Header* tga)
     {
         // check basic image parameters
         if (tga->width == 0 || tga->height == 0) {

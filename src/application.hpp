@@ -41,12 +41,12 @@ public:
      * Get UI instance.
      * @return UI instance
      */
-    static inline Ui* get_ui() { return self().ui.get(); }
+    static Ui* get_ui() { return self().ui.get(); }
 
     /**
      * Redraw app window.
      */
-    static inline void redraw() { self().add_event(AppEvent::WindowRedraw {}); }
+    static void redraw() { self().add_event(AppEvent::WindowRedraw {}); }
 
     Application();
 
@@ -120,10 +120,16 @@ private:
     ImageEntryPtr il_initialize();
 
     /**
-     * Initialize UI subsystem.
-     * @return true if UI initialized successfully
+     * Initialize Wayland UI.
+     * @return pointer to UI interface if initialized successfully
      */
-    bool ui_initialize();
+    [[nodiscard]] Ui* ui_init_wayland();
+
+    /**
+     * Initialize DRM UI.
+     * @return pointer to UI interface if initialized successfully
+     */
+    [[nodiscard]] Ui* ui_init_drm() const;
 
     /**
      * Application event loop handler.

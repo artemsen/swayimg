@@ -119,13 +119,13 @@ struct WaylandBuffer {
      * Get buffer width.
      * @return buffer width in pixels
      */
-    [[nodiscard]] inline size_t width() const { return pm.width(); }
+    [[nodiscard]] size_t width() const { return pm.width(); }
 
     /**
      * Get buffer height.
      * @return buffer height in pixels
      */
-    [[nodiscard]] inline size_t height() const { return pm.height(); }
+    [[nodiscard]] size_t height() const { return pm.height(); }
 
     /**
      * Get wayland buffer object.

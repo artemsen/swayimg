@@ -91,7 +91,7 @@ static void draw(Pixmap& dst, const Pixmap& src, const Point& pos,
     tpool.wait(tids);
 }
 
-}; // namespace NN
+} // namespace NN
 
 namespace AA { // anti-aliasing
 
@@ -220,12 +220,8 @@ static void init_mks2013_kernel(Kernel& kernel, size_t nin, size_t nout,
              ++tfirst) {}
         for (tlast = last; tlast > tfirst && int_weights[tlast - first] == 0;
              --tlast) {}
-        if (tfirst < min_in) {
-            min_in = tfirst;
-        }
-        if (tlast > max_in) {
-            max_in = tlast;
-        }
+        min_in = std::min(tfirst, min_in);
+        max_in = std::max(tlast, max_in);
 
         Output& output = kernel.outputs[out - start];
         output.n = tlast - tfirst + 1;
@@ -444,7 +440,7 @@ static void draw(Pixmap& dst, const Pixmap& src, const Point& pos,
     }
     tpool.wait(tids);
 }
-}; // namespace AA
+} // namespace AA
 
 namespace Blur {
 // Constant parameters
@@ -471,7 +467,7 @@ struct ColorAccum {
      * @param color RGB color to add
      * @return self reference
      */
-    inline ColorAccum& operator+=(const argb_t& color)
+    ColorAccum& operator+=(const argb_t& color)
     {
         r += color.r;
         g += color.g;
@@ -484,7 +480,7 @@ struct ColorAccum {
      * @param color RGB color to subtract
      * @return self reference
      */
-    inline ColorAccum& operator-=(const argb_t& color)
+    ColorAccum& operator-=(const argb_t& color)
     {
         r -= color.r;
         g -= color.g;
@@ -497,7 +493,7 @@ struct ColorAccum {
      * @param weight weight of the components
      * @return ARGB color
      */
-    [[nodiscard]] inline argb_t argb(const double weight) const
+    [[nodiscard]] argb_t argb(const double weight) const
     {
         const argb_t::channel cr =
             std::clamp(r * weight, static_cast<double>(argb_t::min),
@@ -654,7 +650,128 @@ static void apply(Pixmap& pm, const Rectangle& exclude, ThreadPool& tpool)
     tpool.wait(tids);
 }
 
-}; // namespace Blur
+} // namespace Blur
+
+namespace Mirror { // mirroring
+/**
+ * Mirror and blur top area of pixmap.
+ * @param pm target pixmap
+ * @param fill area to fill
+ * @param exclude area to exclude
+ * @param image origin image
+ */
+static void fill_top(Pixmap& pm, const Rectangle& fill,
+                     const Rectangle& exclude, const Pixmap& image)
+{
+    Pixmap mirror = pm.submap(fill);
+    const size_t img_h = image.height();
+    const size_t img_w = image.width();
+    const size_t off_y = img_h - (exclude.y % img_h);
+    for (size_t y = 0; y < fill.height; ++y) {
+        const bool flip_y =
+            ((off_y + y) / img_h) % 2 == (exclude.y / img_h) % 2;
+        size_t img_y = (y + off_y) % img_h;
+        if (flip_y) {
+            img_y = img_h - img_y - 1;
+        }
+        for (size_t x = 0; x < fill.width; ++x) {
+            const size_t off_x = img_w - (exclude.x % img_w);
+            const bool flip_x =
+                ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
+            size_t img_x = (x + off_x) % img_w;
+            if (flip_x) {
+                img_x = img_w - img_x - 1;
+            }
+            mirror.at(x, y) = image.at(img_x, img_y);
+        }
+    }
+}
+
+/**
+ * Mirror and blur bottom area of pixmap.
+ * @param pm target pixmap
+ * @param fill area to fill
+ * @param exclude area to exclude
+ * @param image origin image
+ */
+static void fill_bottom(Pixmap& pm, const Rectangle& fill,
+                        const Rectangle& exclude, const Pixmap& image)
+{
+    Pixmap mirror = pm.submap(fill);
+    const size_t img_h = image.height();
+    const size_t img_w = image.width();
+    for (size_t y = 0; y < fill.height; ++y) {
+        const bool flip_y = (y / img_h) % 2 == 0;
+        size_t img_y = y % img_h;
+        if (flip_y) {
+            img_y = img_h - img_y - 1;
+        }
+        for (size_t x = 0; x < fill.width; ++x) {
+            const size_t off_x = img_w - (exclude.x % img_w);
+            const bool flip_x =
+                ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
+            size_t img_x = (x + off_x) % img_w;
+            if (flip_x) {
+                img_x = img_w - img_x - 1;
+            }
+            mirror.at(x, y) = image.at(img_x, img_y);
+        }
+    }
+}
+
+/**
+ * Mirror and blur left area of pixmap.
+ * @param pm target pixmap
+ * @param fill area to fill
+ * @param exclude area to exclude
+ * @param image origin image
+ */
+static void fill_left(Pixmap& pm, const Rectangle& fill,
+                      const Rectangle& exclude, const Pixmap& image)
+{
+    Pixmap mirror = pm.submap(fill);
+    const size_t img_h = image.height();
+    const size_t img_w = image.width();
+    for (size_t y = 0; y < fill.height; ++y) {
+        const size_t img_y = y % img_h;
+        for (size_t x = 0; x < fill.width; ++x) {
+            const size_t off_x = img_w - (exclude.x % img_w);
+            const bool flip_x =
+                ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
+            size_t img_x = (x + off_x) % img_w;
+            if (flip_x) {
+                img_x = img_w - img_x - 1;
+            }
+            mirror.at(x, y) = image.at(img_x, img_y);
+        }
+    }
+}
+
+/**
+ * Mirror and blur right area of pixmap.
+ * @param pm target pixmap
+ * @param fill area to fill
+ * @param image origin image
+ */
+static void fill_right(Pixmap& pm, const Rectangle& fill, const Pixmap& image)
+{
+    Pixmap mirror = pm.submap(fill);
+    const size_t img_h = image.height();
+    const size_t img_w = image.width();
+    for (size_t y = 0; y < fill.height; ++y) {
+        const size_t img_y = y % img_h;
+        for (size_t x = 0; x < fill.width; ++x) {
+            const bool flip_x = (x / img_w) % 2 == 0;
+            size_t img_x = x % img_w;
+            if (flip_x) {
+                img_x = img_w - img_x - 1;
+            }
+            mirror.at(x, y) = image.at(img_x, img_y);
+        }
+    }
+}
+
+} // namespace Mirror
 
 Render& Render::self()
 {
@@ -780,92 +897,17 @@ void Render::mirror_background(Pixmap& pm, const Rectangle& preserve)
 
     // fill mirrors
     if (top) {
-        tids.push_back(tpool.add([&pm, &top, &exclude, &image]() {
-            Pixmap mirror = pm.submap(top);
-            const size_t img_h = image.height();
-            const size_t img_w = image.width();
-            const size_t off_y = img_h - (exclude.y % img_h);
-            for (size_t y = 0; y < top.height; ++y) {
-                const bool flip_y =
-                    ((off_y + y) / img_h) % 2 == (exclude.y / img_h) % 2;
-                size_t img_y = (y + off_y) % img_h;
-                if (flip_y) {
-                    img_y = img_h - img_y - 1;
-                }
-                for (size_t x = 0; x < top.width; ++x) {
-                    const size_t off_x = img_w - (exclude.x % img_w);
-                    const bool flip_x =
-                        ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                    size_t img_x = (x + off_x) % img_w;
-                    if (flip_x) {
-                        img_x = img_w - img_x - 1;
-                    }
-                    mirror.at(x, y) = image.at(img_x, img_y);
-                }
-            }
-        }));
+        tids.push_back(tpool.add(Mirror::fill_top, pm, top, exclude, image));
     }
     if (bottom) {
-        tids.push_back(tpool.add([&pm, &bottom, &exclude, &image]() {
-            Pixmap mirror = pm.submap(bottom);
-            const size_t img_h = image.height();
-            const size_t img_w = image.width();
-            for (size_t y = 0; y < bottom.height; ++y) {
-                const bool flip_y = (y / img_h) % 2 == 0;
-                size_t img_y = y % img_h;
-                if (flip_y) {
-                    img_y = img_h - img_y - 1;
-                }
-                for (size_t x = 0; x < bottom.width; ++x) {
-                    const size_t off_x = img_w - (exclude.x % img_w);
-                    const bool flip_x =
-                        ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                    size_t img_x = (x + off_x) % img_w;
-                    if (flip_x) {
-                        img_x = img_w - img_x - 1;
-                    }
-                    mirror.at(x, y) = image.at(img_x, img_y);
-                }
-            }
-        }));
+        tids.push_back(
+            tpool.add(Mirror::fill_bottom, pm, bottom, exclude, image));
     }
     if (left) {
-        tids.push_back(tpool.add([&pm, &left, &exclude, &image]() {
-            Pixmap mirror = pm.submap(left);
-            const size_t img_h = image.height();
-            const size_t img_w = image.width();
-            for (size_t y = 0; y < left.height; ++y) {
-                const size_t img_y = y % img_h;
-                for (size_t x = 0; x < left.width; ++x) {
-                    const size_t off_x = img_w - (exclude.x % img_w);
-                    const bool flip_x =
-                        ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                    size_t img_x = (x + off_x) % img_w;
-                    if (flip_x) {
-                        img_x = img_w - img_x - 1;
-                    }
-                    mirror.at(x, y) = image.at(img_x, img_y);
-                }
-            }
-        }));
+        tids.push_back(tpool.add(Mirror::fill_left, pm, left, exclude, image));
     }
     if (right) {
-        tids.push_back(tpool.add([&pm, &right, &image]() {
-            Pixmap mirror = pm.submap(right);
-            const size_t img_h = image.height();
-            const size_t img_w = image.width();
-            for (size_t y = 0; y < right.height; ++y) {
-                const size_t img_y = y % img_h;
-                for (size_t x = 0; x < right.width; ++x) {
-                    const bool flip_x = (x / img_w) % 2 == 0;
-                    size_t img_x = x % img_w;
-                    if (flip_x) {
-                        img_x = img_w - img_x - 1;
-                    }
-                    mirror.at(x, y) = image.at(img_x, img_y);
-                }
-            }
-        }));
+        tids.push_back(tpool.add(Mirror::fill_right, pm, right, image));
     }
 
     tpool.wait(tids);

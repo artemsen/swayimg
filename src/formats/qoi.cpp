@@ -18,18 +18,11 @@ public:
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
-        if (!check_signature(data, { 'q', 'o', 'i', 'f' })) {
+        if (!is_qoi(data)) {
             return nullptr;
         }
 
-        const struct Header* qoi =
-            reinterpret_cast<const struct Header*>(data.data);
-
-        // check format
-        if (qoi->width == 0 || qoi->height == 0 || qoi->channels < 3 ||
-            qoi->channels > 4) {
-            return nullptr;
-        }
+        const Header* qoi = reinterpret_cast<const Header*>(data.data);
 
         // allocate image and frame
         ImagePtr image = std::make_shared<Image>();
@@ -45,55 +38,50 @@ public:
         size_t pos = sizeof(struct Header);
 
         // decode image
-        for (size_t y = 0; y < pm.height(); ++y) {
-            for (size_t x = 0; x < pm.width(); ++x) {
-                if (rlen > 0) {
-                    --rlen;
-                } else {
-                    if (pos >= data.size) {
-                        break;
+        pm.foreach([&](argb_t& px) {
+            if (rlen > 0) {
+                --rlen;
+                px = pixel;
+            } else if (pos < data.size) {
+                const uint8_t tag = data.data[pos++];
+                if (tag == QOI_OP_RGB) {
+                    if (pos + 3 >= data.size) {
+                        return;
                     }
-                    const uint8_t tag = data.data[pos++];
-                    if (tag == QOI_OP_RGB) {
-                        if (pos + 3 >= data.size) {
-                            return nullptr;
-                        }
-                        pixel.r = data.data[pos++];
-                        pixel.g = data.data[pos++];
-                        pixel.b = data.data[pos++];
-                    } else if (tag == QOI_OP_RGBA) {
-                        if (pos + 4 >= data.size) {
-                            return nullptr;
-                        }
-                        pixel.r = data.data[pos++];
-                        pixel.g = data.data[pos++];
-                        pixel.b = data.data[pos++];
-                        pixel.a = data.data[pos++];
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
-                        pixel = color_map[tag & 0x3f];
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
-                        pixel.r += static_cast<int8_t>((tag >> 4) & 3) - 2;
-                        pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
-                        pixel.b += static_cast<int8_t>(tag & 3) - 2;
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
-                        uint8_t diff;
-                        int8_t diff_green;
-                        if (pos + 1 >= data.size) {
-                            return nullptr;
-                        }
-                        diff = data.data[pos++];
-                        diff_green = static_cast<int8_t>(tag & 0x3f) - 32;
-                        pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
-                        pixel.g += diff_green;
-                        pixel.b += diff_green - 8 + (diff & 0x0f);
-                    } else if ((tag & QOI_MASK_2) == QOI_OP_RUN) {
-                        rlen = (tag & 0x3f);
+                    pixel.r = data.data[pos++];
+                    pixel.g = data.data[pos++];
+                    pixel.b = data.data[pos++];
+                } else if (tag == QOI_OP_RGBA) {
+                    if (pos + 4 >= data.size) {
+                        return;
                     }
-                    color_map[colormap_index(pixel)] = pixel;
+                    pixel.r = data.data[pos++];
+                    pixel.g = data.data[pos++];
+                    pixel.b = data.data[pos++];
+                    pixel.a = data.data[pos++];
+                } else if ((tag & QOI_MASK_2) == QOI_OP_INDEX) {
+                    pixel = color_map[tag & 0x3f];
+                } else if ((tag & QOI_MASK_2) == QOI_OP_DIFF) {
+                    pixel.r += static_cast<int8_t>((tag >> 4) & 3) - 2;
+                    pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
+                    pixel.b += static_cast<int8_t>(tag & 3) - 2;
+                } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
+                    if (pos + 1 >= data.size) {
+                        return;
+                    }
+                    const uint8_t diff = data.data[pos++];
+                    const int8_t diff_green =
+                        static_cast<int8_t>(tag & 0x3f) - 32;
+                    pixel.r += diff_green - 8 + ((diff >> 4) & 0x0f);
+                    pixel.g += diff_green;
+                    pixel.b += diff_green - 8 + (diff & 0x0f);
+                } else if ((tag & QOI_MASK_2) == QOI_OP_RUN) {
+                    rlen = (tag & 0x3f);
                 }
-                pm.at(x, y) = pixel;
+                color_map[colormap_index(pixel)] = pixel;
+                px = pixel;
             }
-        }
+        });
 
         image->format = std::format("QOI {}bpp", qoi->channels * 8);
 
@@ -101,6 +89,15 @@ public:
     }
 
 private:
+    // QOI file header
+    struct __attribute__((__packed__)) Header {
+        uint8_t magic[4];   // Magic bytes "qoif"
+        uint32_t width;     // Image width in pixels
+        uint32_t height;    // Image height in pixels
+        uint8_t channels;   // Number of color channels: 3 = RGB, 4 = RGBA
+        uint8_t colorspace; // 0: sRGB with linear alpha, 1: all channels linear
+    };
+
     // Chunk tags
     static constexpr const uint8_t QOI_OP_INDEX = 0x00;
     static constexpr const uint8_t QOI_OP_DIFF = 0x40;
@@ -122,14 +119,21 @@ private:
             QOI_CLRMAP_SIZE;
     }
 
-    // QOI file header
-    struct __attribute__((__packed__)) Header {
-        uint8_t magic[4];   // Magic bytes "qoif"
-        uint32_t width;     // Image width in pixels
-        uint32_t height;    // Image height in pixels
-        uint8_t channels;   // Number of color channels: 3 = RGB, 4 = RGBA
-        uint8_t colorspace; // 0: sRGB with linear alpha, 1: all channels linear
-    };
+    /**
+     * Check if format is QOI.
+     * @param data source data buffer
+     * @return true if it is QOI format
+     */
+    static bool is_qoi(const Data& data)
+    {
+        if (data.size <= sizeof(Header)) {
+            return false;
+        }
+        const Header* hdr = reinterpret_cast<const Header*>(data.data);
+        return std::memcmp(hdr->magic, "qoif", sizeof(hdr->magic)) == 0 &&
+            hdr->width != 0 && hdr->height != 0 &&
+            (hdr->channels == 3 || hdr->channels == 4);
+    }
 };
 
 // register format in factory

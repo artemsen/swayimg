@@ -63,36 +63,36 @@ public:
      * Get pixmap width.
      * @return pixmap width in pixels
      */
-    [[nodiscard]] inline size_t width() const { return pm_width; }
+    [[nodiscard]] size_t width() const { return pm_width; }
 
     /**
      * Get pixmap height.
      * @return pixmap height in pixels
      */
-    [[nodiscard]] inline size_t height() const { return pm_height; }
+    [[nodiscard]] size_t height() const { return pm_height; }
 
     /**
      * Get stride (size of a single line in bytes).
      * @return stride size in bytes
      */
-    [[nodiscard]] inline size_t stride() const { return pm_stride; }
+    [[nodiscard]] size_t stride() const { return pm_stride; }
 
     /**
      * Get pixmap format.
      * @return pixmap format
      */
-    [[nodiscard]] inline Format format() const { return pm_format; }
+    [[nodiscard]] Format format() const { return pm_format; }
 
     /**
      * Check if there is data in the pixmap.
      */
-    inline operator bool() const { return pm_width && pm_height; }
+    operator bool() const { return pm_width && pm_height; }
 
     /**
      * Cast to Size object.
      * @return Size object
      */
-    inline operator Size() const { return { pm_width, pm_height }; }
+    operator Size() const { return { pm_width, pm_height }; }
 
     /**
      * Create attached submap from current pixmap.
@@ -106,7 +106,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return pointer to the pixel
      */
-    inline void* ptr(const size_t x, const size_t y)
+    void* ptr(const size_t x, const size_t y)
     {
         assert(x < pm_width);
         assert(y < pm_height);
@@ -120,7 +120,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return pointer to the pixel
      */
-    [[nodiscard]] inline const void* ptr(const size_t x, const size_t y) const
+    [[nodiscard]] const void* ptr(const size_t x, const size_t y) const
     {
         assert(x < pm_width);
         assert(y < pm_height);
@@ -134,7 +134,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return reference to the pixel
      */
-    [[nodiscard]] inline argb_t& at(const size_t x, const size_t y)
+    [[nodiscard]] argb_t& at(const size_t x, const size_t y)
     {
         assert(format() == Format::RGB || format() == Format::ARGB);
         return *reinterpret_cast<argb_t*>(ptr(x, y));
@@ -145,7 +145,7 @@ public:
      * @param x,y pixel position within the pixmap
      * @return const reference to the pixel
      */
-    [[nodiscard]] inline const argb_t& at(const size_t x, const size_t y) const
+    [[nodiscard]] const argb_t& at(const size_t x, const size_t y) const
     {
         assert(format() == Format::RGB || format() == Format::ARGB);
         return *reinterpret_cast<const argb_t*>(ptr(x, y));

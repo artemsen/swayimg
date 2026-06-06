@@ -33,7 +33,7 @@ public:
      * Check if socket opened.
      * @return true if socket opened.
      */
-    inline operator bool() const { return fd != -1; }
+    operator bool() const { return fd != -1; }
 
     /**
      * Connect to UNIX socket.
@@ -183,7 +183,7 @@ public:
      */
     static bool set_overlay(const Rectangle& wnd)
     {
-        if (!static_cast<Point>(wnd)) {
+        if (!wnd.position_valid()) {
             return false;
         }
 
@@ -241,8 +241,7 @@ private:
      * @param payload payload data
      * @return response as JSON object
      */
-    [[nodiscard]] const json request(IpcType mt,
-                                     const std::string& payload) const
+    [[nodiscard]] json request(IpcType mt, const std::string& payload) const
     {
         IpcHeader header;
         std::memcpy(header.magic, ipc_magic, sizeof(ipc_magic));
@@ -279,7 +278,7 @@ private:
      * @param node parent JSON node
      * @return pointer to focused window node
      */
-    [[nodiscard]] const json find_focused(const json& node) const
+    [[nodiscard]] json find_focused(const json& node) const
     {
         if (node.contains("focused")) {
             const auto& focused = node["focused"];
@@ -296,7 +295,7 @@ private:
             if (!nodes.is_array()) {
                 continue;
             }
-            for (auto& subnode : nodes) {
+            for (const auto& subnode : nodes) {
                 const auto& result = find_focused(subnode);
                 if (!result.empty()) {
                     return result;
@@ -312,7 +311,7 @@ private:
      * @param node JSON node
      * @return rectangle geometry
      */
-    [[nodiscard]] Rectangle get_rect(const json& node) const
+    [[nodiscard]] static Rectangle get_rect(const json& node)
     {
         Rectangle rect;
 
@@ -355,7 +354,7 @@ public:
     static Rectangle get_focus()
     {
         Rectangle wnd;
-        int monitor_id = 0;
+        int monitor_id = -1;
 
         // get clients list
         const json clients = HyprlandIpc::request("j/clients");
@@ -389,34 +388,13 @@ public:
             wnd.height = size.at(1).get<size_t>();
             break;
         }
-        if (!wnd) {
-            return {};
-        }
 
-        // get monitors list
-        const json monitors = HyprlandIpc::request("j/monitors");
-        if (monitors.empty()) {
-            return {};
-        }
-        for (const auto& it : monitors) {
-            if (!it.contains("id") || !it.contains("x") || !it.contains("y")) {
-                continue;
+        if (wnd && monitor_id >= 0) {
+            const Point mon_pos = get_monitor_pos(monitor_id);
+            if (mon_pos) {
+                wnd.x -= mon_pos.x;
+                wnd.y -= mon_pos.y;
             }
-            const json& id = it["id"];
-            if (!id.is_number() || id.get<int>() != monitor_id) {
-                continue;
-            }
-            const json& x = it["x"];
-            if (!x.is_number()) {
-                continue;
-            }
-            const json& y = it["y"];
-            if (!y.is_number()) {
-                continue;
-            }
-            wnd.x -= x.get<ssize_t>();
-            wnd.y -= y.get<ssize_t>();
-            break;
         }
 
         return wnd;
@@ -435,14 +413,14 @@ public:
         app_id += std::to_string(getpid());
 
         // add rules
-        if (static_cast<Point>(wnd)) {
+        if (wnd.position_valid()) {
             HyprlandIpc::request(std::format(
                 "keyword windowrule float on, match:class {}", app_id));
             HyprlandIpc::request(
                 std::format("keyword windowrule move {} {}, match:class {}",
                             wnd.x, wnd.y, app_id));
         }
-        if (static_cast<Size>(wnd)) {
+        if (wnd.size_valid()) {
             HyprlandIpc::request(
                 std::format("keyword windowrule size {} {}, match:class {}",
                             wnd.width, wnd.height, app_id));
@@ -450,6 +428,38 @@ public:
     }
 
 private:
+    /**
+     * Get monitor position.
+     * @param mon_id monitor id
+     * @return monitor position
+     */
+    static Point get_monitor_pos(const int mon_id)
+    {
+        const json monitors = HyprlandIpc::request("j/monitors");
+        if (monitors.empty()) {
+            return {};
+        }
+        for (const auto& it : monitors) {
+            if (!it.contains("id") || !it.contains("x") || !it.contains("y")) {
+                continue;
+            }
+            const json& id = it["id"];
+            if (!id.is_number() || id.get<int>() != mon_id) {
+                continue;
+            }
+            const json& x = it["x"];
+            if (!x.is_number()) {
+                continue;
+            }
+            const json& y = it["y"];
+            if (!y.is_number()) {
+                continue;
+            }
+            return { x.get<ssize_t>(), y.get<ssize_t>() };
+        }
+        return {};
+    }
+
     /**
      * Get path to Hyprland IPC socket.
      * @return path to UNIX socket

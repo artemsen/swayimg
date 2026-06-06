@@ -79,14 +79,14 @@ public:
      * @param pm pixmap to re-orient
      * @param orientation EXIF orientation
      */
-    void fix_orientation(Pixmap& pm, const int orientation) const;
+    static void fix_orientation(Pixmap& pm, const int orientation);
 
     /**
      * Read meta data from image (EXIF, IPTC, XMP).
      * @param data source image data
      * @param image target image instance
      */
-    bool read_metadata(const Data& data, ImagePtr& image) const;
+    static bool read_metadata(const Data& data, ImagePtr& image);
 
 protected:
     /**
@@ -97,15 +97,22 @@ protected:
      * @return true if signature exists
      */
     template <size_t S>
-    inline bool check_signature(const Data& data, const uint8_t (&signature)[S],
-                                const size_t offset = 0) const
+    bool check_signature(const Data& data, const uint8_t (&signature)[S],
+                         const size_t offset = 0) const
     {
         return data.size > offset + S &&
             std::memcmp(data.data + offset, signature, S) == 0;
     }
 
-    [[nodiscard]] Pixmap make_thumb(const Pixmap& pm, const size_t sz,
-                                    const bool max_sz) const;
+    /**
+     * Create thumbnail from full-size image.
+     * @param pm origin image pixmap
+     * @param sz thumbnail size
+     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @return thumbnail pixmap
+     */
+    static Pixmap make_thumb(const Pixmap& pm, const size_t sz,
+                             const bool max_sz);
 
 public:
     Priority priority; ///< Format priority
