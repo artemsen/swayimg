@@ -611,12 +611,9 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     active.erase(entry);
     if (pm) {
         cache.insert_or_assign(entry, pm);
-    } else {
-        return; // to be removed -> reflow/redraw handled via the event
-    }
-
-    if (layout.is_visible(entry)) {
-        Application::redraw();
+        if (layout.is_visible(entry)) {
+            Application::redraw();
+        }
     }
 }
 
