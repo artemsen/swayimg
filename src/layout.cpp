@@ -229,6 +229,13 @@ ImageEntryPtr Layout::get_selected() const
     return sel_entry;
 }
 
+bool Layout::is_visible(const ImageEntryPtr& entry) const
+{
+    ImageList& il = ImageList::self();
+    return il.distance(entry, scheme.front().img) <= 0 &&
+        il.distance(entry, scheme.back().img) >= 0;
+}
+
 const std::vector<Layout::Thumbnail>& Layout::get_scheme() const
 {
     return scheme;

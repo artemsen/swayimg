@@ -103,6 +103,13 @@ public:
     [[nodiscard]] ImageEntryPtr get_selected() const;
 
     /**
+     * Check if give entry is visible (is in the current scheme).
+     * @param entry entry to check if included in the scheme
+     * @return true if visible (part of the current scheme)
+     */
+    [[nodiscard]] bool is_visible(const ImageEntryPtr& entry) const;
+
+    /**
      * Get layout scheme.
      * @return array with thumbnails layout description
      */
