@@ -227,17 +227,19 @@ ImageEntryPtr Application::il_initialize()
         first_entry = il.load(sparams.from_file);
     }
     if (!sparams.sources.empty()) {
+        std::list<ImageEntryPtr> added;
         if (sparams.sources.size() == 1 && sparams.sources[0] == "-") {
-            first_entry = il.add(std::vector<std::filesystem::path> {
-                                     ImageEntry::SRC_STDIN })
-                              .front();
+            added = il.add(
+                std::vector<std::filesystem::path> { ImageEntry::SRC_STDIN });
         } else {
-            first_entry = il.add(sparams.sources).front();
+            added = il.add(sparams.sources);
         }
+        first_entry = added.empty() ? nullptr : added.front();
     }
     if (sparams.from_file.empty() && sparams.sources.empty()) {
-        first_entry =
-            il.add(std::vector<std::filesystem::path> { "." }).front();
+        const std::list<ImageEntryPtr> added =
+            il.add(std::vector<std::filesystem::path> { "." });
+        first_entry = added.empty() ? nullptr : added.front();
     }
 
     if (Log::verbose_enable()) {
