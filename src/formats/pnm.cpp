@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
-// PNM image format.
-// Copyright (C) 2023 Abe Wieland <abe.wieland@gmail.com>
+// Portable anymap (PNM) image format.
+// Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
 #include "../imageformat.hpp"
 
+#include <cctype>
+#include <cstdlib>
 #include <format>
-#include <limits>
-#include <utility>
+#include <stdexcept>
+#include <string>
 
 class ImageFormatPnm : public ImageFormat {
 public:
@@ -17,361 +19,353 @@ public:
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
-        // check signature: PNM always starts with "P"
+        // check signature
         if (data.size < 3 || data.data[0] != 'P') {
             return nullptr;
         }
 
-        // get pnm type
-        enum Type type;
-        const char* type_name;
+        // get format and encoding
+        Format fmt;
+        Encoding enc;
         switch (data.data[1]) {
             case '1':
+                fmt = Format::BitMap;
+                enc = Encoding::Plain;
+                break;
             case '4':
-                type = pnm_pbm;
-                type_name = "PBM";
+                fmt = Format::BitMap;
+                enc = Encoding::Raw;
                 break;
             case '2':
+                fmt = Format::GrayMap;
+                enc = Encoding::Plain;
+                break;
             case '5':
-                type = pnm_pgm;
-                type_name = "PGM";
+                fmt = Format::GrayMap;
+                enc = Encoding::Raw;
                 break;
             case '3':
+                fmt = Format::PixMap;
+                enc = Encoding::Plain;
+                break;
             case '6':
-                type = pnm_ppm;
-                type_name = "PPM";
+                fmt = Format::PixMap;
+                enc = Encoding::Raw;
                 break;
             default:
                 return nullptr;
         }
-        const bool is_ascii = data.data[1] <= '3';
 
-        PnmIterator it;
-        it.pos = data.data + 2;
-        it.end = data.data + data.size;
+        try {
+            size_t offset = 2; // skip 2-bytes header
 
-        const int width = pnm_readint(&it, 0);
-        if (width < 0) {
-            return nullptr;
-        }
-        const int height = pnm_readint(&it, 0);
-        if (height < 0) {
-            return nullptr;
-        }
+            const size_t width = read_num(data, offset);
+            const size_t height = read_num(data, offset);
 
-        int maxval;
-        if (type == pnm_pbm) {
-            maxval = 1;
-        } else {
-            maxval = pnm_readint(&it, 0);
-            if (maxval < 0) {
-                return nullptr;
+            // bits per pixel
+            size_t bpp;
+            if (fmt == Format::BitMap) {
+                bpp = 1;
+            } else {
+                bpp = read_num(data, offset) <= 255 ? 24 : 48;
             }
-            if (!maxval ||
-                std::cmp_greater(maxval,
-                                 std::numeric_limits<uint16_t>::max())) {
-                return nullptr;
+
+            // skip space after number
+            ++offset;
+            if (offset >= data.size) {
+                throw std::out_of_range("No image data");
             }
-        }
 
-        if (!is_ascii) {
-            // Again, the specifications technically allow for comments here,
-            // but no other parsers support that (they treat that comment as
-            // image data), so we won't allow one either
-            const char c = *it.pos;
-            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
-                return nullptr;
+            // allocate image and frame
+            ImagePtr image = std::make_shared<Image>();
+            image->frames.resize(1);
+            Pixmap& pm = image->frames[0].pm;
+            pm.create(Pixmap::RGB, width, height);
+
+            // decode image
+            const Data px_data = { data.data + offset, data.size - offset };
+            switch (fmt) {
+                case Format::BitMap:
+                    decode_pbm(px_data, enc, pm);
+                    break;
+                case Format::GrayMap:
+                    decode_pgm(px_data, enc, bpp, pm);
+                    break;
+                case Format::PixMap:
+                    decode_ppm(px_data, enc, bpp, pm);
+                    break;
             }
-            ++it.pos;
+
+            image->format = format_desc(fmt, enc, bpp);
+            return image;
+
+        } catch (std::out_of_range&) {
+        } catch (std::invalid_argument&) {
         }
-
-        // allocate image and frame
-        ImagePtr image = std::make_shared<Image>();
-        image->frames.resize(1);
-        Pixmap& pm = image->frames[0].pm;
-        pm.create(Pixmap::RGB, width, height);
-
-        const int ret = is_ascii ? decode_ascii(pm, &it, type, maxval)
-                                 : decode_raw(pm, &it, type, maxval);
-        if (ret < 0) {
-            return nullptr;
-        }
-
-        // set format description
-        image->format =
-            std::format("{} ({})", type_name, is_ascii ? "ASCII" : "raw");
-
-        return image;
+        return nullptr;
     }
 
 private:
-    // Error conditions
-    static constexpr const int PNM_EEOF = -1;
-    static constexpr const int PNM_ERNG = -2;
-    static constexpr const int PNM_EFMT = -3;
-    static constexpr const int PNM_EOVF = -4;
-
-    // Maximum digits in INT_MAX
-    static constexpr const uint8_t MAX_INT_DIGITS = 10;
-
-    // Both assume positive arguments and evaluate b more than once
-    // Divide, rounding to nearest (up on ties)
-    static constexpr int div_near(const int a, const int b)
-    {
-        return (a + b / 2) / b;
-    }
-
-    // Divide, rounding up
-    static constexpr int div_ceil(const int a, const int b)
-    {
-        return (a + b - 1) / b;
-    }
-
-    // PNM file types
-    enum Type : uint8_t {
-        pnm_pbm, // Bitmap
-        pnm_pgm, // Grayscale pixmap
-        pnm_ppm  // Color pixmap
-    };
-
-    // A file-like abstraction for cleaner number parsing
-    struct PnmIterator {
-        const uint8_t* pos;
-        const uint8_t* end;
-    };
+    /** PNM format. */
+    enum class Format : uint8_t { BitMap, GrayMap, PixMap };
+    /** PNM encoding. */
+    enum class Encoding : uint8_t { Plain, Raw };
 
     /**
-     * Read an integer, ignoring leading whitespace and comments
-     * @param it image iterator
-     * @param digits maximum number of digits to read, or 0 for no limit
-     * @return the integer read (positive) or an error code (negative)
-     *
-     * Although the specification states comments may also appear in integers,
-     * this is not supported by any known parsers at the time of writing; thus,
-     * we don't support it either
+     * Get PNM format description.
+     * @param fmt PNM format
+     * @param enc PNM encoding
+     * @param bpp bits per pixel
+     * @return text description of PNM format
      */
-    static int pnm_readint(PnmIterator* it, size_t digits)
+    static std::string format_desc(const Format fmt, const Encoding enc,
+                                   const size_t bpp)
     {
-        if (!digits) {
-            digits = MAX_INT_DIGITS;
-        }
-        while (it->pos != it->end) {
-            const char c = *it->pos;
-            if (c == '#') {
-                while (it->pos != it->end && *it->pos != '\n' &&
-                       *it->pos != '\r') {
-                    ++it->pos;
-                }
-            } else if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+        std::string desc;
+
+        switch (fmt) {
+            case Format::BitMap:
+                desc = "PBM";
                 break;
-            }
-            ++it->pos;
+            case Format::GrayMap:
+                desc = "PGM";
+                break;
+            case Format::PixMap:
+                desc = "PPM";
+                break;
         }
 
-        if (it->pos == it->end) {
-            return PNM_EEOF;
+        desc += std::format(" {}bit ", bpp);
+
+        switch (fmt) {
+            case Format::BitMap:
+                desc += "bitmap";
+                break;
+            case Format::GrayMap:
+                desc += "grayscale";
+                break;
+            case Format::PixMap:
+                desc += "pixmap";
+                break;
         }
 
-        if (*it->pos < '0' || *it->pos > '9') {
-            return PNM_EFMT;
+        desc += ' ';
+
+        switch (enc) {
+            case Encoding::Raw:
+                desc += "raw (binary)";
+                break;
+            case Encoding::Plain:
+                desc += "plain (ASCII)";
+                break;
         }
 
-        int val = 0;
-        size_t i = 0;
-        do {
-            const uint8_t digit = *it->pos - '0';
-            if (val > std::numeric_limits<int>::max() / 10) {
-                return PNM_ERNG;
-            }
-            val *= 10;
-            if (val > std::numeric_limits<int>::max() - digit) {
-                return PNM_ERNG;
-            }
-            val += digit;
-            ++it->pos;
-            ++i;
-        } while (it->pos != it->end && *it->pos >= '0' && *it->pos <= '9' &&
-                 i < digits);
-        return val;
+        return desc;
     }
 
     /**
-     * Decode a plain/ASCII PNM file.
-     * @param pm pixel map to write data to
-     * @param it image iterator
-     * @param type type of PNM file
-     * @param maxval maximum value for each sample
-     * @return 0 on success, error code on failure
+     * Read number from data buffer.
+     * @param data data buffer
+     * @param offset position in the buffer
+     * @return number
+     * @throws std::out_of_range
+     * @throws std::invalid_argument
      */
-    // NOLINTBEGIN(readability-function-cognitive-complexity)
-    static int decode_ascii(Pixmap& pm, PnmIterator* it, enum Type type,
-                            int maxval)
+    static size_t read_num(const Data& data, size_t& offset)
     {
-        for (size_t y = 0; y < pm.height(); ++y) {
-            for (size_t x = 0; x < pm.width(); ++x) {
-                argb_t& dst = pm.at(x, y);
-                dst.a = argb_t::max;
+        // skip spaces
+        while (offset < data.size && std::isspace(data.data[offset])) {
+            ++offset;
+        }
+        if (offset >= data.size) {
+            throw std::out_of_range("Out of data");
+        }
 
-                if (type == pnm_pbm) {
-                    const int num = pnm_readint(it, 1);
-                    if (num < 0) {
-                        return num;
-                    }
-                    if (num > maxval) {
-                        return PNM_EOVF;
-                    }
-                    dst = static_cast<uint32_t>(num - 1) | 0xff000000;
-                } else if (type == pnm_pgm) {
-                    int v = pnm_readint(it, 0);
-                    if (v < 0) {
-                        return v;
-                    }
-                    if (v > maxval) {
-                        return PNM_EOVF;
-                    }
-                    if (std::cmp_not_equal(
-                            maxval, std::numeric_limits<uint8_t>::max())) {
-                        v = div_near(v * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                    }
-                    dst.r = v;
-                    dst.g = v;
-                    dst.b = v;
-                } else { // type == pnm_ppm
-                    int r = pnm_readint(it, 0);
-                    if (r < 0) {
-                        return r;
-                    }
-                    if (r > maxval) {
-                        return PNM_EOVF;
-                    }
-                    int g = pnm_readint(it, 0);
-                    if (g < 0) {
-                        return g;
-                    }
-                    if (g > maxval) {
-                        return PNM_EOVF;
-                    }
-                    int b = pnm_readint(it, 0);
-                    if (b < 0) {
-                        return b;
-                    }
-                    if (b > maxval) {
-                        return PNM_EOVF;
-                    }
-                    if (std::cmp_not_equal(
-                            maxval, std::numeric_limits<uint8_t>::max())) {
-                        r = div_near(r * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                        g = div_near(g * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                        b = div_near(b * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                    }
-                    dst.r = r;
-                    dst.g = g;
-                    dst.b = b;
+        if (data.data[offset] == '#') {
+            // skip comment up to the end of line
+            while (offset < data.size && data.data[offset] != '\n') {
+                ++offset;
+            }
+
+            // skip spaces
+            while (offset < data.size && std::isspace(data.data[offset])) {
+                ++offset;
+            }
+            if (offset >= data.size) {
+                throw std::out_of_range("Out of data");
+            }
+        }
+
+        // get number as text
+        std::string ntext;
+        while (offset < data.size && std::isdigit(data.data[offset])) {
+            ntext += data.data[offset];
+            ++offset;
+        }
+        if (ntext.empty()) {
+            throw std::invalid_argument("Not a number");
+        }
+
+        return std::stoul(ntext);
+    }
+
+    /**
+     * Read pixel data from ASCII data buffer.
+     * @param data data buffer
+     * @param bpp bits per pixel (24 or 48 only)
+     * @return array with colors
+     */
+    static std::vector<argb_t::channel> read_plain(const Data& data,
+                                                   const size_t bpp)
+    {
+        std::vector<argb_t::channel> colors;
+
+        size_t offset = 0;
+        try {
+            while (offset < data.size) {
+                size_t num = read_num(data, offset);
+                if (bpp > 24) {
+                    num >>= 8; // skip lower parts
                 }
+                colors.push_back(num);
             }
+        } catch (std::out_of_range&) {
+        } catch (std::invalid_argument&) {
         }
-        return 0;
+
+        return colors;
     }
-    // NOLINTEND(readability-function-cognitive-complexity)
 
     /**
-     * Decode a raw/binary PNM file.
-     * @param pm image frame to write data to
-     * @param it image iterator
-     * @param type type of PNM file
-     * @param maxval maximum value for each sample
-     * @return 0 on success, error code on failure
+     * Read pixel data from binary data buffer.
+     * @param data data buffer
+     * @param bpp bits per pixel (24 or 48 only)
+     * @return array with colors
      */
-    // NOLINTBEGIN(readability-function-cognitive-complexity)
-    static int decode_raw(Pixmap& pm, PnmIterator* it, enum Type type,
-                          int maxval)
+    static std::vector<argb_t::channel> read_raw(const Data& data,
+                                                 const size_t bpp)
     {
-        // Determine bytes per channel based on max value
-        const size_t bytes_per_channel =
-            std::cmp_less_equal(maxval, std::numeric_limits<uint8_t>::max())
-            ? 1
-            : 2;
-        const size_t channels = (type == pnm_pgm) ? 1 : 3;
+        std::vector<argb_t::channel> colors;
 
-        // Calculate row size for binary format
-        size_t row_size;
-        if (type == pnm_pbm) {
-            // PBM pads each row to the nearest whole byte
-            row_size = div_ceil(pm.width(), 8);
+        if (bpp <= 24) {
+            colors.assign(data.data, data.data + data.size);
         } else {
-            row_size = pm.width() * bytes_per_channel * channels;
+            // skip lower parts
+            colors.reserve(data.size / 2);
+            for (size_t i = 0; i < data.size; i += 2) {
+                colors.push_back(data.data[i]);
+            }
         }
 
-        // Verify sufficient data
-        if (it->end < it->pos + pm.height() * row_size) {
-            return PNM_EEOF;
-        }
+        return colors;
+    }
 
+    /**
+     * Decode binary bitmap image.
+     * @param data image data
+     * @param pm target pixmap
+     */
+    static void decode_pbm_raw(const Data& data, Pixmap& pm)
+    {
+        size_t pos = 0;
         for (size_t y = 0; y < pm.height(); ++y) {
-            const uint8_t* src = it->pos + y * row_size;
-            for (size_t x = 0; x < pm.width(); ++x) {
-                argb_t& dst = pm.at(x, y);
-                dst.a = argb_t::max;
-
-                if (type == pnm_pbm) {
-                    const int bit = (src[x / 8] >> (7 - x % 8)) & 1;
-                    dst =
-                        static_cast<uint32_t>(bit == 0 ? 0 : 0xFF) | 0xFF000000;
-                } else if (type == pnm_pgm) {
-                    // Read grayscale value
-                    int v;
-                    if (bytes_per_channel == 1) {
-                        v = src[x];
-                    } else {
-                        v = src[x * 2] << 8 | src[x * 2 + 1];
-                    }
-                    if (v > maxval) {
-                        return PNM_EOVF;
-                    }
-                    if (std::cmp_not_equal(
-                            maxval, std::numeric_limits<uint8_t>::max())) {
-                        v = div_near(v * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                    }
-                    dst.r = v;
-                    dst.g = v;
-                    dst.b = v;
-                } else { // type == pnm_ppm
-                    int r, g, b;
-                    if (bytes_per_channel == 1) {
-                        r = src[x * 3];
-                        g = src[x * 3 + 1];
-                        b = src[x * 3 + 2];
-                    } else {
-                        r = src[x * 3] << 8 | src[x * 3 + 1];
-                        g = src[x * 3 + 2] << 8 | src[x * 3 + 3];
-                        b = src[x * 3 + 4] << 8 | src[x * 3 + 5];
-                    }
-                    if (r > maxval || g > maxval || b > maxval) {
-                        return PNM_EOVF;
-                    }
-                    if (std::cmp_not_equal(
-                            maxval, std::numeric_limits<uint8_t>::max())) {
-                        r = div_near(r * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                        g = div_near(g * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                        b = div_near(b * std::numeric_limits<uint8_t>::max(),
-                                     maxval);
-                    }
-                    dst.r = r;
-                    dst.g = g;
-                    dst.b = b;
+            for (size_t x = 0; x < pm.width(); x += 8) {
+                const uint8_t bits = pos + 1 < data.size ? data.data[pos++] : 0;
+                for (size_t bit = 0; bit < 8 && x + bit < pm.width(); ++bit) {
+                    const bool val = (bits >> (7 - bit)) & 1;
+                    argb_t& px = pm.at(x + bit, y);
+                    px.a = argb_t::max;
+                    px.r = val ? argb_t::min : argb_t::max;
+                    px.g = px.r;
+                    px.b = px.r;
                 }
             }
         }
-        return 0;
     }
-    // NOLINTEND(readability-function-cognitive-complexity)
+
+    /**
+     * Decode ASCII bitmap image.
+     * @param data image data
+     * @param pm target pixmap
+     */
+    static void decode_pbm_plain(const Data& data, Pixmap& pm)
+    {
+        size_t pos = 0;
+        pm.foreach([&](argb_t& px) {
+            // skip spaces
+            while (pos < data.size && std::isspace(data.data[pos])) {
+                ++pos;
+            }
+            // get color
+            const argb_t::channel color =
+                pos + 1 < data.size && data.data[pos++] == '0' ? argb_t::max
+                                                               : argb_t::min;
+            // put color
+            px.a = argb_t::max;
+            px.r = color;
+            px.g = color;
+            px.b = color;
+        });
+    }
+
+    /**
+     * Decode bitmap image.
+     * @param data image data
+     * @param enc data encoding
+     * @param pm target pixmap
+     */
+    static void decode_pbm(const Data& data, const Encoding enc, Pixmap& pm)
+    {
+        if (enc == Encoding::Raw) {
+            decode_pbm_raw(data, pm);
+        } else {
+            decode_pbm_plain(data, pm);
+        }
+    }
+
+    /**
+     * Decode graymap image.
+     * @param data image data
+     * @param enc data encoding
+     * @param pm target pixmap
+     */
+    static void decode_pgm(const Data& data, const Encoding enc,
+                           const size_t bpp, Pixmap& pm)
+    {
+        const std::vector<argb_t::channel> colors =
+            enc == Encoding::Raw ? read_raw(data, bpp) : read_plain(data, bpp);
+        size_t pos = 0;
+        pm.foreach([&](argb_t& px) {
+            const argb_t::channel color =
+                pos + 1 < colors.size() ? colors[pos++] : 0;
+            px.a = argb_t::max;
+            px.r = color;
+            px.g = color;
+            px.b = color;
+        });
+    }
+
+    /**
+     * Decode pixmap image.
+     * @param data image data
+     * @param enc data encoding
+     * @param pm target pixmap
+     */
+    static void decode_ppm(const Data& data, const Encoding enc,
+                           const size_t bpp, Pixmap& pm)
+    {
+        const std::vector<argb_t::channel> colors =
+            enc == Encoding::Raw ? read_raw(data, bpp) : read_plain(data, bpp);
+        size_t pos = 0;
+        pm.foreach([&](argb_t& px) {
+            px.a = argb_t::max;
+            if (pos + 2 < colors.size()) {
+                px.r = colors[pos++];
+                px.g = colors[pos++];
+                px.b = colors[pos++];
+            }
+        });
+    }
 };
 
 // register format in factory
