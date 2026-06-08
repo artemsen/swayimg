@@ -211,7 +211,7 @@ std::wstring Font::to_wide(const std::string& text)
 
 Pixmap Font::render(const std::string& text)
 {
-    if (text.empty() && !ft_face && !load(DEFAULT_FONT)) {
+    if (text.empty() || (!ft_face && !load(DEFAULT_FONT))) {
         return {};
     }
 
