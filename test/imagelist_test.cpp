@@ -642,3 +642,80 @@ TEST(ImageListTest, MoveFromRemoved)
     ASSERT_TRUE(entry);
     EXPECT_EQ(entry->path, "exec://3");
 }
+
+static std::vector<std::filesystem::path>
+generate_paths(const std::vector<size_t>& indexes)
+{
+    std::vector<std::filesystem::path> paths;
+    paths.reserve(indexes.size());
+    for (const unsigned long index : indexes) {
+        paths.emplace_back(ImageEntry::SRC_EXEC + std::to_string(index));
+    }
+
+    return paths;
+}
+
+static void
+test_bulk_remove(const size_t n,
+                 const std::vector<std::filesystem::path>& paths_to_remove)
+{
+    std::vector<std::filesystem::path> paths;
+    paths.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        paths.emplace_back(ImageEntry::SRC_EXEC + std::to_string(i));
+    }
+
+    ImageList il;
+    il.add(paths);
+
+    EXPECT_EQ(il.remove(paths_to_remove).size(), paths_to_remove.size());
+
+    for (const auto& removed_path : paths_to_remove) {
+        std::erase_if(paths, [&](const auto& p) {
+            return p == removed_path;
+        });
+    }
+
+    size_t i = 0;
+    for (const auto& entry : il.get_all()) {
+        EXPECT_EQ(entry.index, i);
+        EXPECT_EQ(entry.path, paths[i]);
+        ++i;
+    }
+    EXPECT_EQ(i, paths.size());
+}
+
+static void test_bulk_remove(const size_t n,
+                             const std::vector<size_t>& to_remove)
+{
+    test_bulk_remove(n, generate_paths(to_remove));
+}
+
+TEST(ImageListTest, RemoveBulkInvalidPath)
+{
+    ImageList il;
+    EXPECT_TRUE(il.remove(generate_paths({ 1 })).empty());
+    EXPECT_EQ(il.size(), 0);
+
+    il.add(generate_paths({ 0 }));
+    EXPECT_TRUE(il.remove(generate_paths({ 1 })).empty());
+    EXPECT_EQ(il.size(), 1);
+
+    EXPECT_TRUE(il.remove({ "doesn't exist" }).empty());
+    EXPECT_EQ(il.size(), 1);
+}
+
+TEST(ImageListTest, RemoveBulk)
+{
+    test_bulk_remove(1, generate_paths({}));
+    test_bulk_remove(2, generate_paths({ 0 }));
+    test_bulk_remove(2, generate_paths({ 1 }));
+    test_bulk_remove(3, { 0, 2 });
+    test_bulk_remove(3, { 0, 1, 2 });
+    test_bulk_remove(5, { 0, 2, 4 });
+    test_bulk_remove(5, { 0, 1, 2 });
+    test_bulk_remove(5, { 2, 3, 4 });
+    test_bulk_remove(7, { 0, 1, 5, 6 });
+    test_bulk_remove(5, { 2, 3 });
+    test_bulk_remove(10, { 6, 3, 8, 4 });
+}

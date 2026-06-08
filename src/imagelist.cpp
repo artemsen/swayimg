@@ -12,6 +12,7 @@
 #include <fstream>
 #include <mutex>
 #include <random>
+#include <set>
 #include <string>
 
 /**
@@ -180,6 +181,62 @@ ImageList::add(const std::vector<std::filesystem::path>& sources)
     }
 
     return added;
+}
+
+std::list<ImageEntryPtr>
+ImageList::remove(const std::vector<std::filesystem::path>& paths)
+{
+    if (paths.empty() || entries_arr.empty()) {
+        return {};
+    }
+
+    std::list<ImageEntryPtr> removed;
+    std::set<size_t> removed_indexes;
+
+    const std::scoped_lock lock(mutex);
+    for (const auto& path : paths) {
+        auto it = entries_map.find(
+            ImageEntry::is_special(path)
+                ? path
+                : std::filesystem::absolute(path).lexically_normal());
+        if (it != entries_map.end()) {
+            Log::verbose("Remove image entry {}", path.filename().string());
+            it->second->removed = true;
+            removed.emplace_back(it->second);
+            removed_indexes.insert(it->second->index);
+            entries_map.erase(it);
+        }
+    }
+
+    if (removed.size() == 1) {
+        entries_arr.erase(entries_arr.begin() + removed.front()->index);
+        reindex(removed.front()->index);
+    } else if (!removed.empty()) {
+        if (entries_map.empty()) {
+            entries_arr.clear();
+            return removed;
+        }
+
+        // shift and reindex - move the entries directly to their new position
+        removed_indexes.insert(entries_arr.size());
+        auto it = removed_indexes.begin();
+        const auto end = removed_indexes.end();
+        size_t from = *it;
+        size_t to = from;
+
+        while (++it != end) {
+            from = from + 1;
+
+            for (const size_t next = *it; from < next; ++from, ++to) {
+                entries_arr[to] = entries_arr[from];
+                entries_arr[to]->index = to;
+            }
+        }
+        entries_arr.erase(entries_arr.begin() + entries_map.size(),
+                          entries_arr.end());
+    }
+
+    return removed;
 }
 
 ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)

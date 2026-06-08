@@ -166,16 +166,7 @@ Application::add_images(const std::vector<std::filesystem::path>& paths)
 
 void Application::remove_images(const std::vector<std::filesystem::path>& paths)
 {
-    ImageList& il = ImageList::self();
-
-    std::list<ImageEntryPtr> entries;
-    for (const auto& path : paths) {
-        const ImageEntryPtr entry = il.find(path);
-        if (entry) {
-            entries.push_back(entry);
-            il.remove(entry);
-        }
-    }
+    const std::list<ImageEntryPtr> entries = ImageList::self().remove(paths);
 
     if (!entries.empty()) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
