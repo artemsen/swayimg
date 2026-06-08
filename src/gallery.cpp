@@ -406,7 +406,6 @@ void Gallery::handle_imagelist(const ImageListEvent event,
                     return;
                 }
                 switch_current();
-                break;
             }
         }
     }
@@ -608,16 +607,13 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     }
 
     const std::scoped_lock lock(mutex);
-    active.erase(entry);
+
     if (pm) {
         cache.insert_or_assign(entry, pm);
-    } else {
-        return; // to be removed -> reflow/redraw handled via the event
     }
+    active.erase(entry);
 
-    if (layout.is_visible(entry)) {
-        Application::redraw();
-    }
+    Application::redraw();
 }
 
 void Gallery::queue_thumbnail(const ImageEntryPtr& entry)
