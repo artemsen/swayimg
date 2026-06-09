@@ -182,6 +182,56 @@ ImageList::add(const std::vector<std::filesystem::path>& sources)
     return added;
 }
 
+std::list<ImageEntryPtr>
+ImageList::remove(const std::vector<std::filesystem::path>& sources)
+{
+    if (sources.empty()) {
+        return {};
+    }
+
+    const std::scoped_lock lock(mutex);
+
+    if (entries_arr.empty()) {
+        return {};
+    }
+
+    std::list<ImageEntryPtr> removed;
+
+    for (const auto& path : sources) {
+        // get absolute path
+        std::filesystem::path abs_path;
+        if (ImageEntry::is_special(path)) {
+            abs_path = path;
+        } else {
+            try {
+                abs_path = std::filesystem::absolute(path).lexically_normal();
+            } catch (const std::filesystem::filesystem_error&) {
+                continue;
+            }
+        }
+
+        // remove entry
+        auto it = entries_map.find(abs_path);
+        if (it != entries_map.end()) {
+            Log::verbose("Remove image entry {}", abs_path.filename().string());
+            const ImageEntryPtr entry = it->second;
+            entry->removed = true;
+            entries_map.erase(it);
+            entries_arr[entry->index] = nullptr;
+            removed.emplace_back(entry);
+        }
+    }
+
+    if (!removed.empty()) {
+        std::erase_if(entries_arr, [](const ImageEntryPtr& entry) {
+            return !entry;
+        });
+        reindex();
+    }
+
+    return removed;
+}
+
 ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 {
     assert(entry);
