@@ -21,7 +21,11 @@ void Layout::update()
     if (!sel_entry) {
         sel_entry = first_entry;
     }
-    assert(!sel_entry->removed);
+    if (sel_entry->removed && !select(Right) && !select(Left)) {
+        sel_entry = nullptr;
+        scheme.clear();
+        return;
+    }
 
     columns = std::max(static_cast<size_t>(1),
                        window.width / (thumb_size + thumb_padding));
@@ -133,11 +137,11 @@ bool Layout::select(const Direction dir)
     switch (dir) {
         case Direction::First:
             next = il.get(nullptr, ImageList::Dir::First);
-            row = 0;
+            row = col = 0;
             break;
         case Direction::Last:
             next = il.get(nullptr, ImageList::Dir::Last);
-            row = 0;
+            row = col = 0;
             break;
         case Direction::Up:
             next = il.get(sel_entry, -static_cast<ssize_t>(columns));
@@ -177,21 +181,27 @@ bool Layout::select(const Direction dir)
 
     if (next == sel_entry) {
         next = nullptr;
-    }
-
-    if (next) {
+    } else if (next) {
         if (col < 0) {
             --row;
+            sel_col = columns - 1;
         } else if (std::cmp_greater_equal(col, columns)) {
             ++row;
+            sel_col = 0;
+        } else {
+            sel_col = col;
         }
+
         if (row < 0) {
             sel_row = 0;
         } else {
             sel_row = row;
         }
+
         sel_entry = next;
-        update();
+        if (!is_visible(next)) {
+            update();
+        }
     }
 
     return !!next;
@@ -231,6 +241,16 @@ ImageEntryPtr Layout::get_selected() const
 
 bool Layout::is_visible(const ImageEntryPtr& entry) const
 {
+    if (scheme.empty() || !entry ||
+        // when imagelist was changed but layout has not caught up yet
+        // (like when thumb loader finished during image removal)
+        //
+        // not checking all because update will happen shortly
+        // invalidating the results of this call anyway
+        scheme.front().img->removed || scheme.back().img->removed) {
+        return false;
+    }
+
     ImageList& il = ImageList::self();
     return il.distance(entry, scheme.front().img) <= 0 &&
         il.distance(entry, scheme.back().img) >= 0;

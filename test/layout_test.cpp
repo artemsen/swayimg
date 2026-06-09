@@ -126,23 +126,66 @@ TEST_F(LayoutTest, BaseScheme)
             ASSERT_EQ(it.row, 0UL);
         }
     }
+
+    // Test size larger than what can fit in the scheme
+    InitLayout(30);
+
+    ASSERT_EQ(layout.get_scheme()[0].img->path, "exec://0");
 }
 
 TEST_F(LayoutTest, SelectByImage)
 {
     InitLayout(30);
 
-    ASSERT_EQ(layout.get_scheme()[0].img->path, "exec://0");
-
     const Layout::Thumbnail* th = Select(5);
 
     ASSERT_TRUE(th);
     ASSERT_TRUE(th->img);
-    ASSERT_EQ(th->img, layout.get_selected());
+    ASSERT_EQ(th->img->index, layout.get_selected()->index);
     ASSERT_EQ(th->col, 0UL);
     ASSERT_EQ(th->row, 1UL);
 
     ASSERT_EQ(layout.get_scheme()[0].img->path, "exec://0");
+}
+
+TEST_F(LayoutTest, SelectByImageOffscreen)
+{
+    InitLayout(30);
+
+    const Layout::Thumbnail* th = Select(28);
+
+    ASSERT_TRUE(th);
+    ASSERT_TRUE(th->img);
+    ASSERT_EQ(th->img->index, layout.get_selected()->index);
+    ASSERT_EQ(th->col, 3UL);
+    ASSERT_EQ(th->row, 3UL);
+
+    ASSERT_EQ(layout.get_scheme().back().img->path, "exec://29");
+}
+
+TEST_F(LayoutTest, SelectByPoint)
+{
+    InitLayout(30);
+    const Layout::Thumbnail& th = layout.get_scheme()[5];
+    const ssize_t size = static_cast<ssize_t>(layout.get_thumb_size());
+
+    const std::vector<Point> offsets = {
+        { 0,        0        },
+        { size - 1, 0        },
+        { 0,        size - 1 },
+        { size - 1, size - 1 },
+        { 1,        1        },
+        { size / 2, size / 2 },
+    };
+
+    for (const auto offset : offsets) {
+        layout.select(th.pos + offset);
+
+        ASSERT_EQ(layout.get_scheme()[0].img->path, "exec://0");
+        ASSERT_EQ(layout.get_selected()->index, th.img->index);
+
+        Select(0);
+    }
 }
 
 TEST_F(LayoutTest, SelectFirstLast)

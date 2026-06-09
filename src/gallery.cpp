@@ -399,22 +399,19 @@ void Gallery::handle_imagelist(const ImageListEvent event,
         }
     }
 
-    if (event == ImageListEvent::Remove) {
-        for (const auto& entry : entries) {
-            if (entry == layout.get_selected()) {
-                if (!layout.select(Layout::Right) &&
-                    !layout.select(Layout::Left)) {
-                    Log::info("No more images to view, exit");
-                    Application::self().exit(0);
-                    return;
-                }
-                switch_current();
-                break;
-            }
+    if (event == ImageListEvent::Remove && layout.get_selected()->removed) {
+        layout.update(); // correct the selected entry and update the layout
+
+        if (!layout.get_selected()) {
+            Log::info("No more images to view, exit");
+            Application::self().exit(0);
+            return;
         }
+        switch_current();
+    } else {
+        layout.update();
     }
 
-    layout.update();
     clear_invisible_thumbnails();
     load_thumbnails();
 
@@ -591,8 +588,8 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
         const std::scoped_lock lock(mutex);
-        active.insert(entry);
         queue.erase(entry);
+        active.insert(entry);
     }
 
     const size_t thumb_size = layout.get_thumb_size();
@@ -615,7 +612,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     const std::scoped_lock lock(mutex);
     active.erase(entry);
-    if (pm) {
+    if (pm && !entry->removed) {
         cache.insert_or_assign(entry, pm);
         if (layout.is_visible(entry)) {
             Application::redraw();
