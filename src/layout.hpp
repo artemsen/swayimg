@@ -71,6 +71,7 @@ public:
 
     /**
      * Set currently selected thumbnail.
+     * Always reflows to keep the image in the center of attention.
      * @param image image entry to select
      */
     void select(const ImageEntryPtr& image);

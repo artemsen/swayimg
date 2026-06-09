@@ -199,6 +199,8 @@ bool Gallery::select(const Layout::Direction dir)
     if (!layout.select(dir)) {
         return false;
     }
+    clear_invisible_thumbnails();
+    load_thumbnails();
     switch_current();
     return true;
 }
@@ -209,11 +211,13 @@ void Gallery::reload()
     tpool.cancel();
     tpool.wait();
 
-    // clear cache
-    const std::scoped_lock lock(mutex);
-    cache.clear();
+    {
+        // clear cache
+        const std::scoped_lock lock(mutex);
+        cache.clear();
+    }
 
-    Application::redraw();
+    load_thumbnails();
 }
 
 void Gallery::set_thumb_aspect(const Aspect ratio)
@@ -319,8 +323,7 @@ void Gallery::activate(const ImageEntryPtr& entry, const Size& wnd)
 {
     AppMode::activate(entry, wnd);
     layout.set_window_size(wnd);
-    layout.select(entry);
-    switch_current();
+    set_current(entry);
 }
 
 void Gallery::deactivate()
@@ -337,18 +340,21 @@ ImageEntryPtr Gallery::get_current()
 bool Gallery::set_current(const ImageEntryPtr& entry)
 {
     layout.select(entry);
-    Application::redraw();
+    clear_invisible_thumbnails();
+    load_thumbnails();
+    switch_current();
     return true;
 }
 
 void Gallery::window_resize(const Size& wnd)
 {
     layout.set_window_size(wnd);
+    clear_invisible_thumbnails();
+    load_thumbnails();
 }
 
 void Gallery::window_redraw(Pixmap& wnd)
 {
-    layout.update();
     wnd.fill({ 0, 0, wnd.width(), wnd.height() }, clr_window);
 
     const ImageEntryPtr current = layout.get_selected();
@@ -366,9 +372,6 @@ void Gallery::window_redraw(Pixmap& wnd)
         }
     }
     draw(scheme[selected_scheme_idx], wnd);
-
-    load_thumbnails();
-    clear_invisible_thumbnails();
 }
 
 void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
@@ -412,6 +415,9 @@ void Gallery::handle_imagelist(const ImageListEvent event,
     }
 
     layout.update();
+    clear_invisible_thumbnails();
+    load_thumbnails();
+
     Application::redraw();
 }
 
