@@ -62,12 +62,12 @@ public:
             const size_t width = read_num(data, offset);
             const size_t height = read_num(data, offset);
 
-            // bits per pixel
-            size_t bpp;
+            // bits per channel
+            size_t bpc;
             if (fmt == Format::BitMap) {
-                bpp = 1;
+                bpc = 1;
             } else {
-                bpp = read_num(data, offset) <= 255 ? 24 : 48;
+                bpc = read_num(data, offset) <= 255 ? 1 : 2;
             }
 
             // skip space after number
@@ -89,14 +89,14 @@ public:
                     decode_pbm(px_data, enc, pm);
                     break;
                 case Format::GrayMap:
-                    decode_pgm(px_data, enc, bpp, pm);
+                    decode_pgm(px_data, enc, bpc, pm);
                     break;
                 case Format::PixMap:
-                    decode_ppm(px_data, enc, bpp, pm);
+                    decode_ppm(px_data, enc, bpc, pm);
                     break;
             }
 
-            image->format = format_desc(fmt, enc, bpp);
+            image->format = format_desc(fmt, enc, bpc);
             return image;
 
         } catch (std::out_of_range&) {
@@ -115,27 +115,27 @@ private:
      * Get PNM format description.
      * @param fmt PNM format
      * @param enc PNM encoding
-     * @param bpp bits per pixel
+     * @param bpc bits per channel
      * @return text description of PNM format
      */
     static std::string format_desc(const Format fmt, const Encoding enc,
-                                   const size_t bpp)
+                                   const size_t bpc)
     {
         std::string desc;
 
         switch (fmt) {
             case Format::BitMap:
-                desc = "PBM";
+                desc = "PBM 1bit";
                 break;
             case Format::GrayMap:
-                desc = "PGM";
+                desc = std::format("PGM {}bit ", bpc * 8);
                 break;
             case Format::PixMap:
-                desc = "PPM";
+                desc = std::format("PPM {}bit ", bpc * 8 * 3);
                 break;
         }
 
-        desc += std::format(" {}bit ", bpp);
+        desc += ' ';
 
         switch (fmt) {
             case Format::BitMap:
@@ -212,11 +212,11 @@ private:
     /**
      * Read pixel data from ASCII data buffer.
      * @param data data buffer
-     * @param bpp bits per pixel (24 or 48 only)
+     * @param bpc bits per channel
      * @return array with colors
      */
     static std::vector<argb_t::channel> read_plain(const Data& data,
-                                                   const size_t bpp)
+                                                   const size_t bpc)
     {
         std::vector<argb_t::channel> colors;
 
@@ -224,7 +224,7 @@ private:
         try {
             while (offset < data.size) {
                 size_t num = read_num(data, offset);
-                if (bpp > 24) {
+                if (bpc == 2) {
                     num >>= 8; // skip lower parts
                 }
                 colors.push_back(num);
@@ -239,15 +239,15 @@ private:
     /**
      * Read pixel data from binary data buffer.
      * @param data data buffer
-     * @param bpp bits per pixel (24 or 48 only)
+     * @param bpc bits per channel
      * @return array with colors
      */
     static std::vector<argb_t::channel> read_raw(const Data& data,
-                                                 const size_t bpp)
+                                                 const size_t bpc)
     {
         std::vector<argb_t::channel> colors;
 
-        if (bpp <= 24) {
+        if (bpc == 1) {
             colors.assign(data.data, data.data + data.size);
         } else {
             // skip lower parts
