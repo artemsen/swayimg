@@ -58,8 +58,9 @@ void AppMode::handle_imagelist(const ImageListEvent,
                                const std::list<ImageEntryPtr>&)
 {
     Text& text = Text::self();
+    const ImageEntryPtr& selected = get_current();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(get_current()->index + 1));
+                   selected ? std::to_string(selected->index + 1) : "");
     text.set_field(Text::FIELD_LIST_TOTAL,
                    std::to_string(ImageList::self().size()));
     text.update();
@@ -131,8 +132,9 @@ void AppMode::switch_current()
 
     // set window title
     Ui* ui = Application::self().get_ui();
-    const std::string title =
-        std::format("Swayimg: {}", current->path.filename().string());
+    const std::string title = current
+        ? std::format("Swayimg: {}", current->path.filename().string())
+        : "Swayimg";
     ui->set_title(title.c_str());
 
     // update text layer

@@ -687,6 +687,9 @@ void LuaEngine::bind_viewer_api(const char* name)
                      [this, ensure_active, mode]() {
                          ensure_active("get_image");
                          const ImagePtr image = mode->current_image();
+                         if (!image->entry) {
+                             return luabridge::LuaRef(lua_state);
+                         }
                          luabridge::LuaRef tbl = entry_to_table(*image->entry);
                          tbl["format"] = image->format;
                          tbl["frames"] = image->frames.size();
@@ -985,14 +988,14 @@ void LuaEngine::bind_gallery_api()
                          ensure_active("reload");
                          Gallery::self().reload();
                      })
-        .addFunction(
-            "get_image",
-            [this, ensure_active]() {
-                ensure_active("get_image");
-                luabridge::LuaRef table = entry_to_table(
-                    *Application::self().current_mode()->get_current());
-                return table;
-            })
+        .addFunction("get_image",
+                     [this, ensure_active]() {
+                         ensure_active("get_image");
+                         const ImageEntryPtr& entry =
+                             Gallery::self().get_current();
+                         return entry ? entry_to_table(*entry)
+                                      : luabridge::LuaRef(lua_state);
+                     })
         .addFunction(
             "set_aspect",
             [this](const std::string& name) {

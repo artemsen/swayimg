@@ -191,6 +191,9 @@ void Text::reset(const ImagePtr& image)
     assert(image);
 
     reset(image->entry);
+    if (!image->entry) {
+        return;
+    }
 
     set_field(FIELD_IMAGE_FORMAT, image->format);
     set_field(FIELD_FRAME_TOTAL, std::to_string(image->frames.size()));
@@ -206,16 +209,20 @@ void Text::reset(const ImagePtr& image)
 
 void Text::reset(const ImageEntryPtr& entry)
 {
-    assert(entry);
-
     fields.clear();
+
+    set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
+
+    if (!entry) {
+        update();
+        return;
+    }
 
     set_field(FIELD_FILE_PATH, entry->path);
     set_field(FIELD_FILE_DIR, entry->path.parent_path().filename());
     set_field(FIELD_FILE_NAME, entry->path.filename());
     set_field(FIELD_FILE_SIZE, std::to_string(entry->size));
     set_field(FIELD_LIST_INDEX, std::to_string(entry->index + 1));
-    set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
 
     // human readable file size
     const size_t mib = 1024 * 1024;

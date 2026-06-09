@@ -816,14 +816,13 @@ This function adds a file to the image list and then opens it in the viewer.
 ### swayimg.viewer.get_image
 
 ```lua
-swayimg.viewer.get_image() -> swayimg.image
+swayimg.viewer.get_image()
 ```
 
 Get information about currently displayed image.
 
 Since 5.0.
-
-@_return_ - Currently displayed image
+@return swayimg.image? # Currently displayed image
 
 ### swayimg.viewer.reload
 
@@ -1461,14 +1460,13 @@ This function adds a file to the image list and then opens it in the viewer.
 ### swayimg.slideshow.get_image
 
 ```lua
-swayimg.slideshow.get_image() -> swayimg.image
+swayimg.slideshow.get_image()
 ```
 
 Get information about currently displayed image.
 
 Since 5.0.
-
-@_return_ - Currently displayed image
+@return swayimg.image? # Currently displayed image
 
 ### swayimg.slideshow.reload
 
@@ -2091,14 +2089,13 @@ Since 5.3.
 ### swayimg.gallery.get_image
 
 ```lua
-swayimg.gallery.get_image() -> swayimg.entry
+swayimg.gallery.get_image()
 ```
 
 Get information about currently selected image entry.
 
 Since 5.0.
-
-@_return_ - Currently selected image entry
+@return swayimg.entry? # Currently selected image entry
 
 ### swayimg.gallery.set_aspect
 

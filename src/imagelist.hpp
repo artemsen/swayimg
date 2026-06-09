@@ -27,14 +27,20 @@ public:
 
     /** Direction of the next entry. */
     enum class Dir : uint8_t {
-        First,      ///< First entry in the list
         Last,       ///< Last entry in the list
+        First,      ///< First entry in the list
         Next,       ///< Next entry
         Prev,       ///< Previous entry
         NextParent, ///< Next entry with different parent
         PrevParent, ///< Previous entry with different parent
         Random      ///< Random entry
     };
+
+    constexpr static bool is_forward(const Dir dir)
+    {
+        return dir == Dir::Last || dir == Dir::Next || dir == Dir::NextParent ||
+            dir == Dir::Random;
+    }
 
     /**
      * Get global instance of image list.

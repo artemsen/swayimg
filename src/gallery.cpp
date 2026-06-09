@@ -7,7 +7,6 @@
 #include "application.hpp"
 #include "imageformat.hpp"
 #include "imagelist.hpp"
-#include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
 #include "text.hpp"
@@ -352,6 +351,9 @@ void Gallery::window_redraw(Pixmap& wnd)
     wnd.fill({ 0, 0, wnd.width(), wnd.height() }, clr_window);
 
     const ImageEntryPtr current = layout.get_selected();
+    if (!current) {
+        return;
+    }
 
     const auto& scheme = layout.get_scheme();
     size_t selected_scheme_idx = 0;
@@ -396,14 +398,17 @@ void Gallery::handle_imagelist(const ImageListEvent event,
         }
     }
 
-    if (event == ImageListEvent::Remove) {
+    if (event == ImageListEvent::Create) {
+        if (!layout.get_selected()) {
+            layout.select(entries.front());
+            switch_current();
+        }
+    } else if (event == ImageListEvent::Remove) {
         for (const auto& entry : entries) {
             if (entry == layout.get_selected()) {
                 if (!layout.select(Layout::Right) &&
                     !layout.select(Layout::Left)) {
-                    Log::info("No more images to view, exit");
-                    Application::self().exit(0);
-                    return;
+                    layout.select(nullptr);
                 }
                 switch_current();
                 break;
@@ -518,37 +523,38 @@ void Gallery::load_thumbnails()
 
     ImageList& il = ImageList::self();
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
+    if (scheme.empty()) {
+        return;
+    }
 
-    const size_t index_first = scheme.front().img->index;
-    const size_t index_last = scheme.back().img->index;
+    size_t index_min = scheme.front().img->index;
+    size_t index_max = scheme.back().img->index;
 
-    size_t preload_counter = preload ? cache_size : 0;
+    if (preload) {
+        size_t extra = cache_size;
+        const size_t min = index_min < extra / 2 ? 0 : index_min - extra / 2;
+        extra -= index_min - min; // number of scheduled preceeding entries
+
+        const size_t max = std::min(il.size(), index_max + extra);
+        extra -= max - index_max; // number of scheduled following entries
+
+        index_min = min < extra ? 0 : min - extra; // following overflow
+        index_max = max;
+    }
 
     ImageEntryPtr fwd = layout.get_selected();
-    ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
+    ImageEntryPtr bwd = il.get(fwd, ImageList::Dir::Prev);
 
-    while (fwd || back) {
+    while (fwd || bwd) {
         if (fwd) {
             queue_thumbnail(fwd);
-            fwd = il.get(fwd, ImageList::Dir::Next);
-            if (fwd && fwd->index > index_last) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    fwd = nullptr;
-                }
-            }
+            fwd = fwd->index < index_max ? il.get(fwd, ImageList::Dir::Next)
+                                         : nullptr;
         }
-        if (back) {
-            queue_thumbnail(back);
-            back = il.get(back, ImageList::Dir::Prev);
-            if (back && back->index < index_first) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    back = nullptr;
-                }
-            }
+        if (bwd) {
+            queue_thumbnail(bwd);
+            bwd = index_min < bwd->index ? il.get(bwd, ImageList::Dir::Prev)
+                                         : nullptr;
         }
     }
 }

@@ -315,6 +315,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
     if (entries_arr.empty()) {
         return nullptr;
     }
+
     if (dir == Dir::First) {
         return entries_arr.front();
     }
@@ -322,14 +323,14 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
         return entries_arr.back();
     }
 
-    assert(from);
+    if (!from) {
+        return is_forward(dir) ? entries_arr.front() : entries_arr.back();
+    }
 
     // handle removed entry: return nearest entry
     if (from->removed) {
         size_t index = from->index;
-        if (index &&
-            (dir == ImageList::Dir::Prev ||
-             dir == ImageList::Dir::PrevParent)) {
+        if (index && !is_forward(dir)) {
             --index;
         }
         index = std::min(index, entries_arr.size() - 1);

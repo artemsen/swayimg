@@ -58,10 +58,6 @@ int Application::run()
     // initialize filemon and image list
     FsMonitor::self().initialize();
     const ImageEntryPtr first_entry = il_initialize();
-    if (!first_entry) {
-        Log::info("Image list is empty, exit");
-        return 0;
-    }
 
     // initialize UI
     ui.reset(ui_init_wayland());

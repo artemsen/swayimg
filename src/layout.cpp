@@ -19,6 +19,10 @@ void Layout::update()
     const ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
 
     if (!sel_entry) {
+        if (!first_entry) {
+            scheme.clear();
+            return;
+        }
         sel_entry = first_entry;
     }
     assert(!sel_entry->removed);
@@ -118,12 +122,16 @@ void Layout::select(const ImageEntryPtr& image)
 {
     sel_entry = image;
     sel_row = std::numeric_limits<size_t>::max();
-    update();
+    if (image) {
+        update();
+    }
 }
 
 bool Layout::select(const Direction dir)
 {
-    assert(sel_entry);
+    if (!sel_entry) {
+        return false;
+    }
 
     ImageList& il = ImageList::self();
     ImageEntryPtr next = nullptr;
@@ -231,6 +239,10 @@ ImageEntryPtr Layout::get_selected() const
 
 bool Layout::is_visible(const ImageEntryPtr& entry) const
 {
+    if (scheme.empty()) {
+        return false;
+    }
+
     ImageList& il = ImageList::self();
     return il.distance(entry, scheme.front().img) <= 0 &&
         il.distance(entry, scheme.back().img) >= 0;

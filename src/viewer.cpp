@@ -18,6 +18,9 @@
 /** Max scale factor. */
 constexpr double MAX_SCALE = 100.0;
 
+// defaults set on mode creation
+const ImagePtr Viewer::EMPTY_IMAGE = std::make_shared<Image>();
+
 Viewer& Viewer::self()
 {
     static Viewer singleton;
@@ -26,6 +29,11 @@ Viewer& Viewer::self()
 
 Viewer::Viewer()
 {
+    if (EMPTY_IMAGE->frames.empty()) {
+        EMPTY_IMAGE->frames.emplace_back(Image::Frame {});
+    }
+    image = EMPTY_IMAGE;
+
     // default settings
 
     auto_center = true;
@@ -182,20 +190,14 @@ Viewer::Viewer()
 
 bool Viewer::open(const ImageList::Dir dir)
 {
-    assert(image);
-
-    const bool forward = dir == ImageList::Dir::Last ||
-        dir == ImageList::Dir::Random || dir == ImageList::Dir::Next ||
-        dir == ImageList::Dir::NextParent;
     const ImageEntryPtr next = ImageList::self().get(image->entry, dir);
-    return open(next, forward);
+    return open(next, ImageList::is_forward(dir));
 }
 
 bool Viewer::reload()
 {
     if (!open(image->entry, true) && !open(image->entry, false)) {
-        Log::info("No more images to view, exit");
-        Application::self().exit(0);
+        set_image(EMPTY_IMAGE);
         return false;
     }
     return true;
@@ -461,11 +463,11 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     window_size = wnd;
 
-    if (image && image->entry == entry && !entry->removed) {
+    if (image->entry == entry && entry && !entry->removed) {
         set_image(image); // reinit state without reloading image
     } else if (!open(entry, true) && !open(entry, false)) {
-        Log::info("No more images to view, exit");
-        Application::self().exit(0);
+        set_image(EMPTY_IMAGE);
+        Log::verbose("No selected image");
     }
 }
 
@@ -481,7 +483,7 @@ void Viewer::deactivate()
 
 ImageEntryPtr Viewer::get_current()
 {
-    return image ? image->entry : nullptr;
+    return image->entry;
 }
 
 bool Viewer::set_current(const ImageEntryPtr& entry)
@@ -490,7 +492,7 @@ bool Viewer::set_current(const ImageEntryPtr& entry)
 
     ImagePtr new_image = nullptr;
 
-    if (image && image->entry == entry) {
+    if (image->entry == entry) {
         // remove entry from cache in reloading mode
         const std::scoped_lock lock(image_pool.mutex);
         image_pool.history.get(entry);
@@ -567,7 +569,7 @@ void Viewer::window_redraw(Pixmap& wnd)
     }
 
     // mark icon
-    if (image->entry->mark) {
+    if (image->entry && image->entry->mark) {
         const ssize_t margin = 10;
         const ssize_t x = static_cast<ssize_t>(wnd.width()) -
             static_cast<ssize_t>(Resource::mark.width()) - margin;
@@ -607,6 +609,9 @@ void Viewer::handle_imagelist(const ImageListEvent event,
     switch (event) {
         case ImageListEvent::Create:
             preloader_start();
+            if (!image->entry) {
+                set_current(entries.front());
+            }
             break;
         case ImageListEvent::Modify:
             for (const auto& entry : entries) {
@@ -617,11 +622,8 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             }
             break;
         case ImageListEvent::Remove:
-            if (image->entry->removed && !open(image->entry, true) &&
-                !open(image->entry, false)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
-                return;
+            if (image->entry && image->entry->removed) {
+                reload();
             }
             break;
     }
@@ -631,13 +633,11 @@ bool Viewer::open(const ImageEntryPtr& entry, const bool forward)
 {
     ImageList& il = ImageList::self();
 
+    const ImageList::Dir dir =
+        forward ? ImageList::Dir::Next : ImageList::Dir::Prev;
     ImageEntryPtr next = entry;
-    if (!next) {
-        next = il.get(nullptr,
-                      forward ? ImageList::Dir::First : ImageList::Dir::Last);
-    } else if (next->removed) {
-        next =
-            il.get(next, forward ? ImageList::Dir::Next : ImageList::Dir::Prev);
+    if (!next || next->removed) {
+        next = il.get(next, dir);
     }
 
     while (next) {
@@ -646,21 +646,19 @@ bool Viewer::open(const ImageEntryPtr& entry, const bool forward)
         }
         next = il.remove(next, forward);
 
+        // start a new loop
         if (!next && imagelist_loop && il.size() > 0) {
-            // reshuffle random on new loop
             if (il.get_order() == ImageList::Order::Random) {
+                // reshuffle on new loop
                 il.set_order(ImageList::Order::Random);
-            }
 
-            // start new loop
-            const ImageList::Dir dir =
-                forward ? ImageList::Dir::First : ImageList::Dir::Last;
-            next = il.get(nullptr, dir);
+                next = il.get(nullptr, dir);
 
-            // avoid opening the same image in random mode
-            if (next && next == entry &&
-                il.get_order() == ImageList::Order::Random) {
-                next = il.get(next, ImageList::Dir::Next);
+                if (next == entry) { // ensure a new result
+                    next = il.get(next, ImageList::Dir::Next);
+                }
+            } else {
+                next = il.get(nullptr, dir);
             }
         }
     }
@@ -669,7 +667,7 @@ bool Viewer::open(const ImageEntryPtr& entry, const bool forward)
 
 void Viewer::set_image(const ImagePtr& img)
 {
-    if (image && image != img) {
+    if (image != img) {
         // put current image to history
         const std::scoped_lock lock(image_pool.mutex);
         image_pool.history.put(image);
@@ -732,6 +730,10 @@ void Viewer::update_text(const TextUpdate what) const
 
     if (what == TextUpdate::All) {
         text.reset(image);
+    }
+
+    if (!image->entry) {
+        return;
     }
 
     if (what == TextUpdate::All || what == TextUpdate::Frame) {

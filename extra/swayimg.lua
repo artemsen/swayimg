@@ -479,7 +479,7 @@ function swayimg.viewer.open(path) end
 
 ---Get information about currently displayed image.
 ---Since 5.0.
----@return swayimg.image # Currently displayed image
+---@return swayimg.image? # Currently displayed image
 function swayimg.viewer.get_image() end
 
 ---Reload current image.
@@ -673,7 +673,7 @@ function swayimg.gallery.reload() end
 
 ---Get information about currently selected image entry.
 ---Since 5.0.
----@return swayimg.entry # Currently selected image entry
+---@return swayimg.entry? # Currently selected image entry
 function swayimg.gallery.get_image() end
 
 ---Set thumbnail aspect ratio.
