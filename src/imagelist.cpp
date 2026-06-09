@@ -12,7 +12,6 @@
 #include <fstream>
 #include <mutex>
 #include <random>
-#include <set>
 #include <string>
 
 /**
@@ -191,7 +190,7 @@ ImageList::remove(const std::vector<std::filesystem::path>& paths)
     }
 
     std::list<ImageEntryPtr> removed;
-    std::set<size_t> removed_indexes;
+    std::unordered_set<size_t> removed_indexes;
 
     const std::scoped_lock lock(mutex);
     for (const auto& path : paths) {
@@ -212,28 +211,15 @@ ImageList::remove(const std::vector<std::filesystem::path>& paths)
         entries_arr.erase(entries_arr.begin() + removed.front()->index);
         reindex(removed.front()->index);
     } else if (!removed.empty()) {
-        if (entries_map.empty()) {
-            entries_arr.clear();
-            return removed;
-        }
-
-        // shift and reindex - move the entries directly to their new position
-        removed_indexes.insert(entries_arr.size());
-        auto it = removed_indexes.begin();
-        const auto end = removed_indexes.end();
-        size_t from = *it;
-        size_t to = from;
-
-        while (++it != end) {
-            from = from + 1;
-
-            for (const size_t next = *it; from < next; ++from, ++to) {
-                entries_arr[to] = entries_arr[from];
-                entries_arr[to]->index = to;
+        const std::vector<ImageEntryPtr> original = entries_arr;
+        entries_arr = {};
+        entries_arr.reserve(original.size() - removed.size());
+        for (const auto& entry : original) {
+            if (!removed_indexes.contains(entry->index)) {
+                entries_arr.emplace_back(entry);
             }
         }
-        entries_arr.erase(entries_arr.begin() + entries_map.size(),
-                          entries_arr.end());
+        reindex();
     }
 
     return removed;
