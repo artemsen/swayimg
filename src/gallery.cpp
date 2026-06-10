@@ -7,7 +7,6 @@
 #include "application.hpp"
 #include "imageformat.hpp"
 #include "imagelist.hpp"
-#include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"
 #include "text.hpp"
@@ -317,7 +316,7 @@ void Gallery::activate(const ImageEntryPtr& entry, const Size& wnd)
 {
     AppMode::activate(entry, wnd);
     layout.set_window_size(wnd);
-    layout.select(entry);
+    layout.select(entry && !entry->removed ? entry : nullptr);
     switch_current();
 }
 

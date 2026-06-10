@@ -490,12 +490,10 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     window_size = wnd;
 
-    if (entry) {
-        if (image && image->entry == entry && !entry->removed) {
-            set_image(image); // reinit state without reloading image
-        } else if (!open(entry, true) && !open(entry, false)) {
-            set_image(nullptr);
-        }
+    if (entry && image && image->entry == entry && !entry->removed) {
+        set_image(image); // reinit state without reloading image
+    } else if (!entry || (!open(entry, true) && !open(entry, false))) {
+        set_image(nullptr);
     }
 }
 
