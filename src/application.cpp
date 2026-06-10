@@ -55,9 +55,15 @@ int Application::run()
         lua.execute(sparams.lua_script);
     }
 
+    active_mode = sparams.mode.value_or(Mode::Viewer);
+
     // initialize filemon and image list
     FsMonitor::self().initialize();
     const ImageEntryPtr first_entry = il_initialize();
+    if (!first_entry && active_mode != Mode::Gallery) {
+        Log::warning("Image list is empty, exit");
+        return 1;
+    }
 
     // initialize UI
     ui.reset(ui_init_wayland());
@@ -79,9 +85,12 @@ int Application::run()
     Gallery::self().initialize();
 
     initialized = true;
-    active_mode = sparams.mode.value_or(Mode::Viewer);
 
     current_mode()->activate(first_entry, ui->get_window_size());
+    if (active_mode != Mode::Gallery && !current_mode()->get_current()) {
+        Log::warning("Failed to open any images, exit");
+        return 1;
+    }
     ui->run();
 
     if (on_init_complete) {
