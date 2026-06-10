@@ -289,10 +289,14 @@ function swayimg.imagelist.get() end
 ---@param paths string|string[] Paths to add
 function swayimg.imagelist.add(paths) end
 
----Remove entries from the image list.
+---Remove specified entries from the image list.
 ---Since 5.0.
 ---@param paths string|string[] Paths to remove
 function swayimg.imagelist.remove(paths) end
+
+---Clear the image list.
+---Since 5.3.
+function swayimg.imagelist.clear() end
 
 ---Set sort order of the image list.
 ---Since 5.0.

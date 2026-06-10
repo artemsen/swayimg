@@ -58,7 +58,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.imagelist.size](#swayimgimagelistsize): Get number of entries in the image list
   * [swayimg.imagelist.get](#swayimgimagelistget): Get list of all entries in the image list
   * [swayimg.imagelist.add](#swayimgimagelistadd): Add entries to the image list
-  * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove entries from the image list
+  * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove specified entries from the image list
+  * [swayimg.imagelist.clear](#swayimgimagelistclear): Clear the image list
   * [swayimg.imagelist.set_order](#swayimgimagelistset_order): Set sort order of the image list
   * [swayimg.imagelist.enable_reverse](#swayimgimagelistenable_reverse): Enable or disable reverse order
   * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
@@ -519,11 +520,21 @@ Since 5.0.
 swayimg.imagelist.remove(paths: string|string[])
 ```
 
-Remove entries from the image list.
+Remove specified entries from the image list.
 
 Since 5.0.
 
 @_param_ `paths` - Paths to remove
+
+### swayimg.imagelist.clear
+
+```lua
+swayimg.imagelist.clear()
+```
+
+Clear the image list.
+
+Since 5.3.
 
 ### swayimg.imagelist.set_order
 
