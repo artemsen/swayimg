@@ -136,25 +136,17 @@ bool Layout::select(const Direction dir)
 
     switch (dir) {
         case Direction::First:
-            next = il.get(nullptr, ImageList::Dir::First);
             row = col = 0;
             break;
         case Direction::Last:
-            next = il.get(nullptr, ImageList::Dir::Last);
             row = col = 0;
             break;
         case Direction::Up:
             next = il.get(sel_entry, -static_cast<ssize_t>(columns));
-            if (!next) {
-                next = il.get(nullptr, ImageList::Dir::First);
-            }
             --row;
             break;
         case Direction::Down:
             next = il.get(sel_entry, columns);
-            if (!next) {
-                next = il.get(nullptr, ImageList::Dir::Last);
-            }
             ++row;
             break;
         case Direction::Left:
@@ -167,16 +159,16 @@ bool Layout::select(const Direction dir)
             break;
         case Direction::PgUp:
             next = il.get(sel_entry, -static_cast<ssize_t>(columns * rows));
-            if (!next) {
-                next = il.get(nullptr, ImageList::Dir::First);
-            }
             break;
         case Direction::PgDown:
             next = il.get(sel_entry, columns * rows);
-            if (!next) {
-                next = il.get(nullptr, ImageList::Dir::Last);
-            }
             break;
+    }
+
+    if (!next) {
+        next = il.get(nullptr,
+                      is_forward(dir) ? ImageList::Dir::Last
+                                      : ImageList::Dir::First);
     }
 
     if (next == sel_entry) {

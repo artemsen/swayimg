@@ -21,6 +21,11 @@ public:
         PgDown,
     };
 
+    static constexpr bool is_forward(const Direction dir)
+    {
+        return dir == Last || dir == Down || dir == Right || dir == PgDown;
+    }
+
     /** Thumbnail instance with coordinates. */
     struct Thumbnail {
         ImageEntryPtr img; ///< Image entry
