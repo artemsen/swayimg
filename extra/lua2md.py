@@ -147,7 +147,7 @@ class LuaParam:
 class LuaReturn:
     """Lua function return description."""
 
-    RE = re.compile(r'^---\s*@return\s+([\w\[\]\.]+|{.*})\s+#\s+(.*)$')
+    RE = re.compile(r'^---\s*@return\s+([\w\[\]\.\|]+|{.*})\s+#\s+(.*)$')
 
     def __new__(cls, line):
         match = LuaReturn.RE.search(line)
