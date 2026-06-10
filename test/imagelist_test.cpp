@@ -678,8 +678,8 @@ test_bulk_remove(const size_t n,
 
     size_t i = 0;
     for (const auto& entry : il.get_all()) {
-        EXPECT_EQ(entry.index, i);
-        EXPECT_EQ(entry.path, paths[i]);
+        EXPECT_EQ(entry->index, i);
+        EXPECT_EQ(entry->path, paths[i]);
         ++i;
     }
     EXPECT_EQ(i, paths.size());

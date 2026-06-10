@@ -108,7 +108,7 @@ public:
      * Get array with copy of all entries in the list.
      * @return array with all entries
      */
-    std::vector<ImageEntry> get_all();
+    std::vector<ImageEntryPtr> get_all();
 
     /**
      * Get next entry from the list.

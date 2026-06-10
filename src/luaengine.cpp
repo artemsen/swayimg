@@ -512,7 +512,7 @@ void LuaEngine::bind_imagelist_api()
                              luabridge::newTable(lua_state);
                          size_t index = 0;
                          for (const auto& it : ImageList::self().get_all()) {
-                             table[++index] = entry_to_table(it);
+                             table[++index] = entry_to_table(*it);
                          }
                          return table;
                      })
@@ -550,12 +550,12 @@ void LuaEngine::bind_imagelist_api()
                      })
         .addFunction("clear",
                      []() {
-                         const std::vector<ImageEntry> entries =
+                         const std::vector<ImageEntryPtr> entries =
                              ImageList::self().get_all();
                          std::vector<std::filesystem::path> paths;
                          paths.reserve(entries.size());
-                         for (const auto& it : ImageList::self().get_all()) {
-                             paths.push_back(it.path);
+                         for (const auto& it : entries) {
+                             paths.push_back(it->path);
                          }
                          Application::self().remove_images(paths);
                      })

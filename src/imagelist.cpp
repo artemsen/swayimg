@@ -295,17 +295,10 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
     return it == entries_map.end() ? nullptr : it->second;
 }
 
-std::vector<ImageEntry> ImageList::get_all()
+std::vector<ImageEntryPtr> ImageList::get_all()
 {
     const std::shared_lock lock(mutex);
-
-    std::vector<ImageEntry> copy;
-    copy.reserve(entries_arr.size());
-    for (const auto& it : entries_arr) {
-        copy.emplace_back(*it);
-    }
-
-    return copy;
+    return entries_arr;
 }
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
