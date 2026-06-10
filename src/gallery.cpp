@@ -515,9 +515,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 void Gallery::load_thumbnails()
 {
     const std::scoped_lock lock(mutex);
-
     tpool.cancel();
-    queue.clear();
 
     ImageList& il = ImageList::self();
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
@@ -588,8 +586,9 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
         const std::scoped_lock lock(mutex);
-        queue.erase(entry);
-        active.insert(entry);
+        if (cache.contains(entry) || entry->removed) {
+            return;
+        }
     }
 
     const size_t thumb_size = layout.get_thumb_size();
@@ -605,15 +604,18 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
                                            aspect == Aspect::Fill);
         if (!pm) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
-        } else if (pstore_enable) {
+            return;
+        }
+
+        if (pstore_enable) {
             pstore_save(entry, pm);
         }
     }
 
     const std::scoped_lock lock(mutex);
-    active.erase(entry);
-    if (pm && !entry->removed) {
+    if (!entry->removed) {
         cache.insert_or_assign(entry, pm);
+
         if (layout.is_visible(entry)) {
             Application::redraw();
         }
@@ -622,10 +624,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
 void Gallery::queue_thumbnail(const ImageEntryPtr& entry)
 {
-    if (!get_thumbnail(entry) &&   // not yet loaded
-        !queue.contains(entry) &&  // not queued
-        !active.contains(entry)) { // not currently loading
-        queue.insert(entry);
+    if (!cache.contains(entry)) {
         tpool.add([this, entry]() {
             load_thumbnail(entry);
         });

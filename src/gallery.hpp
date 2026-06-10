@@ -10,7 +10,6 @@
 #include "threadpool.hpp"
 
 #include <mutex>
-#include <set>
 #include <unordered_map>
 
 class Gallery : public AppMode {
@@ -229,8 +228,6 @@ private:
      * ImageEntry caching allows determining the current index of the thumbnail.
      */
     std::unordered_map<ImageEntryPtr, Pixmap> cache;
-    std::set<ImageEntryPtr> queue;  ///< Loading queue
-    std::set<ImageEntryPtr> active; ///< Currently loading
 
     bool preload;      ///< Enable/disable preloading of invisible thumbnails
     size_t cache_size; ///< Max number of thumbnails in cache
