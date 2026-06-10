@@ -1083,15 +1083,8 @@ void LuaEngine::bind_appmode_api(const char* name)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
         .addFunction("mark_image",
-                     [](const std::optional<bool>& state) {
-                         const ImageEntryPtr entry =
-                             Application::self().current_mode()->get_current();
-                         if (state.has_value()) {
-                             entry->mark = state.value();
-                         } else {
-                             entry->mark = !entry->mark;
-                         }
-                         Application::redraw();
+                     [appmode](const std::optional<bool>& state) {
+                         appmode->mark_current(state);
                      })
         .addFunction("set_mark_color",
                      [appmode](const uint32_t color) {

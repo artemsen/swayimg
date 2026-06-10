@@ -12,6 +12,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <optional>
 #include <vector>
 
 class AppMode {
@@ -128,6 +129,12 @@ public:
      * @param cb event handler
      */
     void subscribe_image_switch(const ImageSwitchNotify& cb);
+
+    /**
+     * Set or toggle mark state for current image.
+     * @param state state to set, `std::nullopt` to toggle
+     */
+    void mark_current(const std::optional<bool>& state);
 
     /**
      * Set mark icon color.

@@ -75,6 +75,21 @@ void AppMode::subscribe_image_switch(const ImageSwitchNotify& cb)
     img_switch.push_back(cb);
 }
 
+void AppMode::mark_current(const std::optional<bool>& state)
+{
+    const ImageEntryPtr entry = get_current();
+    if (entry) {
+        if (state.has_value()) {
+            entry->mark = state.value();
+        } else {
+            entry->mark = !entry->mark;
+        }
+        if (is_active()) {
+            Application::redraw();
+        }
+    }
+}
+
 void AppMode::set_mark_color(const argb_t& color)
 {
     mark_color = color;

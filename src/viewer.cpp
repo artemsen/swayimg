@@ -71,9 +71,7 @@ Viewer::Viewer()
         Application::self().set_mode(Application::Mode::Slideshow);
     });
     bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        const ImageEntryPtr entry = get_current();
-        entry->mark = !entry->mark;
-        Application::redraw();
+        mark_current(std::nullopt);
     });
     bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
         Ui* ui = Application::get_ui();
