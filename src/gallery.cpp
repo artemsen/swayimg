@@ -194,7 +194,7 @@ bool Gallery::select(const Layout::Direction dir)
 {
     assert(is_active());
 
-    if (!layout.select(dir)) {
+    if (!layout.get_selected() || !layout.select(dir)) {
         return false;
     }
     switch_current();
@@ -351,6 +351,16 @@ void Gallery::window_redraw(Pixmap& wnd)
 
     const ImageEntryPtr current = layout.get_selected();
 
+    if (!current) {
+        // draw placeholder
+        const ssize_t x = static_cast<ssize_t>(wnd.width() / 2) -
+            static_cast<ssize_t>(Resource::file.width() / 2);
+        const ssize_t y = static_cast<ssize_t>(wnd.height() / 2) -
+            static_cast<ssize_t>(Resource::file.height() / 2);
+        wnd.mask(Resource::file, { x, y }, mark_color);
+        return;
+    }
+
     const auto& scheme = layout.get_scheme();
     size_t selected_scheme_idx = 0;
     size_t i = 0;
@@ -394,18 +404,18 @@ void Gallery::handle_imagelist(const ImageListEvent event,
         }
     }
 
-    if (event == ImageListEvent::Remove) {
-        for (const auto& entry : entries) {
-            if (entry == layout.get_selected()) {
-                if (!layout.select(Layout::Right) &&
-                    !layout.select(Layout::Left)) {
-                    Log::info("No more images to view, exit");
-                    Application::self().exit(0);
-                    return;
-                }
-                switch_current();
-                break;
+    if (event == ImageListEvent::Create) {
+        if (!layout.get_selected()) {
+            layout.select(entries.front());
+            switch_current();
+        }
+    } else if (event == ImageListEvent::Remove) {
+        const ImageEntryPtr entry = layout.get_selected();
+        if (entry && entry->removed) {
+            if (!layout.select(Layout::Right) && !layout.select(Layout::Left)) {
+                layout.select(nullptr);
             }
+            switch_current();
         }
     }
 

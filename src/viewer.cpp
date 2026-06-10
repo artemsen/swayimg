@@ -180,53 +180,64 @@ Viewer::Viewer()
 
 bool Viewer::open(const ImageList::Dir dir)
 {
-    assert(image);
-
-    const bool forward = dir == ImageList::Dir::Last ||
-        dir == ImageList::Dir::Random || dir == ImageList::Dir::Next ||
-        dir == ImageList::Dir::NextParent;
-    const ImageEntryPtr next = ImageList::self().get(image->entry, dir);
-    return open(next, forward);
+    if (image) {
+        const bool forward = dir == ImageList::Dir::Last ||
+            dir == ImageList::Dir::Random || dir == ImageList::Dir::Next ||
+            dir == ImageList::Dir::NextParent;
+        const ImageEntryPtr next = ImageList::self().get(image->entry, dir);
+        return open(next, forward);
+    }
+    return false;
 }
 
 bool Viewer::reload()
 {
-    if (!open(image->entry, true) && !open(image->entry, false)) {
-        Log::info("No more images to view, exit");
-        Application::self().exit(0);
-        return false;
+    if (image && !open(image->entry, true) && !open(image->entry, false)) {
+        set_image(nullptr); // no more images to view
     }
-    return true;
+    return !!image;
 }
 
 size_t Viewer::next_frame()
 {
-    size_t index = frame_index + 1;
-    if (index >= image->frames.size()) {
-        index = 0;
+    if (image) {
+        size_t index = frame_index + 1;
+        if (index >= image->frames.size()) {
+            index = 0;
+        }
+        set_frame(index);
+        return index;
     }
-    set_frame(index);
-    return index;
+    return 0;
 }
 
 size_t Viewer::prev_frame()
 {
-    const size_t index =
-        frame_index ? frame_index - 1 : image->frames.size() - 1;
-    set_frame(index);
-    return index;
+    if (image) {
+        const size_t index =
+            frame_index ? frame_index - 1 : image->frames.size() - 1;
+        set_frame(index);
+        return index;
+    }
+    return 0;
 }
 
 void Viewer::export_frame(const std::filesystem::path& path) const
 {
-    const Pixmap& pm = image->frames[frame_index].pm;
-    if (!pm.save(path)) {
-        Text::self().set_status("Failed to export image");
+    if (image) {
+        const Pixmap& pm = image->frames[frame_index].pm;
+        if (!pm.save(path)) {
+            Text::self().set_status("Failed to export image");
+        }
     }
 }
 
 void Viewer::set_scale(const Scale sc)
 {
+    if (!image) {
+        return;
+    }
+
     const Pixmap& pm = image->frames[frame_index].pm;
     const double ratio_w = static_cast<double>(window_size.width) / pm.width();
     const double ratio_h =
@@ -260,6 +271,10 @@ void Viewer::set_scale(const Scale sc)
 
 void Viewer::set_scale(const double sc, const Point& preserve)
 {
+    if (!image) {
+        return;
+    }
+
     double new_scale = sc;
 
     // check scale limits
@@ -292,16 +307,22 @@ void Viewer::set_scale(const double sc, const Point& preserve)
 
 void Viewer::reset()
 {
-    if (std::holds_alternative<Scale>(default_scale)) {
-        set_scale(std::get<Scale>(default_scale));
-    } else {
-        set_scale(std::get<double>(default_scale));
+    if (image) {
+        if (std::holds_alternative<Scale>(default_scale)) {
+            set_scale(std::get<Scale>(default_scale));
+        } else {
+            set_scale(std::get<double>(default_scale));
+        }
+        set_position(default_pos);
     }
-    set_position(default_pos);
 }
 
 void Viewer::set_position(const Position pos)
 {
+    if (!image) {
+        return;
+    }
+
     const Pixmap& pm = image->frames[frame_index].pm;
     const Size scaled = static_cast<Size>(pm) * scale;
 
@@ -349,45 +370,55 @@ void Viewer::set_position(const Position pos)
 
 void Viewer::set_position(const Point& pos)
 {
-    position = pos;
-    fixup_position();
+    if (image) {
+        position = pos;
+        fixup_position();
+    }
 }
 
 void Viewer::flip_vertical()
 {
-    image->flip_vertical();
-    Application::redraw();
+    if (image) {
+        image->flip_vertical();
+        Application::redraw();
+    }
 }
 
 void Viewer::flip_horizontal()
 {
-    image->flip_horizontal();
-    Application::redraw();
+    if (image) {
+        image->flip_horizontal();
+        Application::redraw();
+    }
 }
 
 void Viewer::rotate(const size_t angle)
 {
     assert(angle == 90 || angle == 180 || angle == 270);
 
-    image->rotate(angle);
+    if (image) {
+        image->rotate(angle);
 
-    const Pixmap& pm = image->frames[frame_index].pm;
-    const ssize_t diff =
-        static_cast<ssize_t>(pm.width()) - static_cast<ssize_t>(pm.height());
-    const ssize_t shift = (scale * diff) / 2;
-    position.x -= shift;
-    position.y += shift;
+        const Pixmap& pm = image->frames[frame_index].pm;
+        const ssize_t diff = static_cast<ssize_t>(pm.width()) -
+            static_cast<ssize_t>(pm.height());
+        const ssize_t shift = (scale * diff) / 2;
+        position.x -= shift;
+        position.y += shift;
 
-    update_text(TextUpdate::Frame);
+        update_text(TextUpdate::Frame);
 
-    fixup_position();
+        fixup_position();
+    }
 }
 
 void Viewer::enable_animation(const bool enable)
 {
-    const size_t duration = image->frames[frame_index].duration;
-    animation = enable && image->frames.size() > 1 && duration;
-    animation_timer.reset(enable ? duration : 0, 0);
+    if (image) {
+        const size_t duration = image->frames[frame_index].duration;
+        animation = enable && image->frames.size() > 1 && duration;
+        animation_timer.reset(enable ? duration : 0, 0);
+    }
 }
 
 void Viewer::set_window_background(const argb_t& color)
@@ -459,11 +490,12 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     window_size = wnd;
 
-    if (image && image->entry == entry && !entry->removed) {
-        set_image(image); // reinit state without reloading image
-    } else if (!open(entry, true) && !open(entry, false)) {
-        Log::info("No more images to view, exit");
-        Application::self().exit(0);
+    if (entry) {
+        if (image && image->entry == entry && !entry->removed) {
+            set_image(image); // reinit state without reloading image
+        } else if (!open(entry, true) && !open(entry, false)) {
+            set_image(nullptr);
+        }
     }
 }
 
@@ -523,11 +555,26 @@ bool Viewer::set_current(const ImageEntryPtr& entry)
 void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
-    fixup_position();
+    if (image) {
+        fixup_position();
+    }
 }
 
 void Viewer::window_redraw(Pixmap& wnd)
 {
+    if (!image) {
+        // draw placeholder
+        const argb_t* bkg = std::get_if<argb_t>(&window_bkg);
+        wnd.fill({ 0, 0, wnd.width(), wnd.height() },
+                 bkg ? *bkg : argb_t(argb_t::max, 0, 0, 0));
+        const ssize_t x = static_cast<ssize_t>(wnd.width() / 2) -
+            static_cast<ssize_t>(Resource::file.width() / 2);
+        const ssize_t y = static_cast<ssize_t>(wnd.height() / 2) -
+            static_cast<ssize_t>(Resource::file.height() / 2);
+        wnd.mask(Resource::file, { x, y }, mark_color);
+        return;
+    }
+
     const Pixmap& pm = image->frames[frame_index].pm;
     const Rectangle imgr = { position, static_cast<Size>(pm) * scale };
 
@@ -604,22 +651,26 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 
     switch (event) {
         case ImageListEvent::Create:
-            preloader_start();
+            if (!image) {
+                open(entries.front(), true);
+            } else {
+                preloader_start();
+            }
             break;
         case ImageListEvent::Modify:
-            for (const auto& entry : entries) {
-                if (entry == image->entry) {
-                    reload();
-                    break;
+            if (image) {
+                for (const auto& entry : entries) {
+                    if (entry == image->entry) {
+                        reload();
+                        break;
+                    }
                 }
             }
             break;
         case ImageListEvent::Remove:
-            if (image->entry->removed && !open(image->entry, true) &&
+            if (image && image->entry->removed && !open(image->entry, true) &&
                 !open(image->entry, false)) {
-                Log::info("No more images to view, exit");
-                Application::self().exit(0);
-                return;
+                set_image(nullptr); // no more images to view
             }
             break;
     }
@@ -675,6 +726,12 @@ void Viewer::set_image(const ImagePtr& img)
 
     image = img;
     frame_index = 0;
+
+    if (!image) {
+        switch_current();
+        return;
+    }
+
     const Pixmap& pm = image->frames[0].pm;
 
     const bool is_animation =
@@ -717,15 +774,18 @@ void Viewer::set_image(const ImagePtr& img)
 
 void Viewer::set_frame(const size_t index)
 {
-    assert(index < image->frames.size());
-
-    frame_index = index;
-    update_text(TextUpdate::Frame);
-    Application::redraw();
+    if (image) {
+        assert(index < image->frames.size());
+        frame_index = index;
+        update_text(TextUpdate::Frame);
+        Application::redraw();
+    }
 }
 
 void Viewer::update_text(const TextUpdate what) const
 {
+    assert(image);
+
     Text& text = Text::self();
 
     if (what == TextUpdate::All) {
@@ -777,6 +837,8 @@ ssize_t Viewer::fixup_position(const ssize_t pos, const size_t sz,
 
 void Viewer::fixup_position()
 {
+    assert(image);
+
     const Pixmap& pm = image->frames[frame_index].pm;
     const Size scaled = static_cast<Size>(pm) * scale;
 
@@ -806,12 +868,17 @@ void Viewer::fixup_position()
 
 void Viewer::preloader_work()
 {
+    assert(image);
+
     ImageList& il = ImageList::self();
     ImagePtr current_image = image;
     ImageEntryPtr last_entry = image->entry;
     size_t counter = 0;
 
     while (!image_pool.stop && counter < image_pool.preload.capacity) {
+        if (!image) {
+            break; // no current image in viewer
+        }
         if (current_image != image) {
             // current image has changed, restart preloading
             current_image = image;

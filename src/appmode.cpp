@@ -7,8 +7,6 @@
 #include "application.hpp"
 #include "imagelist.hpp"
 
-#include <format>
-
 AppMode::AppMode()
 {
     mark_color = { argb_t::max, 0x80, 0x80, 0x80 };
@@ -57,9 +55,10 @@ bool AppMode::handle_signal(const InputSignal& input)
 void AppMode::handle_imagelist(const ImageListEvent,
                                const std::list<ImageEntryPtr>&)
 {
+    const ImageEntryPtr entry = get_current();
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   std::to_string(get_current()->index + 1));
+                   entry ? std::to_string(entry->index + 1) : "");
     text.set_field(Text::FIELD_LIST_TOTAL,
                    std::to_string(ImageList::self().size()));
     text.update();
@@ -142,16 +141,26 @@ void AppMode::bind_input(const InputSignal& input, const InputCallback& handler)
 
 void AppMode::switch_current()
 {
-    const ImageEntryPtr current = get_current();
+    const ImageEntryPtr entry = get_current();
 
     // set window title
     Ui* ui = Application::self().get_ui();
-    const std::string title =
-        std::format("Swayimg: {}", current->path.filename().string());
+    std::string title = "Swayimg: ";
+    if (entry) {
+        title += entry->path.filename().string();
+    } else {
+        title += "no image";
+    }
     ui->set_title(title.c_str());
 
     // update text layer
-    Text::self().reset(current);
+    Text& text = Text::self();
+    if (entry) {
+        text.reset(entry);
+    } else {
+        text.clear();
+        text.set_status("Image list is empty");
+    }
 
     // call handlers
     for (auto& it : img_switch) {

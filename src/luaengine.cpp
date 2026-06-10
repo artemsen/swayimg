@@ -683,23 +683,26 @@ void LuaEngine::bind_viewer_api(const char* name)
                              mode->set_current(entry);
                          }
                      })
-        .addFunction("get_image",
-                     [this, ensure_active, mode]() {
-                         ensure_active("get_image");
-                         const ImagePtr image = mode->current_image();
-                         luabridge::LuaRef tbl = entry_to_table(*image->entry);
-                         tbl["format"] = image->format;
-                         tbl["frames"] = image->frames.size();
-                         tbl["width"] = image->frames[0].pm.width();
-                         tbl["height"] = image->frames[0].pm.height();
-                         const luabridge::LuaRef meta =
-                             luabridge::newTable(lua_state);
-                         for (const auto& [key, value] : image->meta) {
-                             meta[key] = value;
-                         }
-                         tbl["meta"] = meta;
-                         return tbl;
-                     })
+        .addFunction(
+            "get_image",
+            [this, ensure_active, mode]() {
+                ensure_active("get_image");
+                const ImagePtr image = mode->current_image();
+                if (!image) {
+                    return luabridge::LuaRef(lua_state, luabridge::LuaNil {});
+                }
+                luabridge::LuaRef tbl = entry_to_table(*image->entry);
+                tbl["format"] = image->format;
+                tbl["frames"] = image->frames.size();
+                tbl["width"] = image->frames[0].pm.width();
+                tbl["height"] = image->frames[0].pm.height();
+                const luabridge::LuaRef meta = luabridge::newTable(lua_state);
+                for (const auto& [key, value] : image->meta) {
+                    meta[key] = value;
+                }
+                tbl["meta"] = meta;
+                return tbl;
+            })
         .addFunction("reload",
                      [ensure_active, mode]() {
                          ensure_active("reload");
@@ -855,6 +858,10 @@ void LuaEngine::bind_viewer_api(const char* name)
                      [this, ensure_active, mode, name](const std::string& key,
                                                        const std::string& val) {
                          ensure_active("set_meta");
+                         const ImagePtr image = mode->current_image();
+                         if (!image) {
+                             return;
+                         }
                          // remove "meta." from key
                          std::string meta_key;
                          const std::string meta_prefix =
@@ -869,7 +876,6 @@ void LuaEngine::bind_viewer_api(const char* name)
                                          NS_SWAYIMG, name);
                          }
                          // update meta in image
-                         const ImagePtr image = mode->current_image();
                          if (val.empty()) {
                              image->meta.erase(meta_key);
                          } else {
@@ -985,14 +991,17 @@ void LuaEngine::bind_gallery_api()
                          ensure_active("reload");
                          Gallery::self().reload();
                      })
-        .addFunction(
-            "get_image",
-            [this, ensure_active]() {
-                ensure_active("get_image");
-                luabridge::LuaRef table = entry_to_table(
-                    *Application::self().current_mode()->get_current());
-                return table;
-            })
+        .addFunction("get_image",
+                     [this, ensure_active]() {
+                         ensure_active("get_image");
+                         const ImageEntryPtr entry =
+                             Application::self().current_mode()->get_current();
+                         if (entry) {
+                             return entry_to_table(*entry);
+                         }
+                         return luabridge::LuaRef(lua_state,
+                                                  luabridge::LuaNil {});
+                     })
         .addFunction(
             "set_aspect",
             [this](const std::string& name) {

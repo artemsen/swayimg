@@ -320,8 +320,14 @@ public:
     static void on_data_source_send(void*, struct wl_data_source*,
                                     const char* mime_type, int32_t fd)
     {
+        const Fd file(fd);
+
         const ImageEntryPtr entry =
             Application::self().current_mode()->get_current();
+        if (!entry) {
+            return;
+        }
+
         const std::string path = entry->path.string();
 
         int err_code = 0;
@@ -342,8 +348,6 @@ public:
         if (err_code) {
             Log::error(err_code, "Unable to write file");
         }
-
-        close(fd);
     }
 
     static void on_data_source_cancelled(void*, struct wl_data_source*) {}

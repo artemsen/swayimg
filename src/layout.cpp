@@ -17,7 +17,10 @@ void Layout::update()
 
     ImageList& il = ImageList::self();
     const ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
-
+    if (!first_entry) {
+        scheme.clear();
+        return;
+    }
     if (!sel_entry) {
         sel_entry = first_entry;
     }
@@ -231,6 +234,8 @@ ImageEntryPtr Layout::get_selected() const
 
 bool Layout::is_visible(const ImageEntryPtr& entry) const
 {
+    assert(entry);
+
     ImageList& il = ImageList::self();
     return il.distance(entry, scheme.front().img) <= 0 &&
         il.distance(entry, scheme.back().img) >= 0;
