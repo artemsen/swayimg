@@ -13,6 +13,7 @@
 #include <clocale>
 #include <cstdlib>
 #include <format>
+#include <fstream>
 #include <functional>
 #include <limits>
 #include <string>
@@ -180,13 +181,20 @@ int main(int argc, char* argv[])
 
     args.add('f', "from-file", "FILE", "load file list from file",
              [](const char* arg) {
-                 try {
-                     Application::self().sparams.from_file =
-                         std::filesystem::absolute(arg);
-                 } catch (const std::exception&) {
-                     Log::error("Invalid file path \"{}\"", arg);
+                 std::ifstream file(arg);
+                 if (!file.is_open()) {
+                     Log::error("Unable to open file {}", arg);
                      exit(EXIT_FAILURE);
                  }
+                 std::vector<std::filesystem::path>& sources =
+                     Application::self().sparams.sources;
+                 std::string line;
+                 while (std::getline(file, line)) {
+                     if (!line.empty()) {
+                         sources.emplace_back(line);
+                     }
+                 }
+                 file.close();
              });
 
 #ifdef HAVE_COMPOSITOR
@@ -221,7 +229,13 @@ int main(int argc, char* argv[])
 
     args.add('c', "config", "FILE", "load config from FILE",
              [](const char* arg) {
-                 Application::self().sparams.config = arg;
+                 try {
+                     Application::self().sparams.config =
+                         std::filesystem::absolute(arg).lexically_normal();
+                 } catch (const std::filesystem::filesystem_error&) {
+                     Log::error("Invalid file path \"{}\"", arg);
+                     exit(EXIT_FAILURE);
+                 }
              });
 
     args.add('e', "execute", "LUA", "execute Lua script on start",

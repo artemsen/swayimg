@@ -219,28 +219,19 @@ void Application::subscribe_window_resize(const WindowResizeNotify& cb)
 ImageEntryPtr Application::il_initialize()
 {
     ImageList& il = ImageList::self();
-
-    ImageEntryPtr first_entry = nullptr;
+    std::list<ImageEntryPtr> added;
 
     const Log::PerfTimer timer;
 
-    if (!sparams.from_file.empty()) {
-        first_entry = il.load(sparams.from_file);
-    }
-    if (!sparams.sources.empty()) {
-        std::list<ImageEntryPtr> added;
+    if (sparams.sources.empty()) {
+        added = il.add(std::vector<std::filesystem::path> { "." });
+    } else {
         if (sparams.sources.size() == 1 && sparams.sources[0] == "-") {
             added = il.add(
                 std::vector<std::filesystem::path> { ImageEntry::SRC_STDIN });
         } else {
             added = il.add(sparams.sources);
         }
-        first_entry = added.empty() ? nullptr : added.front();
-    }
-    if (sparams.from_file.empty() && sparams.sources.empty()) {
-        const std::list<ImageEntryPtr> added =
-            il.add(std::vector<std::filesystem::path> { "." });
-        first_entry = added.empty() ? nullptr : added.front();
     }
 
     if (Log::verbose_enable()) {
@@ -251,7 +242,7 @@ ImageEntryPtr Application::il_initialize()
     // files to the list on every call after startup
     il.adjacent = false;
 
-    return first_entry;
+    return added.empty() ? nullptr : added.front();
 }
 
 Ui* Application::ui_init_wayland()

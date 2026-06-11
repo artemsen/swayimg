@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <fstream>
 #include <mutex>
 #include <random>
 #include <string>
@@ -149,28 +148,6 @@ ImageList::ImageList()
     , adjacent(Defaults::imglist::adjacent)
     , fsmon(Defaults::imglist::fsmon)
 {
-}
-
-ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)
-{
-    std::ifstream file(list_file);
-    if (!file.is_open()) {
-        Log::error("Unable to open file {}", list_file.string());
-        return nullptr;
-    }
-
-    std::vector<std::filesystem::path> sources;
-
-    std::string line;
-    while (std::getline(file, line)) {
-        if (!line.empty()) {
-            sources.emplace_back(line);
-        }
-    }
-    file.close();
-
-    std::list<ImageEntryPtr> added = add(sources);
-    return added.empty() ? nullptr : added.front();
 }
 
 std::list<ImageEntryPtr>

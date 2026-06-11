@@ -158,9 +158,8 @@ private:
 public:
     /** Application startup parameters. */
     struct StartupParams {
-        std::filesystem::path config;    ///< Lua config file to load
-        std::string lua_script;          ///< Lua script to start
-        std::filesystem::path from_file; ///< Load image list from file
+        std::filesystem::path config;               ///< Lua config file to load
+        std::string lua_script;                     ///< Lua script to start
         std::vector<std::filesystem::path> sources; ///< Image list
         std::optional<Mode> mode;                   ///< Initial mode
         InputMouse dnd;                    ///< Mouse used for drag-and-drop

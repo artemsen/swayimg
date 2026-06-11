@@ -104,33 +104,6 @@ TEST(ImageListTest, LoadNotExists)
                     .empty());
 }
 
-TEST(ImageListTest, LoadFile)
-{
-    ImageList il;
-
-    ImageEntryPtr entry = il.load(TEST_DATA_DIR "/filelist.txt");
-    ASSERT_TRUE(entry);
-    ASSERT_EQ(il.size(), 3UL);
-
-    entry = il.get(nullptr, ImageList::Dir::First);
-    ASSERT_TRUE(entry);
-    EXPECT_FALSE(entry->removed);
-    EXPECT_EQ(entry->index, 0UL);
-    EXPECT_EQ(entry->path, "exec://1");
-
-    entry = il.get(entry, ImageList::Dir::Next);
-    ASSERT_TRUE(entry);
-    EXPECT_FALSE(entry->removed);
-    EXPECT_EQ(entry->index, 1UL);
-    EXPECT_EQ(entry->path, "exec://2 ");
-
-    entry = il.get(entry, ImageList::Dir::Next);
-    ASSERT_TRUE(entry);
-    EXPECT_FALSE(entry->removed);
-    EXPECT_EQ(entry->index, 2UL);
-    EXPECT_EQ(entry->path, "exec://3\t");
-}
-
 TEST(ImageListTest, AddDir)
 {
     ImageList il;

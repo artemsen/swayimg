@@ -46,13 +46,6 @@ public:
     ImageList();
 
     /**
-     * Load image list from text file.
-     * @param list_file path to the file to load
-     * @return first entry from source list
-     */
-    ImageEntryPtr load(const std::filesystem::path& list_file);
-
-    /**
      * Add all images in specified sources.
      * @param sources list of sources to load
      * @return list of added entries in source order
