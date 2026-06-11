@@ -4,13 +4,13 @@
 
 #include "font.hpp"
 
+#include "defaults.hpp"
 #include "log.hpp"
 
 #include <fontconfig/fontconfig.h>
 
 #include <memory>
 
-constexpr const std::string DEFAULT_FONT = "monospace"; // default font face
 constexpr const char FALLBACK_CHR = '?'; // character used for absent glyphs
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
@@ -95,6 +95,13 @@ private:
 };
 
 static FreeTypeLib ft_lib;
+
+Font::Font()
+    : ft_face(nullptr)
+    , size(Defaults::text::size)
+    , scale(1.0)
+{
+}
 
 Font::~Font()
 {
@@ -211,7 +218,10 @@ std::wstring Font::to_wide(const std::string& text)
 
 Pixmap Font::render(const std::string& text)
 {
-    if (text.empty() || (!ft_face && !load(DEFAULT_FONT))) {
+    if (text.empty()) {
+        return {};
+    }
+    if (!ft_face && !load(std::string(Defaults::text::font))) {
         return {};
     }
 

@@ -14,6 +14,7 @@ public:
      */
     static Slideshow& self();
 
+    /** Constructor. */
     Slideshow();
 
     // app mode interface implementation
@@ -22,7 +23,7 @@ public:
     void deactivate() override;
 
 public:
-    size_t duration = 5000; ///< Image display time (ms)
+    size_t duration; ///< Image display time (ms)
 
 private:
     FdTimer timer; ///< Slideshow timer

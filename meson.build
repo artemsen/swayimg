@@ -275,6 +275,7 @@ endif
 sources = [
     'src/application.cpp',
     'src/appmode.cpp',
+    'src/defaults.cpp',
     'src/fdevent.cpp',
     'src/font.cpp',
     'src/fsmonitor.cpp',

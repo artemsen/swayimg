@@ -17,6 +17,7 @@
 /** Font render. */
 class Font {
 public:
+    Font();
     ~Font();
 
     /**
@@ -87,8 +88,7 @@ private:
     static std::wstring to_wide(const std::string& text);
 
 private:
-    FT_Face ft_face = nullptr; ///< Font face instance
-
-    size_t size = 24;   ///< Font size in pixels
-    double scale = 1.0; ///< Font scale
+    FT_Face ft_face; ///< Font face instance
+    size_t size;     ///< Font size in pixels
+    double scale;    ///< Font scale
 };

@@ -128,6 +128,9 @@ public:
      */
     static FormatFactory& self();
 
+    /** Constructor. */
+    FormatFactory();
+
     /**
      * Load image.
      * @param entry image entry to load
@@ -172,8 +175,8 @@ public:
     [[nodiscard]] std::string list() const;
 
 public:
-    bool fix_orientation = true; ///< Fix orientation by EXIF
-    bool embedded_thumb = true;  ///< Use embedded thumbnails
+    bool fix_orientation; ///< Fix orientation by EXIF
+    bool embedded_thumb;  ///< Use embedded thumbnails
 
 private:
     std::vector<ImageFormat*> formats; ///< Format handlers

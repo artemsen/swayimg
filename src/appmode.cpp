@@ -7,12 +7,6 @@
 #include "application.hpp"
 #include "imagelist.hpp"
 
-AppMode::AppMode()
-{
-    mark_color = { argb_t::max, 0x80, 0x80, 0x80 };
-    pinch_factor = 1.0;
-}
-
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
     Text& text = Text::self();

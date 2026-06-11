@@ -5,6 +5,7 @@
 #include "imageformat.hpp"
 
 #include "buildconf.hpp"
+#include "defaults.hpp"
 #include "log.hpp"
 #include "render.hpp"
 
@@ -327,6 +328,12 @@ FormatFactory& FormatFactory::self()
 {
     static FormatFactory singleton;
     return singleton;
+}
+
+FormatFactory::FormatFactory()
+    : fix_orientation(Defaults::img::fix_orientation)
+    , embedded_thumb(Defaults::img::embedded_thumb)
+{
 }
 
 void FormatFactory::add(ImageFormat* fmt)

@@ -5,6 +5,7 @@
 #include "viewer.hpp"
 
 #include "application.hpp"
+#include "defaults.hpp"
 #include "imageformat.hpp"
 #include "log.hpp"
 #include "render.hpp"
@@ -25,157 +26,36 @@ Viewer& Viewer::self()
 }
 
 Viewer::Viewer()
+    : auto_center(Defaults::viewer::auto_center)
+    , imagelist_loop(Defaults::viewer::imagelist_loop)
+    , default_scale(Defaults::viewer::scale)
+    , default_pos(Defaults::viewer::position)
+    , scale(1.0)
+    , window_bkg(Defaults::viewer::window_bkg)
+    , tr_chessboard(Defaults::viewer::tr_chessboard)
+    , tr_cbsize(Defaults::viewer::tr_cbsize)
+    , tr_cbcolor { Defaults::viewer::tr_cbcolor0,
+                   Defaults::viewer::tr_cbcolor1 }
+    , tr_bgcolor(Defaults::viewer::tr_bgcolor)
+    , animation(Defaults::viewer::animation)
 {
-    // default settings
+    image_pool.preload.capacity = Defaults::viewer::preload;
+    image_pool.history.capacity = Defaults::viewer::history;
 
-    auto_center = true;
-    imagelist_loop = true;
-    scale = 1.0;
+    pinch_factor = Defaults::viewer::pinch_factor;
+    mark_color = Defaults::viewer::mark_color;
 
-    default_scale = Scale::Optimal;
-    default_pos = Position::Center;
+    text_scheme[static_cast<size_t>(Text::TopLeft)].assign(
+        Defaults::viewer::text_scheme_tl.begin(),
+        Defaults::viewer::text_scheme_tl.end());
+    text_scheme[static_cast<size_t>(Text::TopRight)].assign(
+        Defaults::viewer::text_scheme_tr.begin(),
+        Defaults::viewer::text_scheme_tr.end());
+    text_scheme[static_cast<size_t>(Text::BottomLeft)].assign(
+        Defaults::viewer::text_scheme_bl.begin(),
+        Defaults::viewer::text_scheme_bl.end());
 
-    window_bkg = argb_t(argb_t::max, 0, 0, 0);
-
-    tr_chessboard = true;
-    tr_cbsize = 20;
-    tr_cbcolor[0] = { argb_t::max, 0x33, 0x33, 0x33 };
-    tr_cbcolor[1] = { argb_t::max, 0x4c, 0x4c, 0x4c };
-    tr_bgcolor = { argb_t::max, 0, 0, 0 };
-
-    animation = true;
-
-    text_scheme[static_cast<size_t>(Text::TopLeft)] = {
-        "File:\t{name}",
-        "Format:\t{format}",
-        "File size:\t{sizehr}",
-        "File time:\t{time}",
-        "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
-        "EXIF camera:\t{meta.Exif.Image.Model}"
-    };
-    text_scheme[static_cast<size_t>(Text::TopRight)] = {
-        "Image:\t{list.index} of {list.total}",
-        "Frame:\t{frame.index} of {frame.total}",
-        "Size:\t{frame.width}x{frame.height}"
-    };
-    text_scheme[static_cast<size_t>(Text::BottomLeft)] = { "Scale: {scale}" };
-
-    // default key bindings: general management
-    bind_input(InputKeyboard { XKB_KEY_Escape, KEYMOD_NONE }, []() {
-        Application::self().exit(0);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Return, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Gallery);
-    });
-    bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Slideshow);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        mark_current(std::nullopt);
-    });
-    bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
-        Ui* ui = Application::get_ui();
-        ui->set_fullscreen(!ui->get_fullscreen());
-    });
-    bind_input(InputKeyboard { XKB_KEY_a, KEYMOD_NONE }, []() {
-        bool& antialiasing = Render::self().antialiasing;
-        antialiasing = !antialiasing;
-        Application::redraw();
-    });
-    // image transform
-    bind_input(InputKeyboard { XKB_KEY_bracketleft, KEYMOD_NONE }, [this]() {
-        rotate(270);
-    });
-    bind_input(InputKeyboard { XKB_KEY_bracketright, KEYMOD_NONE }, [this]() {
-        rotate(90);
-    });
-    bind_input(InputKeyboard { XKB_KEY_m, KEYMOD_NONE }, [this]() {
-        flip_vertical();
-    });
-    bind_input(InputKeyboard { XKB_KEY_m, KEYMOD_SHIFT }, [this]() {
-        flip_horizontal();
-    });
-    // text layer
-    bind_input(InputKeyboard { XKB_KEY_t, KEYMOD_NONE }, []() {
-        Text& text = Text::self();
-        if (text.is_visible()) {
-            text.hide();
-        } else {
-            text.show();
-        }
-    });
-    // next/prev image
-    bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_NONE }, [this]() {
-        open(ImageList::Dir::Next);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Prior, KEYMOD_NONE }, [this]() {
-        open(ImageList::Dir::Prev);
-    });
-    // next/prev frame
-    bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_SHIFT }, [this]() {
-        enable_animation(false);
-        next_frame();
-    });
-    bind_input(InputKeyboard { XKB_KEY_Prior, KEYMOD_SHIFT }, [this]() {
-        enable_animation(false);
-        prev_frame();
-    });
-    // scale
-    bind_input(InputKeyboard { XKB_KEY_equal, KEYMOD_NONE }, [this]() {
-        set_scale(scale + scale / 10.0);
-    });
-    bind_input(InputKeyboard { XKB_KEY_plus, KEYMOD_SHIFT }, [this]() {
-        set_scale(scale + scale / 10.0);
-    });
-    bind_input(InputKeyboard { XKB_KEY_minus, KEYMOD_NONE }, [this]() {
-        set_scale(scale - scale / 10.0);
-    });
-    bind_input(InputKeyboard { XKB_KEY_BackSpace, KEYMOD_NONE }, [this]() {
-        reset();
-    });
-    // image position
-    bind_input(InputKeyboard { XKB_KEY_Left, KEYMOD_NONE }, [this]() {
-        set_position(get_position() +
-                     Point { static_cast<ssize_t>(window_size.width / 10), 0 });
-    });
-    bind_input(InputKeyboard { XKB_KEY_Right, KEYMOD_NONE }, [this]() {
-        set_position(
-            get_position() +
-            Point { -static_cast<ssize_t>(window_size.width / 10), 0 });
-    });
-    bind_input(InputKeyboard { XKB_KEY_Up, KEYMOD_NONE }, [this]() {
-        set_position(
-            get_position() +
-            Point { 0, static_cast<ssize_t>(window_size.height / 10) });
-    });
-    bind_input(InputKeyboard { XKB_KEY_Down, KEYMOD_NONE }, [this]() {
-        set_position(
-            get_position() +
-            Point { 0, -static_cast<ssize_t>(window_size.height / 10) });
-    });
-    // mouse
-    bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_NONE }, [this]() {
-        set_position(get_position() + Point { 0, -20 });
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_DOWN, KEYMOD_NONE }, [this]() {
-        set_position(get_position() + Point { 0, 20 });
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_LEFT, KEYMOD_NONE }, [this]() {
-        set_position(get_position() + Point { -20, 0 });
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_RIGHT, KEYMOD_NONE }, [this]() {
-        set_position(get_position() + Point { 20, 0 });
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_CTRL }, [this]() {
-        set_scale(scale + scale / 10.0,
-                  Application::self().get_ui()->get_mouse());
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_DOWN, KEYMOD_CTRL }, [this]() {
-        set_scale(scale - scale / 10.0,
-                  Application::self().get_ui()->get_mouse());
-    });
-
-    bind_image_drag(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE });
+    Defaults::viewer::bind_inputs(this);
 }
 
 bool Viewer::open(const ImageList::Dir dir)

@@ -53,6 +53,7 @@ public:
      */
     static Viewer& self();
 
+    /** Constructor. */
     Viewer();
 
     /**
@@ -319,7 +320,7 @@ public:
     std::variant<double, Scale> default_scale; ///< Default image scale
     Position default_pos;                      ///< Default image position
 
-private:
+protected:
     ImagePtr image; ///< Currently shown image
     Point position; ///< Image position on the window
     double scale;   ///< Current scale factor of the image

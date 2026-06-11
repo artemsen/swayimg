@@ -29,8 +29,6 @@ public:
     /** Notification handler that is called when the image is switched. */
     using ImageSwitchNotify = std::function<void()>;
 
-    AppMode();
-
     /**
      * Initialize mode instance.
      */

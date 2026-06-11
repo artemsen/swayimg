@@ -4,10 +4,17 @@
 
 #include "layout.hpp"
 
+#include "defaults.hpp"
 #include "imagelist.hpp"
 
 #include <cassert>
 #include <utility>
+
+Layout::Layout()
+    : thumb_size(Defaults::gallery::thumb_size)
+    , thumb_padding(Defaults::gallery::thumb_padding)
+{
+}
 
 void Layout::update()
 {

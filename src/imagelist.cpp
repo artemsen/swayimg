@@ -4,6 +4,7 @@
 
 #include "imagelist.hpp"
 
+#include "defaults.hpp"
 #include "fsmonitor.hpp"
 #include "log.hpp"
 
@@ -139,6 +140,15 @@ ImageList& ImageList::self()
 {
     static ImageList singleton;
     return singleton;
+}
+
+ImageList::ImageList()
+    : order(Defaults::imglist::order)
+    , reverse(Defaults::imglist::reverse)
+    , recursive(Defaults::imglist::recursive)
+    , adjacent(Defaults::imglist::adjacent)
+    , fsmon(Defaults::imglist::fsmon)
+{
 }
 
 ImageEntryPtr ImageList::load(const std::filesystem::path& list_file)

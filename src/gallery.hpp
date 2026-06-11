@@ -28,6 +28,7 @@ public:
      */
     static Gallery& self();
 
+    /** Constructor. */
     Gallery();
 
     /**

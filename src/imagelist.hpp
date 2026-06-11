@@ -42,6 +42,9 @@ public:
      */
     static ImageList& self();
 
+    /** Constructor. */
+    ImageList();
+
     /**
      * Load image list from text file.
      * @param list_file path to the file to load
@@ -202,11 +205,11 @@ private:
 
     std::shared_mutex mutex; ///< Image list mutex
 
-    Order order = Order::Numeric; ///< Image list order
-    bool reverse = false;         ///< Reverse order flag
+    Order order;  ///< Image list order
+    bool reverse; ///< Reverse order flag
 
 public:
-    bool recursive = false; ///< Read directories recursively
-    bool adjacent = false;  ///< Open adjacent files from the same directory
-    bool fsmon = true;      ///< FS monitor usage
+    bool recursive; ///< Read directories recursively
+    bool adjacent;  ///< Open adjacent files from the same directory
+    bool fsmon;     ///< FS monitor usage
 };

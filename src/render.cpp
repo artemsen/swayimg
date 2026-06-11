@@ -4,6 +4,8 @@
 
 #include "render.hpp"
 
+#include "defaults.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -777,6 +779,11 @@ Render& Render::self()
 {
     static Render singleton;
     return singleton;
+}
+
+Render::Render()
+    : antialiasing(Defaults::render::antialiasing)
+{
 }
 
 void Render::draw(Pixmap& dst, const Pixmap& src, const Point& pos,

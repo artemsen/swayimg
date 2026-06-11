@@ -5,6 +5,7 @@
 #include "application.hpp"
 
 #include "buildconf.hpp"
+#include "defaults.hpp"
 #include "fsmonitor.hpp"
 #include "gallery.hpp"
 #include "imagelist.hpp"
@@ -36,6 +37,11 @@ Application& Application::self()
 
 Application::Application()
 {
+    sparams.use_overlay = Defaults::app::use_overlay;
+    sparams.decoration = Defaults::app::decoration;
+    sparams.cursor_hide = Defaults::app::cursor_hide;
+    sparams.dnd = { InputMouse::BUTTON_RIGHT, KEYMOD_NONE };
+
 #ifdef HAVE_COMPOSITOR
     // defaults for people with Sway compositor
     const Compositor compositor;
@@ -252,7 +258,7 @@ Ui* Application::ui_init_wayland()
 {
 #ifdef HAVE_WAYLAND
     if (!sparams.app_id.has_value()) {
-        sparams.app_id = "swayimg";
+        sparams.app_id = Defaults::app::app_id;
     }
 
 #ifdef HAVE_COMPOSITOR
@@ -291,7 +297,7 @@ Ui* Application::ui_init_wayland()
     if (sparams.fullscreen.has_value()) {
         wayland->fullscreen = sparams.fullscreen.value();
     }
-    if (!wayland->initialize(sparams.app_id.value_or("swayimg"))) {
+    if (!wayland->initialize(sparams.app_id.value_or(Defaults::app::app_id))) {
         delete wayland;
         wayland = nullptr;
     }

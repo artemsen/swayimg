@@ -5,6 +5,7 @@
 #include "text.hpp"
 
 #include "application.hpp"
+#include "defaults.hpp"
 #include "imagelist.hpp"
 
 #include <algorithm>
@@ -18,23 +19,17 @@ Text& Text::self()
 }
 
 Text::Text()
+    : enable(Defaults::text::enable)
+    , spacing(Defaults::text::spacing)
+    , padding(Defaults::text::padding)
+    , foreground(Defaults::text::foreground)
+    , background(Defaults::text::background)
+    , shadow(Defaults::text::shadow)
 {
-    // default settings
-
-    enable = true;
-
-    overall_tm.delay = 5000;
+    overall_tm.delay = Defaults::text::overall;
     overall_tm.show = true;
-
-    status_tm.delay = 3000;
+    status_tm.delay = Defaults::text::status;
     status_tm.show = true;
-
-    spacing = 0;
-    padding = 10;
-
-    foreground = { 0xff, 0xcc, 0xcc, 0xcc };
-    background = { 0x00, 0x00, 0x00, 0x00 };
-    shadow = { 0xd0, 0x00, 0x00, 0x00 };
 }
 
 void Text::initialize()

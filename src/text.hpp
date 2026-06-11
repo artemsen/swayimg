@@ -45,6 +45,7 @@ public:
     static constexpr const char* FIELD_FRAME_HEIGHT = "frame.height";
     static constexpr const char* FIELD_META = "meta";
 
+    /** Constructor. */
     Text();
 
     /**

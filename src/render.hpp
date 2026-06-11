@@ -15,6 +15,9 @@ public:
      */
     static Render& self();
 
+    /** Constructor. */
+    Render();
+
     /**
      * Put one scaled pixmap on another (ARGB or RGB underlays).
      * @param dst destination pixmap
@@ -48,13 +51,7 @@ public:
     void mirror_background(Pixmap& pm, const Rectangle& preserve);
 
 public:
-    /** Flag to use anti-aliasing. */
-    bool antialiasing =
-#ifdef NDEBUG
-        true;
-#else
-        false;
-#endif // NDEBUG
+    bool antialiasing; ///< Flag to use anti-aliasing
 
 private:
     ThreadPool tpool; ///< Thread pool used for multithreaded rendering

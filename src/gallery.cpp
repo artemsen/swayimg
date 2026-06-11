@@ -5,6 +5,7 @@
 #include "gallery.hpp"
 
 #include "application.hpp"
+#include "defaults.hpp"
 #include "imageformat.hpp"
 #include "imagelist.hpp"
 #include "render.hpp"
@@ -26,40 +27,6 @@ constexpr double SSCALE_MAX = 10.0;
 /** Number of threads used for loading thumbnails. */
 constexpr size_t THUMB_LOAD_THREADS = 4;
 
-/**
- * Get default path for persistent storage.
- * @return default path to persistent storage
- */
-std::filesystem::path pstore_defpath()
-{
-    static constexpr std::array env_paths =
-        std::to_array<std::pair<const char*, const char*>>({
-            { "XDG_CACHE_HOME", "swayimg"        },
-            { "HOME",           ".cache/swayimg" }
-    });
-
-    for (auto [env_name, postfix] : env_paths) {
-        std::filesystem::path path;
-        const char* env = std::getenv(env_name);
-        if (!env) {
-            continue;
-        }
-        // use only the first directory if prefix is a list
-        const char* delim = strchr(env, ':');
-        if (!delim) {
-            path = env;
-        } else {
-            path = std::string(env, delim - 1);
-        }
-
-        path /= postfix;
-
-        return std::filesystem::absolute(path).lexically_normal();
-    }
-
-    return {};
-}
-
 Gallery& Gallery::self()
 {
     static Gallery singleton;
@@ -67,126 +34,31 @@ Gallery& Gallery::self()
 }
 
 Gallery::Gallery()
-    : tpool(THUMB_LOAD_THREADS)
+    : aspect(Defaults::gallery::aspect)
+    , border_size(Defaults::gallery::border_size)
+    , selected_scale(Defaults::gallery::selected_scale)
+    , clr_window(Defaults::gallery::clr_window)
+    , clr_background(Defaults::gallery::clr_background)
+    , clr_select(Defaults::gallery::clr_select)
+    , clr_border(Defaults::gallery::clr_border)
+    , hover_select(Defaults::gallery::hover_select)
+    , tpool(THUMB_LOAD_THREADS)
+    , pstore_enable(Defaults::gallery::pstore_enable)
+    , pstore_path(Defaults::gallery::pstore_path())
+    , preload(Defaults::gallery::preload)
+    , cache_size(Defaults::gallery::cache_size)
 {
-    // default settings
+    pinch_factor = Defaults::gallery::pinch_factor;
+    mark_color = Defaults::gallery::mark_color;
 
-    aspect = Aspect::Fill;
-    border_size = 5;
-    selected_scale = 1.15;
-    pinch_factor = 100.0;
+    text_scheme[static_cast<size_t>(Text::TopLeft)].assign(
+        Defaults::gallery::text_scheme_tl.begin(),
+        Defaults::gallery::text_scheme_tl.end());
+    text_scheme[static_cast<size_t>(Text::TopRight)].assign(
+        Defaults::gallery::text_scheme_tr.begin(),
+        Defaults::gallery::text_scheme_tr.end());
 
-    clr_window = { argb_t::max, 0x00, 0x00, 0x00 };
-    clr_background = { argb_t::max, 0x20, 0x20, 0x20 };
-    clr_select = { argb_t::max, 0x40, 0x40, 0x40 };
-    clr_border = { argb_t::max, 0xaa, 0xaa, 0xaa };
-
-    hover_select = true;
-
-    pstore_enable = false;
-    pstore_path = pstore_defpath();
-
-    preload = false;
-    cache_size = 100;
-
-    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "File:\t{name}" };
-    text_scheme[static_cast<size_t>(Text::TopRight)] = {
-        "{list.index} of {list.total}"
-    };
-
-    // default key bindings: general management
-    bind_input(InputKeyboard { XKB_KEY_Escape, KEYMOD_NONE }, []() {
-        Application::self().exit(0);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Return, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
-    });
-    bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Slideshow);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [this]() {
-        mark_current(std::nullopt);
-    });
-    bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
-        Ui* ui = Application::get_ui();
-        ui->set_fullscreen(!ui->get_fullscreen());
-    });
-    bind_input(InputKeyboard { XKB_KEY_a, KEYMOD_NONE }, []() {
-        bool& antialiasing = Render::self().antialiasing;
-        antialiasing = !antialiasing;
-        Application::redraw();
-    });
-    // scale
-    bind_input(InputKeyboard { XKB_KEY_equal, KEYMOD_NONE }, [this]() {
-        const size_t size = get_thumb_size();
-        set_thumb_size(size + size / 10);
-    });
-    bind_input(InputKeyboard { XKB_KEY_plus, KEYMOD_SHIFT }, [this]() {
-        const size_t size = get_thumb_size();
-        set_thumb_size(size + size / 10);
-    });
-    bind_input(InputKeyboard { XKB_KEY_minus, KEYMOD_NONE }, [this]() {
-        const size_t size = get_thumb_size();
-        set_thumb_size(size - size / 10);
-    });
-    // image selection
-    bind_input(InputKeyboard { XKB_KEY_Home, KEYMOD_NONE }, [this]() {
-        select(Layout::First);
-    });
-    bind_input(InputKeyboard { XKB_KEY_End, KEYMOD_NONE }, [this]() {
-        select(Layout::Last);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Left, KEYMOD_NONE }, [this]() {
-        select(Layout::Left);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Right, KEYMOD_NONE }, [this]() {
-        select(Layout::Right);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Up, KEYMOD_NONE }, [this]() {
-        select(Layout::Up);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Down, KEYMOD_NONE }, [this]() {
-        select(Layout::Down);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Next, KEYMOD_NONE }, [this]() {
-        select(Layout::PgDown);
-    });
-    bind_input(InputKeyboard { XKB_KEY_Prior, KEYMOD_NONE }, [this]() {
-        select(Layout::PgUp);
-    });
-    // text layer
-    bind_input(InputKeyboard { XKB_KEY_t, KEYMOD_NONE }, []() {
-        Text& text = Text::self();
-        if (text.is_visible()) {
-            text.hide();
-        } else {
-            text.show();
-        }
-    });
-    // mouse
-    bind_input(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_CTRL }, [this]() {
-        const size_t size = get_thumb_size();
-        set_thumb_size(size + size / 10);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_DOWN, KEYMOD_CTRL }, [this]() {
-        const size_t size = get_thumb_size();
-        set_thumb_size(size - size / 10);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_NONE }, [this]() {
-        select(Layout::Up);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_DOWN, KEYMOD_NONE }, [this]() {
-        select(Layout::Down);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_LEFT, KEYMOD_NONE }, [this]() {
-        select(Layout::Left);
-    });
-    bind_input(InputMouse { InputMouse::SCROLL_RIGHT, KEYMOD_NONE }, [this]() {
-        select(Layout::Right);
-    });
+    Defaults::gallery::bind_inputs(this);
 }
 
 bool Gallery::select(const Layout::Direction dir)

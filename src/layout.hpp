@@ -28,6 +28,9 @@ public:
         Point pos;         ///< Window coordinates
     };
 
+    /** Constructor. */
+    Layout();
+
     /**
      * Update layout: recalculate thumbnails scheme.
      */
@@ -116,8 +119,8 @@ public:
     [[nodiscard]] const std::vector<Thumbnail>& get_scheme() const;
 
 private:
-    size_t thumb_size = 200;       ///< Size of thumbnail in pixels
-    size_t thumb_padding = 5;      ///< Padding between thumbnails in pixels
+    size_t thumb_size;             ///< Size of thumbnail in pixels
+    size_t thumb_padding;          ///< Padding between thumbnails in pixels
     std::vector<Thumbnail> scheme; ///< Layout scheme of visible thumbnails
 
     Size window;          ///< Layout size (output window)

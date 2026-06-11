@@ -5,6 +5,7 @@
 #include "slideshow.hpp"
 
 #include "application.hpp"
+#include "defaults.hpp"
 
 Slideshow& Slideshow::self()
 {
@@ -13,21 +14,17 @@ Slideshow& Slideshow::self()
 }
 
 Slideshow::Slideshow()
+    : duration(Defaults::slideshow::duration)
 {
-    // default settings
+    default_scale = Defaults::slideshow::scale;
+    window_bkg = Defaults::slideshow::window_bkg;
+    image_pool.history.capacity = Defaults::slideshow::history;
 
-    set_history_limit(0);
-    set_window_background(Background::Auto);
-    default_scale = Scale::FitWindow;
+    text_scheme[static_cast<size_t>(Text::TopLeft)].assign(
+        Defaults::slideshow::text_scheme_tl.begin(),
+        Defaults::slideshow::text_scheme_tl.end());
 
-    text_scheme[static_cast<size_t>(Text::TopRight)].clear();
-    text_scheme[static_cast<size_t>(Text::TopLeft)] = { "{name}" };
-    text_scheme[static_cast<size_t>(Text::BottomLeft)].clear();
-    text_scheme[static_cast<size_t>(Text::BottomRight)].clear();
-
-    bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
-    });
+    Defaults::slideshow::bind_inputs(this);
 }
 
 void Slideshow::initialize()
