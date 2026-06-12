@@ -228,20 +228,17 @@ const std::string& Application::get_appid() const
 
 ImageEntryPtr Application::il_initialize() const
 {
+    assert(!sparams->sources.empty());
+
     ImageList& il = ImageList::self();
     std::list<ImageEntryPtr> added;
 
     const Log::PerfTimer timer;
 
-    if (sparams->sources.empty()) {
-        added = il.add(std::vector<std::filesystem::path> { "." });
+    if (sparams->sources.size() == 1 && sparams->sources[0] == "-") {
+        added = il.add({ ImageEntry::SRC_STDIN });
     } else {
-        if (sparams->sources.size() == 1 && sparams->sources[0] == "-") {
-            added = il.add(
-                std::vector<std::filesystem::path> { ImageEntry::SRC_STDIN });
-        } else {
-            added = il.add(sparams->sources);
-        }
+        added = il.add(sparams->sources);
     }
 
     if (Log::verbose_enable()) {

@@ -196,6 +196,10 @@ int main(int argc, char* argv[])
                      }
                  }
                  file.close();
+                 if (params.sources.empty()) {
+                     Log::error("File {} is empty", arg);
+                     exit(EXIT_FAILURE);
+                 }
              });
 
 #ifdef HAVE_COMPOSITOR
@@ -278,6 +282,9 @@ int main(int argc, char* argv[])
 
     for (int i = argn; i < argc; ++i) {
         params.sources.emplace_back(argv[i]);
+    }
+    if (params.sources.empty()) {
+        params.sources.emplace_back("."); // all from the current dir by default
     }
 
     return Application::self().run();
