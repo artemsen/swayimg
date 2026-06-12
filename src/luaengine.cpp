@@ -545,14 +545,7 @@ void LuaEngine::bind_imagelist_api()
                      })
         .addFunction("clear",
                      []() {
-                         const std::vector<ImageEntryPtr> entries =
-                             ImageList::self().get_all();
-                         std::vector<std::filesystem::path> paths;
-                         paths.reserve(entries.size());
-                         for (const auto& it : entries) {
-                             paths.push_back(it->path);
-                         }
-                         Application::self().remove_images(paths);
+                         Application::self().remove_all_images();
                      })
         .addFunction("set_order",
                      [this](const std::string& name) {

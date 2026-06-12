@@ -6,7 +6,6 @@
 
 #include <filesystem>
 #include <unordered_map>
-#include <unordered_set>
 
 struct inotify_event;
 
@@ -32,6 +31,17 @@ public:
      */
     void add(const std::filesystem::path& path);
 
+    /**
+     * Remove file or directory from monitor.
+     * @param path watched path
+     */
+    void remove(const std::filesystem::path& path);
+
+    /**
+     * Remove all file from monitor.
+     */
+    void clear();
+
 private:
     /**
      * Handle inotify event.
@@ -42,6 +52,6 @@ private:
 private:
     int fd = -1; ///< inotify file descriptor
 
-    std::unordered_map<int, std::filesystem::path> fds; ///< FD to path map
-    std::unordered_set<std::filesystem::path> paths;    ///< Watched paths
+    std::unordered_map<int, std::filesystem::path> fds;   ///< FD to path map
+    std::unordered_map<std::filesystem::path, int> paths; ///< Path to FD map
 };

@@ -187,6 +187,16 @@ void Application::remove_images(const std::vector<std::filesystem::path>& paths)
     }
 }
 
+void Application::remove_all_images()
+{
+    const std::list<ImageEntryPtr> entries = ImageList::self().clear();
+    if (!entries.empty()) {
+        current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
+                                         entries);
+        redraw();
+    }
+}
+
 void Application::add_fdpoll(const int fd, const FdEventHandler& handler)
 {
     fds.emplace_back(fd, handler);

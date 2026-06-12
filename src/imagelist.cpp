@@ -197,19 +197,33 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
             }
         }
 
-        // remove entry
-        auto it = entries_map.find(abs_path);
-        if (it != entries_map.end()) {
-            Log::verbose("Remove image entry {}", abs_path.filename().string());
-            const ImageEntryPtr entry = it->second;
-            entry->removed = true;
-            entries_map.erase(it);
-            entries_arr[entry->index] = nullptr;
-            removed.emplace_back(entry);
+        if (std::filesystem::is_directory(abs_path)) {
+            // remove all child entries
+            for (const ImageEntryPtr& entry : get_child(abs_path)) {
+                entry->removed = true;
+                entries_map.erase(entry->path);
+                entries_arr[entry->index] = nullptr;
+                removed.emplace_back(entry);
+            }
+            FsMonitor::self().remove(abs_path);
+        } else {
+            // remove single entry
+            auto it = entries_map.find(abs_path);
+            if (it != entries_map.end()) {
+                const ImageEntryPtr entry = it->second;
+                entry->removed = true;
+                entries_map.erase(it);
+                entries_arr[entry->index] = nullptr;
+                removed.emplace_back(entry);
+            }
         }
     }
 
     if (!removed.empty()) {
+        FsMonitor& fsmon = FsMonitor::self();
+        for (const ImageEntryPtr& entry : removed) {
+            fsmon.remove(entry->path);
+        }
         std::erase_if(entries_arr, [](const ImageEntryPtr& entry) {
             return !entry;
         });
@@ -223,8 +237,6 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 {
     assert(entry);
 
-    Log::verbose("Remove image entry {}", entry->path.filename().string());
-
     ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
 
     const std::scoped_lock lock(mutex);
@@ -234,8 +246,22 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
     reindex(entry->index);
 
     entry->removed = true;
+    FsMonitor::self().remove(entry->path);
 
     return next;
+}
+
+std::list<ImageEntryPtr> ImageList::clear()
+{
+    const std::scoped_lock lock(mutex);
+
+    std::list<ImageEntryPtr> removed(entries_arr.begin(), entries_arr.end());
+    entries_map.clear();
+    entries_arr.clear();
+
+    FsMonitor::self().clear();
+
+    return removed;
 }
 
 size_t ImageList::size()
@@ -377,6 +403,23 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
     assert(to->index < entries_arr.size());
 
     return static_cast<ssize_t>(to->index) - static_cast<ssize_t>(from->index);
+}
+
+std::list<ImageEntryPtr>
+ImageList::get_child(const std::filesystem::path& path) const
+{
+    assert(path.is_absolute());
+
+    std::list<ImageEntryPtr> child;
+
+    for (const ImageEntryPtr& entry : entries_arr) {
+        const std::filesystem::path rel = entry->path.lexically_relative(path);
+        if (!rel.empty() && !rel.string().starts_with("..")) {
+            child.push_back(entry);
+        }
+    }
+
+    return child;
 }
 
 ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,

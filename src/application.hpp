@@ -87,6 +87,11 @@ public:
     void remove_images(const std::vector<std::filesystem::path>& paths);
 
     /**
+     * Remove all entries from the image list.
+     */
+    void remove_all_images();
+
+    /**
      * Add file descriptor to monitor.
      * @param fd file descriptor to watch
      * @param handler callback

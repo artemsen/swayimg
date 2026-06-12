@@ -70,6 +70,12 @@ public:
     ImageEntryPtr remove(const ImageEntryPtr& entry, const bool forward = true);
 
     /**
+     * Clear image list.
+     * @return list of removed entries
+     */
+    std::list<ImageEntryPtr> clear();
+
+    /**
      * Get number of entries in the image list.
      * @return image list size
      */
@@ -130,6 +136,13 @@ public:
     ssize_t distance(const ImageEntryPtr& from, const ImageEntryPtr& to);
 
 private:
+    /**
+     * Get child entries by directory path.
+     * @param path parent directory
+     * @return list of entries
+     */
+    std::list<ImageEntryPtr> get_child(const std::filesystem::path& path) const;
+
     /**
      * Get the nearest entry with different parent.
      * @param from starting image entry

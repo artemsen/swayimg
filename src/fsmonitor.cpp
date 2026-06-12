@@ -28,6 +28,8 @@ FsMonitor& FsMonitor::self()
 FsMonitor::~FsMonitor() {}
 void FsMonitor::initialize() {}
 void FsMonitor::add(const std::filesystem::path&) {}
+void FsMonitor::remove(const std::filesystem::path&) {}
+void FsMonitor::clear() {}
 void FsMonitor::handle_event(const inotify_event*) {}
 #else
 
@@ -97,7 +99,27 @@ void FsMonitor::add(const std::filesystem::path& path)
     }
 
     fds.insert(std::make_pair(wd, path));
-    paths.insert(path);
+    paths.insert(std::make_pair(path, wd));
+}
+
+void FsMonitor::remove(const std::filesystem::path& path)
+{
+    auto it = paths.find(path);
+    if (it != paths.end()) {
+        const int wd = it->second;
+        inotify_rm_watch(fd, wd);
+        fds.erase(wd);
+        paths.erase(it);
+    }
+}
+
+void FsMonitor::clear()
+{
+    for (const auto& it : fds) {
+        inotify_rm_watch(fd, it.first);
+    }
+    fds.clear();
+    paths.clear();
 }
 
 void FsMonitor::handle_event(const inotify_event* event)
