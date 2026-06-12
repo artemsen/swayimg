@@ -228,10 +228,10 @@ private:
     double pinch_scale; ///< Last pinch scale
 
 public:
-    InputMouse dnd;          ///< Mouse and key modifiers used for drag-and-drop
-    bool decoration = false; ///< Flag to use server side decoration
-    bool fullscreen = false; ///< Full screen mode
-    int32_t width = 1280;    ///< Window width
-    int32_t height = 720;    ///< Window height
-    uint32_t cursor_hide = 3000; ///< Timeout to hide cursor, 3 sec
+    InputMouse dnd;       ///< Mouse and key modifiers used for drag-and-drop
+    bool decoration;      ///< Flag to use server side decoration
+    bool fullscreen;      ///< Full screen mode
+    int32_t width;        ///< Window width
+    int32_t height;       ///< Window height
+    uint32_t cursor_hide; ///< Timeout to hide cursor, 3 sec
 };

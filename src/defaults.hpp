@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include "appmode.hpp"
 #include "gallery.hpp"
 #include "imagelist.hpp"
+#include "input.hpp"
 #include "slideshow.hpp"
 #include "viewer.hpp"
 
@@ -16,9 +18,13 @@ namespace Defaults {
 
 // general app
 namespace app {
+    constexpr AppMode::Type mode = AppMode::Viewer;
+    constexpr InputMouse dnd = { InputMouse::BUTTON_RIGHT, KEYMOD_NONE };
     constexpr bool use_overlay = false;
     constexpr bool fullscreen = false;
     constexpr bool decoration = true;
+    constexpr size_t wnd_width = 1280;
+    constexpr size_t wnd_height = 720;
     constexpr uint32_t cursor_hide = 3000;
     constexpr const char* app_id = "swayimg";
 }

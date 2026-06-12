@@ -326,10 +326,11 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction("get_window_size",
                      []() {
-                         Size wnd { 0, 0 };
-                         Ui* ui = Application::get_ui();
-                         if (ui) {
-                             wnd = ui->get_window_size();
+                         Size wnd;
+                         if (Application::self().initialized()) {
+                             wnd = Application::get_ui()->get_window_size();
+                         } else {
+                             wnd = Application::self().sparams->wnd_size;
                          }
                          return std::unordered_map<std::string, size_t> {
                              { "width",  wnd.width  },
@@ -344,15 +345,10 @@ void LuaEngine::bind_root_api()
                         "Invalid arguments ({}, {}) for {}.set_window_size",
                         width, height, NS_SWAYIMG);
                 }
-                Ui* ui = Application::get_ui();
-                if (ui) {
-                    ui->set_window_size({ width, height });
+                if (Application::self().initialized()) {
+                    Application::get_ui()->set_window_size({ width, height });
                 } else {
-                    Rectangle& wnd = Application::self().sparams.window;
-                    if (!wnd.size_valid()) {
-                        wnd.width = width;
-                        wnd.height = height;
-                    }
+                    Application::self().sparams->wnd_size = Size(width, height);
                 }
             })
         .addFunction(
@@ -380,29 +376,24 @@ void LuaEngine::bind_root_api()
                              { "y", pos.y },
                          };
                      })
-        .addFunction("set_fullscreen",
-                     [](const std::optional<bool>& enable) {
-                         Ui* ui = Application::get_ui();
-                         if (ui) {
-                             ui->set_fullscreen(
-                                 enable.value_or(!ui->get_fullscreen()));
-                         } else {
-                             std::optional<bool>& fullscreen =
-                                 Application::self().sparams.fullscreen;
-                             if (!fullscreen.has_value()) {
-                                 fullscreen = enable.value_or(true);
-                             }
-                         }
-                     })
+        .addFunction(
+            "set_fullscreen",
+            [](const std::optional<bool>& enable) {
+                if (Application::self().initialized()) {
+                    Ui* ui = Application::get_ui();
+                    ui->set_fullscreen(enable.value_or(!ui->get_fullscreen()));
+                } else {
+                    auto& fullscreen = Application::self().sparams->fullscreen;
+                    fullscreen.set(enable.value_or(!fullscreen.get()));
+                }
+            })
         .addFunction("get_fullscreen",
                      []() {
                          const Ui* ui = Application::get_ui();
                          if (ui) {
                              return ui->get_fullscreen();
                          }
-                         const std::optional<bool>& fullscreen =
-                             Application::self().sparams.fullscreen;
-                         return fullscreen.value_or(false);
+                         return Application::self().sparams->fullscreen.get();
                      })
         .addFunction("toggle_fullscreen",
                      []() {
@@ -412,12 +403,10 @@ void LuaEngine::bind_root_api()
                              ui->set_fullscreen(!ui->get_fullscreen());
                              return ui->get_fullscreen();
                          }
-                         std::optional<bool>& fullscreen =
-                             Application::self().sparams.fullscreen;
-                         if (!fullscreen.has_value()) {
-                             fullscreen = true;
-                         }
-                         return fullscreen.value();
+                         auto& fullscreen =
+                             Application::self().sparams->fullscreen;
+                         fullscreen.set(!fullscreen.get());
+                         return fullscreen.get();
                      })
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {
@@ -458,41 +447,47 @@ void LuaEngine::bind_root_api()
                 }
             })
         .addFunction("enable_decoration",
-                     [](const bool enable) {
-                         Application::self().sparams.decoration = enable;
+                     [this](const bool enable) {
+                         if (Application::self().initialized()) {
+                             raise_error(
+                                 "Decoration can be set only at startup");
+                         }
+                         Application::self().sparams->decoration = enable;
                      })
         .addFunction("enable_overlay",
-                     [](const bool enable) {
-                         Application::self().sparams.use_overlay = enable;
+                     [this](const bool enable) {
+                         if (Application::self().initialized()) {
+                             raise_error("Overlay can be set only at startup");
+                         }
+                         Application::self().sparams->use_overlay = enable;
                      })
         .addFunction("set_appid",
                      [this](const std::string& app_id) {
-                         if (Application::get_ui()) { // already initialized
+                         if (Application::self().initialized()) {
                              raise_error(
                                  "Application ID can be set only at startup");
                          }
                          if (app_id.empty()) {
                              raise_error("Application ID can not be empty");
                          }
-                         std::optional<std::string>& aid =
-                             Application::self().sparams.app_id;
-                         if (!aid.has_value()) {
-                             aid = app_id;
-                         }
+                         Application::self().sparams->app_id.set(app_id);
                      })
         .addFunction("get_appid",
                      []() {
-                         return Application::self().sparams.app_id.value();
+                         return Application::self().get_appid();
                      })
         .addFunction(
             "set_dnd_button",
             [this](const std::string& button) {
+                if (Application::self().initialized()) {
+                    raise_error("DND can be set only at startup");
+                }
                 std::optional<InputMouse> input = InputMouse::load(button);
                 if (!input.has_value()) {
                     raise_error("Invalid button for {}.set_drag_button: {}",
                                 NS_SWAYIMG, button);
                 }
-                Application::self().sparams.dnd = input.value();
+                Application::self().sparams->dnd = input.value();
             })
         .endNamespace();
 }
@@ -788,9 +783,9 @@ void LuaEngine::bind_viewer_api(const char* name)
                 ensure_active("set_fix_position");
                 const auto pos = name_to_type(imgpositions, fpos.c_str());
                 if (!pos.has_value()) {
-                    raise_error(
-                        "Invalid argument \"{}\" for {}.{}.set_fix_position",
-                        fpos, NS_SWAYIMG, name);
+                    raise_error("Invalid argument \"{}\" for "
+                                "{}.{}.set_fix_position",
+                                fpos, NS_SWAYIMG, name);
                 }
                 mode->set_position(pos.value());
             })
@@ -1238,8 +1233,8 @@ luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
 
 void LuaEngine::warn_deprecated(const char* name, const char* replacement)
 {
-    Log::warning(
-        "Function \"{}\" is deprecated and will be removed in a future release,"
-        " use \"{}\" instead",
-        name, replacement);
+    Log::warning("Function \"{}\" is deprecated and will be removed in a "
+                 "future release,"
+                 " use \"{}\" instead",
+                 name, replacement);
 }

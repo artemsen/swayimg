@@ -36,18 +36,22 @@ Application& Application::self()
 }
 
 Application::Application()
+    : sparams(new StartupParams())
 {
-    sparams.use_overlay = Defaults::app::use_overlay;
-    sparams.decoration = Defaults::app::decoration;
-    sparams.cursor_hide = Defaults::app::cursor_hide;
-    sparams.dnd = { InputMouse::BUTTON_RIGHT, KEYMOD_NONE };
+    sparams->app_id = Defaults::app::app_id;
+    sparams->mode = Defaults::app::mode;
+    sparams->fullscreen = Defaults::app::fullscreen;
+    sparams->dnd = Defaults::app::dnd;
+    sparams->use_overlay = Defaults::app::use_overlay;
+    sparams->decoration = Defaults::app::decoration;
+    sparams->cursor_hide = Defaults::app::cursor_hide;
 
 #ifdef HAVE_COMPOSITOR
     // defaults for people with Sway compositor
     const Compositor compositor;
     if (compositor.type == Compositor::Sway) {
-        sparams.use_overlay = true;
-        sparams.decoration = false;
+        sparams->use_overlay = true;
+        sparams->decoration = false;
     }
 #endif // HAVE_COMPOSITOR
 }
@@ -56,12 +60,10 @@ int Application::run()
 {
     // initialize and load Lua
     LuaEngine& lua = LuaEngine::self();
-    lua.initialize(sparams.config);
-    if (!sparams.lua_script.empty()) {
-        lua.execute(sparams.lua_script);
+    lua.initialize(sparams->config);
+    if (!sparams->lua_exec.empty()) {
+        lua.execute(sparams->lua_exec);
     }
-
-    active_mode = sparams.mode.value_or(AppMode::Viewer);
 
     // initialize filemon and image list
     FsMonitor::self().initialize();
@@ -90,7 +92,9 @@ int Application::run()
     Slideshow::self().initialize();
     Gallery::self().initialize();
 
-    initialized = true;
+    active_mode = sparams->mode;
+    app_id = sparams->app_id;
+    sparams.reset();
 
     current_mode()->activate(first_entry, ui->get_window_size());
     if (active_mode != AppMode::Gallery && !current_mode()->get_current()) {
@@ -119,10 +123,8 @@ void Application::exit(const int rc)
 
 void Application::set_mode(const AppMode::Type mode)
 {
-    if (!initialized) {
-        if (!sparams.mode.has_value()) {
-            sparams.mode = mode;
-        }
+    if (!initialized()) {
+        sparams->mode = mode;
         return; // not yet initialized
     }
 
@@ -141,7 +143,7 @@ void Application::set_mode(const AppMode::Type mode)
 
 AppMode* Application::current_mode()
 {
-    if (!initialized) {
+    if (!initialized()) {
         return nullptr; // not yet initialized
     }
 
@@ -216,21 +218,29 @@ void Application::subscribe_window_resize(const WindowResizeNotify& cb)
     wnd_resize_cb.push_back(cb);
 }
 
-ImageEntryPtr Application::il_initialize()
+const std::string& Application::get_appid() const
+{
+    if (sparams) {
+        return sparams->app_id;
+    }
+    return app_id;
+}
+
+ImageEntryPtr Application::il_initialize() const
 {
     ImageList& il = ImageList::self();
     std::list<ImageEntryPtr> added;
 
     const Log::PerfTimer timer;
 
-    if (sparams.sources.empty()) {
+    if (sparams->sources.empty()) {
         added = il.add(std::vector<std::filesystem::path> { "." });
     } else {
-        if (sparams.sources.size() == 1 && sparams.sources[0] == "-") {
+        if (sparams->sources.size() == 1 && sparams->sources[0] == "-") {
             added = il.add(
                 std::vector<std::filesystem::path> { ImageEntry::SRC_STDIN });
         } else {
-            added = il.add(sparams.sources);
+            added = il.add(sparams->sources);
         }
     }
 
@@ -245,50 +255,48 @@ ImageEntryPtr Application::il_initialize()
     return added.empty() ? nullptr : added.front();
 }
 
-Ui* Application::ui_init_wayland()
+Ui* Application::ui_init_wayland() const
 {
 #ifdef HAVE_WAYLAND
-    if (!sparams.app_id.has_value()) {
-        sparams.app_id = Defaults::app::app_id;
-    }
-
+    Rectangle window(sparams->wnd_pos.get().x, sparams->wnd_pos.get().y,
+                     sparams->wnd_size.get().width,
+                     sparams->wnd_size.get().height);
 #ifdef HAVE_COMPOSITOR
-    if (sparams.use_overlay || sparams.window.position_valid()) {
+    if (sparams->use_overlay || sparams->wnd_pos.get()) {
         const Compositor compositor;
         if (compositor.type == Compositor::None) {
             Log::error("Current compositor not supported for managing window "
                        "position");
-        } else {
+        } else if (!window) {
             const Rectangle focused = compositor.get_focus();
             if (focused) {
-                if (!sparams.window.position_valid()) {
-                    sparams.window.x = focused.x;
-                    sparams.window.y = focused.y;
+                if (!window.position_valid()) {
+                    window.x = focused.x;
+                    window.y = focused.y;
                 }
-                if (!sparams.window.size_valid()) {
-                    sparams.window.width = focused.width;
-                    sparams.window.height = focused.height;
+                if (!window.size_valid()) {
+                    window.width = focused.width;
+                    window.height = focused.height;
                 }
             }
-            std::string app_id = sparams.app_id.value();
-            compositor.set_overlay(sparams.window, app_id);
-            sparams.app_id = app_id;
         }
+        compositor.set_overlay(window, sparams->app_id.unlock());
     }
 #endif // HAVE_COMPOSITOR
 
     UiWayland* wayland = new UiWayland();
-    if (sparams.window.size_valid()) {
-        wayland->width = sparams.window.width;
-        wayland->height = sparams.window.height;
+    if (window.size_valid()) {
+        wayland->width = window.width;
+        wayland->height = window.height;
+    } else {
+        wayland->width = Defaults::app::wnd_width;
+        wayland->height = Defaults::app::wnd_height;
     }
-    wayland->dnd = sparams.dnd;
-    wayland->cursor_hide = sparams.cursor_hide;
-    wayland->decoration = sparams.decoration;
-    if (sparams.fullscreen.has_value()) {
-        wayland->fullscreen = sparams.fullscreen.value();
-    }
-    if (!wayland->initialize(sparams.app_id.value_or(Defaults::app::app_id))) {
+    wayland->dnd = sparams->dnd;
+    wayland->cursor_hide = sparams->cursor_hide;
+    wayland->decoration = sparams->decoration;
+    wayland->fullscreen = sparams->fullscreen;
+    if (!wayland->initialize(sparams->app_id)) {
         delete wayland;
         wayland = nullptr;
     }
@@ -303,11 +311,10 @@ Ui* Application::ui_init_drm() const
 {
 #ifdef HAVE_DRM
     UiDrm* drm = new UiDrm();
-    if (sparams.window.size_valid()) {
-        drm->width = sparams.window.width;
-        drm->height = sparams.window.height;
+    if (sparams->wnd_size.get()) {
+        drm->width = sparams->wnd_size.get().width;
+        drm->height = sparams->wnd_size.get().height;
     }
-    drm->freq = sparams.drm_freq;
     if (!drm->initialize()) {
         delete drm;
         drm = nullptr;

@@ -164,34 +164,35 @@ int main(int argc, char* argv[])
     std::setlocale(LC_ALL, "");
     std::srand(getpid());
 
+    StartupParams& params = *Application::self().sparams;
+
     Args args;
+    args.add('v', "viewer", nullptr, "start in viewer mode",
+             [&params](const char*) {
+                 params.mode.lock(AppMode::Viewer);
+             });
 
-    args.add('v', "viewer", nullptr, "start in viewer mode", [](const char*) {
-        Application::self().sparams.mode = AppMode::Viewer;
-    });
-
-    args.add('g', "gallery", nullptr, "start in gallery mode", [](const char*) {
-        Application::self().sparams.mode = AppMode::Gallery;
-    });
+    args.add('g', "gallery", nullptr, "start in gallery mode",
+             [&params](const char*) {
+                 params.mode.lock(AppMode::Gallery);
+             });
 
     args.add('s', "slideshow", nullptr, "start in slideshow mode",
-             [](const char*) {
-                 Application::self().sparams.mode = AppMode::Slideshow;
+             [&params](const char*) {
+                 params.mode.lock(AppMode::Gallery);
              });
 
     args.add('f', "from-file", "FILE", "load file list from file",
-             [](const char* arg) {
+             [&params](const char* arg) {
                  std::ifstream file(arg);
                  if (!file.is_open()) {
                      Log::error("Unable to open file {}", arg);
                      exit(EXIT_FAILURE);
                  }
-                 std::vector<std::filesystem::path>& sources =
-                     Application::self().sparams.sources;
                  std::string line;
                  while (std::getline(file, line)) {
                      if (!line.empty()) {
-                         sources.emplace_back(line);
+                         params.sources.emplace_back(line);
                      }
                  }
                  file.close();
@@ -199,57 +200,50 @@ int main(int argc, char* argv[])
 
 #ifdef HAVE_COMPOSITOR
     args.add('P', "position", "X,Y", "(Sway/Hyprland only) set window position",
-             [](const char* arg) {
+             [&params](const char* arg) {
                  auto [x, y] = Args::parse_numpair(arg);
                  if (x == std::numeric_limits<ssize_t>::min() ||
                      y == std::numeric_limits<ssize_t>::min()) {
                      Log::error("Invalid window position: {}", arg);
                      exit(EXIT_FAILURE);
                  }
-                 Application::self().sparams.window.x = x;
-                 Application::self().sparams.window.y = y;
+                 params.wnd_pos.lock(Point(x, y));
              });
 #endif
 
     args.add('S', "size", "W,H", "set preferable window size",
-             [](const char* arg) {
+             [&params](const char* arg) {
                  auto [w, h] = Args::parse_numpair(arg);
                  if (w <= 0 || h <= 0) {
                      Log::error("Invalid window size: {}", arg);
                      exit(EXIT_FAILURE);
                  }
-                 Application::self().sparams.window.width = w;
-                 Application::self().sparams.window.height = h;
+                 params.wnd_size.lock(Size(w, h));
              });
 
     args.add('F', "fullscreen", nullptr, "open in full screen mode",
-             [](const char*) {
-                 Application::self().sparams.fullscreen = true;
+             [&params](const char*) {
+                 params.fullscreen.lock(true);
              });
 
     args.add('c', "config", "FILE", "load config from FILE",
-             [](const char* arg) {
-                 try {
-                     Application::self().sparams.config =
-                         std::filesystem::absolute(arg).lexically_normal();
-                 } catch (const std::filesystem::filesystem_error&) {
-                     Log::error("Invalid file path \"{}\"", arg);
-                     exit(EXIT_FAILURE);
-                 }
+             [&params](const char* arg) {
+                 params.config = arg;
              });
 
     args.add('e', "execute", "LUA", "execute Lua script on start",
-             [](const char* arg) {
-                 Application::self().sparams.lua_script = arg;
+             [&params](const char* arg) {
+                 params.lua_exec = arg;
              });
 
-    args.add(0, "appid", "ID", "set application id", [](const char* arg) {
-        if (!*arg) {
-            Log::error("Empty application id");
-            exit(EXIT_FAILURE);
-        }
-        Application::self().sparams.app_id = arg;
-    });
+    args.add(0, "appid", "ID", "set application id",
+             [&params](const char* arg) {
+                 if (!*arg) {
+                     Log::error("Empty application id");
+                     exit(EXIT_FAILURE);
+                 }
+                 params.app_id.lock(arg);
+             });
 
     args.add(0, "verbose", nullptr, "enable verbose output", [](const char*) {
         Log::verbose_enable() = true;
@@ -283,7 +277,7 @@ int main(int argc, char* argv[])
     }
 
     for (int i = argn; i < argc; ++i) {
-        Application::self().sparams.sources.emplace_back(argv[i]);
+        params.sources.emplace_back(argv[i]);
     }
 
     return Application::self().run();

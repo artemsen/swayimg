@@ -7,6 +7,7 @@
 #include "appevent.hpp"
 #include "appmode.hpp"
 #include "fdevent.hpp"
+#include "sparam.hpp"
 #include "ui.hpp"
 
 #include <atomic>
@@ -14,7 +15,6 @@
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <vector>
 
 class Application {
@@ -105,18 +105,30 @@ public:
      */
     void subscribe_window_resize(const WindowResizeNotify& cb);
 
+    /**
+     * Check if all subsystems were initialized.
+     * @return true if all subsystems were initialized
+     */
+    [[nodiscard]] bool initialized() const { return !sparams; }
+
+    /**
+     * Get application id.
+     * @return application id
+     */
+    [[nodiscard]] const std::string& get_appid() const;
+
 private:
     /**
      * Initialize image list.
      * @return first image entry to open, nullptr on errors
      */
-    ImageEntryPtr il_initialize();
+    [[nodiscard]] ImageEntryPtr il_initialize() const;
 
     /**
      * Initialize Wayland UI.
      * @return pointer to UI interface if initialized successfully
      */
-    [[nodiscard]] Ui* ui_init_wayland();
+    [[nodiscard]] Ui* ui_init_wayland() const;
 
     /**
      * Initialize DRM UI.
@@ -149,32 +161,14 @@ private:
     static void signal_handler(int signal);
 
 public:
-    /** Application startup parameters. */
-    struct StartupParams {
-        std::filesystem::path config;               ///< Lua config file to load
-        std::string lua_script;                     ///< Lua script to start
-        std::vector<std::filesystem::path> sources; ///< Image list
-        std::optional<AppMode::Type> mode;          ///< Initial mode
-        InputMouse dnd;                    ///< Mouse used for drag-and-drop
-        Rectangle window;                  ///< Main window position/size
-        bool use_overlay;                  ///< Use overlay mode (Wayland only)
-        std::optional<bool> fullscreen;    ///< Full screen mode (Wayland only)
-        bool decoration;                   ///< Window decoration (Wayland only)
-        uint32_t cursor_hide;              ///< Cursor hide time (Wayland only)
-        std::optional<std::string> app_id; ///< Window class name (Wayland only)
-        size_t drm_freq = 0;               ///< Display frequency (DRM only)
-    } sparams;
-
-    /** Initialization complete callback. */
-    std::function<void()> on_init_complete = nullptr;
-
+    std::unique_ptr<StartupParams> sparams;        ///< Startup parameters
+    std::function<void()> on_init_complete;        ///< Init complete callback
     std::vector<WindowResizeNotify> wnd_resize_cb; ///< Window resize callbacks
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance
 
-    bool initialized = false; ///< Initialization complete flag
-
+    std::string app_id;                          ///< Application id
     AppMode::Type active_mode = AppMode::Viewer; ///< Currently active mode
 
     std::atomic<bool> stop_flag = false; ///< Application stop flag
