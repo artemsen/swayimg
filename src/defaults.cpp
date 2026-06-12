@@ -17,10 +17,10 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
         Application::self().exit(0);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Return, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Gallery);
+        Application::self().set_mode(AppMode::Gallery);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Slideshow);
+        Application::self().set_mode(AppMode::Slideshow);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [mode]() {
         mode->mark_current(std::nullopt);
@@ -158,7 +158,7 @@ void Defaults::slideshow::bind_inputs(Slideshow* mode)
     Defaults::viewer::bind_inputs(mode);
 
     mode->bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
+        Application::self().set_mode(AppMode::Viewer);
     });
 }
 
@@ -169,10 +169,10 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
         Application::self().exit(0);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Return, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
+        Application::self().set_mode(AppMode::Viewer);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Slideshow);
+        Application::self().set_mode(AppMode::Slideshow);
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [mode]() {
         mode->mark_current(std::nullopt);
@@ -240,7 +240,7 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
 
     // mouse
     mode->bind_input(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE }, []() {
-        Application::self().set_mode(Application::Mode::Viewer);
+        Application::self().set_mode(AppMode::Viewer);
     });
     mode->bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_CTRL },
                      [zoom_fn]() {

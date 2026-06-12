@@ -167,17 +167,17 @@ int main(int argc, char* argv[])
     Args args;
 
     args.add('v', "viewer", nullptr, "start in viewer mode", [](const char*) {
-        Application::self().sparams.mode = Application::Mode::Viewer;
+        Application::self().sparams.mode = AppMode::Viewer;
     });
 
     args.add('g', "gallery", nullptr, "start in gallery mode", [](const char*) {
-        Application::self().sparams.mode = Application::Mode::Gallery;
+        Application::self().sparams.mode = AppMode::Gallery;
     });
 
-    args.add(
-        's', "slideshow", nullptr, "start in slideshow mode", [](const char*) {
-            Application::self().sparams.mode = Application::Mode::Slideshow;
-        });
+    args.add('s', "slideshow", nullptr, "start in slideshow mode",
+             [](const char*) {
+                 Application::self().sparams.mode = AppMode::Slideshow;
+             });
 
     args.add('f', "from-file", "FILE", "load file list from file",
              [](const char* arg) {

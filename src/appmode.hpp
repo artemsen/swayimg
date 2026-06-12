@@ -17,6 +17,13 @@
 
 class AppMode {
 public:
+    /** Application mode types. */
+    enum Type : uint8_t {
+        Viewer,
+        Slideshow,
+        Gallery,
+    };
+
     /** Image list event types. */
     enum class ImageListEvent : uint8_t {
         Create,

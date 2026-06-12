@@ -61,12 +61,12 @@ int Application::run()
         lua.execute(sparams.lua_script);
     }
 
-    active_mode = sparams.mode.value_or(Mode::Viewer);
+    active_mode = sparams.mode.value_or(AppMode::Viewer);
 
     // initialize filemon and image list
     FsMonitor::self().initialize();
     const ImageEntryPtr first_entry = il_initialize();
-    if (!first_entry && active_mode != Mode::Gallery) {
+    if (!first_entry && active_mode != AppMode::Gallery) {
         Log::warning("Image list is empty, exit");
         return 1;
     }
@@ -93,7 +93,7 @@ int Application::run()
     initialized = true;
 
     current_mode()->activate(first_entry, ui->get_window_size());
-    if (active_mode != Mode::Gallery && !current_mode()->get_current()) {
+    if (active_mode != AppMode::Gallery && !current_mode()->get_current()) {
         Log::warning("Failed to open any images, exit");
         return 1;
     }
@@ -117,7 +117,7 @@ void Application::exit(const int rc)
     exit_event.set();
 }
 
-void Application::set_mode(const Mode mode)
+void Application::set_mode(const AppMode::Type mode)
 {
     if (!initialized) {
         if (!sparams.mode.has_value()) {
@@ -146,11 +146,11 @@ AppMode* Application::current_mode()
     }
 
     switch (active_mode) {
-        case Mode::Viewer:
+        case AppMode::Viewer:
             return &Viewer::self();
-        case Mode::Slideshow:
+        case AppMode::Slideshow:
             return &Slideshow::self();
-        case Mode::Gallery:
+        case AppMode::Gallery:
             return &Gallery::self();
     };
 

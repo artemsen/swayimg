@@ -19,13 +19,6 @@
 
 class Application {
 public:
-    /** Application mode types. */
-    enum class Mode : uint8_t {
-        Viewer,
-        Slideshow,
-        Gallery,
-    };
-
     /** File descriptor event handler. */
     using FdEventHandler = std::function<void()>;
     /** Notification handler that is called when the window is resized. */
@@ -66,13 +59,13 @@ public:
      * Switch mode (viewer/slideshow/gallery).
      * @param mode mode to set
      */
-    void set_mode(const Mode mode);
+    void set_mode(const AppMode::Type mode);
 
     /**
-     * Switch mode (viewer/slideshow/gallery).
+     * Get currently active mode (viewer/slideshow/gallery).
      * @param mode mode to set
      */
-    [[nodiscard]] Mode get_mode() const { return active_mode; }
+    [[nodiscard]] AppMode::Type get_mode() const { return active_mode; }
 
     /**
      * Get currently active application mode instance.
@@ -161,7 +154,7 @@ public:
         std::filesystem::path config;               ///< Lua config file to load
         std::string lua_script;                     ///< Lua script to start
         std::vector<std::filesystem::path> sources; ///< Image list
-        std::optional<Mode> mode;                   ///< Initial mode
+        std::optional<AppMode::Type> mode;          ///< Initial mode
         InputMouse dnd;                    ///< Mouse used for drag-and-drop
         Rectangle window;                  ///< Main window position/size
         bool use_overlay;                  ///< Use overlay mode (Wayland only)
@@ -182,7 +175,7 @@ private:
 
     bool initialized = false; ///< Initialization complete flag
 
-    Mode active_mode = Mode::Viewer; ///< Currently active mode
+    AppMode::Type active_mode = AppMode::Viewer; ///< Currently active mode
 
     std::atomic<bool> stop_flag = false; ///< Application stop flag
     int exit_code = -1;                  ///< Application exit code

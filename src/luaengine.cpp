@@ -29,10 +29,10 @@ constexpr const char* NS_GALLERY = "gallery";
 
 // app modes table: type to name
 static constexpr std::array appmodes =
-    std::to_array<std::pair<Application::Mode, const char*>>({
-        { Application::Mode::Viewer,    "viewer"    },
-        { Application::Mode::Slideshow, "slideshow" },
-        { Application::Mode::Gallery,   "gallery"   },
+    std::to_array<std::pair<AppMode::Type, const char*>>({
+        { AppMode::Viewer,    "viewer"    },
+        { AppMode::Slideshow, "slideshow" },
+        { AppMode::Gallery,   "gallery"   },
 });
 
 // ilage list orders: type to name
