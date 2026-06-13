@@ -27,6 +27,10 @@ Checks:
   - '-readability-named-parameter'
   - '-readability-redundant-access-specifiers'
   - '-readability-static-accessed-through-instance'
+  - 'bugprone-*'
+  - '-bugprone-narrowing-conversions'
+  - '-bugprone-easily-swappable-parameters'
+  - '-bugprone-empty-catch'
 
 HeaderFilterRegex: 'src/*.hpp'
 ExcludeHeaderFilterRegex: 'external/*'

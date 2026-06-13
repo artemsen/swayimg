@@ -10,7 +10,7 @@
 
 class ImageFormatFarbfeld : public ImageFormat {
 public:
-    ImageFormatFarbfeld()
+    ImageFormatFarbfeld() noexcept
         : ImageFormat(Priority::Low, "farbfeld")
     {
     }

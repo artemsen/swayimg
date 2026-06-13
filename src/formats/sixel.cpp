@@ -11,7 +11,7 @@
 
 class ImageFormatSixel : public ImageFormat {
 public:
-    ImageFormatSixel()
+    ImageFormatSixel() noexcept
         : ImageFormat(Priority::Low, "sixel")
     {
     }
@@ -50,7 +50,7 @@ public:
                 dst.a = argb_t::max;
                 const uint8_t color = pixels[y * width + x];
                 if (std::cmp_less_equal(color, ncolors)) {
-                    const uint8_t* rgb = &palette[color * 3];
+                    const uint8_t* rgb = &palette[color * 3UL];
                     dst.r = rgb[0];
                     dst.g = rgb[1];
                     dst.b = rgb[2];

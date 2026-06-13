@@ -12,7 +12,7 @@
 
 class ImageFormatJpeg : public ImageFormat {
 public:
-    ImageFormatJpeg()
+    ImageFormatJpeg() noexcept
         : ImageFormat(Priority::Highest, "jpg")
     {
     }
@@ -79,7 +79,7 @@ public:
                 argb_t* pixel = line;
                 for (int x = jpg.output_width - 1; x >= 0; --x) {
                     const uint8_t* color =
-                        reinterpret_cast<const uint8_t*>(line) + x * 3;
+                        reinterpret_cast<const uint8_t*>(line) + x * 3UL;
                     pixel[x].a = argb_t::max;
                     pixel[x].r = color[0];
                     pixel[x].g = color[1];
@@ -89,7 +89,7 @@ public:
                 argb_t* pixel = line;
                 for (size_t x = 0; x < pm.width(); ++x) {
                     const uint8_t* color =
-                        reinterpret_cast<const uint8_t*>(line) + x * 4;
+                        reinterpret_cast<const uint8_t*>(line) + x * 4UL;
                     const double c = color[0];
                     const double m = color[1];
                     const double y = color[2];

@@ -32,7 +32,7 @@ public:
      * @param load_priority format priority
      * @param format_name short format name
      */
-    ImageFormat(const Priority load_priority, const char* format_name);
+    ImageFormat(const Priority load_priority, const char* format_name) noexcept;
 
     /**
      * Set decode parameters for the format.

@@ -178,6 +178,8 @@ InputMouse::mouse_btn_t InputMouse::to_button(const uint16_t code)
             return BUTTON_SIDE;
         case BTN_EXTRA:
             return BUTTON_EXTRA;
+        default:
+            break;
     }
     return NONE;
 }

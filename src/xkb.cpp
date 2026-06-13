@@ -145,6 +145,8 @@ bool Xkb::is_modifier(const xkb_keysym_t key)
         case XKB_KEY_Hyper_L:
         case XKB_KEY_Hyper_R:
             return true;
+        default:
+            break;
     }
     return false;
 }

@@ -9,7 +9,7 @@
 
 class ImageFormatBmp : public ImageFormat {
 public:
-    ImageFormatBmp()
+    ImageFormatBmp() noexcept
         : ImageFormat(Priority::Low, "bmp")
     {
     }
@@ -246,7 +246,7 @@ private:
         const ssize_t shift_b = mask_shift(mask_b);
         const ssize_t shift_a = mask_shift(mask_a);
 
-        const size_t stride = 4 * ((bmp.width * bmp.bpp + 31) / 32);
+        const size_t stride = 4UL * ((bmp.width * bmp.bpp + 31) / 32);
 
         // check size of source buffer
         if (buffer_sz < pm.height() * stride) {
@@ -412,7 +412,7 @@ private:
     static bool decode_rgb(Pixmap& pm, const Info& bmp, const Palette& palette,
                            const uint8_t* buffer, const size_t buffer_sz)
     {
-        const size_t stride = 4 * ((bmp.width * bmp.bpp + 31) / 32);
+        const size_t stride = 4UL * ((bmp.width * bmp.bpp + 31) / 32);
 
         // check size of source buffer
         if (buffer_sz < pm.height() * stride) {

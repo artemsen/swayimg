@@ -12,7 +12,7 @@
 
 class ImageFormatTiff : public ImageFormat {
 public:
-    ImageFormatTiff()
+    ImageFormatTiff() noexcept
         : ImageFormat(Priority::Low, "tiff")
     {
     }

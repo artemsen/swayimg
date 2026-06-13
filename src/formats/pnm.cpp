@@ -12,7 +12,7 @@
 
 class ImageFormatPnm : public ImageFormat {
 public:
-    ImageFormatPnm()
+    ImageFormatPnm() noexcept
         : ImageFormat(Priority::Low, "pnm")
     {
     }
@@ -298,13 +298,15 @@ private:
             }
             // get color
             const argb_t::channel color =
-                pos + 1 < data.size && data.data[pos++] == '0' ? argb_t::max
-                                                               : argb_t::min;
+                pos < data.size && data.data[pos] == '0' ? argb_t::max
+                                                         : argb_t::min;
             // put color
             px.a = argb_t::max;
             px.r = color;
             px.g = color;
             px.b = color;
+
+            ++pos;
         });
     }
 

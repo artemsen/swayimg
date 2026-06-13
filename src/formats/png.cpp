@@ -28,7 +28,7 @@
 
 class ImageFormatPng : public ImageFormat {
 public:
-    ImageFormatPng()
+    ImageFormatPng() noexcept
         : ImageFormat(Priority::Highest, "png")
     {
     }
@@ -124,6 +124,8 @@ public:
                 break;
             case PNG_COLOR_TYPE_GRAY_ALPHA:
                 image->format += "Grayscale+Alpha ";
+                break;
+            default:
                 break;
         }
         image->format += std::format("{}bit", bit_depth);

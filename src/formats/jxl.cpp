@@ -11,7 +11,7 @@
 
 class ImageFormatJxl : public ImageFormat {
 public:
-    ImageFormatJxl()
+    ImageFormatJxl() noexcept
         : ImageFormat(Priority::High, "jxl")
     {
     }
@@ -45,7 +45,7 @@ public:
         JxlDecoderSetInput(jxl_dec.get(), data.data, data.size);
         JxlDecoderCloseInput(jxl_dec.get());
 
-        JxlBasicInfo jxl_inf {};
+        JxlBasicInfo jxl_inf;
         const JxlPixelFormat jxl_fmt { .num_channels = 4, // ARBG
                                        .data_type = JXL_TYPE_UINT8,
                                        .endianness = JXL_NATIVE_ENDIAN,

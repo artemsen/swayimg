@@ -8,9 +8,11 @@
 #include <algorithm>
 #include <format>
 
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 static const std::filesystem::path IMGLIST_TEST_DIR =
     std::filesystem::path(TEST_DATA_DIR) / "imagelist";
 
+// Check real and expected lists for equality
 static ::testing::AssertionResult
 CheckImageLists(const std::vector<ImageEntryPtr>& real,
                 const std::vector<std::filesystem::path>& expect)
@@ -30,6 +32,7 @@ CheckImageLists(const std::vector<ImageEntryPtr>& real,
     return ::testing::AssertionSuccess();
 }
 
+// Print real and expected lists
 static std::string to_string(const std::vector<ImageEntryPtr>& real,
                              const std::vector<std::filesystem::path>& expect)
 {

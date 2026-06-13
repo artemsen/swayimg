@@ -71,7 +71,7 @@ public:
 
 /** FreeType lib wrapper.*/
 struct FreeTypeLib {
-    FreeTypeLib()
+    FreeTypeLib() noexcept
     {
         FT_Error rc;
         rc = FT_Init_FreeType(&lib);

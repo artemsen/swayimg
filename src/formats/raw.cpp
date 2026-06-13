@@ -14,7 +14,7 @@
 
 class ImageFormatRaw : public ImageFormat {
 public:
-    ImageFormatRaw()
+    ImageFormatRaw() noexcept
         : ImageFormat(Priority::Normal, "raw")
     {
     }

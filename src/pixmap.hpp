@@ -28,7 +28,7 @@ public:
      * @param data pointer to external data buffer
      */
     Pixmap(const Format format, const size_t width, const size_t height,
-           void* data);
+           void* data) noexcept;
 
     /**
      * Create pixmap.

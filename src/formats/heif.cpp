@@ -12,7 +12,7 @@
 
 class ImageFormatHeif : public ImageFormat {
 public:
-    ImageFormatHeif()
+    ImageFormatHeif() noexcept
         : ImageFormat(Priority::Normal, "heif")
     {
     }

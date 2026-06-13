@@ -12,7 +12,7 @@
 #include <limits>
 
 /** Minimal number of pixel per thread. */
-constexpr size_t MIN_PIXELS_PER_THREAD = 300 * 300;
+constexpr size_t MIN_PIXELS_PER_THREAD = 300UL * 300UL;
 
 namespace NN { // nearest-neighbor
 /**
@@ -256,7 +256,9 @@ static void apply_hk(const Pixmap* src, Pixmap* dst, const Kernel* kernel,
                 int64_t b = 0;
                 for (size_t i = 0; i < output.n; ++i) {
                     const argb_t& c = src->at(output.first + i, y + yoff);
-                    const int64_t wa = kernel->weights[output.index + i] * c.a;
+                    const int64_t wa = static_cast<int64_t>(
+                                           kernel->weights[output.index + i]) *
+                        c.a;
                     a += wa;
                     r += c.r * wa;
                     g += c.g * wa;
@@ -328,7 +330,9 @@ static void apply_vk(const Pixmap* src, Pixmap* dst,
                 for (size_t i = 0; i < output.n; ++i) {
                     const argb_t& c =
                         src->at(x, output.first + i - kernel->start_in);
-                    const int64_t wa = kernel->weights[output.index + i] * c.a;
+                    const int64_t wa = static_cast<int64_t>(
+                                           kernel->weights[output.index + i]) *
+                        c.a;
                     a += wa;
                     r += c.r * wa;
                     g += c.g * wa;

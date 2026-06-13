@@ -394,6 +394,7 @@ void Application::event_loop()
 
 void Application::handle_event(const AppEvent::Holder& event)
 {
+    // NOLINTBEGIN(bugprone-branch-clone)
     std::visit(
         [this](const auto& event) {
             if constexpr (std::is_same_v<decltype(event),
@@ -445,6 +446,7 @@ void Application::handle_event(const AppEvent::Holder& event)
             }
         },
         event);
+    // NOLINTEND(bugprone-branch-clone)
 }
 
 void Application::handle_event(const AppEvent::WindowClose&)
@@ -566,6 +568,8 @@ void Application::signal_handler(int signal)
             break;
         case SIGUSR2:
             Application::self().signal_fds[1].set();
+            break;
+        default:
             break;
     }
 }

@@ -15,7 +15,7 @@
 #include <cerrno>
 
 Pixmap::Pixmap(const Format format, const size_t width, const size_t height,
-               void* data)
+               void* data) noexcept
 {
     attach(format, width, height, data);
 }

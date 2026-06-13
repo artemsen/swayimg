@@ -18,7 +18,7 @@
 
 class ImageFormatExr : public ImageFormat {
 public:
-    ImageFormatExr()
+    ImageFormatExr() noexcept
         : ImageFormat(Priority::Low, "exr")
     {
     }
@@ -54,8 +54,9 @@ public:
             } else {
                 image_type = "scanline";
                 Imf::RgbaInputFile rgba_file(stream);
-                rgba_file.setFrameBuffer(&pixels[0][0] - dx - dy * width, 1,
-                                         width);
+                rgba_file.setFrameBuffer(&pixels[0][0] - dx -
+                                             static_cast<int64_t>(dy) * width,
+                                         1, width);
                 rgba_file.readPixels(box.min.y, box.max.y);
             }
 

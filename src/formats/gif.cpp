@@ -11,7 +11,7 @@
 
 class ImageFormatGif : public ImageFormat {
 public:
-    ImageFormatGif()
+    ImageFormatGif() noexcept
         : ImageFormat(Priority::Normal, "gif")
     {
     }
@@ -154,7 +154,8 @@ private:
         }
 
         if (ctl.DelayTime != 0) {
-            frame.duration = ctl.DelayTime * 10; // hundreds of second to ms
+            // hundreds of second to ms
+            frame.duration = static_cast<size_t>(ctl.DelayTime) * 10;
         } else {
             frame.duration = 100;
         }

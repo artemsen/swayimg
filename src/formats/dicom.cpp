@@ -11,7 +11,7 @@
 
 class ImageFormatDicom : public ImageFormat {
 public:
-    ImageFormatDicom()
+    ImageFormatDicom() noexcept
         : ImageFormat(Priority::Low, "dicom")
     {
     }
@@ -47,7 +47,8 @@ public:
 
             const int16_t* pixel_data =
                 reinterpret_cast<const int16_t*>(dicom.data);
-            const size_t num_pixels = dicom.width * dicom.height;
+            const size_t num_pixels =
+                static_cast<size_t>(dicom.width) * dicom.height;
 
             for (size_t i = 0; i < num_pixels; ++i) {
                 const int16_t color = pixel_data[i];
@@ -224,8 +225,11 @@ private:
         // get payload data
         if (element.size == 0) {
             element.data = nullptr;
-        } else if (!(element.data = stream.consume(element.size))) {
-            return false;
+        } else {
+            element.data = stream.consume(element.size);
+            if (!element.data) {
+                return false;
+            }
         }
 
         return true;

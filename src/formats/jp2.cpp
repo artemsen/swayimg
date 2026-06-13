@@ -13,7 +13,7 @@
 
 class ImageFormatJp2 : public ImageFormat {
 public:
-    ImageFormatJp2()
+    ImageFormatJp2() noexcept
         : ImageFormat(Priority::Low, "jp2")
     {
     }
@@ -178,6 +178,7 @@ private:
      */
     static Jp2ColorSpace get_colorspace(const opj_image_t& img)
     {
+        // NOLINTBEGIN(bugprone-branch-clone)
         Jp2ColorSpace cspace;
         if (img.color_space == OPJ_CLRSPC_SRGB) {
             cspace = Jp2ColorSpace::SRGB;
@@ -217,6 +218,7 @@ private:
         } else {
             cspace = Jp2ColorSpace::Grayscale;
         }
+        // NOLINTEND(bugprone-branch-clone)
         return cspace;
     }
 
@@ -436,7 +438,7 @@ private:
             }
             if (yy < max_w) {
                 if (comp12w == yy / 2) {
-                    *px = yuv_to_rgb(*y, *cb, *cr);
+                    *px = yuv_to_rgb(*y, 0, 0);
                 } else {
                     *px = yuv_to_rgb(*y, *cb, *cr);
                 }

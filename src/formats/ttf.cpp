@@ -8,7 +8,7 @@
 
 class ImageFormatTtf : public ImageFormat {
 public:
-    ImageFormatTtf()
+    ImageFormatTtf() noexcept
         : ImageFormat(Priority::Low, "ttf")
     {
     }

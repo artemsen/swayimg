@@ -7,6 +7,8 @@
 
 #include <clocale>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 TEST(InputKeyboardTest, Load)
 {
     std::setlocale(LC_ALL, "");
@@ -115,3 +117,5 @@ TEST(InputSignalTest, ToString)
     EXPECT_EQ(InputSignal(InputSignal::USR1).to_string(), "USR1");
     EXPECT_EQ(InputSignal(InputSignal::USR2).to_string(), "USR2");
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

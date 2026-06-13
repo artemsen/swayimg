@@ -195,7 +195,8 @@ private:
     std::vector<uint8_t> container;
 };
 
-ImageFormat::ImageFormat(const Priority load_priority, const char* format_name)
+ImageFormat::ImageFormat(const Priority load_priority,
+                         const char* format_name) noexcept
     : priority(load_priority)
     , name(format_name)
 {
@@ -245,7 +246,7 @@ void ImageFormat::fix_orientation(ImagePtr& image, const int orientation) const
     if (exif_orient < 0) {
         const auto& it = image->meta.find("Exif.Image.Orientation");
         if (it != image->meta.end()) {
-            exif_orient = std::atoi(it->second.c_str());
+            exif_orient = std::strtol(it->second.c_str(), nullptr, 10);
         }
     }
     if (exif_orient > 0) {
@@ -280,6 +281,8 @@ void ImageFormat::fix_orientation(Pixmap& pm, const int orientation)
             break;
         case 8: // on its far side
             pm.rotate(270);
+            break;
+        default:
             break;
     }
 }

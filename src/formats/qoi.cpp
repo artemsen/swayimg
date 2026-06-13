@@ -11,7 +11,7 @@
 
 class ImageFormatQoi : public ImageFormat {
 public:
-    ImageFormatQoi()
+    ImageFormatQoi() noexcept
         : ImageFormat(Priority::Low, "qoi")
     {
     }

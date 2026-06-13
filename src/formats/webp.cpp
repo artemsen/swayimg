@@ -11,7 +11,7 @@
 
 class ImageFormatWebp : public ImageFormat {
 public:
-    ImageFormatWebp()
+    ImageFormatWebp() noexcept
         : ImageFormat(Priority::High, "webp")
     {
     }

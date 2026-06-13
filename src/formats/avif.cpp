@@ -11,7 +11,7 @@
 
 class ImageFormatAvif : public ImageFormat {
 public:
-    ImageFormatAvif()
+    ImageFormatAvif() noexcept
         : ImageFormat(Priority::High, "avif")
     {
     }
@@ -114,7 +114,8 @@ private:
             pm.create(avif->alphaPresent ? Pixmap::ARGB : Pixmap::RGB,
                       rgb.width, rgb.height);
             std::memcpy(&pm.at(0, 0), rgb.pixels,
-                        rgb.width * rgb.height * sizeof(argb_t));
+                        static_cast<size_t>(rgb.width) * rgb.height *
+                            sizeof(argb_t));
         }
 
         avifRGBImageFreePixels(&rgb);

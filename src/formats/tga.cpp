@@ -9,7 +9,7 @@
 
 class ImageFormatTga : public ImageFormat {
 public:
-    ImageFormatTga()
+    ImageFormatTga() noexcept
         : ImageFormat(Priority::Lowest, "tga")
     {
     }
@@ -35,7 +35,7 @@ public:
                 if (!has_colormap) {
                     return nullptr;
                 }
-                colormap_sz = tga->cm_size *
+                colormap_sz = static_cast<size_t>(tga->cm_size) *
                     (tga->cm_bpc / 8 + (tga->cm_bpc % 8 ? 1 : 0));
                 colormap = data.data + sizeof(Header) + tga->id_len;
                 break;
@@ -72,6 +72,8 @@ public:
             case TGA_RLE_GS:
                 rc = decode_rle(pm, tga, colormap, pix_ptr, pix_sz);
                 break;
+            default:
+                break;
         }
         if (!rc) {
             return nullptr;
@@ -105,6 +107,8 @@ public:
                 break;
             case TGA_RLE_GS:
                 image->format += "RLE grayscale";
+                break;
+            default:
                 break;
         }
 
@@ -217,7 +221,8 @@ private:
                     if (!colormap) {
                         color = get_pixel(src, tga->bpp);
                     } else {
-                        const uint8_t* entry = colormap + cm_bpp * (*src);
+                        const uint8_t* entry =
+                            colormap + static_cast<ptrdiff_t>(cm_bpp * (*src));
                         if (entry + cm_bpp > data) {
                             return false;
                         }
@@ -264,7 +269,8 @@ private:
                 if (!colormap) {
                     *pixel = get_pixel(data + pos, tga->bpp);
                 } else {
-                    const uint8_t* entry = colormap + cm_bpp * data[pos];
+                    const uint8_t* entry =
+                        colormap + static_cast<ptrdiff_t>(cm_bpp * data[pos]);
                     if (entry + cm_bpp > data) {
                         return false;
                     }
@@ -313,6 +319,8 @@ private:
             case TGA_RLE_TC:
             case TGA_RLE_GS:
                 return true;
+            default:
+                break;
         }
 
         return false;

@@ -17,7 +17,7 @@
 
 class ImageFormatSvg : public ImageFormat {
 public:
-    ImageFormatSvg()
+    ImageFormatSvg() noexcept
         : ImageFormat(Priority::Low, "svg")
     {
     }
