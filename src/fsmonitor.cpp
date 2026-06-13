@@ -106,10 +106,7 @@ void FsMonitor::remove(const std::filesystem::path& path)
 {
     auto it = paths.find(path);
     if (it != paths.end()) {
-        const int wd = it->second;
-        inotify_rm_watch(fd, wd);
-        fds.erase(wd);
-        paths.erase(it);
+        inotify_rm_watch(fd, it->second);
     }
 }
 
@@ -118,20 +115,18 @@ void FsMonitor::clear()
     for (const auto& it : fds) {
         inotify_rm_watch(fd, it.first);
     }
-    fds.clear();
-    paths.clear();
 }
 
 void FsMonitor::handle_event(const inotify_event* event)
 {
     const auto it = fds.find(event->wd);
+    assert(it != fds.end());
+
     if (event->mask & IN_IGNORED) {
         paths.erase(it->second);
         fds.erase(it);
         return;
     }
-
-    assert(it != fds.end());
 
     // compose full path
     std::filesystem::path path = it->second;
