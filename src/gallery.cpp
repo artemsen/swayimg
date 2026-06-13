@@ -218,19 +218,14 @@ void Gallery::window_resize(const Size& wnd)
 void Gallery::window_redraw(Pixmap& wnd)
 {
     layout.update();
-    wnd.fill({ 0, 0, wnd.width(), wnd.height() }, clr_window);
 
     const ImageEntryPtr current = layout.get_selected();
-
     if (!current) {
-        // draw placeholder
-        const ssize_t x = static_cast<ssize_t>(wnd.width() / 2) -
-            static_cast<ssize_t>(Resource::file.width() / 2);
-        const ssize_t y = static_cast<ssize_t>(wnd.height() / 2) -
-            static_cast<ssize_t>(Resource::file.height() / 2);
-        wnd.mask(Resource::file, { x, y }, mark_color);
+        draw_empty(wnd, clr_window);
         return;
     }
+
+    wnd.fill({ 0, 0, wnd.width(), wnd.height() }, clr_window);
 
     const auto& scheme = layout.get_scheme();
     size_t selected_scheme_idx = 0;

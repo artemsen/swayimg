@@ -6,6 +6,7 @@
 
 #include "application.hpp"
 #include "imagelist.hpp"
+#include "resources.hpp"
 
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
@@ -162,4 +163,19 @@ void AppMode::switch_current()
     }
 
     Application::redraw();
+}
+
+void AppMode::draw_empty(Pixmap& wnd, const argb_t bkg)
+{
+    // fill window
+    wnd.fill({ 0, 0, wnd.width(), wnd.height() }, bkg);
+    const ssize_t x = static_cast<ssize_t>(wnd.width() / 2) -
+        static_cast<ssize_t>(Resource::empty.width() / 2);
+    const ssize_t y = static_cast<ssize_t>(wnd.height() / 2) -
+        static_cast<ssize_t>(Resource::empty.height() / 2);
+
+    // draw placeholder
+    const argb_t mask(argb_t::max, argb_t::max - bkg.r, argb_t::max - bkg.g,
+                      argb_t::max - bkg.b);
+    wnd.mask(Resource::empty, { x, y }, mask);
 }

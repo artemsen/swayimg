@@ -192,6 +192,13 @@ protected:
      */
     void switch_current();
 
+    /**
+     * Draw placeholder for empty image list.
+     * @param wnd window surface pixmap
+     * @param bkg window background color
+     */
+    static void draw_empty(Pixmap& wnd, const argb_t bkg);
+
 protected:
     argb_t mark_color;                       ///< Mark icon color
     double pinch_factor;                     ///< Pinch gesture factor

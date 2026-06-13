@@ -14,4 +14,7 @@ extern const Pixmap mark;
 /** Image file icon (alpha channel mask). */
 extern const Pixmap file;
 
+/** Empty image icon (alpha channel mask). */
+extern const Pixmap empty;
+
 }; // namespace Resource

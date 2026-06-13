@@ -441,15 +441,8 @@ void Viewer::window_resize(const Size& wnd)
 void Viewer::window_redraw(Pixmap& wnd)
 {
     if (!image) {
-        // draw placeholder
         const argb_t* bkg = std::get_if<argb_t>(&window_bkg);
-        wnd.fill({ 0, 0, wnd.width(), wnd.height() },
-                 bkg ? *bkg : argb_t(argb_t::max, 0, 0, 0));
-        const ssize_t x = static_cast<ssize_t>(wnd.width() / 2) -
-            static_cast<ssize_t>(Resource::file.width() / 2);
-        const ssize_t y = static_cast<ssize_t>(wnd.height() / 2) -
-            static_cast<ssize_t>(Resource::file.height() / 2);
-        wnd.mask(Resource::file, { x, y }, mark_color);
+        draw_empty(wnd, bkg ? *bkg : Defaults::viewer::window_bkg);
         return;
     }
 
