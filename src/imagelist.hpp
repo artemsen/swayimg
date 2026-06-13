@@ -8,7 +8,6 @@
 
 #include <ctime>
 #include <filesystem>
-#include <list>
 #include <shared_mutex>
 #include <vector>
 
@@ -50,7 +49,7 @@ public:
      * @param sources list of sources to load
      * @return list of added entries in source order
      */
-    std::list<ImageEntryPtr>
+    std::vector<ImageEntryPtr>
     add(const std::vector<std::filesystem::path>& sources);
 
     /**
@@ -58,7 +57,7 @@ public:
      * @param sources entries paths to remove
      * @return list of removed entries
      */
-    std::list<ImageEntryPtr>
+    std::vector<ImageEntryPtr>
     remove(const std::vector<std::filesystem::path>& sources);
 
     /**
@@ -73,7 +72,7 @@ public:
      * Clear image list.
      * @return list of removed entries
      */
-    std::list<ImageEntryPtr> clear();
+    std::vector<ImageEntryPtr> clear();
 
     /**
      * Get number of entries in the image list.
@@ -141,7 +140,8 @@ private:
      * @param path parent directory
      * @return list of entries
      */
-    std::list<ImageEntryPtr> get_child(const std::filesystem::path& path) const;
+    std::vector<ImageEntryPtr>
+    get_child(const std::filesystem::path& path) const;
 
     /**
      * Get the nearest entry with different parent.
@@ -156,15 +156,15 @@ private:
      * @param path path to the file or special source
      * @return list of added entries
      */
-    std::list<ImageEntryPtr> add(const std::filesystem::path& path,
-                                 const bool ordered);
+    std::vector<ImageEntryPtr> add(const std::filesystem::path& path,
+                                   const bool ordered);
 
     /**
      * Add files from the directory to the list.
      * @param path path to the directory
      * @return list with added entries
      */
-    std::list<ImageEntryPtr> add_dir(const std::filesystem::path& path);
+    std::vector<ImageEntryPtr> add_dir(const std::filesystem::path& path);
 
     /**
      * Add file to the list.
@@ -181,8 +181,8 @@ private:
      * @param ordered flag to add new entry to ordered position in the list
      * @return added entry (nullptr if already exists)
      */
-    ImageEntryPtr add_special_source(const std::filesystem::path& path,
-                                     const bool ordered);
+    ImageEntryPtr add_special(const std::filesystem::path& path,
+                              const bool ordered);
 
     /**
      * Add new entry to the list.

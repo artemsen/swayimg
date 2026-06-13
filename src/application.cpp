@@ -165,7 +165,7 @@ Application::add_images(const std::vector<std::filesystem::path>& paths)
 {
     ImageList& il = ImageList::self();
 
-    const std::list<ImageEntryPtr> entries = il.add(paths);
+    const std::vector<ImageEntryPtr> entries = il.add(paths);
 
     if (!entries.empty()) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Create,
@@ -179,7 +179,7 @@ Application::add_images(const std::vector<std::filesystem::path>& paths)
 
 void Application::remove_images(const std::vector<std::filesystem::path>& paths)
 {
-    const std::list<ImageEntryPtr> entries = ImageList::self().remove(paths);
+    const std::vector<ImageEntryPtr> entries = ImageList::self().remove(paths);
     if (!entries.empty()) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
                                          entries);
@@ -189,7 +189,7 @@ void Application::remove_images(const std::vector<std::filesystem::path>& paths)
 
 void Application::remove_all_images()
 {
-    const std::list<ImageEntryPtr> entries = ImageList::self().clear();
+    const std::vector<ImageEntryPtr> entries = ImageList::self().clear();
     if (!entries.empty()) {
         current_mode()->handle_imagelist(AppMode::ImageListEvent::Remove,
                                          entries);
@@ -241,7 +241,7 @@ ImageEntryPtr Application::il_initialize() const
     assert(!sparams->sources.empty());
 
     ImageList& il = ImageList::self();
-    std::list<ImageEntryPtr> added;
+    std::vector<ImageEntryPtr> added;
 
     const Log::PerfTimer timer;
 

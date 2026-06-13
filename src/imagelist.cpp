@@ -150,16 +150,18 @@ ImageList::ImageList()
 {
 }
 
-std::list<ImageEntryPtr>
+std::vector<ImageEntryPtr>
 ImageList::add(const std::vector<std::filesystem::path>& sources)
 {
     // preserve order while inserting only if it can avoid sorting entire list
     const bool add_ordered = sources.size() == 1;
 
-    std::list<ImageEntryPtr> added;
+    std::vector<ImageEntryPtr> added;
     const std::scoped_lock lock(mutex);
     for (const auto& path : sources) {
-        added.splice(added.end(), add(path, add_ordered));
+        std::vector<ImageEntryPtr> entries = add(path, add_ordered);
+        added.reserve(added.size() + entries.size());
+        added.insert(added.end(), entries.begin(), entries.end());
     }
 
     if (!add_ordered) { // ensure result is sorted if it wasn't during insert
@@ -169,7 +171,7 @@ ImageList::add(const std::vector<std::filesystem::path>& sources)
     return added;
 }
 
-std::list<ImageEntryPtr>
+std::vector<ImageEntryPtr>
 ImageList::remove(const std::vector<std::filesystem::path>& sources)
 {
     if (sources.empty()) {
@@ -182,7 +184,7 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
         return {};
     }
 
-    std::list<ImageEntryPtr> removed;
+    std::vector<ImageEntryPtr> removed;
 
     for (const auto& path : sources) {
         // get absolute path
@@ -251,11 +253,11 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
     return next;
 }
 
-std::list<ImageEntryPtr> ImageList::clear()
+std::vector<ImageEntryPtr> ImageList::clear()
 {
     const std::scoped_lock lock(mutex);
 
-    std::list<ImageEntryPtr> removed(entries_arr.begin(), entries_arr.end());
+    std::vector<ImageEntryPtr> removed = entries_arr;
     entries_map.clear();
     entries_arr.clear();
 
@@ -405,12 +407,12 @@ ssize_t ImageList::distance(const ImageEntryPtr& from, const ImageEntryPtr& to)
     return static_cast<ssize_t>(to->index) - static_cast<ssize_t>(from->index);
 }
 
-std::list<ImageEntryPtr>
+std::vector<ImageEntryPtr>
 ImageList::get_child(const std::filesystem::path& path) const
 {
     assert(path.is_absolute());
 
-    std::list<ImageEntryPtr> child;
+    std::vector<ImageEntryPtr> child;
 
     for (const ImageEntryPtr& entry : entries_arr) {
         const std::filesystem::path rel = entry->path.lexically_relative(path);
@@ -444,11 +446,11 @@ ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,
     return nullptr;
 }
 
-std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
-                                        const bool ordered)
+std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
+                                          const bool ordered)
 {
     if (ImageEntry::is_special(path)) {
-        const ImageEntryPtr entry = add_special_source(path, ordered);
+        const ImageEntryPtr entry = add_special(path, ordered);
         if (entry) {
             return { entry };
         }
@@ -467,7 +469,7 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         return {};
     }
 
-    std::list<ImageEntryPtr> added;
+    std::vector<ImageEntryPtr> added;
     if (!std::filesystem::is_directory(abs_path)) {
         const ImageEntryPtr entry = add_file(abs_path, ordered);
         if (entry) {
@@ -483,31 +485,21 @@ std::list<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
         abs_path = abs_path.parent_path();
     }
 
-    std::list<ImageEntryPtr> dir_entries = add_dir(abs_path);
+    std::vector<ImageEntryPtr> dir_entries = add_dir(abs_path);
     if (!dir_entries.empty()) {
         if (ordered) {
             sort();
         }
-
-        // ensure user is served the first file according to sort opts
-        if (added.empty()) {
-            auto first = std::min_element(
-                dir_entries.begin(), dir_entries.end(),
-                [this](const ImageEntryPtr& l, const ImageEntryPtr& r) {
-                    const bool cmp = compare_entries(*l, *r, order);
-                    return reverse ? !cmp : cmp;
-                });
-            added.splice(added.begin(), dir_entries, first);
-        }
+        added.reserve(added.size() + dir_entries.size());
+        added.insert(added.end(), dir_entries.begin(), dir_entries.end());
     }
-    added.splice(added.end(), dir_entries);
 
     return added;
 }
 
-std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
+std::vector<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
 {
-    std::list<ImageEntryPtr> added;
+    std::vector<ImageEntryPtr> added;
 
     if (fsmon) {
         FsMonitor::self().add(path);
@@ -515,15 +507,17 @@ std::list<ImageEntryPtr> ImageList::add_dir(const std::filesystem::path& path)
 
     try {
         for (const auto& it : std::filesystem::directory_iterator(path)) {
-            const std::filesystem::path& sub_path = it.path();
-            if (std::filesystem::is_directory(sub_path)) {
+            const std::filesystem::path& child_path = it.path();
+            if (std::filesystem::is_directory(child_path)) {
                 if (recursive) {
-                    added.splice(added.end(), add_dir(sub_path));
+                    std::vector<ImageEntryPtr> entries = add_dir(child_path);
+                    added.reserve(added.size() + entries.size());
+                    added.insert(added.end(), entries.begin(), entries.end());
                 }
             } else {
-                const ImageEntryPtr entry = add_file(sub_path, false);
+                const ImageEntryPtr entry = add_file(child_path, false);
                 if (entry) {
-                    added.emplace_back(entry);
+                    added.push_back(entry);
                 }
             }
         }
@@ -560,8 +554,8 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path,
     return entry;
 }
 
-ImageEntryPtr ImageList::add_special_source(const std::filesystem::path& path,
-                                            const bool ordered)
+ImageEntryPtr ImageList::add_special(const std::filesystem::path& path,
+                                     const bool ordered)
 {
     assert(ImageEntry::is_special(path));
 

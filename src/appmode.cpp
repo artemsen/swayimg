@@ -47,7 +47,7 @@ bool AppMode::handle_signal(const InputSignal& input)
 }
 
 void AppMode::handle_imagelist(const ImageListEvent,
-                               const std::list<ImageEntryPtr>&)
+                               const std::vector<ImageEntryPtr>&)
 {
     const ImageEntryPtr entry = get_current();
     Text& text = Text::self();

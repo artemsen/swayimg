@@ -263,7 +263,7 @@ void Gallery::handle_pinch(const double scale_delta)
 }
 
 void Gallery::handle_imagelist(const ImageListEvent event,
-                               const std::list<ImageEntryPtr>& entries)
+                               const std::vector<ImageEntryPtr>& entries)
 {
     AppMode::handle_imagelist(event, entries);
 

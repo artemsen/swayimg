@@ -118,10 +118,10 @@ public:
     /**
      * Handle image list changes.
      * @param event event type
-     * @param entries list of added/removed/updated image entries
+     * @param entries array of added/removed/updated image entries
      */
     virtual void handle_imagelist(const ImageListEvent event,
-                                  const std::list<ImageEntryPtr>& entries);
+                                  const std::vector<ImageEntryPtr>& entries);
 
     /**
      * Check if current mode is active.
