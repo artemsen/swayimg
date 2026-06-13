@@ -526,6 +526,7 @@ void Application::handle_event(const AppEvent::Signal& event)
 
 void Application::handle_event(const AppEvent::DragAndDrop& event)
 {
+    remove_all_images();
     const ImageEntryPtr first = add_images(event.paths);
     if (first) {
         current_mode()->set_current(first);
