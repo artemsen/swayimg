@@ -107,12 +107,6 @@ public:
     void set_window_color(const argb_t& color);
 
     /**
-     * Set mark icon color.
-     * @param color mark icon color
-     */
-    void set_mark_color(const argb_t& color);
-
-    /**
      * Enable/disable mouse hover selection.
      * @param enable flag to set
      */
