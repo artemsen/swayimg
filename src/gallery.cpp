@@ -82,7 +82,7 @@ void Gallery::reload()
     {
         // clear cache
         const std::scoped_lock lock(mutex);
-        cache.clear();
+        thumbs.clear();
     }
 
     refresh();
@@ -274,7 +274,7 @@ void Gallery::handle_imagelist(const ImageListEvent event,
         // remove entry from cache
         const std::scoped_lock lock(mutex);
         for (const auto& entry : entries) {
-            cache.erase(entry);
+            thumbs.erase(entry);
         }
     }
 
@@ -403,39 +403,46 @@ void Gallery::requeue_loading()
 {
     tpool.cancel();
 
-    ImageList& il = ImageList::self();
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
+    if (scheme.empty()) {
+        return;
+    }
 
     const size_t index_first = scheme.front().img->index;
     const size_t index_last = scheme.back().img->index;
 
     size_t preload_counter = preload ? cache_size : 0;
 
+    ImageList& il = ImageList::self();
     ImageEntryPtr fwd = layout.get_selected();
     ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
 
-    while (fwd || back) {
-        if (fwd) {
-            queue_thumbnail(fwd);
-            fwd = il.get(fwd, ImageList::Dir::Next);
-            if (fwd && fwd->index > index_last) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    fwd = nullptr;
-                }
+    // put thumbnail to loading queue, returns next thumb to load
+    auto queue_thumbnail = [&](const ImageEntryPtr& entry,
+                               const ImageList::Dir dir) -> ImageEntryPtr {
+        if (!get_thumbnail(entry) && !crld_thumbs.contains(entry)) {
+            tpool.add([this, entry]() {
+                load_thumbnail(entry);
+            });
+        }
+        ImageEntryPtr next = nullptr;
+        if (--preload_counter) {
+            next = il.get(entry, dir);
+            if (next &&
+                ((dir == ImageList::Dir::Next && next->index > index_last) ||
+                 (dir == ImageList::Dir::Prev && next->index < index_first))) {
+                next = nullptr;
             }
         }
+        return next;
+    };
+
+    while (fwd || back) {
+        if (fwd) {
+            fwd = queue_thumbnail(fwd, ImageList::Dir::Next);
+        }
         if (back) {
-            queue_thumbnail(back);
-            back = il.get(back, ImageList::Dir::Prev);
-            if (back && back->index < index_first) {
-                if (preload_counter) {
-                    --preload_counter;
-                } else {
-                    back = nullptr;
-                }
-            }
+            back = queue_thumbnail(back, ImageList::Dir::Prev);
         }
     }
 }
@@ -443,15 +450,19 @@ void Gallery::requeue_loading()
 void Gallery::clear_invisible()
 {
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
+    if (scheme.empty()) {
+        thumbs.clear();
+        return;
+    }
 
-    if (cache.size() > scheme.size() + cache_size) {
+    if (thumbs.size() > scheme.size() + cache_size) {
         const size_t visible_first = scheme.front().img->index;
         const size_t visible_last = scheme.back().img->index;
         const size_t store_min =
             visible_first > cache_size / 2 ? visible_first - cache_size / 2 : 1;
         const size_t store_max = visible_last + cache_size - cache_size / 2;
 
-        std::erase_if(cache,
+        std::erase_if(thumbs,
                       [store_min, store_max](
                           const std::pair<ImageEntryPtr, Pixmap>& key_value) {
                           return key_value.first->index < store_min ||
@@ -462,15 +473,15 @@ void Gallery::clear_invisible()
 
 const Pixmap* Gallery::get_thumbnail(const ImageEntryPtr& entry)
 {
-    const auto it = cache.find(entry);
-    return it == cache.end() ? nullptr : &it->second;
+    const auto it = thumbs.find(entry);
+    return it == thumbs.end() ? nullptr : &it->second;
 }
 
 void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 {
     {
         const std::scoped_lock lock(mutex);
-        active.insert(entry);
+        crld_thumbs.insert(entry);
     }
 
     const size_t thumb_size = layout.get_thumb_size();
@@ -492,22 +503,12 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     }
 
     const std::scoped_lock lock(mutex);
-    active.erase(entry);
+    crld_thumbs.erase(entry);
     if (pm) {
-        cache.insert_or_assign(entry, pm);
+        thumbs.insert_or_assign(entry, pm);
         if (layout.is_visible(entry)) {
             Application::redraw();
         }
-    }
-}
-
-void Gallery::queue_thumbnail(const ImageEntryPtr& entry)
-{
-    if (!get_thumbnail(entry) &&   // not yet loaded
-        !active.contains(entry)) { // not currently loading
-        tpool.add([this, entry]() {
-            load_thumbnail(entry);
-        });
     }
 }
 

@@ -187,12 +187,6 @@ private:
     void load_thumbnail(const ImageEntryPtr& entry);
 
     /**
-     * Put thumbnail to loading queue.
-     * @param entry image entry to load
-     */
-    void queue_thumbnail(const ImageEntryPtr& entry);
-
-    /**
      * Load thumbnail from persistent storage.
      * @param entry image entry for thumbnail
      * @return pixmap with thumbnail
@@ -224,12 +218,8 @@ private:
     bool pstore_enable; ///< Use persistent storage for thumbnails
     std::filesystem::path pstore_path; ///< Persistent storage path
 
-    /**
-     * Thumbnails cache.
-     * ImageEntry caching allows determining the current index of the thumbnail.
-     */
-    std::unordered_map<ImageEntryPtr, Pixmap> cache;
-    std::set<ImageEntryPtr> active; ///< Currently loading
+    std::unordered_map<ImageEntryPtr, Pixmap> thumbs; ///< Loaded thumbnails
+    std::set<ImageEntryPtr> crld_thumbs; ///< Currently loading thumbnails
 
     bool preload;      ///< Enable/disable preloading of invisible thumbnails
     size_t cache_size; ///< Max number of thumbnails in cache
