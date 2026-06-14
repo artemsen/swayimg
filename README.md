@@ -20,6 +20,7 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
   - BMP (built-in);
   - PNM (built-in);
   - TGA (built-in);
+  - XBM (built-in);
   - QOI (built-in);
   - DICOM (built-in);
   - Farbfeld (built-in).

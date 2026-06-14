@@ -303,6 +303,7 @@ sources = [
     'src/formats/qoi.cpp',
     'src/formats/tga.cpp',
     'src/formats/ttf.cpp',
+    'src/formats/xbm.cpp',
     wl_protocols,
 ]
 
