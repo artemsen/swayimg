@@ -14,7 +14,8 @@
 
 #include <sys/stat.h>
 
-#include <array>
+#include <cstdlib>
+#include <format>
 #include <utility>
 
 // Limits for thumbnail size and other parameters
@@ -24,8 +25,12 @@ constexpr size_t PADDING_SIZE_MAX = 1000;
 constexpr size_t BORDER_SIZE_MAX = 100;
 constexpr double SSCALE_MAX = 10.0;
 
-/** Number of threads used for loading thumbnails. */
+// Number of threads used for loading thumbnails
 constexpr size_t THUMB_LOAD_THREADS = 4;
+
+// Service records in the thumbnail meta block
+constexpr const char* THUMB_META_INODE = "swayimg.inode";
+constexpr const char* THUMB_META_SIZE = "swayimg.size";
 
 Gallery& Gallery::self()
 {
@@ -488,7 +493,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 
     Pixmap pm;
 
-    if (pstore_enable) {
+    if (pstore_enable && !entry->is_special()) {
         pm = pstore_load(entry);
     }
 
@@ -497,7 +502,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
                                            aspect == Aspect::Fill);
         if (!pm) {
             Application::self().add_event(AppEvent::FileRemove { entry->path });
-        } else if (pstore_enable) {
+        } else if (pstore_enable && !entry->is_special()) {
             pstore_save(entry, pm);
         }
     }
@@ -521,12 +526,16 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
         return {};
     }
 
-    // check modification time
+    // get file stats
     struct stat st_image;
     struct stat st_thumb;
     if (stat(entry->path.c_str(), &st_image) == -1 ||
-        stat(thumb_path.c_str(), &st_thumb) == -1 ||
-        st_image.st_mtim.tv_sec > st_thumb.st_mtim.tv_sec) {
+        stat(thumb_path.c_str(), &st_thumb) == -1) {
+        return {};
+    }
+
+    // check if origin image is newer then thumbnail
+    if (st_image.st_mtim.tv_sec > st_thumb.st_mtim.tv_sec) {
         return {};
     }
 
@@ -534,17 +543,44 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
     const ImageEntryPtr thumb_entry = std::make_shared<ImageEntry>();
     thumb_entry->path = thumb_path;
     const ImagePtr thumb_image = FormatFactory::self().load(thumb_entry);
-    if (thumb_image) {
-        return thumb_image->frames[0].pm;
+    if (!thumb_image) {
+        return {};
     }
 
-    return {};
+    // check if size or inode of origin file were changed
+    size_t tlink_inode = 0;
+    const auto it_inode = thumb_image->meta.find(THUMB_META_INODE);
+    if (it_inode != thumb_image->meta.end()) {
+        tlink_inode = std::strtoul(it_inode->second.c_str(), nullptr, 10);
+    }
+    size_t tlink_size = 0;
+    const auto it_size = thumb_image->meta.find(THUMB_META_SIZE);
+    if (it_size != thumb_image->meta.end()) {
+        tlink_size = std::strtoul(it_size->second.c_str(), nullptr, 10);
+    }
+    if (tlink_inode != st_image.st_ino ||
+        std::cmp_not_equal(tlink_size, st_image.st_size)) {
+        // remove thumbnail file
+        std::error_code ec;
+        std::filesystem::remove(thumb_path, ec);
+        return {};
+    }
+
+    return thumb_image->frames[0].pm;
 }
 
 void Gallery::pstore_save(const ImageEntryPtr& entry, const Pixmap& thumb) const
 {
+    // fill meta info
+    std::unordered_map<std::string, std::string> meta;
+    struct stat st {};
+    stat(entry->path.c_str(), &st);
+    meta.insert_or_assign(THUMB_META_INODE, std::format("{}", st.st_ino));
+    meta.insert_or_assign(THUMB_META_SIZE, std::format("{}", st.st_size));
+
+    // save thumbnail
     std::filesystem::path thumb_path = pstore_path;
     thumb_path.concat(entry->path.string());
     std::filesystem::create_directories(thumb_path.parent_path());
-    FormatFactory::save(thumb, {}, thumb_path);
+    FormatFactory::save(thumb, meta, thumb_path);
 }

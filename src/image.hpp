@@ -28,6 +28,12 @@ struct ImageEntry {
     static constexpr const char* SRC_EXEC = "exec://";
 
     /**
+     * Check if entry has a special source.
+     * @return true if path starts with stdin:// or exec://
+     */
+    [[nodiscard]] bool is_special() const { return is_special(path); }
+
+    /**
      * Check if path is a special source.
      * @param path path to check for special source format
      * @return true if path starts with stdin:// or exec://
