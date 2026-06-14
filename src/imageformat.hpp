@@ -7,8 +7,10 @@
 #include "image.hpp"
 
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class ImageFormat {
 public:
@@ -51,10 +53,16 @@ public:
 
     /**
      * Encode pixel map.
-     * @param pm source image instance
+     * @param pm pixmap to encode
+     * @param meta meta data
      * @return encoded image data, empty array on errors
      */
-    virtual std::vector<uint8_t> encode(const Pixmap& /* pm */) { return {}; }
+    virtual std::vector<uint8_t>
+    encode(const Pixmap& /*pm*/,
+           const std::unordered_map<std::string, std::string>& /*meta*/)
+    {
+        return {};
+    }
 
     /**
      * Get preview (thumbnail).
@@ -137,6 +145,17 @@ public:
      * @return image instance or nullptr if image wasn't loaded
      */
     [[nodiscard]] ImagePtr load(const ImageEntryPtr& entry) const;
+
+    /**
+     * Save image in PNG format.
+     * @param pm pixmap to encode
+     * @param meta meta data
+     * @param path path to write the file
+     * @return true on success
+     */
+    static bool save(const Pixmap& pm,
+                     const std::unordered_map<std::string, std::string>& meta,
+                     const std::filesystem::path& path);
 
     /**
      * Decode raw image data.

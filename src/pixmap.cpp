@@ -4,16 +4,6 @@
 
 #include "pixmap.hpp"
 
-#include "imageformat.hpp"
-#include "log.hpp"
-
-#include <fcntl.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <cerrno>
-
 Pixmap::Pixmap(const Format format, const size_t width, const size_t height,
                void* data) noexcept
 {
@@ -64,53 +54,6 @@ void Pixmap::attach(const Format format, const size_t width,
 
     pm_ext = reinterpret_cast<uint8_t*>(data);
     pm_data.clear();
-}
-
-bool Pixmap::save(const std::filesystem::path& path) const
-{
-    ImageFormat* png = FormatFactory::self().get("png");
-    if (!png) {
-        Log::error("Unable to export pixmap, PNG not supported");
-        return false;
-    }
-
-    const std::vector<uint8_t> data = png->encode(*this);
-    if (data.empty()) {
-        Log::error("Unable to export pixmap, PNG encode failed");
-        return false;
-    }
-
-    // open file
-    const int fd = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC,
-                        S_IRUSR | S_IWUSR | S_IRGRP);
-    if (fd == -1) {
-        Log::error(errno, "Unable to create file {}", path.string());
-        return false;
-    }
-
-    // write file
-    const uint8_t* ptr = data.data();
-    size_t size = data.size();
-    while (size) {
-        const ssize_t written = write(fd, ptr, size);
-        if (written == -1) {
-            if (errno != EINTR) {
-                Log::error(errno, "Unable to write file {}", path.string());
-                close(fd);
-                return false;
-            }
-            continue;
-        }
-        size -= written;
-        ptr += written;
-    }
-
-    if (close(fd) == -1) {
-        Log::error(errno, "Failed to close file {}", path.string());
-        return false;
-    }
-
-    return true;
 }
 
 void Pixmap::free()

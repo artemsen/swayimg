@@ -9,7 +9,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <filesystem>
 #include <functional>
 #include <vector>
 
@@ -46,13 +45,6 @@ public:
      */
     void attach(const Format format, const size_t width, const size_t height,
                 void* data, const size_t stride = 0);
-
-    /**
-     * Save pixmap to a PNG file.
-     * @param path path to write the file
-     * @return true on success
-     */
-    [[nodiscard]] bool save(const std::filesystem::path& path) const;
 
     /**
      * Free pixmap.

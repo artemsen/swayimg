@@ -106,7 +106,7 @@ void Viewer::export_frame(const std::filesystem::path& path) const
 {
     if (image) {
         const Pixmap& pm = image->frames[frame_index].pm;
-        if (!pm.save(path)) {
+        if (!FormatFactory::save(pm, {}, path)) {
             Text::self().set_status("Failed to export image");
         }
     }

@@ -401,6 +401,55 @@ ImagePtr FormatFactory::load(const ImageEntryPtr& entry) const
     return image;
 }
 
+bool FormatFactory::save(
+    const Pixmap& pm, const std::unordered_map<std::string, std::string>& meta,
+    const std::filesystem::path& path)
+{
+    ImageFormat* png = FormatFactory::self().get("png");
+    if (!png) {
+        Log::error("Unable to export pixmap, PNG not supported");
+        return false;
+    }
+
+    const std::vector<uint8_t> data = png->encode(pm, meta);
+    if (data.empty()) {
+        Log::error("Unable to export pixmap, PNG encode failed");
+        return false;
+    }
+
+    // open file
+    const int fd = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC,
+                        S_IRUSR | S_IWUSR | S_IRGRP);
+    if (fd == -1) {
+        Log::error(errno, "Unable to create file {}", path.string());
+        return false;
+    }
+
+    // write file
+    const uint8_t* ptr = data.data();
+    size_t size = data.size();
+    while (size) {
+        const ssize_t written = write(fd, ptr, size);
+        if (written == -1) {
+            if (errno != EINTR) {
+                Log::error(errno, "Unable to write file {}", path.string());
+                close(fd);
+                return false;
+            }
+            continue;
+        }
+        size -= written;
+        ptr += written;
+    }
+
+    if (close(fd) == -1) {
+        Log::error(errno, "Failed to close file {}", path.string());
+        return false;
+    }
+
+    return true;
+}
+
 ImagePtr FormatFactory::decode(const ImageFormat::Data& data) const
 {
     for (const auto& it : formats) {

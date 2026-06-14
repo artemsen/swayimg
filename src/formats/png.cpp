@@ -133,7 +133,9 @@ public:
         return image;
     }
 
-    std::vector<uint8_t> encode(const Pixmap& pm) override
+    std::vector<uint8_t>
+    encode(const Pixmap& pm,
+           const std::unordered_map<std::string, std::string>& meta) override
     {
         // create encoder
         const PngObject png(false);
@@ -158,6 +160,21 @@ public:
                      PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
                      PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_set_bgr(png);
+
+#ifdef PNG_TEXT_SUPPORTED
+        // save meta info as text
+        if (!meta.empty()) {
+            std::vector<png_text> txt;
+            txt.reserve(meta.size());
+            for (const auto& [key, value] : meta) {
+                png_text pt {};
+                pt.key = const_cast<char*>(key.c_str());
+                pt.text = const_cast<char*>(value.c_str());
+                txt.emplace_back(pt);
+            }
+            png_set_text(png, png, txt.data(), txt.size());
+        }
+#endif // PNG_TEXT_SUPPORTED
 
         // encode png
         std::vector<uint8_t> data;

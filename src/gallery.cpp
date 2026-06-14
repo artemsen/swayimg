@@ -546,5 +546,5 @@ void Gallery::pstore_save(const ImageEntryPtr& entry, const Pixmap& thumb) const
     std::filesystem::path thumb_path = pstore_path;
     thumb_path.concat(entry->path.string());
     std::filesystem::create_directories(thumb_path.parent_path());
-    std::ignore = thumb.save(thumb_path);
+    FormatFactory::save(thumb, {}, thumb_path);
 }
