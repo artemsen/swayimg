@@ -33,6 +33,9 @@ public:
         if (bmp->dib_size > hdr->offset) {
             return nullptr;
         }
+        if (bmp->width == 0 || bmp->height == 0) {
+            return nullptr;
+        }
 
         // allocate image and frame
         ImagePtr image = std::make_shared<Image>();
