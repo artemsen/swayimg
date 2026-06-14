@@ -402,7 +402,6 @@ void Gallery::refresh()
 void Gallery::requeue_loading()
 {
     tpool.cancel();
-    queue.clear();
 
     ImageList& il = ImageList::self();
     const std::vector<Layout::Thumbnail>& scheme = layout.get_scheme();
@@ -472,7 +471,6 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
     {
         const std::scoped_lock lock(mutex);
         active.insert(entry);
-        queue.erase(entry);
     }
 
     const size_t thumb_size = layout.get_thumb_size();
@@ -506,9 +504,7 @@ void Gallery::load_thumbnail(const ImageEntryPtr& entry)
 void Gallery::queue_thumbnail(const ImageEntryPtr& entry)
 {
     if (!get_thumbnail(entry) &&   // not yet loaded
-        !queue.contains(entry) &&  // not queued
         !active.contains(entry)) { // not currently loading
-        queue.insert(entry);
         tpool.add([this, entry]() {
             load_thumbnail(entry);
         });
