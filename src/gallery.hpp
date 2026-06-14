@@ -39,7 +39,7 @@ public:
     bool select(const Layout::Direction dir);
 
     /**
-     * Reload thumbnails
+     * Reload thumbnails.
      */
     void reload();
 
@@ -159,14 +159,19 @@ private:
     void draw(const Layout::Thumbnail& tlay, Pixmap& wnd);
 
     /**
-     * Manage loading queue.
+     * Refresh view: clear and load thumbnails.
      */
-    void load_thumbnails();
+    void refresh();
+
+    /**
+     * Rebuild loading queue.
+     */
+    void requeue_loading();
 
     /**
      * Remove invisible thumbnails from the cache.
      */
-    void clear_invisible_thumbnails();
+    void clear_invisible();
 
     /**
      * Get thumbnail pixmap for specified image.
