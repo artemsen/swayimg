@@ -412,19 +412,19 @@ public:
         app_id += '_';
         app_id += std::to_string(getpid());
 
-        // add rules
+        // construct window rule
+        std::string rule = "hl.window_rule({ name = \"swayimg\", ";
+        rule += std::format("match = {{ class = \"{}\" }},", app_id);
         if (wnd.position_valid()) {
-            HyprlandIpc::request(std::format(
-                "keyword windowrule float on, match:class {}", app_id));
-            HyprlandIpc::request(
-                std::format("keyword windowrule move {} {}, match:class {}",
-                            wnd.x, wnd.y, app_id));
+            rule += std::format("move = {{ {}, {} }},", wnd.x, wnd.y);
         }
         if (wnd.size_valid()) {
-            HyprlandIpc::request(
-                std::format("keyword windowrule size {} {}, match:class {}",
-                            wnd.width, wnd.height, app_id));
+            rule += std::format("size = {{ {}, {} }},", wnd.width, wnd.height);
         }
+        rule += "float = true})";
+
+        // send request
+        HyprlandIpc::request(std::format("eval {}", rule));
     }
 
 private:
