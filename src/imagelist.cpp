@@ -460,12 +460,12 @@ std::vector<ImageEntryPtr> ImageList::add(const std::filesystem::path& path,
     std::filesystem::path abs_path;
     try {
         abs_path = std::filesystem::absolute(path).lexically_normal();
+        if (!std::filesystem::exists(abs_path)) {
+            Log::warning("File {} not found, skipped", abs_path.string());
+            return {};
+        }
     } catch (const std::filesystem::filesystem_error&) {
         Log::warning("Invalid path {}, skipped", path.string());
-        return {};
-    }
-    if (!std::filesystem::exists(abs_path)) {
-        Log::warning("File {} not found, skipped", abs_path.string());
         return {};
     }
 
