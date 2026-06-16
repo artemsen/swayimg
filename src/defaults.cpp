@@ -24,6 +24,7 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
     });
     mode->bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
         Application::self().set_mode(AppMode::Slideshow);
+        Text::self().set_status("Slide show started");
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [mode]() {
         mode->mark_current(std::nullopt);
@@ -200,6 +201,7 @@ void Defaults::slideshow::bind_inputs(Slideshow* mode)
 
     mode->bind_input(InputKeyboard { XKB_KEY_s, KEYMOD_NONE }, []() {
         Application::self().set_mode(AppMode::Viewer);
+        Text::self().set_status("Slide show stopped");
     });
 }
 
