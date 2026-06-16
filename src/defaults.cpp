@@ -29,6 +29,12 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
     mode->bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [mode]() {
         mode->mark_current(std::nullopt);
     });
+    mode->bind_input(InputKeyboard { XKB_KEY_Delete, KEYMOD_NONE }, [mode]() {
+        const ImageEntryPtr entry = mode->get_current();
+        if (entry) {
+            Application::self().remove_images({ entry->path });
+        }
+    });
     mode->bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
         Ui* ui = Application::get_ui();
         ui->set_fullscreen(!ui->get_fullscreen());
@@ -222,6 +228,12 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
     });
     mode->bind_input(InputKeyboard { XKB_KEY_Insert, KEYMOD_NONE }, [mode]() {
         mode->mark_current(std::nullopt);
+    });
+    mode->bind_input(InputKeyboard { XKB_KEY_Delete, KEYMOD_NONE }, [mode]() {
+        const ImageEntryPtr entry = mode->get_current();
+        if (entry) {
+            Application::self().remove_images({ entry->path });
+        }
     });
     mode->bind_input(InputKeyboard { XKB_KEY_f, KEYMOD_NONE }, []() {
         Ui* ui = Application::get_ui();
