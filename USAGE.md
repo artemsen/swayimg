@@ -71,7 +71,7 @@ stdin and external commands, and is highly customizable via Lua scripting.
 - `Enter`: Switch to gallery mode
 - `s`: Enable/disable to slideshow mode
 - `Insert`: Mark/unmark currently displayed image
-- `Delete`: Skip image (remove form the image list)
+- `Delete`: Skip image (remove from the image list)
 - `f`: Enable/disable full screen mode
 - `a`: Enable/disable anti-aliasing
 - `]`: Rotate the image 90 degrees clockwise
@@ -109,7 +109,7 @@ Mouse bindings:
 - `Enter`: Switch to viewer mode
 - `s`: Switch to slideshow mode
 - `Insert`: Mark/unmark currently selected image
-- `Delete`: Skip image (remove form the image list)
+- `Delete`: Skip image (remove from the image list)
 - `f`: Enable/disable full screen mode
 - `a`: Enable/disable anti-aliasing
 - `+`: Increase thumbnail size
