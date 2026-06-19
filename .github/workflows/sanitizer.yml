@@ -48,7 +48,7 @@ jobs:
         docker exec swayimg
         meson compile -C ${{ env.BUILD_DIR }}
 
-    - name: Run tests
+    - name: Run unit tests
       run: >
         docker exec swayimg
         meson test --verbose -C ${{ env.BUILD_DIR }}
@@ -68,8 +68,3 @@ jobs:
       run: >
         docker exec swayimg
         ${{ env.INSTALL_DIR }}/usr/bin/swayimg --help
-
-    - name: Run unit tests
-      run: >
-        docker exec swayimg
-        meson test --verbose -C ${{ env.BUILD_DIR }}
