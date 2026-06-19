@@ -1,0 +1,25 @@
+FROM alpine:latest
+
+RUN apk add \
+    bash-completion-dev \
+    build-base \
+    exiv2-dev \
+    font-dejavu \
+    giflib-dev \
+    json-c-dev \
+    libavif-dev \
+    libdrm-dev \
+    libheif-dev \
+    libjpeg-turbo-dev \
+    libjxl-dev \
+    libraw-dev \
+    librsvg-dev \
+    libsixel-dev \
+    libwebp-dev \
+    libxkbcommon-dev \
+    luajit-dev \
+    meson \
+    openexr-dev \
+    openjpeg-dev \
+    wayland-dev \
+    wayland-protocols
