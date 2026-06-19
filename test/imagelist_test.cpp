@@ -258,7 +258,7 @@ TEST(ImageListTest, SortAlphaReverse)
     EXPECT_ILEQ(il.get_all(), paths);
 }
 
-#ifdef __linux__
+#if defined(__linux__) && defined(__GLIBC__)
 TEST(ImageListTest, SortAlphaUnicode)
 {
     ImageList il;
@@ -283,7 +283,7 @@ TEST(ImageListTest, SortAlphaUnicode)
     });
     EXPECT_ILEQ(il.get_all(), paths);
 }
-#endif // __linux__
+#endif // __linux__ && __GLIBC__
 
 TEST(ImageListTest, SortNumeric)
 {
