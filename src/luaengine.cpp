@@ -27,6 +27,15 @@ constexpr const char* NS_VIEWER = "viewer";
 constexpr const char* NS_SLIDESHOW = "slideshow";
 constexpr const char* NS_GALLERY = "gallery";
 
+// Using 0xff in the alpha channel leads to runtime errors:
+// "The native integer can't fit inside a lua integer"
+// Use double to avoid such errors.
+#if defined(__ILP32__) || defined(_ILP32)
+using luacolor_t = double;
+#else
+using luacolor_t = uint32_t;
+#endif
+
 // app modes table: type to name
 static constexpr std::array appmodes =
     std::to_array<std::pair<AppMode::Type, const char*>>({
@@ -610,15 +619,15 @@ void LuaEngine::bind_text_api()
                          Text::self().set_padding(sz);
                      })
         .addFunction("set_foreground",
-                     [](const uint32_t clr) {
+                     [](const luacolor_t clr) {
                          Text::self().set_foreground(clr);
                      })
         .addFunction("set_background",
-                     [](const uint32_t clr) {
+                     [](const luacolor_t clr) {
                          Text::self().set_background(clr);
                      })
         .addFunction("set_shadow",
-                     [](const uint32_t clr) {
+                     [](const luacolor_t clr) {
                          Text::self().set_shadow(clr);
                      })
         .addFunction("set_timeout",
@@ -911,18 +920,18 @@ void LuaEngine::bind_viewer_api(const char* name)
                     }
                     mode->set_window_background(bgmode.value());
                 } else if (val.isNumber()) {
-                    mode->set_window_background(static_cast<uint32_t>(val));
+                    mode->set_window_background(static_cast<luacolor_t>(val));
                 }
             })
         .addFunction("set_image_background",
-                     [mode](const uint32_t val) {
+                     [mode](const luacolor_t val) {
                          mode->set_image_background(val);
                      })
-        .addFunction(
-            "set_image_chessboard",
-            [mode](const size_t sz, const uint32_t clr0, const uint32_t clr1) {
-                mode->set_image_chessboard(sz, clr0, clr1);
-            })
+        .addFunction("set_image_chessboard",
+                     [mode](const size_t sz, const luacolor_t clr0,
+                            const luacolor_t clr1) {
+                         mode->set_image_chessboard(sz, clr0, clr1);
+                     })
         .addFunction("enable_centering",
                      [mode](const bool enable) {
                          mode->auto_center = enable;
@@ -1028,7 +1037,7 @@ void LuaEngine::bind_gallery_api()
                          Gallery::self().set_border_size(size);
                      })
         .addFunction("set_border_color",
-                     [](const uint32_t color) {
+                     [](const luacolor_t color) {
                          Gallery::self().set_border_color(color);
                      })
         .addFunction("set_selected_scale",
@@ -1036,15 +1045,15 @@ void LuaEngine::bind_gallery_api()
                          Gallery::self().set_selected_scale(scale);
                      })
         .addFunction("set_selected_color",
-                     [](const uint32_t color) {
+                     [](const luacolor_t color) {
                          Gallery::self().set_selected_color(color);
                      })
         .addFunction("set_unselected_color",
-                     [](const uint32_t color) {
+                     [](const luacolor_t color) {
                          Gallery::self().set_background_color(color);
                      })
         .addFunction("set_window_color",
-                     [](const uint32_t color) {
+                     [](const luacolor_t color) {
                          Gallery::self().set_window_color(color);
                      })
         .addFunction("enable_hover",
@@ -1095,7 +1104,7 @@ void LuaEngine::bind_appmode_api(const char* name)
                          appmode->mark_current(state);
                      })
         .addFunction("set_mark_color",
-                     [appmode](const uint32_t color) {
+                     [appmode](const luacolor_t color) {
                          appmode->set_mark_color(color);
                      })
         .addFunction("set_pinch_factor",
