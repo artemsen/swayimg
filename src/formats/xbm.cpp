@@ -22,7 +22,7 @@ public:
         size_t height = 0;
         std::stringstream ss(
             std::string(reinterpret_cast<const char*>(data.data),
-                        std::min(data.size, 512UL)));
+                        std::min(data.size, MAX_HEADER_LEN)));
         std::string line;
         while ((width == 0 || height == 0) && std::getline(ss, line)) {
             if (width == 0) {
@@ -71,6 +71,9 @@ public:
     }
 
 private:
+    /** Max lenght of the header. */
+    static constexpr const size_t MAX_HEADER_LEN = 512;
+
     /**
      * Read size value from text line.
      * @param line source text line
