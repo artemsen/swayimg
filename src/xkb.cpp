@@ -67,9 +67,11 @@ void Xkb::start_repeat(const xkb_keycode_t code)
     }
 }
 
-void Xkb::stop_repeat() const
+void Xkb::stop_repeat(const xkb_keycode_t key) const
 {
-    repeat_timer.reset(0, 0);
+    if (key == XKB_KEY_NoSymbol || key == repeat_key) {
+        repeat_timer.reset(0, 0);
+    }
 }
 
 std::tuple<xkb_keysym_t, size_t> Xkb::get_repeat() const

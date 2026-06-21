@@ -46,8 +46,9 @@ public:
 
     /**
      * Stop repeat mode.
+     * @param key key to stop repeat or XKB_KEY_NoSymbol to stop unconditionally
      */
-    void stop_repeat() const;
+    void stop_repeat(const xkb_keycode_t key) const;
 
     /**
      * Get repeat description.
