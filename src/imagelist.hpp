@@ -35,6 +35,9 @@ public:
         Random      ///< Random entry
     };
 
+    using EntriesArray = std::vector<ImageEntryPtr>;
+    using EntriesMap = std::unordered_map<std::filesystem::path, ImageEntryPtr>;
+
     /**
      * Get global instance of image list.
      * @return image list instance
@@ -49,16 +52,14 @@ public:
      * @param sources list of sources to load
      * @return list of added entries in source order
      */
-    std::vector<ImageEntryPtr>
-    add(const std::vector<std::filesystem::path>& sources);
+    EntriesArray add(const std::vector<std::filesystem::path>& sources);
 
     /**
      * Remove all given paths from the list.
      * @param sources entries paths to remove
      * @return list of removed entries
      */
-    std::vector<ImageEntryPtr>
-    remove(const std::vector<std::filesystem::path>& sources);
+    EntriesArray remove(const std::vector<std::filesystem::path>& sources);
 
     /**
      * Remove image entry from the list.
@@ -72,7 +73,7 @@ public:
      * Clear image list.
      * @return list of removed entries
      */
-    std::vector<ImageEntryPtr> clear();
+    EntriesArray clear();
 
     /**
      * Get number of entries in the image list.
@@ -109,7 +110,7 @@ public:
      * Get array with copy of all entries in the list.
      * @return array with all entries
      */
-    std::vector<ImageEntryPtr> get_all();
+    EntriesArray get_all();
 
     /**
      * Get next entry from the list.
@@ -140,8 +141,7 @@ private:
      * @param path parent directory
      * @return list of entries
      */
-    std::vector<ImageEntryPtr>
-    get_child(const std::filesystem::path& path) const;
+    EntriesArray get_child(const std::filesystem::path& path) const;
 
     /**
      * Get the nearest entry with different parent.
@@ -152,50 +152,46 @@ private:
     ImageEntryPtr get_diffparent(const ImageEntryPtr& from, const bool forward);
 
     /**
-     * Add file or special source to the list.
+     * Add file, directory or special source to the list.
      * @param path path to the file or special source
      * @return list of added entries
      */
-    std::vector<ImageEntryPtr> add(const std::filesystem::path& path,
-                                   const bool ordered);
+    EntriesArray add_any(const std::filesystem::path& path);
 
     /**
      * Add files from the directory to the list.
      * @param path path to the directory
      * @return list with added entries
      */
-    std::vector<ImageEntryPtr> add_dir(const std::filesystem::path& path);
+    EntriesArray add_dir(const std::filesystem::path& path);
 
     /**
      * Add file to the list.
      * @param path path to the file
-     * @param ordered flag to add new entry to ordered position in the list
      * @return added entry
      */
-    ImageEntryPtr add_file(const std::filesystem::path& path,
-                           const bool ordered);
-
-    /**
-     * Add a special source (stdin://, exec://) to the list.
-     * @param path path representing the special source
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return added entry (nullptr if already exists)
-     */
-    ImageEntryPtr add_special(const std::filesystem::path& path,
-                              const bool ordered);
+    ImageEntryPtr add_file(const std::filesystem::path& path);
 
     /**
      * Add new entry to the list.
-     * @param entry image entry to add
-     * @param ordered flag to add new entry to ordered position in the list
-     * @return false if entry already exists
+     * @param path path to the image file
+     * @param mtime file modification time
+     * @param size size of the file
+     * @return added entry (nullptr if already exists)
      */
-    bool add_entry(const ImageEntryPtr& entry, const bool ordered);
+    ImageEntryPtr add_entry(const std::filesystem::path& path,
+                            const std::time_t mtime = 0, const size_t size = 0);
 
     /**
-     * Sort image list.
+     * Sort and reindex image list.
      */
     void sort();
+
+    /**
+     * Sort specified image list.
+     * @param entries image list to sort
+     */
+    void sort(EntriesArray& entries) const;
 
     /**
      * Reindex the image list.
@@ -204,8 +200,6 @@ private:
     void reindex(const size_t index = 0);
 
 private:
-    using EntriesArray = std::vector<ImageEntryPtr>;
-    using EntriesMap = std::unordered_map<std::filesystem::path, ImageEntryPtr>;
     EntriesArray entries_arr; ///< Array of image entries
     EntriesMap entries_map;   ///< Map of path to image entries
 
