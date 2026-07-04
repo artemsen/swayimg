@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "fdevent.hpp"
 #include "image.hpp"
 #include "log.hpp"
 #include "text.hpp"
@@ -116,5 +117,8 @@ private:
 private:
     lua_State* lua_state = nullptr;       ///< Lua state
     std::vector<luabridge::LuaRef*> refs; ///< Own Lua references
-    lua_CFunction traceback_fn; ///< debug.traceback for error stack traces
+    lua_CFunction traceback_fn;           ///< Error stack traces
+
+    FdTimer defer_timer;                   ///< Timer for deferred call
+    luabridge::LuaRef* defer_fn = nullptr; ///< Deferred callback
 };

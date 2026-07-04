@@ -207,6 +207,12 @@ function swayimg.toggle_fullscreen() end
 ---@param fn function Initialization completion notification handler
 function swayimg.on_initialized(fn) end
 
+---Execute deferred procedure.
+---Since 5.5.
+---@param seconds number Delay in seconds (can be fractional)
+---@param fn function Function to execute
+function swayimg.defer(seconds, fn) end
+
 ---Enable or disable antialiasing.
 ---Since 5.0.
 ---@param enable boolean Enable/disable antialiasing
@@ -657,7 +663,7 @@ swayimg.slideshow = {}
 
 ---Set a timeout after which next image should be opened.
 ---Since 5.0.
----@param seconds number Timeout in seconds
+---@param seconds number Timeout in seconds (can be fractional)
 function swayimg.slideshow.set_timeout(seconds) end
 
 --------------------------------------------------------------------------------

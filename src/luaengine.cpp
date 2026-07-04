@@ -222,6 +222,7 @@ LuaEngine::~LuaEngine()
         for (auto& it : refs) {
             delete it;
         }
+        delete defer_fn;
         lua_close(lua_state);
     }
 }
@@ -274,6 +275,12 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     bind_viewer_api(NS_VIEWER);
     bind_slideshow_api();
     bind_gallery_api();
+
+    // register timer for deferred procedure call
+    Application::self().add_fdpoll(defer_timer, [this]() {
+        defer_timer.reset(0, 0);
+        execute(defer_fn);
+    });
 
     // load config file
     if (!config_file.empty()) {
@@ -429,6 +436,22 @@ void LuaEngine::bind_root_api()
                          Application::self().on_init_complete = [this, ref]() {
                              execute(ref);
                          };
+                     })
+        .addFunction("defer",
+                     [this](const double delay, const luabridge::LuaRef& cb) {
+                         delete defer_fn;
+                         defer_fn = nullptr;
+                         if (delay == 0 || cb.isNil()) {
+                             defer_timer.reset(0, 0);
+                             return;
+                         }
+                         if (!cb.isFunction()) {
+                             raise_error("Invalid argument for {}.defer: "
+                                         "expected function, but got {}",
+                                         NS_SWAYIMG, cb.tostring());
+                         }
+                         defer_fn = new luabridge::LuaRef(cb);
+                         defer_timer.reset(delay * 1000, 0);
                      })
         .addFunction("enable_antialiasing",
                      [](const bool enable) {
@@ -1227,6 +1250,8 @@ void LuaEngine::bind_appmode_api(const char* name)
 
 void LuaEngine::execute(const luabridge::LuaRef* ref) const
 {
+    assert(ref);
+
     lua_pushcfunction(lua_state, traceback_fn);
     ref->push();
     // on error, debug.traceback returns the full Lua stack trace

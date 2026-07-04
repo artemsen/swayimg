@@ -46,6 +46,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
   * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.on_initialized](#swayimgon_initialized): Add a callback function called when all subsystems have been initialized
+  * [swayimg.defer](#swayimgdefer): Execute deferred procedure
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
   * [swayimg.set_format_params](#swayimgset_format_params): Setting format parameters
@@ -360,6 +361,20 @@ Add a callback function called when all subsystems have been initialized.
 Since 5.0.
 
 @_param_ `fn` - Initialization completion notification handler
+
+### swayimg.defer
+
+```lua
+swayimg.defer(seconds: number, fn: function)
+```
+
+Execute deferred procedure.
+
+Since 5.5.
+
+@_param_ `seconds` - Delay in seconds (can be fractional)
+
+@_param_ `fn` - Function to execute
 
 ### swayimg.enable_antialiasing
 
@@ -1435,7 +1450,7 @@ Set a timeout after which next image should be opened.
 
 Since 5.0.
 
-@_param_ `seconds` - Timeout in seconds
+@_param_ `seconds` - Timeout in seconds (can be fractional)
 
 ### swayimg.slideshow.switch_image
 
