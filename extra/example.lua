@@ -137,6 +137,21 @@ swayimg.on_window_resize(function()
   swayimg.viewer.set_fix_scale("optimal")
 end)
 
+-- handle double mouse click
+local double_click_delay = 0.3 -- max 0.3 sec between clicks
+local click_counter = 0
+swayimg.viewer.on_mouse("MouseLeft", function()
+  click_counter = click_counter + 1
+  swayimg.defer(double_click_delay, function()
+    if click_counter > 1 then
+      print("Double click")
+    else
+      print("Single click")
+    end
+    click_counter = 0
+  end)
+end)
+
 -- bind the Delete key in slide show mode to delete the current file and display a status message
 swayimg.slideshow.on_key("Delete", function()
   local image = swayimg.slideshow.get_image()
