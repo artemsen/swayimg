@@ -985,7 +985,8 @@ void LuaEngine::bind_gallery_api()
         .addFunction(
             "switch_image",
             [this, ensure_active](const std::string& name) {
-                ensure_active("select");
+                warn_deprecated("switch_image", "select");
+                ensure_active("switch_image");
                 const auto dir = name_to_type(gldirs, name.c_str());
                 if (!dir.has_value()) {
                     raise_error(
@@ -994,6 +995,28 @@ void LuaEngine::bind_gallery_api()
                 }
                 Gallery::self().select(dir.value());
             })
+        .addFunction("select",
+                     [this, ensure_active](const std::string& name) {
+                         ensure_active("select");
+                         const auto dir = name_to_type(gldirs, name.c_str());
+                         if (!dir.has_value()) {
+                             raise_error(
+                                 "Invalid argument \"{}\" for {}.{}.select",
+                                 name, NS_SWAYIMG, NS_GALLERY);
+                         }
+                         return Gallery::self().select(dir.value());
+                     })
+        .addFunction("select_at",
+                     [ensure_active](const size_t x, const size_t y) {
+                         ensure_active("select_at");
+                         return Gallery::self().select(Point(x, y));
+                     })
+        .addFunction("select_path",
+                     [ensure_active](const std::string& path) {
+                         ensure_active("select_path");
+                         return Gallery::self().select(
+                             std::filesystem::path(path));
+                     })
         .addFunction("reload",
                      [ensure_active]() {
                          ensure_active("reload");

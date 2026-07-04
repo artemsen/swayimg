@@ -78,6 +78,33 @@ bool Gallery::select(const Layout::Direction dir)
     return true;
 }
 
+bool Gallery::select(const Point& pt)
+{
+    assert(is_active());
+
+    if (!layout.select(pt)) {
+        return false;
+    }
+    refresh();
+    switch_current();
+    return true;
+}
+
+bool Gallery::select(const std::filesystem::path& path)
+{
+    assert(is_active());
+
+    const ImageEntryPtr entry = ImageList::self().find(path);
+    if (!entry) {
+        return false;
+    }
+
+    layout.select(entry);
+    refresh();
+    switch_current();
+    return true;
+}
+
 void Gallery::reload()
 {
     // stop loader

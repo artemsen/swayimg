@@ -125,7 +125,7 @@ swayimg.gallery.on_key("Return", function()
 end)
 -- bind the left arrow key to select thumbnail on the left side
 swayimg.gallery.on_key("Left", function()
-  swayimg.gallery.switch_image("left")
+  swayimg.gallery.select("left")
 end)
 
 --
@@ -140,14 +140,18 @@ end)
 -- bind the Delete key in slide show mode to delete the current file and display a status message
 swayimg.slideshow.on_key("Delete", function()
   local image = swayimg.slideshow.get_image()
-  os.remove(image.path)
-  swayimg.text.set_status("File "..image.path.." removed")
+  if image ~= nil then
+    os.remove(image.path)
+    swayimg.text.set_status("File "..image.path.." removed")
+  end
 end)
 
 -- set a custom window title in gallery mode
 swayimg.gallery.on_image_change(function()
   local image = swayimg.gallery.get_image()
-  swayimg.set_title("Gallery: "..image.path)
+  if image ~= nil then
+    swayimg.set_title("Gallery: "..image.path)
+  end
 end)
 
 -- print paths to all marked files by pressing Ctrl-p in gallery mode

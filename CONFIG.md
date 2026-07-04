@@ -166,6 +166,9 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.set_text](#swayimgslideshowset_text): Set text layer scheme
 * Gallery mode
   * [swayimg.gallery.switch_image](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
+  * [swayimg.gallery.select](#swayimggalleryselect): Select the next thumbnail from the gallery
+  * [swayimg.gallery.select_at](#swayimggalleryselect_at): Select the thumbnail at specified position
+  * [swayimg.gallery.select_path](#swayimggalleryselect_path): Select the thumbnail by image path
   * [swayimg.gallery.reload](#swayimggalleryreload): Reload thumbnails
   * [swayimg.gallery.get_image](#swayimggalleryget_image): Get information about currently selected image entry
   * [swayimg.gallery.set_aspect](#swayimggalleryset_aspect): Set thumbnail aspect ratio
@@ -2077,6 +2080,10 @@ Select the next thumbnail from the gallery.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.gallery.select` instead.
+
+See [swayimg.gallery.select_next](#swayimggalleryselect_next)
+
 @_param_ `dir` - Next thumbnail direction
 
 `gdir_t`, Direction for selecting next file in gallery mode:
@@ -2088,6 +2095,60 @@ Since 5.0.
 * `"right"`: Select the thumbnail to the right of the current one
 * `"pgup"`: Select the thumbnail on the previous page
 * `"pgdown"`: Select the thumbnail on the next page
+
+### swayimg.gallery.select
+
+```lua
+swayimg.gallery.select(dir: gdir_t) -> boolean
+```
+
+Select the next thumbnail from the gallery.
+
+Since 5.5.
+
+@_param_ `dir` - Next thumbnail direction
+
+`gdir_t`, Direction for selecting next file in gallery mode:
+* `"first"`: Select first thumbnail in image list
+* `"last"`: Select last thumbnail in image list
+* `"up"`: Select the thumbnail above the current one
+* `"down"`: Select the thumbnail below the current one
+* `"left"`: Select the thumbnail to the left of the current one
+* `"right"`: Select the thumbnail to the right of the current one
+* `"pgup"`: Select the thumbnail on the previous page
+* `"pgdown"`: Select the thumbnail on the next page
+
+@_return_ - True if selection was changed
+
+### swayimg.gallery.select_at
+
+```lua
+swayimg.gallery.select_at(x: integer, y: integer) -> boolean
+```
+
+Select the thumbnail at specified position.
+
+Since 5.5.
+
+@_param_ `x` - X coordinate of the thumbnail
+
+@_param_ `y` - Y coordinate of the thumbnail
+
+@_return_ - True if selection was changed
+
+### swayimg.gallery.select_path
+
+```lua
+swayimg.gallery.select_path(path: string) -> boolean
+```
+
+Select the thumbnail by image path.
+
+Since 5.5.
+
+@_param_ `path` - Path to the image
+
+@_return_ - True if selection was changed
 
 ### swayimg.gallery.reload
 

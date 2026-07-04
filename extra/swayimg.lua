@@ -668,8 +668,31 @@ swayimg.gallery = {}
 
 ---Select the next thumbnail from the gallery.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.gallery.select` instead.
+---@see swayimg.gallery.select_next
+---@deprecated
 ---@param dir gdir_t Next thumbnail direction
 function swayimg.gallery.switch_image(dir) end
+
+---Select the next thumbnail from the gallery.
+---Since 5.5.
+---@param dir gdir_t Next thumbnail direction
+---@return boolean # True if selection was changed
+function swayimg.gallery.select(dir) end
+
+---Select the thumbnail at specified position.
+---Since 5.5.
+---@param x integer X coordinate of the thumbnail
+---@param y integer Y coordinate of the thumbnail
+---@return boolean # True if selection was changed
+function swayimg.gallery.select_at(x, y) end
+
+---Select the thumbnail by image path.
+---Since 5.5.
+---@param path string Path to the image
+---@return boolean # True if selection was changed
+function swayimg.gallery.select_path(path) end
 
 ---Reload thumbnails.
 ---Since 5.3.

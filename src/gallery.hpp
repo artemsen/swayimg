@@ -39,6 +39,19 @@ public:
     bool select(const Layout::Direction dir);
 
     /**
+     * Select another image at specified position.
+     * @param pt thumbnail coordinates within the window
+     * @return true if new image was selected
+     */
+    bool select(const Point& pt);
+    /**
+     * Select another image by specified path.
+     * @param path path to the image
+     * @return true if new image was selected
+     */
+    bool select(const std::filesystem::path& path);
+
+    /**
      * Reload thumbnails.
      */
     void reload();
