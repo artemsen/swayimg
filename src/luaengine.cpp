@@ -441,6 +441,22 @@ void LuaEngine::bind_root_api()
                              execute(ref);
                          };
                      })
+        .addFunction("on_redrawn",
+                     [this](const luabridge::LuaRef& cb) {
+                         Application& app = Application::self();
+                         if (cb.isNil()) {
+                             app.on_redraw_complete = nullptr;
+                         } else if (!cb.isFunction()) {
+                             raise_error("Invalid argument for {}.on_redrawn: "
+                                         "expected function, but got {}",
+                                         NS_SWAYIMG, cb.tostring());
+                         } else {
+                             const luabridge::LuaRef* ref = add_ref(&cb);
+                             app.on_redraw_complete = [this, ref]() {
+                                 execute(ref);
+                             };
+                         }
+                     })
         .addFunction("defer",
                      [this](const double delay, const luabridge::LuaRef& cb) {
                          delete defer_fn;

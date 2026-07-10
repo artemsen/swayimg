@@ -158,9 +158,10 @@ private:
     static void signal_handler(int signal);
 
 public:
-    std::unique_ptr<StartupParams> sparams; ///< Startup parameters
-    std::function<void()> on_init_complete; ///< Init complete callback
-    std::function<void()> on_wnd_resize;    ///< Window resize callback
+    std::unique_ptr<StartupParams> sparams;   ///< Startup parameters
+    std::function<void()> on_init_complete;   ///< Init complete callback
+    std::function<void()> on_wnd_resize;      ///< Window resize callback
+    std::function<void()> on_redraw_complete; ///< Redraw complete callback
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance

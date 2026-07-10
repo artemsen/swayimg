@@ -475,6 +475,10 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
         Text::self().draw(*wnd);
         ui->commit_surface();
 
+        if (on_redraw_complete) {
+            on_redraw_complete();
+        }
+
         if (Log::verbose_enable()) {
             Log::verbose("Redraw in {:.6f} sec", timer.time());
         }

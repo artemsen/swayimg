@@ -46,6 +46,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
   * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.on_initialized](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
+  * [swayimg.on_redrawn](#swayimgon_redrawn): Set a callback function called after the window is drawn
   * [swayimg.defer](#swayimgdefer): Execute deferred procedure
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
@@ -361,6 +362,18 @@ Set a callback function called when all subsystems have been initialized.
 Since 5.0.
 
 @_param_ `fn` - Initialization completion notification handler
+
+### swayimg.on_redrawn
+
+```lua
+swayimg.on_redrawn(fn: function|nil)
+```
+
+Set a callback function called after the window is drawn.
+
+Since 5.5.
+
+@_param_ `fn` - Function to execute
 
 ### swayimg.defer
 

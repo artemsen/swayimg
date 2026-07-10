@@ -207,6 +207,11 @@ function swayimg.toggle_fullscreen() end
 ---@param fn function Initialization completion notification handler
 function swayimg.on_initialized(fn) end
 
+---Set a callback function called after the window is drawn.
+---Since 5.5.
+---@param fn function|nil Function to execute
+function swayimg.on_redrawn(fn) end
+
 ---Execute deferred procedure.
 ---Since 5.5.
 ---@param seconds number Delay in seconds (can be fractional)
