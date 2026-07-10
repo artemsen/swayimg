@@ -172,9 +172,9 @@ function swayimg.get_window_size() end
 ---@param height integer Height of the window in pixels
 function swayimg.set_window_size(width, height) end
 
----Add a callback function called when main window is resized.
+---Set a callback function called when main window is resized.
 ---Since 5.0.
----@param fn function Window resize notification handler
+---@param fn function|nil Window resize notification handler
 function swayimg.on_window_resize(fn) end
 
 ---Get mouse pointer coordinates.
@@ -202,7 +202,7 @@ function swayimg.get_fullscreen() end
 ---@return boolean # True if full screen is enabled
 function swayimg.toggle_fullscreen() end
 
----Add a callback function called when all subsystems have been initialized.
+---Set a callback function called when all subsystems have been initialized.
 ---Since 5.0.
 ---@param fn function Initialization completion notification handler
 function swayimg.on_initialized(fn) end
@@ -458,9 +458,9 @@ function swayimg_appmode.on_mouse(button, fn) end
 ---@param fn function Signal handler
 function swayimg_appmode.on_signal(signal, fn) end
 
----Add a callback function called when a new image is opened/selected.
+---Set a callback function called when a new image is opened/selected.
 ---Since 5.0.
----@param fn function Handler for notifications about changing the current image
+---@param fn function|nil Handler for notifications about changing the current image
 function swayimg_appmode.on_image_change(fn) end
 
 ---Set text layer scheme.

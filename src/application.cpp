@@ -223,11 +223,6 @@ void Application::add_event(const AppEvent::Holder& event)
     event_notify.set();
 }
 
-void Application::subscribe_window_resize(const WindowResizeNotify& cb)
-{
-    wnd_resize_cb.push_back(cb);
-}
-
 const std::string& Application::get_appid() const
 {
     if (sparams) {
@@ -457,10 +452,10 @@ void Application::handle_event(const AppEvent::WindowClose&)
 void Application::handle_event(const AppEvent::WindowResize& event)
 {
     current_mode()->window_resize(event.size);
-    redraw();
-    for (auto& it : wnd_resize_cb) {
-        it();
+    if (on_wnd_resize) {
+        on_wnd_resize();
     }
+    redraw();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

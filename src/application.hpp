@@ -21,8 +21,6 @@ class Application {
 public:
     /** File descriptor event handler. */
     using FdEventHandler = std::function<void()>;
-    /** Notification handler that is called when the window is resized. */
-    using WindowResizeNotify = std::function<void()>;
 
     /**
      * Get global instance of the application.
@@ -105,12 +103,6 @@ public:
     void add_event(const AppEvent::Holder& event);
 
     /**
-     * Subscribe to window resize event.
-     * @param cb event handler
-     */
-    void subscribe_window_resize(const WindowResizeNotify& cb);
-
-    /**
      * Check if all subsystems were initialized.
      * @return true if all subsystems were initialized
      */
@@ -166,9 +158,9 @@ private:
     static void signal_handler(int signal);
 
 public:
-    std::unique_ptr<StartupParams> sparams;        ///< Startup parameters
-    std::function<void()> on_init_complete;        ///< Init complete callback
-    std::vector<WindowResizeNotify> wnd_resize_cb; ///< Window resize callbacks
+    std::unique_ptr<StartupParams> sparams; ///< Startup parameters
+    std::function<void()> on_init_complete; ///< Init complete callback
+    std::function<void()> on_wnd_resize;    ///< Window resize callback
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance

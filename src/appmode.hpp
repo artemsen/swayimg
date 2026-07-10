@@ -10,7 +10,6 @@
 
 #include <array>
 #include <functional>
-#include <list>
 #include <map>
 #include <optional>
 #include <vector>
@@ -33,8 +32,6 @@ public:
 
     /** Input event handler. */
     using InputCallback = std::function<void()>;
-    /** Notification handler that is called when the image is switched. */
-    using ImageSwitchNotify = std::function<void()>;
 
     /**
      * Initialize mode instance.
@@ -130,12 +127,6 @@ public:
     [[nodiscard]] bool is_active() const;
 
     /**
-     * Subscribe to the image switch event.
-     * @param cb event handler
-     */
-    void subscribe_image_switch(const ImageSwitchNotify& cb);
-
-    /**
      * Set or toggle mark state for current image.
      * @param state state to set, `std::nullopt` to toggle
      */
@@ -186,6 +177,9 @@ public:
      */
     void bind_input(const InputSignal& input, const InputCallback& handler);
 
+public:
+    std::function<void()> on_image_change; ///< Image switch callback
+
 protected:
     /**
      * Switch to another image.
@@ -205,7 +199,6 @@ protected:
     std::array<Text::Scheme, 4> text_scheme; ///< Text layer scheme
 
 private:
-    std::vector<ImageSwitchNotify> img_switch;        ///< Image switch handlers
     std::map<InputKeyboard, InputCallback> kbindings; ///< Keyboard bindings
     std::map<InputMouse, InputCallback> mbindings;    ///< Mouse bindings
     std::map<InputSignal, InputCallback> sbindings;   ///< Signal bindings

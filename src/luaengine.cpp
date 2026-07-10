@@ -367,19 +367,23 @@ void LuaEngine::bind_root_api()
                     Application::self().sparams->wnd_size = Size(width, height);
                 }
             })
-        .addFunction(
-            "on_window_resize",
-            [this](const luabridge::LuaRef& cb) {
-                if (!cb.isFunction()) {
-                    raise_error("Invalid argument for {}.on_window_resize: "
-                                "expected function, but got {}",
-                                NS_SWAYIMG, cb.tostring());
-                }
-                const luabridge::LuaRef* ref = add_ref(&cb);
-                Application::self().subscribe_window_resize([this, ref]() {
-                    execute(ref);
-                });
-            })
+        .addFunction("on_window_resize",
+                     [this](const luabridge::LuaRef& cb) {
+                         Application& app = Application::self();
+                         if (cb.isNil()) {
+                             app.on_wnd_resize = nullptr;
+                         } else if (!cb.isFunction()) {
+                             raise_error(
+                                 "Invalid argument for {}.on_window_resize: "
+                                 "expected function, but got {}",
+                                 NS_SWAYIMG, cb.tostring());
+                         } else {
+                             const luabridge::LuaRef* ref = add_ref(&cb);
+                             app.on_wnd_resize = [this, ref]() {
+                                 execute(ref);
+                             };
+                         }
+                     })
         .addFunction("get_mouse_pos",
                      []() {
                          Point pos { 0, 0 };
@@ -1220,16 +1224,19 @@ void LuaEngine::bind_appmode_api(const char* name)
             })
         .addFunction("on_image_change",
                      [this, appmode, name](const luabridge::LuaRef& cb) {
-                         if (!cb.isFunction()) {
+                         if (cb.isNil()) {
+                             appmode->on_image_change = nullptr;
+                         } else if (!cb.isFunction()) {
                              raise_error(
                                  "Invalid argument for {}.{}.on_image_change: "
                                  "expected function, but got {}",
                                  NS_SWAYIMG, name, cb.tostring());
+                         } else {
+                             const luabridge::LuaRef* ref = add_ref(&cb);
+                             appmode->on_image_change = [this, ref]() {
+                                 execute(ref);
+                             };
                          }
-                         const luabridge::LuaRef* ref = add_ref(&cb);
-                         appmode->subscribe_image_switch([this, ref]() {
-                             execute(ref);
-                         });
                      })
         .addFunction(
             "set_text",

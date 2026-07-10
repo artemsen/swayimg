@@ -40,12 +40,12 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.set_title](#swayimgset_title): Set title for main application window
   * [swayimg.get_window_size](#swayimgget_window_size): Get application window size
   * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
-  * [swayimg.on_window_resize](#swayimgon_window_resize): Add a callback function called when main window is resized
+  * [swayimg.on_window_resize](#swayimgon_window_resize): Set a callback function called when main window is resized
   * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
   * [swayimg.set_fullscreen](#swayimgset_fullscreen): Enable/disable or toggle full screen mode
   * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
   * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
-  * [swayimg.on_initialized](#swayimgon_initialized): Add a callback function called when all subsystems have been initialized
+  * [swayimg.on_initialized](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
   * [swayimg.defer](#swayimgdefer): Execute deferred procedure
   * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
   * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
@@ -120,7 +120,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal](#swayimgvieweron_signal): Bind the signal event to a handler
-  * [swayimg.viewer.on_image_change](#swayimgvieweron_image_change): Add a callback function called when a new image is opened/selected
+  * [swayimg.viewer.on_image_change](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
   * [swayimg.viewer.set_text](#swayimgviewerset_text): Set text layer scheme
 * Slide show mode
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
@@ -163,7 +163,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.on_key](#swayimgslideshowon_key): Bind the key press event to a handler
   * [swayimg.slideshow.on_mouse](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.on_signal](#swayimgslideshowon_signal): Bind the signal event to a handler
-  * [swayimg.slideshow.on_image_change](#swayimgslideshowon_image_change): Add a callback function called when a new image is opened/selected
+  * [swayimg.slideshow.on_image_change](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
   * [swayimg.slideshow.set_text](#swayimgslideshowset_text): Set text layer scheme
 * Gallery mode
   * [swayimg.gallery.switch_image](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
@@ -195,7 +195,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal](#swayimggalleryon_signal): Bind the signal event to a handler
-  * [swayimg.gallery.on_image_change](#swayimggalleryon_image_change): Add a callback function called when a new image is opened/selected
+  * [swayimg.gallery.on_image_change](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
   * [swayimg.gallery.set_text](#swayimggalleryset_text): Set text layer scheme
 
 ## General functionality
@@ -287,10 +287,10 @@ Since 5.0.
 ### swayimg.on_window_resize
 
 ```lua
-swayimg.on_window_resize(fn: function)
+swayimg.on_window_resize(fn: function|nil)
 ```
 
-Add a callback function called when main window is resized.
+Set a callback function called when main window is resized.
 
 Since 5.0.
 
@@ -356,7 +356,7 @@ See [swayimg.get_fullscreen](#swayimgget_fullscreen)
 swayimg.on_initialized(fn: function)
 ```
 
-Add a callback function called when all subsystems have been initialized.
+Set a callback function called when all subsystems have been initialized.
 
 Since 5.0.
 
@@ -1378,10 +1378,10 @@ Since 5.0.
 ### swayimg.viewer.on_image_change
 
 ```lua
-swayimg.viewer.on_image_change(fn: function)
+swayimg.viewer.on_image_change(fn: function|nil)
 ```
 
-Add a callback function called when a new image is opened/selected.
+Set a callback function called when a new image is opened/selected.
 
 Since 5.0.
 
@@ -2023,10 +2023,10 @@ Since 5.0.
 ### swayimg.slideshow.on_image_change
 
 ```lua
-swayimg.slideshow.on_image_change(fn: function)
+swayimg.slideshow.on_image_change(fn: function|nil)
 ```
 
-Add a callback function called when a new image is opened/selected.
+Set a callback function called when a new image is opened/selected.
 
 Since 5.0.
 
@@ -2492,10 +2492,10 @@ Since 5.0.
 ### swayimg.gallery.on_image_change
 
 ```lua
-swayimg.gallery.on_image_change(fn: function)
+swayimg.gallery.on_image_change(fn: function|nil)
 ```
 
-Add a callback function called when a new image is opened/selected.
+Set a callback function called when a new image is opened/selected.
 
 Since 5.0.
 

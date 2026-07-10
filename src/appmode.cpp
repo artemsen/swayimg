@@ -64,11 +64,6 @@ bool AppMode::is_active() const
     return Application::self().current_mode() == this;
 }
 
-void AppMode::subscribe_image_switch(const ImageSwitchNotify& cb)
-{
-    img_switch.push_back(cb);
-}
-
 void AppMode::mark_current(const std::optional<bool>& state)
 {
     const ImageEntryPtr entry = get_current();
@@ -157,9 +152,8 @@ void AppMode::switch_current()
         text.set_status("Image list is empty");
     }
 
-    // call handlers
-    for (auto& it : img_switch) {
-        it();
+    if (on_image_change) {
+        on_image_change();
     }
 
     Application::redraw();
