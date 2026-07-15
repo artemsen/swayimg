@@ -326,8 +326,6 @@ function swayimg.imagelist.enable_recursive(enable) end
 
 ---Enable or disable adding adjacent files from the same directory.
 ---Since 5.0.
----
----This function can only be called at program startup.
 ---@param enable boolean Enable/disable adding adjacent files
 function swayimg.imagelist.enable_adjacent(enable) end
 

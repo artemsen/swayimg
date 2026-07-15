@@ -621,8 +621,6 @@ Enable or disable adding adjacent files from the same directory.
 
 Since 5.0.
 
-This function can only be called at program startup.
-
 @_param_ `enable` - Enable/disable adding adjacent files
 
 ### swayimg.imagelist.enable_fsmon
