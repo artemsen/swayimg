@@ -410,7 +410,9 @@ public:
         // receive the data from the offer
         int fds[2];
         if (pipe2(fds, O_CLOEXEC) == -1) {
-            Log::error(errno, "Failed to create piep");
+            Log::error(
+                errno,
+                "Failed to create pipe for receiving drag-and-drop data");
             ui->wl.dataoffer.free();
             return;
         }
@@ -423,21 +425,27 @@ public:
             .events = POLLIN,
             .revents = 0,
         };
-        if (poll(&pfd, 1, 1000) <= 0) {
-            Log::error(errno, "Failed to poll pipe");
-            close(fds[0]);
-            ui->wl.dataoffer.free();
-            return;
-        }
         std::string offer_data;
         while (true) {
+            const int poll_rc = poll(&pfd, 1, 1000);
+            if (poll_rc <= 0) {
+                if (poll_rc < 0) {
+                    Log::error(errno,
+                               "Failed to poll pipe for drag-and-drop data");
+                } else {
+                    Log::error("Timeout while waiting for drag-and-drop data");
+                }
+                close(fds[0]);
+                ui->wl.dataoffer.free();
+                return;
+            }
             uint8_t buffer[512];
             const ssize_t rc = read(fds[0], buffer, sizeof(buffer));
             if (rc == 0) {
                 break;
             }
             if (rc == -1 && errno != EAGAIN) {
-                Log::error(errno, "Unable to read pipe");
+                Log::error(errno, "Unable to read drag-and-drop data");
                 close(fds[0]);
                 ui->wl.dataoffer.free();
                 return;
