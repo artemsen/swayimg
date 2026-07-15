@@ -250,10 +250,6 @@ ImageEntryPtr Application::il_initialize() const
         Log::verbose("Image list loaded in {:.6f} sec", timer.time());
     }
 
-    // disable loading of adjacent files, otherwise fs mon will add unnecessary
-    // files to the list on every call after startup
-    il.adjacent = false;
-
     return added.empty() ? nullptr : added.front();
 }
 
@@ -534,9 +530,13 @@ void Application::handle_event(const AppEvent::DragAndDrop& event)
 
 void Application::handle_event(const AppEvent::FileCreate& event)
 {
-    const ImageList& il = ImageList::self();
+    ImageList& il = ImageList::self();
     if (!std::filesystem::is_directory(event.path) || il.recursive) {
+        // Temporarily disable `adjacent` to prevent adding unnecessary files.
+        const bool adjacent = il.adjacent;
+        il.adjacent = false;
         add_images({ event.path });
+        il.adjacent = adjacent;
     }
 }
 
