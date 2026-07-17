@@ -470,8 +470,9 @@ void LuaEngine::bind_root_api()
                                          "expected function, but got {}",
                                          NS_SWAYIMG, cb.tostring());
                          }
+                         const size_t ms = delay * 1000;
                          defer_fn = new luabridge::LuaRef(cb);
-                         defer_timer.reset(delay * 1000, 0);
+                         defer_timer.reset(ms > 0 ? ms : 1, 0);
                      })
         .addFunction("enable_antialiasing",
                      [](const bool enable) {
