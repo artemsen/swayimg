@@ -329,9 +329,12 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
     });
 
     // mouse
-    mode->bind_input(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE }, []() {
-        Application::self().set_mode(AppMode::Viewer);
-    });
+    mode->bind_input(InputMouse { InputMouse::BUTTON_LEFT, KEYMOD_NONE },
+                     [mode]() {
+                         const Point pos = Application::get_ui()->get_mouse();
+                         mode->select(pos);
+                         Application::self().set_mode(AppMode::Viewer);
+                     });
     mode->bind_input(InputMouse { InputMouse::SCROLL_UP, KEYMOD_CTRL },
                      [zoom_fn]() {
                          zoom_fn(10);
