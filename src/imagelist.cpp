@@ -124,9 +124,11 @@ static bool compare_entries(const ImageEntry& l, const ImageEntry& r,
         case ImageList::Order::Numeric:
             return compare_paths(l.path, r.path, true) < 0;
         case ImageList::Order::Mtime:
-            return l.mtime < r.mtime;
+            return l.mtime == r.mtime ? compare_paths(l.path, r.path, false) < 0
+                                      : l.mtime < r.mtime;
         case ImageList::Order::Size:
-            return l.size < r.size;
+            return l.size == r.size ? compare_paths(l.path, r.path, false) < 0
+                                    : l.size < r.size;
         case ImageList::Order::None:
         case ImageList::Order::Random:
             break;

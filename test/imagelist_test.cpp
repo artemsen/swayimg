@@ -335,6 +335,33 @@ TEST(ImageListTest, SortNumericReverse)
     EXPECT_ILEQ(il.get_all(), paths);
 }
 
+TEST(ImageListTest, SortTime)
+{
+    ImageList il;
+    il.set_order(ImageList::Order::None);
+    il.set_reverse(false);
+
+    const std::vector<std::filesystem::path> paths = {
+        "exec://0", "exec://1", "exec://2", "exec://3", "exec://4",
+    };
+    il.add(paths);
+    EXPECT_ILEQ(il.get_all(), paths);
+
+    std::time_t mtime = 1000;
+    for (auto& it : il.get_all()) {
+        if (it->path != "exec://2") {
+            it->mtime = mtime;
+        }
+        --mtime;
+    }
+
+    il.set_order(ImageList::Order::Mtime);
+    const std::vector<std::filesystem::path> expect = {
+        "exec://2", "exec://4", "exec://3", "exec://1", "exec://0",
+    };
+    EXPECT_ILEQ(il.get_all(), expect);
+}
+
 TEST(ImageListTest, SortRandom)
 {
     ImageList il;
