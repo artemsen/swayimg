@@ -548,6 +548,8 @@ void Application::handle_event(const AppEvent::FileModify& event)
         if (entry) {
             current_mode()->handle_imagelist(AppMode::ImageListEvent::Modify,
                                              { entry });
+        } else {
+            add_images({ event.path });
         }
     }
 }
