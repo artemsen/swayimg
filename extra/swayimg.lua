@@ -480,15 +480,26 @@ swayimg.viewer = {}
 
 ---Open the next file in the specified direction.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.viewer.open` instead.
+---@see swayimg.viewer.open
+---@deprecated
 ---@param dir vdir_t Next file direction
 function swayimg.viewer.switch_image(dir) end
 
+---Open the next file in the specified direction.
+---Since 5.5.
+---@param dir vdir_t Next file direction
+---@return boolean # True if next file was opened
+function swayimg.viewer.open(dir) end
+
 ---Open the file at the specified path.
----Since 5.2.
+---Since 5.5.
 ---
 ---This function adds a file to the image list and then opens it in the viewer.
 ---@param path string Path to the file
-function swayimg.viewer.open(path) end
+---@return boolean # True if file was opened
+function swayimg.viewer.open_path(path) end
 
 ---Get information about currently displayed image.
 ---Since 5.0.

@@ -83,7 +83,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.set_status](#swayimgtextset_status): Show status message
 * Viewer mode
   * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
-  * [swayimg.viewer.open](#swayimgvieweropen): Open the file at the specified path
+  * [swayimg.viewer.open](#swayimgvieweropen): Open the next file in the specified direction
+  * [swayimg.viewer.open_path](#swayimgvieweropen_path): Open the file at the specified path
   * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
   * [swayimg.viewer.reload](#swayimgviewerreload): Reload current image
   * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
@@ -126,7 +127,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 * Slide show mode
   * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
   * [swayimg.slideshow.switch_image](#swayimgslideshowswitch_image): Open the next file in the specified direction
-  * [swayimg.slideshow.open](#swayimgslideshowopen): Open the file at the specified path
+  * [swayimg.slideshow.open](#swayimgslideshowopen): Open the next file in the specified direction
+  * [swayimg.slideshow.open_path](#swayimgslideshowopen_path): Open the file at the specified path
   * [swayimg.slideshow.get_image](#swayimgslideshowget_image): Get information about currently displayed image
   * [swayimg.slideshow.reload](#swayimgslideshowreload): Reload current image
   * [swayimg.slideshow.reset](#swayimgslideshowreset): Reset position and scale to default values
@@ -828,6 +830,10 @@ Open the next file in the specified direction.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.viewer.open` instead.
+
+See [swayimg.viewer.open](#swayimgvieweropen)
+
 @_param_ `dir` - Next file direction
 
 `vdir_t`, Direction for opening next file in viewer and slideshow modes:
@@ -842,16 +848,41 @@ Since 5.0.
 ### swayimg.viewer.open
 
 ```lua
-swayimg.viewer.open(path: string)
+swayimg.viewer.open(dir: vdir_t) -> boolean
+```
+
+Open the next file in the specified direction.
+
+Since 5.5.
+
+@_param_ `dir` - Next file direction
+
+`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+* `"first"`: First file in image list
+* `"last"`: Last file in image list
+* `"next"`: Next file
+* `"prev"`: Previous file
+* `"next_dir"`: First file in next directory
+* `"prev_dir"`: Last file in previous directory
+* `"random"`: Random file in image list
+
+@_return_ - True if next file was opened
+
+### swayimg.viewer.open_path
+
+```lua
+swayimg.viewer.open_path(path: string) -> boolean
 ```
 
 Open the file at the specified path.
 
-Since 5.2.
+Since 5.5.
 
 This function adds a file to the image list and then opens it in the viewer.
 
 @_param_ `path` - Path to the file
+
+@_return_ - True if file was opened
 
 ### swayimg.viewer.get_image
 
@@ -1473,6 +1504,10 @@ Open the next file in the specified direction.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.viewer.open` instead.
+
+See [swayimg.viewer.open](#swayimgvieweropen)
+
 @_param_ `dir` - Next file direction
 
 `vdir_t`, Direction for opening next file in viewer and slideshow modes:
@@ -1487,16 +1522,41 @@ Since 5.0.
 ### swayimg.slideshow.open
 
 ```lua
-swayimg.slideshow.open(path: string)
+swayimg.slideshow.open(dir: vdir_t) -> boolean
+```
+
+Open the next file in the specified direction.
+
+Since 5.5.
+
+@_param_ `dir` - Next file direction
+
+`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+* `"first"`: First file in image list
+* `"last"`: Last file in image list
+* `"next"`: Next file
+* `"prev"`: Previous file
+* `"next_dir"`: First file in next directory
+* `"prev_dir"`: Last file in previous directory
+* `"random"`: Random file in image list
+
+@_return_ - True if next file was opened
+
+### swayimg.slideshow.open_path
+
+```lua
+swayimg.slideshow.open_path(path: string) -> boolean
 ```
 
 Open the file at the specified path.
 
-Since 5.2.
+Since 5.5.
 
 This function adds a file to the image list and then opens it in the viewer.
 
 @_param_ `path` - Path to the file
+
+@_return_ - True if file was opened
 
 ### swayimg.slideshow.get_image
 

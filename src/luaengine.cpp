@@ -713,6 +713,10 @@ void LuaEngine::bind_viewer_api(const char* name)
         .addFunction(
             "switch_image",
             [this, ensure_active, mode, name](const std::string& dname) {
+                const std::string prefix =
+                    std::format("{}.{}", NS_SWAYIMG, name);
+                warn_deprecated((prefix + ".switch_image").c_str(),
+                                (prefix + ".open").c_str());
                 ensure_active("switch_image");
                 const auto dir = name_to_type(ildirs, dname.c_str());
                 if (!dir.has_value()) {
@@ -722,18 +726,25 @@ void LuaEngine::bind_viewer_api(const char* name)
                 }
                 mode->open(dir.value());
             })
-        .addFunction("open",
+        .addFunction(
+            "open",
+            [this, ensure_active, mode, name](const std::string& dname) {
+                ensure_active("open");
+                const auto dir = name_to_type(ildirs, dname.c_str());
+                if (!dir.has_value()) {
+                    raise_error("Invalid argument \"{}\" for {}.{}.open", dname,
+                                NS_SWAYIMG, name);
+                }
+                return mode->open(dir.value());
+            })
+        .addFunction("open_path",
                      [ensure_active, mode](const std::string& path) {
-                         ensure_active("open");
-                         ImageEntryPtr entry =
-                             Application::self().add_images({ path });
+                         ensure_active("open_path");
+                         ImageEntryPtr entry = ImageList::self().find(path);
                          if (!entry) {
-                             // try to get existing entry
-                             entry = ImageList::self().find(path);
+                             entry = Application::self().add_images({ path });
                          }
-                         if (entry) {
-                             mode->set_current(entry);
-                         }
+                         return entry && mode->set_current(entry);
                      })
         .addFunction(
             "get_image",
@@ -1029,7 +1040,8 @@ void LuaEngine::bind_gallery_api()
         .addFunction(
             "switch_image",
             [this, ensure_active](const std::string& name) {
-                warn_deprecated("switch_image", "select");
+                warn_deprecated("swayimg.gallery.switch_image",
+                                "swayimg.gallery.select");
                 ensure_active("switch_image");
                 const auto dir = name_to_type(gldirs, name.c_str());
                 if (!dir.has_value()) {
@@ -1058,8 +1070,11 @@ void LuaEngine::bind_gallery_api()
         .addFunction("select_path",
                      [ensure_active](const std::string& path) {
                          ensure_active("select_path");
-                         return Gallery::self().select(
-                             std::filesystem::path(path));
+                         ImageEntryPtr entry = ImageList::self().find(path);
+                         if (!entry) {
+                             entry = Application::self().add_images({ path });
+                         }
+                         return entry && Gallery::self().set_current(entry);
                      })
         .addFunction("reload",
                      [ensure_active]() {
