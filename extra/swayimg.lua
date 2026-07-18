@@ -192,16 +192,6 @@ function swayimg.set_fullscreen(enable) end
 ---@return boolean # True if full screen is enabled
 function swayimg.get_fullscreen() end
 
----Toggle full screen mode.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
----@see swayimg.set_fullscreen
----@see swayimg.get_fullscreen
----@deprecated
----@return boolean # True if full screen is enabled
-function swayimg.toggle_fullscreen() end
-
 ---Set a callback function called when all subsystems have been initialized.
 ---Since 5.0.
 ---@param fn function Initialization completion notification handler
@@ -220,7 +210,7 @@ function swayimg.defer(seconds, fn) end
 
 ---Enable or disable antialiasing.
 ---Since 5.0.
----@param enable boolean Enable/disable antialiasing
+---@param enable? boolean Enable/disable antialiasing, empty to toggle
 function swayimg.enable_antialiasing(enable) end
 
 ---Enable or disable changing orientation based on EXIF.

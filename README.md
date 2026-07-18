@@ -64,7 +64,7 @@ See full [documentation](USAGE.md) for details.
 
 The Swayimg configuration file is a Lua script. The full list of available
 functions is described in the [documentation](CONFIG.md) and in the
-[Lua source](extra/swayimg.lua) file.
+[Lua source](extra/swayimg.lua) file. Some tips and trick can be found [here](TIPS.md).
 
 [Example](extra/example.lua) of the configuration file is available after
 installation in `/usr/share/swayimg/example.lua`.

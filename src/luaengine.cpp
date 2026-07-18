@@ -415,19 +415,6 @@ void LuaEngine::bind_root_api()
                          }
                          return Application::self().sparams->fullscreen.get();
                      })
-        .addFunction("toggle_fullscreen",
-                     []() {
-                         warn_deprecated("toggle_fullscreen", "set_fullscreen");
-                         Ui* ui = Application::get_ui();
-                         if (ui) {
-                             ui->set_fullscreen(!ui->get_fullscreen());
-                             return ui->get_fullscreen();
-                         }
-                         auto& fullscreen =
-                             Application::self().sparams->fullscreen;
-                         fullscreen.set(!fullscreen.get());
-                         return fullscreen.get();
-                     })
         .addFunction("on_initialized",
                      [this](const luabridge::LuaRef& cb) {
                          if (!cb.isFunction()) {
@@ -475,8 +462,9 @@ void LuaEngine::bind_root_api()
                          defer_timer.reset(ms > 0 ? ms : 1, 0);
                      })
         .addFunction("enable_antialiasing",
-                     [](const bool enable) {
-                         Render::self().antialiasing = enable;
+                     [](const std::optional<bool>& enable) {
+                         bool& antialiasing = Render::self().antialiasing;
+                         antialiasing = enable.value_or(!antialiasing);
                          Application::redraw();
                      })
         .addFunction("enable_exif_orientation",
