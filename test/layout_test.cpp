@@ -10,22 +10,11 @@
 
 class LayoutTest : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ImageList& il = ImageList::self();
-        ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
-        while (entry) {
-            entry = il.remove(entry);
-        }
-    }
+    void SetUp() override { ImageList::self().clear(); }
 
     void TearDown() override
     {
-        ImageList& il = ImageList::self();
-        ImageEntryPtr entry = il.get(nullptr, ImageList::Dir::First);
-        while (entry) {
-            entry = il.remove(entry);
-        }
+        ImageList::self().clear();
         if (HasFailure()) {
             puts("Test failed. Layout scheme:");
             PrintLayout();

@@ -64,10 +64,8 @@ public:
     /**
      * Remove image entry from the list.
      * @param entry entry to remove
-     * @param forward direction of nearest returned entry
-     * @return valid nearest entry or nullptr if list is empty
      */
-    ImageEntryPtr remove(const ImageEntryPtr& entry, const bool forward = true);
+    void remove(const ImageEntryPtr& entry);
 
     /**
      * Clear image list.

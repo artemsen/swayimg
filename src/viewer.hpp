@@ -224,14 +224,6 @@ public:
 
 private:
     /**
-     * Open specified entry o nearest to it.
-     * @param entry starting entry
-     * @param forward next entry direction
-     * @return true if image was opened
-     */
-    bool open(const ImageEntryPtr& entry, const bool forward);
-
-    /**
      * Set current image.
      * @param img image instance to set as current
      */

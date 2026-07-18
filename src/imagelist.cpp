@@ -232,11 +232,9 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
     return removed;
 }
 
-ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
+void ImageList::remove(const ImageEntryPtr& entry)
 {
-    assert(entry);
-
-    ImageEntryPtr next = get(entry, forward ? Dir::Next : Dir::Prev);
+    assert(entry && !entry->removed);
 
     const std::scoped_lock lock(mutex);
 
@@ -246,8 +244,6 @@ ImageEntryPtr ImageList::remove(const ImageEntryPtr& entry, const bool forward)
 
     entry->removed = true;
     FsMonitor::self().remove(entry->path);
-
-    return next;
 }
 
 ImageList::EntriesArray ImageList::clear()

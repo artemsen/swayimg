@@ -60,22 +60,76 @@ Viewer::Viewer()
 
 bool Viewer::open(const ImageList::Dir dir)
 {
+    ImageList& il = ImageList::self();
+
+    ImageEntryPtr next;
     if (image) {
-        const bool forward = dir == ImageList::Dir::Last ||
-            dir == ImageList::Dir::Random || dir == ImageList::Dir::Next ||
-            dir == ImageList::Dir::NextParent;
-        const ImageEntryPtr next = ImageList::self().get(image->entry, dir);
-        return open(next, forward);
+        next = il.get(image->entry, dir);
+    } else {
+        next = il.get(nullptr, ImageList::Dir::First);
     }
-    return false;
+
+    while (true) {
+        if (!next && imagelist_loop) {
+            // reshuffle random on new loop
+            if (il.get_order() == ImageList::Order::Random) {
+                il.set_order(ImageList::Order::Random);
+            }
+
+            // start new loop
+            next = il.get(nullptr,
+                          dir == ImageList::Dir::Last ||
+                                  dir == ImageList::Dir::Random ||
+                                  dir == ImageList::Dir::Next ||
+                                  dir == ImageList::Dir::NextParent
+                              ? ImageList::Dir::First
+                              : ImageList::Dir::Last);
+
+            // avoid opening the same image in random mode
+            if (next && image && next == image->entry &&
+                il.get_order() == ImageList::Order::Random) {
+                next = il.get(next, ImageList::Dir::Next);
+            }
+        }
+
+        if (image && next == image->entry) {
+            next = nullptr; // same image
+        }
+        if (!next) {
+            break; // no next image
+        }
+        if (set_current(next)) {
+            break; // new image loaded
+        }
+
+        il.remove(next);
+        next = il.get(next, dir);
+    }
+
+    return !!next;
 }
 
 bool Viewer::reload()
 {
-    if (image && !open(image->entry, true) && !open(image->entry, false)) {
-        set_image(nullptr); // no more images to view
+    bool reloaded = false;
+    const ImageEntryPtr entry = image ? image->entry : nullptr;
+
+    if (entry && !entry->removed) {
+        reloaded = set_current(entry);
     }
-    return !!image;
+    if (!reloaded) {
+        reloaded = open(ImageList::Dir::Next) || open(ImageList::Dir::Prev);
+        if (entry && reloaded) {
+            // remove entry from cache in reloading mode
+            const std::scoped_lock lock(image_pool.mutex);
+            image_pool.history.get(entry);
+        }
+    }
+    if (!reloaded) {
+        set_image(nullptr);
+    }
+
+    return reloaded;
 }
 
 size_t Viewer::next_frame()
@@ -372,7 +426,8 @@ void Viewer::activate(const ImageEntryPtr& entry, const Size& wnd)
 
     if (entry && image && image->entry == entry && !entry->removed) {
         set_image(image); // reinit state without reloading image
-    } else if (!entry || (!open(entry, true) && !open(entry, false))) {
+    } else if (!entry ||
+               (!set_current(entry) && !open(ImageList::Dir::First))) {
         set_image(nullptr);
     }
 }
@@ -421,13 +476,12 @@ bool Viewer::set_current(const ImageEntryPtr& entry)
 
     if (!new_image) {
         new_image = FormatFactory::self().load(entry);
-        if (!new_image) {
-            return false; // failed to load
-        }
+    }
+    if (new_image) {
+        set_image(new_image);
     }
 
-    set_image(new_image);
-    return true;
+    return !!new_image;
 }
 
 void Viewer::window_resize(const Size& wnd)
@@ -522,10 +576,10 @@ void Viewer::handle_imagelist(const ImageListEvent event,
 
     switch (event) {
         case ImageListEvent::Create:
-            if (!image) {
-                open(entries.front(), true);
-            } else {
+            if (image) {
                 preloader_start();
+            } else {
+                open(ImageList::Dir::First);
             }
             break;
         case ImageListEvent::Modify:
@@ -539,52 +593,11 @@ void Viewer::handle_imagelist(const ImageListEvent event,
             }
             break;
         case ImageListEvent::Remove:
-            if (image && image->entry->removed && !open(image->entry, true) &&
-                !open(image->entry, false)) {
-                set_image(nullptr); // no more images to view
+            if (image && image->entry->removed) {
+                reload();
             }
             break;
     }
-}
-
-bool Viewer::open(const ImageEntryPtr& entry, const bool forward)
-{
-    ImageList& il = ImageList::self();
-
-    ImageEntryPtr next = entry;
-    if (!next) {
-        next = il.get(nullptr,
-                      forward ? ImageList::Dir::First : ImageList::Dir::Last);
-    } else if (next->removed) {
-        next =
-            il.get(next, forward ? ImageList::Dir::Next : ImageList::Dir::Prev);
-    }
-
-    while (next) {
-        if (set_current(next)) {
-            return true;
-        }
-        next = il.remove(next, forward);
-
-        if (!next && imagelist_loop && il.size() > 0) {
-            // reshuffle random on new loop
-            if (il.get_order() == ImageList::Order::Random) {
-                il.set_order(ImageList::Order::Random);
-            }
-
-            // start new loop
-            const ImageList::Dir dir =
-                forward ? ImageList::Dir::First : ImageList::Dir::Last;
-            next = il.get(nullptr, dir);
-
-            // avoid opening the same image in random mode
-            if (next && next == entry &&
-                il.get_order() == ImageList::Order::Random) {
-                next = il.get(next, ImageList::Dir::Next);
-            }
-        }
-    }
-    return false;
 }
 
 void Viewer::set_image(const ImagePtr& img)
