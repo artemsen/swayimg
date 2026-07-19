@@ -44,7 +44,11 @@ public:
             const int dy = box.min.y;
 
             Imf::Array2D<Imf::Rgba> pixels;
-            pixels.resizeErase(height, width);
+            if (width > ImageFormatExr::MAX_SIZE ||
+                height > ImageFormatExr::MAX_SIZE) {
+                return nullptr;
+            }
+            pixels.resizeErase(width, height);
 
             // decode image
             if (exr_header.hasTileDescription()) {
@@ -101,6 +105,9 @@ public:
     }
 
 private:
+    /** Max image size. */
+    static constexpr int MAX_SIZE = 10000000;
+
     /** Memory input stream. */
     struct MemoryIStream : public Imf::IStream {
         MemoryIStream(const Data& raw_data)
@@ -111,6 +118,9 @@ private:
 
         bool read(char c[], int n) override
         {
+            if (n < 0) {
+                throw std::invalid_argument("Negative size");
+            }
             if (position + n > data.size) {
                 throw std::runtime_error("No more data");
             }
