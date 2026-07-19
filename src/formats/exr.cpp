@@ -43,14 +43,13 @@ public:
             const int dx = box.min.x;
             const int dy = box.min.y;
 
-            Imf::Array2D<Imf::Rgba> pixels;
             if (width > ImageFormatExr::MAX_SIZE ||
                 height > ImageFormatExr::MAX_SIZE) {
                 return nullptr;
             }
-            pixels.resizeErase(width, height);
 
             // decode image
+            Imf::Array2D<Imf::Rgba> pixels(height, width);
             if (exr_header.hasTileDescription()) {
                 image_type = "tiled";
                 Imf::TiledRgbaInputFile tile_file(stream);
