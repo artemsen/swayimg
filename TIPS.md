@@ -1,8 +1,9 @@
 # Swayimg config: Tips and Tricks
 
 * [Change scale on window resize](#Change-scale-on-window-resize)
-* [Delete file form storage](#Delete-file-form-storage)
+* [Set window size to image size](#Set-window-size-to-image-size)
 * [Change window title](#Change-window-title)
+* [Delete image files](#Delete-image-files)
 * [Process marked images](#Process-marked-images)
 * [Handle double mouse click](#Handle-double-mouse-click)
 
@@ -15,17 +16,17 @@ swayimg.on_window_resize(function()
 end)
 ```
 
-## Delete file form storage
+## Set window size to image size
 
-Bind the `Delete` key in slide show mode to delete the current file and display
-a status message:
 ```lua
-swayimg.slideshow.on_key("Delete", function()
-  local image = swayimg.slideshow.get_image()
+swayimg.viewer.on_image_change(function()
+  local image = swayimg.viewer.get_image()
   if image then
-    os.remove(image.path)
-    swayimg.text.set_status("File "..image.path.." removed")
+    swayimg.set_window_size(image.width, image.height)
   end
+end)
+swayimg.on_window_resize(function()
+  swayimg.viewer.set_fix_scale("fit")
 end)
 ```
 
@@ -41,9 +42,25 @@ swayimg.gallery.on_image_change(function()
 end)
 ```
 
+## Delete image files
+
+Bind the `Delete` key in viewer mode to delete the current file and display
+a status message:
+
+```lua
+swayimg.viewer.on_key("Delete", function()
+  local image = swayimg.viewer.get_image()
+  if image then
+    os.remove(image.path)
+    swayimg.text.set_status("File "..image.path.." removed")
+  end
+end)
+```
+
 ## Process marked images
 
 Print paths of all marked files by pressing `Ctrl-p` in gallery mode:
+
 ```lua
 swayimg.gallery.on_key("Ctrl-p", function()
   local entries = swayimg.imagelist.get()
