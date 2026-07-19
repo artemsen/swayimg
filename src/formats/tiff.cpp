@@ -10,15 +10,14 @@
 #include <cstring>
 #include <memory>
 
+namespace {
+
 class ImageFormatTiff : public ImageFormat {
 public:
     ImageFormatTiff() noexcept
         : ImageFormat(Priority::Low, "tiff")
     {
     }
-
-    // Size of buffer for error messages, see libtiff for details
-    static constexpr size_t LIBTIFF_ERRMSG_SZ = 1024;
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
@@ -42,7 +41,8 @@ public:
         }
 
         // get image size
-        uint32_t width, height;
+        uint32_t width;
+        uint32_t height;
         if (!TIFFGetField(tiff.get(), TIFFTAG_IMAGEWIDTH, &width) ||
             !TIFFGetField(tiff.get(), TIFFTAG_IMAGELENGTH, &height)) {
             return nullptr;
@@ -137,4 +137,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatTiff format_tiff;
+ImageFormatTiff format_tiff;
+
+} // anonymous namespace

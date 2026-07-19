@@ -9,6 +9,8 @@
 #include <cstring>
 #include <format>
 
+namespace {
+
 class ImageFormatQoi : public ImageFormat {
 public:
     ImageFormatQoi() noexcept
@@ -137,4 +139,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatQoi format_qoi;
+ImageFormatQoi format_qoi;
+
+} // anonymous namespace

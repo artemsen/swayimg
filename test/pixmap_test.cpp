@@ -7,6 +7,8 @@
 
 #include <format>
 
+namespace {
+
 ::testing::AssertionResult CheckPixmap(const Pixmap& pm,
                                        const std::vector<argb_t>& expect)
 {
@@ -37,7 +39,7 @@
 #define EXPECT_PMEQ(pm, ex) \
     EXPECT_TRUE(CheckPixmap(pm, ex)) << "Pixmap:\n" << to_string(pm)
 
-static std::string to_string(const Pixmap& pm)
+std::string to_string(const Pixmap& pm)
 {
     std::string res;
     for (size_t y = 0; y < pm.height(); ++y) {
@@ -49,6 +51,8 @@ static std::string to_string(const Pixmap& pm)
     }
     return res;
 }
+
+} // anonymous namespace
 
 TEST(PixmapTest, Create)
 {
@@ -295,7 +299,7 @@ TEST(PixmapTest, Copy)
 
     Pixmap bg;
     bg.create(Pixmap::ARGB, 4, 4);
-    bg.copy(fg, { 1, 1 });
+    bg.copy(fg, { .x = 1, .y = 1 });
 
     EXPECT_PMEQ(bg, expect);
 }

@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <string>
 
+namespace {
+
 class ImageFormatPnm : public ImageFormat {
 public:
     ImageFormatPnm() noexcept
@@ -83,7 +85,8 @@ public:
             pm.create(Pixmap::RGB, width, height);
 
             // decode image
-            const Data px_data = { data.data + offset, data.size - offset };
+            const Data px_data = { .data = data.data + offset,
+                                   .size = data.size - offset };
             switch (fmt) {
                 case Format::BitMap:
                     decode_pbm(px_data, enc, pm);
@@ -371,4 +374,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatPnm format_pnm;
+ImageFormatPnm format_pnm;
+
+} // anonymous namespace

@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <sstream>
 
+namespace {
+
 class ImageFormatXbm : public ImageFormat {
 public:
     ImageFormatXbm() noexcept
@@ -115,4 +117,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatXbm format_xbm;
+ImageFormatXbm format_xbm;
+
+} // anonymous namespace

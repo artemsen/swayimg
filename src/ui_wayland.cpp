@@ -18,7 +18,7 @@
 #include <format>
 
 // MIME type for drag-and-drop of raw path
-static const char* MIME_TEXT_PLAIN = "text/plain";
+static constexpr const char* MIME_TEXT_PLAIN = "text/plain";
 
 /** Static Wayland handlers. */
 class WaylandHandler {
@@ -113,8 +113,8 @@ public:
         const double scale =
             static_cast<double>(ui->scale) / UiWayland::FRACTION_SCALE_DEN;
 
-        const Point new_pos { wl_fixed_to_int(surface_x * scale),
-                              wl_fixed_to_int(surface_y * scale) };
+        const Point new_pos { .x = wl_fixed_to_int(surface_x * scale),
+                              .y = wl_fixed_to_int(surface_y * scale) };
         const Point delta = new_pos - ui->mouse_pos;
         ui->mouse_pos = new_pos;
 
@@ -123,9 +123,10 @@ public:
         }
 
         Application::self().add_event(AppEvent::MouseMove {
-            { ui->mouse_buttons, ui->xkb.get_modifiers() },
-            ui->mouse_pos,
-            delta
+            .mouse = { .buttons = ui->mouse_buttons,
+                      .mods = ui->xkb.get_modifiers() },
+            .pointer = ui->mouse_pos,
+            .delta = delta
         });
     }
 
@@ -145,11 +146,11 @@ public:
             ui->set_cursor(Ui::CursorShape::Default);
         } else {
             ui->mouse_buttons |= btn;
-            const InputMouse input { ui->mouse_buttons,
-                                     ui->xkb.get_modifiers() };
+            const InputMouse input { .buttons = ui->mouse_buttons,
+                                     .mods = ui->xkb.get_modifiers() };
             if (ui->dnd != input || !ui->wl.datadev_mgr) {
-                Application::self().add_event(
-                    AppEvent::MouseClick { input, ui->mouse_pos });
+                Application::self().add_event(AppEvent::MouseClick {
+                    .mouse = input, .pointer = ui->mouse_pos });
             } else {
                 // start drag-and-drop
                 ui->mouse_buttons = InputMouse();
@@ -188,8 +189,8 @@ public:
         btn |= ui->mouse_buttons;
 
         Application::self().add_event(AppEvent::MouseClick {
-            { btn, ui->xkb.get_modifiers() },
-            ui->mouse_pos
+            .mouse = { .buttons = btn, .mods = ui->xkb.get_modifiers() },
+            .pointer = ui->mouse_pos
         });
     }
 

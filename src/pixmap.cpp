@@ -146,7 +146,8 @@ void Pixmap::rotate(const size_t angle)
         // rotate
         for (size_t y = 0; y < pm_height; ++y) {
             for (size_t x = 0; x < pm_width; ++x) {
-                size_t origin_x, origin_y;
+                size_t origin_x;
+                size_t origin_y;
                 if (angle == 90) {
                     origin_x = y;
                     origin_y = origin.pm_height - 1 - x;

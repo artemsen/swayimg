@@ -9,6 +9,8 @@
 #include <cstring>
 #include <memory>
 
+namespace {
+
 class ImageFormatWebp : public ImageFormat {
 public:
     ImageFormatWebp() noexcept
@@ -100,4 +102,6 @@ public:
 };
 
 // register format in factory
-static ImageFormatWebp format_webp;
+ImageFormatWebp format_webp;
+
+} // anonymous namespace

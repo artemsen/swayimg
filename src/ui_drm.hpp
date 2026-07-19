@@ -46,7 +46,8 @@ private:
      * @param resources DRM resources
      * @return connector instance or nullptr if not found
      */
-    drmModeConnectorPtr get_connector(const drmModeResPtr resources) const;
+    [[nodiscard]] drmModeConnectorPtr
+    get_connector(const drmModeResPtr& resources) const;
 
     /**
      * Get CRTC id.
@@ -54,15 +55,16 @@ private:
      * @param connector DRM connector
      * @return CRTC id or 0 if not found
      */
-    uint32_t get_crtc(const drmModeResPtr resources,
-                      const drmModeConnectorPtr connector) const;
+    [[nodiscard]] uint32_t get_crtc(const drmModeResPtr& resources,
+                                    const drmModeConnectorPtr& connector) const;
 
     /**
      * Get DRM mode.
      * @param connector DRM connector
      * @return mode instance
      */
-    drmModeModeInfoPtr get_mode(const drmModeConnectorPtr connector) const;
+    [[nodiscard]] drmModeModeInfoPtr
+    get_mode(const drmModeConnectorPtr& connector) const;
 
     // Page flip callback, see DRM API for details
     static void on_page_flipped(int, unsigned int, unsigned int, unsigned int,

@@ -8,12 +8,12 @@
 
 Point Point::operator+(const Point& delta) const
 {
-    return { x + delta.x, y + delta.y };
+    return { .x = x + delta.x, .y = y + delta.y };
 }
 
 Point Point::operator-(const Point& other) const
 {
-    return { x - other.x, y - other.y };
+    return { .x = x - other.x, .y = y - other.y };
 }
 
 Size Size::operator*(double factor) const
@@ -21,8 +21,8 @@ Size Size::operator*(double factor) const
     if (factor <= 0.0) {
         return {};
     }
-    return { static_cast<size_t>(factor * width),
-             static_cast<size_t>(factor * height) };
+    return { .width = static_cast<size_t>(factor * width),
+             .height = static_cast<size_t>(factor * height) };
 }
 
 Rectangle::Rectangle(const ssize_t x, const ssize_t y, const size_t width,
@@ -61,7 +61,10 @@ Rectangle Rectangle::intersect(const Rectangle& other) const
 std::tuple<Rectangle, Rectangle, Rectangle, Rectangle>
 Rectangle::cutout(const Rectangle& cut) const
 {
-    Rectangle top, bottom, left, right;
+    Rectangle top;
+    Rectangle bottom;
+    Rectangle left;
+    Rectangle right;
 
     // top
     if (cut.y > y) {

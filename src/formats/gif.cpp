@@ -9,6 +9,8 @@
 #include <cstring>
 #include <utility>
 
+namespace {
+
 class ImageFormatGif : public ImageFormat {
 public:
     ImageFormatGif() noexcept
@@ -119,7 +121,7 @@ private:
         if (ctl.DisposalMode == DISPOSE_PREVIOUS && index + 1 < frames.size()) {
             const Pixmap& curr = frame.pm;
             Pixmap& next = frames[index + 1].pm;
-            next.copy(curr, { 0, 0 });
+            next.copy(curr, { .x = 0, .y = 0 });
         }
 
         const SavedImage* gif_img = &gif->SavedImages[index];
@@ -150,7 +152,7 @@ private:
         if (ctl.DisposalMode == DISPOSE_DO_NOT && index + 1 < frames.size()) {
             const Pixmap& curr = frame.pm;
             Pixmap& next = frames[index + 1].pm;
-            next.copy(curr, { 0, 0 });
+            next.copy(curr, { .x = 0, .y = 0 });
         }
 
         if (ctl.DelayTime != 0) {
@@ -163,4 +165,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatGif format_gif;
+ImageFormatGif format_gif;
+
+} // anonymous namespace

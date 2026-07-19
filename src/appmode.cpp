@@ -134,7 +134,7 @@ void AppMode::switch_current()
     const ImageEntryPtr entry = get_current();
 
     // set window title
-    Ui* ui = Application::self().get_ui();
+    Ui* ui = Application::get_ui();
     std::string title = "Swayimg: ";
     if (entry) {
         title += entry->path.filename().string();
@@ -171,5 +171,5 @@ void AppMode::draw_empty(Pixmap& wnd, const argb_t bkg)
     // draw placeholder
     const argb_t mask(argb_t::max, argb_t::max - bkg.r, argb_t::max - bkg.g,
                       argb_t::max - bkg.b);
-    wnd.mask(Resource::empty, { x, y }, mask);
+    wnd.mask(Resource::empty, { .x = x, .y = y }, mask);
 }

@@ -326,7 +326,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
 
     // calculate tile position/size
     Rectangle tile {
-        tlay.pos, { tile_size, tile_size }
+        tlay.pos, { .width = tile_size, .height = tile_size }
     };
     if (selected) {
         tile.width *= selected_scale;
@@ -371,9 +371,9 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
             ? std::max(scale_w, scale_h)
             : std::min(scale_w, scale_h);
 
-        const Point pos { static_cast<ssize_t>(tile.width / 2) -
+        const Point pos { .x = static_cast<ssize_t>(tile.width / 2) -
                               static_cast<ssize_t>(scale * pm->width()) / 2,
-                          static_cast<ssize_t>(tile.height / 2) -
+                          .y = static_cast<ssize_t>(tile.height / 2) -
                               static_cast<ssize_t>(scale * pm->height()) / 2 };
 
         Pixmap sub = wnd.submap(tile);
@@ -385,7 +385,8 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
             static_cast<ssize_t>(Resource::file.width() / 2);
         const ssize_t y = bkg.y + static_cast<ssize_t>(bkg.height / 2) -
             static_cast<ssize_t>(Resource::file.height() / 2);
-        wnd.mask(Resource::file, { x, y }, { 0x20, 0xff, 0xff, 0xff });
+        wnd.mask(Resource::file, { .x = x, .y = y },
+                 { 0x20, 0xff, 0xff, 0xff });
     }
 
     // draw border
@@ -405,7 +406,7 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
             static_cast<ssize_t>(Resource::mark.width()) - margin;
         const ssize_t y = bkg.y + static_cast<ssize_t>(bkg.height) -
             static_cast<ssize_t>(Resource::mark.height()) - margin;
-        wnd.mask(Resource::mark, { x, y }, mark_color);
+        wnd.mask(Resource::mark, { .x = x, .y = y }, mark_color);
     }
 }
 

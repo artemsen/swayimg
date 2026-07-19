@@ -8,6 +8,8 @@
 
 // NOLINTBEGIN(readability-function-cognitive-complexity)
 
+namespace {
+
 class LayoutTest : public ::testing::Test {
 protected:
     void SetUp() override { ImageList::self().clear(); }
@@ -27,7 +29,7 @@ protected:
         for (size_t i = 0; i < total; ++i) {
             il.add({ ImageEntry::SRC_EXEC + std::to_string(i) });
         }
-        layout.set_window_size({ 80, 60 });
+        layout.set_window_size({ .width = 80, .height = 60 });
         layout.set_thumb_size(10);
         layout.set_padding(5);
     }
@@ -93,6 +95,8 @@ protected:
 
     Layout layout;
 };
+
+} // anonymous namespace
 
 TEST_F(LayoutTest, BaseScheme)
 {

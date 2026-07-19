@@ -10,6 +10,8 @@
 #include <memory>
 #include <utility>
 
+namespace {
+
 class ImageFormatHeif : public ImageFormat {
 public:
     ImageFormatHeif() noexcept
@@ -107,4 +109,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatHeif format_heif;
+ImageFormatHeif format_heif;
+
+} // anonymous namespace

@@ -9,6 +9,8 @@
 #include <format>
 #include <memory>
 
+namespace {
+
 class ImageFormatAvif : public ImageFormat {
 public:
     ImageFormatAvif() noexcept
@@ -125,4 +127,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatAvif format_avif;
+ImageFormatAvif format_avif;
+
+} // anonymous namespace

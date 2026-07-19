@@ -16,6 +16,8 @@
 
 using json = nlohmann::json;
 
+namespace {
+
 /** UNIX socket wrapper for IPC communication. */
 class UnixSocket {
 public:
@@ -154,8 +156,8 @@ public:
         const json focus = ipc.find_focused(response);
 
         if (focus.contains("rect") && focus.contains("window_rect")) {
-            const Rectangle rect = ipc.get_rect(focus["rect"]);
-            const Rectangle wrect = ipc.get_rect(focus["window_rect"]);
+            const Rectangle rect = SwayIpc::get_rect(focus["rect"]);
+            const Rectangle wrect = SwayIpc::get_rect(focus["window_rect"]);
             if (rect && wrect) {
                 wnd = rect;
                 wnd.x += wrect.x;
@@ -455,7 +457,7 @@ private:
             if (!y.is_number()) {
                 continue;
             }
-            return { x.get<ssize_t>(), y.get<ssize_t>() };
+            return { .x = x.get<ssize_t>(), .y = y.get<ssize_t>() };
         }
         return {};
     }
@@ -509,6 +511,8 @@ private:
         return json::parse(response, nullptr, false);
     }
 };
+
+} // anonymous namespace
 
 Compositor::Compositor()
     : type(None)

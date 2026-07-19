@@ -437,7 +437,7 @@ void Viewer::deactivate()
     preloader_stop();
 
     // restore cursor and content type
-    Ui* ui = Application::self().get_ui();
+    Ui* ui = Application::get_ui();
     ui->set_ctype(Ui::ContentType::Static);
     ui->set_cursor(Ui::CursorShape::Default);
 }
@@ -543,7 +543,7 @@ void Viewer::window_redraw(Pixmap& wnd)
             static_cast<ssize_t>(Resource::mark.width()) - margin;
         const ssize_t y = static_cast<ssize_t>(wnd.height()) -
             static_cast<ssize_t>(Resource::mark.height()) - margin;
-        wnd.mask(Resource::mark, { x, y }, mark_color);
+        wnd.mask(Resource::mark, { .x = x, .y = y }, mark_color);
     }
 }
 
@@ -622,7 +622,7 @@ void Viewer::set_image(const ImagePtr& img)
         image->frames.size() > 1 && image->frames[0].duration;
 
     // set content type
-    Ui* ui = Application::self().get_ui();
+    Ui* ui = Application::get_ui();
     ui->set_ctype(is_animation ? Ui::ContentType::Animation
                                : Ui::ContentType::Static);
 

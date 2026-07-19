@@ -17,12 +17,17 @@ public:
      * @param ... format arguments
      */
     template <typename... Args>
-    static void verbose(const std::format_string<Args...> fmt, Args&&... args)
+    static void verbose(const std::format_string<Args...> fmt,
+                        Args&&... args) noexcept
     {
         if (verbose_enable()) {
-            const std::string msg = sanitize(
-                std::vformat(fmt.get(), std::make_format_args(args...)));
-            std::cout << msg << '\n';
+            try {
+                const std::string msg = sanitize(
+                    std::vformat(fmt.get(), std::make_format_args(args...)));
+                std::cout << msg << '\n';
+            } catch (const std::format_error& ex) {
+                std::cerr << ex.what() << '\n';
+            }
         }
     }
 
@@ -32,11 +37,16 @@ public:
      * @param ... format arguments
      */
     template <typename... Args>
-    static void info(const std::format_string<Args...> fmt, Args&&... args)
+    static void info(const std::format_string<Args...> fmt,
+                     Args&&... args) noexcept
     {
-        const std::string msg =
-            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
-        std::cout << msg << '\n';
+        try {
+            const std::string msg = sanitize(
+                std::vformat(fmt.get(), std::make_format_args(args...)));
+            std::cout << msg << '\n';
+        } catch (const std::format_error& ex) {
+            std::cerr << ex.what() << '\n';
+        }
     }
 
     /**
@@ -47,9 +57,14 @@ public:
     template <typename... Args>
     static void warning(const std::format_string<Args...> fmt, Args&&... args)
     {
-        const std::string msg = "WARNING: " +
-            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
-        std::cerr << msg << '\n';
+        try {
+            const std::string msg = "WARNING: " +
+                sanitize(std::vformat(fmt.get(),
+                                      std::make_format_args(args...)));
+            std::cerr << msg << '\n';
+        } catch (const std::format_error& ex) {
+            std::cerr << ex.what() << '\n';
+        }
     }
 
     /**
@@ -58,11 +73,17 @@ public:
      * @param ... format arguments
      */
     template <typename... Args>
-    static void error(const std::format_string<Args...> fmt, Args&&... args)
+    static void error(const std::format_string<Args...> fmt,
+                      Args&&... args) noexcept
     {
-        const std::string msg = "ERROR: " +
-            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
-        std::cerr << msg << '\n';
+        try {
+            const std::string msg = "ERROR: " +
+                sanitize(std::vformat(fmt.get(),
+                                      std::make_format_args(args...)));
+            std::cerr << msg << '\n';
+        } catch (const std::format_error& ex) {
+            std::cerr << ex.what() << '\n';
+        }
     }
 
     /**
@@ -73,15 +94,20 @@ public:
      */
     template <typename... Args>
     static void error(const int code, const std::format_string<Args...> fmt,
-                      Args&&... args)
+                      Args&&... args) noexcept
     {
-        std::string msg = "ERROR: " +
-            sanitize(std::vformat(fmt.get(), std::make_format_args(args...)));
-        if (code) {
-            msg +=
-                std::format(", error code [{}] {}", code, std::strerror(code));
+        try {
+            std::string msg = "ERROR: " +
+                sanitize(std::vformat(fmt.get(),
+                                      std::make_format_args(args...)));
+            if (code) {
+                msg += std::format(", error code [{}] {}", code,
+                                   std::strerror(code));
+            }
+            std::cerr << msg << '\n';
+        } catch (const std::format_error& ex) {
+            std::cerr << ex.what() << '\n';
         }
-        std::cerr << msg << '\n';
     }
 
     /**

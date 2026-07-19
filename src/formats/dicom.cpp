@@ -9,6 +9,8 @@
 #include <limits>
 #include <utility>
 
+namespace {
+
 class ImageFormatDicom : public ImageFormat {
 public:
     ImageFormatDicom() noexcept
@@ -274,4 +276,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatDicom format_dicom;
+ImageFormatDicom format_dicom;
+
+} // anonymous namespace

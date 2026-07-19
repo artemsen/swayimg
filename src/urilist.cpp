@@ -13,12 +13,14 @@ constexpr const size_t URI_FILE_LEN = 7;
 constexpr const char UNSAFE[] = { ' ', '<', '>',  '"', '#', '%', '{',
                                   '}', '|', '\\', '^', '[', ']', '`' };
 
+namespace {
+
 /**
  * Decode safe URI string to normal.
  * @param text safe URI text
  * @return decoded unsafe value
  */
-static std::string decode_safe(const std::string& text)
+std::string decode_safe(const std::string& text)
 {
     const size_t len = text.length();
 
@@ -48,7 +50,7 @@ static std::string decode_safe(const std::string& text)
  * @param text source unsafe text
  * @return safe URI text
  */
-static std::string encode_safe(const std::string& text)
+std::string encode_safe(const std::string& text)
 {
     const size_t len = text.length();
 
@@ -74,6 +76,8 @@ static std::string encode_safe(const std::string& text)
 
     return encoded;
 }
+
+} // anonymous namespace
 
 std::vector<std::filesystem::path> urilist_parse(const std::string& data)
 {

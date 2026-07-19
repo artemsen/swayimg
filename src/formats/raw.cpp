@@ -12,6 +12,8 @@
 #include <cstring>
 #include <memory>
 
+namespace {
+
 class ImageFormatRaw : public ImageFormat {
 public:
     ImageFormatRaw() noexcept
@@ -148,4 +150,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatRaw format_raw;
+ImageFormatRaw format_raw;
+
+} // anonymous namespace

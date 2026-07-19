@@ -8,6 +8,8 @@
 
 #include <cstring>
 
+namespace {
+
 class ImageFormatFarbfeld : public ImageFormat {
 public:
     ImageFormatFarbfeld() noexcept
@@ -71,4 +73,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatFarbfeld format_farbfeld;
+ImageFormatFarbfeld format_farbfeld;
+
+} // anonymous namespace

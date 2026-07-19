@@ -12,8 +12,10 @@
 static const std::filesystem::path IMGLIST_TEST_DIR =
     std::filesystem::path(TEST_DATA_DIR) / "imagelist";
 
+namespace {
+
 // Check real and expected lists for equality
-static ::testing::AssertionResult
+::testing::AssertionResult
 CheckImageLists(const std::vector<ImageEntryPtr>& real,
                 const std::vector<std::filesystem::path>& expect)
 {
@@ -33,8 +35,8 @@ CheckImageLists(const std::vector<ImageEntryPtr>& real,
 }
 
 // Print real and expected lists
-static std::string to_string(const std::vector<ImageEntryPtr>& real,
-                             const std::vector<std::filesystem::path>& expect)
+std::string to_string(const std::vector<ImageEntryPtr>& real,
+                      const std::vector<std::filesystem::path>& expect)
 {
     std::string dump = "# | real         | expected\n";
     dump += "--+--------------+--------------";
@@ -47,6 +49,8 @@ static std::string to_string(const std::vector<ImageEntryPtr>& real,
     }
     return dump;
 }
+
+} // anonymous namespace
 
 #define EXPECT_ILEQ(il, expect) \
     EXPECT_TRUE(CheckImageLists(il, expect)) << to_string(il, expect)

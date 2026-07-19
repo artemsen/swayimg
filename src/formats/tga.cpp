@@ -7,6 +7,8 @@
 #include <cstring>
 #include <format>
 
+namespace {
+
 class ImageFormatTga : public ImageFormat {
 public:
     ImageFormatTga() noexcept
@@ -328,4 +330,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatTga format_tga;
+ImageFormatTga format_tga;
+
+} // anonymous namespace

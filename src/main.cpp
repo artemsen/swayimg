@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+namespace {
+
 /** Command line arguments. */
 class Args {
 public:
@@ -52,7 +54,11 @@ public:
     void add(const char short_opt, const char* long_opt, const char* format,
              const char* help, const Handler& handler)
     {
-        const Arg arg { short_opt, long_opt, format, help, handler };
+        const Arg arg { .short_opt = short_opt,
+                        .long_opt = long_opt,
+                        .format = format,
+                        .help = help,
+                        .handler = handler };
         assert(std::find_if(arguments.begin(), arguments.end(),
                             [arg](const Arg& exist) {
                                 return (arg.short_opt &&
@@ -84,10 +90,10 @@ public:
                 }
             }
             longopts.push_back({
-                it.long_opt,
-                it.format ? required_argument : no_argument,
-                nullptr,
-                index++,
+                .name = it.long_opt,
+                .has_arg = it.format ? required_argument : no_argument,
+                .flag = nullptr,
+                .val = index++,
             });
         }
         longopts.push_back({});
@@ -155,6 +161,8 @@ private:
 
     static constexpr int LONGOPT_OFFSET = 1000;
 };
+
+} // anonymous namespace
 
 /**
  * Application entry point.

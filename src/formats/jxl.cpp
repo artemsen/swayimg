@@ -9,6 +9,8 @@
 
 #include <format>
 
+namespace {
+
 class ImageFormatJxl : public ImageFormat {
 public:
     ImageFormatJxl() noexcept
@@ -153,4 +155,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatJxl format_jxl;
+ImageFormatJxl format_jxl;
+
+} // anonymous namespace

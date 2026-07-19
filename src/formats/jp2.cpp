@@ -11,6 +11,8 @@
 #include <format>
 #include <utility>
 
+namespace {
+
 class ImageFormatJp2 : public ImageFormat {
 public:
     ImageFormatJp2() noexcept
@@ -568,4 +570,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatJp2 format_jp2;
+ImageFormatJp2 format_jp2;
+
+} // anonymous namespace

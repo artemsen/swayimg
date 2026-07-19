@@ -38,12 +38,14 @@ static constexpr std::array mouse_buttons =
         { InputMouse::SCROLL_RIGHT,  "ScrollRight" },
 });
 
+namespace {
+
 /**
  * Convert modifier flags to string representation.
  * @param mods combined modifier flags
  * @return text representation
  */
-static std::string modifiers_to_string(const keymod_t mods)
+std::string modifiers_to_string(const keymod_t mods)
 {
     std::string name;
     for (const auto& it : modifiers_name) {
@@ -62,7 +64,7 @@ static std::string modifiers_to_string(const keymod_t mods)
  * @param tokens vector of string tokens to process
  * @return combined modifier flags
  */
-static keymod_t modifiers_from_string(std::vector<std::string>& tokens)
+keymod_t modifiers_from_string(std::vector<std::string>& tokens)
 {
     keymod_t mods = KEYMOD_NONE;
     for (auto it = tokens.begin(); it != tokens.end();) {
@@ -87,7 +89,7 @@ static keymod_t modifiers_from_string(std::vector<std::string>& tokens)
  * @param text input string to split
  * @return vector of tokens
  */
-static std::vector<std::string> split(const std::string& text)
+std::vector<std::string> split(const std::string& text)
 {
     const std::string delimiters = "+- ";
     std::vector<std::string> tokens;
@@ -104,6 +106,8 @@ static std::vector<std::string> split(const std::string& text)
     return tokens;
 }
 
+} // anonymous namespace
+
 std::optional<InputKeyboard> InputKeyboard::load(const std::string& expression)
 {
     std::vector<std::string> tokens = split(expression);
@@ -118,7 +122,7 @@ std::optional<InputKeyboard> InputKeyboard::load(const std::string& expression)
         return std::nullopt;
     }
 
-    return InputKeyboard { key, mods };
+    return InputKeyboard { .key = key, .mods = mods };
 }
 
 std::string InputKeyboard::to_string() const
@@ -162,7 +166,7 @@ std::optional<InputMouse> InputMouse::load(const std::string& expression)
         return std::nullopt;
     }
 
-    return InputMouse { buttons, mods };
+    return InputMouse { .buttons = buttons, .mods = mods };
 }
 
 InputMouse::mouse_btn_t InputMouse::to_button(const uint16_t code)

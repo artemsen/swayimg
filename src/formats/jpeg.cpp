@@ -10,6 +10,8 @@
 #include <csetjmp>
 #include <format>
 
+namespace {
+
 class ImageFormatJpeg : public ImageFormat {
 public:
     ImageFormatJpeg() noexcept
@@ -129,4 +131,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatJpeg format_jpeg;
+ImageFormatJpeg format_jpeg;
+
+} // anonymous namespace

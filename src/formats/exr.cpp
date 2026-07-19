@@ -16,6 +16,8 @@
 #include <cstring>
 #include <format>
 
+namespace {
+
 class ImageFormatExr : public ImageFormat {
 public:
     ImageFormatExr() noexcept
@@ -130,4 +132,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatExr format_exr;
+ImageFormatExr format_exr;
+
+} // anonymous namespace

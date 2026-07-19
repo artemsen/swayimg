@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <utility>
 
+namespace {
+
 class ImageFormatSixel : public ImageFormat {
 public:
     ImageFormatSixel() noexcept
@@ -27,7 +29,9 @@ public:
         SIXELSTATUS status;
         uint8_t* pixels = nullptr;
         uint8_t* palette = nullptr;
-        int width = 0, height = 0, ncolors = 0;
+        int width = 0;
+        int height = 0;
+        int ncolors = 0;
         status = sixel_decode_raw(const_cast<uint8_t*>(data.data), data.size,
                                   &pixels, &width, &height, &palette, &ncolors,
                                   nullptr);
@@ -68,4 +72,6 @@ public:
 };
 
 // register format in factory
-static ImageFormatSixel format_sixel;
+ImageFormatSixel format_sixel;
+
+} // anonymous namespace

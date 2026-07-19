@@ -11,6 +11,8 @@
 
 #include <memory>
 
+namespace {
+
 constexpr const char FALLBACK_CHR = '?'; // character used for absent glyphs
 
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
@@ -94,7 +96,9 @@ private:
     FT_Library lib = nullptr; ///< Font lib instance
 };
 
-static FreeTypeLib ft_lib;
+FreeTypeLib ft_lib;
+
+} // anonymous namespace
 
 Font::Font()
     : ft_face(nullptr)
@@ -162,7 +166,7 @@ bool Font::load(const uint8_t* data, const size_t data_size)
     return true;
 }
 
-void Font::set_face(const FT_Face face)
+void Font::set_face(FT_Face face)
 {
     if (ft_face) {
         FT_Done_Face(ft_face);
@@ -235,8 +239,7 @@ Pixmap Font::render(const std::string& text)
             FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
             FT_Load_Char(ft_face, FALLBACK_CHR, FT_LOAD_RENDER);
         }
-        const FT_GlyphSlot glyph = ft_face->glyph;
-        width += glyph->advance.x / POINT_FACTOR;
+        width += ft_face->glyph->advance.x / POINT_FACTOR;
     }
 
     // calculate text height in pixels
@@ -257,7 +260,7 @@ Pixmap Font::render(const std::string& text)
             FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
             FT_Load_Char(ft_face, FALLBACK_CHR, FT_LOAD_RENDER);
         }
-        const FT_GlyphSlot glyph = ft_face->glyph;
+        const FT_GlyphSlot& glyph = ft_face->glyph;
         const FT_Bitmap* bmp = &glyph->bitmap;
         const size_t x_start = x + glyph->bitmap_left;
         const size_t y_start = height_base - glyph->bitmap_top;

@@ -14,14 +14,16 @@
 #include <random>
 #include <string>
 
+namespace {
+
 /**
  * Comparison of two localized strings.
  * @param l,r strings to compare
  * @param numeric flag to use numeric compare
  * @return compare result
  */
-static int compare_strings(const std::string& l, const std::string& r,
-                           const bool numeric)
+int compare_strings(const std::string& l, const std::string& r,
+                    const bool numeric)
 {
     static const std::locale loc("");
     static const std::collate<char>& coll =
@@ -82,8 +84,8 @@ static int compare_strings(const std::string& l, const std::string& r,
  * @param numeric flag to use numeric compare
  * @return compare result
  */
-static int compare_paths(const std::filesystem::path& l,
-                         const std::filesystem::path& r, const bool numeric)
+int compare_paths(const std::filesystem::path& l,
+                  const std::filesystem::path& r, const bool numeric)
 {
     // compare parents
     const std::filesystem::path l_parent = l.parent_path();
@@ -115,8 +117,8 @@ static int compare_paths(const std::filesystem::path& l,
  * @param order criterion for comparison
  * @return true if l < r
  */
-static bool compare_entries(const ImageEntry& l, const ImageEntry& r,
-                            const ImageList::Order order)
+bool compare_entries(const ImageEntry& l, const ImageEntry& r,
+                     const ImageList::Order order)
 {
     switch (order) {
         case ImageList::Order::Alpha:
@@ -136,6 +138,8 @@ static bool compare_entries(const ImageEntry& l, const ImageEntry& r,
     assert(false); // unreachable
     return false;
 }
+
+} // anonymous namespace
 
 ImageList& ImageList::self()
 {

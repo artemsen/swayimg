@@ -6,6 +6,8 @@
 #include "../font.hpp"
 #include "../imageformat.hpp"
 
+namespace {
+
 class ImageFormatTtf : public ImageFormat {
 public:
     ImageFormatTtf() noexcept
@@ -37,7 +39,7 @@ public:
 
         // create canvas with window size
         Pixmap& pm = image->frames[0].pm;
-        const Size wnd_size = Application().get_ui()->get_window_size();
+        const Size wnd_size = Application::get_ui()->get_window_size();
         pm.create(Pixmap::ARGB, wnd_size.width, wnd_size.height);
 
         // render text
@@ -45,7 +47,7 @@ public:
         for (size_t i = 1; y < pm.height(); ++i) {
             font.set_size(12 + i * i);
             const Pixmap pm_text = font.render(TEXT);
-            pm.mask(pm_text, { 0, static_cast<ssize_t>(y) }, COLOR);
+            pm.mask(pm_text, { .x = 0, .y = static_cast<ssize_t>(y) }, COLOR);
             y += pm_text.height();
         }
 
@@ -61,4 +63,6 @@ public:
 };
 
 // register format in factory
-static ImageFormatTtf format_ttf;
+ImageFormatTtf format_ttf;
+
+} // anonymous namespace

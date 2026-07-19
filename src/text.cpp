@@ -54,7 +54,8 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
     block.reserve(scheme.size());
 
     for (const auto& line : scheme) {
-        std::string key, value;
+        std::string key;
+        std::string value;
         const size_t delim = line.find('\t');
         if (delim == std::string::npos) {
             value = line;
@@ -387,7 +388,7 @@ void Text::draw(const Position pos, Pixmap& target) const
             continue; // skip empty lines
         }
 
-        Point tpos { x, y };
+        Point tpos { .x = x, .y = y };
         if (key.pm) {
             draw(key.pm, target, tpos);
             tpos.x += dim.max_key_width;

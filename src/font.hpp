@@ -78,7 +78,7 @@ private:
      * Set new font face.
      * @param face font face to set
      */
-    void set_face(const FT_Face face);
+    void set_face(FT_Face face);
 
     /**
      * Convert text to wide-character string and trim to min acceptable lenght.

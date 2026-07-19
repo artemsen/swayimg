@@ -22,6 +22,8 @@
 #include <exiv2/exiv2.hpp>
 #endif // HAVE_LIBEXIV2
 
+namespace {
+
 /** Image data reader. */
 struct DataBuffer : public ImageFormat::Data {
     ~DataBuffer()
@@ -135,7 +137,8 @@ private:
      */
     bool read_stdout(const std::string& cmd)
     {
-        int fds_in[2], fds_out[2];
+        int fds_in[2];
+        int fds_out[2];
         if (pipe(fds_in) == -1) {
             Log::error(errno, "Unable to create pipes");
             return false;
@@ -195,6 +198,8 @@ private:
     std::vector<uint8_t> container;
 };
 
+} // anonymous namespace
+
 ImageFormat::ImageFormat(const Priority load_priority,
                          const char* format_name) noexcept
     : priority(load_priority)
@@ -235,7 +240,7 @@ Pixmap ImageFormat::make_thumb(const Pixmap& pm, const size_t sz,
     // create thumbnail
     Pixmap thumb;
     thumb.create(pm.format(), scale * pm.width(), scale * pm.height());
-    Render::self().draw(thumb, pm, { 0, 0 }, scale);
+    Render::self().draw(thumb, pm, { .x = 0, .y = 0 }, scale);
 
     return thumb;
 }
@@ -458,7 +463,7 @@ ImagePtr FormatFactory::decode(const ImageFormat::Data& data) const
             continue;
         }
 
-        if (it->read_metadata(data, image) && fix_orientation) {
+        if (ImageFormat::read_metadata(data, image) && fix_orientation) {
             it->fix_orientation(image);
         }
 

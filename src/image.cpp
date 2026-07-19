@@ -18,7 +18,7 @@ void Image::draw(const size_t frame, Pixmap& target, const double scale,
                  const ssize_t x, const ssize_t y)
 {
     assert(frame < frames.size());
-    Render::self().draw(target, frames[frame].pm, { x, y }, scale);
+    Render::self().draw(target, frames[frame].pm, { .x = x, .y = y }, scale);
 }
 
 void Image::flip_vertical()

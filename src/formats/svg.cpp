@@ -15,6 +15,8 @@
 #include <memory>
 #include <numbers>
 
+namespace {
+
 class ImageFormatSvg : public ImageFormat {
 public:
     ImageFormatSvg() noexcept
@@ -87,9 +89,12 @@ private:
     {
         RsvgRectangle canvas {};
 
-        RsvgLength svg_w, svg_h;
+        RsvgLength svg_w;
+        RsvgLength svg_h;
         RsvgRectangle viewbox;
-        gboolean width_ok = TRUE, height_ok = TRUE, viewbox_ok = TRUE;
+        gboolean width_ok = TRUE;
+        gboolean height_ok = TRUE;
+        gboolean viewbox_ok = TRUE;
         rsvg_handle_get_intrinsic_dimensions(svg, &width_ok, &svg_w, &height_ok,
                                              &svg_h, &viewbox_ok, &viewbox);
 
@@ -131,9 +136,12 @@ private:
      */
     static std::string get_format(RsvgHandle* svg)
     {
-        RsvgLength svg_w, svg_h;
+        RsvgLength svg_w;
+        RsvgLength svg_h;
         RsvgRectangle viewbox;
-        gboolean width_ok = TRUE, height_ok = TRUE, viewbox_ok = TRUE;
+        gboolean width_ok = TRUE;
+        gboolean height_ok = TRUE;
+        gboolean viewbox_ok = TRUE;
         rsvg_handle_get_intrinsic_dimensions(svg, &width_ok, &svg_w, &height_ok,
                                              &svg_h, &viewbox_ok, &viewbox);
         const char* units = nullptr;
@@ -302,4 +310,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatSvg format_svg;
+ImageFormatSvg format_svg;
+
+} // anonymous namespace

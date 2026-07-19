@@ -26,6 +26,8 @@
 #endif
 #endif // PNG_APNG_SUPPORTED
 
+namespace {
+
 class ImageFormatPng : public ImageFormat {
 public:
     ImageFormatPng() noexcept
@@ -321,7 +323,7 @@ private:
             } else if (index + 1 < frames.size()) {
                 const Pixmap& curr = frames[index].pm;
                 Pixmap& next = frames[index + 1].pm;
-                next.copy(curr, { 0, 0 });
+                next.copy(curr, { .x = 0, .y = 0 });
             }
         }
 
@@ -338,7 +340,7 @@ private:
         if (dispose == PNG_fcTL_DISPOSE_OP_NONE && index + 1 < frames.size()) {
             const Pixmap& curr = frames[index].pm;
             Pixmap& next = frames[index + 1].pm;
-            next.copy(curr, { 0, 0 });
+            next.copy(curr, { .x = 0, .y = 0 });
         }
     }
 
@@ -402,4 +404,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatPng format_png;
+ImageFormatPng format_png;
+
+} // anonymous namespace

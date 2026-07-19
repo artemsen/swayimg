@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <format>
 
+namespace {
+
 class ImageFormatBmp : public ImageFormat {
 public:
     ImageFormatBmp() noexcept
@@ -128,9 +130,6 @@ private:
     // Sizes of DIB Headers
     static constexpr const uint8_t BITMAPINFOHEADER_SIZE = 0x28;
     static constexpr const uint8_t BITMAPINFOV2HEADER_SIZE = 0x34;
-    static constexpr const uint8_t BITMAPINFOV3HEADER_SIZE = 0x38;
-    static constexpr const uint8_t BITMAPINFOV4HEADER_SIZE = 0x6C;
-    static constexpr const uint8_t BITMAPINFOV5HEADER_SIZE = 0x7C;
 
     static constexpr const uint8_t BITS_PER_BYTE = 8;
 
@@ -260,7 +259,7 @@ private:
             const uint8_t* src_y = buffer + y * stride;
             for (size_t x = 0; x < pm.width(); ++x) {
                 const uint8_t* src = src_y + x * (bmp.bpp / BITS_PER_BYTE);
-                uint32_t m, r, g, b, a;
+                uint32_t m;
                 if (bmp.bpp == 32) {
                     m = *reinterpret_cast<const uint32_t*>(src);
                 } else if (bmp.bpp == 16) {
@@ -268,13 +267,14 @@ private:
                 } else {
                     return false;
                 }
-                r = m & mask_r;
-                g = m & mask_g;
-                b = m & mask_b;
+                uint32_t r = m & mask_r;
+                uint32_t g = m & mask_g;
+                uint32_t b = m & mask_b;
                 r = 0xff & (shift_r > 0 ? r >> shift_r : r << -shift_r);
                 g = 0xff & (shift_g > 0 ? g >> shift_g : g << -shift_g);
                 b = 0xff & (shift_b > 0 ? b >> shift_b : b << -shift_b);
 
+                uint32_t a;
                 if (mask_a) {
                     a = m & mask_a;
                     a = 0xff & (shift_a > 0 ? a >> shift_a : a << -shift_a);
@@ -307,7 +307,8 @@ private:
     static bool decode_rle(Pixmap& pm, const Info& bmp, const Palette& palette,
                            const uint8_t* buffer, const size_t buffer_sz)
     {
-        size_t x = 0, y = 0;
+        size_t x = 0;
+        size_t y = 0;
         size_t buffer_pos = 0;
 
         while (buffer_pos + 2 <= buffer_sz) {
@@ -459,4 +460,6 @@ private:
 };
 
 // register format in factory
-static ImageFormatBmp format_bmp;
+ImageFormatBmp format_bmp;
+
+} // anonymous namespace

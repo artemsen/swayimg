@@ -7,12 +7,14 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-static ImagePtr load_image(const char* path)
+namespace {
+ImagePtr load_image(const char* path)
 {
     const ImageEntryPtr entry = std::make_shared<ImageEntry>();
     entry->path = path;
     return FormatFactory::self().load(entry);
 }
+} // anonymous namespace
 
 #define TEST_IMAGE_LOAD(fmt)                                             \
     TEST(ImageLoadTest, fmt)                                             \

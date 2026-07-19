@@ -131,6 +131,8 @@ static constexpr std::array aspects =
         { Gallery::Aspect::Keep, "keep" },
 });
 
+namespace {
+
 /**
  * Get type from name.
  * @param arr table with all possible pairs type->name
@@ -138,7 +140,7 @@ static constexpr std::array aspects =
  * @return type or nullopt if name not found
  */
 template <typename T, size_t N>
-static std::optional<T>
+std::optional<T>
 name_to_type(const std::array<std::pair<T, const char*>, N>& arr,
              const char* name)
 {
@@ -157,8 +159,8 @@ name_to_type(const std::array<std::pair<T, const char*>, N>& arr,
  * @return name
  */
 template <typename T, size_t N>
-static const char*
-type_to_name(const std::array<std::pair<T, const char*>, N>& arr, const T& type)
+const char* type_to_name(const std::array<std::pair<T, const char*>, N>& arr,
+                         const T& type)
 {
     for (const auto& it : arr) {
         if (it.first == type) {
@@ -173,7 +175,7 @@ type_to_name(const std::array<std::pair<T, const char*>, N>& arr, const T& type)
  * Get path to config file (init.lua).
  * @return path to initial config file
  */
-static std::filesystem::path get_config_file()
+std::filesystem::path get_config_file()
 {
     static constexpr std::array env_paths =
         std::to_array<std::pair<const char*, const char*>>({
@@ -209,6 +211,8 @@ static std::filesystem::path get_config_file()
 
     return {};
 }
+
+} // anonymous namespace
 
 LuaEngine& LuaEngine::self()
 {
@@ -362,7 +366,8 @@ void LuaEngine::bind_root_api()
                         width, height, NS_SWAYIMG);
                 }
                 if (Application::self().initialized()) {
-                    Application::get_ui()->set_window_size({ width, height });
+                    Application::get_ui()->set_window_size(
+                        { .width = width, .height = height });
                 } else {
                     Application::self().sparams->wnd_size = Size(width, height);
                 }
@@ -386,7 +391,7 @@ void LuaEngine::bind_root_api()
                      })
         .addFunction("get_mouse_pos",
                      []() {
-                         Point pos { 0, 0 };
+                         Point pos { .x = 0, .y = 0 };
                          Ui* ui = Application::get_ui();
                          if (ui) {
                              pos = ui->get_mouse();
@@ -820,7 +825,7 @@ void LuaEngine::bind_viewer_api(const char* name)
         .addFunction("set_abs_position",
                      [ensure_active, mode](const ssize_t x, const ssize_t y) {
                          ensure_active("set_abs_position");
-                         mode->set_position({ x, y });
+                         mode->set_position({ .x = x, .y = y });
                      })
         .addFunction(
             "set_fix_position",
