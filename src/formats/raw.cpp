@@ -86,10 +86,10 @@ public:
     }
 
     [[nodiscard]] Pixmap preview(const Data& data, const size_t sz,
-                                 const bool max_sz) const override
+                                 const bool fill) const override
     {
         if (!FormatFactory::self().embedded_thumb) {
-            return ImageFormat::preview(data, sz, max_sz);
+            return ImageFormat::preview(data, sz, fill);
         }
 
         LibRaw decoder(0);
@@ -101,13 +101,13 @@ public:
         // read thumbnail
         if (decoder.open_buffer(data.data, data.size) != LIBRAW_SUCCESS ||
             decoder.unpack_thumb() != LIBRAW_SUCCESS) {
-            return ImageFormat::preview(data, sz, max_sz);
+            return ImageFormat::preview(data, sz, fill);
         }
 
         RawImage raw_thumb(decoder.dcraw_make_mem_thumb(),
                            &libraw_dcraw_clear_mem);
         if (!raw_thumb) {
-            return ImageFormat::preview(data, sz, max_sz);
+            return ImageFormat::preview(data, sz, fill);
         }
 
         const Data thumb_data {
@@ -117,7 +117,7 @@ public:
 
         const ImagePtr image = FormatFactory::self().decode(thumb_data);
         if (image) {
-            return make_thumb(image->frames[0].pm, sz, max_sz);
+            return make_thumb(image->frames[0].pm, sz, fill);
         }
 
         Pixmap pm;
@@ -129,7 +129,7 @@ public:
                 tdata += 3;
             }
         }
-        Pixmap thumb = make_thumb(pm, sz, max_sz);
+        Pixmap thumb = make_thumb(pm, sz, fill);
         if (FormatFactory::self().fix_orientation) {
             ImageFormat::fix_orientation(
                 thumb, decoder.imgdata.thumbs_list.thumblist[0].tflip);

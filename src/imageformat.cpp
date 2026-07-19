@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
 
 #ifdef HAVE_LIBEXIV2
@@ -214,7 +215,7 @@ bool ImageFormat::set_params(const std::unordered_map<std::string, bool>&)
 }
 
 Pixmap ImageFormat::preview(const Data& data, const size_t sz,
-                            const bool max_sz) const
+                            const bool fill) const
 {
     ImagePtr image = decode(data);
     if (!image) {
@@ -225,22 +226,33 @@ Pixmap ImageFormat::preview(const Data& data, const size_t sz,
         fix_orientation(image);
     }
 
-    return make_thumb(image->frames[0].pm, sz, max_sz);
+    return make_thumb(image->frames[0].pm, sz, fill);
 }
 
 Pixmap ImageFormat::make_thumb(const Pixmap& pm, const size_t sz,
-                               const bool max_sz)
+                               const bool fill)
 {
     // get target scale
     const double scale_w = static_cast<double>(sz) / pm.width();
     const double scale_h = static_cast<double>(sz) / pm.height();
     const double scale =
-        max_sz ? std::max(scale_w, scale_h) : std::min(scale_w, scale_h);
+        fill ? std::max(scale_w, scale_h) : std::min(scale_w, scale_h);
+
+    // get fully scaled thumbnail size
+    const size_t thumb_width = scale * pm.width();
+    const size_t thumb_height = scale * pm.height();
+
+    // get thumbnail offsets
+    const ssize_t half_sz = sz / 2;
+    const ssize_t x = fill ? half_sz - thumb_width / 2 : 0;
+    const ssize_t y = fill ? half_sz - thumb_height / 2 : 0;
 
     // create thumbnail
     Pixmap thumb;
-    thumb.create(pm.format(), scale * pm.width(), scale * pm.height());
-    Render::self().draw(thumb, pm, { .x = 0, .y = 0 }, scale);
+    thumb.create(pm.format(),
+                 std::clamp(thumb_width, static_cast<size_t>(1), sz),
+                 std::clamp(thumb_height, static_cast<size_t>(1), sz));
+    Render::self().draw(thumb, pm, { .x = x, .y = y }, scale);
 
     return thumb;
 }
@@ -474,7 +486,7 @@ ImagePtr FormatFactory::decode(const ImageFormat::Data& data) const
 }
 
 Pixmap FormatFactory::preview(const ImageEntryPtr& entry, const size_t sz,
-                              const bool max_sz) const
+                              const bool fill) const
 {
     DataBuffer data;
     if (!data.load(entry)) {
@@ -482,7 +494,7 @@ Pixmap FormatFactory::preview(const ImageEntryPtr& entry, const size_t sz,
     }
 
     for (const auto& it : formats) {
-        Pixmap pm = it->preview(data, sz, max_sz);
+        Pixmap pm = it->preview(data, sz, fill);
         if (pm) {
             return pm;
         }

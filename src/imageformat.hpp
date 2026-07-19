@@ -68,11 +68,11 @@ public:
      * Get preview (thumbnail).
      * @param data source image data
      * @param sz thumbnail size
-     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @param fill thumnail aspect ratio: true=fill, false=fit
      * @return encoded image data, empty array on errors
      */
     [[nodiscard]] virtual Pixmap preview(const Data& data, const size_t sz,
-                                         const bool max_sz) const;
+                                         const bool fill) const;
 
     /**
      * Fix orientation by EXIF data.
@@ -116,11 +116,11 @@ protected:
      * Create thumbnail from full-size image.
      * @param pm origin image pixmap
      * @param sz thumbnail size
-     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @param fill thumnail aspect ratio: true=fill, false=fit
      * @return thumbnail pixmap
      */
     static Pixmap make_thumb(const Pixmap& pm, const size_t sz,
-                             const bool max_sz);
+                             const bool fill);
 
 public:
     Priority priority; ///< Format priority
@@ -168,11 +168,11 @@ public:
      * Get preview (thumbnail).
      * @param entry image entry to load
      * @param sz thumbnail size
-     * @param max_sz size type: true if sz contains max size of the thumbnail
+     * @param fill thumnail aspect ratio: true=fill, false=fit
      * @return encoded image data, empty array on errors
      */
     [[nodiscard]] Pixmap preview(const ImageEntryPtr& entry, const size_t sz,
-                                 const bool max_sz) const;
+                                 const bool fill) const;
 
     /**
      * Register format.
