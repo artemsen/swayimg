@@ -8,22 +8,25 @@
 TEST(ColorTest, ARGB)
 {
     const argb_t color0;
-    EXPECT_EQ(color0, 0U);
-    EXPECT_FALSE(color0);
+    EXPECT_EQ(color0.a, 0);
+    EXPECT_EQ(color0.r, 0);
+    EXPECT_EQ(color0.g, 0);
+    EXPECT_EQ(color0.b, 0);
+    EXPECT_EQ(color0, 0x00000000U);
 
     const argb_t color1(0xaabbccdd);
     EXPECT_EQ(color1.a, 0xaa);
     EXPECT_EQ(color1.r, 0xbb);
     EXPECT_EQ(color1.g, 0xcc);
     EXPECT_EQ(color1.b, 0xdd);
-    EXPECT_TRUE(color1);
+    EXPECT_EQ(color1, 0xaabbccddU);
 
     const argb_t color2(0xaa, 0xbb, 0xcc, 0xdd);
     EXPECT_EQ(color2.a, 0xaa);
     EXPECT_EQ(color2.r, 0xbb);
     EXPECT_EQ(color2.g, 0xcc);
     EXPECT_EQ(color2.b, 0xdd);
-    EXPECT_TRUE(color2);
+    EXPECT_EQ(color2, 0xaabbccddU);
 }
 
 TEST(ArgbTest, ABGRBlending)

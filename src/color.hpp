@@ -45,10 +45,9 @@ struct argb_t {
     }
 
     /**
-     * Check if color is set.
-     * @return true if color has value
+     * Cast color to integer value.
      */
-    operator bool() const { return a && r && g && b; }
+    operator uint32_t() const { return a << 24 | r << 16 | g << 8 | b; }
 
     /**
      * Blend current color (background) with specified one.

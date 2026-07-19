@@ -61,8 +61,8 @@ TEST(PixmapTest, Create)
 
     EXPECT_TRUE(pm.ptr(0, 0));
     EXPECT_TRUE(pm.ptr(9, 4));
-    EXPECT_EQ(pm.at(0, 0), 0);
-    EXPECT_EQ(pm.at(9, 4), 0);
+    EXPECT_EQ(pm.at(0, 0), 0U);
+    EXPECT_EQ(pm.at(9, 4), 0U);
 }
 
 TEST(PixmapTest, Attach)
