@@ -12,7 +12,7 @@ _swayimg()
                 -F --fullscreen \
                 -c --config \
                 -e --execute \
-                   --class \
+                -a --appid \
                    --verbose \
                 -V --version \
                 -h --help"

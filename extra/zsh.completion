@@ -13,7 +13,7 @@ _arguments \
   '(-F --fullscreen)'{-F,--fullscreen}'[open in full screen mode]' \
   '(-c --config)'{-c,--config=}'[load config from file]:file' \
   '(-e --execute)'{-e,--execute=}'[execute Lua script on start]:script' \
-  '--class[set window class/app_id]:class' \
+  '(-a,--appid)'{-a,--appid=}'[set application id]:appid' \
   '--verbose[enable verbose output]' \
   '(-V --version)'{-V,--version}'[print version info and exit]' \
   '(-h --help)'{-h,--help}'[print help and exit]' \

@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
                  params.lua_exec = arg;
              });
 
-    args.add(0, "appid", "ID", "set application id",
+    args.add('a', "appid", "ID", "set application id",
              [&params](const char* arg) {
                  if (!*arg) {
                      Log::error("Empty application id");
