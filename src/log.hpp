@@ -169,6 +169,6 @@ private:
             }
         }
 
-        return msg;
+        return result;
     }
 };
