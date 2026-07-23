@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
 
     args.add('s', "slideshow", nullptr, "start in slideshow mode",
              [&params](const char*) {
-                 params.mode.lock(AppMode::Gallery);
+                 params.mode.lock(AppMode::Slideshow);
              });
 
     args.add('f', "from-file", "FILE", "load file list from file",
