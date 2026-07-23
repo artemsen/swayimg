@@ -243,9 +243,20 @@ bool Layout::is_visible(const ImageEntryPtr& entry) const
 {
     assert(entry);
 
+    if (scheme.empty()) {
+        return false;
+    }
+
+    const ImageEntryPtr& first = scheme.front().img;
+    const ImageEntryPtr& last = scheme.back().img;
+
+    // skip check if scheme entries have been removed since last update
+    if (!first || first->removed || !last || last->removed || entry->removed) {
+        return false;
+    }
+
     ImageList& il = ImageList::self();
-    return il.distance(entry, scheme.front().img) <= 0 &&
-        il.distance(entry, scheme.back().img) >= 0;
+    return il.distance(entry, first) <= 0 && il.distance(entry, last) >= 0;
 }
 
 const std::vector<Layout::Thumbnail>& Layout::get_scheme() const
