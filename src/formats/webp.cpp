@@ -54,6 +54,10 @@ public:
             return nullptr;
         }
 
+        if (webp_info.frame_count == 0) {
+            return nullptr;
+        }
+
         // allocate image and frames
         ImagePtr image = std::make_shared<Image>();
         image->frames.resize(webp_info.frame_count);
