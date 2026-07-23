@@ -57,7 +57,7 @@ public:
             return nullptr;
         }
         RawImage img(decoder.dcraw_make_mem_image(), &libraw_dcraw_clear_mem);
-        if (img->type != LIBRAW_IMAGE_BITMAP || img->colors != 3 ||
+        if (!img || img->type != LIBRAW_IMAGE_BITMAP || img->colors != 3 ||
             img->bits != 8) {
             return nullptr;
         }
