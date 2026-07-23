@@ -109,6 +109,7 @@ void Gallery::set_thumb_aspect(const Aspect ratio)
 {
     aspect = ratio;
     if (is_active()) {
+        reload();
         Application::redraw();
     }
 }
