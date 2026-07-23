@@ -204,21 +204,24 @@ void Application::add_fdpoll(const int fd, const FdEventHandler& handler)
 
 void Application::add_event(const AppEvent::Holder& event)
 {
-    const std::scoped_lock lock(event_mutex);
+    {
+        const std::scoped_lock lock(event_mutex);
 
-    // check if redraw event already exists
-    const bool has_redraw = !event_queue.empty() &&
-        std::holds_alternative<AppEvent::WindowRedraw>(event_queue.back());
-    if (has_redraw && std::holds_alternative<AppEvent::WindowRedraw>(event)) {
-        return;
-    }
+        // check if redraw event already exists
+        const bool has_redraw = !event_queue.empty() &&
+            std::holds_alternative<AppEvent::WindowRedraw>(event_queue.back());
+        if (has_redraw &&
+            std::holds_alternative<AppEvent::WindowRedraw>(event)) {
+            return;
+        }
 
-    // append event to queue, but preserve redraw at last position
-    auto pos = event_queue.end();
-    if (has_redraw) {
-        --pos;
+        // append event to queue, but preserve redraw at last position
+        auto pos = event_queue.end();
+        if (has_redraw) {
+            --pos;
+        }
+        event_queue.insert(pos, event);
     }
-    event_queue.insert(pos, event);
 
     event_notify.set();
 }
