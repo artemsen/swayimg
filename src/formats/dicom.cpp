@@ -70,11 +70,12 @@ public:
         // decode image
         const int16_t* ptr = reinterpret_cast<const int16_t*>(dicom.data);
         pm.foreach([&ptr, dicom, pixel_coeff](argb_t& pixel) {
-            int16_t src_color = *ptr++;
-            src_color -= dicom.px_min;
-            src_color *= pixel_coeff;
-            const uint8_t dst_color = static_cast<uint8_t>(std::clamp(
-                src_color, static_cast<int16_t>(0), static_cast<int16_t>(255)));
+            // use wider type to avoid overflow during intermediate calculations
+            const int32_t src_color = static_cast<int32_t>(*ptr++);
+            const int32_t adjusted =
+                static_cast<int32_t>((src_color - dicom.px_min) * pixel_coeff);
+            const uint8_t dst_color =
+                static_cast<uint8_t>(std::clamp(adjusted, 0, 255));
             pixel = { argb_t::max, dst_color, dst_color, dst_color };
         });
 
@@ -100,11 +101,10 @@ private:
         const uint8_t* consume(const size_t bytes)
         {
             const uint8_t* ptr = nullptr;
-            const size_t end = position + bytes;
 
-            if (end <= data.size) {
+            if (bytes <= data.size - position) {
                 ptr = data.data + position;
-                position = end;
+                position += bytes;
             }
 
             return ptr;
