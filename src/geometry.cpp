@@ -75,11 +75,12 @@ Rectangle::cutout(const Rectangle& cut) const
     }
 
     // bottom
-    if (y + cut.y + cut.height < height) {
+    if (y + cut.y + static_cast<ssize_t>(cut.height) <
+        y + static_cast<ssize_t>(height)) {
         bottom.x = x;
         bottom.y = cut.y + cut.height;
         bottom.width = width;
-        bottom.height = height - bottom.y;
+        bottom.height = (y + height) - bottom.y;
     }
 
     // left
@@ -91,10 +92,11 @@ Rectangle::cutout(const Rectangle& cut) const
     }
 
     // right
-    if (x + cut.x + cut.width < width) {
+    if (x + cut.x + static_cast<ssize_t>(cut.width) <
+        x + static_cast<ssize_t>(width)) {
         right.x = cut.x + cut.width;
         right.y = cut.y;
-        right.width = width - cut.x - cut.width;
+        right.width = (x + width) - cut.x - cut.width;
         right.height = cut.height;
     }
 
