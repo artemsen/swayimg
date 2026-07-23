@@ -32,7 +32,7 @@ public:
             hdr->offset < sizeof(Header) + sizeof(Info)) {
             return nullptr;
         }
-        if (bmp->dib_size > hdr->offset) {
+        if (sizeof(Header) + bmp->dib_size > hdr->offset) {
             return nullptr;
         }
         if (bmp->width == 0 || bmp->height == 0) {
@@ -69,7 +69,12 @@ public:
             Mask mask {};
             const uint32_t* mask_location;
             if (bmp->dib_size > BITMAPINFOHEADER_SIZE) {
-                mask_location = reinterpret_cast<const uint32_t*>(bmp + 1);
+                const size_t avail = data.size - sizeof(Header) - bmp->dib_size;
+                if (avail >= 3 * sizeof(uint32_t)) {
+                    mask_location = reinterpret_cast<const uint32_t*>(bmp + 1);
+                } else {
+                    mask_location = nullptr;
+                }
             } else {
                 mask_location =
                     (color_data_sz >= 3 * sizeof(uint32_t) ? color_data
@@ -431,8 +436,10 @@ private:
                 if (bmp.bpp == 32) {
                     dst = *reinterpret_cast<const uint32_t*>(src);
                 } else if (bmp.bpp == 24) {
-                    dst = *reinterpret_cast<const uint32_t*>(src);
                     dst.a = argb_t::max;
+                    dst.r = src[0];
+                    dst.g = src[1];
+                    dst.b = src[2];
                 } else if (bmp.bpp == 8 || bmp.bpp == 4 || bmp.bpp == 1) {
                     // indexed colors
                     const size_t bits_offset = x * bmp.bpp;
