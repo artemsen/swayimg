@@ -128,6 +128,9 @@ private:
         const GifImageDesc* desc = &gif_img->ImageDesc;
         const ColorMapObject* color_map =
             desc->ColorMap ? desc->ColorMap : gif->SColorMap;
+        if (!color_map) {
+            return;
+        }
 
         const size_t width = std::min(static_cast<size_t>(desc->Width),
                                       frame.pm.width() - desc->Left);
