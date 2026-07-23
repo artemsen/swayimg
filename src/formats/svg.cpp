@@ -75,7 +75,8 @@ private:
 
         bool found = false;
         for (size_t i = 0; !found && i < max_offset; ++i) {
-            found = std::memcmp(&data.data[i], signature, sizeof(signature));
+            found =
+                std::memcmp(&data.data[i], signature, sizeof(signature)) == 0;
         }
         return found;
     }
