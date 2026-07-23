@@ -47,14 +47,14 @@ public:
             } else if (pos < data.size) {
                 const uint8_t tag = data.data[pos++];
                 if (tag == QOI_OP_RGB) {
-                    if (pos + 3 >= data.size) {
+                    if (pos + 3 > data.size) {
                         return;
                     }
                     pixel.r = data.data[pos++];
                     pixel.g = data.data[pos++];
                     pixel.b = data.data[pos++];
                 } else if (tag == QOI_OP_RGBA) {
-                    if (pos + 4 >= data.size) {
+                    if (pos + 4 > data.size) {
                         return;
                     }
                     pixel.r = data.data[pos++];
@@ -68,7 +68,7 @@ public:
                     pixel.g += static_cast<int8_t>((tag >> 2) & 3) - 2;
                     pixel.b += static_cast<int8_t>(tag & 3) - 2;
                 } else if ((tag & QOI_MASK_2) == QOI_OP_LUMA) {
-                    if (pos + 1 >= data.size) {
+                    if (pos + 1 > data.size) {
                         return;
                     }
                     const uint8_t diff = data.data[pos++];
