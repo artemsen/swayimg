@@ -477,7 +477,7 @@ std::filesystem::path Defaults::gallery::pstore_path()
         if (!delim) {
             path = env;
         } else {
-            path = std::string(env, delim - 1);
+            path = std::string(env, delim);
         }
 
         path /= postfix;

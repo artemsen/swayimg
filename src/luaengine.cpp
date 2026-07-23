@@ -198,7 +198,7 @@ std::filesystem::path get_config_file()
             if (!delim) {
                 path = env;
             } else {
-                path = std::string(env, delim - 1);
+                path = std::string(env, delim);
             }
         }
         path /= postfix;
