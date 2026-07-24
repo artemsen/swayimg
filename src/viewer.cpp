@@ -487,9 +487,7 @@ bool Viewer::set_current(const ImageEntryPtr& entry)
 void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
-    if (image) {
-        fixup_position();
-    }
+    reset();
 }
 
 void Viewer::window_redraw(Pixmap& wnd)

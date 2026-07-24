@@ -1,20 +1,10 @@
 # Swayimg config: Tips and Tricks
 
-* [Change scale on window resize](#Change-scale-on-window-resize)
 * [Set window size to image size](#Set-window-size-to-image-size)
 * [Change window title](#Change-window-title)
 * [Delete image files](#Delete-image-files)
 * [Process marked images](#Process-marked-images)
 * [Handle double mouse click](#Handle-double-mouse-click)
-
-## Change scale on window resize
-
-Force set scale on window resize (useful for tiling compositors):
-```lua
-swayimg.on_window_resize(function()
-  swayimg.viewer.set_fix_scale("optimal")
-end)
-```
 
 ## Set window size to image size
 
