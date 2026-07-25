@@ -1,12 +1,12 @@
 ---@meta swayimg
 
----Application mode
+---Application mode.
 ---@alias appmode_t
 ---| "viewer"    # Image viewer mode
 ---| "slideshow" # Slide show mode
 ---| "gallery"   # Gallery mode
 
----ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+---ARGB color in hex format: AARRGGBB, for example `0xff00aa99`.
 ---@alias color_t integer
 
 ---Image list order
@@ -18,7 +18,7 @@
 ---| "size"    # Size sort
 ---| "random"  # Random order
 
----Direction for opening next file in viewer and slideshow modes
+---Direction for opening next file in viewer and slideshow modes.
 ---@alias vdir_t
 ---| "first"    # First file in image list
 ---| "last"     # Last file in image list
@@ -28,7 +28,7 @@
 ---| "prev_dir" # Last file in previous directory
 ---| "random"   # Random file in image list
 
----Fixed scale for images in viewer and slideshow modes
+---Fixed scale for images in viewer and slideshow modes.
 ---@alias fixed_scale_t
 ---| "optimal" # 100% or less to fit to window
 ---| "width"   # Fit image width to window width
@@ -38,7 +38,7 @@
 ---| "real"    # Real size (100%)
 ---| "keep"    # Keep the same scale as for previously viewed image
 
----Fixed position for images in viewer and slideshow modes
+---Fixed position for images in viewer and slideshow modes.
 ---@alias fixed_position_t
 ---| "center"       # Vertical and horizontal center of the window
 ---| "topcenter"    # Top (vertical) and center (horizontal) of the window
@@ -50,19 +50,19 @@
 ---| "bottomleft"   # Bottom left corner of the window
 ---| "bottomright"  # Bottom right corner of the window
 
----Fixed rotation angles for images in viewer and slideshow modes
+---Fixed rotation angles for images in viewer and slideshow modes.
 ---@alias rotation_t
 ---| 90  # 90 degrees
 ---| 180 # 180 degrees
 ---| 270 # 270 degrees
 
----Fixed rotation angles for images in viewer and slideshow modes
+---Fixed rotation angles for images in viewer and slideshow modes.
 ---@alias bkgmode_t
 ---| "extend" # Fill window with the current image and blur it
 ---| "mirror" # Fill window with the mirrored current image and blur it
 ---| "auto"   # Fill the window background in `extend` or `mirror` mode depending on the image aspect ratio
 
----Direction for selecting next file in gallery mode
+---Direction for selecting next file in gallery mode.
 ---@alias gdir_t
 ---| "first"  # Select first thumbnail in image list
 ---| "last"   # Select last thumbnail in image list
@@ -73,13 +73,13 @@
 ---| "pgup"   # Select the thumbnail on the previous page
 ---| "pgdown" # Select the thumbnail on the next page
 
----Aspect ratio used for thumbnails in gallery mode
+---Aspect ratio used for thumbnails in gallery mode.
 ---@alias aspect_t
 ---| "fit"  # Fit image into a square thumbnail
 ---| "fill" # Fill square thumbnail with the image
 ---| "keep" # Adjust thumbnail size to the aspect ratio of the image
 
----Position of text block
+---Position of text block.
 ---@alias block_position_t
 ---| "topleft"      # Top left corner of the window
 ---| "topright"     # Top right corner of the window
@@ -137,7 +137,7 @@
 
 --------------------------------------------------------------------------------
 
----General functionality
+---General functionality.
 ---@class swayimg
 swayimg = {}
 
@@ -271,7 +271,7 @@ function swayimg.set_dnd_button(button) end
 
 --------------------------------------------------------------------------------
 
----Image list
+---Image list.
 ---@class swayimg.imagelist
 swayimg.imagelist = {}
 
@@ -326,7 +326,7 @@ function swayimg.imagelist.enable_fsmon(enable) end
 
 --------------------------------------------------------------------------------
 
----Text overlay layer
+---Text overlay layer.
 ---@class swayimg.text
 swayimg.text = {}
 
@@ -334,7 +334,7 @@ swayimg.text = {}
 ---Since 5.0.
 ---
 ---This function restarts the timer.
----@see swayimg.text.set_timer
+---@see swayimg.text.set_timeout
 function swayimg.text.show() end
 
 ---Hide the text layer.
@@ -410,7 +410,7 @@ function swayimg.text.set_status(status) end
 
 --------------------------------------------------------------------------------
 
----Base application mode
+---Base application mode.
 ---@class swayimg_appmode
 local swayimg_appmode = {}
 
@@ -464,7 +464,7 @@ function swayimg_appmode.set_text(pos, scheme) end
 
 --------------------------------------------------------------------------------
 
----Viewer mode
+---Viewer mode.
 ---@class swayimg.viewer : swayimg_appmode
 swayimg.viewer = {}
 
@@ -661,7 +661,7 @@ function swayimg.viewer.limit_history(size) end
 
 --------------------------------------------------------------------------------
 
----Slide show mode
+---Slide show mode.
 ---@class swayimg.slideshow : swayimg.viewer
 swayimg.slideshow = {}
 
@@ -672,7 +672,7 @@ function swayimg.slideshow.set_timeout(seconds) end
 
 --------------------------------------------------------------------------------
 
----Gallery mode
+---Gallery mode.
 ---@class swayimg.gallery : swayimg_appmode
 swayimg.gallery = {}
 

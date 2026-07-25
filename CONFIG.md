@@ -44,7 +44,6 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
   * [swayimg.set_fullscreen](#swayimgset_fullscreen): Enable/disable or toggle full screen mode
   * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
-  * [swayimg.toggle_fullscreen](#swayimgtoggle_fullscreen): Toggle full screen mode
   * [swayimg.on_initialized](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
   * [swayimg.on_redrawn](#swayimgon_redrawn): Set a callback function called after the window is drawn
   * [swayimg.defer](#swayimgdefer): Execute deferred procedure
@@ -67,7 +66,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
   * [swayimg.imagelist.enable_adjacent](#swayimgimagelistenable_adjacent): Enable or disable adding adjacent files from the same directory
   * [swayimg.imagelist.enable_fsmon](#swayimgimagelistenable_fsmon): Enable or disable file system monitoring
-* Text layer
+* Text overlay layer
   * [swayimg.text.show](#swayimgtextshow): Force show the text layer
   * [swayimg.text.hide](#swayimgtexthide): Hide the text layer
   * [swayimg.text.visible](#swayimgtextvisible): Check if text layer is visible
@@ -227,7 +226,7 @@ Since 5.0.
 
 @_param_ `mode` - Mode to activate
 
-`appmode_t`, Application mode:
+`appmode_t` - Application mode:
 * `"viewer"`: Image viewer mode
 * `"slideshow"`: Slide show mode
 * `"gallery"`: Gallery mode
@@ -244,7 +243,7 @@ Since 5.0.
 
 @_return_ - Currently active mode
 
-`appmode_t`, Application mode:
+`appmode_t` - Application mode:
 * `"viewer"`: Image viewer mode
 * `"slideshow"`: Slide show mode
 * `"gallery"`: Gallery mode
@@ -335,24 +334,6 @@ Since 5.2.
 
 @_return_ - True if full screen is enabled
 
-### swayimg.toggle_fullscreen
-
-```lua
-swayimg.toggle_fullscreen() -> boolean
-```
-
-Toggle full screen mode.
-
-Since 5.0.
-
-WARNING: This function is deprecated, use `swayimg.set_fullscreen` instead.
-
-See [swayimg.set_fullscreen](#swayimgset_fullscreen)
-
-See [swayimg.get_fullscreen](#swayimgget_fullscreen)
-
-@_return_ - True if full screen is enabled
-
 ### swayimg.on_initialized
 
 ```lua
@@ -394,14 +375,14 @@ Since 5.5.
 ### swayimg.enable_antialiasing
 
 ```lua
-swayimg.enable_antialiasing(enable: boolean)
+swayimg.enable_antialiasing(enable?: boolean)
 ```
 
 Enable or disable antialiasing.
 
 Since 5.0.
 
-@_param_ `enable` - Enable/disable antialiasing
+@_param_ `enable` - Enable/disable antialiasing, empty to toggle
 
 ### swayimg.enable_exif_orientation
 
@@ -581,7 +562,7 @@ Since 5.0.
 
 @_param_ `order` - List order
 
-`order_t`, Image list order:
+`order_t` - Image list order:
 * `"none"`: Unsorted (system-dependent)
 * `"alpha"`: Lexicographic sort: 1,10,2,20,a,b,c
 * `"numeric"`: Numeric sort: 1,2,3,10,100,a,b,c
@@ -637,7 +618,7 @@ Since 5.1.
 
 @_param_ `enable` - Enable/disable FS monitor
 
-## Text layer
+## Text overlay layer
 
 ### swayimg.text.show
 
@@ -651,7 +632,7 @@ Since 5.0.
 
 This function restarts the timer.
 
-See [swayimg.text.set_timer](#swayimgtextset_timer)
+See [swayimg.text.set_timeout](#swayimgtextset_timeout).
 
 ### swayimg.text.hide
 
@@ -735,8 +716,7 @@ Since 5.0.
 
 @_param_ `color` - Foreground text color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.text.set_background
 
@@ -750,8 +730,7 @@ Since 5.0.
 
 @_param_ `color` - Background text color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.text.set_shadow
 
@@ -767,8 +746,7 @@ Setting alpha channel to `0` disables shadows.
 
 @_param_ `color` - Shadow text color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.text.set_timeout
 
@@ -798,7 +776,7 @@ Since 5.0.
 Setting the timeout value to `0` disables the timer and causes the status
 message to be displayed continuously.
 
-See [swayimg.text.set_status](#swayimgtextset_status)
+See [swayimg.text.set_status](#swayimgtextset_status).
 
 @_param_ `seconds` - Timeout in seconds
 
@@ -814,7 +792,7 @@ Since 5.0.
 
 Multi-line text is separated by `\n`.
 
-See [swayimg.text.set_status_timer](#swayimgtextset_status_timer)
+See [swayimg.text.set_status_timer](#swayimgtextset_status_timer).
 
 @_param_ `status` - Status text to show
 
@@ -832,11 +810,11 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.open` instead.
 
-See [swayimg.viewer.open](#swayimgvieweropen)
+See [swayimg.viewer.open](#swayimgvieweropen).
 
 @_param_ `dir` - Next file direction
 
-`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+`vdir_t` - Direction for opening next file in viewer and slideshow modes:
 * `"first"`: First file in image list
 * `"last"`: Last file in image list
 * `"next"`: Next file
@@ -857,7 +835,7 @@ Since 5.5.
 
 @_param_ `dir` - Next file direction
 
-`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+`vdir_t` - Direction for opening next file in viewer and slideshow modes:
 * `"first"`: First file in image list
 * `"last"`: Last file in image list
 * `"next"`: Next file
@@ -916,9 +894,9 @@ Reset position and scale to default values.
 
 Since 5.0.
 
-See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
+See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale).
 
-See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position)
+See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position).
 
 ### swayimg.viewer.get_scale
 
@@ -960,7 +938,7 @@ Since 5.0.
 
 @_param_ `scale` - Fixed scale name
 
-`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+`fixed_scale_t` - Fixed scale for images in viewer and slideshow modes:
 * `"optimal"`: 100% or less to fit to window
 * `"width"`: Fit image width to window width
 * `"height"`: Fit image height to window height
@@ -981,7 +959,7 @@ Since 5.0.
 
 @_param_ `scale` - Absolute value (1.0 = 100%) or one the predefined names
 
-`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+`fixed_scale_t` - Fixed scale for images in viewer and slideshow modes:
 * `"optimal"`: 100% or less to fit to window
 * `"width"`: Fit image width to window width
 * `"height"`: Fit image height to window height
@@ -1028,7 +1006,7 @@ Since 5.0.
 
 @_param_ `pos` - Fixed image position
 
-`fixed_position_t`, Fixed position for images in viewer and slideshow modes:
+`fixed_position_t` - Fixed position for images in viewer and slideshow modes:
 * `"center"`: Vertical and horizontal center of the window
 * `"topcenter"`: Top (vertical) and center (horizontal) of the window
 * `"bottomcenter"`: Bottom (vertical) and center (horizontal) of the window
@@ -1051,7 +1029,7 @@ Since 5.0.
 
 @_param_ `pos` - Fixed image position
 
-`fixed_position_t`, Fixed position for images in viewer and slideshow modes:
+`fixed_position_t` - Fixed position for images in viewer and slideshow modes:
 * `"center"`: Vertical and horizontal center of the window
 * `"topcenter"`: Top (vertical) and center (horizontal) of the window
 * `"bottomcenter"`: Bottom (vertical) and center (horizontal) of the window
@@ -1126,7 +1104,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation).
 
 ### swayimg.viewer.animation_resume
 
@@ -1140,7 +1118,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation).
 
 ### swayimg.viewer.flip_vertical
 
@@ -1174,7 +1152,7 @@ Since 5.0.
 
 @_param_ `angle` - Rotation angle
 
-`rotation_t`, Fixed rotation angles for images in viewer and slideshow modes:
+`rotation_t` - Fixed rotation angles for images in viewer and slideshow modes:
 * `90`: 90 degrees
 * `180`: 180 degrees
 * `270`: 270 degrees
@@ -1229,10 +1207,8 @@ Since 5.0.
 
 @_param_ `bkg` - Solid color or one of the predefined mode
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
-
-`bkgmode_t`, Fixed rotation angles for images in viewer and slideshow modes:
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`bkgmode_t` - Fixed rotation angles for images in viewer and slideshow modes:
 * `"extend"`: Fill window with the current image and blur it
 * `"mirror"`: Fill window with the mirrored current image and blur it
 * `"auto"`: Fill the window background in `extend` or `mirror` mode depending on the image aspect ratio
@@ -1251,8 +1227,7 @@ This disables chessboard drawing.
 
 @_param_ `color` - Background color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.viewer.set_image_chessboard
 
@@ -1270,13 +1245,11 @@ This enables the chessboard if this feature was previously disabled.
 
 @_param_ `color1` - First color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 @_param_ `color2` - Second color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.viewer.enable_centering
 
@@ -1350,8 +1323,7 @@ Since 5.0.
 
 @_param_ `color` - Mark icon color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.viewer.set_pinch_factor
 
@@ -1441,7 +1413,7 @@ Since 5.0.
 
 @_param_ `pos` - Text block position
 
-`block_position_t`, Position of text block:
+`block_position_t` - Position of text block:
 * `"topleft"`: Top left corner of the window
 * `"topright"`: Top right corner of the window
 * `"bottomleft"`: Bottom left corner of the window
@@ -1449,8 +1421,8 @@ Since 5.0.
 
 @_param_ `scheme` - Array of line templates with overlay scheme
 
-`text_template_t`:
-Template for text overlay line.
+`text_template_t` - Template for text overlay line:
+
 The template includes text and fields surrounded by curly braces.
 The following fields are supported:
 * `{name}`: File name of the currently viewed/selected image
@@ -1506,11 +1478,11 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.open` instead.
 
-See [swayimg.viewer.open](#swayimgvieweropen)
+See [swayimg.viewer.open](#swayimgvieweropen).
 
 @_param_ `dir` - Next file direction
 
-`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+`vdir_t` - Direction for opening next file in viewer and slideshow modes:
 * `"first"`: First file in image list
 * `"last"`: Last file in image list
 * `"next"`: Next file
@@ -1531,7 +1503,7 @@ Since 5.5.
 
 @_param_ `dir` - Next file direction
 
-`vdir_t`, Direction for opening next file in viewer and slideshow modes:
+`vdir_t` - Direction for opening next file in viewer and slideshow modes:
 * `"first"`: First file in image list
 * `"last"`: Last file in image list
 * `"next"`: Next file
@@ -1590,9 +1562,9 @@ Reset position and scale to default values.
 
 Since 5.0.
 
-See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale)
+See [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale).
 
-See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position)
+See [swayimg.viewer.set_default_position](#swayimgviewerset_default_position).
 
 ### swayimg.slideshow.get_scale
 
@@ -1634,7 +1606,7 @@ Since 5.0.
 
 @_param_ `scale` - Fixed scale name
 
-`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+`fixed_scale_t` - Fixed scale for images in viewer and slideshow modes:
 * `"optimal"`: 100% or less to fit to window
 * `"width"`: Fit image width to window width
 * `"height"`: Fit image height to window height
@@ -1655,7 +1627,7 @@ Since 5.0.
 
 @_param_ `scale` - Absolute value (1.0 = 100%) or one the predefined names
 
-`fixed_scale_t`, Fixed scale for images in viewer and slideshow modes:
+`fixed_scale_t` - Fixed scale for images in viewer and slideshow modes:
 * `"optimal"`: 100% or less to fit to window
 * `"width"`: Fit image width to window width
 * `"height"`: Fit image height to window height
@@ -1702,7 +1674,7 @@ Since 5.0.
 
 @_param_ `pos` - Fixed image position
 
-`fixed_position_t`, Fixed position for images in viewer and slideshow modes:
+`fixed_position_t` - Fixed position for images in viewer and slideshow modes:
 * `"center"`: Vertical and horizontal center of the window
 * `"topcenter"`: Top (vertical) and center (horizontal) of the window
 * `"bottomcenter"`: Bottom (vertical) and center (horizontal) of the window
@@ -1725,7 +1697,7 @@ Since 5.0.
 
 @_param_ `pos` - Fixed image position
 
-`fixed_position_t`, Fixed position for images in viewer and slideshow modes:
+`fixed_position_t` - Fixed position for images in viewer and slideshow modes:
 * `"center"`: Vertical and horizontal center of the window
 * `"topcenter"`: Top (vertical) and center (horizontal) of the window
 * `"bottomcenter"`: Bottom (vertical) and center (horizontal) of the window
@@ -1800,7 +1772,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation).
 
 ### swayimg.slideshow.animation_resume
 
@@ -1814,7 +1786,7 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
 
-See [swayimg.viewer.set_animation](#swayimgviewerset_animation)
+See [swayimg.viewer.set_animation](#swayimgviewerset_animation).
 
 ### swayimg.slideshow.flip_vertical
 
@@ -1848,7 +1820,7 @@ Since 5.0.
 
 @_param_ `angle` - Rotation angle
 
-`rotation_t`, Fixed rotation angles for images in viewer and slideshow modes:
+`rotation_t` - Fixed rotation angles for images in viewer and slideshow modes:
 * `90`: 90 degrees
 * `180`: 180 degrees
 * `270`: 270 degrees
@@ -1903,10 +1875,8 @@ Since 5.0.
 
 @_param_ `bkg` - Solid color or one of the predefined mode
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
-
-`bkgmode_t`, Fixed rotation angles for images in viewer and slideshow modes:
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`bkgmode_t` - Fixed rotation angles for images in viewer and slideshow modes:
 * `"extend"`: Fill window with the current image and blur it
 * `"mirror"`: Fill window with the mirrored current image and blur it
 * `"auto"`: Fill the window background in `extend` or `mirror` mode depending on the image aspect ratio
@@ -1925,8 +1895,7 @@ This disables chessboard drawing.
 
 @_param_ `color` - Background color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.slideshow.set_image_chessboard
 
@@ -1944,13 +1913,11 @@ This enables the chessboard if this feature was previously disabled.
 
 @_param_ `color1` - First color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 @_param_ `color2` - Second color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.slideshow.enable_centering
 
@@ -2024,8 +1991,7 @@ Since 5.0.
 
 @_param_ `color` - Mark icon color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.slideshow.set_pinch_factor
 
@@ -2115,7 +2081,7 @@ Since 5.0.
 
 @_param_ `pos` - Text block position
 
-`block_position_t`, Position of text block:
+`block_position_t` - Position of text block:
 * `"topleft"`: Top left corner of the window
 * `"topright"`: Top right corner of the window
 * `"bottomleft"`: Bottom left corner of the window
@@ -2123,8 +2089,8 @@ Since 5.0.
 
 @_param_ `scheme` - Array of line templates with overlay scheme
 
-`text_template_t`:
-Template for text overlay line.
+`text_template_t` - Template for text overlay line:
+
 The template includes text and fields surrounded by curly braces.
 The following fields are supported:
 * `{name}`: File name of the currently viewed/selected image
@@ -2168,11 +2134,11 @@ Since 5.0.
 
 WARNING: This function is deprecated, use `swayimg.gallery.select` instead.
 
-See [swayimg.gallery.select_next](#swayimggalleryselect_next)
+See [swayimg.gallery.select_next](#swayimggalleryselect_next).
 
 @_param_ `dir` - Next thumbnail direction
 
-`gdir_t`, Direction for selecting next file in gallery mode:
+`gdir_t` - Direction for selecting next file in gallery mode:
 * `"first"`: Select first thumbnail in image list
 * `"last"`: Select last thumbnail in image list
 * `"up"`: Select the thumbnail above the current one
@@ -2194,7 +2160,7 @@ Since 5.5.
 
 @_param_ `dir` - Next thumbnail direction
 
-`gdir_t`, Direction for selecting next file in gallery mode:
+`gdir_t` - Direction for selecting next file in gallery mode:
 * `"first"`: Select first thumbnail in image list
 * `"last"`: Select last thumbnail in image list
 * `"up"`: Select the thumbnail above the current one
@@ -2270,7 +2236,7 @@ Since 5.0.
 
 @_param_ `aspect` - Thumbnail aspect ratio
 
-`aspect_t`, Aspect ratio used for thumbnails in gallery mode:
+`aspect_t` - Aspect ratio used for thumbnails in gallery mode:
 * `"fit"`: Fit image into a square thumbnail
 * `"fill"`: Fill square thumbnail with the image
 * `"keep"`: Adjust thumbnail size to the aspect ratio of the image
@@ -2335,8 +2301,7 @@ Since 5.0.
 
 @_param_ `color` - Border color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.gallery.set_selected_scale
 
@@ -2362,8 +2327,7 @@ Since 5.0.
 
 @_param_ `color` - Background color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.gallery.set_unselected_color
 
@@ -2377,8 +2341,7 @@ Since 5.0.
 
 @_param_ `color` - Background color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.gallery.set_window_color
 
@@ -2392,8 +2355,7 @@ Since 5.0.
 
 @_param_ `color` - Background color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.gallery.enable_hover
 
@@ -2493,8 +2455,7 @@ Since 5.0.
 
 @_param_ `color` - Mark icon color
 
-`color_t`:
-ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
+`color_t` - ARGB color in hex format: AARRGGBB, for example `0xff00aa99`
 
 ### swayimg.gallery.set_pinch_factor
 
@@ -2584,7 +2545,7 @@ Since 5.0.
 
 @_param_ `pos` - Text block position
 
-`block_position_t`, Position of text block:
+`block_position_t` - Position of text block:
 * `"topleft"`: Top left corner of the window
 * `"topright"`: Top right corner of the window
 * `"bottomleft"`: Bottom left corner of the window
@@ -2592,8 +2553,8 @@ Since 5.0.
 
 @_param_ `scheme` - Array of line templates with overlay scheme
 
-`text_template_t`:
-Template for text overlay line.
+`text_template_t` - Template for text overlay line:
+
 The template includes text and fields surrounded by curly braces.
 The following fields are supported:
 * `{name}`: File name of the currently viewed/selected image
@@ -2622,4 +2583,3 @@ If the value cannot be output (for example, the specified EXIF tag is
 missing), then the entire string including the key is ignored upon printing.
 
 Example: `Path to image:\t{path}`
-
