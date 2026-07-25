@@ -139,6 +139,25 @@
 
 ---General functionality.
 ---@class swayimg
+---
+---Application mode.
+---Since 5.5.
+---Setting this field changes the current mode (viewer/slideshow/gallery).
+---@field mode appmode_t
+---
+---Anti-aliasing mode.
+---Since 5.5.
+---@field antialiasing boolean
+---
+---Full screen mode.
+---Since 5.5.
+---@field fullscreen boolean
+---
+---Application Id.
+---Since 5.5.
+---This field can be set only at program startup.
+---@field appid string
+---
 swayimg = {}
 
 ---Exit from application.
@@ -148,11 +167,19 @@ function swayimg.exit(code) end
 
 ---Switch to specified mode.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.mode` instead.
+---@deprecated
+---@see swayimg.mode
 ---@param mode appmode_t Mode to activate
 function swayimg.set_mode(mode) end
 
 ---Get current mode.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.mode` instead.
+---@deprecated
+---@see swayimg.mode
 ---@return appmode_t # Currently active mode
 function swayimg.get_mode() end
 
@@ -184,11 +211,19 @@ function swayimg.get_mouse_pos() end
 
 ---Enable/disable or toggle full screen mode.
 ---Since 5.2.
+---
+---WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
+---@deprecated
+---@see swayimg.fullscreen
 ---@param enable? boolean Enable/disable full screen, empty to toggle
 function swayimg.set_fullscreen(enable) end
 
 ---Get current full screen mode status.
 ---Since 5.2.
+---
+---WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
+---@deprecated
+---@see swayimg.fullscreen
 ---@return boolean # True if full screen is enabled
 function swayimg.get_fullscreen() end
 
@@ -210,6 +245,10 @@ function swayimg.defer(seconds, fn) end
 
 ---Enable or disable antialiasing.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.antialiasing` instead.
+---@deprecated
+---@see swayimg.antialiasing
 ---@param enable? boolean Enable/disable antialiasing, empty to toggle
 function swayimg.enable_antialiasing(enable) end
 
@@ -252,13 +291,18 @@ function swayimg.enable_overlay(enable) end
 ---Set application Id, default is `swayimg`.
 ---Since 5.3.
 ---
----This function can only be called at program startup.
+---WARNING: This function is deprecated, use `swayimg.appid` instead.
+---@deprecated
+---@see swayimg.appid
 ---@param appid string Application ID
 function swayimg.set_appid(appid) end
 
 ---Get application Id.
 ---Since 5.3.
 ---
+---WARNING: This function is deprecated, use `swayimg.appid` instead.
+---@deprecated
+---@see swayimg.appid
 ---@return string # Application ID
 function swayimg.get_appid() end
 
@@ -273,6 +317,27 @@ function swayimg.set_dnd_button(button) end
 
 ---Image list.
 ---@class swayimg.imagelist
+---
+---Sort order of the image list.
+---Since 5.5.
+---@field order order_t
+---
+---Reverse the image list order.
+---Since 5.5.
+---@field reverse boolean
+---
+---Recursive directory reading.
+---Since 5.5.
+---@field recursive boolean
+---
+---Adding adjacent files from the same directory.
+---Since 5.5.
+---@field adjacent boolean
+---
+---File system monitoring.
+---Since 5.5.
+---@field fsmon boolean
+---
 swayimg.imagelist = {}
 
 ---Get number of entries in the image list.
@@ -301,26 +366,46 @@ function swayimg.imagelist.clear() end
 
 ---Set sort order of the image list.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.imagelist.order` instead.
+---@deprecated
+---@see swayimg.imagelist.order
 ---@param order order_t List order
 function swayimg.imagelist.set_order(order) end
 
 ---Enable or disable reverse order.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.imagelist.reverse` instead.
+---@deprecated
+---@see swayimg.imagelist.reverse
 ---@param enable boolean Enable/disable reverse order
 function swayimg.imagelist.enable_reverse(enable) end
 
 ---Enable or disable recursive directory reading.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.imagelist.recursive` instead.
+---@deprecated
+---@see swayimg.imagelist.recursive
 ---@param enable boolean Enable/disable recursive mode
 function swayimg.imagelist.enable_recursive(enable) end
 
 ---Enable or disable adding adjacent files from the same directory.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.imagelist.adjacent` instead.
+---@deprecated
+---@see swayimg.imagelist.adjacent
 ---@param enable boolean Enable/disable adding adjacent files
 function swayimg.imagelist.enable_adjacent(enable) end
 
 ---Enable or disable file system monitoring.
 ---Since 5.1.
+---
+---WARNING: This function is deprecated, use `swayimg.imagelist.fsmon` instead.
+---@deprecated
+---@see swayimg.imagelist.fsmon
 ---@param enable boolean Enable/disable FS monitor
 function swayimg.imagelist.enable_fsmon(enable) end
 
@@ -328,21 +413,38 @@ function swayimg.imagelist.enable_fsmon(enable) end
 
 ---Text overlay layer.
 ---@class swayimg.text
+---
+---Text overlay state.
+---Since 5.5.
+---@field visible boolean
+---
 swayimg.text = {}
 
 ---Force show the text layer.
 ---Since 5.0.
 ---
 ---This function restarts the timer.
----@see swayimg.text.set_timeout
+---
+---WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+---@deprecated
+---@see swayimg.text.visible
+---@see swayimg.text.set_timer
 function swayimg.text.show() end
 
 ---Hide the text layer.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+---@deprecated
+---@see swayimg.text.visible
 function swayimg.text.hide() end
 
 ---Check if text layer is visible.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+---@deprecated
+---@see swayimg.text.visible
 ---@return boolean # `true` if text layer is visible
 function swayimg.text.visible() end
 
@@ -674,6 +776,11 @@ function swayimg.slideshow.set_timeout(seconds) end
 
 ---Gallery mode.
 ---@class swayimg.gallery : swayimg_appmode
+---
+---Thumbnail size in pixels.
+---Since 5.5.
+---@field thumb_size integer
+---
 swayimg.gallery = {}
 
 ---Select the next thumbnail from the gallery.
@@ -720,11 +827,19 @@ function swayimg.gallery.set_aspect(aspect) end
 
 ---Get thumbnail size.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
+---@deprecated
+---@see swayimg.gallery.thumb_size
 ---@return integer # Thumbnail size in pixels
 function swayimg.gallery.get_thumb_size() end
 
 ---Set thumbnail size.
 ---Since 5.0.
+---
+---WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
+---@deprecated
+---@see swayimg.gallery.thumb_size
 ---@param size integer Thumbnail size in pixels
 function swayimg.gallery.set_thumb_size(size) end
 

@@ -324,19 +324,34 @@ void LuaEngine::bind_root_api()
                      [](const std::optional<int>& code) {
                          Application::self().exit(code ? *code : 0);
                      })
+        .addProperty(
+            "mode",
+            []() {
+                return type_to_name(appmodes, Application::self().get_mode());
+            },
+            [this](const std::string& value) {
+                const auto mode = name_to_type(appmodes, value.c_str());
+                if (!mode.has_value()) {
+                    raise_error("Invalid mode: {}", value);
+                }
+                Application::self().set_mode(mode.value());
+            })
         .addFunction("set_mode",
                      [this](const std::string& name) {
+                         warn_deprecated("swayimg.set_mode()",
+                                         "swayimg.mode field");
                          const auto mode = name_to_type(appmodes, name.c_str());
                          if (!mode.has_value()) {
                              raise_error("Invalid mode: {}", name);
                          }
                          Application::self().set_mode(mode.value());
                      })
-        .addFunction("get_mode",
-                     []() {
-                         return type_to_name(appmodes,
-                                             Application::self().get_mode());
-                     })
+        .addFunction(
+            "get_mode",
+            []() {
+                warn_deprecated("swayimg.get_mode()", "swayimg.mode field");
+                return type_to_name(appmodes, Application::self().get_mode());
+            })
         .addFunction("set_title",
                      [](const std::string& title) {
                          Ui* ui = Application::get_ui();
@@ -401,9 +416,27 @@ void LuaEngine::bind_root_api()
                              { "y", pos.y },
                          };
                      })
+        .addProperty(
+            "fullscreen",
+            []() {
+                const Ui* ui = Application::get_ui();
+                if (ui) {
+                    return ui->get_fullscreen();
+                }
+                return Application::self().sparams->fullscreen.get();
+            },
+            [](const bool value) {
+                if (Application::self().initialized()) {
+                    Application::get_ui()->set_fullscreen(value);
+                } else {
+                    Application::self().sparams->fullscreen.set(value);
+                }
+            })
         .addFunction(
             "set_fullscreen",
             [](const std::optional<bool>& enable) {
+                warn_deprecated("swayimg.set_fullscreen()",
+                                "swayimg.fullscreen field");
                 if (Application::self().initialized()) {
                     Ui* ui = Application::get_ui();
                     ui->set_fullscreen(enable.value_or(!ui->get_fullscreen()));
@@ -414,6 +447,8 @@ void LuaEngine::bind_root_api()
             })
         .addFunction("get_fullscreen",
                      []() {
+                         warn_deprecated("swayimg.get_fullscreen()",
+                                         "swayimg.fullscreen field");
                          const Ui* ui = Application::get_ui();
                          if (ui) {
                              return ui->get_fullscreen();
@@ -466,8 +501,19 @@ void LuaEngine::bind_root_api()
                          defer_fn = new luabridge::LuaRef(cb);
                          defer_timer.reset(ms > 0 ? ms : 1, 0);
                      })
+        .addProperty(
+            "antialiasing",
+            []() {
+                return Render::self().antialiasing;
+            },
+            [](const bool value) {
+                Render::self().antialiasing = value;
+                Application::redraw();
+            })
         .addFunction("enable_antialiasing",
                      [](const std::optional<bool>& enable) {
+                         warn_deprecated("swayimg.enable_antialiasing()",
+                                         "swayimg.antialiasing field");
                          bool& antialiasing = Render::self().antialiasing;
                          antialiasing = enable.value_or(!antialiasing);
                          Application::redraw();
@@ -507,19 +553,36 @@ void LuaEngine::bind_root_api()
                          }
                          Application::self().sparams->use_overlay = enable;
                      })
-        .addFunction("set_appid",
-                     [this](const std::string& app_id) {
-                         if (Application::self().initialized()) {
-                             raise_error(
-                                 "Application ID can be set only at startup");
-                         }
-                         if (app_id.empty()) {
-                             raise_error("Application ID can not be empty");
-                         }
-                         Application::self().sparams->app_id.set(app_id);
-                     })
+        .addProperty(
+            "appid",
+            []() {
+                return Application::self().get_appid();
+            },
+            [this](const std::string& value) {
+                if (Application::self().initialized()) {
+                    raise_error("Application Id can be set only at startup");
+                }
+                if (value.empty()) {
+                    raise_error("Application Id can not be empty");
+                }
+                Application::self().sparams->app_id.set(value);
+            })
+        .addFunction(
+            "set_appid",
+            [this](const std::string& app_id) {
+                warn_deprecated("swayimg.set_appid()", "swayimg.appid field");
+                if (Application::self().initialized()) {
+                    raise_error("Application ID can be set only at startup");
+                }
+                if (app_id.empty()) {
+                    raise_error("Application ID can not be empty");
+                }
+                Application::self().sparams->app_id.set(app_id);
+            })
         .addFunction("get_appid",
                      []() {
+                         warn_deprecated("swayimg.get_appid()",
+                                         "swayimg.appid field");
                          return Application::self().get_appid();
                      })
         .addFunction(
@@ -593,8 +656,22 @@ void LuaEngine::bind_imagelist_api()
                      []() {
                          Application::self().remove_all_images();
                      })
+        .addProperty(
+            "order",
+            []() {
+                return type_to_name(ilorders, ImageList::self().get_order());
+            },
+            [this](const std::string& value) {
+                const auto order = name_to_type(ilorders, value.c_str());
+                if (!order.has_value()) {
+                    raise_error("Invalid image list order: {}", value);
+                }
+                ImageList::self().set_order(order.value());
+            })
         .addFunction("set_order",
                      [this](const std::string& name) {
+                         warn_deprecated("swayimg.imagelist.set_order()",
+                                         "swayimg.imagelist.order field");
                          const auto order =
                              name_to_type(ilorders, name.c_str());
                          if (!order.has_value()) {
@@ -602,20 +679,60 @@ void LuaEngine::bind_imagelist_api()
                          }
                          ImageList::self().set_order(order.value());
                      })
+        .addProperty(
+            "reverse",
+            []() {
+                return ImageList::self().get_reverse();
+            },
+            [](const bool value) {
+                ImageList::self().set_reverse(value);
+            })
         .addFunction("enable_reverse",
                      [](const bool enable) {
+                         warn_deprecated("swayimg.imagelist.enable_reverse()",
+                                         "swayimg.imagelist.reverse field");
                          ImageList::self().set_reverse(enable);
                      })
+        .addProperty(
+            "recursive",
+            []() {
+                return ImageList::self().recursive;
+            },
+            [](const bool value) {
+                ImageList::self().recursive = value;
+            })
         .addFunction("enable_recursive",
                      [](const bool enable) {
+                         warn_deprecated("swayimg.imagelist.enable_recursive()",
+                                         "swayimg.imagelist.recursive field");
                          ImageList::self().recursive = enable;
                      })
+        .addProperty(
+            "adjacent",
+            []() {
+                return ImageList::self().adjacent;
+            },
+            [](const bool value) {
+                ImageList::self().adjacent = value;
+            })
         .addFunction("enable_adjacent",
                      [](const bool enable) {
+                         warn_deprecated("swayimg.imagelist.enable_adjacent()",
+                                         "swayimg.imagelist.adjacent field");
                          ImageList::self().adjacent = enable;
                      })
+        .addProperty(
+            "fsmon",
+            []() {
+                return ImageList::self().fsmon;
+            },
+            [](const bool value) {
+                ImageList::self().fsmon = value;
+            })
         .addFunction("enable_fsmon",
                      [](const bool enable) {
+                         warn_deprecated("swayimg.imagelist.enable_fsmon()",
+                                         "swayimg.imagelist.fsmon field");
                          ImageList::self().fsmon = enable;
                      })
         .endNamespace()
@@ -627,17 +744,29 @@ void LuaEngine::bind_text_api()
     luabridge::getGlobalNamespace(lua_state)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(NS_TEXT)
+        .addProperty(
+            "visible",
+            []() {
+                return Text::self().is_visible();
+            },
+            [](const bool value) {
+                if (value) {
+                    Text::self().show();
+                } else {
+                    Text::self().hide();
+                }
+            })
         .addFunction("show",
                      []() {
+                         warn_deprecated("swayimg.text.show()",
+                                         "swayimg.text.visible field");
                          Text::self().show();
                      })
         .addFunction("hide",
                      []() {
+                         warn_deprecated("swayimg.text.hide()",
+                                         "swayimg.text.visible field");
                          Text::self().hide();
-                     })
-        .addFunction("visible",
-                     []() {
-                         return Text::self().is_visible();
                      })
         .addFunction("set_font",
                      [](const std::string& name) {
@@ -1095,12 +1224,24 @@ void LuaEngine::bind_gallery_api()
                 }
                 Gallery::self().set_thumb_aspect(aspect.value());
             })
+        .addProperty(
+            "thumb_size",
+            []() {
+                return Gallery::self().get_thumb_size();
+            },
+            [](const size_t size) {
+                Gallery::self().set_thumb_size(size);
+            })
         .addFunction("get_thumb_size",
                      []() {
+                         warn_deprecated("swayimg.gallery.get_thumb_size()",
+                                         "swayimg.text.thumb_size field");
                          return Gallery::self().get_thumb_size();
                      })
         .addFunction("set_thumb_size",
                      [](const size_t size) {
+                         warn_deprecated("swayimg.gallery.set_thumb_size()",
+                                         "swayimg.gallery.thumb_size field");
                          Gallery::self().set_thumb_size(size);
                      })
         .addFunction("set_padding_size",
@@ -1315,8 +1456,11 @@ luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
 
 void LuaEngine::warn_deprecated(const char* name, const char* replacement)
 {
-    Log::warning("Function \"{}\" is deprecated and will be removed in a "
-                 "future release,"
-                 " use \"{}\" instead",
-                 name, replacement);
+    const std::string message =
+        std::format("Function \"{}\" is deprecated and will be removed in a "
+                    "future release,"
+                    " use \"{}\" instead",
+                    name, replacement);
+    Log::warning("{}", message);
+    Text::self().set_status(message);
 }

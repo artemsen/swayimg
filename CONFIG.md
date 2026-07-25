@@ -34,173 +34,233 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
 ## List of available functions
 
 * General functionality
-  * [swayimg.exit](#swayimgexit): Exit from application
-  * [swayimg.set_mode](#swayimgset_mode): Switch to specified mode
-  * [swayimg.get_mode](#swayimgget_mode): Get current mode
-  * [swayimg.set_title](#swayimgset_title): Set title for main application window
-  * [swayimg.get_window_size](#swayimgget_window_size): Get application window size
-  * [swayimg.set_window_size](#swayimgset_window_size): Set application window size
-  * [swayimg.on_window_resize](#swayimgon_window_resize): Set a callback function called when main window is resized
-  * [swayimg.get_mouse_pos](#swayimgget_mouse_pos): Get mouse pointer coordinates
-  * [swayimg.set_fullscreen](#swayimgset_fullscreen): Enable/disable or toggle full screen mode
-  * [swayimg.get_fullscreen](#swayimgget_fullscreen): Get current full screen mode status
-  * [swayimg.on_initialized](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
-  * [swayimg.on_redrawn](#swayimgon_redrawn): Set a callback function called after the window is drawn
-  * [swayimg.defer](#swayimgdefer): Execute deferred procedure
-  * [swayimg.enable_antialiasing](#swayimgenable_antialiasing): Enable or disable antialiasing
-  * [swayimg.enable_exif_orientation](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
-  * [swayimg.set_format_params](#swayimgset_format_params): Setting format parameters
-  * [swayimg.enable_decoration](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
-  * [swayimg.enable_overlay](#swayimgenable_overlay): Enable or disable window overlay mode
-  * [swayimg.set_appid](#swayimgset_appid): Set application Id, default is `swayimg`
-  * [swayimg.get_appid](#swayimgget_appid): Get application Id
-  * [swayimg.set_dnd_button](#swayimgset_dnd_button): Set mouse button used for drag-and-drop image file to external apps
+  * [swayimg.mode](#swayimgmode): Application mode
+  * [swayimg.antialiasing](#swayimgantialiasing): Anti-aliasing mode
+  * [swayimg.fullscreen](#swayimgfullscreen): Full screen mode
+  * [swayimg.appid](#swayimgappid): Application Id
+  * [swayimg.exit()](#swayimgexit): Exit from application
+  * [swayimg.set_mode()](#swayimgset_mode): Switch to specified mode
+  * [swayimg.get_mode()](#swayimgget_mode): Get current mode
+  * [swayimg.set_title()](#swayimgset_title): Set title for main application window
+  * [swayimg.get_window_size()](#swayimgget_window_size): Get application window size
+  * [swayimg.set_window_size()](#swayimgset_window_size): Set application window size
+  * [swayimg.on_window_resize()](#swayimgon_window_resize): Set a callback function called when main window is resized
+  * [swayimg.get_mouse_pos()](#swayimgget_mouse_pos): Get mouse pointer coordinates
+  * [swayimg.set_fullscreen()](#swayimgset_fullscreen): Enable/disable or toggle full screen mode
+  * [swayimg.get_fullscreen()](#swayimgget_fullscreen): Get current full screen mode status
+  * [swayimg.on_initialized()](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
+  * [swayimg.on_redrawn()](#swayimgon_redrawn): Set a callback function called after the window is drawn
+  * [swayimg.defer()](#swayimgdefer): Execute deferred procedure
+  * [swayimg.enable_antialiasing()](#swayimgenable_antialiasing): Enable or disable antialiasing
+  * [swayimg.enable_exif_orientation()](#swayimgenable_exif_orientation): Enable or disable changing orientation based on EXIF
+  * [swayimg.set_format_params()](#swayimgset_format_params): Setting format parameters
+  * [swayimg.enable_decoration()](#swayimgenable_decoration): Enable or disable window decoration (title, border, buttons)
+  * [swayimg.enable_overlay()](#swayimgenable_overlay): Enable or disable window overlay mode
+  * [swayimg.set_appid()](#swayimgset_appid): Set application Id, default is `swayimg`
+  * [swayimg.get_appid()](#swayimgget_appid): Get application Id
+  * [swayimg.set_dnd_button()](#swayimgset_dnd_button): Set mouse button used for drag-and-drop image file to external apps
 * Image list
-  * [swayimg.imagelist.size](#swayimgimagelistsize): Get number of entries in the image list
-  * [swayimg.imagelist.get](#swayimgimagelistget): Get list of all entries in the image list
-  * [swayimg.imagelist.add](#swayimgimagelistadd): Add entries to the image list
-  * [swayimg.imagelist.remove](#swayimgimagelistremove): Remove specified entries from the image list
-  * [swayimg.imagelist.clear](#swayimgimagelistclear): Clear the image list
-  * [swayimg.imagelist.set_order](#swayimgimagelistset_order): Set sort order of the image list
-  * [swayimg.imagelist.enable_reverse](#swayimgimagelistenable_reverse): Enable or disable reverse order
-  * [swayimg.imagelist.enable_recursive](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
-  * [swayimg.imagelist.enable_adjacent](#swayimgimagelistenable_adjacent): Enable or disable adding adjacent files from the same directory
-  * [swayimg.imagelist.enable_fsmon](#swayimgimagelistenable_fsmon): Enable or disable file system monitoring
+  * [swayimg.imagelist.order](#swayimgimagelistorder): Sort order of the image list
+  * [swayimg.imagelist.reverse](#swayimgimagelistreverse): Reverse the image list order
+  * [swayimg.imagelist.recursive](#swayimgimagelistrecursive): Recursive directory reading
+  * [swayimg.imagelist.adjacent](#swayimgimagelistadjacent): Adding adjacent files from the same directory
+  * [swayimg.imagelist.fsmon](#swayimgimagelistfsmon): File system monitoring
+  * [swayimg.imagelist.size()](#swayimgimagelistsize): Get number of entries in the image list
+  * [swayimg.imagelist.get()](#swayimgimagelistget): Get list of all entries in the image list
+  * [swayimg.imagelist.add()](#swayimgimagelistadd): Add entries to the image list
+  * [swayimg.imagelist.remove()](#swayimgimagelistremove): Remove specified entries from the image list
+  * [swayimg.imagelist.clear()](#swayimgimagelistclear): Clear the image list
+  * [swayimg.imagelist.set_order()](#swayimgimagelistset_order): Set sort order of the image list
+  * [swayimg.imagelist.enable_reverse()](#swayimgimagelistenable_reverse): Enable or disable reverse order
+  * [swayimg.imagelist.enable_recursive()](#swayimgimagelistenable_recursive): Enable or disable recursive directory reading
+  * [swayimg.imagelist.enable_adjacent()](#swayimgimagelistenable_adjacent): Enable or disable adding adjacent files from the same directory
+  * [swayimg.imagelist.enable_fsmon()](#swayimgimagelistenable_fsmon): Enable or disable file system monitoring
 * Text overlay layer
-  * [swayimg.text.show](#swayimgtextshow): Force show the text layer
-  * [swayimg.text.hide](#swayimgtexthide): Hide the text layer
-  * [swayimg.text.visible](#swayimgtextvisible): Check if text layer is visible
-  * [swayimg.text.set_font](#swayimgtextset_font): Set font face
-  * [swayimg.text.set_size](#swayimgtextset_size): Set font size
-  * [swayimg.text.set_spacing](#swayimgtextset_spacing): Set line spacing
-  * [swayimg.text.set_padding](#swayimgtextset_padding): Set the padding from the window edges
-  * [swayimg.text.set_foreground](#swayimgtextset_foreground): Set foreground text color
-  * [swayimg.text.set_background](#swayimgtextset_background): Set background text color
-  * [swayimg.text.set_shadow](#swayimgtextset_shadow): Set shadow text color
-  * [swayimg.text.set_timeout](#swayimgtextset_timeout): Set a timeout after which the entire text layer will be hidden
-  * [swayimg.text.set_status_timeout](#swayimgtextset_status_timeout): Set a timeout after which the status message will be hidden
-  * [swayimg.text.set_status](#swayimgtextset_status): Show status message
+  * [swayimg.text.visible](#swayimgtextvisible): Text overlay state
+  * [swayimg.text.show()](#swayimgtextshow): Force show the text layer
+  * [swayimg.text.hide()](#swayimgtexthide): Hide the text layer
+  * [swayimg.text.visible()](#swayimgtextvisible): Check if text layer is visible
+  * [swayimg.text.set_font()](#swayimgtextset_font): Set font face
+  * [swayimg.text.set_size()](#swayimgtextset_size): Set font size
+  * [swayimg.text.set_spacing()](#swayimgtextset_spacing): Set line spacing
+  * [swayimg.text.set_padding()](#swayimgtextset_padding): Set the padding from the window edges
+  * [swayimg.text.set_foreground()](#swayimgtextset_foreground): Set foreground text color
+  * [swayimg.text.set_background()](#swayimgtextset_background): Set background text color
+  * [swayimg.text.set_shadow()](#swayimgtextset_shadow): Set shadow text color
+  * [swayimg.text.set_timeout()](#swayimgtextset_timeout): Set a timeout after which the entire text layer will be hidden
+  * [swayimg.text.set_status_timeout()](#swayimgtextset_status_timeout): Set a timeout after which the status message will be hidden
+  * [swayimg.text.set_status()](#swayimgtextset_status): Show status message
 * Viewer mode
-  * [swayimg.viewer.switch_image](#swayimgviewerswitch_image): Open the next file in the specified direction
-  * [swayimg.viewer.open](#swayimgvieweropen): Open the next file in the specified direction
-  * [swayimg.viewer.open_path](#swayimgvieweropen_path): Open the file at the specified path
-  * [swayimg.viewer.get_image](#swayimgviewerget_image): Get information about currently displayed image
-  * [swayimg.viewer.reload](#swayimgviewerreload): Reload current image
-  * [swayimg.viewer.reset](#swayimgviewerreset): Reset position and scale to default values
-  * [swayimg.viewer.get_scale](#swayimgviewerget_scale): Get current image scale
-  * [swayimg.viewer.set_abs_scale](#swayimgviewerset_abs_scale): Set absolute image scale
-  * [swayimg.viewer.set_fix_scale](#swayimgviewerset_fix_scale): Set fixed scale for currently displayed image
-  * [swayimg.viewer.set_default_scale](#swayimgviewerset_default_scale): Set default image scale for newly opened images
-  * [swayimg.viewer.get_position](#swayimgviewerget_position): Get image position
-  * [swayimg.viewer.set_abs_position](#swayimgviewerset_abs_position): Set absolute image position
-  * [swayimg.viewer.set_fix_position](#swayimgviewerset_fix_position): Set fixed image position
-  * [swayimg.viewer.set_default_position](#swayimgviewerset_default_position): Set default image position for newly opened images
-  * [swayimg.viewer.next_frame](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
-  * [swayimg.viewer.prev_frame](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
-  * [swayimg.viewer.set_animation](#swayimgviewerset_animation): Stop/resume animation
-  * [swayimg.viewer.get_animation](#swayimgviewerget_animation): Get current status of animation
-  * [swayimg.viewer.animation_stop](#swayimgvieweranimation_stop): Stop animation
-  * [swayimg.viewer.animation_resume](#swayimgvieweranimation_resume): Resume animation
-  * [swayimg.viewer.flip_vertical](#swayimgviewerflip_vertical): Flip image vertically
-  * [swayimg.viewer.flip_horizontal](#swayimgviewerflip_horizontal): Flip image horizontally
-  * [swayimg.viewer.rotate](#swayimgviewerrotate): Rotate image
-  * [swayimg.viewer.export](#swayimgviewerexport): Export currently displayed frame to PNG file
-  * [swayimg.viewer.set_meta](#swayimgviewerset_meta): Add/replace/remove meta info for currently displayed image
-  * [swayimg.viewer.set_drag_button](#swayimgviewerset_drag_button): Set the mouse button used to drag the image around the window
-  * [swayimg.viewer.set_window_background](#swayimgviewerset_window_background): Set window background color and mode
-  * [swayimg.viewer.set_image_background](#swayimgviewerset_image_background): Set background color for transparent images
-  * [swayimg.viewer.set_image_chessboard](#swayimgviewerset_image_chessboard): Set parameters for chessboard used as background for transparent images
-  * [swayimg.viewer.enable_centering](#swayimgviewerenable_centering): Enable or disable automatic image centering
-  * [swayimg.viewer.enable_loop](#swayimgviewerenable_loop): Enable or disable image list loop mode
-  * [swayimg.viewer.limit_preload](#swayimgviewerlimit_preload): Set max number of images to preload in background thread
-  * [swayimg.viewer.limit_history](#swayimgviewerlimit_history): Set max number of previously viewed images stored in the cache
-  * [swayimg.viewer.mark_image](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
-  * [swayimg.viewer.set_mark_color](#swayimgviewerset_mark_color): Set mark icon color
-  * [swayimg.viewer.set_pinch_factor](#swayimgviewerset_pinch_factor): Set the pinch gesture factor
-  * [swayimg.viewer.bind_reset](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
-  * [swayimg.viewer.on_key](#swayimgvieweron_key): Bind the key press event to a handler
-  * [swayimg.viewer.on_mouse](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
-  * [swayimg.viewer.on_signal](#swayimgvieweron_signal): Bind the signal event to a handler
-  * [swayimg.viewer.on_image_change](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.viewer.set_text](#swayimgviewerset_text): Set text layer scheme
+  * [swayimg.viewer.switch_image()](#swayimgviewerswitch_image): Open the next file in the specified direction
+  * [swayimg.viewer.open()](#swayimgvieweropen): Open the next file in the specified direction
+  * [swayimg.viewer.open_path()](#swayimgvieweropen_path): Open the file at the specified path
+  * [swayimg.viewer.get_image()](#swayimgviewerget_image): Get information about currently displayed image
+  * [swayimg.viewer.reload()](#swayimgviewerreload): Reload current image
+  * [swayimg.viewer.reset()](#swayimgviewerreset): Reset position and scale to default values
+  * [swayimg.viewer.get_scale()](#swayimgviewerget_scale): Get current image scale
+  * [swayimg.viewer.set_abs_scale()](#swayimgviewerset_abs_scale): Set absolute image scale
+  * [swayimg.viewer.set_fix_scale()](#swayimgviewerset_fix_scale): Set fixed scale for currently displayed image
+  * [swayimg.viewer.set_default_scale()](#swayimgviewerset_default_scale): Set default image scale for newly opened images
+  * [swayimg.viewer.get_position()](#swayimgviewerget_position): Get image position
+  * [swayimg.viewer.set_abs_position()](#swayimgviewerset_abs_position): Set absolute image position
+  * [swayimg.viewer.set_fix_position()](#swayimgviewerset_fix_position): Set fixed image position
+  * [swayimg.viewer.set_default_position()](#swayimgviewerset_default_position): Set default image position for newly opened images
+  * [swayimg.viewer.next_frame()](#swayimgviewernext_frame): Show next frame from multi-frame image (animation)
+  * [swayimg.viewer.prev_frame()](#swayimgviewerprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.viewer.set_animation()](#swayimgviewerset_animation): Stop/resume animation
+  * [swayimg.viewer.get_animation()](#swayimgviewerget_animation): Get current status of animation
+  * [swayimg.viewer.animation_stop()](#swayimgvieweranimation_stop): Stop animation
+  * [swayimg.viewer.animation_resume()](#swayimgvieweranimation_resume): Resume animation
+  * [swayimg.viewer.flip_vertical()](#swayimgviewerflip_vertical): Flip image vertically
+  * [swayimg.viewer.flip_horizontal()](#swayimgviewerflip_horizontal): Flip image horizontally
+  * [swayimg.viewer.rotate()](#swayimgviewerrotate): Rotate image
+  * [swayimg.viewer.export()](#swayimgviewerexport): Export currently displayed frame to PNG file
+  * [swayimg.viewer.set_meta()](#swayimgviewerset_meta): Add/replace/remove meta info for currently displayed image
+  * [swayimg.viewer.set_drag_button()](#swayimgviewerset_drag_button): Set the mouse button used to drag the image around the window
+  * [swayimg.viewer.set_window_background()](#swayimgviewerset_window_background): Set window background color and mode
+  * [swayimg.viewer.set_image_background()](#swayimgviewerset_image_background): Set background color for transparent images
+  * [swayimg.viewer.set_image_chessboard()](#swayimgviewerset_image_chessboard): Set parameters for chessboard used as background for transparent images
+  * [swayimg.viewer.enable_centering()](#swayimgviewerenable_centering): Enable or disable automatic image centering
+  * [swayimg.viewer.enable_loop()](#swayimgviewerenable_loop): Enable or disable image list loop mode
+  * [swayimg.viewer.limit_preload()](#swayimgviewerlimit_preload): Set max number of images to preload in background thread
+  * [swayimg.viewer.limit_history()](#swayimgviewerlimit_history): Set max number of previously viewed images stored in the cache
+  * [swayimg.viewer.mark_image()](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
+  * [swayimg.viewer.set_mark_color()](#swayimgviewerset_mark_color): Set mark icon color
+  * [swayimg.viewer.set_pinch_factor()](#swayimgviewerset_pinch_factor): Set the pinch gesture factor
+  * [swayimg.viewer.bind_reset()](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
+  * [swayimg.viewer.on_key()](#swayimgvieweron_key): Bind the key press event to a handler
+  * [swayimg.viewer.on_mouse()](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
+  * [swayimg.viewer.on_signal()](#swayimgvieweron_signal): Bind the signal event to a handler
+  * [swayimg.viewer.on_image_change()](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
+  * [swayimg.viewer.set_text()](#swayimgviewerset_text): Set text layer scheme
 * Slide show mode
-  * [swayimg.slideshow.set_timeout](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
-  * [swayimg.slideshow.switch_image](#swayimgslideshowswitch_image): Open the next file in the specified direction
-  * [swayimg.slideshow.open](#swayimgslideshowopen): Open the next file in the specified direction
-  * [swayimg.slideshow.open_path](#swayimgslideshowopen_path): Open the file at the specified path
-  * [swayimg.slideshow.get_image](#swayimgslideshowget_image): Get information about currently displayed image
-  * [swayimg.slideshow.reload](#swayimgslideshowreload): Reload current image
-  * [swayimg.slideshow.reset](#swayimgslideshowreset): Reset position and scale to default values
-  * [swayimg.slideshow.get_scale](#swayimgslideshowget_scale): Get current image scale
-  * [swayimg.slideshow.set_abs_scale](#swayimgslideshowset_abs_scale): Set absolute image scale
-  * [swayimg.slideshow.set_fix_scale](#swayimgslideshowset_fix_scale): Set fixed scale for currently displayed image
-  * [swayimg.slideshow.set_default_scale](#swayimgslideshowset_default_scale): Set default image scale for newly opened images
-  * [swayimg.slideshow.get_position](#swayimgslideshowget_position): Get image position
-  * [swayimg.slideshow.set_abs_position](#swayimgslideshowset_abs_position): Set absolute image position
-  * [swayimg.slideshow.set_fix_position](#swayimgslideshowset_fix_position): Set fixed image position
-  * [swayimg.slideshow.set_default_position](#swayimgslideshowset_default_position): Set default image position for newly opened images
-  * [swayimg.slideshow.next_frame](#swayimgslideshownext_frame): Show next frame from multi-frame image (animation)
-  * [swayimg.slideshow.prev_frame](#swayimgslideshowprev_frame): Show previous frame from multi-frame image (animation)
-  * [swayimg.slideshow.set_animation](#swayimgslideshowset_animation): Stop/resume animation
-  * [swayimg.slideshow.get_animation](#swayimgslideshowget_animation): Get current status of animation
-  * [swayimg.slideshow.animation_stop](#swayimgslideshowanimation_stop): Stop animation
-  * [swayimg.slideshow.animation_resume](#swayimgslideshowanimation_resume): Resume animation
-  * [swayimg.slideshow.flip_vertical](#swayimgslideshowflip_vertical): Flip image vertically
-  * [swayimg.slideshow.flip_horizontal](#swayimgslideshowflip_horizontal): Flip image horizontally
-  * [swayimg.slideshow.rotate](#swayimgslideshowrotate): Rotate image
-  * [swayimg.slideshow.export](#swayimgslideshowexport): Export currently displayed frame to PNG file
-  * [swayimg.slideshow.set_meta](#swayimgslideshowset_meta): Add/replace/remove meta info for currently displayed image
-  * [swayimg.slideshow.set_drag_button](#swayimgslideshowset_drag_button): Set the mouse button used to drag the image around the window
-  * [swayimg.slideshow.set_window_background](#swayimgslideshowset_window_background): Set window background color and mode
-  * [swayimg.slideshow.set_image_background](#swayimgslideshowset_image_background): Set background color for transparent images
-  * [swayimg.slideshow.set_image_chessboard](#swayimgslideshowset_image_chessboard): Set parameters for chessboard used as background for transparent images
-  * [swayimg.slideshow.enable_centering](#swayimgslideshowenable_centering): Enable or disable automatic image centering
-  * [swayimg.slideshow.enable_loop](#swayimgslideshowenable_loop): Enable or disable image list loop mode
-  * [swayimg.slideshow.limit_preload](#swayimgslideshowlimit_preload): Set max number of images to preload in background thread
-  * [swayimg.slideshow.limit_history](#swayimgslideshowlimit_history): Set max number of previously viewed images stored in the cache
-  * [swayimg.slideshow.mark_image](#swayimgslideshowmark_image): Set, clear or toggle mark for currently viewed/selected image
-  * [swayimg.slideshow.set_mark_color](#swayimgslideshowset_mark_color): Set mark icon color
-  * [swayimg.slideshow.set_pinch_factor](#swayimgslideshowset_pinch_factor): Set the pinch gesture factor
-  * [swayimg.slideshow.bind_reset](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
-  * [swayimg.slideshow.on_key](#swayimgslideshowon_key): Bind the key press event to a handler
-  * [swayimg.slideshow.on_mouse](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
-  * [swayimg.slideshow.on_signal](#swayimgslideshowon_signal): Bind the signal event to a handler
-  * [swayimg.slideshow.on_image_change](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.slideshow.set_text](#swayimgslideshowset_text): Set text layer scheme
+  * [swayimg.slideshow.set_timeout()](#swayimgslideshowset_timeout): Set a timeout after which next image should be opened
+  * [swayimg.slideshow.switch_image()](#swayimgslideshowswitch_image): Open the next file in the specified direction
+  * [swayimg.slideshow.open()](#swayimgslideshowopen): Open the next file in the specified direction
+  * [swayimg.slideshow.open_path()](#swayimgslideshowopen_path): Open the file at the specified path
+  * [swayimg.slideshow.get_image()](#swayimgslideshowget_image): Get information about currently displayed image
+  * [swayimg.slideshow.reload()](#swayimgslideshowreload): Reload current image
+  * [swayimg.slideshow.reset()](#swayimgslideshowreset): Reset position and scale to default values
+  * [swayimg.slideshow.get_scale()](#swayimgslideshowget_scale): Get current image scale
+  * [swayimg.slideshow.set_abs_scale()](#swayimgslideshowset_abs_scale): Set absolute image scale
+  * [swayimg.slideshow.set_fix_scale()](#swayimgslideshowset_fix_scale): Set fixed scale for currently displayed image
+  * [swayimg.slideshow.set_default_scale()](#swayimgslideshowset_default_scale): Set default image scale for newly opened images
+  * [swayimg.slideshow.get_position()](#swayimgslideshowget_position): Get image position
+  * [swayimg.slideshow.set_abs_position()](#swayimgslideshowset_abs_position): Set absolute image position
+  * [swayimg.slideshow.set_fix_position()](#swayimgslideshowset_fix_position): Set fixed image position
+  * [swayimg.slideshow.set_default_position()](#swayimgslideshowset_default_position): Set default image position for newly opened images
+  * [swayimg.slideshow.next_frame()](#swayimgslideshownext_frame): Show next frame from multi-frame image (animation)
+  * [swayimg.slideshow.prev_frame()](#swayimgslideshowprev_frame): Show previous frame from multi-frame image (animation)
+  * [swayimg.slideshow.set_animation()](#swayimgslideshowset_animation): Stop/resume animation
+  * [swayimg.slideshow.get_animation()](#swayimgslideshowget_animation): Get current status of animation
+  * [swayimg.slideshow.animation_stop()](#swayimgslideshowanimation_stop): Stop animation
+  * [swayimg.slideshow.animation_resume()](#swayimgslideshowanimation_resume): Resume animation
+  * [swayimg.slideshow.flip_vertical()](#swayimgslideshowflip_vertical): Flip image vertically
+  * [swayimg.slideshow.flip_horizontal()](#swayimgslideshowflip_horizontal): Flip image horizontally
+  * [swayimg.slideshow.rotate()](#swayimgslideshowrotate): Rotate image
+  * [swayimg.slideshow.export()](#swayimgslideshowexport): Export currently displayed frame to PNG file
+  * [swayimg.slideshow.set_meta()](#swayimgslideshowset_meta): Add/replace/remove meta info for currently displayed image
+  * [swayimg.slideshow.set_drag_button()](#swayimgslideshowset_drag_button): Set the mouse button used to drag the image around the window
+  * [swayimg.slideshow.set_window_background()](#swayimgslideshowset_window_background): Set window background color and mode
+  * [swayimg.slideshow.set_image_background()](#swayimgslideshowset_image_background): Set background color for transparent images
+  * [swayimg.slideshow.set_image_chessboard()](#swayimgslideshowset_image_chessboard): Set parameters for chessboard used as background for transparent images
+  * [swayimg.slideshow.enable_centering()](#swayimgslideshowenable_centering): Enable or disable automatic image centering
+  * [swayimg.slideshow.enable_loop()](#swayimgslideshowenable_loop): Enable or disable image list loop mode
+  * [swayimg.slideshow.limit_preload()](#swayimgslideshowlimit_preload): Set max number of images to preload in background thread
+  * [swayimg.slideshow.limit_history()](#swayimgslideshowlimit_history): Set max number of previously viewed images stored in the cache
+  * [swayimg.slideshow.mark_image()](#swayimgslideshowmark_image): Set, clear or toggle mark for currently viewed/selected image
+  * [swayimg.slideshow.set_mark_color()](#swayimgslideshowset_mark_color): Set mark icon color
+  * [swayimg.slideshow.set_pinch_factor()](#swayimgslideshowset_pinch_factor): Set the pinch gesture factor
+  * [swayimg.slideshow.bind_reset()](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
+  * [swayimg.slideshow.on_key()](#swayimgslideshowon_key): Bind the key press event to a handler
+  * [swayimg.slideshow.on_mouse()](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
+  * [swayimg.slideshow.on_signal()](#swayimgslideshowon_signal): Bind the signal event to a handler
+  * [swayimg.slideshow.on_image_change()](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
+  * [swayimg.slideshow.set_text()](#swayimgslideshowset_text): Set text layer scheme
 * Gallery mode
-  * [swayimg.gallery.switch_image](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
-  * [swayimg.gallery.select](#swayimggalleryselect): Select the next thumbnail from the gallery
-  * [swayimg.gallery.select_at](#swayimggalleryselect_at): Select the thumbnail at specified position
-  * [swayimg.gallery.select_path](#swayimggalleryselect_path): Select the thumbnail by image path
-  * [swayimg.gallery.reload](#swayimggalleryreload): Reload thumbnails
-  * [swayimg.gallery.get_image](#swayimggalleryget_image): Get information about currently selected image entry
-  * [swayimg.gallery.set_aspect](#swayimggalleryset_aspect): Set thumbnail aspect ratio
-  * [swayimg.gallery.get_thumb_size](#swayimggalleryget_thumb_size): Get thumbnail size
-  * [swayimg.gallery.set_thumb_size](#swayimggalleryset_thumb_size): Set thumbnail size
-  * [swayimg.gallery.set_padding_size](#swayimggalleryset_padding_size): Set the padding size between thumbnails
-  * [swayimg.gallery.set_border_size](#swayimggalleryset_border_size): Set the border size for currently selected thumbnail
-  * [swayimg.gallery.set_border_color](#swayimggalleryset_border_color): Set border color for currently selected thumbnail
-  * [swayimg.gallery.set_selected_scale](#swayimggalleryset_selected_scale): Set the scale factor for currently selected thumbnail
-  * [swayimg.gallery.set_selected_color](#swayimggalleryset_selected_color): Set background color for currently selected thumbnail
-  * [swayimg.gallery.set_unselected_color](#swayimggalleryset_unselected_color): Set background color for unselected thumbnails
-  * [swayimg.gallery.set_window_color](#swayimggalleryset_window_color): Set window background color
-  * [swayimg.gallery.enable_hover](#swayimggalleryenable_hover): Enable or disable thumbnail selection on mouse hover
-  * [swayimg.gallery.limit_cache](#swayimggallerylimit_cache): Set max number of thumbnails stored in memory cache
-  * [swayimg.gallery.enable_preload](#swayimggalleryenable_preload): Enable or disable preloading invisible thumbnails
-  * [swayimg.gallery.enable_embedded_thumb](#swayimggalleryenable_embedded_thumb): Enable or disable using embedded thumbnails
-  * [swayimg.gallery.enable_pstore](#swayimggalleryenable_pstore): Enable or disable persistent storage for thumbnails
-  * [swayimg.gallery.set_pstore_path](#swayimggalleryset_pstore_path): Set custom path for persistent storage for thumbnails
-  * [swayimg.gallery.mark_image](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
-  * [swayimg.gallery.set_mark_color](#swayimggalleryset_mark_color): Set mark icon color
-  * [swayimg.gallery.set_pinch_factor](#swayimggalleryset_pinch_factor): Set the pinch gesture factor
-  * [swayimg.gallery.bind_reset](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
-  * [swayimg.gallery.on_key](#swayimggalleryon_key): Bind the key press event to a handler
-  * [swayimg.gallery.on_mouse](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
-  * [swayimg.gallery.on_signal](#swayimggalleryon_signal): Bind the signal event to a handler
-  * [swayimg.gallery.on_image_change](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.gallery.set_text](#swayimggalleryset_text): Set text layer scheme
+  * [swayimg.gallery.thumb_size](#swayimggallerythumb_size): Thumbnail size in pixels
+  * [swayimg.gallery.switch_image()](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
+  * [swayimg.gallery.select()](#swayimggalleryselect): Select the next thumbnail from the gallery
+  * [swayimg.gallery.select_at()](#swayimggalleryselect_at): Select the thumbnail at specified position
+  * [swayimg.gallery.select_path()](#swayimggalleryselect_path): Select the thumbnail by image path
+  * [swayimg.gallery.reload()](#swayimggalleryreload): Reload thumbnails
+  * [swayimg.gallery.get_image()](#swayimggalleryget_image): Get information about currently selected image entry
+  * [swayimg.gallery.set_aspect()](#swayimggalleryset_aspect): Set thumbnail aspect ratio
+  * [swayimg.gallery.get_thumb_size()](#swayimggalleryget_thumb_size): Get thumbnail size
+  * [swayimg.gallery.set_thumb_size()](#swayimggalleryset_thumb_size): Set thumbnail size
+  * [swayimg.gallery.set_padding_size()](#swayimggalleryset_padding_size): Set the padding size between thumbnails
+  * [swayimg.gallery.set_border_size()](#swayimggalleryset_border_size): Set the border size for currently selected thumbnail
+  * [swayimg.gallery.set_border_color()](#swayimggalleryset_border_color): Set border color for currently selected thumbnail
+  * [swayimg.gallery.set_selected_scale()](#swayimggalleryset_selected_scale): Set the scale factor for currently selected thumbnail
+  * [swayimg.gallery.set_selected_color()](#swayimggalleryset_selected_color): Set background color for currently selected thumbnail
+  * [swayimg.gallery.set_unselected_color()](#swayimggalleryset_unselected_color): Set background color for unselected thumbnails
+  * [swayimg.gallery.set_window_color()](#swayimggalleryset_window_color): Set window background color
+  * [swayimg.gallery.enable_hover()](#swayimggalleryenable_hover): Enable or disable thumbnail selection on mouse hover
+  * [swayimg.gallery.limit_cache()](#swayimggallerylimit_cache): Set max number of thumbnails stored in memory cache
+  * [swayimg.gallery.enable_preload()](#swayimggalleryenable_preload): Enable or disable preloading invisible thumbnails
+  * [swayimg.gallery.enable_embedded_thumb()](#swayimggalleryenable_embedded_thumb): Enable or disable using embedded thumbnails
+  * [swayimg.gallery.enable_pstore()](#swayimggalleryenable_pstore): Enable or disable persistent storage for thumbnails
+  * [swayimg.gallery.set_pstore_path()](#swayimggalleryset_pstore_path): Set custom path for persistent storage for thumbnails
+  * [swayimg.gallery.mark_image()](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
+  * [swayimg.gallery.set_mark_color()](#swayimggalleryset_mark_color): Set mark icon color
+  * [swayimg.gallery.set_pinch_factor()](#swayimggalleryset_pinch_factor): Set the pinch gesture factor
+  * [swayimg.gallery.bind_reset()](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
+  * [swayimg.gallery.on_key()](#swayimggalleryon_key): Bind the key press event to a handler
+  * [swayimg.gallery.on_mouse()](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
+  * [swayimg.gallery.on_signal()](#swayimggalleryon_signal): Bind the signal event to a handler
+  * [swayimg.gallery.on_image_change()](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
+  * [swayimg.gallery.set_text()](#swayimggalleryset_text): Set text layer scheme
 
 ## General functionality
+
+### swayimg.mode
+
+```lua
+swayimg.mode: appmode_t
+```
+
+Application mode.
+
+Since 5.5.
+
+Setting this field changes the current mode (viewer/slideshow/gallery).
+
+`appmode_t` - Application mode:
+* `"viewer"`: Image viewer mode
+* `"slideshow"`: Slide show mode
+* `"gallery"`: Gallery mode
+
+### swayimg.antialiasing
+
+```lua
+swayimg.antialiasing: boolean
+```
+
+Anti-aliasing mode.
+
+Since 5.5.
+
+### swayimg.fullscreen
+
+```lua
+swayimg.fullscreen: boolean
+```
+
+Full screen mode.
+
+Since 5.5.
+
+### swayimg.appid
+
+```lua
+swayimg.appid: string
+```
+
+Application Id.
+
+Since 5.5.
+
+This field can be set only at program startup.
 
 ### swayimg.exit
 
@@ -224,6 +284,10 @@ Switch to specified mode.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.mode` instead.
+
+See [swayimg.mode](#swayimgmode).
+
 @_param_ `mode` - Mode to activate
 
 `appmode_t` - Application mode:
@@ -240,6 +304,10 @@ swayimg.get_mode() -> appmode_t
 Get current mode.
 
 Since 5.0.
+
+WARNING: This function is deprecated, use `swayimg.mode` instead.
+
+See [swayimg.mode](#swayimgmode).
 
 @_return_ - Currently active mode
 
@@ -320,6 +388,10 @@ Enable/disable or toggle full screen mode.
 
 Since 5.2.
 
+WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
+
+See [swayimg.fullscreen](#swayimgfullscreen).
+
 @_param_ `enable` - Enable/disable full screen, empty to toggle
 
 ### swayimg.get_fullscreen
@@ -331,6 +403,10 @@ swayimg.get_fullscreen() -> boolean
 Get current full screen mode status.
 
 Since 5.2.
+
+WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
+
+See [swayimg.fullscreen](#swayimgfullscreen).
 
 @_return_ - True if full screen is enabled
 
@@ -381,6 +457,10 @@ swayimg.enable_antialiasing(enable?: boolean)
 Enable or disable antialiasing.
 
 Since 5.0.
+
+WARNING: This function is deprecated, use `swayimg.antialiasing` instead.
+
+See [swayimg.antialiasing](#swayimgantialiasing).
 
 @_param_ `enable` - Enable/disable antialiasing, empty to toggle
 
@@ -459,7 +539,9 @@ Set application Id, default is `swayimg`.
 
 Since 5.3.
 
-This function can only be called at program startup.
+WARNING: This function is deprecated, use `swayimg.appid` instead.
+
+See [swayimg.appid](#swayimgappid).
 
 @_param_ `appid` - Application ID
 
@@ -473,6 +555,9 @@ Get application Id.
 
 Since 5.3.
 
+WARNING: This function is deprecated, use `swayimg.appid` instead.
+
+See [swayimg.appid](#swayimgappid).
 
 @_return_ - Application ID
 
@@ -491,6 +576,64 @@ This function can only be called at program startup.
 @_param_ `button` - Mouse button used for drag-n-drop, for example `MouseRight`
 
 ## Image list
+
+### swayimg.imagelist.order
+
+```lua
+swayimg.imagelist.order: order_t
+```
+
+Sort order of the image list.
+
+Since 5.5.
+
+`order_t` - Image list order:
+* `"none"`: Unsorted (system-dependent)
+* `"alpha"`: Lexicographic sort: 1,10,2,20,a,b,c
+* `"numeric"`: Numeric sort: 1,2,3,10,100,a,b,c
+* `"mtime"`: Modification time sort
+* `"size"`: Size sort
+* `"random"`: Random order
+
+### swayimg.imagelist.reverse
+
+```lua
+swayimg.imagelist.reverse: boolean
+```
+
+Reverse the image list order.
+
+Since 5.5.
+
+### swayimg.imagelist.recursive
+
+```lua
+swayimg.imagelist.recursive: boolean
+```
+
+Recursive directory reading.
+
+Since 5.5.
+
+### swayimg.imagelist.adjacent
+
+```lua
+swayimg.imagelist.adjacent: boolean
+```
+
+Adding adjacent files from the same directory.
+
+Since 5.5.
+
+### swayimg.imagelist.fsmon
+
+```lua
+swayimg.imagelist.fsmon: boolean
+```
+
+File system monitoring.
+
+Since 5.5.
 
 ### swayimg.imagelist.size
 
@@ -560,6 +703,10 @@ Set sort order of the image list.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.imagelist.order` instead.
+
+See [swayimg.imagelist.order](#swayimgimagelistorder).
+
 @_param_ `order` - List order
 
 `order_t` - Image list order:
@@ -580,6 +727,10 @@ Enable or disable reverse order.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.imagelist.reverse` instead.
+
+See [swayimg.imagelist.reverse](#swayimgimagelistreverse).
+
 @_param_ `enable` - Enable/disable reverse order
 
 ### swayimg.imagelist.enable_recursive
@@ -591,6 +742,10 @@ swayimg.imagelist.enable_recursive(enable: boolean)
 Enable or disable recursive directory reading.
 
 Since 5.0.
+
+WARNING: This function is deprecated, use `swayimg.imagelist.recursive` instead.
+
+See [swayimg.imagelist.recursive](#swayimgimagelistrecursive).
 
 @_param_ `enable` - Enable/disable recursive mode
 
@@ -604,6 +759,10 @@ Enable or disable adding adjacent files from the same directory.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.imagelist.adjacent` instead.
+
+See [swayimg.imagelist.adjacent](#swayimgimagelistadjacent).
+
 @_param_ `enable` - Enable/disable adding adjacent files
 
 ### swayimg.imagelist.enable_fsmon
@@ -616,9 +775,23 @@ Enable or disable file system monitoring.
 
 Since 5.1.
 
+WARNING: This function is deprecated, use `swayimg.imagelist.fsmon` instead.
+
+See [swayimg.imagelist.fsmon](#swayimgimagelistfsmon).
+
 @_param_ `enable` - Enable/disable FS monitor
 
 ## Text overlay layer
+
+### swayimg.text.visible
+
+```lua
+swayimg.text.visible: boolean
+```
+
+Text overlay state.
+
+Since 5.5.
 
 ### swayimg.text.show
 
@@ -632,7 +805,11 @@ Since 5.0.
 
 This function restarts the timer.
 
-See [swayimg.text.set_timeout](#swayimgtextset_timeout).
+WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+
+See [swayimg.text.visible](#swayimgtextvisible).
+
+See [swayimg.text.set_timer](#swayimgtextset_timer).
 
 ### swayimg.text.hide
 
@@ -644,6 +821,10 @@ Hide the text layer.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+
+See [swayimg.text.visible](#swayimgtextvisible).
+
 ### swayimg.text.visible
 
 ```lua
@@ -653,6 +834,10 @@ swayimg.text.visible() -> boolean
 Check if text layer is visible.
 
 Since 5.0.
+
+WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
+
+See [swayimg.text.visible](#swayimgtextvisible).
 
 @_return_ - `true` if text layer is visible
 
@@ -2122,6 +2307,16 @@ Example: `Path to image:\t{path}`
 
 ## Gallery mode
 
+### swayimg.gallery.thumb_size
+
+```lua
+swayimg.gallery.thumb_size: integer
+```
+
+Thumbnail size in pixels.
+
+Since 5.5.
+
 ### swayimg.gallery.switch_image
 
 ```lua
@@ -2251,6 +2446,10 @@ Get thumbnail size.
 
 Since 5.0.
 
+WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
+
+See [swayimg.gallery.thumb_size](#swayimggallerythumb_size).
+
 @_return_ - Thumbnail size in pixels
 
 ### swayimg.gallery.set_thumb_size
@@ -2262,6 +2461,10 @@ swayimg.gallery.set_thumb_size(size: integer)
 Set thumbnail size.
 
 Since 5.0.
+
+WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
+
+See [swayimg.gallery.thumb_size](#swayimggallerythumb_size).
 
 @_param_ `size` - Thumbnail size in pixels
 

@@ -98,6 +98,12 @@ public:
     void set_reverse(const bool enable);
 
     /**
+     * Get image list reverse mode.
+     * @return reverse mode of the image list
+     */
+    bool get_reverse() const { return reverse; }
+
+    /**
      * Find image entry by source path.
      * @param path path to the file or special source
      * @return image entry or nullptr if entry not found

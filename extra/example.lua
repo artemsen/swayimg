@@ -10,8 +10,8 @@
 --------------------------------------------------------------------------------
 -- General config
 --------------------------------------------------------------------------------
-swayimg.set_mode("viewer")                -- mode at startup
-swayimg.enable_antialiasing(true)         -- anti-aliasing
+swayimg.mode = "viewer"                   -- mode at startup
+swayimg.antialiasing = true               -- anti-aliasing
 swayimg.enable_decoration(true)           -- window title/buttons/borders
 swayimg.enable_overlay(false)             -- window overlay mode
 swayimg.enable_exif_orientation(true)     -- image orientation by EXIF
@@ -23,15 +23,16 @@ swayimg.set_format_params('raw', { camera_wb = true }) -- use camera white balan
 --------------------------------------------------------------------------------
 -- Image list configuration
 --------------------------------------------------------------------------------
-swayimg.imagelist.set_order("numeric")    -- list order
-swayimg.imagelist.enable_reverse(false)   -- reverse order
-swayimg.imagelist.enable_recursive(false) -- recursive directory reading
-swayimg.imagelist.enable_adjacent(false)  -- add adjacent files from same dir
-swayimg.imagelist.enable_fsmon(true)      -- enable file system monitoring
+swayimg.imagelist.order = "numeric"        -- list order
+swayimg.imagelist.reverse = false          -- reverse order
+swayimg.imagelist.recursive = false        -- recursive directory reading
+swayimg.imagelist.adjacent = false         -- add adjacent files from same dir
+swayimg.imagelist.fsmon = true             -- enable file system monitoring
 
 --------------------------------------------------------------------------------
 -- Text overlay configuration
 --------------------------------------------------------------------------------
+swayimg.text.visible = true               -- overlay visible state
 swayimg.text.set_font("monospace")        -- font name
 swayimg.text.set_size(24)                 -- font size in pixels
 swayimg.text.set_spacing(0)               -- line spacing
@@ -80,11 +81,11 @@ end)
 
 -- switch to gallery mode
 swayimg.viewer.on_key("Return", function()
-  swayimg.set_mode("gallery")
+  swayimg.mode = "gallery"
 end)
 -- switch to slide show mode
 swayimg.viewer.on_key("s", function()
-  swayimg.set_mode("slideshow")
+  swayimg.mode = "slideshow"
 end)
 
 -- show/hide text overlay
@@ -111,12 +112,12 @@ end)
 
 -- toggle fullscreen
 swayimg.viewer.on_key("f", function()
-  swayimg.set_fullscreen()
+  swayimg.fullscreen = not swayimg.fullscreen
 end)
 
 -- toggle anti-aliasing
 swayimg.viewer.on_key("a", function()
-  swayimg.enable_antialiasing()
+  swayimg.antialiasing = not swayimg.antialiasing
 end)
 
 -- rotate image
@@ -226,15 +227,15 @@ swayimg.slideshow.set_text("topleft", { "{name}" }) -- top left text block schem
 
 -- switch to viewer mode
 swayimg.slideshow.on_key("s", function()
-  swayimg.set_mode("viewer")
+  swayimg.mode = "viewer"
 end)
 
 
 --------------------------------------------------------------------------------
 -- Gallery mode
 --------------------------------------------------------------------------------
+swayimg.gallery.thumb_size = 200                    -- thumbnail size in pixels
 swayimg.gallery.set_aspect("fill")                  -- thumbnail aspect ratio
-swayimg.gallery.set_thumb_size(200)                 -- thumbnail size in pixels
 swayimg.gallery.set_padding_size(5)                 -- padding between thumbnails
 swayimg.gallery.set_border_size(5)                  -- border size for selected thumbnail
 swayimg.gallery.set_border_color(0xffaaaaaa)        -- border color for selected thumbnail
@@ -262,11 +263,11 @@ end)
 
 -- switch to viewer mode
 swayimg.gallery.on_key("Return", function()
-  swayimg.set_mode("viewer")
+  swayimg.mode = "viewer"
 end)
 -- switch to slide show mode
 swayimg.gallery.on_key("s", function()
-  swayimg.set_mode("slideshow")
+  swayimg.mode = "slideshow"
 end)
 
 -- show/hide text overlay
@@ -293,12 +294,12 @@ end)
 
 -- toggle fullscreen
 swayimg.gallery.on_key("f", function()
-  swayimg.set_fullscreen()
+  swayimg.fullscreen = not swayimg.fullscreen
 end)
 
 -- toggle anti-aliasing
 swayimg.gallery.on_key("a", function()
-  swayimg.enable_antialiasing()
+  swayimg.antialiasing = not swayimg.antialiasing
 end)
 
 -- thumbnail zoom in/out

@@ -353,10 +353,14 @@ def print_md(classes: list[LuaClass], aliases: list[LuaAlias]):
     for name in visible_classes:
         lclass = classes[name]
         print(f'* {lclass.title}')
+        for field in lclass.fields:
+            full_name = f'{name}.{field.name}'
+            anchor = full_name.replace('.', '')
+            print(f'  * [{full_name}](#{anchor}): {field.title}')
         for func in lclass.functions:
             full_name = f'{name}.{func.name}'
             anchor = full_name.replace('.', '')
-            print(f'  * [{full_name}](#{anchor}): {func.title}')
+            print(f'  * [{full_name}()](#{anchor}): {func.title}')
     # api description
     for name in visible_classes:
         lclass = classes[name]
