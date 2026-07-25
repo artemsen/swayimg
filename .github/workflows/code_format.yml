@@ -24,7 +24,17 @@ jobs:
         --workdir=$PWD
         swayimg
 
-    - name: Code format
+    - name: Check source code format
       run: >
         docker exec swayimg
         clang-format --Werror --dry-run src/*.cpp src/*.hpp src/formats/* test/*.cpp
+
+    - name: Check Lua doc
+      run: |
+        docker exec swayimg extra/lua2md.py extra/swayimg.lua > /tmp/CONFIG.md
+        cmp /tmp/CONFIG.md CONFIG.md || { echo "CONFIG.md doesn't match extra/swayimg.lua"; exit 1; }
+
+    - name: Check man doc
+      run: |
+        docker exec swayimg extra/md2man.py USAGE.md > /tmp/swayimg.1
+        cmp /tmp/swayimg.1 extra/swayimg.1 || { echo "extra/swayimg.1 doesn't match USAGE.md"; exit 1; }
