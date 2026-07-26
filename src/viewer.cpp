@@ -93,7 +93,8 @@ bool Viewer::open(const ImageList::Dir dir)
         }
 
         if (image && next == image->entry) {
-            next = nullptr; // same image
+            next = nullptr;
+            break; // same image
         }
         if (!next) {
             break; // no next image
@@ -102,8 +103,9 @@ bool Viewer::open(const ImageList::Dir dir)
             break; // new image loaded
         }
 
-        il.remove(next);
+        const ImageEntryPtr remove = next;
         next = il.get(next, dir);
+        il.remove(remove);
     }
 
     return !!next;
