@@ -26,10 +26,10 @@ The program searches for the config file in the following locations:
 
 Config example:
 ```lua
-swayimg.text.set_size(32)
-swayimg.text.set_foreground(0xffff0000)
+swayimg.text.size = 32
+swayimg.text.color = 0xffff0000
 
-swayimg.viewer.set_default_scale("fill")
+swayimg.viewer.default_scale = "fill"
 
 swayimg.gallery.on_key("Delete", function()
   local image = swayimg.gallery.get_image()
@@ -162,15 +162,17 @@ class LuaField:
         if self.title.endswith('.'):
             self.title = self.title[:-1]
 
-    def to_markdown(self, classname: str, aliases: dict[LuaAlias]):
+    def to_markdown(self, classname: str, aliases: dict[str, LuaAlias]):
         """Convert field description to markdown format."""
         markdown = f'### {classname}.{self.name}\n\n'
         markdown += f'```lua\n{classname}.{self.name}: {self.luatype}\n```\n\n'
         markdown += f'{self.title}.'
         if self.description:
             markdown += f'\n\n{self.description}'
-        if self.luatype in aliases:
-            markdown += f'\n\n{aliases[self.luatype].to_markdown()}'
+        names = re.sub(r'[\[\]]', '', self.luatype).split('|')
+        aliases = [aliases[name] for name in names if name in aliases]
+        if aliases:
+            markdown += '\n\n' + '\n'.join(a.to_markdown() for a in aliases)
         return markdown
 
     @staticmethod

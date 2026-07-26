@@ -10,6 +10,30 @@
 #include <cstdlib>
 #include <cstring>
 
+namespace {
+/**
+ * Open next frame of the currently displayed image.
+ * @param mode viewer instance
+ * @param forward direction of nearest frame
+ */
+void next_frame(Viewer* mode, const bool forward)
+{
+    const ImagePtr image = mode->current_image();
+    const size_t frames = image ? image->frames.size() : 0;
+    if (frames <= 1) {
+        return;
+    }
+    size_t frame = mode->get_frame();
+    if (forward) {
+        frame = frame + 1 < frames ? frame + 1 : 0;
+    } else {
+        frame = frame > 0 ? frame - 1 : frames - 1;
+    }
+    mode->enable_animation(false);
+    mode->set_frame(frame);
+}
+} // anonymous namespace
+
 void Defaults::viewer::bind_inputs(Viewer* mode)
 {
     // general management
@@ -106,25 +130,21 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
     // next/prev frame
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_Next, .mods = KEYMOD_SHIFT }, [mode]() {
-            mode->enable_animation(false);
-            mode->next_frame();
+            next_frame(mode, true);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_SHIFT },
         [mode]() {
-            mode->enable_animation(false);
-            mode->next_frame();
+            next_frame(mode, true);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_SHIFT }, [mode]() {
-            mode->enable_animation(false);
-            mode->prev_frame();
+            next_frame(mode, false);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_SHIFT },
         [mode]() {
-            mode->enable_animation(false);
-            mode->prev_frame();
+            next_frame(mode, false);
         });
 
     // scale

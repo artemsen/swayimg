@@ -118,10 +118,13 @@ void Text::set_shadow(const argb_t& color)
 
 void Text::set_overall_timer(const size_t timeout)
 {
-    overall_tm.show = true;
     overall_tm.delay = timeout;
-    overall_tm.fd.reset(overall_tm.delay, 0);
-    Application::redraw();
+
+    if (enable) {
+        overall_tm.show = true;
+        overall_tm.fd.reset(overall_tm.delay, 0);
+        Application::redraw();
+    }
 }
 
 void Text::set_status_timer(const size_t timeout)

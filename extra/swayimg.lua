@@ -86,6 +86,18 @@
 ---| "bottomleft"   # Bottom left corner of the window
 ---| "bottomright"  # Bottom right corner of the window
 
+---Mouse buttons.
+---@alias mbutton_t
+---| "MouseLeft"    # Left mouse button
+---| "MouseRight"   # Right mouse button
+---| "MouseMiddle"  # Middle mouse button
+---| "MouseSide"    # Side mouse button
+---| "MouseExtra"   # Extra mouse button
+---| "ScrollUp"     # Scroll up
+---| "ScrollDown"   # Scroll down
+---| "ScrollLeft"   # Scroll left
+---| "ScrollRight"  # Scroll right
+
 ---Template for text overlay line.
 ---The template includes text and fields surrounded by curly braces.
 ---The following fields are supported:
@@ -153,10 +165,40 @@
 ---Since 5.5.
 ---@field fullscreen boolean
 ---
+---Window title.
+---Since 5.5.
+---Write-only field.
+---@field title string
+---
 ---Application Id.
 ---Since 5.5.
 ---This field can be set only at program startup.
 ---@field appid string
+---
+---Automatic orientation based on EXIF.
+---Since 5.5.
+---Write-only field.
+---@field exif_orientation boolean
+---
+---Window decoration (title, border, buttons).
+---Since 5.5.
+---Write-only field which can be set at startup.
+---Applicable only in Wayland, the corresponding protocol must be supported by the composer.
+---By default disabled in Sway and enabled in other compositors.
+---@field decoration boolean
+---
+---Window overlay mode.
+---Since 5.5.
+---Write-only field which can be set at startup.
+---Create a floating window with the same coordinates and size as the currently focused window.
+---Applicable only in Wayland, the corresponding protocol must be supported by the composer.
+---By default enabled in Sway and disabled in other compositors.
+---@field overlay boolean
+---
+---Mouse button used for drag-and-drop image file to external apps.
+---Since 5.5.
+---Write-only field which can be set at startup.
+---@field dnd_button mbutton_t
 ---
 swayimg = {}
 
@@ -164,29 +206,6 @@ swayimg = {}
 ---Since 5.0.
 ---@param code? integer Program exit code, `0` by default
 function swayimg.exit(code) end
-
----Switch to specified mode.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.mode` instead.
----@deprecated
----@see swayimg.mode
----@param mode appmode_t Mode to activate
-function swayimg.set_mode(mode) end
-
----Get current mode.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.mode` instead.
----@deprecated
----@see swayimg.mode
----@return appmode_t # Currently active mode
-function swayimg.get_mode() end
-
----Set title for main application window.
----Since 5.0.
----@param title string Window title text
-function swayimg.set_title(title) end
 
 ---Get application window size.
 ---Since 5.0.
@@ -209,24 +228,6 @@ function swayimg.on_window_resize(fn) end
 ---@return { x :integer, y: integer } # Coordinates of the mouse pointer
 function swayimg.get_mouse_pos() end
 
----Enable/disable or toggle full screen mode.
----Since 5.2.
----
----WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
----@deprecated
----@see swayimg.fullscreen
----@param enable? boolean Enable/disable full screen, empty to toggle
-function swayimg.set_fullscreen(enable) end
-
----Get current full screen mode status.
----Since 5.2.
----
----WARNING: This function is deprecated, use `swayimg.fullscreen` instead.
----@deprecated
----@see swayimg.fullscreen
----@return boolean # True if full screen is enabled
-function swayimg.get_fullscreen() end
-
 ---Set a callback function called when all subsystems have been initialized.
 ---Since 5.0.
 ---@param fn function Initialization completion notification handler
@@ -243,20 +244,6 @@ function swayimg.on_redrawn(fn) end
 ---@param fn function Function to execute
 function swayimg.defer(seconds, fn) end
 
----Enable or disable antialiasing.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.antialiasing` instead.
----@deprecated
----@see swayimg.antialiasing
----@param enable? boolean Enable/disable antialiasing, empty to toggle
-function swayimg.enable_antialiasing(enable) end
-
----Enable or disable changing orientation based on EXIF.
----Since 5.1.
----@param enable boolean Enable/disable orientation change
-function swayimg.enable_exif_orientation(enable) end
-
 ---Setting format parameters.
 ---Since 5.3.
 ---
@@ -267,56 +254,15 @@ function swayimg.enable_exif_orientation(enable) end
 ---@param params table Table of parameters (e.g. `{ camera_wb = true }`)
 function swayimg.set_format_params(name, params) end
 
----Enable or disable window decoration (title, border, buttons).
----Since 5.0.
----
----This function can only be called at program startup.
----Applicable only in Wayland, the corresponding protocol must be supported by
----the composer.
----By default disabled in Sway and enabled in other compositors.
----@param enable boolean Enable/disable window decoration
-function swayimg.enable_decoration(enable) end
-
----Enable or disable window overlay mode.
----Since 5.0.
----
----Create a floating window with the same coordinates and size as the currently
----focused window.
----This function can only be called at program startup.
----Applicable only in Sway and Hyprland compositors.
----By default enabled in Sway and disabled in other compositors.
----@param enable boolean Enable/disable overlay mode
-function swayimg.enable_overlay(enable) end
-
----Set application Id, default is `swayimg`.
----Since 5.3.
----
----WARNING: This function is deprecated, use `swayimg.appid` instead.
----@deprecated
----@see swayimg.appid
----@param appid string Application ID
-function swayimg.set_appid(appid) end
-
----Get application Id.
----Since 5.3.
----
----WARNING: This function is deprecated, use `swayimg.appid` instead.
----@deprecated
----@see swayimg.appid
----@return string # Application ID
-function swayimg.get_appid() end
-
----Set mouse button used for drag-and-drop image file to external apps.
----Since 5.0.
----
----This function can only be called at program startup.
----@param button string Mouse button used for drag-n-drop, for example `MouseRight`
-function swayimg.set_dnd_button(button) end
-
 --------------------------------------------------------------------------------
 
 ---Image list.
 ---@class swayimg.imagelist
+---
+---Total number of entries in the image list.
+---Since 5.5.
+---Read-only field.
+---@field size integer
 ---
 ---Sort order of the image list.
 ---Since 5.5.
@@ -340,11 +286,6 @@ function swayimg.set_dnd_button(button) end
 ---
 swayimg.imagelist = {}
 
----Get number of entries in the image list.
----Since 5.0.
----@return integer # Size of the image list
-function swayimg.imagelist.size() end
-
 ---Get list of all entries in the image list.
 ---Since 5.0.
 ---@return swayimg.entry[] # Array with all file entries
@@ -364,51 +305,6 @@ function swayimg.imagelist.remove(paths) end
 ---Since 5.3.
 function swayimg.imagelist.clear() end
 
----Set sort order of the image list.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.imagelist.order` instead.
----@deprecated
----@see swayimg.imagelist.order
----@param order order_t List order
-function swayimg.imagelist.set_order(order) end
-
----Enable or disable reverse order.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.imagelist.reverse` instead.
----@deprecated
----@see swayimg.imagelist.reverse
----@param enable boolean Enable/disable reverse order
-function swayimg.imagelist.enable_reverse(enable) end
-
----Enable or disable recursive directory reading.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.imagelist.recursive` instead.
----@deprecated
----@see swayimg.imagelist.recursive
----@param enable boolean Enable/disable recursive mode
-function swayimg.imagelist.enable_recursive(enable) end
-
----Enable or disable adding adjacent files from the same directory.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.imagelist.adjacent` instead.
----@deprecated
----@see swayimg.imagelist.adjacent
----@param enable boolean Enable/disable adding adjacent files
-function swayimg.imagelist.enable_adjacent(enable) end
-
----Enable or disable file system monitoring.
----Since 5.1.
----
----WARNING: This function is deprecated, use `swayimg.imagelist.fsmon` instead.
----@deprecated
----@see swayimg.imagelist.fsmon
----@param enable boolean Enable/disable FS monitor
-function swayimg.imagelist.enable_fsmon(enable) end
-
 --------------------------------------------------------------------------------
 
 ---Text overlay layer.
@@ -418,118 +314,81 @@ function swayimg.imagelist.enable_fsmon(enable) end
 ---Since 5.5.
 ---@field visible boolean
 ---
-swayimg.text = {}
-
----Force show the text layer.
----Since 5.0.
+---Font name.
+---Since 5.5.
+---Write-only field.
+---@field font string
 ---
----This function restarts the timer.
+---Font size in pixels.
+---Since 5.5.
+---Write-only field.
+---@field size integer
 ---
----WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
----@deprecated
----@see swayimg.text.visible
----@see swayimg.text.set_timer
-function swayimg.text.show() end
-
----Hide the text layer.
----Since 5.0.
+---Line spacing in pixels.
+---Since 5.5.
+---Write-only field.
+---@field spacing integer
 ---
----WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
----@deprecated
----@see swayimg.text.visible
-function swayimg.text.hide() end
-
----Check if text layer is visible.
----Since 5.0.
+---Padding from the window edges in pixels.
+---Since 5.5.
+---This is write-only field.
+---@field padding integer
 ---
----WARNING: This function is deprecated, use `swayimg.text.visible` field instead.
----@deprecated
----@see swayimg.text.visible
----@return boolean # `true` if text layer is visible
-function swayimg.text.visible() end
-
----Set font face.
----Since 5.0.
----@param name string Font name
-function swayimg.text.set_font(name) end
-
----Set font size.
----Since 5.0.
----@param size integer Font size in pixels
-function swayimg.text.set_size(size) end
-
----Set line spacing.
----Since 5.0.
----@param size integer Line spacing in pixels, can be negative
-function swayimg.text.set_spacing(size) end
-
----Set the padding from the window edges.
----Since 5.0.
----@param size integer Padding size in pixels
-function swayimg.text.set_padding(size) end
-
----Set foreground text color.
----Since 5.0.
----@param color color_t Foreground text color
-function swayimg.text.set_foreground(color) end
-
----Set background text color.
----Since 5.0.
----@param color color_t Background text color
-function swayimg.text.set_background(color) end
-
----Set shadow text color.
----Since 5.0.
+---Foreground text color.
+---Since 5.5.
+---Write-only field.
+---@field color color_t
 ---
+---Background text color.
+---Since 5.5.
+---Write-only field.
+---@field background color_t
+---
+---Shadow text color.
+---Since 5.5.
+---Write-only field.
 ---Setting alpha channel to `0` disables shadows.
----@param color color_t Shadow text color
-function swayimg.text.set_shadow(color) end
-
----Set a timeout after which the entire text layer will be hidden.
----Since 5.0.
+---@field shadow color_t
 ---
----Setting the timeout value to `0` disables the timer and causes the overlay
----to be displayed continuously.
----@param seconds number Timeout in seconds
-function swayimg.text.set_timeout(seconds) end
-
----Set a timeout after which the status message will be hidden.
----Since 5.0.
+---Timeout in seconds after which the entire text layer will be hidden.
+---Since 5.5.
+---Write-only field.
+---@field timeout number
 ---
----Setting the timeout value to `0` disables the timer and causes the status
----message to be displayed continuously.
----@see swayimg.text.set_status
----@param seconds number Timeout in seconds
-function swayimg.text.set_status_timeout(seconds) end
-
----Show status message.
----Since 5.0.
+---Timeout in seconds after which the status message will be hidden.
+---Since 5.5.
+---Write-only field.
+---@field status_timeout number
 ---
----Multi-line text is separated by `\n`.
----@see swayimg.text.set_status_timer
----@param status string Status text to show
-function swayimg.text.set_status(status) end
+---Status message.
+---Since 5.5.
+---Write-only field.
+---Multi-line text should be separated by new line character `\n`.
+---@field status string
+---
+swayimg.text = {}
 
 --------------------------------------------------------------------------------
 
 ---Base application mode.
 ---@class swayimg_appmode
+---
+---Mark icon color.
+---Since 5.5.
+---Write-only field.
+---@field mark_color color_t
+---
+---Pinch gesture factor.
+---Since 5.5.
+---Write-only field.
+---@field pinch_factor number
+---
 local swayimg_appmode = {}
 
 ---Set, clear or toggle mark for currently viewed/selected image.
 ---Since 5.0.
 ---@param state? boolean Mark state to set, toggle if the state is not specified
 function swayimg_appmode.mark_image(state) end
-
----Set mark icon color.
----Since 5.0.
----@param color color_t Mark icon color
-function swayimg_appmode.set_mark_color(color) end
-
----Set the pinch gesture factor.
----Since 5.2.
----@param factor number Pinch gesture factor
-function swayimg_appmode.set_pinch_factor(factor) end
 
 ---Remove all existing key/mouse/signal bindings.
 ---Since 5.0.
@@ -543,7 +402,7 @@ function swayimg_appmode.on_key(key, fn) end
 
 ---Bind the mouse button press event to a handler.
 ---Since 5.0.
----@param button string Button description, for example `Ctrl-Alt-MouseRight`
+---@param button mbutton_t Button description, for example `Ctrl-Alt-MouseRight`
 ---@param fn function Button press handler
 function swayimg_appmode.on_mouse(button, fn) end
 
@@ -568,6 +427,55 @@ function swayimg_appmode.set_text(pos, scheme) end
 
 ---Viewer mode.
 ---@class swayimg.viewer : swayimg_appmode
+---
+---Absolute scale value (1.0 = 100%).
+---Since 5.5.
+---@field scale number
+---
+---Default image scale for newly opened images.
+---Since 5.5.
+---Write-only field.
+---@field default_scale number|fixed_scale_t
+---
+---Default image position for newly opened images.
+---Since 5.5.
+---Write-only field.
+---@field default_position fixed_position_t
+---
+---Stop/resume and get animation status.
+---Since 5.5.
+---@field animation boolean
+---
+---Currently displayed frame number.
+---Since 5.5.
+---Setting this field stops animation.
+---@field frame integer
+---
+---Mouse button used for drag image around the window.
+---Since 5.5.
+---Write-only field.
+---@field drag_button mbutton_t
+---
+---Automatic image centering.
+---Since 5.5.
+---Write-only field.
+---@field autocenter boolean
+---
+---Image list loop mode.
+---Since 5.5.
+---Write-only field.
+---@field loop boolean
+---
+---Max number of images to preload in background thread.
+---Since 5.5.
+---Write-only field.
+---@field preload integer
+---
+---Max number of previously viewed images stored in the cache.
+---Since 5.5.
+---Write-only field.
+---@field history integer
+---
 swayimg.viewer = {}
 
 ---Open the next file in the specified direction.
@@ -608,11 +516,6 @@ function swayimg.viewer.reload() end
 ---@see swayimg.viewer.set_default_position
 function swayimg.viewer.reset() end
 
----Get current image scale.
----Since 5.0.
----@return number # Absolute scale value (1.0 = 100%)
-function swayimg.viewer.get_scale() end
-
 ---Set absolute image scale.
 ---Since 5.0.
 ---@param scale number Absolute value (1.0 = 100%)
@@ -624,11 +527,6 @@ function swayimg.viewer.set_abs_scale(scale, x, y) end
 ---Since 5.0.
 ---@param scale fixed_scale_t Fixed scale name
 function swayimg.viewer.set_fix_scale(scale) end
-
----Set default image scale for newly opened images.
----Since 5.0.
----@param scale number|fixed_scale_t Absolute value (1.0 = 100%) or one the predefined names
-function swayimg.viewer.set_default_scale(scale) end
 
 ---Get image position.
 ---Since 5.0.
@@ -645,51 +543,6 @@ function swayimg.viewer.set_abs_position(x, y) end
 ---Since 5.0.
 ---@param pos fixed_position_t Fixed image position
 function swayimg.viewer.set_fix_position(pos) end
-
----Set default image position for newly opened images.
----Since 5.0.
----@param pos fixed_position_t Fixed image position
-function swayimg.viewer.set_default_position(pos) end
-
----Show next frame from multi-frame image (animation).
----Since 5.0.
----
----This function stops the animation.
----@return integer # Index of the currently shown frame
-function swayimg.viewer.next_frame() end
-
----Show previous frame from multi-frame image (animation).
----Since 5.0.
----
----This function stops the animation.
----@return integer # Index of the currently shown frame
-function swayimg.viewer.prev_frame() end
-
----Stop/resume animation.
----Since 5.2.
----@param enable? boolean Enable/disable animation, empty to toggle
-function swayimg.viewer.set_animation(enable) end
-
----Get current status of animation.
----Since 5.2.
----@return boolean # true if animation is running
-function swayimg.viewer.get_animation() end
-
----Stop animation.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
----@see swayimg.viewer.set_animation
----@deprecated
-function swayimg.viewer.animation_stop() end
-
----Resume animation.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.viewer.set_animation` instead.
----@see swayimg.viewer.set_animation
----@deprecated
-function swayimg.viewer.animation_resume() end
 
 ---Flip image vertically.
 ---Since 5.0.
@@ -715,12 +568,7 @@ function swayimg.viewer.export(path) end
 ---@param value string Meta value, empty value to remove the record
 function swayimg.viewer.set_meta(key, value) end
 
----Set the mouse button used to drag the image around the window.
----Since 5.0.
----@param button string Mouse button name, for example `MouseLeft`
-function swayimg.viewer.set_drag_button(button) end
-
----Set window background color and mode.
+---Set window background color or extension mode.
 ---Since 5.0.
 ---@param bkg color_t|bkgmode_t Solid color or one of the predefined mode
 function swayimg.viewer.set_window_background(bkg) end
@@ -741,36 +589,16 @@ function swayimg.viewer.set_image_background(color) end
 ---@param color2 color_t Second color
 function swayimg.viewer.set_image_chessboard(size, color1, color2) end
 
----Enable or disable automatic image centering.
----Since 5.0.
----@param enable boolean Enable/disable automatic image centering
-function swayimg.viewer.enable_centering(enable) end
-
----Enable or disable image list loop mode.
----Since 5.0.
----@param enable boolean Enable/disable flag to set
-function swayimg.viewer.enable_loop(enable) end
-
----Set max number of images to preload in background thread.
----Since 5.0.
----@param size integer Number of images to preload
-function swayimg.viewer.limit_preload(size) end
-
----Set max number of previously viewed images stored in the cache.
----Since 5.0.
----@param size integer Number of images to store
-function swayimg.viewer.limit_history(size) end
-
 --------------------------------------------------------------------------------
 
 ---Slide show mode.
 ---@class swayimg.slideshow : swayimg.viewer
+---
+---Timeout in seconds after which next image should be opened.
+---Since 5.5.
+---@field timeout number
+---
 swayimg.slideshow = {}
-
----Set a timeout after which next image should be opened.
----Since 5.0.
----@param seconds number Timeout in seconds (can be fractional)
-function swayimg.slideshow.set_timeout(seconds) end
 
 --------------------------------------------------------------------------------
 
@@ -780,6 +608,77 @@ function swayimg.slideshow.set_timeout(seconds) end
 ---Thumbnail size in pixels.
 ---Since 5.5.
 ---@field thumb_size integer
+---
+---Thumbnail aspect ratio.
+---Since 5.5.
+---Write-only field.
+---@field aspect aspect_t
+---
+---Padding size in pixels between thumbnails.
+---Since 5.5.
+---Write-only field.
+---@field padding_size integer
+---
+---Border size in pixels for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field border_size integer
+---
+---Border color for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field border_color color_t
+---
+---Scale factor for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field selected_scale number
+---
+---Background color for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field selected_color color_t
+---
+---Background color for unselected thumbnails.
+---Since 5.5.
+---Write-only field.
+---@field unselected_color color_t
+---
+---Set window background color.
+---Since 5.5.
+---Write-only field.
+---@field window_color color_t Background color
+---
+---Change current thumbnail on mouse hover.
+---Since 5.5.
+---Write-only field.
+---@field hover boolean
+---
+---Max number of invisible thumbnails stored in memory cache.
+---Since 5.5.
+---Write-only field.
+---@field cache integer
+---
+---Preload invisible thumbnails.
+---Since 5.5.
+---Write-only field.
+---The program preloads thumbnails into the cache up to the amount specified in the `cache` field.
+---@field preload boolean
+---
+---Use embedded thumbnails.
+---Since 5.5.
+---Currently only applicable to RAW images.
+---@field embedded_thumb boolean
+---
+---Use persistent storage for thumbnails.
+---Since 5.5.
+---Write-only field.
+---@field pstore boolean
+---
+---Path for thumbnails persistent storage.
+---Since 5.5.
+---Write-only field.
+---@field pstore_path string
 ---
 swayimg.gallery = {}
 
@@ -819,93 +718,3 @@ function swayimg.gallery.reload() end
 ---Since 5.0.
 ---@return swayimg.entry|nil # Currently selected image entry
 function swayimg.gallery.get_image() end
-
----Set thumbnail aspect ratio.
----Since 5.0.
----@param aspect aspect_t Thumbnail aspect ratio
-function swayimg.gallery.set_aspect(aspect) end
-
----Get thumbnail size.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
----@deprecated
----@see swayimg.gallery.thumb_size
----@return integer # Thumbnail size in pixels
-function swayimg.gallery.get_thumb_size() end
-
----Set thumbnail size.
----Since 5.0.
----
----WARNING: This function is deprecated, use `swayimg.gallery.thumb_size` field instead.
----@deprecated
----@see swayimg.gallery.thumb_size
----@param size integer Thumbnail size in pixels
-function swayimg.gallery.set_thumb_size(size) end
-
----Set the padding size between thumbnails.
----Since 5.0.
----@param size integer Padding size in pixels
-function swayimg.gallery.set_padding_size(size) end
-
----Set the border size for currently selected thumbnail.
----Since 5.0.
----@param size integer Border size in pixels
-function swayimg.gallery.set_border_size(size) end
-
----Set border color for currently selected thumbnail.
----Since 5.0.
----@param color color_t Border color
-function swayimg.gallery.set_border_color(color) end
-
----Set the scale factor for currently selected thumbnail.
----Since 5.0.
----@param scale number Scale factor, 1.0 = 100%
-function swayimg.gallery.set_selected_scale(scale) end
-
----Set background color for currently selected thumbnail.
----Since 5.0.
----@param color color_t Background color
-function swayimg.gallery.set_selected_color(color) end
-
----Set background color for unselected thumbnails.
----Since 5.0.
----@param color color_t Background color
-function swayimg.gallery.set_unselected_color(color) end
-
----Set window background color.
----Since 5.0.
----@param color color_t Background color
-function swayimg.gallery.set_window_color(color) end
-
----Enable or disable thumbnail selection on mouse hover.
----Since 5.3.
----@param enable boolean Enable/disable mouse hover selection
-function swayimg.gallery.enable_hover(enable) end
-
----Set max number of thumbnails stored in memory cache.
----Since 5.0.
----@param size integer Cache size
-function swayimg.gallery.limit_cache(size) end
-
----Enable or disable preloading invisible thumbnails.
----Since 5.0.
----@param enable boolean Enable/disable preloading invisible thumbnails
-function swayimg.gallery.enable_preload(enable) end
-
----Enable or disable using embedded thumbnails.
----Since 5.3.
----
----Currently only applicable to RAW images.
----@param enable boolean Enable/disable embedded thumbnails
-function swayimg.gallery.enable_embedded_thumb(enable) end
-
----Enable or disable persistent storage for thumbnails.
----Since 5.0.
----@param enable boolean Enable/disable usage of persistent storage
-function swayimg.gallery.enable_pstore(enable) end
-
----Set custom path for persistent storage for thumbnails.
----Since 5.0.
----@param path string Path to the directory
-function swayimg.gallery.set_pstore_path(path) end

@@ -76,16 +76,16 @@ public:
     [[nodiscard]] ImagePtr current_image() const { return image; }
 
     /**
-     * Switch to next frame.
-     * @return current frame index
+     * Switch to specified frame.
+     * @param index frame index to activate.
      */
-    size_t next_frame();
+    void set_frame(const size_t index);
 
     /**
-     * Switch to previous frame.
-     * @return current frame index
+     * Get currently displayed frame index.
+     * @return frame index
      */
-    size_t prev_frame();
+    [[nodiscard]] size_t get_frame() const { return frame_index; }
 
     /**
      * Export current frame to PNG file.
@@ -228,12 +228,6 @@ private:
      * @param img image instance to set as current
      */
     void set_image(const ImagePtr& img);
-
-    /**
-     * Switch to specified frame.
-     * @param index frame index to activate.
-     */
-    void set_frame(const size_t index);
 
     /** Type of text update. */
     enum class TextUpdate : uint8_t {

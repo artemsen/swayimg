@@ -132,30 +132,6 @@ bool Viewer::reload()
     return reloaded;
 }
 
-size_t Viewer::next_frame()
-{
-    if (image) {
-        size_t index = frame_index + 1;
-        if (index >= image->frames.size()) {
-            index = 0;
-        }
-        set_frame(index);
-        return index;
-    }
-    return 0;
-}
-
-size_t Viewer::prev_frame()
-{
-    if (image) {
-        const size_t index =
-            frame_index ? frame_index - 1 : image->frames.size() - 1;
-        set_frame(index);
-        return index;
-    }
-    return 0;
-}
-
 void Viewer::export_frame(const std::filesystem::path& path) const
 {
     if (image) {
@@ -413,7 +389,11 @@ void Viewer::bind_image_drag(const InputMouse& input)
 void Viewer::initialize()
 {
     Application::self().add_fdpoll(animation_timer, [this]() {
-        next_frame();
+        size_t index = frame_index + 1;
+        if (index >= image->frames.size()) {
+            index = 0;
+        }
+        set_frame(index);
         enable_animation(true);
     });
 }
@@ -656,8 +636,9 @@ void Viewer::set_image(const ImagePtr& img)
 
 void Viewer::set_frame(const size_t index)
 {
-    if (image) {
-        assert(index < image->frames.size());
+    assert(is_active());
+
+    if (image && index < image->frames.size()) {
         frame_index = index;
         update_text(TextUpdate::Frame);
         Application::redraw();

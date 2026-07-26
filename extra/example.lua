@@ -10,12 +10,12 @@
 --------------------------------------------------------------------------------
 -- General config
 --------------------------------------------------------------------------------
-swayimg.mode = "viewer"                   -- mode at startup
-swayimg.antialiasing = true               -- anti-aliasing
-swayimg.enable_decoration(true)           -- window title/buttons/borders
-swayimg.enable_overlay(false)             -- window overlay mode
-swayimg.enable_exif_orientation(true)     -- image orientation by EXIF
-swayimg.set_dnd_button("MouseRight")      -- drag-and-drop mouse button
+swayimg.mode = "viewer"                    -- mode at startup
+swayimg.antialiasing = true                -- anti-aliasing
+swayimg.decoration = true                  -- window title/buttons/borders
+swayimg.overlay = false                    -- window overlay mode
+swayimg.exif_orientation = true            -- image orientation by EXIF
+swayimg.dnd_button = "MouseRight"          -- drag-and-drop mouse button
 
 -- Format specific parameters
 swayimg.set_format_params('raw', { camera_wb = true }) -- use camera white balance
@@ -32,32 +32,32 @@ swayimg.imagelist.fsmon = true             -- enable file system monitoring
 --------------------------------------------------------------------------------
 -- Text overlay configuration
 --------------------------------------------------------------------------------
-swayimg.text.visible = true               -- overlay visible state
-swayimg.text.set_font("monospace")        -- font name
-swayimg.text.set_size(24)                 -- font size in pixels
-swayimg.text.set_spacing(0)               -- line spacing
-swayimg.text.set_padding(10)              -- padding from window edge
-swayimg.text.set_foreground(0xffcccccc)   -- foreground text color
-swayimg.text.set_background(0x00000000)   -- text background color
-swayimg.text.set_shadow(0x0d000000)       -- text shadow color
-swayimg.text.set_timeout(5)               -- layer hide timeout
-swayimg.text.set_status_timeout(3)        -- status message hide timeout
+swayimg.text.visible = true                -- overlay visible state
+swayimg.text.font = "monospace"            -- font name
+swayimg.text.size = 24                     -- font size in pixels
+swayimg.text.spacing = 0                   -- line spacing
+swayimg.text.padding = 10                  -- padding from window edge
+swayimg.text.color = 0xffcccccc            -- text color
+swayimg.text.background = 0x00000000       -- background color
+swayimg.text.shadow = 0x0d000000           -- shadow color
+swayimg.text.timeout = 5                   -- layer hide timeout
+swayimg.text.status_timeout = 3            -- status message hide timeout
 
 --------------------------------------------------------------------------------
 -- Image viewer mode
 --------------------------------------------------------------------------------
-swayimg.viewer.set_default_scale("optimal")      -- default image scale
-swayimg.viewer.set_default_position("center")    -- default image position
-swayimg.viewer.set_drag_button("MouseLeft")      -- mouse button to drag image
+swayimg.viewer.default_scale = "optimal"   -- default image scale
+swayimg.viewer.default_position = "center" -- default image position
+swayimg.viewer.drag_button = "MouseLeft"   -- mouse button to drag image
+swayimg.viewer.autocenter = true           -- enable automatic centering
+swayimg.viewer.loop = true                 -- enable image list loop mode
+swayimg.viewer.preload = 1                 -- number of images to preload
+swayimg.viewer.history = 1                 -- number of images in history cache
+swayimg.viewer.mark_color = 0xff808080     -- mark icon color
+swayimg.viewer.pinch_factor = 1.0          -- pinch gesture factor
 swayimg.viewer.set_window_background(0xff000000) -- window background color
 swayimg.viewer.set_image_chessboard(20, 0xff333333, 0xff4c4c4c) -- chessboard
-swayimg.viewer.enable_centering(true)            -- enable automatic centering
-swayimg.viewer.enable_loop(true)                 -- enable image list loop mode
-swayimg.viewer.limit_preload(1)                  -- number of images to preload
-swayimg.viewer.limit_history(1)                  -- number of the history cache
-swayimg.viewer.set_mark_color(0xff808080)        -- mark icon color
-swayimg.viewer.set_pinch_factor(1.0)             -- pinch gesture factor
-swayimg.viewer.set_text("topleft", {             -- top left text block scheme
+swayimg.viewer.set_text("topleft", {       -- top left text block scheme
   "File:\t{name}",
   "Format:\t{format}",
   "File size:\t{sizehr}",
@@ -65,12 +65,12 @@ swayimg.viewer.set_text("topleft", {             -- top left text block scheme
   "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
   "EXIF camera:\t{meta.Exif.Image.Model}"
 })
-swayimg.viewer.set_text("topright", {            -- top right text block scheme
+swayimg.viewer.set_text("topright", {      -- top right text block scheme
   "Image:\t{list.index} of {list.total}",
   "Frame:\t{frame.index} of {frame.total}",
   "Size:\t{frame.width}x{frame.height}"
 })
-swayimg.viewer.set_text("bottomleft", {          -- bottom left text block scheme
+swayimg.viewer.set_text("bottomleft", {    -- bottom left text block scheme
   "Scale:\t{scale}"
 })
 
@@ -90,11 +90,7 @@ end)
 
 -- show/hide text overlay
 swayimg.viewer.on_key("t", function()
-  if swayimg.text.visible() then
-    swayimg.text.hide()
-  else
-    swayimg.text.show()
-  end
+  swayimg.text.visible = not swayimg.text.visible
 end)
 
 -- mark/unmark current image
@@ -138,12 +134,10 @@ end)
 
 -- zoom in/out
 swayimg.viewer.on_key("equal", function()
-  local scale = swayimg.viewer.get_scale()
-  swayimg.viewer.set_abs_scale(scale + scale / 10)
+  swayimg.viewer.scale = swayimg.viewer.scale + swayimg.viewer.scale / 10
 end)
 swayimg.viewer.on_key("minus", function()
-  local scale = swayimg.viewer.get_scale()
-  swayimg.viewer.set_abs_scale(scale - scale / 10)
+  swayimg.viewer.scale = swayimg.viewer.scale - swayimg.viewer.scale / 10
 end)
 
 -- reset scale/position
@@ -179,10 +173,13 @@ end)
 
 -- stop animation and show next/previous frame
 swayimg.viewer.on_key("Shift+next", function()
-  swayimg.viewer.next_frame()
+  swayimg.viewer.frame = swayimg.viewer.frame + 1
 end)
 swayimg.viewer.on_key("Shift+prior", function()
-  swayimg.viewer.prev_frame()
+  local frame = swayimg.viewer.frame
+  if frame > 0 then
+    swayimg.viewer.frame = frame - 1
+  end
 end)
 
 -- move image across the window (mouse/touchpad)
@@ -206,23 +203,22 @@ end)
 -- zoom in/out (mouse/touchpad)
 swayimg.viewer.on_mouse("Ctrl+ScrollUp", function()
   local mouse = swayimg.get_mouse_pos()
-  local scale = swayimg.viewer.get_scale()
+  local scale = swayimg.viewer.scale
   swayimg.viewer.set_abs_scale(scale + scale / 10, mouse.x, mouse.y)
 end)
 swayimg.viewer.on_mouse("Ctrl+ScrollDown", function()
   local mouse = swayimg.get_mouse_pos()
-  local scale = swayimg.viewer.get_scale()
+  local scale = swayimg.viewer.scale
   swayimg.viewer.set_abs_scale(scale - scale / 10, mouse.x, mouse.y)
 end)
-
 
 --------------------------------------------------------------------------------
 -- Slide show mode, same config as for viewer mode with some difference
 --------------------------------------------------------------------------------
-swayimg.slideshow.set_timeout(5)                    -- timeout to switch image
-swayimg.slideshow.set_default_scale("fit")          -- default image scale
+swayimg.slideshow.timeout = 5                       -- timeout to switch image
+swayimg.slideshow.default_scale = "fit"             -- default image scale
+swayimg.slideshow.history = 0                       -- number of the history cache
 swayimg.slideshow.set_window_background("auto")     -- window background mode
-swayimg.slideshow.limit_history(0)                  -- number of the history cache
 swayimg.slideshow.set_text("topleft", { "{name}" }) -- top left text block scheme
 
 -- switch to viewer mode
@@ -230,29 +226,28 @@ swayimg.slideshow.on_key("s", function()
   swayimg.mode = "viewer"
 end)
 
-
 --------------------------------------------------------------------------------
 -- Gallery mode
 --------------------------------------------------------------------------------
-swayimg.gallery.thumb_size = 200                    -- thumbnail size in pixels
-swayimg.gallery.set_aspect("fill")                  -- thumbnail aspect ratio
-swayimg.gallery.set_padding_size(5)                 -- padding between thumbnails
-swayimg.gallery.set_border_size(5)                  -- border size for selected thumbnail
-swayimg.gallery.set_border_color(0xffaaaaaa)        -- border color for selected thumbnail
-swayimg.gallery.set_selected_scale(1.15)            -- scale for selected thumbnail
-swayimg.gallery.set_selected_color(0xff404040)      -- background color for selected thumbnail
-swayimg.gallery.set_unselected_color(0xff202020)    -- background color for unselected thumbnail
-swayimg.gallery.set_window_color(0xff000000)        -- window background color
-swayimg.gallery.set_pinch_factor(100.0)             -- pinch gesture factor
-swayimg.gallery.enable_hover(true)                  -- enable mouse following
-swayimg.gallery.limit_cache(100)                    -- number of thumbnails stored in memory
-swayimg.gallery.enable_embedded_thumb(true)         -- use embedded thumbnails
-swayimg.gallery.enable_preload(false)               -- preloading invisible thumbnails
-swayimg.gallery.enable_pstore(false)                -- enable persistent storage for thumbnails
-swayimg.gallery.set_text("topleft", {               -- top left text block scheme
+swayimg.gallery.thumb_size = 200              -- thumbnail size in pixels
+swayimg.gallery.aspect = "fill"               -- thumbnail aspect ratio
+swayimg.gallery.padding_size = 5              -- padding between thumbnails
+swayimg.gallery.border_size = 5               -- border size for selected thumbnail
+swayimg.gallery.border_color = 0xffaaaaaa     -- border color for selected thumbnail
+swayimg.gallery.selected_scale = 1.15         -- scale for selected thumbnail
+swayimg.gallery.selected_color = 0xff404040   -- background color for selected thumbnail
+swayimg.gallery.unselected_color = 0xff202020 -- background color for unselected thumbnail
+swayimg.gallery.window_color = 0xff000000     -- window background color
+swayimg.gallery.pinch_factor = 100.0          -- pinch gesture factor
+swayimg.gallery.hover = true                  -- enable mouse following
+swayimg.gallery.cache = 100                   -- number of thumbnails stored in memory
+swayimg.gallery.preload = false               -- preloading invisible thumbnails
+swayimg.gallery.embedded_thumb = true         -- use embedded thumbnails
+swayimg.gallery.pstore = false                -- enable persistent storage for thumbnails
+swayimg.gallery.set_text("topleft", {         -- top left text block scheme
   "File:\t{name}"
 })
-swayimg.gallery.set_text("topright", {              -- top right text block scheme
+swayimg.gallery.set_text("topright", {        -- top right text block scheme
   "{list.index} of {list.total}"
 })
 
@@ -272,11 +267,7 @@ end)
 
 -- show/hide text overlay
 swayimg.gallery.on_key("t", function()
-  if swayimg.text.visible() then
-    swayimg.text.hide()
-  else
-    swayimg.text.show()
-  end
+  swayimg.text.visible = not swayimg.text.visible
 end)
 
 -- mark/unmark current image
@@ -304,12 +295,10 @@ end)
 
 -- thumbnail zoom in/out
 swayimg.gallery.on_key("equal", function()
-  local size = swayimg.gallery.get_thumb_size()
-  swayimg.gallery.set_thumb_size(size + 10)
+  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size + 10
 end)
 swayimg.gallery.on_key("minus", function()
-  local size = swayimg.gallery.get_thumb_size()
-  swayimg.gallery.set_thumb_size(size - 10)
+  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size - 10
 end)
 
 -- select another thumbnail
@@ -354,10 +343,8 @@ end)
 
 -- thumbnail zoom in/out (mouse/touchpad)
 swayimg.gallery.on_mouse("Ctrl+ScrollUp", function()
-  local size = swayimg.gallery.get_thumb_size()
-  swayimg.gallery.set_thumb_size(size + 10)
+  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size + 10
 end)
 swayimg.gallery.on_mouse("Ctrl+ScrollDown", function()
-  local size = swayimg.gallery.get_thumb_size()
-  swayimg.gallery.set_thumb_size(size - 10)
+  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size - 10
 end)
