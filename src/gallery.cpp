@@ -53,8 +53,8 @@ Gallery::Gallery()
     , preload(Defaults::gallery::preload)
     , cache_size(Defaults::gallery::cache_size)
 {
-    pinch_factor = Defaults::gallery::pinch_factor;
     mark_color = Defaults::gallery::mark_color;
+    pinch_factor = Defaults::gallery::pinch_factor;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)].assign(
         Defaults::gallery::text_scheme_tl.begin(),

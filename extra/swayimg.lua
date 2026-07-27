@@ -152,40 +152,24 @@
 ---General functionality.
 ---@class swayimg
 ---
----Application mode.
----Since 5.5.
----Setting this field changes the current mode (viewer/slideshow/gallery).
----@field mode appmode_t
----
----Anti-aliasing mode.
----Since 5.5.
----@field antialiasing boolean
----
----Full screen mode.
----Since 5.5.
----@field fullscreen boolean
----
----Window title.
----Since 5.5.
----Write-only field.
----@field title string
----
 ---Application Id.
 ---Since 5.5.
 ---This field can be set only at program startup.
 ---@field appid string
 ---
----Automatic orientation based on EXIF.
+---Application mode.
 ---Since 5.5.
----Write-only field.
----@field exif_orientation boolean
+---Setting this field changes the current mode (viewer/slideshow/gallery).
+---@field mode appmode_t
 ---
----Window decoration (title, border, buttons).
+---Full screen mode.
+---Since 5.5.
+---@field fullscreen boolean
+---
+---Mouse button used for drag-and-drop image file to external apps.
 ---Since 5.5.
 ---Write-only field which can be set at startup.
----Applicable only in Wayland, the corresponding protocol must be supported by the composer.
----By default disabled in Sway and enabled in other compositors.
----@field decoration boolean
+---@field dnd_button mbutton_t
 ---
 ---Window overlay mode.
 ---Since 5.5.
@@ -195,10 +179,26 @@
 ---By default enabled in Sway and disabled in other compositors.
 ---@field overlay boolean
 ---
----Mouse button used for drag-and-drop image file to external apps.
+---Window decoration (title, border, buttons).
 ---Since 5.5.
 ---Write-only field which can be set at startup.
----@field dnd_button mbutton_t
+---Applicable only in Wayland, the corresponding protocol must be supported by the composer.
+---By default disabled in Sway and enabled in other compositors.
+---@field decoration boolean
+---
+---Anti-aliasing mode.
+---Since 5.5.
+---@field antialiasing boolean
+---
+---Automatic orientation based on EXIF.
+---Since 5.5.
+---Write-only field.
+---@field exif_orientation boolean
+---
+---Window title.
+---Since 5.5.
+---Write-only field.
+---@field title string
 ---
 swayimg = {}
 
@@ -259,11 +259,6 @@ function swayimg.set_format_params(name, params) end
 ---Image list.
 ---@class swayimg.imagelist
 ---
----Total number of entries in the image list.
----Since 5.5.
----Read-only field.
----@field size integer
----
 ---Sort order of the image list.
 ---Since 5.5.
 ---@field order order_t
@@ -284,12 +279,12 @@ function swayimg.set_format_params(name, params) end
 ---Since 5.5.
 ---@field fsmon boolean
 ---
+---Total number of entries in the image list.
+---Since 5.5.
+---Read-only field.
+---@field size integer
+---
 swayimg.imagelist = {}
-
----Get list of all entries in the image list.
----Since 5.0.
----@return swayimg.entry[] # Array with all file entries
-function swayimg.imagelist.get() end
 
 ---Add entries to the image list.
 ---Since 5.0.
@@ -305,6 +300,11 @@ function swayimg.imagelist.remove(paths) end
 ---Since 5.3.
 function swayimg.imagelist.clear() end
 
+---Get list of all entries in the image list.
+---Since 5.0.
+---@return swayimg.entry[] # Array with all file entries
+function swayimg.imagelist.get() end
+
 --------------------------------------------------------------------------------
 
 ---Text overlay layer.
@@ -313,6 +313,16 @@ function swayimg.imagelist.clear() end
 ---Text overlay state.
 ---Since 5.5.
 ---@field visible boolean
+---
+---Timeout in seconds after which the entire text layer will be hidden.
+---Since 5.5.
+---Write-only field.
+---@field timeout number
+---
+---Timeout in seconds after which the status message will be hidden.
+---Since 5.5.
+---Write-only field.
+---@field status_timeout number
 ---
 ---Font name.
 ---Since 5.5.
@@ -349,16 +359,6 @@ function swayimg.imagelist.clear() end
 ---Write-only field.
 ---Setting alpha channel to `0` disables shadows.
 ---@field shadow color_t
----
----Timeout in seconds after which the entire text layer will be hidden.
----Since 5.5.
----Write-only field.
----@field timeout number
----
----Timeout in seconds after which the status message will be hidden.
----Since 5.5.
----Write-only field.
----@field status_timeout number
 ---
 ---Status message.
 ---Since 5.5.
@@ -428,9 +428,15 @@ function swayimg_appmode.set_text(pos, scheme) end
 ---Viewer mode.
 ---@class swayimg.viewer : swayimg_appmode
 ---
----Absolute scale value (1.0 = 100%).
+---Automatic image centering.
 ---Since 5.5.
----@field scale number
+---Write-only field.
+---@field autocenter boolean
+---
+---Image list loop mode.
+---Since 5.5.
+---Write-only field.
+---@field loop boolean
 ---
 ---Default image scale for newly opened images.
 ---Since 5.5.
@@ -441,6 +447,10 @@ function swayimg_appmode.set_text(pos, scheme) end
 ---Since 5.5.
 ---Write-only field.
 ---@field default_position fixed_position_t
+---
+---Absolute scale value (1.0 = 100%).
+---Since 5.5.
+---@field scale number
 ---
 ---Stop/resume and get animation status.
 ---Since 5.5.
@@ -455,16 +465,6 @@ function swayimg_appmode.set_text(pos, scheme) end
 ---Since 5.5.
 ---Write-only field.
 ---@field drag_button mbutton_t
----
----Automatic image centering.
----Since 5.5.
----Write-only field.
----@field autocenter boolean
----
----Image list loop mode.
----Since 5.5.
----Write-only field.
----@field loop boolean
 ---
 ---Max number of images to preload in background thread.
 ---Since 5.5.
@@ -510,12 +510,6 @@ function swayimg.viewer.get_image() end
 ---Since 5.1.
 function swayimg.viewer.reload() end
 
----Reset position and scale to default values.
----Since 5.0.
----@see swayimg.viewer.set_default_scale
----@see swayimg.viewer.set_default_position
-function swayimg.viewer.reset() end
-
 ---Set absolute image scale.
 ---Since 5.0.
 ---@param scale number Absolute value (1.0 = 100%)
@@ -527,6 +521,12 @@ function swayimg.viewer.set_abs_scale(scale, x, y) end
 ---Since 5.0.
 ---@param scale fixed_scale_t Fixed scale name
 function swayimg.viewer.set_fix_scale(scale) end
+
+---Reset position and scale to default values.
+---Since 5.0.
+---@see swayimg.viewer.set_default_scale
+---@see swayimg.viewer.set_default_position
+function swayimg.viewer.reset() end
 
 ---Get image position.
 ---Since 5.0.
@@ -605,14 +605,14 @@ swayimg.slideshow = {}
 ---Gallery mode.
 ---@class swayimg.gallery : swayimg_appmode
 ---
----Thumbnail size in pixels.
----Since 5.5.
----@field thumb_size integer
----
 ---Thumbnail aspect ratio.
 ---Since 5.5.
 ---Write-only field.
 ---@field aspect aspect_t
+---
+---Thumbnail size in pixels.
+---Since 5.5.
+---@field thumb_size integer
 ---
 ---Padding size in pixels between thumbnails.
 ---Since 5.5.
@@ -624,51 +624,35 @@ swayimg.slideshow = {}
 ---Write-only field.
 ---@field border_size integer
 ---
----Border color for currently selected thumbnail.
----Since 5.5.
----Write-only field.
----@field border_color color_t
----
 ---Scale factor for currently selected thumbnail.
 ---Since 5.5.
 ---Write-only field.
 ---@field selected_scale number
----
----Background color for currently selected thumbnail.
----Since 5.5.
----Write-only field.
----@field selected_color color_t
----
----Background color for unselected thumbnails.
----Since 5.5.
----Write-only field.
----@field unselected_color color_t
 ---
 ---Set window background color.
 ---Since 5.5.
 ---Write-only field.
 ---@field window_color color_t Background color
 ---
+---Background color for unselected thumbnails.
+---Since 5.5.
+---Write-only field.
+---@field unselected_color color_t
+---
+---Background color for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field selected_color color_t
+---
+---Border color for currently selected thumbnail.
+---Since 5.5.
+---Write-only field.
+---@field border_color color_t
+---
 ---Change current thumbnail on mouse hover.
 ---Since 5.5.
 ---Write-only field.
 ---@field hover boolean
----
----Max number of invisible thumbnails stored in memory cache.
----Since 5.5.
----Write-only field.
----@field cache integer
----
----Preload invisible thumbnails.
----Since 5.5.
----Write-only field.
----The program preloads thumbnails into the cache up to the amount specified in the `cache` field.
----@field preload boolean
----
----Use embedded thumbnails.
----Since 5.5.
----Currently only applicable to RAW images.
----@field embedded_thumb boolean
 ---
 ---Use persistent storage for thumbnails.
 ---Since 5.5.
@@ -679,6 +663,22 @@ swayimg.slideshow = {}
 ---Since 5.5.
 ---Write-only field.
 ---@field pstore_path string
+---
+---Preload invisible thumbnails.
+---Since 5.5.
+---Write-only field.
+---The program preloads thumbnails into the cache up to the amount specified in the `cache` field.
+---@field preload boolean
+---
+---Max number of invisible thumbnails stored in memory cache.
+---Since 5.5.
+---Write-only field.
+---@field cache integer
+---
+---Use embedded thumbnails.
+---Since 5.5.
+---Currently only applicable to RAW images.
+---@field embedded_thumb boolean
 ---
 swayimg.gallery = {}
 
