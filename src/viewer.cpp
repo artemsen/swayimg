@@ -42,8 +42,8 @@ Viewer::Viewer()
     image_pool.preload.capacity = Defaults::viewer::preload;
     image_pool.history.capacity = Defaults::viewer::history;
 
-    pinch_factor = Defaults::viewer::pinch_factor;
     mark_color = Defaults::viewer::mark_color;
+    pinch_factor = Defaults::viewer::pinch_factor;
 
     text_scheme[static_cast<size_t>(Text::TopLeft)].assign(
         Defaults::viewer::text_scheme_tl.begin(),
