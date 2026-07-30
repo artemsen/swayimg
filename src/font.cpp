@@ -18,6 +18,18 @@ constexpr const char FALLBACK_CHR = '?'; // character used for absent glyphs
 constexpr size_t POINT_FACTOR = 64;  // default points per pixel (26.6 format)
 constexpr size_t MAX_TEXT_LEN = 120; // max length of text line (characters)
 
+// Include a fallback message when FT_Error_String returns NULL
+// since it can cause a segfault
+const char* FT_Error_String_safe(FT_Error error_code)
+{
+    const char* error_string = FT_Error_String(error_code);
+    if (!error_string) {
+        error_string = "unknown error";
+    }
+    return error_string;
+}
+#define FT_Error_String FT_Error_String_safe
+
 /** Font config wrapper.*/
 class FontConfig {
 public:
