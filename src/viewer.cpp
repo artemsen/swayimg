@@ -69,6 +69,9 @@ bool Viewer::open(const ImageList::Dir dir)
         next = il.get(nullptr, ImageList::Dir::First);
     }
 
+    const bool forward = dir != ImageList::Dir::First &&
+        dir != ImageList::Dir::Prev && dir != ImageList::Dir::PrevParent;
+
     while (true) {
         if (!next && imagelist_loop) {
             // reshuffle random on new loop
@@ -77,13 +80,9 @@ bool Viewer::open(const ImageList::Dir dir)
             }
 
             // start new loop
-            next = il.get(nullptr,
-                          dir == ImageList::Dir::Last ||
-                                  dir == ImageList::Dir::Random ||
-                                  dir == ImageList::Dir::Next ||
-                                  dir == ImageList::Dir::NextParent
-                              ? ImageList::Dir::First
-                              : ImageList::Dir::Last);
+            next =
+                il.get(nullptr,
+                       forward ? ImageList::Dir::First : ImageList::Dir::Last);
 
             // avoid opening the same image in random mode
             if (next && image && next == image->entry &&
@@ -96,15 +95,13 @@ bool Viewer::open(const ImageList::Dir dir)
             next = nullptr;
             break; // same image
         }
-        if (!next) {
-            break; // no next image
-        }
-        if (set_current(next)) {
-            break; // new image loaded
+        if (!next || set_current(next)) {
+            break;
         }
 
         const ImageEntryPtr remove = next;
-        next = il.get(next, dir);
+        next =
+            il.get(next, forward ? ImageList::Dir::Next : ImageList::Dir::Prev);
         il.remove(remove);
     }
 
