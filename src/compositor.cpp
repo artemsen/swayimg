@@ -519,8 +519,7 @@ Compositor::Compositor()
 {
     if (SwayIpc::available()) {
         type = Sway;
-    }
-    if (HyprlandIpc::available()) {
+    } else if (HyprlandIpc::available()) {
         type = Hyprland;
     }
 }
