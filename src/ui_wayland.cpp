@@ -17,6 +17,21 @@
 #include <cstring>
 #include <format>
 
+#ifdef __APPLE__
+// Darwin has no pipe2(). Emulate the O_CLOEXEC part; the window
+// between pipe() and fcntl() is benign here, nothing execs
+// concurrently with the drag-and-drop receive path.
+static int pipe2(int fds[2], int /* flags */)
+{
+    if (pipe(fds) == -1) {
+        return -1;
+    }
+    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+    return 0;
+}
+#endif
+
 // MIME type for drag-and-drop of raw path
 static constexpr const char* MIME_TEXT_PLAIN = "text/plain";
 
