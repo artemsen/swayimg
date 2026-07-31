@@ -18,6 +18,10 @@
 #include <format>
 #include <utility>
 
+#ifdef __APPLE__
+#define st_mtim st_mtimespec
+#endif
+
 // Limits for thumbnail size and other parameters
 constexpr size_t THIMB_SIZE_MIN = 10;
 constexpr size_t THIMB_SIZE_MAX = 10000;
