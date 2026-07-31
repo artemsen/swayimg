@@ -79,7 +79,7 @@ struct FreeTypeLib {
         rc = FT_Init_FreeType(&lib);
         if (rc != 0) {
             Log::error("Unable to initialize FreeType: {}",
-                       FT_Error_String(rc));
+                       FreeTypeLib::error_text(rc));
         }
     }
 
@@ -88,6 +88,17 @@ struct FreeTypeLib {
         if (lib) {
             FT_Done_FreeType(lib);
         }
+    }
+
+    /**
+     * Get error message for specified code.
+     * @param rc error code
+     * @return error message
+     */
+    static const char* error_text(const FT_Error rc)
+    {
+        const char* text = FT_Error_String(rc);
+        return text ? text : "unknown error";
     }
 
     operator FT_Library() { return lib; }
@@ -141,7 +152,7 @@ bool Font::load(const std::filesystem::path& path)
     const FT_Error rc = FT_New_Face(ft_lib, path.c_str(), 0, &face);
     if (rc != 0) {
         Log::error("Unable to load font from {}: {}", path.string(),
-                   FT_Error_String(rc));
+                   FreeTypeLib::error_text(rc));
         return false;
     }
     set_face(face);
@@ -158,7 +169,7 @@ bool Font::load(const uint8_t* data, const size_t data_size)
     FT_Face face;
     const FT_Error rc = FT_New_Memory_Face(ft_lib, data, data_size, 0, &face);
     if (rc != 0) {
-        Log::error("Unable to load font: {}", FT_Error_String(rc));
+        Log::error("Unable to load font: {}", FreeTypeLib::error_text(rc));
         return false;
     }
     set_face(face);
