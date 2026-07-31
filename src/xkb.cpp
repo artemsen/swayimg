@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <cassert>
+#include <tuple>
 
 Xkb::Xkb()
     : context(xkb_context_new(XKB_CONTEXT_NO_FLAGS))
