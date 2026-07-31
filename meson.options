@@ -110,6 +110,14 @@ option(
     description: 'Enable DRM (Direct Rendering Manager) support',
 )
 
+# Libabry used for Lua
+option(
+    'liblua',
+    type: 'string',
+    value: 'luajit',
+    description: 'Library used for Lua (lua or luajit)',
+)
+
 # extra files to install
 option(
     'bash',

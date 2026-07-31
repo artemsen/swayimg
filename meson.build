@@ -35,7 +35,7 @@ xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 threads = dependency('threads')
-lua = dependency('luajit')
+lua = dependency(get_option('liblua'))
 
 # wayland support
 wl_protocols = []
