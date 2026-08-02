@@ -7,6 +7,15 @@
 
 #include <clocale>
 
+// Mouse buttons, from <linux/input-event-codes.h>
+#ifndef BTN_LEFT
+#define BTN_LEFT   0x110
+#define BTN_RIGHT  0x111
+#define BTN_MIDDLE 0x112
+#define BTN_SIDE   0x113
+#define BTN_EXTRA  0x114
+#endif
+
 // NOLINTBEGIN(bugprone-unchecked-optional-access)
 
 TEST(InputKeyboardTest, Load)
@@ -97,6 +106,39 @@ TEST(InputMouseTest, ToString)
               "Ctrl+Alt+Shift+MouseLeft");
 }
 
+TEST(InputMouseTest, Equality)
+{
+    const InputMouse a(InputMouse::BUTTON_LEFT, KEYMOD_CTRL);
+    const InputMouse b(InputMouse::BUTTON_LEFT, KEYMOD_CTRL);
+    const InputMouse c(InputMouse::BUTTON_RIGHT, KEYMOD_CTRL);
+    const InputMouse d(InputMouse::BUTTON_LEFT, KEYMOD_ALT);
+
+    EXPECT_TRUE(a == b);
+    EXPECT_FALSE(a == c);
+    EXPECT_FALSE(a == d);
+}
+
+TEST(InputMouseTest, Ordering)
+{
+    const InputMouse a(InputMouse::BUTTON_LEFT, KEYMOD_NONE);
+    const InputMouse b(InputMouse::BUTTON_RIGHT, KEYMOD_NONE);
+    const InputMouse c(InputMouse::BUTTON_LEFT, KEYMOD_CTRL);
+
+    EXPECT_TRUE(a < b);
+    EXPECT_TRUE(a < c);
+    EXPECT_FALSE(b < a);
+}
+
+TEST(InputMouseTest, ToButton)
+{
+    EXPECT_EQ(InputMouse::to_button(BTN_LEFT), InputMouse::BUTTON_LEFT);
+    EXPECT_EQ(InputMouse::to_button(BTN_RIGHT), InputMouse::BUTTON_RIGHT);
+    EXPECT_EQ(InputMouse::to_button(BTN_MIDDLE), InputMouse::BUTTON_MIDDLE);
+    EXPECT_EQ(InputMouse::to_button(BTN_SIDE), InputMouse::BUTTON_SIDE);
+    EXPECT_EQ(InputMouse::to_button(BTN_EXTRA), InputMouse::BUTTON_EXTRA);
+    EXPECT_EQ(InputMouse::to_button(999), InputMouse::NONE);
+}
+
 TEST(InputSignalTest, Load)
 {
     std::optional<InputSignal> input;
@@ -116,6 +158,16 @@ TEST(InputSignalTest, ToString)
 {
     EXPECT_EQ(InputSignal(InputSignal::USR1).to_string(), "USR1");
     EXPECT_EQ(InputSignal(InputSignal::USR2).to_string(), "USR2");
+}
+
+TEST(InputSignalTest, Ordering)
+{
+    EXPECT_TRUE(InputSignal(InputSignal::USR1) <
+                InputSignal(InputSignal::USR2));
+    EXPECT_FALSE(InputSignal(InputSignal::USR2) <
+                 InputSignal(InputSignal::USR1));
+    EXPECT_FALSE(InputSignal(InputSignal::USR1) <
+                 InputSignal(InputSignal::USR1));
 }
 
 // NOLINTEND(bugprone-unchecked-optional-access)

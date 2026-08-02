@@ -66,6 +66,22 @@ TEST(ImageListTest, Size)
     ASSERT_EQ(il.size(), 3UL);
 }
 
+TEST(ImageListTest, GetOrder)
+{
+    ImageList il;
+    EXPECT_EQ(il.get_order(), ImageList::Order::Numeric);
+    il.set_order(ImageList::Order::Alpha);
+    EXPECT_EQ(il.get_order(), ImageList::Order::Alpha);
+}
+
+TEST(ImageListTest, GetReverse)
+{
+    ImageList il;
+    EXPECT_FALSE(il.get_reverse());
+    il.set_reverse(true);
+    EXPECT_TRUE(il.get_reverse());
+}
+
 TEST(ImageListTest, AddNone)
 {
     ImageList il;
@@ -366,6 +382,34 @@ TEST(ImageListTest, SortTime)
     EXPECT_ILEQ(il.get_all(), expect);
 }
 
+TEST(ImageListTest, SortSize)
+{
+    ImageList il;
+
+    const auto added = il.add(
+        { "exec://sortsize_a", "exec://sortsize_b", "exec://sortsize_c" });
+    EXPECT_EQ(added.size(), 3UL);
+
+    // set sizes after add to trigger re-sort
+    for (auto& it : il.get_all()) {
+        if (it->path == "exec://sortsize_a") {
+            it->size = 300;
+        } else if (it->path == "exec://sortsize_b") {
+            it->size = 100;
+        } else if (it->path == "exec://sortsize_c") {
+            it->size = 200;
+        }
+    }
+    il.set_order(ImageList::Order::Size);
+
+    const std::vector<std::filesystem::path> expected = {
+        "exec://sortsize_b",
+        "exec://sortsize_c",
+        "exec://sortsize_a",
+    };
+    EXPECT_ILEQ(il.get_all(), expected);
+}
+
 TEST(ImageListTest, SortRandom)
 {
     ImageList il;
@@ -609,6 +653,13 @@ TEST(ImageListTest, RemoveOne)
     const std::vector<std::filesystem::path> expected = { "exec://1",
                                                           "exec://3" };
     EXPECT_ILEQ(il.get_all(), expected);
+}
+
+TEST(ImageListTest, RemoveFromEmpty)
+{
+    ImageList il;
+    const auto removed = il.remove({ "exec://none" });
+    EXPECT_TRUE(removed.empty());
 }
 
 TEST(ImageListTest, RemoveMultiple)
