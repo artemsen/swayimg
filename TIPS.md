@@ -27,7 +27,7 @@ Set a custom window title in gallery mode:
 swayimg.gallery.on_image_change(function()
   local image = swayimg.gallery.get_image()
   if image then
-    swayimg.set_title("Gallery: "..image.path)
+    swayimg.title = "Gallery: "..image.path
   end
 end)
 ```
@@ -42,7 +42,7 @@ swayimg.viewer.on_key("Delete", function()
   local image = swayimg.viewer.get_image()
   if image then
     os.remove(image.path)
-    swayimg.text.set_status("File "..image.path.." removed")
+    swayimg.text.status = "File "..image.path.." removed"
   end
 end)
 ```
