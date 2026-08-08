@@ -51,6 +51,9 @@ public:
             // decode image
             Imf::Array2D<Imf::Rgba> pixels(height, width);
             if (exr_header.hasTileDescription()) {
+                if (dx > 0 || dy > 0 || dx < -width || dy < -height) {
+                    return nullptr;
+                }
                 image_type = "tiled";
                 Imf::TiledRgbaInputFile tile_file(stream);
                 tile_file.setFrameBuffer(&pixels[-dy][-dx], 1, width);
@@ -72,8 +75,8 @@ public:
             pm.create(Pixmap::ARGB, width, height);
 
             // put image to pixmap
-            for (size_t y = 0; y < pm.height(); ++y) {
-                for (size_t x = 0; x < pm.width(); ++x) {
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
                     argb_t& dst = pm.at(x, y);
                     const Imf::Rgba& clr = pixels[y][x];
                     dst.a = static_cast<uint8_t>(
