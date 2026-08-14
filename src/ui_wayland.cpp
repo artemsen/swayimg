@@ -206,6 +206,9 @@ public:
         .axis_discrete = nullptr,
         .axis_value120 = nullptr,
         .axis_relative_direction = nullptr,
+#ifdef WL_POINTER_WARP_SINCE_VERSION
+        .warp = nullptr,
+#endif
     };
 
     /***************************************************************************
