@@ -437,9 +437,9 @@ private:
                     dst = *reinterpret_cast<const uint32_t*>(src);
                 } else if (bmp.bpp == 24) {
                     dst.a = argb_t::max;
-                    dst.r = src[0];
+                    dst.r = src[2];
                     dst.g = src[1];
-                    dst.b = src[2];
+                    dst.b = src[0];
                 } else if (bmp.bpp == 8 || bmp.bpp == 4 || bmp.bpp == 1) {
                     // indexed colors
                     const size_t bits_offset = x * bmp.bpp;
