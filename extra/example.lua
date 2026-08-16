@@ -18,7 +18,11 @@ swayimg.exif_orientation = true            -- image orientation by EXIF
 swayimg.dnd_button = "MouseRight"          -- drag-and-drop mouse button
 
 -- Format specific parameters
-swayimg.set_format_params('raw', { camera_wb = true }) -- use camera white balance
+swayimg.format_params = {
+  raw = {
+    camera_wb = true  -- use camera white balance
+  }
+}
 
 --------------------------------------------------------------------------------
 -- Image list configuration

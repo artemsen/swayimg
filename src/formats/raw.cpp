@@ -10,6 +10,7 @@
 #pragma GCC diagnostic pop
 
 #include <cstring>
+#include <format>
 #include <memory>
 
 namespace {
@@ -21,12 +22,14 @@ public:
     {
     }
 
-    bool
-    set_params(const std::unordered_map<std::string, bool>& params) override
+    bool set_params(const Params& params) override
     {
         for (const auto& [name, value] : params) {
-            if (name == "camera_wb") {
-                camera_wb = value;
+            if (name == "camera_wb" && std::holds_alternative<bool>(value)) {
+                camera_wb = std::get<bool>(value);
+            } else {
+                throw std::runtime_error(
+                    std::format("Unsupported or invalid parameter {}", name));
             }
         }
         return true;

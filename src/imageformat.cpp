@@ -209,7 +209,7 @@ ImageFormat::ImageFormat(const Priority load_priority,
     FormatFactory::self().add(this);
 }
 
-bool ImageFormat::set_params(const std::unordered_map<std::string, bool>&)
+bool ImageFormat::set_params(const Params&)
 {
     return false;
 }

@@ -195,6 +195,14 @@
 ---Write-only field.
 ---@field exif_orientation boolean
 ---
+---Custom image format parameters.
+---Since 5.6.
+---Write-only field.
+---Supported parameters:.
+---* `raw`:
+---  * `camera_wb`: Fix colors using white balance from camera
+---@field format_params table
+---
 ---Window title.
 ---Since 5.5.
 ---Write-only field.
@@ -243,16 +251,6 @@ function swayimg.on_redrawn(fn) end
 ---@param seconds number Delay in seconds (can be fractional)
 ---@param fn function Function to execute
 function swayimg.defer(seconds, fn) end
-
----Setting format parameters.
----Since 5.3.
----
----Supported parameters:
----* `raw`:
----  * `camera_wb`: Fix colors using white balance from camera
----@param name string Format name (e.g. `raw`)
----@param params table Table of parameters (e.g. `{ camera_wb = true }`)
-function swayimg.set_format_params(name, params) end
 
 --------------------------------------------------------------------------------
 

@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 class ImageFormat {
@@ -29,6 +30,9 @@ public:
         size_t size = 0;         ///< Buffer size
     };
 
+    using ParamValue = std::variant<bool, size_t, std::string>;
+    using Params = std::unordered_map<std::string, ParamValue>;
+
     /**
      * Constructor.
      * @param load_priority format priority
@@ -41,8 +45,7 @@ public:
      * @param params format parameters
      * @return false if not supported
      */
-    virtual bool
-    set_params(const std::unordered_map<std::string, bool>& params);
+    virtual bool set_params(const Params& params);
 
     /**
      * Decode raw image data.

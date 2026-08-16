@@ -42,6 +42,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.decoration](#swayimgdecoration): Window decoration (title, border, buttons)
   * [swayimg.antialiasing](#swayimgantialiasing): Anti-aliasing mode
   * [swayimg.exif_orientation](#swayimgexif_orientation): Automatic orientation based on EXIF
+  * [swayimg.format_params](#swayimgformat_params): Custom image format parameters
   * [swayimg.title](#swayimgtitle): Window title
   * [swayimg.exit()](#swayimgexit): Exit from application
   * [swayimg.get_window_size()](#swayimgget_window_size): Get application window size
@@ -51,7 +52,6 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.on_initialized()](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
   * [swayimg.on_redrawn()](#swayimgon_redrawn): Set a callback function called after the window is drawn
   * [swayimg.defer()](#swayimgdefer): Execute deferred procedure
-  * [swayimg.set_format_params()](#swayimgset_format_params): Setting format parameters
 * Image list
   * [swayimg.imagelist.order](#swayimgimagelistorder): Sort order of the image list
   * [swayimg.imagelist.reverse](#swayimgimagelistreverse): Reverse the image list order
@@ -306,6 +306,24 @@ Since 5.5.
 
 Write-only field.
 
+### swayimg.format_params
+
+```lua
+swayimg.format_params: table
+```
+
+Custom image format parameters.
+
+Since 5.6.
+
+Write-only field.
+
+Supported parameters:.
+
+* `raw`:
+
+  * `camera_wb`: Fix colors using white balance from camera
+
 ### swayimg.title
 
 ```lua
@@ -417,24 +435,6 @@ Since 5.5.
 @_param_ `seconds` - Delay in seconds (can be fractional)
 
 @_param_ `fn` - Function to execute
-
-### swayimg.set_format_params
-
-```lua
-swayimg.set_format_params(name: string, params: table)
-```
-
-Setting format parameters.
-
-Since 5.3.
-
-Supported parameters:
-* `raw`:
-  * `camera_wb`: Fix colors using white balance from camera
-
-@_param_ `name` - Format name (e.g. `raw`)
-
-@_param_ `params` - Table of parameters (e.g. `{ camera_wb = true }`)
 
 ## Image list
 

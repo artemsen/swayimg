@@ -157,7 +157,12 @@ class LuaField:
         assert description
         self.name = name
         self.luatype = luatype
-        self.description = '\n\n'.join(description[1:])
+        self.description = ''
+        for line in description[1:]:
+            self.description += line + '\n'
+            if not line.strip(' ').startswith('*'):
+                self.description += '\n'
+        self.description = self.description.strip('\n')
         self.title = description[0]
         if self.title.endswith('.'):
             self.title = self.title[:-1]

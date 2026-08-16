@@ -649,22 +649,57 @@ void LuaEngine::bind_root_api()
                          defer_fn = new luabridge::LuaRef(cb);
                          defer_timer.reset(ms > 0 ? ms : 1, 0);
                      })
-        .addFunction(
-            "set_format_params",
-            [this](const std::string& name,
-                   const std::unordered_map<std::string, bool>& params) {
-                ImageFormat* fmt = FormatFactory::self().get(name.c_str());
-                if (!fmt) {
-                    raise_error(
-                        "Unsupported format {} for {}.set_format_params", name,
-                        NS_SWAYIMG);
-                }
-                if (!fmt->set_params(params)) {
-                    raise_error("Unsupported parameters for format {} in "
-                                "{}.set_format_params",
-                                name, NS_SWAYIMG);
+        .addProperty(
+            "format_params",
+            []() {
+                return nullptr;
+            },
+            [this](const std::unordered_map<
+                   std::string,
+                   std::unordered_map<std::string, luabridge::LuaRef>>&
+                       params) {
+                for (const auto& [format, pmap] : params) {
+                    ImageFormat* fmt =
+                        FormatFactory::self().get(format.c_str());
+                    if (!fmt) {
+                        raise_error("Unsupported image format {}", format);
+                    }
+                    ImageFormat::Params fmt_pars;
+                    for (const auto& [name, value] : pmap) {
+                        switch (value.type()) {
+                            case LUA_TBOOLEAN:
+                                fmt_pars.insert(
+                                    { name, static_cast<bool>(value) });
+                                break;
+                            case LUA_TNUMBER:
+                                fmt_pars.insert(
+                                    { name,
+                                      static_cast<size_t>(
+                                          static_cast<luacolor_t>(value)) });
+                                break;
+                            case LUA_TSTRING:
+                                fmt_pars.insert(
+                                    { name, static_cast<std::string>(value) });
+                                break;
+                            default:
+                                raise_error("Invalid type in parameter {} for "
+                                            "format {}",
+                                            name, format);
+                        }
+                    }
+                    if (!fmt->set_params(fmt_pars)) {
+                        raise_error("Format {} doesn't custom support "
+                                    "parameters",
+                                    format);
+                    }
                 }
             })
+        .addFunction("set_format_params",
+                     [](const std::string&,
+                        const std::unordered_map<std::string, bool>&) {
+                         warn_deprecated("swayimg.set_format_params()",
+                                         "swayimg.format_params field");
+                     })
         .endNamespace();
 }
 
