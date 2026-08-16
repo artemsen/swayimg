@@ -15,6 +15,11 @@ public:
     {
     }
 
+    // Supported font file signatures
+    static constexpr const uint8_t SIGNATURE_TTF[] = { 0x00, 0x01, 0x00, 0x00 };
+    static constexpr const uint8_t SIGNATURE_OTF[] = { 0x4f, 0x54, 0x54, 0x4f };
+    static constexpr const uint8_t SIGNATURE_WOFF[] = { 0x77, 0x4f, 0x46 };
+
     // Text color
     static constexpr const argb_t COLOR { argb_t::max, argb_t::max, argb_t::max,
                                           argb_t::max };
@@ -24,7 +29,9 @@ public:
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
-        if (!check_signature(data, { 0x00, 0x01, 0x00, 0x00 })) {
+        if (!check_signature(data, SIGNATURE_TTF) &&
+            !check_signature(data, SIGNATURE_OTF) &&
+            !check_signature(data, SIGNATURE_WOFF)) {
             return nullptr;
         }
 
