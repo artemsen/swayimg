@@ -19,8 +19,13 @@ swayimg.dnd_button = "MouseRight"          -- drag-and-drop mouse button
 
 -- Format specific parameters
 swayimg.format_params = {
-  raw = {
+  raw = {             -- "raw" image format settings
     camera_wb = true  -- use camera white balance
+  },
+  ttf = {             -- font preview settings
+    text = "The quick brown fox jumps over the lazy dog 0123456789",
+    color = 0xffffffff,       -- font color
+    background = 0x00000000   -- background color
   }
 }
 

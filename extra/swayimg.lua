@@ -198,9 +198,13 @@
 ---Custom image format parameters.
 ---Since 5.6.
 ---Write-only field.
----Supported parameters:.
+---Supported parameters:
 ---* `raw`:
 ---  * `camera_wb`: Fix colors using white balance from camera
+---* `ttf`:
+---  * `text`: Text to render
+---  * `color`: Text color
+---  * `background`: Background color
 ---@field format_params table
 ---
 ---Window title.
