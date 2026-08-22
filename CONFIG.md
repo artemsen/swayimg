@@ -1197,7 +1197,7 @@ Since 5.0.
 ### swayimg.viewer.on_key
 
 ```lua
-swayimg.viewer.on_key(key: string, fn: function)
+swayimg.viewer.on_key(key: string|string[], fn: function)
 ```
 
 Bind the key press event to a handler.
@@ -1818,7 +1818,7 @@ Since 5.0.
 ### swayimg.slideshow.on_key
 
 ```lua
-swayimg.slideshow.on_key(key: string, fn: function)
+swayimg.slideshow.on_key(key: string|string[], fn: function)
 ```
 
 Bind the key press event to a handler.
@@ -2281,7 +2281,7 @@ Since 5.0.
 ### swayimg.gallery.on_key
 
 ```lua
-swayimg.gallery.on_key(key: string, fn: function)
+swayimg.gallery.on_key(key: string|string[], fn: function)
 ```
 
 Bind the key press event to a handler.

@@ -1891,23 +1891,39 @@ void LuaEngine::bind_appmode_api(const char* name)
                          appmode->bind_reset();
                      })
         .addFunction("on_key",
-                     [this, appmode, name](const std::string& key,
+                     [this, appmode, name](const luabridge::LuaRef& val,
                                            const luabridge::LuaRef& cb) {
-                         std::optional<InputKeyboard> input =
-                             InputKeyboard::load(key);
-                         if (!input.has_value()) {
-                             raise_error("Invalid key for {}.{}.on_key: {}",
-                                         NS_SWAYIMG, name, key);
-                         }
                          if (!cb.isFunction()) {
                              raise_error("Invalid argument for {}.{}.on_key: "
                                          "expected function, but got {}",
                                          NS_SWAYIMG, name, cb.tostring());
                          }
-                         const luabridge::LuaRef* ref = add_ref(&cb);
-                         appmode->bind_input(*input, [this, ref]() {
-                             execute(ref);
-                         });
+
+                         std::vector<std::string> kdesc;
+                         if (val.isString()) {
+                             kdesc.emplace_back(val.tostring());
+                         } else if (val.isTable()) {
+                             const size_t arr_sz = val.length();
+                             kdesc.reserve(arr_sz);
+                             for (size_t i = 1; i <= arr_sz; ++i) {
+                                 kdesc.emplace_back(val[i].tostring());
+                             }
+                         } else {
+                             raise_error("Invalid argument type");
+                         }
+
+                         for (const auto& key : kdesc) {
+                             std::optional<InputKeyboard> input =
+                                 InputKeyboard::load(key);
+                             if (!input.has_value()) {
+                                 raise_error("Invalid key for {}.{}.on_key: {}",
+                                             NS_SWAYIMG, name, key);
+                             }
+                             const luabridge::LuaRef* ref = add_ref(&cb);
+                             appmode->bind_input(*input, [this, ref]() {
+                                 execute(ref);
+                             });
+                         }
                      })
         .addFunction(
             "on_mouse",

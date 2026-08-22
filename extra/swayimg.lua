@@ -398,7 +398,7 @@ function swayimg_appmode.bind_reset() end
 
 ---Bind the key press event to a handler.
 ---Since 5.0.
----@param key string Key description, for example `Ctrl-a`
+---@param key string|string[] Key description, for example `Ctrl-a`
 ---@param fn function Key press handler
 function swayimg_appmode.on_key(key, fn) end
 
