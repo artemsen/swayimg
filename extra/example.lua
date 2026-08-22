@@ -64,24 +64,26 @@ swayimg.viewer.preload = 1                 -- number of images to preload
 swayimg.viewer.history = 1                 -- number of images in history cache
 swayimg.viewer.mark_color = 0xff808080     -- mark icon color
 swayimg.viewer.pinch_factor = 1.0          -- pinch gesture factor
+swayimg.viewer.text = {                    -- text layer scheme
+  topleft = {
+    "File:\t{name}",
+    "Format:\t{format}",
+    "File size:\t{sizehr}",
+    "File time:\t{time}",
+    "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
+    "EXIF camera:\t{meta.Exif.Image.Model}"
+  },
+  topright = {
+    "Image:\t{list.index} of {list.total}",
+    "Frame:\t{frame.index} of {frame.total}",
+    "Size:\t{frame.width}x{frame.height}"
+  },
+  bottomleft = {
+    "Scale:\t{scale}"
+  }
+}
 swayimg.viewer.set_window_background(0xff000000) -- window background color
 swayimg.viewer.set_image_chessboard(20, 0xff333333, 0xff4c4c4c) -- chessboard
-swayimg.viewer.set_text("topleft", {       -- top left text block scheme
-  "File:\t{name}",
-  "Format:\t{format}",
-  "File size:\t{sizehr}",
-  "File time:\t{time}",
-  "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
-  "EXIF camera:\t{meta.Exif.Image.Model}"
-})
-swayimg.viewer.set_text("topright", {      -- top right text block scheme
-  "Image:\t{list.index} of {list.total}",
-  "Frame:\t{frame.index} of {frame.total}",
-  "Size:\t{frame.width}x{frame.height}"
-})
-swayimg.viewer.set_text("bottomleft", {    -- bottom left text block scheme
-  "Scale:\t{scale}"
-})
 
 -- exit from application
 swayimg.viewer.on_key("Escape", function()
@@ -227,8 +229,8 @@ end)
 swayimg.slideshow.timeout = 5                       -- timeout to switch image
 swayimg.slideshow.default_scale = "fit"             -- default image scale
 swayimg.slideshow.history = 0                       -- number of the history cache
+swayimg.slideshow.text = { topleft = { "{name}" } } -- text layer scheme
 swayimg.slideshow.set_window_background("auto")     -- window background mode
-swayimg.slideshow.set_text("topleft", { "{name}" }) -- top left text block scheme
 
 -- switch to viewer mode
 swayimg.slideshow.on_key("s", function()
@@ -253,12 +255,14 @@ swayimg.gallery.cache = 100                   -- number of thumbnails stored in 
 swayimg.gallery.preload = false               -- preloading invisible thumbnails
 swayimg.gallery.embedded_thumb = true         -- use embedded thumbnails
 swayimg.gallery.pstore = false                -- enable persistent storage for thumbnails
-swayimg.gallery.set_text("topleft", {         -- top left text block scheme
-  "File:\t{name}"
-})
-swayimg.gallery.set_text("topright", {        -- top right text block scheme
-  "{list.index} of {list.total}"
-})
+swayimg.gallery.text = {                      -- text layer scheme
+  topleft = {
+    "File:\t{name}"
+  },
+  topright = {
+    "{list.index} of {list.total}"
+  }
+}
 
 -- exit from application
 swayimg.gallery.on_key("Escape", function()

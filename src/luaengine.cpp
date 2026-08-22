@@ -1882,6 +1882,37 @@ void LuaEngine::bind_appmode_api(const char* name)
                     std::format("swayimg.{}.pinch_factor field", name).c_str());
                 appmode->set_pinch_factor(factor);
             })
+        .addProperty(
+            "text",
+            []() {
+                return nullptr;
+            },
+            [this, appmode](
+                const std::unordered_map<std::string, Text::Scheme>& params) {
+                for (const auto& [pos, content] : params) {
+                    const auto bp = name_to_type(tbpositions, pos.c_str());
+                    if (!bp.has_value()) {
+                        raise_error("Invalid position name \"{}\"", pos);
+                    }
+                    appmode->set_text_scheme(bp.value(), content);
+                }
+            })
+        .addFunction(
+            "set_text",
+            [this, appmode, name](const std::string& pos,
+                                  const luabridge::LuaRef& table) {
+                warn_deprecated(
+                    std::format("swayimg.{}.set_text()", name).c_str(),
+                    std::format("swayimg.{}.text field", name).c_str());
+                const auto bp = name_to_type(tbpositions, pos.c_str());
+                if (!bp.has_value()) {
+                    raise_error("Invalid argument \"{}\" for {}.{}.set_text",
+                                pos, NS_SWAYIMG, name);
+                }
+                appmode->set_text_scheme(bp.value(),
+                                         table.cast<Text::Scheme>().value());
+            })
+
         .addFunction("mark_image",
                      [appmode](const std::optional<bool>& state) {
                          appmode->mark_current(state);
@@ -1979,18 +2010,6 @@ void LuaEngine::bind_appmode_api(const char* name)
                              };
                          }
                      })
-        .addFunction(
-            "set_text",
-            [this, appmode, name](const std::string& pos,
-                                  const luabridge::LuaRef& table) {
-                const auto bp = name_to_type(tbpositions, pos.c_str());
-                if (!bp.has_value()) {
-                    raise_error("Invalid argument \"{}\" for {}.{}.set_text",
-                                pos, NS_SWAYIMG, name);
-                }
-                appmode->set_text_scheme(bp.value(),
-                                         table.cast<Text::Scheme>().value());
-            })
         .endNamespace()
         .endNamespace();
 }

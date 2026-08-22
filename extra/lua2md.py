@@ -159,9 +159,11 @@ class LuaField:
         self.luatype = luatype
         self.description = ''
         for line in description[1:]:
+            if description:
+                first_char = line.strip(' ')[0]
+                if first_char != '*' and not first_char.islower():
+                    self.description += '\n'
             self.description += line + '\n'
-            if not line.strip(' ').startswith('*'):
-                self.description += '\n'
         self.description = self.description.strip('\n')
         self.title = description[0]
         if self.title.endswith('.'):

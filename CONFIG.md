@@ -88,6 +88,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.history](#swayimgviewerhistory): Max number of previously viewed images stored in the cache
   * [swayimg.viewer.mark_color](#swayimgviewermark_color): Mark icon color
   * [swayimg.viewer.pinch_factor](#swayimgviewerpinch_factor): Pinch gesture factor
+  * [swayimg.viewer.text](#swayimgviewertext): Text layer scheme
   * [swayimg.viewer.switch_image()](#swayimgviewerswitch_image): Open the next file in the specified direction
   * [swayimg.viewer.open()](#swayimgvieweropen): Open the next file in the specified direction
   * [swayimg.viewer.open_path()](#swayimgvieweropen_path): Open the file at the specified path
@@ -113,7 +114,6 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.on_mouse()](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal()](#swayimgvieweron_signal): Bind the signal event to a handler
   * [swayimg.viewer.on_image_change()](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.viewer.set_text()](#swayimgviewerset_text): Set text layer scheme
 * Slide show mode
   * [swayimg.slideshow.timeout](#swayimgslideshowtimeout): Timeout in seconds after which next image should be opened
   * [swayimg.slideshow.autocenter](#swayimgslideshowautocenter): Automatic image centering
@@ -128,6 +128,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.history](#swayimgslideshowhistory): Max number of previously viewed images stored in the cache
   * [swayimg.slideshow.mark_color](#swayimgslideshowmark_color): Mark icon color
   * [swayimg.slideshow.pinch_factor](#swayimgslideshowpinch_factor): Pinch gesture factor
+  * [swayimg.slideshow.text](#swayimgslideshowtext): Text layer scheme
   * [swayimg.slideshow.switch_image()](#swayimgslideshowswitch_image): Open the next file in the specified direction
   * [swayimg.slideshow.open()](#swayimgslideshowopen): Open the next file in the specified direction
   * [swayimg.slideshow.open_path()](#swayimgslideshowopen_path): Open the file at the specified path
@@ -153,7 +154,6 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.on_mouse()](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.on_signal()](#swayimgslideshowon_signal): Bind the signal event to a handler
   * [swayimg.slideshow.on_image_change()](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.slideshow.set_text()](#swayimgslideshowset_text): Set text layer scheme
 * Gallery mode
   * [swayimg.gallery.aspect](#swayimggalleryaspect): Thumbnail aspect ratio
   * [swayimg.gallery.thumb_size](#swayimggallerythumb_size): Thumbnail size in pixels
@@ -172,6 +172,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.embedded_thumb](#swayimggalleryembedded_thumb): Use embedded thumbnails
   * [swayimg.gallery.mark_color](#swayimggallerymark_color): Mark icon color
   * [swayimg.gallery.pinch_factor](#swayimggallerypinch_factor): Pinch gesture factor
+  * [swayimg.gallery.text](#swayimggallerytext): Text layer scheme
   * [swayimg.gallery.switch_image()](#swayimggalleryswitch_image): Select the next thumbnail from the gallery
   * [swayimg.gallery.select()](#swayimggalleryselect): Select the next thumbnail from the gallery
   * [swayimg.gallery.select_at()](#swayimggalleryselect_at): Select the thumbnail at specified position
@@ -184,7 +185,6 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.on_mouse()](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal()](#swayimggalleryon_signal): Bind the signal event to a handler
   * [swayimg.gallery.on_image_change()](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
-  * [swayimg.gallery.set_text()](#swayimggalleryset_text): Set text layer scheme
 
 ## General functionality
 
@@ -319,7 +319,6 @@ Since 5.6.
 Write-only field.
 
 Supported parameters:
-
 * `raw`:
   * `camera_wb`: Fix colors using white balance from camera
 * `ttf`:
@@ -867,6 +866,54 @@ Since 5.5.
 
 Write-only field.
 
+### swayimg.viewer.text
+
+```lua
+swayimg.viewer.text: table
+```
+
+Text layer scheme.
+
+Since 5.6.
+
+Write-only field.
+
+The scheme is described as a map "block position -> array of string templates".
+
+The block position can be one of the following:
+* `topleft`: Top left corner of the window
+* `topright`: Top right corner of the window
+* `bottomleft`: Bottom left corner of the window
+* `bottomright`: Bottom right corner of the window
+
+The template string includes text and fields surrounded by curly braces:
+* `{name}`: File name of the currently viewed/selected image
+* `{dir}`: Parent directory name of the currently viewed/selected image
+* `{path}`: Absolute path to the currently viewed/selected image
+* `{size}`: File size in bytes
+* `{sizehr}`: File size in human-readable format
+* `{time}`: File modification time
+* `{format}`: Brief image format descriptio
+* `{scale}`: Current image scale in percent
+* `{list.index}`: Current index of image in the image list
+* `{list.total}`: Total number of files in the image list
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
+* `{frame.width}`: Current frame width in pixels
+* `{frame.height}`: Current frame height in pixels
+* `{meta.*}`: Image meta info:  EXIF, XMP, IPTC tags, free text tags etc
+
+To print `{` character escape it with `{{`.
+
+The template string may contain a tab character to separate key/value pairs,
+in this case the text block will be aligned with the longest key.
+
+If the value cannot be output (for example, the specified EXIF tag ismissing),
+then the entire string including the key is ignored upon printing.
+
+List of available EXIF/XMP/IPTC tags can be found at [Exiv2 website](https://exiv2.org/tags.html)
+or printed using utility exiv2: `exiv2 -pa photo.jpg`.
+
 ### swayimg.viewer.switch_image
 
 ```lua
@@ -1259,57 +1306,6 @@ Since 5.0.
 
 @_param_ `fn` - Handler for notifications about changing the current image
 
-### swayimg.viewer.set_text
-
-```lua
-swayimg.viewer.set_text(pos: block_position_t, scheme: text_template_t[])
-```
-
-Set text layer scheme.
-
-Since 5.0.
-
-@_param_ `pos` - Text block position
-
-`block_position_t` - Position of text block:
-* `"topleft"`: Top left corner of the window
-* `"topright"`: Top right corner of the window
-* `"bottomleft"`: Bottom left corner of the window
-* `"bottomright"`: Bottom right corner of the window
-
-@_param_ `scheme` - Array of line templates with overlay scheme
-
-`text_template_t` - Template for text overlay line:
-
-The template includes text and fields surrounded by curly braces.
-The following fields are supported:
-* `{name}`: File name of the currently viewed/selected image
-* `{dir}`: Parent directory name of the currently viewed/selected image
-* `{path}`: Absolute path to the currently viewed/selected image
-* `{size}`: File size in bytes
-* `{sizehr}`: File size in human-readable format
-* `{time}`: File modification time
-* `{format}`: Brief image format descriptio
-* `{scale}`: Current image scale in percent
-* `{list.index}`: Current index of image in the image list
-* `{list.total}`: Total number of files in the image list
-* `{frame.index}`: Current frame index
-* `{frame.total}`: Total number of frames
-* `{frame.width}`: Current frame width in pixels
-* `{frame.height}`: Current frame height in pixels
-* `{meta.*}`: Image meta info: EXIF, tags etc. List of available EXIF tags
-  can be found at [Exiv2 website](https://exiv2.org/tags.html) or printed
-  using utility exiv2: `exiv2 -pa photo.jpg`
-
-To print `{` character escape it with `{{`.
-
-The template string may contain a tab character to separate key/value pairs.
-In this case, the text block will be aligned with the longest key.
-If the value cannot be output (for example, the specified EXIF tag is
-missing), then the entire string including the key is ignored upon printing.
-
-Example: `Path to image:\t{path}`
-
 ## Slide show mode
 
 ### swayimg.slideshow.timeout
@@ -1487,6 +1483,54 @@ Pinch gesture factor.
 Since 5.5.
 
 Write-only field.
+
+### swayimg.slideshow.text
+
+```lua
+swayimg.slideshow.text: table
+```
+
+Text layer scheme.
+
+Since 5.6.
+
+Write-only field.
+
+The scheme is described as a map "block position -> array of string templates".
+
+The block position can be one of the following:
+* `topleft`: Top left corner of the window
+* `topright`: Top right corner of the window
+* `bottomleft`: Bottom left corner of the window
+* `bottomright`: Bottom right corner of the window
+
+The template string includes text and fields surrounded by curly braces:
+* `{name}`: File name of the currently viewed/selected image
+* `{dir}`: Parent directory name of the currently viewed/selected image
+* `{path}`: Absolute path to the currently viewed/selected image
+* `{size}`: File size in bytes
+* `{sizehr}`: File size in human-readable format
+* `{time}`: File modification time
+* `{format}`: Brief image format descriptio
+* `{scale}`: Current image scale in percent
+* `{list.index}`: Current index of image in the image list
+* `{list.total}`: Total number of files in the image list
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
+* `{frame.width}`: Current frame width in pixels
+* `{frame.height}`: Current frame height in pixels
+* `{meta.*}`: Image meta info:  EXIF, XMP, IPTC tags, free text tags etc
+
+To print `{` character escape it with `{{`.
+
+The template string may contain a tab character to separate key/value pairs,
+in this case the text block will be aligned with the longest key.
+
+If the value cannot be output (for example, the specified EXIF tag ismissing),
+then the entire string including the key is ignored upon printing.
+
+List of available EXIF/XMP/IPTC tags can be found at [Exiv2 website](https://exiv2.org/tags.html)
+or printed using utility exiv2: `exiv2 -pa photo.jpg`.
 
 ### swayimg.slideshow.switch_image
 
@@ -1880,57 +1924,6 @@ Since 5.0.
 
 @_param_ `fn` - Handler for notifications about changing the current image
 
-### swayimg.slideshow.set_text
-
-```lua
-swayimg.slideshow.set_text(pos: block_position_t, scheme: text_template_t[])
-```
-
-Set text layer scheme.
-
-Since 5.0.
-
-@_param_ `pos` - Text block position
-
-`block_position_t` - Position of text block:
-* `"topleft"`: Top left corner of the window
-* `"topright"`: Top right corner of the window
-* `"bottomleft"`: Bottom left corner of the window
-* `"bottomright"`: Bottom right corner of the window
-
-@_param_ `scheme` - Array of line templates with overlay scheme
-
-`text_template_t` - Template for text overlay line:
-
-The template includes text and fields surrounded by curly braces.
-The following fields are supported:
-* `{name}`: File name of the currently viewed/selected image
-* `{dir}`: Parent directory name of the currently viewed/selected image
-* `{path}`: Absolute path to the currently viewed/selected image
-* `{size}`: File size in bytes
-* `{sizehr}`: File size in human-readable format
-* `{time}`: File modification time
-* `{format}`: Brief image format descriptio
-* `{scale}`: Current image scale in percent
-* `{list.index}`: Current index of image in the image list
-* `{list.total}`: Total number of files in the image list
-* `{frame.index}`: Current frame index
-* `{frame.total}`: Total number of frames
-* `{frame.width}`: Current frame width in pixels
-* `{frame.height}`: Current frame height in pixels
-* `{meta.*}`: Image meta info: EXIF, tags etc. List of available EXIF tags
-  can be found at [Exiv2 website](https://exiv2.org/tags.html) or printed
-  using utility exiv2: `exiv2 -pa photo.jpg`
-
-To print `{` character escape it with `{{`.
-
-The template string may contain a tab character to separate key/value pairs.
-In this case, the text block will be aligned with the longest key.
-If the value cannot be output (for example, the specified EXIF tag is
-missing), then the entire string including the key is ignored upon printing.
-
-Example: `Path to image:\t{path}`
-
 ## Gallery mode
 
 ### swayimg.gallery.aspect
@@ -2154,6 +2147,54 @@ Since 5.5.
 
 Write-only field.
 
+### swayimg.gallery.text
+
+```lua
+swayimg.gallery.text: table
+```
+
+Text layer scheme.
+
+Since 5.6.
+
+Write-only field.
+
+The scheme is described as a map "block position -> array of string templates".
+
+The block position can be one of the following:
+* `topleft`: Top left corner of the window
+* `topright`: Top right corner of the window
+* `bottomleft`: Bottom left corner of the window
+* `bottomright`: Bottom right corner of the window
+
+The template string includes text and fields surrounded by curly braces:
+* `{name}`: File name of the currently viewed/selected image
+* `{dir}`: Parent directory name of the currently viewed/selected image
+* `{path}`: Absolute path to the currently viewed/selected image
+* `{size}`: File size in bytes
+* `{sizehr}`: File size in human-readable format
+* `{time}`: File modification time
+* `{format}`: Brief image format descriptio
+* `{scale}`: Current image scale in percent
+* `{list.index}`: Current index of image in the image list
+* `{list.total}`: Total number of files in the image list
+* `{frame.index}`: Current frame index
+* `{frame.total}`: Total number of frames
+* `{frame.width}`: Current frame width in pixels
+* `{frame.height}`: Current frame height in pixels
+* `{meta.*}`: Image meta info:  EXIF, XMP, IPTC tags, free text tags etc
+
+To print `{` character escape it with `{{`.
+
+The template string may contain a tab character to separate key/value pairs,
+in this case the text block will be aligned with the longest key.
+
+If the value cannot be output (for example, the specified EXIF tag ismissing),
+then the entire string including the key is ignored upon printing.
+
+List of available EXIF/XMP/IPTC tags can be found at [Exiv2 website](https://exiv2.org/tags.html)
+or printed using utility exiv2: `exiv2 -pa photo.jpg`.
+
 ### swayimg.gallery.switch_image
 
 ```lua
@@ -2342,54 +2383,3 @@ Set a callback function called when a new image is opened/selected.
 Since 5.0.
 
 @_param_ `fn` - Handler for notifications about changing the current image
-
-### swayimg.gallery.set_text
-
-```lua
-swayimg.gallery.set_text(pos: block_position_t, scheme: text_template_t[])
-```
-
-Set text layer scheme.
-
-Since 5.0.
-
-@_param_ `pos` - Text block position
-
-`block_position_t` - Position of text block:
-* `"topleft"`: Top left corner of the window
-* `"topright"`: Top right corner of the window
-* `"bottomleft"`: Bottom left corner of the window
-* `"bottomright"`: Bottom right corner of the window
-
-@_param_ `scheme` - Array of line templates with overlay scheme
-
-`text_template_t` - Template for text overlay line:
-
-The template includes text and fields surrounded by curly braces.
-The following fields are supported:
-* `{name}`: File name of the currently viewed/selected image
-* `{dir}`: Parent directory name of the currently viewed/selected image
-* `{path}`: Absolute path to the currently viewed/selected image
-* `{size}`: File size in bytes
-* `{sizehr}`: File size in human-readable format
-* `{time}`: File modification time
-* `{format}`: Brief image format descriptio
-* `{scale}`: Current image scale in percent
-* `{list.index}`: Current index of image in the image list
-* `{list.total}`: Total number of files in the image list
-* `{frame.index}`: Current frame index
-* `{frame.total}`: Total number of frames
-* `{frame.width}`: Current frame width in pixels
-* `{frame.height}`: Current frame height in pixels
-* `{meta.*}`: Image meta info: EXIF, tags etc. List of available EXIF tags
-  can be found at [Exiv2 website](https://exiv2.org/tags.html) or printed
-  using utility exiv2: `exiv2 -pa photo.jpg`
-
-To print `{` character escape it with `{{`.
-
-The template string may contain a tab character to separate key/value pairs.
-In this case, the text block will be aligned with the longest key.
-If the value cannot be output (for example, the specified EXIF tag is
-missing), then the entire string including the key is ignored upon printing.
-
-Example: `Path to image:\t{path}`
