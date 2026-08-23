@@ -37,7 +37,12 @@ public:
             return nullptr;
         }
 
+        // get canvas (image) size
         const RsvgRectangle canvas = get_canvas(svg);
+        if (canvas.width == 0 || canvas.height == 0) {
+            g_object_unref(svg);
+            return nullptr;
+        }
 
         // allocate image and fram that will be used for export
         ImagePtr image = std::make_shared<ImageSvg>(svg, canvas);
@@ -93,9 +98,9 @@ private:
         RsvgLength svg_w;
         RsvgLength svg_h;
         RsvgRectangle viewbox;
-        gboolean width_ok = TRUE;
-        gboolean height_ok = TRUE;
-        gboolean viewbox_ok = TRUE;
+        gboolean width_ok = FALSE;
+        gboolean height_ok = FALSE;
+        gboolean viewbox_ok = FALSE;
         rsvg_handle_get_intrinsic_dimensions(svg, &width_ok, &svg_w, &height_ok,
                                              &svg_h, &viewbox_ok, &viewbox);
 
@@ -111,6 +116,9 @@ private:
         } else {
             canvas.width = CANVAS_SIZE_DEF_PX;
             canvas.height = CANVAS_SIZE_DEF_PX;
+        }
+        if (canvas.width == 0 || canvas.height == 0) {
+            return canvas;
         }
 
         if (canvas.width < CANVAS_SIZE_MIN_PX ||
