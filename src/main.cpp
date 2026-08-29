@@ -4,7 +4,7 @@
 
 #include "application.hpp"
 #include "buildconf.hpp"
-#include "imageformat.hpp"
+#include "formatfactory.hpp"
 #include "log.hpp"
 
 #include <getopt.h>

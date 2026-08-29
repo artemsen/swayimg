@@ -2,7 +2,7 @@
 // Copyright (C) 2024 Artem Senichev <artemsen@gmail.com>
 
 #include "buildconf.hpp"
-#include "imageformat.hpp"
+#include "formatfactory.hpp"
 
 #include <gtest/gtest.h>
 #include <unistd.h>

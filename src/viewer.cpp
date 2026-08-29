@@ -6,7 +6,7 @@
 
 #include "application.hpp"
 #include "defaults.hpp"
-#include "imageformat.hpp"
+#include "formatfactory.hpp"
 #include "log.hpp"
 #include "render.hpp"
 #include "resources.hpp"

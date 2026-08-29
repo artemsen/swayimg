@@ -299,6 +299,7 @@ sources = [
     'src/defaults.cpp',
     'src/fdevent.cpp',
     'src/font.cpp',
+    'src/formatfactory.cpp',
     'src/fsmonitor.cpp',
     'src/gallery.cpp',
     'src/geometry.cpp',

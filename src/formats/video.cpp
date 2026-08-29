@@ -114,30 +114,13 @@ public:
         return make_thumb(pm, sz, fill);
     }
 
-    bool set_params(const Params& params) override
+    void set_config(Config& params) override
     {
-        for (const auto& [name, value] : params) {
-            if (name == "size" && std::holds_alternative<size_t>(value) &&
-                std::get<size_t>(value) <= 10000) {
-                size = std::get<size_t>(value);
-            } else if (name == "columns" &&
-                       std::holds_alternative<size_t>(value) &&
-                       std::get<size_t>(value) <= 100) {
-                columns = std::get<size_t>(value);
-            } else if (name == "rows" &&
-                       std::holds_alternative<size_t>(value) &&
-                       std::get<size_t>(value) <= 100) {
-                rows = std::get<size_t>(value);
-            } else if (name == "padding" &&
-                       std::holds_alternative<size_t>(value) &&
-                       std::get<size_t>(value) <= 100) {
-                padding = std::get<size_t>(value);
-            } else {
-                throw std::runtime_error(
-                    std::format("Invalid parameter {}", name));
-            }
-        }
-        return true;
+        ImageFormat::set_config(params);
+        params.get("size", size, 10, 10000);
+        params.get("columns", columns, 1, 100);
+        params.get("rows", rows, 1, 100);
+        params.get("padding", padding, 0, 1000);
     }
 
 private:
@@ -296,10 +279,10 @@ private:
                 return false;
             }
 
-            // fast check: bail out before decoding when the streams are already
-            // known and none of them is a video stream. Some demuxers (e.g.
-            // MPEG-PS) discover streams lazily and report none here; those are
-            // handled after avformat_find_stream_info.
+            // fast check: bail out before decoding when the streams are
+            // already known and none of them is a video stream. Some
+            // demuxers (e.g. MPEG-PS) discover streams lazily and report
+            // none here; those are handled after avformat_find_stream_info.
             if (fmt->nb_streams > 0) {
                 bool has_video = false;
                 for (unsigned i = 0; i < fmt->nb_streams && !has_video; ++i) {

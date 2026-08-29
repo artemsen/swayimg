@@ -17,17 +17,20 @@ swayimg.overlay = false                    -- window overlay mode
 swayimg.exif_orientation = true            -- image orientation by EXIF
 swayimg.dnd_button = "MouseRight"          -- drag-and-drop mouse button
 
--- Format specific parameters
-swayimg.format_params = {
+-- Format specific configuration
+swayimg.format_conf = {
   raw = {             -- "raw" image format settings
+    enable = true,    -- enable RAW format decoder
     camera_wb = true  -- use camera white balance
   },
-  ttf = {                     -- font preview settings
+  ttf = {                    -- font preview settings
+    enable = true,           -- enable font decoder
     text = "The quick brown fox jumps over the lazy dog 0123456789",
-    color = 0xffffffff,       -- font color
-    background = 0x00000000   -- background color
+    color = 0xffffffff,      -- font color
+    background = 0x00000000  -- background color
   },
   video = {           -- storyboard from video files
+    enable = true,    -- enable video storyboard
     size = 300,       -- size (width) of a single tile (frame)
     columns = 3,      -- number of columns in storyboard
     rows = 3,         -- number of rows in storyboard

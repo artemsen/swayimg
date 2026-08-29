@@ -42,7 +42,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.decoration](#swayimgdecoration): Window decoration (title, border, buttons)
   * [swayimg.antialiasing](#swayimgantialiasing): Anti-aliasing mode
   * [swayimg.exif_orientation](#swayimgexif_orientation): Automatic orientation based on EXIF
-  * [swayimg.format_params](#swayimgformat_params): Custom image format parameters
+  * [swayimg.format_conf](#swayimgformat_conf): Custom image format parameters
   * [swayimg.title](#swayimgtitle): Window title
   * [swayimg.exit()](#swayimgexit): Exit from application
   * [swayimg.get_window_size()](#swayimgget_window_size): Get application window size
@@ -306,10 +306,10 @@ Since 5.5.
 
 Write-only field.
 
-### swayimg.format_params
+### swayimg.format_conf
 
 ```lua
-swayimg.format_params: table
+swayimg.format_conf: table
 ```
 
 Custom image format parameters.
@@ -320,11 +320,19 @@ Write-only field.
 
 Supported parameters:
 * `raw`:
+  * `enable`: Enable decoder
   * `camera_wb`: Fix colors using white balance from camera
 * `ttf`:
+  * `enable`: Enable decoder
   * `text`: Text to render
   * `color`: Text color
   * `background`: Background color
+* `video`:
+  * `enable`: Enable decoder
+  * `size`: Size (width) of a single tile (frame)
+  * `columns`: Number of columns in storyboard
+  * `rows`: Number of rows in storyboard
+  * `padding`: Gap between frames in pixels
 
 ### swayimg.title
 

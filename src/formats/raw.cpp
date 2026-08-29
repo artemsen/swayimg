@@ -2,6 +2,7 @@
 // Raw camera image format.
 // Copyright (C) 2025 Artem Senichev <artemsen@gmail.com>
 
+#include "../formatfactory.hpp"
 #include "../imageformat.hpp"
 
 #pragma GCC diagnostic push
@@ -10,7 +11,6 @@
 #pragma GCC diagnostic pop
 
 #include <cstring>
-#include <format>
 #include <memory>
 
 namespace {
@@ -20,19 +20,6 @@ public:
     ImageFormatRaw() noexcept
         : ImageFormat(Priority::Normal, "raw")
     {
-    }
-
-    bool set_params(const Params& params) override
-    {
-        for (const auto& [name, value] : params) {
-            if (name == "camera_wb" && std::holds_alternative<bool>(value)) {
-                camera_wb = std::get<bool>(value);
-            } else {
-                throw std::runtime_error(
-                    std::format("Unsupported or invalid parameter {}", name));
-            }
-        }
-        return true;
     }
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
@@ -139,6 +126,12 @@ public:
         }
 
         return thumb;
+    }
+
+    void set_config(Config& params) override
+    {
+        ImageFormat::set_config(params);
+        params.get("camera_wb", camera_wb);
     }
 
     // ignore, done by decoder

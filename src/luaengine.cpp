@@ -5,8 +5,8 @@
 #include "luaengine.hpp"
 
 #include "application.hpp"
+#include "formatfactory.hpp"
 #include "gallery.hpp"
-#include "imageformat.hpp"
 #include "imagelist.hpp"
 #include "log.hpp"
 #include "render.hpp"
@@ -650,46 +650,51 @@ void LuaEngine::bind_root_api()
                          defer_timer.reset(ms > 0 ? ms : 1, 0);
                      })
         .addProperty(
-            "format_params",
+            "format_conf",
             []() {
                 return nullptr;
             },
             [this](const std::unordered_map<
                    std::string,
-                   std::unordered_map<std::string, luabridge::LuaRef>>&
-                       params) {
-                for (const auto& [format, pmap] : params) {
+                   std::unordered_map<std::string, luabridge::LuaRef>>& conf) {
+                for (const auto& [format, params] : conf) {
                     ImageFormat* fmt =
                         FormatFactory::self().get(format.c_str());
                     if (!fmt) {
                         raise_error("Unsupported image format {}", format);
                     }
-                    ImageFormat::Params fmt_pars;
-                    for (const auto& [name, value] : pmap) {
+                    ImageFormat::Config fmtconf;
+                    for (const auto& [name, value] : params) {
                         switch (value.type()) {
                             case LUA_TBOOLEAN:
-                                fmt_pars.insert(
-                                    { name, static_cast<bool>(value) });
+                                fmtconf.set(name, static_cast<bool>(value));
                                 break;
                             case LUA_TNUMBER:
-                                fmt_pars.insert(
-                                    { name,
-                                      static_cast<size_t>(
-                                          static_cast<luacolor_t>(value)) });
+                                fmtconf.set(
+                                    name,
+                                    static_cast<size_t>(
+                                        static_cast<luacolor_t>(value)));
                                 break;
                             case LUA_TSTRING:
-                                fmt_pars.insert(
-                                    { name, static_cast<std::string>(value) });
+                                fmtconf.set(name,
+                                            static_cast<std::string>(value));
                                 break;
                             default:
-                                raise_error("Invalid type in parameter {} for "
-                                            "format {}",
+                                raise_error("Invalid type in parameter '{}' "
+                                            "for format {}",
                                             name, format);
                         }
                     }
-                    if (!fmt->set_params(fmt_pars)) {
-                        raise_error("Format {} doesn't custom support "
-                                    "parameters",
+                    fmt->set_config(fmtconf);
+                    for (const auto& it :
+                         fmtconf.get(ImageFormat::Config::Invalid)) {
+                        raise_error(
+                            "Invalid value in parameter '{}' for format {}", it,
+                            format);
+                    }
+                    for (const auto& it :
+                         fmtconf.get(ImageFormat::Config::Unhandled)) {
+                        raise_error("Unknown parameter '{}' for format {}", it,
                                     format);
                     }
                 }
@@ -698,7 +703,7 @@ void LuaEngine::bind_root_api()
                      [](const std::string&,
                         const std::unordered_map<std::string, bool>&) {
                          warn_deprecated("swayimg.set_format_params()",
-                                         "swayimg.format_params field");
+                                         "swayimg.format_conf field");
                      })
         .endNamespace();
 }

@@ -162,17 +162,20 @@
 ---Write-only field.
 ---Supported parameters:
 ---* `raw`:
+---  * `enable`: Enable decoder
 ---  * `camera_wb`: Fix colors using white balance from camera
 ---* `ttf`:
+---  * `enable`: Enable decoder
 ---  * `text`: Text to render
 ---  * `color`: Text color
 ---  * `background`: Background color
 ---* `video`:
+---  * `enable`: Enable decoder
 ---  * `size`: Size (width) of a single tile (frame)
 ---  * `columns`: Number of columns in storyboard
 ---  * `rows`: Number of rows in storyboard
 ---  * `padding`: Gap between frames in pixels
----@field format_params table
+---@field format_conf table
 ---
 ---Window title.
 ---Since 5.5.

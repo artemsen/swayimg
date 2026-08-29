@@ -6,8 +6,6 @@
 #include "../font.hpp"
 #include "../imageformat.hpp"
 
-#include <format>
-
 namespace {
 
 class ImageFormatTtf : public ImageFormat {
@@ -64,24 +62,12 @@ public:
         return image;
     }
 
-    bool set_params(const Params& params) override
+    void set_config(Config& params) override
     {
-        for (const auto& [name, value] : params) {
-            if (name == "text" && std::holds_alternative<std::string>(value) &&
-                !std::get<std::string>(value).empty()) {
-                text = std::get<std::string>(value);
-            } else if (name == "color" &&
-                       std::holds_alternative<size_t>(value)) {
-                color = std::get<size_t>(value);
-            } else if (name == "background" &&
-                       std::holds_alternative<size_t>(value)) {
-                bkg = std::get<size_t>(value);
-            } else {
-                throw std::runtime_error(
-                    std::format("Invalid parameter {}", name));
-            }
-        }
-        return true;
+        ImageFormat::set_config(params);
+        params.get("text", text, 1);
+        params.get("color", color);
+        params.get("background", bkg);
     }
 
 private:

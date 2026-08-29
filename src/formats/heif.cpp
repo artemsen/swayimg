@@ -2,6 +2,7 @@
 // HEIF image format.
 // Copyright (C) 2022 Artem Senichev <artemsen@gmail.com>
 
+#include "../formatfactory.hpp"
 #include "../imageformat.hpp"
 
 #include <libheif/heif.h>

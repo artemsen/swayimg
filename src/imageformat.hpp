@@ -7,7 +7,6 @@
 #include "image.hpp"
 
 #include <cstring>
-#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -30,8 +29,73 @@ public:
         size_t size = 0;         ///< Buffer size
     };
 
-    using ParamValue = std::variant<bool, size_t, std::string>;
-    using Params = std::unordered_map<std::string, ParamValue>;
+    /** Format config. */
+    class Config {
+    public:
+        /** Parameter status. */
+        enum Status : uint8_t { Invalid, Handled, Unhandled };
+
+        /**
+         * Set configuration parameter.
+         * @param name parameter name
+         * @param value parameter value
+         */
+        template <typename T> void set(const std::string& name, const T& value)
+        {
+            params.insert({
+                name, { .value = value, .status = Unhandled }
+            });
+        }
+
+        /**
+         * Get configuration parameter and change its status.
+         * @param name parameter name
+         * @param value parameter value to write
+         */
+        void get(const std::string& name, bool& value);
+
+        /**
+         * Get configuration parameter and change its status.
+         * @param name parameter name
+         * @param value parameter value to write
+         */
+        void get(const std::string& name, argb_t& value);
+
+        /**
+         * Get configuration parameter and change its status.
+         * @param name parameter name
+         * @param value parameter value to write
+         * @param min_val, max_val valid value range
+         */
+        void get(const std::string& name, size_t& value, const size_t min_val,
+                 const size_t max_val);
+
+        /**
+         * Get configuration parameter and change its status.
+         * @param name parameter name
+         * @param value parameter value to write
+         * @param min_len min lenght of the value
+         */
+        void get(const std::string& name, std::string& value,
+                 const size_t min_len);
+
+        /**
+         * Get configuration parameter with specified status.
+         * @param status parameter status
+         * @return parameters array with specified state
+         */
+        [[nodiscard]] std::vector<std::string> get(const Status status) const;
+
+    private:
+        /** Parameter value. */
+        struct Value {
+            std::variant<bool, size_t, std::string> value;
+            Status status;
+        };
+
+        /** Config container. */
+        std::unordered_map<std::string, Value> params;
+    };
 
     /**
      * Constructor.
@@ -41,11 +105,10 @@ public:
     ImageFormat(const Priority load_priority, const char* format_name) noexcept;
 
     /**
-     * Set decode parameters for the format.
+     * Set configuration for the format.
      * @param params format parameters
-     * @return false if not supported
      */
-    virtual bool set_params(const Params& params);
+    virtual void set_config(Config& params);
 
     /**
      * Decode raw image data.
@@ -100,6 +163,9 @@ public:
     static bool read_metadata(const Data& data, ImagePtr& image);
 
 protected:
+    // Name of "enable" decoder parameter
+    static constexpr const std::string enable_param_name = "enable";
+
     /**
      * Check signature existence in source data buffer.
      * @param data source data
@@ -127,79 +193,6 @@ protected:
 
 public:
     Priority priority; ///< Format priority
+    bool enable;       ///< Enable/disable decoder
     const char* name;  ///< Short format name
-};
-
-/** Image format factory. */
-class FormatFactory {
-public:
-    /**
-     * Get global instance of image loader.
-     * @return image loader instance
-     */
-    static FormatFactory& self();
-
-    /** Constructor. */
-    FormatFactory();
-
-    /**
-     * Load image.
-     * @param entry image entry to load
-     * @return image instance or nullptr if image wasn't loaded
-     */
-    [[nodiscard]] ImagePtr load(const ImageEntryPtr& entry) const;
-
-    /**
-     * Save image in PNG format.
-     * @param pm pixmap to encode
-     * @param meta meta data
-     * @param path path to write the file
-     * @return true on success
-     */
-    static bool save(const Pixmap& pm,
-                     const std::unordered_map<std::string, std::string>& meta,
-                     const std::filesystem::path& path);
-
-    /**
-     * Decode raw image data.
-     * @param data source data to decode
-     * @return image instance or nullptr on errors
-     */
-    [[nodiscard]] ImagePtr decode(const ImageFormat::Data& data) const;
-
-    /**
-     * Get preview (thumbnail).
-     * @param entry image entry to load
-     * @param sz thumbnail size
-     * @param fill thumnail aspect ratio: true=fill, false=fit
-     * @return encoded image data, empty array on errors
-     */
-    [[nodiscard]] Pixmap preview(const ImageEntryPtr& entry, const size_t sz,
-                                 const bool fill) const;
-
-    /**
-     * Register format.
-     * @param fmt format decoder/encoder
-     */
-    void add(ImageFormat* fmt);
-
-    /**
-     * Get format handler.
-     * @param name short format name
-     * @return format handler instance or nullptr if not found
-     */
-    ImageFormat* get(const char* name);
-
-    /**
-     * Get list of supported loaders.
-     * @return list of loaders in priority order
-     */
-    [[nodiscard]] std::string list() const;
-
-public:
-    bool fix_orientation; ///< Fix orientation by EXIF
-    bool embedded_thumb;  ///< Use embedded thumbnails
-
-private:
-    std::vector<ImageFormat*> formats; ///< Format handlers
 };

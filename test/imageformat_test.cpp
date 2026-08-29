@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
-#include "image.hpp"
-#include "imageformat.hpp"
+#include "formatfactory.hpp"
 
 #include <gtest/gtest.h>
 
