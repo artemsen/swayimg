@@ -5,6 +5,7 @@
 #include "../imageformat.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <format>
 #include <string>
 
@@ -12,6 +13,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/display.h>
 #include <libavutil/error.h>
 #include <libavutil/log.h>
 #include <libavutil/pixdesc.h>
@@ -329,12 +331,10 @@ private:
                 return false;
             }
 
-            if (st->duration == AV_NOPTS_VALUE &&
-                fmt->duration == AV_NOPTS_VALUE) {
-                return false;
-            }
+            rotation = read_rotation();
 
-            return true;
+            return st->duration != AV_NOPTS_VALUE ||
+                fmt->duration != AV_NOPTS_VALUE;
         }
 
         /**
@@ -369,8 +369,12 @@ private:
                 sar.num = 1;
                 sar.den = 1;
             }
-            return static_cast<double>(st->codecpar->width) * sar.num /
+            double ratio = static_cast<double>(st->codecpar->width) * sar.num /
                 (static_cast<double>(st->codecpar->height) * sar.den);
+            if (rotation == 90 || rotation == 270) {
+                ratio = 1.0 / ratio;
+            }
+            return ratio;
         }
 
         /**
@@ -471,23 +475,104 @@ private:
          */
         bool scale(Pixmap& pm) const
         {
+            const int rot = display_rotation();
+            const bool swap = rot == 90 || rot == 270;
+
+            // For 90/270 rotation the frame has to be scaled in its encoded
+            // orientation first and then rotated into the display-oriented
+            // target pixmap.
+            Pixmap tmp;
+            Pixmap* dst = &pm;
+            if (swap) {
+                tmp.create(Pixmap::ARGB, pm.height(), pm.width());
+                dst = &tmp;
+            }
+
             SwsContext* sws = sws_getContext(
                 frame->width, frame->height,
                 static_cast<AVPixelFormat>(frame->format),
-                static_cast<int>(pm.width()), static_cast<int>(pm.height()),
+                static_cast<int>(dst->width()), static_cast<int>(dst->height()),
                 AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
             if (!sws) {
                 return false;
             }
 
-            uint8_t* const dst[4] = { static_cast<uint8_t*>(pm.ptr(0, 0)),
+            uint8_t* const src[4] = { static_cast<uint8_t*>(dst->ptr(0, 0)),
                                       nullptr, nullptr, nullptr };
-            const int dst_stride[4] = { static_cast<int>(pm.stride()), 0, 0,
+            const int src_stride[4] = { static_cast<int>(dst->stride()), 0, 0,
                                         0 };
-            sws_scale(sws, frame->data, frame->linesize, 0, frame->height, dst,
-                      dst_stride);
+            sws_scale(sws, frame->data, frame->linesize, 0, frame->height, src,
+                      src_stride);
             sws_freeContext(sws);
+
+            if (rot != 0) {
+                // Pixmap::rotate uses clockwise angles while the display
+                // matrix rotation is counterclockwise.
+                const size_t angle = (360 - rot) % 360;
+                dst->rotate(angle);
+                if (swap) {
+                    pm.copy(tmp, { .x = 0, .y = 0 });
+                }
+            }
             return true;
+        }
+
+        /**
+         * Read rotation metadata from the stream's side data.
+         * @return counterclockwise rotation in degrees (multiple of 90)
+         */
+        [[nodiscard]] int read_rotation() const
+        {
+            if (st && st->codecpar) {
+                const AVPacketSideData* sd =
+                    av_packet_side_data_get(st->codecpar->coded_side_data,
+                                            st->codecpar->nb_coded_side_data,
+                                            AV_PKT_DATA_DISPLAYMATRIX);
+                if (sd) {
+                    return normalize_rotation(sd->data, sd->size);
+                }
+            }
+            return 0;
+        }
+
+        /**
+         * Get current frame rotation (frame metadata overrides stream one).
+         * @return counterclockwise rotation in degrees (multiple of 90)
+         */
+        [[nodiscard]] int display_rotation() const
+        {
+            if (rotation != 0) {
+                return rotation;
+            }
+            const AVFrameSideData* sd =
+                av_frame_get_side_data(frame, AV_FRAME_DATA_DISPLAYMATRIX);
+            if (sd) {
+                return normalize_rotation(sd->data, sd->size);
+            }
+            return 0;
+        }
+
+        /**
+         * Normalize rotation angle from a display matrix.
+         * @param data matrix data
+         * @param size matrix size in bytes
+         * @return counterclockwise rotation in degrees (multiple of 90)
+         */
+        static int normalize_rotation(const uint8_t* data, const size_t size)
+        {
+            if (!data || size < 9 * sizeof(int32_t)) {
+                return 0;
+            }
+            const double angle =
+                av_display_rotation_get(reinterpret_cast<const int32_t*>(data));
+            if (std::isnan(angle)) {
+                return 0;
+            }
+            int deg = static_cast<int>(std::lround(angle)) % 360;
+            if (deg < 0) {
+                deg += 360;
+            }
+            return deg / 90 * 90;
         }
 
     private:
@@ -497,8 +582,9 @@ private:
         AVCodecContext* dec = nullptr;  ///< AV codec context
         AVFrame* frame = nullptr;       ///< Current frame
         AVStream* st = nullptr;         ///< AV stream context
-        int stream_id = -1;             ///< AV stream id
         AVRational tb {};               ///< Duration
+        int stream_id = -1;             ///< AV stream id
+        int rotation = 0;               ///< Display rotation (counterclockwise)
         std::string cname;              ///< Short codec name
     };
 };
