@@ -16,7 +16,6 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
   - Sixel (via [libsixel](https://github.com/saitoha/libsixel));
   - Raw: CRW/CR2, NEF, RAF, etc (via [libraw](https://www.libraw.org));
   - EXR (via [OpenEXR](https://openexr.com));
-  - TTF/OTF/WOFF fonts preview (via [FreeType](https://freetype.org));
   - BMP (built-in);
   - PNM (built-in);
   - TGA (built-in);
@@ -24,6 +23,9 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
   - QOI (built-in);
   - DICOM (built-in);
   - Farbfeld (built-in).
+- Support for non-image previews:
+  - Font: TTF/OTF/WOFF (via [FreeType](https://freetype.org));
+  - Video: preview in storyboard (via [FFMpeg](https://ffmpeg.org)).
 - Native support for Wayland and DRM output;
 - Gallery and viewer modes with slideshow;
 - Image animation support;

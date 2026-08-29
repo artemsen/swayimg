@@ -167,6 +167,11 @@
 ---  * `text`: Text to render
 ---  * `color`: Text color
 ---  * `background`: Background color
+---* `video`:
+---  * `size`: Size (width) of a single tile (frame)
+---  * `columns`: Number of columns in storyboard
+---  * `rows`: Number of rows in storyboard
+---  * `padding`: Gap between frames in pixels
 ---@field format_params table
 ---
 ---Window title.

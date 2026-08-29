@@ -4,6 +4,7 @@ RUN apk add \
     bash-completion-dev \
     build-base \
     exiv2-dev \
+    ffmpeg-dev \
     font-dejavu \
     giflib-dev \
     json-c-dev \

@@ -8,6 +8,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     fonts-dejavu \
     bash-completion \
     locales \
+    libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
     libavif-dev \
     libdrm-dev \
     libexiv2-dev \

@@ -99,8 +99,28 @@ rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 sixel = dependency('libsixel', required: get_option('sixel'))
 raw = dependency('libraw', required: get_option('raw'))
-webp = dependency('libwebp', required: get_option('webp'))
+# WebP format
+webp_base = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
+if webp_base.found() and webp_demux.found()
+    webp = declare_dependency(
+        dependencies: [webp_base, webp_demux],
+    )
+else
+    webp = dependency('', required: false)
+endif
+# Video storyboard
+avformat = dependency('libavformat', required: get_option('video'))
+avcodec = dependency('libavcodec', required: get_option('video'))
+avutil = dependency('libavutil', required: get_option('video'))
+swscale = dependency('libswscale', required: get_option('video'))
+if avformat.found() and avcodec.found() and avutil.found() and swscale.found()
+    video = declare_dependency(
+        dependencies: [avformat, avcodec, avutil, swscale],
+    )
+else
+    video = dependency('', required: false)
+endif
 
 # hack to build "pkgconfigless" gif in FreeBSD
 cc = meson.get_compiler('c')
@@ -145,7 +165,8 @@ conf.set('HAVE_LIBRSVG', rsvg.found())
 conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
-conf.set('HAVE_LIBWEBP', webp.found() and webp_demux.found())
+conf.set('HAVE_LIBWEBP', webp.found())
+conf.set('HAVE_VIDEO', video.found())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildconf.hpp', configuration: conf)
 
@@ -352,8 +373,11 @@ endif
 if raw.found()
     sources += 'src/formats/raw.cpp'
 endif
-if webp.found() and webp_demux.found()
+if webp.found()
     sources += 'src/formats/webp.cpp'
+endif
+if video.found()
+    sources += 'src/formats/video.cpp'
 endif
 
 dependencies = [
@@ -383,7 +407,7 @@ dependencies = [
     sixel,
     tiff,
     webp,
-    webp_demux,
+    video,
 ]
 
 executable(

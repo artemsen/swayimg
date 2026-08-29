@@ -10,6 +10,7 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     bash-completion \
     qemu-user \
     locales \
+    libavcodec-dev:arm64 libavformat-dev:arm64 libavutil-dev:arm64 libswscale-dev:arm64 \
     libavif-dev:arm64 \
     libdrm-dev:arm64 \
     libexiv2-dev:arm64 \
