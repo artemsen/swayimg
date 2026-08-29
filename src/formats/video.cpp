@@ -321,7 +321,7 @@ private:
             if (avcodec_parameters_to_context(dec, st->codecpar) < 0) {
                 return false;
             }
-            dec->thread_count = 3;
+            dec->thread_count = 0;
             if (avcodec_open2(dec, codec, nullptr) < 0) {
                 return false;
             }
