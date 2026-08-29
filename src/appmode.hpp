@@ -33,6 +33,13 @@ public:
     /** Input event handler. */
     using InputCallback = std::function<void()>;
 
+    /** Unassigned kay input event handler. */
+    using UnassignedKeyCallback =
+        std::function<void(const InputKeyboard& input)>;
+
+    /** Constructor. */
+    AppMode();
+
     /**
      * Initialize mode instance.
      */
@@ -78,17 +85,15 @@ public:
     /**
      * Handle key press event.
      * @param input input event description
-     * @return false if event not supported
      */
-    virtual bool handle_keyboard(const InputKeyboard& input);
+    void handle_keyboard(const InputKeyboard& input);
 
     /**
      * Handle mouse click.
      * @param input input event description
      * @param pos mouse pointer coordinates
-     * @return false if event not supported
      */
-    virtual bool handle_mclick(const InputMouse& input, const Point& pos);
+    void handle_mclick(const InputMouse& input, const Point& pos);
 
     /**
      * Handle mouse move.
@@ -178,7 +183,8 @@ public:
     void bind_input(const InputSignal& input, const InputCallback& handler);
 
 public:
-    std::function<void()> on_image_change; ///< Image switch callback
+    std::function<void()> on_image_change;   ///< Image switch callback
+    UnassignedKeyCallback on_unassigned_key; ///< Unassigned key handler
 
 protected:
     /**

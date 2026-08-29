@@ -486,21 +486,12 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
 
 void Application::handle_event(const AppEvent::KeyPress& event)
 {
-    if (!current_mode()->handle_keyboard(event.key) &&
-        !Xkb::is_modifier(event.key.key)) {
-        const std::string msg =
-            std::format("Unhandled key: {}", event.key.to_string());
-        Text::self().set_status(msg);
-    }
+    current_mode()->handle_keyboard(event.key);
 }
 
 void Application::handle_event(const AppEvent::MouseClick& event)
 {
-    if (!current_mode()->handle_mclick(event.mouse, event.pointer)) {
-        const std::string msg =
-            std::format("Unhandled mouse: {}", event.mouse.to_string());
-        Text::self().set_status(msg);
-    }
+    current_mode()->handle_mclick(event.mouse, event.pointer);
 }
 
 void Application::handle_event(const AppEvent::MouseMove& event)

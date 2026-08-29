@@ -8,6 +8,17 @@
 #include "imagelist.hpp"
 #include "resources.hpp"
 
+#include <format>
+
+AppMode::AppMode()
+{
+    on_unassigned_key = [](const InputKeyboard& input) {
+        const std::string msg =
+            std::format("Unhandled key: {}", input.to_string());
+        Text::self().set_status(msg);
+    };
+}
+
 void AppMode::activate(const ImageEntryPtr&, const Size&)
 {
     Text& text = Text::self();
@@ -17,24 +28,26 @@ void AppMode::activate(const ImageEntryPtr&, const Size&)
     }
 }
 
-bool AppMode::handle_keyboard(const InputKeyboard& input)
+void AppMode::handle_keyboard(const InputKeyboard& input)
 {
     const auto& bind = kbindings.find(input);
     if (bind != kbindings.end()) {
         bind->second();
-        return true;
+    } else if (!Xkb::is_modifier(input.key)) {
+        on_unassigned_key(input);
     }
-    return false;
 }
 
-bool AppMode::handle_mclick(const InputMouse& input, const Point&)
+void AppMode::handle_mclick(const InputMouse& input, const Point&)
 {
     const auto& bind = mbindings.find(input);
     if (bind != mbindings.end()) {
         bind->second();
-        return true;
+    } else {
+        const std::string msg =
+            std::format("Unhandled mouse: {}", input.to_string());
+        Text::self().set_status(msg);
     }
-    return false;
 }
 
 bool AppMode::handle_signal(const InputSignal& input)

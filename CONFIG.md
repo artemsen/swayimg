@@ -111,6 +111,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.mark_image()](#swayimgviewermark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.viewer.bind_reset()](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.viewer.on_key()](#swayimgvieweron_key): Bind the key press event to a handler
+  * [swayimg.viewer.on_unassigned_key()](#swayimgvieweron_unassigned_key): Set handler for unassigned keys
   * [swayimg.viewer.on_mouse()](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal()](#swayimgvieweron_signal): Bind the signal event to a handler
   * [swayimg.viewer.on_image_change()](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
@@ -151,6 +152,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.mark_image()](#swayimgslideshowmark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.slideshow.bind_reset()](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.slideshow.on_key()](#swayimgslideshowon_key): Bind the key press event to a handler
+  * [swayimg.slideshow.on_unassigned_key()](#swayimgslideshowon_unassigned_key): Set handler for unassigned keys
   * [swayimg.slideshow.on_mouse()](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.on_signal()](#swayimgslideshowon_signal): Bind the signal event to a handler
   * [swayimg.slideshow.on_image_change()](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
@@ -182,6 +184,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.mark_image()](#swayimggallerymark_image): Set, clear or toggle mark for currently viewed/selected image
   * [swayimg.gallery.bind_reset()](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.gallery.on_key()](#swayimggalleryon_key): Bind the key press event to a handler
+  * [swayimg.gallery.on_unassigned_key()](#swayimggalleryon_unassigned_key): Set handler for unassigned keys
   * [swayimg.gallery.on_mouse()](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal()](#swayimggalleryon_signal): Bind the signal event to a handler
   * [swayimg.gallery.on_image_change()](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
@@ -1263,6 +1266,18 @@ Since 5.0.
 
 @_param_ `fn` - Key press handler
 
+### swayimg.viewer.on_unassigned_key
+
+```lua
+swayimg.viewer.on_unassigned_key(fn: function)
+```
+
+Set handler for unassigned keys.
+
+Since 5.6.
+
+@_param_ `fn` - Key press handler, the first arg contains key name
+
 ### swayimg.viewer.on_mouse
 
 ```lua
@@ -1881,6 +1896,18 @@ Since 5.0.
 
 @_param_ `fn` - Key press handler
 
+### swayimg.slideshow.on_unassigned_key
+
+```lua
+swayimg.slideshow.on_unassigned_key(fn: function)
+```
+
+Set handler for unassigned keys.
+
+Since 5.6.
+
+@_param_ `fn` - Key press handler, the first arg contains key name
+
 ### swayimg.slideshow.on_mouse
 
 ```lua
@@ -2340,6 +2367,18 @@ Since 5.0.
 @_param_ `key` - Key description, for example `Ctrl-a`
 
 @_param_ `fn` - Key press handler
+
+### swayimg.gallery.on_unassigned_key
+
+```lua
+swayimg.gallery.on_unassigned_key(fn: function)
+```
+
+Set handler for unassigned keys.
+
+Since 5.6.
+
+@_param_ `fn` - Key press handler, the first arg contains key name
 
 ### swayimg.gallery.on_mouse
 

@@ -406,6 +406,11 @@ function swayimg_appmode.bind_reset() end
 ---@param fn function Key press handler
 function swayimg_appmode.on_key(key, fn) end
 
+---Set handler for unassigned keys.
+---Since 5.6.
+---@param fn function Key press handler, the first arg contains key name
+function swayimg_appmode.on_unassigned_key(fn) end
+
 ---Bind the mouse button press event to a handler.
 ---Since 5.0.
 ---@param button mbutton_t Button description, for example `Ctrl-Alt-MouseRight`

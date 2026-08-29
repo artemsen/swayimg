@@ -58,7 +58,14 @@ private:
      * Call a Lua function with debug.traceback as error handler.
      * @param ref reference to the Lua function to call
      */
-    void execute(const luabridge::LuaRef* ref) const;
+    void call_fn(const luabridge::LuaRef* ref) const;
+
+    /**
+     * Call a Lua function with debug.traceback as error handler.
+     * @param ref reference to the Lua function to call
+     * @param arg argument to pass
+     */
+    void call_fn(const luabridge::LuaRef* ref, const char* arg) const;
 
     /**
      * Convert image entry to Lua table.
