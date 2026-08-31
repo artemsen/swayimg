@@ -19,8 +19,8 @@
 #include <utility>
 
 // Limits for thumbnail size and other parameters
-constexpr size_t THIMB_SIZE_MIN = 10;
-constexpr size_t THIMB_SIZE_MAX = 10000;
+constexpr size_t THUMB_SIZE_MIN = 10;
+constexpr size_t THUMB_SIZE_MAX = 10000;
 constexpr size_t PADDING_SIZE_MAX = 1000;
 constexpr size_t BORDER_SIZE_MAX = 100;
 constexpr double SSCALE_MAX = 10.0;
@@ -116,7 +116,7 @@ void Gallery::set_thumb_aspect(const Aspect ratio)
 
 void Gallery::set_thumb_size(const size_t size)
 {
-    layout.set_thumb_size(std::clamp(size, THIMB_SIZE_MIN, THIMB_SIZE_MAX));
+    layout.set_thumb_size(std::clamp(size, THUMB_SIZE_MIN, THUMB_SIZE_MAX));
     if (is_active()) {
         refresh();
         Application::redraw();
@@ -280,7 +280,10 @@ void Gallery::handle_mmove(const InputMouse&, const Point& pos, const Point&)
 
 void Gallery::handle_pinch(const double scale_delta)
 {
-    set_thumb_size(get_thumb_size() + scale_delta * pinch_factor);
+    const size_t size_factor =
+        std::max(get_thumb_size(), static_cast<size_t>(100));
+    const ssize_t size_delta = scale_delta * pinch_factor * size_factor;
+    set_thumb_size(get_thumb_size() + size_delta);
 }
 
 void Gallery::handle_imagelist(const ImageListEvent event,
