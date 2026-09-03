@@ -3,6 +3,7 @@
 // Copyright (C) 2026 Artem Senichev <artemsen@gmail.com>
 
 #include "../imageformat.hpp"
+#include "../resources.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -113,7 +114,15 @@ public:
         if (!decoder.grab_frame(decoder.duration() / 3, pm)) {
             return {};
         }
-        return make_thumb(pm, sz, fill);
+
+        Pixmap thumb = make_thumb(pm, sz, fill);
+
+        if (thumb && label.a) {
+            constexpr ssize_t margin = 5;
+            thumb.mask(Resource::video, { .x = margin, .y = margin }, label);
+        }
+
+        return thumb;
     }
 
     void set_config(Config& params) override
@@ -123,6 +132,7 @@ public:
         params.get("columns", columns, 1, 100);
         params.get("rows", rows, 1, 100);
         params.get("padding", padding, 0, 1000);
+        params.get("label", label);
     }
 
 private:
@@ -153,6 +163,8 @@ private:
     size_t columns = 3; ///< Number of columns in storyboard
     size_t rows = 3;    ///< Number of rows in storyboard
     size_t padding = 5; ///< Gap between tiles in pixels
+    argb_t label = { 0xa0, argb_t::max, argb_t::max,
+                     argb_t::max }; ///< Label color
 
 private:
     /** Memory buffer reader. */

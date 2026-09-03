@@ -336,6 +336,7 @@ Supported parameters:
   * `columns`: Number of columns in storyboard
   * `rows`: Number of rows in storyboard
   * `padding`: Gap between frames in pixels
+  * `label`: Label color in gallery mode
 
 ### swayimg.title
 
