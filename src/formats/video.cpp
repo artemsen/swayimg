@@ -64,7 +64,8 @@ public:
                     { argb_t::max, argb_t::min, argb_t::min, argb_t::min });
 
         // grab frames evenly spaced over the video duration
-        const int64_t total = decoder.duration();
+        int64_t total = decoder.duration();
+        total -= total / 5;
         const size_t count = grid_cols * grid_rows;
         for (size_t i = 0; i < count; ++i) {
             const int64_t target = total * static_cast<int64_t>(i * 2 + 1) /
