@@ -61,16 +61,14 @@ void Xkb::start_repeat(const xkb_keycode_t code)
 {
     if (repeat_rate && xkb_keymap_key_repeats(keymap, code)) {
         // start key repeat timer
-        // Shift won't capitalize the keys anymore.
-        repeat_key =
-            xkb_keysym_to_lower(xkb_state_key_get_one_sym(state, code));
+        repeat_code = code;
         repeat_timer.reset(repeat_delay, 1000 / repeat_rate);
     }
 }
 
-void Xkb::stop_repeat(const xkb_keycode_t key) const
+void Xkb::stop_repeat(const xkb_keycode_t code) const
 {
-    if (key == XKB_KEY_NoSymbol || key == repeat_key) {
+    if (code == 0 || code == repeat_code) {
         repeat_timer.reset(0, 0);
     }
 }
@@ -84,6 +82,8 @@ std::tuple<xkb_keysym_t, size_t> Xkb::get_repeat() const
         ++count;
     }
 
+    const xkb_keysym_t repeat_key =
+        xkb_keysym_to_lower(xkb_state_key_get_one_sym(state, repeat_code));
     return std::make_tuple(repeat_key, count);
 }
 

@@ -35,7 +35,7 @@ public:
                                   struct wl_surface*)
     {
         const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
-        ui->xkb.stop_repeat(XKB_KEY_NoSymbol);
+        ui->xkb.stop_repeat(0);
     }
 
     static void on_keyboard_modifiers(void* data, struct wl_keyboard*, uint32_t,
@@ -69,10 +69,10 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
         key += 8;
-        const xkb_keysym_t keysym = ui->xkb.get_keysym(key);
         if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-            ui->xkb.stop_repeat(keysym);
+            ui->xkb.stop_repeat(key);
         } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+            const xkb_keysym_t keysym = ui->xkb.get_keysym(key);
             if (keysym != XKB_KEY_NoSymbol) {
                 Application::self().add_event(
                     AppEvent::KeyPress { keysym, ui->xkb.get_modifiers() });
