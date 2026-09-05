@@ -15,9 +15,6 @@ swayimg.viewer.on_image_change(function()
     swayimg.set_window_size(image.width, image.height)
   end
 end)
-swayimg.on_window_resize(function()
-  swayimg.viewer.set_fix_scale("fit")
-end)
 ```
 
 ## Change window title

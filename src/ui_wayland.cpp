@@ -1053,11 +1053,21 @@ Size UiWayland::get_window_size()
 
 void UiWayland::set_window_size(const Size& size)
 {
-    width = size.width;
-    height = size.height;
+    const double abs_scale = static_cast<double>(scale) / FRACTION_SCALE_DEN;
+    width = size.width / abs_scale;
+    height = size.height / abs_scale;
+
+    if (wnd_buffer.width() != size.width ||
+        wnd_buffer.height() != size.height) {
+        if (!wnd_buffer.realloc(wl.shm, size.width, size.height)) {
+            return;
+        }
+    }
 
     xdg_surface_set_window_geometry(wl.xsurface, 0, 0, width, height);
-    wp_viewport_set_destination(wl.viewport, width, height);
+    if (wl.viewport) {
+        wp_viewport_set_destination(wl.viewport, width, height);
+    }
 
     Application::self().add_event(AppEvent::WindowResize { get_window_size() });
     Application::self().add_event(AppEvent::WindowRedraw {});
