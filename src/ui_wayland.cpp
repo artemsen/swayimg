@@ -168,6 +168,10 @@ public:
                     ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
                 wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
                 wl_data_source_offer(ui->wl.datasrc, URI_LIST_MIME);
+                wl_data_source_set_actions(
+                    ui->wl.datasrc,
+                    WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY |
+                        WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE);
                 wl_data_device_start_drag(ui->wl.datadev, ui->wl.datasrc,
                                           ui->wl.surface, nullptr, serial);
             }
@@ -354,13 +358,28 @@ public:
         }
     }
 
-    static void on_data_source_cancelled(void*, struct wl_data_source*) {}
+    static void on_data_source_cancelled(void* data, struct wl_data_source* src)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->wl.datasrc && ui->wl.datasrc.ptr == src) {
+            ui->wl.datasrc.destroy(ui->wl.datasrc);
+            ui->wl.datasrc.ptr = nullptr;
+        }
+    }
 
     static void on_data_source_dnd_drop_performed(void*, struct wl_data_source*)
     {
     }
 
-    static void on_data_source_dnd_finished(void*, struct wl_data_source*) {}
+    static void on_data_source_dnd_finished(void* data,
+                                            struct wl_data_source* src)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->wl.datasrc && ui->wl.datasrc.ptr == src) {
+            ui->wl.datasrc.destroy(ui->wl.datasrc);
+            ui->wl.datasrc.ptr = nullptr;
+        }
+    }
 
     static void on_data_source_action(void*, struct wl_data_source*, uint32_t)
     {
@@ -389,15 +408,30 @@ public:
                                      struct wl_data_offer* offer)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->wl.dataoffer) {
+            ui->wl.dataoffer.free();
+        }
         if (ui->wl.datasrc) {
-            wl_data_offer_destroy(offer); // ignore own offers
-        } else if (offer) {
+            // own offer, keep it so it can be released on leave
+            ui->wl.dataoffer = offer;
+            return;
+        }
+        if (offer) {
             wl_data_offer_accept(offer, serial, URI_LIST_MIME);
+            wl_data_offer_set_actions(offer,
+                                      WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY,
+                                      WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
             ui->wl.dataoffer = offer;
         }
     }
 
-    static void on_data_device_leave(void*, struct wl_data_device*) {}
+    static void on_data_device_leave(void* data, struct wl_data_device*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->wl.dataoffer) {
+            ui->wl.dataoffer.free();
+        }
+    }
 
     static void on_data_device_motion(void*, struct wl_data_device*, uint32_t,
                                       wl_fixed_t, wl_fixed_t)
@@ -457,6 +491,7 @@ public:
             offer_data.insert(offer_data.end(), buffer, buffer + rc);
         }
         close(fds[0]);
+        wl_data_offer_finish(ui->wl.dataoffer);
         ui->wl.dataoffer.free();
 
         const std::vector<std::filesystem::path> paths =
@@ -645,9 +680,7 @@ public:
         } else if (strcmp(interface, wl_data_device_manager_interface.name) ==
                    0) {
             // drag-and-drop + clipboard data device
-            ui->wl.datadev_mgr.bind(
-                registry, name,
-                WL_DATA_DEVICE_MANAGER_GET_DATA_DEVICE_SINCE_VERSION);
+            ui->wl.datadev_mgr.bind(registry, name, 3);
         } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
             // xdg (app window)
             ui->wl.xwmbase.bind(registry, name, XDG_WM_BASE_PING_SINCE_VERSION);
