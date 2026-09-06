@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <cassert>
+#include <cstdlib>
 #include <tuple>
 
 Xkb::Xkb()
