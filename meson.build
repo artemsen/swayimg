@@ -110,10 +110,10 @@ else
     webp = dependency('', required: false)
 endif
 # Video storyboard
-avformat = dependency('libavformat', required: get_option('video'))
-avcodec = dependency('libavcodec', required: get_option('video'))
-avutil = dependency('libavutil', required: get_option('video'))
-swscale = dependency('libswscale', required: get_option('video'))
+avformat = dependency('libavformat', version: '>=60.16.100', required: get_option('video'))
+avcodec = dependency('libavcodec', version: '>=60.31.102', required: get_option('video'))
+avutil = dependency('libavutil', version: '>=58.29.100', required: get_option('video'))
+swscale = dependency('libswscale', version: '>=7.5.100', required: get_option('video'))
 if avformat.found() and avcodec.found() and avutil.found() and swscale.found()
     video = declare_dependency(
         dependencies: [avformat, avcodec, avutil, swscale],
