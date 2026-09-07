@@ -466,7 +466,14 @@ bool Viewer::set_current(const ImageEntryPtr& entry)
 void Viewer::window_resize(const Size& wnd)
 {
     window_size = wnd;
-    reset();
+    if (image) {
+        if (std::holds_alternative<Scale>(default_scale) &&
+            std::get<Scale>(default_scale) == Scale::Keep) {
+            fixup_position();
+        } else {
+            reset();
+        }
+    }
 }
 
 void Viewer::window_redraw(Pixmap& wnd)
