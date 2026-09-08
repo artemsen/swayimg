@@ -25,6 +25,7 @@ void Layout::update()
     ImageList& il = ImageList::self();
     const ImageEntryPtr first_entry = il.get(nullptr, ImageList::Dir::First);
     if (!first_entry) {
+        sel_entry = nullptr;
         scheme.clear();
         return;
     }
