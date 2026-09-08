@@ -225,6 +225,12 @@ private:
         InputMouse::NONE; ///< Currently pressed mouse buttons
     Point mouse_pos;      ///< Mouse coordinates
 
+    bool axis_hires = false; ///< axis_value120 seen in the current frame
+    double axis_v120_v = 0;  ///< Pending vertical wheel motion (120 = detent)
+    double axis_v120_h = 0;  ///< Pending horizontal wheel motion (120 = detent)
+    double axis_legacy_v = 0; ///< Vertical continuous axis value, current frame
+    double axis_legacy_h = 0; ///< Horizontal continuous axis value, this frame
+
     double pinch_scale; ///< Last pinch scale
 
 public:

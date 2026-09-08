@@ -178,13 +178,9 @@ public:
         }
     }
 
-    static void on_pointer_axis(void* data, struct wl_pointer*, uint32_t,
-                                uint32_t axis, wl_fixed_t value)
+    static void send_scroll(const UiWayland* ui, uint32_t axis, bool incr)
     {
-        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
-
         InputMouse::mouse_btn_t btn;
-        const bool incr = value > 0;
         if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
             btn = incr ? InputMouse::SCROLL_RIGHT : InputMouse::SCROLL_LEFT;
         } else {
@@ -198,18 +194,103 @@ public:
         });
     }
 
+    // Emit one scroll action per `step` accumulated units, keeping the
+    // remainder for the next frame (partial hi-res detents, kinetic tails).
+    static void flush_axis(const UiWayland* ui, double& accum, double step,
+                           uint32_t axis)
+    {
+        while (accum >= step || accum <= -step) {
+            const bool incr = accum > 0;
+            accum += incr ? -step : step;
+            send_scroll(ui, axis, incr);
+        }
+    }
+
+    // The direction of a discrete scroll is taken from axis_value120 (one
+    // detent per 120 units, guaranteed non-zero). The legacy `axis` value is
+    // only used when axis_value120 is unavailable (touchpads, older
+    // compositors): on a mouse wheel it also fires with value 0 as a
+    // scroll-stop notification and, on slow high-resolution wheels, in short
+    // bursts that alternate sign, so acting on each event's raw sign scrolls
+    // erratically. Both are accumulated and dispatched in on_pointer_frame.
+    static void on_pointer_axis(void* data, struct wl_pointer*, uint32_t,
+                                uint32_t axis, wl_fixed_t value)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+            ui->axis_legacy_h += wl_fixed_to_double(value);
+        } else {
+            ui->axis_legacy_v += wl_fixed_to_double(value);
+        }
+    }
+
+    static void on_pointer_axis_source(void*, struct wl_pointer*, uint32_t) {}
+
+    static void on_pointer_axis_stop(void*, struct wl_pointer*, uint32_t,
+                                     uint32_t)
+    {
+    }
+
+    static void on_pointer_axis_discrete(void*, struct wl_pointer*, uint32_t,
+                                         int32_t)
+    {
+    }
+
+    static void on_pointer_axis_value120(void* data, struct wl_pointer*,
+                                         uint32_t axis, int32_t value120)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->axis_hires = true;
+        if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+            ui->axis_v120_h += value120;
+        } else {
+            ui->axis_v120_v += value120;
+        }
+    }
+
+    static void on_pointer_axis_relative_direction(void*, struct wl_pointer*,
+                                                   uint32_t, uint32_t)
+    {
+    }
+
+    static void on_pointer_frame(void* data, struct wl_pointer*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+
+        if (ui->axis_hires) {
+            static constexpr double DETENT = 120.0;
+            flush_axis(ui, ui->axis_v120_v, DETENT,
+                       WL_POINTER_AXIS_VERTICAL_SCROLL);
+            flush_axis(ui, ui->axis_v120_h, DETENT,
+                       WL_POINTER_AXIS_HORIZONTAL_SCROLL);
+        } else {
+            // No hi-res data (touchpad / continuous scroll, or a compositor
+            // older than wl_pointer v8): step on the continuous value,
+            // roughly one action per wheel detent.
+            static constexpr double STEP = 10.0;
+            flush_axis(ui, ui->axis_legacy_v, STEP,
+                       WL_POINTER_AXIS_VERTICAL_SCROLL);
+            flush_axis(ui, ui->axis_legacy_h, STEP,
+                       WL_POINTER_AXIS_HORIZONTAL_SCROLL);
+        }
+
+        ui->axis_hires = false;
+        ui->axis_legacy_v = 0.0;
+        ui->axis_legacy_h = 0.0;
+    }
+
     static constexpr const wl_pointer_listener pointer_listener = {
         .enter = on_pointer_enter,
         .leave = on_pointer_leave,
         .motion = on_pointer_motion,
         .button = on_pointer_button,
         .axis = on_pointer_axis,
-        .frame = nullptr,
-        .axis_source = nullptr,
-        .axis_stop = nullptr,
-        .axis_discrete = nullptr,
-        .axis_value120 = nullptr,
-        .axis_relative_direction = nullptr,
+        .frame = on_pointer_frame,
+        .axis_source = on_pointer_axis_source,
+        .axis_stop = on_pointer_axis_stop,
+        .axis_discrete = on_pointer_axis_discrete,
+        .axis_value120 = on_pointer_axis_value120,
+        .axis_relative_direction = on_pointer_axis_relative_direction,
 #ifdef WL_POINTER_WARP_SINCE_VERSION
         .warp = nullptr,
 #endif
@@ -659,7 +740,7 @@ public:
      **************************************************************************/
     static void on_registry_global(void* data, struct wl_registry* registry,
                                    uint32_t name, const char* interface,
-                                   uint32_t /* version */)
+                                   uint32_t version)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
@@ -672,9 +753,11 @@ public:
             ui->wl.shm.bind(registry, name,
                             WL_SHM_POOL_CREATE_BUFFER_SINCE_VERSION);
         } else if (strcmp(interface, wl_seat_interface.name) == 0) {
-            // seat (keyboard and mouse)
+            // seat (keyboard and mouse); v8 delivers wl_pointer.axis_value120
             ui->wl.seat.bind(registry, name,
-                             WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION);
+                             version < WL_POINTER_AXIS_VALUE120_SINCE_VERSION
+                                 ? version
+                                 : WL_POINTER_AXIS_VALUE120_SINCE_VERSION);
             wl_seat_add_listener(ui->wl.seat, &seat_listener, data);
 
         } else if (strcmp(interface, wl_data_device_manager_interface.name) ==
