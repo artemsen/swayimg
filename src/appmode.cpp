@@ -160,8 +160,14 @@ void AppMode::switch_current()
     Text& text = Text::self();
     if (entry) {
         text.reset(entry);
-    } else {
+    } else if (text.get_field(Text::FIELD_LIST_INDEX) != "0") {
+        // clear only once to avoid redrawing the status message on every change
         text.clear();
+        text.set_field(Text::FIELD_LIST_INDEX, "0");
+        text.set_field(Text::FIELD_LIST_TOTAL, "0");
+        text.set_field(Text::FIELD_FRAME_INDEX, "0");
+        text.set_field(Text::FIELD_FRAME_TOTAL, "0");
+        text.update();
         text.set_status("Image list is empty");
     }
 

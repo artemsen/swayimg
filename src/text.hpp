@@ -173,6 +173,13 @@ public:
     void set_field(const std::string& field, const std::string& value);
 
     /**
+     * Get field value.
+     * @param field field name
+     * @return field value or empty string if the field is not set
+     */
+    [[nodiscard]] std::string get_field(const std::string& field) const;
+
+    /**
      * Update text blocks.
      */
     void update();

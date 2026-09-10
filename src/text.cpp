@@ -248,6 +248,12 @@ void Text::set_field(const std::string& field, const std::string& value)
     }
 }
 
+std::string Text::get_field(const std::string& field) const
+{
+    const auto it = fields.find(field);
+    return it != fields.end() ? it->second : std::string();
+}
+
 void Text::update()
 {
     for (auto& block : blocks) {
