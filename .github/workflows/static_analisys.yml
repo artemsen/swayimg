@@ -35,6 +35,24 @@ jobs:
         meson compile -C ${{ env.BUILD_DIR }}
 
     - name: Run analisys
-      run: >
-        docker exec swayimg
-        ninja -C ${{ env.BUILD_DIR }} clang-tidy
+      # clang-tidy per file, run in parallel in the background; each output goes
+      # into its own /tmp/<file>.log so we can cat them all in order afterwards.
+      run: |
+        docker exec swayimg bash -c '
+          pids=()
+          status=0
+          for f in src/*.cpp; do
+            clang-tidy -p ${{ env.BUILD_DIR }} -quiet "$f" > /tmp/$(basename "$f").log 2>&1 &
+            pids+=("$!")
+            # Bound the number of concurrent jobs to the CPU count
+            if [ "${#pids[@]}" -ge "$(nproc)" ]; then
+              wait "${pids[0]}" || status=1
+              pids=("${pids[@]:1}")
+            fi
+          done
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          cat /tmp/*pp.log
+          exit $status
+        '
