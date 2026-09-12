@@ -202,7 +202,7 @@ protected:
     /**
      * Switch to another image.
      */
-    void switch_current();
+    virtual void switch_current();
 
     /**
      * Draw placeholder for empty image list.

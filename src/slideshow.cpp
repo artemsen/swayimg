@@ -32,9 +32,7 @@ void Slideshow::initialize()
     Viewer::initialize();
 
     Application::self().add_fdpoll(timer, [this]() {
-        if (open(ImageList::Dir::Next)) {
-            timer.reset(duration, 0);
-        }
+        open(ImageList::Dir::Next);
     });
 }
 
@@ -48,4 +46,10 @@ void Slideshow::deactivate()
 {
     Viewer::deactivate();
     timer.reset(0, 0);
+}
+
+void Slideshow::switch_current()
+{
+    Viewer::switch_current();
+    timer.reset(duration, 0);
 }

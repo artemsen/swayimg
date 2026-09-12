@@ -22,6 +22,9 @@ public:
     void activate(const ImageEntryPtr& entry, const Size& wnd) override;
     void deactivate() override;
 
+private:
+    void switch_current() override;
+
 public:
     size_t duration; ///< Image display time (ms)
 
