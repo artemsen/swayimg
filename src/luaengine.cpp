@@ -212,6 +212,60 @@ std::filesystem::path get_config_file()
     return {};
 }
 
+/**
+ * Print Lua error message.
+ * @param fmt error text format
+ * @param ... format arguments
+ */
+template <typename... Args>
+void print_error(const std::format_string<Args...> fmt, Args&&... args)
+{
+    const std::string message =
+        std::vformat(fmt.get(), std::make_format_args(args...));
+    const std::string status = message.substr(0, message.find_first_of('\n'));
+    Log::error("{}", message);
+    Text::self().set_status(status);
+}
+
+/**
+  Handler used to get traceback of Lua call.
+  Called by Lua BEFORE the call stack unwinds.
+*/
+int traceback_lua(lua_State* lua)
+{
+    const char* msg = lua_tostring(lua, 1);
+
+    // retrieve Lua's global 'debug.traceback' function
+    lua_getglobal(lua, "debug");
+    lua_getfield(lua, -1, "traceback");
+    lua_remove(lua, -2);
+
+    // push the original message and call level 2 (skipping this handler frame)
+    lua_pushstring(lua, msg);
+    lua_pushinteger(lua, 2);
+
+    // call debug.traceback(message, 2)
+    lua_call(lua, 2, 1);
+
+    // traceback string is now at the top of the stack and will be returned
+    return 1;
+}
+
+/**
+ * Call a Lua function with debug.traceback as error handler.
+ * @param ref reference to the Lua function to call
+ * @param args arguments to pass
+ */
+template <typename... Args>
+void call_lua(const luabridge::LuaRef& ref, Args&&... args)
+{
+    const luabridge::LuaResult rc =
+        ref.callWithHandler(traceback_lua, std::forward<Args>(args)...);
+    if (!rc) {
+        print_error("{}", rc.errorMessage());
+    }
+}
+
 } // anonymous namespace
 
 LuaEngine& LuaEngine::self()
@@ -240,14 +294,6 @@ void LuaEngine::initialize(const std::filesystem::path& config)
         return;
     }
     luaL_openlibs(lua_state);
-
-    // cache debug.traceback for stack traces in callback errors
-    lua_getglobal(lua_state, "debug");
-    lua_getfield(lua_state, -1, "traceback");
-    traceback_fn = lua_tocfunction(lua_state, -1);
-    // for some weird reason popping both at once makes lua C++ errors invisible
-    lua_pop(lua_state, 1); // pop traceback
-    lua_pop(lua_state, 1); // pop debug table
 
     const std::filesystem::path config_file =
         config.empty() ? get_config_file() : config;
@@ -283,7 +329,7 @@ void LuaEngine::initialize(const std::filesystem::path& config)
     // register timer for deferred procedure call
     Application::self().add_fdpoll(defer_timer, [this]() {
         defer_timer.reset(0, 0);
-        call_fn(defer_fn);
+        call_lua(*defer_fn);
     });
 
     // load config file
@@ -295,7 +341,7 @@ void LuaEngine::initialize(const std::filesystem::path& config)
             const luabridge::LuaRef chunk =
                 luabridge::LuaRef::fromStack(lua_state, -1);
             lua_pop(lua_state, 1);
-            call_fn(&chunk);
+            call_lua(chunk);
         }
     }
 }
@@ -311,7 +357,7 @@ void LuaEngine::execute(const std::string& script)
         const luabridge::LuaRef chunk =
             luabridge::LuaRef::fromStack(lua_state, -1);
         lua_pop(lua_state, 1);
-        call_fn(&chunk);
+        call_lua(chunk);
     }
 }
 
@@ -586,8 +632,8 @@ void LuaEngine::bind_root_api()
                                  NS_SWAYIMG, cb.tostring());
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
-                             app.on_wnd_resize = [this, ref]() {
-                                 call_fn(ref);
+                             app.on_wnd_resize = [ref]() {
+                                 call_lua(*ref);
                              };
                          }
                      })
@@ -612,8 +658,8 @@ void LuaEngine::bind_root_api()
                                  NS_SWAYIMG, cb.tostring());
                          }
                          const luabridge::LuaRef* ref = add_ref(&cb);
-                         Application::self().on_init_complete = [this, ref]() {
-                             call_fn(ref);
+                         Application::self().on_init_complete = [ref]() {
+                             call_lua(*ref);
                          };
                      })
         .addFunction("on_redrawn",
@@ -627,8 +673,8 @@ void LuaEngine::bind_root_api()
                                          NS_SWAYIMG, cb.tostring());
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
-                             app.on_redraw_complete = [this, ref]() {
-                                 call_fn(ref);
+                             app.on_redraw_complete = [ref]() {
+                                 call_lua(*ref);
                              };
                          }
                      })
@@ -1956,8 +2002,8 @@ void LuaEngine::bind_appmode_api(const char* name)
                                              NS_SWAYIMG, name, key);
                              }
                              const luabridge::LuaRef* ref = add_ref(&cb);
-                             appmode->bind_input(*input, [this, ref]() {
-                                 call_fn(ref);
+                             appmode->bind_input(*input, [ref]() {
+                                 call_lua(*ref);
                              });
                          }
                      })
@@ -1970,9 +2016,8 @@ void LuaEngine::bind_appmode_api(const char* name)
                                 NS_SWAYIMG, name, cb.tostring());
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->on_unassigned_key = [this,
-                                              ref](const InputKeyboard& input) {
-                    call_fn(ref, input.to_string().c_str());
+                appmode->on_unassigned_key = [ref](const InputKeyboard& input) {
+                    call_lua(*ref, input.to_string().c_str());
                 };
             })
         .addFunction(
@@ -1990,8 +2035,8 @@ void LuaEngine::bind_appmode_api(const char* name)
                                 NS_SWAYIMG, name, cb.tostring());
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->bind_input(*input, [this, ref]() {
-                    call_fn(ref);
+                appmode->bind_input(*input, [ref]() {
+                    call_lua(*ref);
                 });
             })
         .addFunction(
@@ -2009,8 +2054,8 @@ void LuaEngine::bind_appmode_api(const char* name)
                                 NS_SWAYIMG, name, cb.tostring());
                 }
                 const luabridge::LuaRef* ref = add_ref(&cb);
-                appmode->bind_input(*input, [this, ref]() {
-                    call_fn(ref);
+                appmode->bind_input(*input, [ref]() {
+                    call_lua(*ref);
                 });
             })
         .addFunction("on_image_change",
@@ -2024,8 +2069,8 @@ void LuaEngine::bind_appmode_api(const char* name)
                                  NS_SWAYIMG, name, cb.tostring());
                          } else {
                              const luabridge::LuaRef* ref = add_ref(&cb);
-                             appmode->on_image_change = [this, ref]() {
-                                 call_fn(ref);
+                             appmode->on_image_change = [ref]() {
+                                 call_lua(*ref);
                              };
                          }
                      })
@@ -2033,37 +2078,6 @@ void LuaEngine::bind_appmode_api(const char* name)
         .endNamespace();
 }
 // NOLINTEND(readability-function-cognitive-complexity)
-
-void LuaEngine::call_fn(const luabridge::LuaRef* ref) const
-{
-    assert(ref);
-
-    lua_pushcfunction(lua_state, traceback_fn);
-    ref->push();
-    // on error, debug.traceback returns the full Lua stack trace
-    const int code = lua_pcall(lua_state, 0, 0, -2);
-    if (code != LUA_OK) {
-        const char* msg = lua_tostring(lua_state, -1);
-        print_error("{}", msg ? msg : "<?>");
-        lua_pop(lua_state, 1);
-    }
-}
-
-void LuaEngine::call_fn(const luabridge::LuaRef* ref, const char* arg) const
-{
-    assert(ref);
-
-    lua_pushcfunction(lua_state, traceback_fn);
-    ref->push();
-    lua_pushstring(lua_state, arg);
-    // on error, debug.traceback returns the full Lua stack trace
-    const int code = lua_pcall(lua_state, 1, 0, -3);
-    if (code != LUA_OK) {
-        const char* msg = lua_tostring(lua_state, -1);
-        print_error("{}", msg ? msg : "<?>");
-        lua_pop(lua_state, 2);
-    }
-}
 
 luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const
 {
@@ -2076,9 +2090,9 @@ luabridge::LuaRef LuaEngine::entry_to_table(const ImageEntry& entry) const
     return table;
 }
 
-luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
+const luabridge::LuaRef* LuaEngine::add_ref(const luabridge::LuaRef* obj)
 {
-    luabridge::LuaRef* ref = new luabridge::LuaRef(*obj);
+    const luabridge::LuaRef* ref = new luabridge::LuaRef(*obj);
     refs.push_back(ref);
     return ref;
 }
