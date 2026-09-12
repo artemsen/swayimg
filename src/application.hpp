@@ -145,6 +145,7 @@ private:
     void handle_event(const AppEvent::WindowRescale& event);
     void handle_event(const AppEvent::WindowRedraw& event);
     void handle_event(const AppEvent::KeyPress& event);
+    void handle_event(const AppEvent::Scroll& event);
     void handle_event(const AppEvent::MouseClick& event);
     void handle_event(const AppEvent::MouseMove& event);
     void handle_event(const AppEvent::GesturePinch& event);

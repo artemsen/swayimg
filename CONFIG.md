@@ -112,6 +112,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.bind_reset()](#swayimgviewerbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.viewer.on_key()](#swayimgvieweron_key): Bind the key press event to a handler
   * [swayimg.viewer.on_unassigned_key()](#swayimgvieweron_unassigned_key): Set handler for unassigned keys
+  * [swayimg.viewer.on_scroll()](#swayimgvieweron_scroll): Set handler for scrolling
   * [swayimg.viewer.on_mouse()](#swayimgvieweron_mouse): Bind the mouse button press event to a handler
   * [swayimg.viewer.on_signal()](#swayimgvieweron_signal): Bind the signal event to a handler
   * [swayimg.viewer.on_image_change()](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
@@ -153,6 +154,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.bind_reset()](#swayimgslideshowbind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.slideshow.on_key()](#swayimgslideshowon_key): Bind the key press event to a handler
   * [swayimg.slideshow.on_unassigned_key()](#swayimgslideshowon_unassigned_key): Set handler for unassigned keys
+  * [swayimg.slideshow.on_scroll()](#swayimgslideshowon_scroll): Set handler for scrolling
   * [swayimg.slideshow.on_mouse()](#swayimgslideshowon_mouse): Bind the mouse button press event to a handler
   * [swayimg.slideshow.on_signal()](#swayimgslideshowon_signal): Bind the signal event to a handler
   * [swayimg.slideshow.on_image_change()](#swayimgslideshowon_image_change): Set a callback function called when a new image is opened/selected
@@ -185,6 +187,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.gallery.bind_reset()](#swayimggallerybind_reset): Remove all existing key/mouse/signal bindings
   * [swayimg.gallery.on_key()](#swayimggalleryon_key): Bind the key press event to a handler
   * [swayimg.gallery.on_unassigned_key()](#swayimggalleryon_unassigned_key): Set handler for unassigned keys
+  * [swayimg.gallery.on_scroll()](#swayimggalleryon_scroll): Set handler for scrolling
   * [swayimg.gallery.on_mouse()](#swayimggalleryon_mouse): Bind the mouse button press event to a handler
   * [swayimg.gallery.on_signal()](#swayimggalleryon_signal): Bind the signal event to a handler
   * [swayimg.gallery.on_image_change()](#swayimggalleryon_image_change): Set a callback function called when a new image is opened/selected
@@ -248,10 +251,6 @@ Write-only field which can be set at startup.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 ### swayimg.overlay
 
@@ -823,10 +822,6 @@ Write-only field.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 ### swayimg.viewer.preload
 
@@ -1279,6 +1274,18 @@ Since 5.6.
 
 @_param_ `fn` - Key press handler, the first arg contains key name
 
+### swayimg.viewer.on_scroll
+
+```lua
+swayimg.viewer.on_scroll(fn: function)
+```
+
+Set handler for scrolling.
+
+Since 5.7.
+
+@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+
 ### swayimg.viewer.on_mouse
 
 ```lua
@@ -1297,10 +1304,6 @@ Since 5.0.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 @_param_ `fn` - Button press handler
 
@@ -1453,10 +1456,6 @@ Write-only field.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 ### swayimg.slideshow.preload
 
@@ -1909,6 +1908,18 @@ Since 5.6.
 
 @_param_ `fn` - Key press handler, the first arg contains key name
 
+### swayimg.slideshow.on_scroll
+
+```lua
+swayimg.slideshow.on_scroll(fn: function)
+```
+
+Set handler for scrolling.
+
+Since 5.7.
+
+@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+
 ### swayimg.slideshow.on_mouse
 
 ```lua
@@ -1927,10 +1938,6 @@ Since 5.0.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 @_param_ `fn` - Button press handler
 
@@ -2381,6 +2388,18 @@ Since 5.6.
 
 @_param_ `fn` - Key press handler, the first arg contains key name
 
+### swayimg.gallery.on_scroll
+
+```lua
+swayimg.gallery.on_scroll(fn: function)
+```
+
+Set handler for scrolling.
+
+Since 5.7.
+
+@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+
 ### swayimg.gallery.on_mouse
 
 ```lua
@@ -2399,10 +2418,6 @@ Since 5.0.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
-* `"ScrollUp"`: Scroll up
-* `"ScrollDown"`: Scroll down
-* `"ScrollLeft"`: Scroll left
-* `"ScrollRight"`: Scroll right
 
 @_param_ `fn` - Button press handler
 

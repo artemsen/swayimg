@@ -2021,6 +2021,22 @@ void LuaEngine::bind_appmode_api(const char* name)
                 };
             })
         .addFunction(
+            "on_scroll",
+            [this, appmode, name](const luabridge::LuaRef& cb) {
+                if (!cb.isFunction()) {
+                    raise_error("Invalid argument for {}.{}.on_scroll: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, name, cb.tostring());
+                }
+                const luabridge::LuaRef* ref = add_ref(&cb);
+                appmode->on_scroll = [ref](const keymod_t kmods,
+                                           const double delta_h,
+                                           const double delta_v) {
+                    call_lua(*ref, InputKeyboard::mods_to_string(kmods),
+                             delta_h, delta_v);
+                };
+            })
+        .addFunction(
             "on_mouse",
             [this, appmode, name](const std::string& key,
                                   const luabridge::LuaRef& cb) {

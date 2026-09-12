@@ -86,10 +86,6 @@
 ---| "MouseMiddle"  # Middle mouse button
 ---| "MouseSide"    # Side mouse button
 ---| "MouseExtra"   # Extra mouse button
----| "ScrollUp"     # Scroll up
----| "ScrollDown"   # Scroll down
----| "ScrollLeft"   # Scroll left
----| "ScrollRight"  # Scroll right
 
 --------------------------------------------------------------------------------
 
@@ -411,6 +407,11 @@ function swayimg_appmode.on_key(key, fn) end
 ---Since 5.6.
 ---@param fn function Key press handler, the first arg contains key name
 function swayimg_appmode.on_unassigned_key(fn) end
+
+---Set handler for scrolling.
+---Since 5.7.
+---@param fn function Scroll handler: fn(keymod, horizontal, vertical)
+function swayimg_appmode.on_scroll(fn) end
 
 ---Bind the mouse button press event to a handler.
 ---Since 5.0.

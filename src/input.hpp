@@ -19,6 +19,13 @@ struct InputKeyboard {
     static std::optional<InputKeyboard> load(const std::string& expression);
 
     /**
+     * Convert modifier flags to string representation.
+     * @param mods combined modifier flags
+     * @return text representation
+     */
+    static std::string mods_to_string(const keymod_t mods);
+
+    /**
      * Get key combination description.
      * @return text description of key combination
      */
@@ -70,10 +77,6 @@ struct InputMouse {
     static constexpr mouse_btn_t BUTTON_MIDDLE = 1 << 2;
     static constexpr mouse_btn_t BUTTON_SIDE = 1 << 3;
     static constexpr mouse_btn_t BUTTON_EXTRA = 1 << 4;
-    static constexpr mouse_btn_t SCROLL_UP = 1 << 5;
-    static constexpr mouse_btn_t SCROLL_DOWN = 1 << 6;
-    static constexpr mouse_btn_t SCROLL_LEFT = 1 << 7;
-    static constexpr mouse_btn_t SCROLL_RIGHT = 1 << 8;
 };
 
 struct InputSignal {

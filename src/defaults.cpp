@@ -234,41 +234,22 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
             move_fn({ .x = 0, .y = -10 });
         });
 
-    // mouse
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_UP, .mods = KEYMOD_NONE },
-        [move_fn]() {
-            move_fn({ .x = 0, .y = -10 });
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_DOWN, .mods = KEYMOD_NONE },
-        [move_fn]() {
-            move_fn({ .x = 0, .y = 10 });
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_LEFT, .mods = KEYMOD_NONE },
-        [move_fn]() {
-            move_fn({ .x = -10, .y = 0 });
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_RIGHT, .mods = KEYMOD_NONE },
-        [move_fn]() {
-            move_fn({ .x = 10, .y = 0 });
-        });
-
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_UP, .mods = KEYMOD_CTRL },
-        [zoom_fn]() {
-            zoom_fn(10, Application::get_ui()->get_mouse());
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_DOWN, .mods = KEYMOD_CTRL },
-        [zoom_fn]() {
-            zoom_fn(-10, Application::get_ui()->get_mouse());
-        });
-
     mode->bind_image_drag(
         InputMouse { .buttons = InputMouse::BUTTON_LEFT, .mods = KEYMOD_NONE });
+
+    mode->on_scroll = [mode](const keymod_t kmods, const double delta_h,
+                             const double delta_v) {
+        if (kmods == KEYMOD_CTRL) {
+            const Point pos = Application::get_ui()->get_mouse();
+            const double scale = mode->get_scale();
+            mode->set_scale(scale - scale * delta_v / 5.0, pos);
+        } else {
+            Point pos = mode->get_position();
+            pos.x += static_cast<ssize_t>(delta_h * 100.0);
+            pos.y += static_cast<ssize_t>(delta_v * 100.0);
+            mode->set_position(pos);
+        }
+    };
 }
 
 void Defaults::slideshow::bind_inputs(Slideshow* mode)
@@ -325,34 +306,36 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
                      });
 
     // scale
-    const auto zoom_fn = [mode](const ssize_t factor) {
-        const size_t size = mode->get_thumb_size();
-        mode->set_thumb_size(size + static_cast<ssize_t>(size) / factor);
+    const auto zoom_fn = [mode](const double factor) {
+        ssize_t size = mode->get_thumb_size();
+        size = std::max(size + static_cast<ssize_t>(factor * size),
+                        static_cast<ssize_t>(0));
+        mode->set_thumb_size(size);
     };
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_equal, .mods = KEYMOD_NONE },
         [zoom_fn]() {
-            zoom_fn(10);
+            zoom_fn(0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_plus, .mods = KEYMOD_SHIFT },
         [zoom_fn]() {
-            zoom_fn(10);
+            zoom_fn(0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Add, .mods = KEYMOD_SHIFT },
         [zoom_fn]() {
-            zoom_fn(10);
+            zoom_fn(0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_minus, .mods = KEYMOD_NONE },
         [zoom_fn]() {
-            zoom_fn(-10);
+            zoom_fn(-0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Subtract, .mods = KEYMOD_NONE },
         [zoom_fn]() {
-            zoom_fn(-10);
+            zoom_fn(-0.1);
         });
 
     // image selection
@@ -446,36 +429,23 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
             mode->select(pos);
             Application::self().set_mode(AppMode::Viewer);
         });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_UP, .mods = KEYMOD_CTRL },
-        [zoom_fn]() {
-            zoom_fn(10);
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_DOWN, .mods = KEYMOD_CTRL },
-        [zoom_fn]() {
-            zoom_fn(-10);
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_UP, .mods = KEYMOD_NONE },
-        [mode]() {
-            mode->select(Layout::Up);
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_DOWN, .mods = KEYMOD_NONE },
-        [mode]() {
-            mode->select(Layout::Down);
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_LEFT, .mods = KEYMOD_NONE },
-        [mode]() {
-            mode->select(Layout::Left);
-        });
-    mode->bind_input(
-        InputMouse { .buttons = InputMouse::SCROLL_RIGHT, .mods = KEYMOD_NONE },
-        [mode]() {
-            mode->select(Layout::Right);
-        });
+
+    mode->on_scroll = [mode, zoom_fn](const keymod_t kmods,
+                                      const double delta_h,
+                                      const double delta_v) {
+        if (kmods == KEYMOD_CTRL) {
+            if (delta_v) {
+                zoom_fn(-delta_v / 8.0);
+            }
+        } else {
+            if (delta_h) {
+                mode->select(delta_h > 0 ? Layout::Right : Layout::Left);
+            }
+            if (delta_v) {
+                mode->select(delta_v > 0 ? Layout::Down : Layout::Up);
+            }
+        }
+    };
 }
 
 std::filesystem::path Defaults::gallery::pstore_path()

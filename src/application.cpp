@@ -410,6 +410,9 @@ void Application::handle_event(const AppEvent::Holder& event)
                                                 const AppEvent::KeyPress&>) {
                 handle_event(event);
             } else if constexpr (std::is_same_v<decltype(event),
+                                                const AppEvent::Scroll&>) {
+                handle_event(event);
+            } else if constexpr (std::is_same_v<decltype(event),
                                                 const AppEvent::MouseClick&>) {
                 handle_event(event);
             } else if constexpr (std::is_same_v<decltype(event),
@@ -487,6 +490,11 @@ void Application::handle_event(const AppEvent::WindowRedraw&)
 void Application::handle_event(const AppEvent::KeyPress& event)
 {
     current_mode()->handle_keyboard(event.key);
+}
+
+void Application::handle_event(const AppEvent::Scroll& event)
+{
+    current_mode()->handle_scroll(event.kmods, event.delta_h, event.delta_v);
 }
 
 void Application::handle_event(const AppEvent::MouseClick& event)

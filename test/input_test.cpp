@@ -73,20 +73,16 @@ TEST(InputMouseTest, Load)
     EXPECT_EQ(input->mods, KEYMOD_NONE);
     EXPECT_EQ(input->buttons, InputMouse::BUTTON_LEFT);
 
-    input = InputMouse::load("MouseRight+ScrollUp");
-    ASSERT_TRUE(input);
-    EXPECT_EQ(input->mods, KEYMOD_NONE);
-    EXPECT_EQ(input->buttons, InputMouse::BUTTON_RIGHT | InputMouse::SCROLL_UP);
-
     input = InputMouse::load("Alt-MouseLeft");
     ASSERT_TRUE(input);
     EXPECT_EQ(input->mods, KEYMOD_ALT);
     EXPECT_EQ(input->buttons, InputMouse::BUTTON_LEFT);
 
-    input = InputMouse::load("Ctrl+Alt-Shift-MouseRight+ScrollUp");
+    input = InputMouse::load("Ctrl+Alt-Shift-MouseLeft+MouseRight");
     ASSERT_TRUE(input);
     EXPECT_EQ(input->mods, KEYMOD_CTRL | KEYMOD_ALT | KEYMOD_SHIFT);
-    EXPECT_EQ(input->buttons, InputMouse::BUTTON_RIGHT | InputMouse::SCROLL_UP);
+    EXPECT_EQ(input->buttons,
+              InputMouse::BUTTON_LEFT | InputMouse::BUTTON_RIGHT);
 
     EXPECT_FALSE(InputMouse::load("AA"));
     EXPECT_FALSE(InputMouse::load("Ctrl"));

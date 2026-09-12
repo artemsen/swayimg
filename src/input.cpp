@@ -32,32 +32,9 @@ static constexpr std::array mouse_buttons =
         { InputMouse::BUTTON_MIDDLE, "MouseMiddle" },
         { InputMouse::BUTTON_SIDE,   "MouseSide"   },
         { InputMouse::BUTTON_EXTRA,  "MouseExtra"  },
-        { InputMouse::SCROLL_UP,     "ScrollUp"    },
-        { InputMouse::SCROLL_DOWN,   "ScrollDown"  },
-        { InputMouse::SCROLL_LEFT,   "ScrollLeft"  },
-        { InputMouse::SCROLL_RIGHT,  "ScrollRight" },
 });
 
 namespace {
-
-/**
- * Convert modifier flags to string representation.
- * @param mods combined modifier flags
- * @return text representation
- */
-std::string modifiers_to_string(const keymod_t mods)
-{
-    std::string name;
-    for (const auto& it : modifiers_name) {
-        if (mods & it.first) {
-            if (!name.empty()) {
-                name += '+';
-            }
-            name += it.second;
-        }
-    }
-    return name;
-}
 
 /**
  * Extract modifier flags from tokens and remove them from the vector.
@@ -108,6 +85,20 @@ std::vector<std::string> split(const std::string& text)
 
 } // anonymous namespace
 
+std::string InputKeyboard::mods_to_string(const keymod_t mods)
+{
+    std::string name;
+    for (const auto& it : modifiers_name) {
+        if (mods & it.first) {
+            if (!name.empty()) {
+                name += '+';
+            }
+            name += it.second;
+        }
+    }
+    return name;
+}
+
 std::optional<InputKeyboard> InputKeyboard::load(const std::string& expression)
 {
     std::vector<std::string> tokens = split(expression);
@@ -127,7 +118,7 @@ std::optional<InputKeyboard> InputKeyboard::load(const std::string& expression)
 
 std::string InputKeyboard::to_string() const
 {
-    std::string text = modifiers_to_string(mods);
+    std::string text = mods_to_string(mods);
     if (key != XKB_KEY_NoSymbol) {
         if (!text.empty()) {
             text += '+';
@@ -190,7 +181,7 @@ InputMouse::mouse_btn_t InputMouse::to_button(const uint16_t code)
 
 std::string InputMouse::to_string() const
 {
-    std::string text = modifiers_to_string(mods);
+    std::string text = InputKeyboard::mods_to_string(mods);
     if (buttons != NONE) {
         for (const auto& it : mouse_buttons) {
             if (buttons & it.first) {

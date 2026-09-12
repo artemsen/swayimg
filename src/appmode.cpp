@@ -38,6 +38,14 @@ void AppMode::handle_keyboard(const InputKeyboard& input)
     }
 }
 
+void AppMode::handle_scroll(const keymod_t kmods, const double delta_h,
+                            const double delta_v) const
+{
+    if (on_scroll) {
+        on_scroll(kmods, delta_h, delta_v);
+    }
+}
+
 void AppMode::handle_mclick(const InputMouse& input, const Point&)
 {
     const auto& bind = mbindings.find(input);

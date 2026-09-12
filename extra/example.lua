@@ -203,34 +203,21 @@ swayimg.viewer.on_key("Shift+prior", function()
   end
 end)
 
--- move image across the window (mouse/touchpad)
-swayimg.viewer.on_mouse("ScrollUp", function()
-  local pos = swayimg.viewer.get_position()
-  swayimg.viewer.set_abs_position(pos.x, pos.y - 10)
-end)
-swayimg.viewer.on_mouse("ScrollDown", function()
-  local pos = swayimg.viewer.get_position()
-  swayimg.viewer.set_abs_position(pos.x, pos.y + 10)
-end)
-swayimg.viewer.on_mouse("ScrollLeft", function()
-  local pos = swayimg.viewer.get_position()
-  swayimg.viewer.set_abs_position(pos.x - 10, pos.y)
-end)
-swayimg.viewer.on_mouse("ScrollRight", function()
-  local pos = swayimg.viewer.get_position()
-  swayimg.viewer.set_abs_position(pos.x + 10, pos.y)
-end)
-
--- zoom in/out (mouse/touchpad)
-swayimg.viewer.on_mouse("Ctrl+ScrollUp", function()
-  local mouse = swayimg.get_mouse_pos()
-  local scale = swayimg.viewer.scale
-  swayimg.viewer.set_abs_scale(scale + scale / 10, mouse.x, mouse.y)
-end)
-swayimg.viewer.on_mouse("Ctrl+ScrollDown", function()
-  local mouse = swayimg.get_mouse_pos()
-  local scale = swayimg.viewer.scale
-  swayimg.viewer.set_abs_scale(scale - scale / 10, mouse.x, mouse.y)
+-- scroll handling
+swayimg.viewer.on_scroll(function(kmods, horizontal, vertical)
+  if kmods == "Ctrl" then
+    -- zoom in/out
+    if vertical then
+      local mouse = swayimg.get_mouse_pos()
+      local scale = swayimg.viewer.scale
+      swayimg.viewer.set_abs_scale(scale - scale * vertical / 5.0, mouse.x, mouse.y)
+    end
+  else
+    -- move image across the window
+    local pos = swayimg.viewer.get_position()
+    swayimg.viewer.set_abs_position(pos.x + math.floor(horizontal * 100),
+                                    pos.y + math.floor(vertical * 100))
+  end
 end)
 
 --------------------------------------------------------------------------------
@@ -350,24 +337,21 @@ swayimg.gallery.on_key("prior", function()
   swayimg.gallery.select("pgup")
 end)
 
--- select another thumbnail (mouse/touchpad)
-swayimg.gallery.on_mouse("ScrollUp", function()
-  swayimg.gallery.select("up")
-end)
-swayimg.gallery.on_mouse("ScrollDown", function()
-  swayimg.gallery.select("down")
-end)
-swayimg.gallery.on_mouse("ScrollLeft", function()
-  swayimg.gallery.select("left")
-end)
-swayimg.gallery.on_mouse("ScrollRight", function()
-  swayimg.gallery.select("right")
-end)
-
--- thumbnail zoom in/out (mouse/touchpad)
-swayimg.gallery.on_mouse("Ctrl+ScrollUp", function()
-  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size + 10
-end)
-swayimg.gallery.on_mouse("Ctrl+ScrollDown", function()
-  swayimg.gallery.thumb_size = swayimg.gallery.thumb_size - 10
+-- scroll handling
+swayimg.gallery.on_scroll(function(kmods, horizontal, vertical)
+  if kmods == "Ctrl" then
+    -- zoom in/out
+    if vertical then
+      swayimg.gallery.thumb_size = math.max(
+        swayimg.gallery.thumb_size + math.floor(-vertical / 1), 0)
+    end
+  else
+    -- select nearest thumbnail
+    if horizontal then
+      swayimg.gallery.select(horizontal > 0 and "left" or "right")
+    end
+    if vertical then
+      swayimg.gallery.select(vertical > 0 and "up" or "down")
+    end
+  end
 end)

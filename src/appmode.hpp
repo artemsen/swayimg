@@ -33,6 +33,9 @@ public:
     /** Input event handler. */
     using InputCallback = std::function<void()>;
 
+    /** Scroll event handler. */
+    using ScrollCallback = std::function<void(keymod_t, double, double)>;
+
     /** Unassigned kay input event handler. */
     using UnassignedKeyCallback =
         std::function<void(const InputKeyboard& input)>;
@@ -87,6 +90,14 @@ public:
      * @param input input event description
      */
     void handle_keyboard(const InputKeyboard& input);
+
+    /**
+     * Handle mouse/touchpad scroll.
+     * @param kmods keyboard modifiers state
+     * @param delta_h,delta_v horizontal and vertical scroll delta
+     */
+    void handle_scroll(const keymod_t kmods, const double delta_h,
+                       const double delta_v) const;
 
     /**
      * Handle mouse click.
@@ -185,6 +196,7 @@ public:
 public:
     std::function<void()> on_image_change;   ///< Image switch callback
     UnassignedKeyCallback on_unassigned_key; ///< Unassigned key handler
+    ScrollCallback on_scroll;                ///< Scroll handler
 
 protected:
     /**

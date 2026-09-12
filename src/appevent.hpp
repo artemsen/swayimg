@@ -36,6 +36,13 @@ struct KeyPress {
     InputKeyboard key; ///< Key description
 };
 
+/** Mouse/touchpad scroll event. */
+struct Scroll {
+    keymod_t kmods; ///< Keyboard modifiers
+    double delta_h; ///< Horizontal scrolling delta
+    double delta_v; ///< Vertival scrolling delta
+};
+
 /** Mouse clock event. */
 struct MouseClick {
     InputMouse mouse; ///< Mouse key state
@@ -85,6 +92,7 @@ using Holder = std::variant<WindowClose,
                             WindowResize,
                             WindowRescale,
                             KeyPress,
+                            Scroll,
                             MouseClick,
                             MouseMove,
                             GesturePinch,

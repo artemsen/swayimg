@@ -225,6 +225,10 @@ private:
         InputMouse::NONE; ///< Currently pressed mouse buttons
     Point mouse_pos;      ///< Mouse coordinates
 
+    bool scroll_hires = false; ///< Scroll mode (hires/lores)
+    double scroll_v = 0;       ///< Pending vertical scroll
+    double scroll_h = 0;       ///< Pending horizontal scroll
+
     double pinch_scale; ///< Last pinch scale
 
 public:

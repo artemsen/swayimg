@@ -181,21 +181,65 @@ public:
     static void on_pointer_axis(void* data, struct wl_pointer*, uint32_t,
                                 uint32_t axis, wl_fixed_t value)
     {
-        const UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
-        InputMouse::mouse_btn_t btn;
-        const bool incr = value > 0;
-        if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
-            btn = incr ? InputMouse::SCROLL_RIGHT : InputMouse::SCROLL_LEFT;
-        } else {
-            btn = incr ? InputMouse::SCROLL_DOWN : InputMouse::SCROLL_UP;
+        if (!ui->scroll_hires) {
+            // approximately correspond to the value120
+            constexpr double factror = 8.0;
+
+            const double delta = wl_fixed_to_double(value) / factror;
+
+            if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+                ui->scroll_h += delta;
+            } else {
+                ui->scroll_v += delta;
+            }
         }
-        btn |= ui->mouse_buttons;
+    }
 
-        Application::self().add_event(AppEvent::MouseClick {
-            .mouse = { .buttons = btn, .mods = ui->xkb.get_modifiers() },
-            .pointer = ui->mouse_pos
-        });
+    static void on_pointer_axis_source(void*, struct wl_pointer*, uint32_t) {}
+
+    static void on_pointer_axis_stop(void*, struct wl_pointer*, uint32_t,
+                                     uint32_t)
+    {
+    }
+
+    static void on_pointer_axis_discrete(void*, struct wl_pointer*, uint32_t,
+                                         int32_t)
+    {
+    }
+
+    static void on_pointer_axis_value120(void* data, struct wl_pointer*,
+                                         uint32_t axis, int32_t value120)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        const double delta = wl_fixed_to_double(value120);
+
+        ui->scroll_hires = true;
+        if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+            ui->scroll_h += delta;
+        } else {
+            ui->scroll_v += delta;
+        }
+    }
+
+    static void on_pointer_axis_relative_direction(void*, struct wl_pointer*,
+                                                   uint32_t, uint32_t)
+    {
+    }
+
+    static void on_pointer_frame(void* data, struct wl_pointer*)
+    {
+        UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        if (ui->scroll_h || ui->scroll_v) {
+            Application::self().add_event(
+                AppEvent::Scroll { .kmods = ui->xkb.get_modifiers(),
+                                   .delta_h = ui->scroll_h,
+                                   .delta_v = ui->scroll_v });
+            ui->scroll_hires = false;
+            ui->scroll_h = 0;
+            ui->scroll_v = 0;
+        }
     }
 
     static constexpr const wl_pointer_listener pointer_listener = {
@@ -204,12 +248,12 @@ public:
         .motion = on_pointer_motion,
         .button = on_pointer_button,
         .axis = on_pointer_axis,
-        .frame = nullptr,
-        .axis_source = nullptr,
-        .axis_stop = nullptr,
-        .axis_discrete = nullptr,
-        .axis_value120 = nullptr,
-        .axis_relative_direction = nullptr,
+        .frame = on_pointer_frame,
+        .axis_source = on_pointer_axis_source,
+        .axis_stop = on_pointer_axis_stop,
+        .axis_discrete = on_pointer_axis_discrete,
+        .axis_value120 = on_pointer_axis_value120,
+        .axis_relative_direction = on_pointer_axis_relative_direction,
 #ifdef WL_POINTER_WARP_SINCE_VERSION
         .warp = nullptr,
 #endif
@@ -659,7 +703,7 @@ public:
      **************************************************************************/
     static void on_registry_global(void* data, struct wl_registry* registry,
                                    uint32_t name, const char* interface,
-                                   uint32_t /* version */)
+                                   uint32_t version)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
 
@@ -673,10 +717,11 @@ public:
                             WL_SHM_POOL_CREATE_BUFFER_SINCE_VERSION);
         } else if (strcmp(interface, wl_seat_interface.name) == 0) {
             // seat (keyboard and mouse)
-            ui->wl.seat.bind(registry, name,
-                             WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION);
+            version = std::min(
+                version,
+                static_cast<uint32_t>(WL_POINTER_AXIS_VALUE120_SINCE_VERSION));
+            ui->wl.seat.bind(registry, name, version);
             wl_seat_add_listener(ui->wl.seat, &seat_listener, data);
-
         } else if (strcmp(interface, wl_data_device_manager_interface.name) ==
                    0) {
             // drag-and-drop + clipboard data device
