@@ -2,6 +2,7 @@
 // JPEG XL image format.
 // Copyright (C) 2021 Artem Senichev <artemsen@gmail.com>
 
+#include "../formatfactory.hpp"
 #include "../imageformat.hpp"
 
 #include <jxl/decode_cxx.h>
@@ -44,6 +45,10 @@ public:
         JxlDecoderSetParallelRunner(jxl_dec.get(), JxlResizableParallelRunner,
                                     jxl_prl.get());
 
+        if (!FormatFactory::self().fix_orientation) {
+            JxlDecoderSetKeepOrientation(jxl_dec.get(), JXL_TRUE);
+        }
+
         JxlDecoderSetInput(jxl_dec.get(), data.data, data.size);
         JxlDecoderCloseInput(jxl_dec.get());
 
@@ -72,6 +77,9 @@ public:
                             jxl_inf.alpha_bits);
         return image;
     }
+
+    // ignore, done by decoder
+    void fix_orientation(ImagePtr&, const int) const override {}
 
 private:
     /** Decoder status. */
