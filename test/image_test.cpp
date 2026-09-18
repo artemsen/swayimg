@@ -67,6 +67,9 @@ TEST_IMAGE_LOAD(webp);
 #ifdef HAVE_LIBRSVG
 TEST_IMAGE_LOAD(svg);
 #endif
+#ifdef HAVE_MINIZIP_NG
+TEST_IMAGE_LOAD(kra);
+#endif
 
 #if defined(HAVE_LIBJPEG) && defined(HAVE_LIBEXIV2)
 TEST(ImageTest, Exif)

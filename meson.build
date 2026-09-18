@@ -94,7 +94,8 @@ jpeg = dependency('libjpeg', required: get_option('jpeg'))
 jp2 = dependency('libopenjp2', required: get_option('jp2'))
 jxl = dependency('libjxl', required: get_option('jxl'))
 jxl_threads = dependency('libjxl_threads', required: get_option('jxl'))
-png = dependency('libpng', required: get_option('png'))
+minizip_ng = dependency('minizip-ng', required: get_option('krita'))
+png = dependency('libpng', required: get_option('png').enabled() or get_option('krita').enabled())
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 sixel = dependency('libsixel', required: get_option('sixel'))
@@ -166,6 +167,7 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found())
+conf.set('HAVE_MINIZIP_NG', minizip_ng.found())
 conf.set('HAVE_VIDEO', video.found())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildconf.hpp', configuration: conf)
@@ -359,6 +361,9 @@ endif
 if jxl.found()
     sources += 'src/formats/jxl.cpp'
 endif
+if minizip_ng.found()
+    sources += 'src/formats/krita.cpp'
+endif
 if png.found()
     sources += 'src/formats/png.cpp'
 endif
@@ -402,6 +407,7 @@ dependencies = [
     jp2,
     jxl,
     jxl_threads,
+    minizip_ng,
     png,
     raw,
     rsvg,

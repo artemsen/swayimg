@@ -20,6 +20,7 @@ RUN apk add \
     libxkbcommon-dev \
     luajit-dev \
     meson \
+    minizip-ng-dev \
     openexr-dev \
     openjpeg-dev \
     wayland-dev \

@@ -42,6 +42,12 @@ option(
     description: 'Enable JPEG XL format support',
 )
 option(
+    'krita',
+    type: 'feature',
+    value: 'auto',
+    description: 'Enable Krita format support',
+)
+option(
     'png',
     type: 'feature',
     value: 'auto',

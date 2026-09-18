@@ -26,7 +26,7 @@ jobs:
           wayland wayland-protocols
           libavif libjxl libsixel libraw librsvg2-rust
           giflib jpeg-turbo openexr openjpeg png tiff webp ffmpeg
-          googletest
+          googletest minizip-ng
         run: |
           set -e
           export LANG=ru_RU.UTF-8
