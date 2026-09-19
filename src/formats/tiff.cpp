@@ -54,23 +54,19 @@ public:
         Pixmap& pm = image->frames[0].pm;
         pm.create(Pixmap::ARGB, width, height);
 
+        // get orientation
+        uint16_t orientation = ORIENTATION_TOPLEFT;
+        TIFFGetFieldDefaulted(tiff.get(), TIFFTAG_ORIENTATION, &orientation);
+
         // decode image
         const int rc = TIFFReadRGBAImageOriented(
             tiff.get(), width, height,
-            reinterpret_cast<uint32_t*>(pm.ptr(0, 0)), ORIENTATION_TOPLEFT, 1);
+            reinterpret_cast<uint32_t*>(pm.ptr(0, 0)), orientation, 1);
         if (rc == 0) {
             return nullptr;
         }
 
         pm.abgr_to_argb();
-
-        // something strange, but i don't know how to deal with it
-        uint32_t orientation;
-        if (TIFFGetField(tiff.get(), TIFFTAG_ORIENTATION, &orientation)) {
-            if (orientation == ORIENTATION_RIGHTTOP) {
-                image->flip_horizontal();
-            }
-        }
 
         image->format = "TIFF";
 
