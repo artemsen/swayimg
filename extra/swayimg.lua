@@ -380,7 +380,7 @@ swayimg.text = {}
 ---To print `{` character escape it with `{{`.
 ---The template string may contain a tab character to separate key/value pairs,
 ---in this case the text block will be aligned with the longest key.
----If the value cannot be output (for example, the specified EXIF tag ismissing),
+---If the value cannot be output (for example, the specified EXIF tag is missing),
 ---then the entire string including the key is ignored upon printing.
 ---List of available EXIF/XMP/IPTC tags can be found at [Exiv2 website](https://exiv2.org/tags.html)
 ---or printed using utility exiv2: `exiv2 -pa photo.jpg`.
