@@ -94,7 +94,7 @@
 ---@field index integer Index in the image list
 ---@field path string Absolute path to the file
 ---@field size integer File size in bytes
----@field mtime string File modification time
+---@field mtime integer File modification time (seconds since Unix Epoch)
 ---@field mark boolean Whether the image is marked
 
 ---Read only image description.
