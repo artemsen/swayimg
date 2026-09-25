@@ -31,7 +31,8 @@ RUN apt update && apt upgrade --yes && apt install --no-install-recommends --yes
     libwayland-dev:arm64 \
     libwebp-dev:arm64 \
     libxkbcommon-dev:arm64 \
-    libluajit-5.1-dev:arm64
+    libluajit-5.1-dev:arm64 \
+    libminizip-ng-dev:arm64
 
 RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
