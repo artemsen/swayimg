@@ -3,11 +3,11 @@
 Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) support.
 
 - Support for the most popular image formats:
-  - JPEG (via [libjpeg](http://libjpeg.sourceforge.net)),
+  - JPEG (via [libjpeg](https://libjpeg.sourceforge.net)),
   - JPEG XL (via [libjxl](https://github.com/libjxl/libjxl));
   - JPEG 2000 (via [OpenJPEG](https://www.openjpeg.org));
-  - PNG (via [libpng](http://www.libpng.org));
-  - GIF (via [giflib](http://giflib.sourceforge.net));
+  - PNG (via [libpng](https://www.libpng.org));
+  - GIF (via [giflib](https://giflib.sourceforge.net));
   - SVG (via [librsvg](https://gitlab.gnome.org/GNOME/librsvg));
   - WebP (via [libwebp](https://chromium.googlesource.com/webm/libwebp));
   - HEIF/HEIC (via [libheif](https://github.com/strukturag/libheif));
@@ -16,6 +16,7 @@ Swayimg is a fully customizable image viewer with [Lua scripting](CONFIG.md) sup
   - Sixel (via [libsixel](https://github.com/saitoha/libsixel));
   - Raw: CRW/CR2, NEF, RAF, etc (via [libraw](https://www.libraw.org));
   - EXR (via [OpenEXR](https://openexr.com));
+  - Krita (via [minizip-ng](https://github.com/zlib-ng/minizip-ng) and [libpng](https://www.libpng.org));
   - BMP (built-in);
   - PNM (built-in);
   - TGA (built-in);

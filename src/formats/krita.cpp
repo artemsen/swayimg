@@ -1,140 +1,153 @@
+// SPDX-License-Identifier: MIT
+// Krita image format.
+// Copyright (C) 2026 Philip Kranz <pk@pmlk.net>
+
 #include "../formatfactory.hpp"
 #include "../imageformat.hpp"
-#include "../log.hpp"
 
-#include <optional>
+#include <mz.h>
+#include <mz_strm.h>
+#include <mz_strm_mem.h>
+#include <mz_zip.h>
+
+#include <cassert>
 #include <vector>
-
-#include "mz.h"
-#include "mz_strm.h"
-#include "mz_strm_mem.h"
-#include "mz_zip.h"
 
 namespace {
 
 class ImageFormatKrita : public ImageFormat {
 public:
     ImageFormatKrita() noexcept
-        : ImageFormat(Priority::Lowest, "kra")
+        : ImageFormat(Priority::Low, "kra")
     {
     }
 
     [[nodiscard]] ImagePtr decode(const Data& data) const override
     {
-        std::optional<std::vector<uint8_t>> png =
-            read_from_zip(data, "mergedimage.png");
-
-        if (!png.has_value()) {
+        if (!check_signature(data, signature)) {
             return nullptr;
         }
 
-        const ImageFormat* png_loader = FormatFactory::self().get("png");
-
-        if (png_loader == nullptr) {
+        // unpack png from zip stream
+        Zip zip;
+        std::vector<uint8_t> img_data = zip.unpack(data, "mergedimage.png");
+        if (img_data.empty()) {
             return nullptr;
         }
 
-        Data png_data;
-        png_data.data = png.value().data();
-        png_data.size = png.value().size();
+        // decode unpacked png
+        const Data png_data = {
+            .data = img_data.data(),
+            .size = img_data.size(),
+        };
+        ImagePtr image = FormatFactory::self().get("png")->decode(png_data);
 
-        return png_loader->decode(png_data);
+        if (image) {
+            image->format = "Krita";
+        }
+        return image;
     }
 
     [[nodiscard]] Pixmap preview(const Data& data, const size_t sz,
                                  const bool fill) const override
     {
-        if (!FormatFactory::self().embedded_thumb) {
+        if (!check_signature(data, signature) ||
+            !FormatFactory::self().embedded_thumb) {
             return ImageFormat::preview(data, sz, fill);
         }
 
-        std::optional<std::vector<uint8_t>> png =
-            read_from_zip(data, "preview.png");
-
-        if (!png.has_value()) {
+        // unpack png from zip stream
+        Zip zip;
+        std::vector<uint8_t> img_data = zip.unpack(data, "preview.png");
+        if (img_data.empty()) {
             return ImageFormat::preview(data, sz, fill);
         }
 
-        const ImageFormat* png_loader = FormatFactory::self().get("png");
-
-        if (png_loader == nullptr) {
-            return ImageFormat::preview(data, sz, fill);
-        }
-
-        Data png_data;
-        png_data.data = png.value().data();
-        png_data.size = png.value().size();
-
-        return png_loader->preview(png_data, sz, fill);
+        // decode unpacked png
+        const Data png_data = {
+            .data = img_data.data(),
+            .size = img_data.size(),
+        };
+        return FormatFactory::self().get("png")->preview(png_data, sz, fill);
     }
 
 private:
-    static void delete_memstream(void* s) { mz_stream_mem_delete(&s); }
-    static void delete_zip(void* s) { mz_zip_delete(&s); }
+    // zip signature
+    static constexpr uint8_t signature[] = { 'P', 'K', 0x03, 0x04 };
 
-    using MemStream = std::unique_ptr<void, decltype(&delete_memstream)>;
-    using ZipHandle = std::unique_ptr<void, decltype(&delete_zip)>;
-
-    /**
-     * Read one file from a zip file into a vector
-     * @param data zip file buffer
-     * @param filename path of the file to deflate
-     * @return contents of deflated file
-     */
-    static std::optional<std::vector<uint8_t>>
-    read_from_zip(const Data& data, const char* filename)
-    {
-        int32_t err = MZ_OK;
-
-        const MemStream mem_stream(mz_stream_mem_create(), &delete_memstream);
-
-        mz_stream_mem_set_buffer(mem_stream.get(), data.data, data.size);
-
-        if (mz_stream_open(mem_stream.get(), nullptr, MZ_OPEN_MODE_READ) !=
-            MZ_OK) {
-            return std::nullopt;
-        }
-
-        const ZipHandle zip_handle(mz_zip_create(), &delete_zip);
-
-        if (mz_zip_open(zip_handle.get(), mem_stream.get(),
-                        MZ_OPEN_MODE_READ) != MZ_OK) {
-            return std::nullopt;
-        }
-
-        if (mz_zip_locate_entry(zip_handle.get(), filename, 0) != MZ_OK) {
-            mz_zip_close(zip_handle.get());
-            return std::nullopt;
-        }
-
-        if (mz_zip_entry_read_open(zip_handle.get(), 0, nullptr) != MZ_OK) {
-            mz_zip_close(zip_handle.get());
-            return std::nullopt;
-        }
-
-        std::vector<uint8_t> result;
-        std::vector<uint8_t> buffer(4096);
-
-        int32_t bytes_read;
-        do {
-            bytes_read = mz_zip_entry_read(
-                zip_handle.get(), reinterpret_cast<char*>(buffer.data()),
-                buffer.capacity());
-
-            if (bytes_read < 0) {
-                err = bytes_read;
-            } else {
-                result.insert(result.end(), buffer.begin(), buffer.end());
+    /** Wrapper to work with Zip stream. */
+    class Zip {
+    public:
+        ~Zip()
+        {
+            if (zip) {
+                if (mz_zip_entry_is_open(zip)) {
+                    mz_zip_entry_close(zip);
+                }
+                mz_zip_close(zip);
+                mz_zip_delete(&zip);
             }
-        } while (err == MZ_OK && bytes_read > 0);
+            if (stream) {
+                mz_stream_mem_delete(&stream);
+            }
+        }
 
-        mz_zip_entry_close(zip_handle.get());
-        mz_zip_close(zip_handle.get());
+        /**
+         * Read content of one file from a zip stream.
+         * @param data zip stream data
+         * @param filename path of the file to deflate
+         * @return content of deflated file
+         */
+        std::vector<uint8_t> unpack(const Data& data, const char* filename)
+        {
+            assert(!stream && !zip);
 
-        return result;
-    }
+            // create stream
+            stream = mz_stream_mem_create();
+            if (!stream) {
+                return {};
+            }
+            mz_stream_mem_set_buffer(stream, const_cast<uint8_t*>(data.data),
+                                     data.size);
+            if (mz_stream_open(stream, nullptr, MZ_OPEN_MODE_READ) != MZ_OK) {
+                return {};
+            }
+
+            // open stream as zip
+            zip = mz_zip_create();
+            if (!zip || mz_zip_open(zip, stream, MZ_OPEN_MODE_READ) != MZ_OK) {
+                return {};
+            }
+
+            // load file entry
+            if (mz_zip_locate_entry(zip, filename, 0) != MZ_OK ||
+                mz_zip_entry_read_open(zip, 0, nullptr) != MZ_OK) {
+                return {};
+            }
+
+            // deflate entry
+            std::vector<uint8_t> unpacked;
+            while (true) {
+                uint8_t buf[4096];
+                const int32_t len = mz_zip_entry_read(zip, buf, sizeof(buf));
+                if (len < 0) {
+                    return {};
+                }
+                if (len == 0) {
+                    break; // eof
+                }
+                unpacked.insert(unpacked.end(), buf, buf + len);
+            }
+            return unpacked;
+        }
+
+    private:
+        void* stream = nullptr;
+        void* zip = nullptr;
+    };
 };
 
+// register format in factory
 ImageFormatKrita format_krita;
 
-}
+} // anonymous namespace

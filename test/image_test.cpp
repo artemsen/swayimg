@@ -67,7 +67,7 @@ TEST_IMAGE_LOAD(webp);
 #ifdef HAVE_LIBRSVG
 TEST_IMAGE_LOAD(svg);
 #endif
-#ifdef HAVE_MINIZIP_NG
+#ifdef HAVE_KRITA
 TEST_IMAGE_LOAD(kra);
 #endif
 

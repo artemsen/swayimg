@@ -94,12 +94,20 @@ jpeg = dependency('libjpeg', required: get_option('jpeg'))
 jp2 = dependency('libopenjp2', required: get_option('jp2'))
 jxl = dependency('libjxl', required: get_option('jxl'))
 jxl_threads = dependency('libjxl_threads', required: get_option('jxl'))
-minizip_ng = dependency('minizip-ng', required: get_option('krita'))
+zip = dependency('minizip-ng', required: get_option('krita'))
 png = dependency('libpng', required: get_option('png').enabled() or get_option('krita').enabled())
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 sixel = dependency('libsixel', required: get_option('sixel'))
 raw = dependency('libraw', required: get_option('raw'))
+# Krita format
+if zip.found() and png.found()
+    krita = declare_dependency(
+        dependencies: [zip, png],
+    )
+else
+    krita = dependency('', required: false)
+endif
 # WebP format
 webp_base = dependency('libwebp', required: get_option('webp'))
 webp_demux = dependency('libwebpdemux', required: get_option('webp'))
@@ -167,7 +175,7 @@ conf.set('HAVE_LIBTIFF', tiff.found())
 conf.set('HAVE_LIBSIXEL', sixel.found())
 conf.set('HAVE_LIBRAW', raw.found())
 conf.set('HAVE_LIBWEBP', webp.found())
-conf.set('HAVE_MINIZIP_NG', minizip_ng.found())
+conf.set('HAVE_KRITA', krita.found())
 conf.set('HAVE_VIDEO', video.found())
 conf.set_quoted('APP_VERSION', version)
 configure_file(output: 'buildconf.hpp', configuration: conf)
@@ -361,7 +369,7 @@ endif
 if jxl.found()
     sources += 'src/formats/jxl.cpp'
 endif
-if minizip_ng.found()
+if krita.found()
     sources += 'src/formats/krita.cpp'
 endif
 if png.found()
@@ -407,7 +415,7 @@ dependencies = [
     jp2,
     jxl,
     jxl_threads,
-    minizip_ng,
+    krita,
     png,
     raw,
     rsvg,
