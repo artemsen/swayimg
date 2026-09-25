@@ -29,7 +29,7 @@ struct DataBuffer : public ImageFormat::Data {
     ~DataBuffer()
     {
         if (container.empty() && data) {
-            munmap(data, size);
+            munmap(const_cast<uint8_t*>(data), size);
         }
     }
 

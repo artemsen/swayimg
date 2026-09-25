@@ -25,8 +25,8 @@ public:
 
     /** Data buffer. */
     struct Data {
-        uint8_t* data = nullptr; ///< Data buffer
-        size_t size = 0;         ///< Buffer size
+        const uint8_t* data = nullptr; ///< Data buffer
+        size_t size = 0;               ///< Buffer size
     };
 
     /** Format config. */
