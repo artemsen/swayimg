@@ -131,6 +131,14 @@ static constexpr std::array aspects =
         { Gallery::Aspect::Keep, "keep" },
 });
 
+// mouse buttons removed in favor of on_scroll()
+static constexpr std::array removed_scroll_buttons = {
+    "ScrollUp",
+    "ScrollDown",
+    "ScrollLeft",
+    "ScrollRight",
+};
+
 namespace {
 
 /**
@@ -2042,6 +2050,15 @@ void LuaEngine::bind_appmode_api(const char* name)
                                   const luabridge::LuaRef& cb) {
                 std::optional<InputMouse> input = InputMouse::load(key);
                 if (!input.has_value()) {
+                    for (const char* button : removed_scroll_buttons) {
+                        if (key.find(button) != std::string::npos) {
+                            raise_error("Invalid button for {}.{}.on_mouse: "
+                                        "{} was removed, use {}.{}.on_scroll() "
+                                        "instead",
+                                        NS_SWAYIMG, name, button, NS_SWAYIMG,
+                                        name);
+                        }
+                    }
                     raise_error("Invalid button for {}.{}.on_mouse: {}",
                                 NS_SWAYIMG, name, key);
                 }
