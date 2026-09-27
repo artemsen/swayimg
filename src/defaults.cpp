@@ -242,11 +242,11 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
         if (kmods == KEYMOD_CTRL) {
             const Point pos = Application::get_ui()->get_mouse();
             const double scale = mode->get_scale();
-            mode->set_scale(scale - scale * delta_v / 5.0, pos);
+            mode->set_scale(scale - scale * delta_v / 10.0, pos);
         } else {
             Point pos = mode->get_position();
-            pos.x += static_cast<ssize_t>(delta_h * 100.0);
-            pos.y += static_cast<ssize_t>(delta_v * 100.0);
+            pos.x += static_cast<ssize_t>(delta_h * 50.0);
+            pos.y += static_cast<ssize_t>(delta_v * 50.0);
             mode->set_position(pos);
         }
     };
@@ -435,7 +435,7 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
                                       const double delta_v) {
         if (kmods == KEYMOD_CTRL) {
             if (delta_v) {
-                zoom_fn(-delta_v / 8.0);
+                zoom_fn(-delta_v / 16.0);
             }
         } else {
             if (delta_h) {
