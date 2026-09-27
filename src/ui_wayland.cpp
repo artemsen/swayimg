@@ -187,9 +187,9 @@ public:
 
         if (!ui->scroll_hires) {
             // approximately correspond to the value120
-            constexpr double factror = 8.0;
+            constexpr double factor = 4.0;
 
-            const double delta = wl_fixed_to_double(value) / factror;
+            const double delta = wl_fixed_to_double(value) / factor;
 
             if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
                 ui->scroll_h += delta;
@@ -215,7 +215,7 @@ public:
                                          uint32_t axis, int32_t value120)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
-        const double delta = wl_fixed_to_double(value120);
+        const double delta = value120 / 120.0;
 
         ui->scroll_hires = true;
         if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {

@@ -210,13 +210,13 @@ swayimg.viewer.on_scroll(function(kmods, horizontal, vertical)
     if vertical then
       local mouse = swayimg.get_mouse_pos()
       local scale = swayimg.viewer.scale
-      swayimg.viewer.set_abs_scale(scale - scale * vertical / 5.0, mouse.x, mouse.y)
+      swayimg.viewer.set_abs_scale(scale - scale * vertical / 10.0, mouse.x, mouse.y)
     end
   else
     -- move image across the window
     local pos = swayimg.viewer.get_position()
-    swayimg.viewer.set_abs_position(pos.x + math.floor(horizontal * 100),
-                                    pos.y + math.floor(vertical * 100))
+    swayimg.viewer.set_abs_position(pos.x + math.floor(horizontal * 50),
+                                    pos.y + math.floor(vertical * 50))
   end
 end)
 
@@ -343,7 +343,7 @@ swayimg.gallery.on_scroll(function(kmods, horizontal, vertical)
     -- zoom in/out
     if vertical then
       swayimg.gallery.thumb_size = math.max(
-        swayimg.gallery.thumb_size + math.floor(-vertical / 1), 0)
+        swayimg.gallery.thumb_size + math.floor(-vertical / 2), 0)
     end
   else
     -- select nearest thumbnail
