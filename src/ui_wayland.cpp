@@ -93,10 +93,12 @@ public:
     /***************************************************************************
      * Pointer handlers
      **************************************************************************/
-    static void on_pointer_enter(void* data, struct wl_pointer*, uint32_t,
-                                 struct wl_surface*, wl_fixed_t, wl_fixed_t)
+    static void on_pointer_enter(void* data, struct wl_pointer*,
+                                 uint32_t serial, struct wl_surface*,
+                                 wl_fixed_t, wl_fixed_t)
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
+        ui->pointer_serial = serial;
         ui->set_cursor(Ui::CursorShape::Default);
     }
 
@@ -1085,7 +1087,7 @@ void UiWayland::set_cursor(CursorShape shape)
     wp_cursor_shape_device_v1* dev =
         wp_cursor_shape_manager_v1_get_pointer(wl.cursor_mgr, wl.pointer);
     if (dev) {
-        wp_cursor_shape_device_v1_set_shape(dev, 0, wlshape);
+        wp_cursor_shape_device_v1_set_shape(dev, pointer_serial, wlshape);
         wp_cursor_shape_device_v1_destroy(dev);
     }
 }
