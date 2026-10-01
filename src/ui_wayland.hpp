@@ -219,6 +219,7 @@ private:
 
     Xkb xkb; ///< X keyboard extension
 
+    uint32_t pointer_serial; ///< Current mouse serial from pointer enter
     CursorShape pointer_shape =
         Ui::CursorShape::Default; ///< Current mouse pointer shape
     InputMouse::mouse_btn_t mouse_buttons =
