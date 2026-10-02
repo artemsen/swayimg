@@ -217,7 +217,12 @@ public:
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         const double delta = wl_fixed_to_double(value120);
 
-        ui->scroll_hires = true;
+        if (!ui->scroll_hires) {
+            // drop axis distance received before value120 in this frame
+            ui->scroll_hires = true;
+            ui->scroll_h = 0;
+            ui->scroll_v = 0;
+        }
         if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
             ui->scroll_h += delta;
         } else {
