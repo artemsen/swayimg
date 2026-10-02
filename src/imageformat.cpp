@@ -158,7 +158,7 @@ bool ImageFormat::read_metadata(const Data& data, ImagePtr& image)
 
 void ImageFormat::Config::get(const std::string& name, bool& value)
 {
-    auto it = params.find(name);
+    const auto it = params.find(name);
     if (it != params.end()) {
         Value& pval = it->second;
         if (std::holds_alternative<bool>(pval.value)) {
@@ -172,7 +172,7 @@ void ImageFormat::Config::get(const std::string& name, bool& value)
 
 void ImageFormat::Config::get(const std::string& name, argb_t& value)
 {
-    auto it = params.find(name);
+    const auto it = params.find(name);
     if (it != params.end()) {
         Value& pval = it->second;
         pval.status = Invalid;
@@ -189,7 +189,7 @@ void ImageFormat::Config::get(const std::string& name, argb_t& value)
 void ImageFormat::Config::get(const std::string& name, size_t& value,
                               const size_t min_val, const size_t max_val)
 {
-    auto it = params.find(name);
+    const auto it = params.find(name);
     if (it != params.end()) {
         Value& pval = it->second;
         pval.status = Invalid;
@@ -206,7 +206,7 @@ void ImageFormat::Config::get(const std::string& name, size_t& value,
 void ImageFormat::Config::get(const std::string& name, std::string& value,
                               const size_t min_len)
 {
-    auto it = params.find(name);
+    const auto it = params.find(name);
     if (it != params.end()) {
         Value& pval = it->second;
         pval.status = Invalid;

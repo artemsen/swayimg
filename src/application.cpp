@@ -362,7 +362,7 @@ void Application::event_loop()
     // create fd array to poll
     std::vector<pollfd> poll_fds;
     poll_fds.reserve(fds.size());
-    for (auto& it : fds) {
+    for (const auto& it : fds) {
         poll_fds.push_back({
             .fd = it.first,
             .events = POLLIN,

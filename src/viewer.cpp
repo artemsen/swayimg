@@ -834,10 +834,10 @@ void Viewer::Cache::put(const ImagePtr& image)
 
 ImagePtr Viewer::Cache::get(const ImageEntryPtr& entry)
 {
-    auto it = std::find_if(cache.begin(), cache.end(),
-                           [&entry](const ImagePtr& image) {
-                               return image->entry == entry;
-                           });
+    const auto it = std::find_if(cache.begin(), cache.end(),
+                                 [&entry](const ImagePtr& image) {
+                                     return image->entry == entry;
+                                 });
     if (it == cache.end()) {
         return nullptr;
     }

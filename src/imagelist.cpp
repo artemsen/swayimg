@@ -211,7 +211,7 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
             FsMonitor::self().remove(abs_path);
         } else {
             // remove single entry
-            auto it = entries_map.find(abs_path);
+            const auto it = entries_map.find(abs_path);
             if (it != entries_map.end()) {
                 const ImageEntryPtr entry = it->second;
                 entry->removed = true;
@@ -303,7 +303,7 @@ ImageEntryPtr ImageList::find(const std::filesystem::path& path)
 
     const std::shared_lock lock(mutex);
 
-    auto it = entries_map.find(search);
+    const auto it = entries_map.find(search);
     return it == entries_map.end() ? nullptr : it->second;
 }
 
@@ -313,6 +313,8 @@ ImageList::EntriesArray ImageList::get_all()
     return entries_arr;
 }
 
+// TODO
+// NOLINTBEGIN(readability-function-cognitive-complexity)
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
     const std::shared_lock lock(mutex);
@@ -376,6 +378,7 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 
     return entry;
 }
+// NOLINTEND(readability-function-cognitive-complexity)
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
 {
@@ -531,7 +534,7 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path)
     }
 
     const auto fs_time = std::filesystem::last_write_time(path);
-    auto sys_time =
+    const auto sys_time =
         std::chrono::time_point_cast<std::chrono::system_clock::duration>(
             fs_time - std::filesystem::file_time_type::clock::now() +
             std::chrono::system_clock::now());

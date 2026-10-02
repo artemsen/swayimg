@@ -648,7 +648,7 @@ namespace Blur {
         }
 
         // multi-pass blur filter
-        auto blur_fn = [](Pixmap& pm) {
+        const auto blur_fn = [](Pixmap& pm) {
             for (const size_t i : blur_box) {
                 const size_t radius = (i - 1) / 2;
                 apply_hor(pm, radius);

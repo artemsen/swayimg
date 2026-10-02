@@ -104,7 +104,7 @@ void FsMonitor::add(const std::filesystem::path& path)
 
 void FsMonitor::remove(const std::filesystem::path& path)
 {
-    auto it = paths.find(path);
+    const auto it = paths.find(path);
     if (it != paths.end()) {
         inotify_rm_watch(fd, it->second);
     }

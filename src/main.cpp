@@ -106,7 +106,7 @@ public:
             if (opt >= LONGOPT_OFFSET) {
                 arg = &arguments[opt - LONGOPT_OFFSET];
             } else {
-                for (auto& it : arguments) {
+                for (const auto& it : arguments) {
                     if (opt == it.short_opt) {
                         arg = &it;
                         break;

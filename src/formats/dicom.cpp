@@ -218,10 +218,9 @@ private:
         if (element.size == 0 &&
             (element.vr == VR_OB || element.vr == VR_OW ||
              element.vr == VR_SQ || element.vr == VR_UN ||
-             element.vr == VR_UT)) {
-            if (!stream.read(element.size)) {
-                return false;
-            }
+             element.vr == VR_UT) &&
+            !stream.read(element.size)) {
+            return false;
         }
 
         // get payload data

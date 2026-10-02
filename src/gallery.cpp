@@ -440,8 +440,9 @@ void Gallery::requeue_loading()
     ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
 
     // put thumbnail to loading queue, returns next thumb to load
-    auto queue_thumbnail = [&](const ImageEntryPtr& entry,
-                               const ImageList::Dir dir) -> ImageEntryPtr {
+    const auto queue_thumbnail =
+        [&](const ImageEntryPtr& entry,
+            const ImageList::Dir dir) -> ImageEntryPtr {
         if (!get_thumbnail(entry) && !crld_thumbs.contains(entry)) {
             tpool.add([this, entry]() {
                 load_thumbnail(entry);

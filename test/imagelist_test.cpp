@@ -368,7 +368,7 @@ TEST(ImageListTest, SortTime)
     EXPECT_ILEQ(il.get_all(), paths);
 
     std::time_t mtime = 1000;
-    for (auto& it : il.get_all()) {
+    for (const auto& it : il.get_all()) {
         if (it->path != "exec://2") {
             it->mtime = mtime;
         }
@@ -391,7 +391,7 @@ TEST(ImageListTest, SortSize)
     EXPECT_EQ(added.size(), 3UL);
 
     // set sizes after add to trigger re-sort
-    for (auto& it : il.get_all()) {
+    for (const auto& it : il.get_all()) {
         if (it->path == "exec://sortsize_a") {
             it->size = 300;
         } else if (it->path == "exec://sortsize_b") {

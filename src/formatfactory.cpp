@@ -223,7 +223,7 @@ void FormatFactory::add(ImageFormat* fmt)
 
 ImageFormat* FormatFactory::get(const char* name)
 {
-    auto it =
+    const auto it =
         std::find_if(formats.begin(), formats.end(), [name](const auto& it) {
             return strcmp(name, it->name) == 0;
         });
