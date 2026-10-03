@@ -187,7 +187,7 @@ public:
 
         if (!ui->scroll_hires) {
             // approximately correspond to the value120
-            constexpr double factor = 4.0;
+            constexpr double factor = 16.0;
 
             const double delta = wl_fixed_to_double(value) / factor;
 
