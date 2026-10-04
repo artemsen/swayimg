@@ -313,8 +313,6 @@ ImageList::EntriesArray ImageList::get_all()
     return entries_arr;
 }
 
-// TODO
-// NOLINTBEGIN(readability-function-cognitive-complexity)
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 {
     const std::shared_lock lock(mutex);
@@ -333,14 +331,9 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
 
     // handle removed entry: return nearest entry
     if (from->removed) {
-        size_t index = from->index;
-        if (index &&
-            (dir == ImageList::Dir::Prev ||
-             dir == ImageList::Dir::PrevParent)) {
-            --index;
-        }
-        index = std::min(index, entries_arr.size() - 1);
-        return entries_arr[index];
+        const bool forward =
+            dir != ImageList::Dir::Prev && dir != ImageList::Dir::PrevParent;
+        return get_removed(from, forward);
     }
 
     ImageEntryPtr entry = nullptr;
@@ -367,18 +360,12 @@ ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const Dir dir)
             entry = get_diffparent(from, false);
             break;
         case Dir::Random:
-            if (entries_arr.size() > 1) {
-                entry = from;
-                while (entry == from) {
-                    entry = entries_arr[rand() % entries_arr.size()];
-                }
-            }
+            entry = get_random(from);
             break;
     }
 
     return entry;
 }
-// NOLINTEND(readability-function-cognitive-complexity)
 
 ImageEntryPtr ImageList::get(const ImageEntryPtr& from, const ssize_t distance)
 {
@@ -424,8 +411,26 @@ ImageList::get_child(const std::filesystem::path& path) const
     return child;
 }
 
+ImageEntryPtr ImageList::get_removed(const ImageEntryPtr& entry,
+                                     const bool forward) const
+{
+    assert(entry->removed);
+
+    if (entries_arr.empty()) {
+        return nullptr;
+    }
+
+    size_t index = entry->index;
+    if (index && !forward) {
+        --index;
+    }
+    index = std::min(index, entries_arr.size() - 1);
+
+    return entries_arr[index];
+}
+
 ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,
-                                        const bool forward)
+                                        const bool forward) const
 {
     assert(from && !from->removed);
 
@@ -444,6 +449,19 @@ ImageEntryPtr ImageList::get_diffparent(const ImageEntryPtr& from,
     }
 
     return nullptr;
+}
+
+ImageEntryPtr ImageList::get_random(const ImageEntryPtr& excl) const
+{
+    ImageEntryPtr entry = excl;
+
+    if (entries_arr.size() > 1) {
+        while (entry == excl) {
+            entry = entries_arr[rand() % entries_arr.size()];
+        }
+    }
+
+    return entry == excl ? nullptr : entry;
 }
 
 ImageList::EntriesArray ImageList::add_any(const std::filesystem::path& path)

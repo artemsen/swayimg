@@ -148,12 +148,29 @@ private:
     EntriesArray get_child(const std::filesystem::path& path) const;
 
     /**
+     * Get the nearest entry for specified removed one.
+     * @param entry removed image entry
+     * @param forward direction of nearest returned entry
+     * @return image entry or nullptr if entry not found
+     */
+    ImageEntryPtr get_removed(const ImageEntryPtr& entry,
+                              const bool forward) const;
+
+    /**
      * Get the nearest entry with different parent.
      * @param from starting image entry
      * @param forward direction of nearest returned entry
      * @return image entry or nullptr if entry not found
      */
-    ImageEntryPtr get_diffparent(const ImageEntryPtr& from, const bool forward);
+    ImageEntryPtr get_diffparent(const ImageEntryPtr& from,
+                                 const bool forward) const;
+
+    /**
+     * Get random entry.
+     * @param excl excluded image entry
+     * @return image entry or nullptr if entry not found
+     */
+    ImageEntryPtr get_random(const ImageEntryPtr& excl) const;
 
     /**
      * Add file, directory or special source to the list.
