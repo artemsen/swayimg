@@ -8,7 +8,7 @@
 
 bool Point::operator==(const Point& other) const
 {
-    return x != other.x || y != other.y;
+    return x == other.x && y == other.y;
 }
 
 Point& Point::operator+=(const Point& other)

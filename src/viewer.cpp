@@ -554,7 +554,6 @@ void Viewer::handle_mmove(const InputMouse& input, const Point& pos,
         if (scaled.height > window_size.height) {
             new_pos.y = -pt_y * (scaled.height - window_size.height);
         }
-        position = new_pos;
     } else if (drag && drag == input) {
         new_pos += delta;
     }
