@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <format>
+#include <limits>
 
 namespace {
 
@@ -22,6 +23,10 @@ public:
         if (!check_signature(data, { 'B', 'M' })) {
             return nullptr;
         }
+        // both headers are read below, the signature check only covers 2 bytes
+        if (data.size < sizeof(Header) + sizeof(Info)) {
+            return nullptr;
+        }
 
         const Header* hdr = reinterpret_cast<const Header*>(data.data);
         const Info* bmp =
@@ -35,7 +40,10 @@ public:
         if (sizeof(Header) + bmp->dib_size > hdr->offset) {
             return nullptr;
         }
-        if (bmp->width == 0 || bmp->height == 0) {
+        // width is never negative (only negative height has a meaning:
+        // top-down order), and std::abs(INT32_MIN) is undefined
+        if (bmp->width <= 0 || bmp->height == 0 ||
+            bmp->height == std::numeric_limits<int32_t>::min()) {
             return nullptr;
         }
 
