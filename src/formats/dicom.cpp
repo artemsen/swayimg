@@ -268,9 +268,11 @@ private:
             }
         }
 
+        // computed in size_t: in int it overflows for big width and height
         return image.data && image.height && image.width &&
             std::cmp_equal(image.data_sz,
-                           image.width * image.height * (image.bpp / 8));
+                           static_cast<size_t>(image.width) * image.height *
+                               (image.bpp / 8));
     }
 };
 
