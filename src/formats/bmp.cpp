@@ -4,6 +4,7 @@
 
 #include "../imageformat.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <format>
 #include <limits>
@@ -344,10 +345,15 @@ private:
                     }
                     x += buffer[buffer_pos++];
                     y += buffer[buffer_pos++];
+                    // delta must not move the position outside the bitmap
+                    if (x > pm.width() || y > pm.height()) {
+                        return false;
+                    }
                 } else {
-                    // absolute mode
+                    // absolute mode, RLE4 odd run uses (n + 1) / 2 bytes
                     if (buffer_pos +
-                            (bmp.compression == BI_RLE4 ? rle2 / 2 : rle2) >
+                            (bmp.compression == BI_RLE4 ? (rle2 + 1) / 2
+                                                        : rle2) >
                         buffer_sz) {
                         return false;
                     }
@@ -382,12 +388,13 @@ private:
                 }
             } else {
                 // encoded mode
-                if (x + rle1 > pm.width()) {
-                    rle1 = pm.width() - x;
-                }
                 if (y >= pm.height()) {
                     return false;
                 }
+                // clip the run to the rest of the row, without underflow
+                const size_t room = x < pm.width() ? pm.width() - x : 0;
+                rle1 = static_cast<uint8_t>(
+                    std::min(static_cast<size_t>(rle1), room));
                 if (bmp.compression == BI_RLE8) {
                     // 8 bpp
                     if (rle2 >= palette.size) {
