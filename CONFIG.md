@@ -76,7 +76,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.text.shadow](#swayimgtextshadow): Shadow text color
   * [swayimg.text.status](#swayimgtextstatus): Status message
 * Viewer mode
-  * [swayimg.viewer.autocenter](#swayimgviewerautocenter): Automatic image centering
+  * [swayimg.viewer.autopos](#swayimgviewerautopos): Automatic image positioning
   * [swayimg.viewer.loop](#swayimgviewerloop): Image list loop mode
   * [swayimg.viewer.default_scale](#swayimgviewerdefault_scale): |fixed_scale_t
   * [swayimg.viewer.default_position](#swayimgviewerdefault_position): Default image position for newly opened images
@@ -118,7 +118,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.on_image_change()](#swayimgvieweron_image_change): Set a callback function called when a new image is opened/selected
 * Slide show mode
   * [swayimg.slideshow.timeout](#swayimgslideshowtimeout): Timeout in seconds after which next image should be opened
-  * [swayimg.slideshow.autocenter](#swayimgslideshowautocenter): Automatic image centering
+  * [swayimg.slideshow.autopos](#swayimgslideshowautopos): Automatic image positioning
   * [swayimg.slideshow.loop](#swayimgslideshowloop): Image list loop mode
   * [swayimg.slideshow.default_scale](#swayimgslideshowdefault_scale): |fixed_scale_t
   * [swayimg.slideshow.default_position](#swayimgslideshowdefault_position): Default image position for newly opened images
@@ -711,17 +711,22 @@ Multi-line text should be separated by new line character `\n`.
 
 ## Viewer mode
 
-### swayimg.viewer.autocenter
+### swayimg.viewer.autopos
 
 ```lua
-swayimg.viewer.autocenter: boolean
+swayimg.viewer.autopos: autopos_t
 ```
 
-Automatic image centering.
+Automatic image positioning.
 
-Since 5.5.
+Since 5.7.
 
 Write-only field.
+
+`autopos_t` - Automatic image positioning:
+* `"free"`: Free move mode
+* `"center"`: Images smaller than the window size will be centered
+* `"follow"`: Images larger than the window will follow the pointer
 
 ### swayimg.viewer.loop
 
@@ -1345,17 +1350,22 @@ Timeout in seconds after which next image should be opened.
 
 Since 5.5.
 
-### swayimg.slideshow.autocenter
+### swayimg.slideshow.autopos
 
 ```lua
-swayimg.slideshow.autocenter: boolean
+swayimg.slideshow.autopos: autopos_t
 ```
 
-Automatic image centering.
+Automatic image positioning.
 
-Since 5.5.
+Since 5.7.
 
 Write-only field.
+
+`autopos_t` - Automatic image positioning:
+* `"free"`: Free move mode
+* `"center"`: Images smaller than the window size will be centered
+* `"follow"`: Images larger than the window will follow the pointer
 
 ### swayimg.slideshow.loop
 

@@ -26,8 +26,8 @@ Viewer& Viewer::self()
 }
 
 Viewer::Viewer()
-    : auto_center(Defaults::viewer::auto_center)
-    , imagelist_loop(Defaults::viewer::imagelist_loop)
+    : imagelist_loop(Defaults::viewer::imagelist_loop)
+    , auto_pos(Defaults::viewer::auto_pos)
     , default_scale(Defaults::viewer::scale)
     , default_pos(Defaults::viewer::position)
     , scale(1.0)
@@ -279,7 +279,7 @@ void Viewer::set_position(const Position pos)
 
 void Viewer::set_position(const Point& pos)
 {
-    if (image) {
+    if (image && pos != position) {
         position = pos;
         fixup_position();
     }
@@ -531,12 +531,35 @@ void Viewer::window_redraw(Pixmap& wnd)
     }
 }
 
-void Viewer::handle_mmove(const InputMouse& input, const Point&,
+void Viewer::handle_mmove(const InputMouse& input, const Point& pos,
                           const Point& delta)
 {
-    if (drag && drag == input) {
-        set_position(position + delta);
+    Point new_pos = position;
+
+    if (auto_pos == AutoPos::Follow) {
+        const Pixmap& pm = image->frames[frame_index].pm;
+        const Size scaled = static_cast<Size>(pm) * scale;
+
+        // pointer on window (relative position)
+        double pt_x = static_cast<double>(pos.x) / window_size.width;
+        double pt_y = static_cast<double>(pos.y) / window_size.height;
+        constexpr double margin = 0.05; // margin 5%
+        pt_x += pt_x > 0.5 ? margin : -margin;
+        pt_y += pt_y > 0.5 ? margin : -margin;
+
+        // change position
+        if (scaled.width > window_size.width) {
+            new_pos.x = -pt_x * (scaled.width - window_size.width);
+        }
+        if (scaled.height > window_size.height) {
+            new_pos.y = -pt_y * (scaled.height - window_size.height);
+        }
+        position = new_pos;
+    } else if (drag && drag == input) {
+        new_pos += delta;
     }
+
+    set_position(new_pos);
 }
 
 void Viewer::handle_pinch(const double scale_delta)
@@ -711,12 +734,7 @@ void Viewer::fixup_position()
     const Pixmap& pm = image->frames[frame_index].pm;
     const Size scaled = static_cast<Size>(pm) * scale;
 
-    if (auto_center) {
-        position.x =
-            fixup_position(position.x, scaled.width, window_size.width);
-        position.y =
-            fixup_position(position.y, scaled.height, window_size.height);
-    } else {
+    if (auto_pos == AutoPos::Free) {
         // don't let image to be far out of window
         if (position.x + static_cast<ssize_t>(scaled.width) < 0) {
             position.x = -static_cast<ssize_t>(scaled.width);
@@ -730,6 +748,11 @@ void Viewer::fixup_position()
         if (std::cmp_greater(position.y, window_size.height)) {
             position.y = window_size.height;
         }
+    } else {
+        position.x =
+            fixup_position(position.x, scaled.width, window_size.width);
+        position.y =
+            fixup_position(position.y, scaled.height, window_size.height);
     }
 
     Application::redraw();

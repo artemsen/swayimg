@@ -102,6 +102,14 @@ static constexpr std::array imgpositions =
         { Viewer::Position::BottomRight,  "bottomright"  },
 });
 
+// automatic positioning: type to name
+static constexpr std::array imgautopos =
+    std::to_array<std::pair<Viewer::AutoPos, const char*>>({
+        { Viewer::AutoPos::Free,   "free"   },
+        { Viewer::AutoPos::Center, "center" },
+        { Viewer::AutoPos::Follow, "follow" },
+});
+
 // window background mode: type to name
 static constexpr std::array wndbkgs =
     std::to_array<std::pair<Viewer::Background, const char*>>({
@@ -1094,20 +1102,39 @@ void LuaEngine::bind_viewer_api(const char* name)
         .beginNamespace(NS_SWAYIMG)
         .beginNamespace(name)
         .addProperty(
+            "autopos",
+            [] {
+                return nullptr;
+            },
+            [this, mode, name](const char* value) {
+                const auto pos = name_to_type(imgautopos, value);
+                if (!pos.has_value()) {
+                    raise_error("Invalid argument \"{}\" for "
+                                "{}.{}.autopos",
+                                value, NS_SWAYIMG, name);
+                }
+                mode->auto_pos = pos.value();
+            })
+        .addProperty(
             "autocenter",
             [] {
                 return nullptr;
             },
-            [mode](const bool value) {
-                mode->auto_center = value;
+            [mode, name](const bool value) {
+                warn_deprecated(
+                    std::format("swayimg.{}.autocenter", name).c_str(),
+                    std::format("swayimg.{}.autopos", name).c_str());
+                mode->auto_pos =
+                    value ? Viewer::AutoPos::Center : Viewer::AutoPos::Free;
             })
         .addFunction(
             "enable_centering",
             [mode, name](const bool enable) {
                 warn_deprecated(
                     std::format("swayimg.{}.enable_centering()", name).c_str(),
-                    std::format("swayimg.{}.autocenter field", name).c_str());
-                mode->auto_center = enable;
+                    std::format("swayimg.{}.autopos field", name).c_str());
+                mode->auto_pos =
+                    enable ? Viewer::AutoPos::Center : Viewer::AutoPos::Free;
             })
         .addProperty(
             "loop",

@@ -20,14 +20,16 @@ struct Point {
      */
     operator bool() const { return x != npos && y != npos; }
 
-    /**
-     * Shift coordinates.
-     */
+    /** Check if coordinates is equal. */
+    bool operator==(const Point& other) const;
+
+    /** Shift coordinates. */
+    Point& operator+=(const Point& other);
+
+    /** Shift coordinates. */
     Point operator+(const Point& delta) const;
 
-    /**
-     * Get delta (diff) between two points.
-     */
+    /** Get delta (diff) between two points. */
     Point operator-(const Point& other) const;
 
     // Invalid position

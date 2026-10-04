@@ -40,6 +40,13 @@ public:
         BottomRight,
     };
 
+    /** Automatic positioning. */
+    enum class AutoPos : uint8_t {
+        Free,
+        Center,
+        Follow,
+    };
+
     /** Background modes. */
     enum class Background : uint8_t {
         Mirror,
@@ -233,7 +240,7 @@ private:
     enum class TextUpdate : uint8_t {
         All,   ///< Update all info
         Frame, ///< Update only frame index and size
-        Scale  ///< Update only scale info
+        Scale, ///< Update only scale info
     };
 
     /**
@@ -300,8 +307,9 @@ private:
     };
 
 public:
-    bool auto_center;    ///< Enable automatic image centering
     bool imagelist_loop; ///< Flag to loop image list
+
+    AutoPos auto_pos; ///< Automatic positioning
 
     std::variant<double, Scale> default_scale; ///< Default image scale
     Position default_pos;                      ///< Default image position

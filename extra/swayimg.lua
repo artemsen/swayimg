@@ -50,6 +50,12 @@
 ---| "bottomleft"   # Bottom left corner of the window
 ---| "bottomright"  # Bottom right corner of the window
 
+---Automatic image positioning.
+---@alias autopos_t
+---| "free"         # Free move mode
+---| "center"       # Images smaller than the window size will be centered
+---| "follow"       # Images larger than the window will follow the pointer
+
 ---Fixed rotation angles for images in viewer and slideshow modes.
 ---@alias rotation_t
 ---| 90  # 90 degrees
@@ -435,10 +441,10 @@ function swayimg_appmode.on_image_change(fn) end
 ---Viewer mode.
 ---@class swayimg.viewer : swayimg_appmode
 ---
----Automatic image centering.
----Since 5.5.
+---Automatic image positioning.
+---Since 5.7.
 ---Write-only field.
----@field autocenter boolean
+---@field autopos autopos_t
 ---
 ---Image list loop mode.
 ---Since 5.5.

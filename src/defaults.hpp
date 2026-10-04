@@ -70,7 +70,7 @@ namespace render {
 
 // viewer
 namespace viewer {
-    constexpr bool auto_center = true;
+    constexpr Viewer::AutoPos auto_pos = Viewer::AutoPos::Center;
     constexpr bool imagelist_loop = true;
     constexpr Viewer::Scale scale = Viewer::Scale::Optimal;
     constexpr Viewer::Position position = Viewer::Position::Center;

@@ -6,6 +6,18 @@
 
 #include <algorithm>
 
+bool Point::operator==(const Point& other) const
+{
+    return x != other.x || y != other.y;
+}
+
+Point& Point::operator+=(const Point& other)
+{
+    x += other.x;
+    y += other.y;
+    return *this;
+}
+
 Point Point::operator+(const Point& delta) const
 {
     return { .x = x + delta.x, .y = y + delta.y };
