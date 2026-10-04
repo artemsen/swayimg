@@ -27,7 +27,7 @@ TEST(ThreadPoolTest, SingleTaskExecution)
     ThreadPool tp(1);
 
     std::atomic<bool> executed = false;
-    const size_t tid = tp.add([&executed]() {
+    const size_t tid = tp.add([&executed] {
         executed = true;
     });
     tp.wait(tid);
@@ -60,7 +60,7 @@ TEST(ThreadPoolTest, MultipleTasks)
     std::vector<size_t> tids;
     tids.reserve(num_tasks);
     for (size_t i = 0; i < num_tasks; ++i) {
-        tids.push_back(tp.add([&counter]() {
+        tids.push_back(tp.add([&counter] {
             ++counter;
         }));
     }
@@ -77,7 +77,7 @@ TEST(ThreadPoolTest, WaitAll)
     constexpr size_t num_tasks = 50;
 
     for (size_t i = 0; i < num_tasks; ++i) {
-        tp.add([&counter]() {
+        tp.add([&counter] {
             ++counter;
         });
     }
@@ -91,9 +91,9 @@ TEST(ThreadPoolTest, TaskIdsUnique)
     ThreadPool tp(1);
 
     std::set<size_t> ids;
-    const size_t t1 = tp.add([]() {});
-    const size_t t2 = tp.add([]() {});
-    const size_t t3 = tp.add([]() {});
+    const size_t t1 = tp.add([] {});
+    const size_t t2 = tp.add([] {});
+    const size_t t3 = tp.add([] {});
 
     ids.insert(t1);
     ids.insert(t2);
@@ -112,7 +112,7 @@ TEST(ThreadPoolTest, Cancel)
     ThreadPool tp(1);
 
     std::atomic<bool> executed = false;
-    tp.add([&executed]() {
+    tp.add([&executed] {
         executed = true;
     });
     tp.wait();
@@ -123,12 +123,12 @@ TEST(ThreadPoolTest, Cancel)
     // block the worker with a long task so queued tasks stay in queue
     std::mutex block_mutex;
     block_mutex.lock();
-    tp.add([&block_mutex]() {
+    tp.add([&block_mutex] {
         block_mutex.lock();
         block_mutex.unlock();
     });
 
-    tp.add([&executed]() {
+    tp.add([&executed] {
         executed = true;
     });
     tp.cancel();
@@ -145,12 +145,12 @@ TEST(ThreadPoolTest, CancelThenAddNew)
 {
     ThreadPool tp(1);
 
-    tp.add([]() {});
+    tp.add([] {});
     tp.wait();
     tp.cancel();
 
     std::atomic<bool> executed = false;
-    const size_t tid = tp.add([&executed]() {
+    const size_t tid = tp.add([&executed] {
         executed = true;
     });
     tp.wait(tid);
@@ -172,13 +172,13 @@ TEST(ThreadPoolTest, WaitSpecificTaskWithQueuedTasks)
     std::atomic<size_t> second = 0;
     std::atomic<bool> first_started = false;
 
-    const size_t slow_id = tp.add([&first, &first_started]() {
+    const size_t slow_id = tp.add([&first, &first_started] {
         first_started = true;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         first = 42;
     });
 
-    const size_t fast_id = tp.add([&second]() {
+    const size_t fast_id = tp.add([&second] {
         second = 99;
     });
 

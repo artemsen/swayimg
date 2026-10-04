@@ -10,8 +10,9 @@ constexpr const char* CRLF = "\r\n";
 constexpr const size_t CRLF_LEN = 2;
 constexpr const char* URI_FILE = "file://";
 constexpr const size_t URI_FILE_LEN = 7;
-constexpr const char UNSAFE[] = { ' ', '<', '>',  '"', '#', '%', '{',
-                                  '}', '|', '\\', '^', '[', ']', '`' };
+constexpr const char UNSAFE[] = {
+    ' ', '<', '>', '"', '#', '%', '{', '}', '|', '\\', '^', '[', ']', '`',
+};
 
 namespace {
 

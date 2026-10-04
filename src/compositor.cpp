@@ -14,7 +14,7 @@
 #include <cstring>
 #include <format>
 
-using json = nlohmann::json;
+using nlohmann::json;
 
 namespace {
 
@@ -212,7 +212,7 @@ private:
 
     /** Sway IPC magic header value. */
     static constexpr const uint8_t ipc_magic[] = {
-        'i', '3', '-', 'i', 'p', 'c'
+        'i', '3', '-', 'i', 'p', 'c',
     };
 
     /** Sway IPC message type. */

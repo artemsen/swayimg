@@ -38,40 +38,40 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
 {
     // general management
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Escape, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_Escape, .mods = KEYMOD_NONE }, [] {
             Application::self().exit(0);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Return, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_Return, .mods = KEYMOD_NONE }, [] {
             Application::self().set_mode(AppMode::Gallery);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Enter, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_KP_Enter, .mods = KEYMOD_NONE }, [] {
             Application::self().set_mode(AppMode::Gallery);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_s, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Application::self().set_mode(AppMode::Slideshow);
                          Text::self().set_status("Slide show started");
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Insert, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Insert, .mods = KEYMOD_NONE }, [mode] {
             mode->mark_current(std::nullopt);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Delete, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Delete, .mods = KEYMOD_NONE }, [mode] {
             const ImageEntryPtr entry = mode->get_current();
             if (entry) {
                 Application::self().remove_images({ entry->path });
             }
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_f, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Ui* ui = Application::get_ui();
                          ui->set_fullscreen(!ui->get_fullscreen());
                      });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_a, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          bool& antialiasing = Render::self().antialiasing;
                          antialiasing = !antialiasing;
                          Application::redraw();
@@ -80,26 +80,26 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
     // image transform
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_bracketleft, .mods = KEYMOD_NONE },
-        [mode]() {
+        [mode] {
             mode->rotate(270);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_bracketright, .mods = KEYMOD_NONE },
-        [mode]() {
+        [mode] {
             mode->rotate(90);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_m, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->flip_vertical();
                      });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_m, .mods = KEYMOD_SHIFT },
-                     [mode]() {
+                     [mode] {
                          mode->flip_horizontal();
                      });
 
     // text layer
     mode->bind_input(InputKeyboard { .key = XKB_KEY_t, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Text& text = Text::self();
                          if (text.is_visible()) {
                              text.hide();
@@ -110,40 +110,37 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
 
     // next/prev image
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Next, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->open(ImageList::Dir::Next);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_NONE }, [mode] {
             mode->open(ImageList::Dir::Next);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_NONE }, [mode] {
             mode->open(ImageList::Dir::Prev);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_NONE }, [mode] {
             mode->open(ImageList::Dir::Prev);
         });
     // next/prev frame
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Next, .mods = KEYMOD_SHIFT }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Next, .mods = KEYMOD_SHIFT }, [mode] {
             next_frame(mode, true);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_SHIFT },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_SHIFT }, [mode] {
             next_frame(mode, true);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_SHIFT }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_SHIFT }, [mode] {
             next_frame(mode, false);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_SHIFT },
-        [mode]() {
+        [mode] {
             next_frame(mode, false);
         });
 
@@ -154,33 +151,30 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
         mode->set_scale(scale + scale / factor, pos);
     };
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_equal, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_equal, .mods = KEYMOD_NONE }, [zoom_fn] {
             zoom_fn(10);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_plus, .mods = KEYMOD_SHIFT },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_plus, .mods = KEYMOD_SHIFT }, [zoom_fn] {
             zoom_fn(10);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Add, .mods = KEYMOD_SHIFT },
-        [zoom_fn]() {
+        [zoom_fn] {
             zoom_fn(10);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_minus, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_minus, .mods = KEYMOD_NONE }, [zoom_fn] {
             zoom_fn(-10);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Subtract, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        [zoom_fn] {
             zoom_fn(-10);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_BackSpace, .mods = KEYMOD_NONE },
-        [mode]() {
+        [mode] {
             mode->reset();
         });
 
@@ -197,40 +191,38 @@ void Defaults::viewer::bind_inputs(Viewer* mode)
         mode->set_position(pos);
     };
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Left, .mods = KEYMOD_NONE },
-                     [move_fn]() {
+                     [move_fn] {
                          move_fn({ .x = 10, .y = 0 });
                      });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Left, .mods = KEYMOD_NONE },
-        [move_fn]() {
+        [move_fn] {
             move_fn({ .x = 10, .y = 0 });
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Right, .mods = KEYMOD_NONE },
-        [move_fn]() {
+        InputKeyboard { .key = XKB_KEY_Right, .mods = KEYMOD_NONE }, [move_fn] {
             move_fn({ .x = -10, .y = 0 });
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Right, .mods = KEYMOD_NONE },
-        [move_fn]() {
+        [move_fn] {
             move_fn({ .x = -10, .y = 0 });
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Up, .mods = KEYMOD_NONE },
-                     [move_fn]() {
+                     [move_fn] {
                          move_fn({ .x = 0, .y = 10 });
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Up, .mods = KEYMOD_NONE },
-        [move_fn]() {
+        InputKeyboard { .key = XKB_KEY_KP_Up, .mods = KEYMOD_NONE }, [move_fn] {
             move_fn({ .x = 0, .y = 10 });
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Down, .mods = KEYMOD_NONE },
-                     [move_fn]() {
+                     [move_fn] {
                          move_fn({ .x = 0, .y = -10 });
                      });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Down, .mods = KEYMOD_NONE },
-        [move_fn]() {
+        [move_fn] {
             move_fn({ .x = 0, .y = -10 });
         });
 
@@ -257,7 +249,7 @@ void Defaults::slideshow::bind_inputs(Slideshow* mode)
     Defaults::viewer::bind_inputs(mode);
 
     mode->bind_input(InputKeyboard { .key = XKB_KEY_s, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Application::self().set_mode(AppMode::Viewer);
                          Text::self().set_status("Slide show stopped");
                      });
@@ -267,39 +259,39 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
 {
     // general management
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Escape, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_Escape, .mods = KEYMOD_NONE }, [] {
             Application::self().exit(0);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Return, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_Return, .mods = KEYMOD_NONE }, [] {
             Application::self().set_mode(AppMode::Viewer);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Enter, .mods = KEYMOD_NONE }, []() {
+        InputKeyboard { .key = XKB_KEY_KP_Enter, .mods = KEYMOD_NONE }, [] {
             Application::self().set_mode(AppMode::Viewer);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_s, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Application::self().set_mode(AppMode::Slideshow);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Insert, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Insert, .mods = KEYMOD_NONE }, [mode] {
             mode->mark_current(std::nullopt);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Delete, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Delete, .mods = KEYMOD_NONE }, [mode] {
             const ImageEntryPtr entry = mode->get_current();
             if (entry) {
                 Application::self().remove_images({ entry->path });
             }
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_f, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Ui* ui = Application::get_ui();
                          ui->set_fullscreen(!ui->get_fullscreen());
                      });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_a, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          bool& antialiasing = Render::self().antialiasing;
                          antialiasing = !antialiasing;
                          Application::redraw();
@@ -313,106 +305,97 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
         mode->set_thumb_size(size);
     };
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_equal, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_equal, .mods = KEYMOD_NONE }, [zoom_fn] {
             zoom_fn(0.1);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_plus, .mods = KEYMOD_SHIFT },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_plus, .mods = KEYMOD_SHIFT }, [zoom_fn] {
             zoom_fn(0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Add, .mods = KEYMOD_SHIFT },
-        [zoom_fn]() {
+        [zoom_fn] {
             zoom_fn(0.1);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_minus, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        InputKeyboard { .key = XKB_KEY_minus, .mods = KEYMOD_NONE }, [zoom_fn] {
             zoom_fn(-0.1);
         });
     mode->bind_input(
         InputKeyboard { .key = XKB_KEY_KP_Subtract, .mods = KEYMOD_NONE },
-        [zoom_fn]() {
+        [zoom_fn] {
             zoom_fn(-0.1);
         });
 
     // image selection
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Home, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::First);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Home, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Home, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::First);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_End, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::Last);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_End, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_End, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Last);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Left, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::Left);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Left, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Left, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Left);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Right, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Right, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Right);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Right, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Right, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Right);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Up, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::Up);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Up, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Up, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Up);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Down, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::Down);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Down, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Down, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::Down);
         });
     mode->bind_input(InputKeyboard { .key = XKB_KEY_Next, .mods = KEYMOD_NONE },
-                     [mode]() {
+                     [mode] {
                          mode->select(Layout::PgDown);
                      });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Next, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::PgDown);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_NONE }, [mode]() {
+        InputKeyboard { .key = XKB_KEY_Prior, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::PgUp);
         });
     mode->bind_input(
-        InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_NONE },
-        [mode]() {
+        InputKeyboard { .key = XKB_KEY_KP_Prior, .mods = KEYMOD_NONE }, [mode] {
             mode->select(Layout::PgUp);
         });
 
     // text layer
     mode->bind_input(InputKeyboard { .key = XKB_KEY_t, .mods = KEYMOD_NONE },
-                     []() {
+                     [] {
                          Text& text = Text::self();
                          if (text.is_visible()) {
                              text.hide();
@@ -424,7 +407,7 @@ void Defaults::gallery::bind_inputs(Gallery* mode)
     // mouse
     mode->bind_input(
         InputMouse { .buttons = InputMouse::BUTTON_LEFT, .mods = KEYMOD_NONE },
-        [mode]() {
+        [mode] {
             const Point pos = Application::get_ui()->get_mouse();
             mode->select(pos);
             Application::self().set_mode(AppMode::Viewer);
@@ -453,7 +436,7 @@ std::filesystem::path Defaults::gallery::pstore_path()
     static constexpr std::array env_paths =
         std::to_array<std::pair<const char*, const char*>>({
             { "XDG_CACHE_HOME", "swayimg"        },
-            { "HOME",           ".cache/swayimg" }
+            { "HOME",           ".cache/swayimg" },
     });
 
     for (auto [env_name, postfix] : env_paths) {

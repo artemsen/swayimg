@@ -375,10 +375,12 @@ void Gallery::draw(const Layout::Thumbnail& tlay, Pixmap& wnd)
             ? std::max(scale_w, scale_h)
             : std::min(scale_w, scale_h);
 
-        const Point pos { .x = static_cast<ssize_t>(tile.width / 2) -
-                              static_cast<ssize_t>(scale * pm->width()) / 2,
-                          .y = static_cast<ssize_t>(tile.height / 2) -
-                              static_cast<ssize_t>(scale * pm->height()) / 2 };
+        const Point pos {
+            .x = static_cast<ssize_t>(tile.width / 2) -
+                static_cast<ssize_t>(scale * pm->width()) / 2,
+            .y = static_cast<ssize_t>(tile.height / 2) -
+                static_cast<ssize_t>(scale * pm->height()) / 2,
+        };
 
         Pixmap sub = wnd.submap(tile);
         Render::self().draw(sub, *pm, pos, scale);
@@ -444,7 +446,7 @@ void Gallery::requeue_loading()
         [&](const ImageEntryPtr& entry,
             const ImageList::Dir dir) -> ImageEntryPtr {
         if (!get_thumbnail(entry) && !crld_thumbs.contains(entry)) {
-            tpool.add([this, entry]() {
+            tpool.add([this, entry] {
                 load_thumbnail(entry);
             });
         }

@@ -510,10 +510,18 @@ private:
                 return false;
             }
 
-            uint8_t* const src[4] = { static_cast<uint8_t*>(dst->ptr(0, 0)),
-                                      nullptr, nullptr, nullptr };
-            const int src_stride[4] = { static_cast<int>(dst->stride()), 0, 0,
-                                        0 };
+            uint8_t* const src[4] = {
+                static_cast<uint8_t*>(dst->ptr(0, 0)),
+                nullptr,
+                nullptr,
+                nullptr,
+            };
+            const int src_stride[4] = {
+                static_cast<int>(dst->stride()),
+                0,
+                0,
+                0,
+            };
             sws_scale(sws, frame->data, frame->linesize, 0, frame->height, src,
                       src_stride);
             sws_freeContext(sws);

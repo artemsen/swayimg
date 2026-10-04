@@ -34,12 +34,12 @@ Text::Text()
 
 void Text::initialize()
 {
-    Application::self().add_fdpoll(overall_tm.fd, [this]() {
+    Application::self().add_fdpoll(overall_tm.fd, [this] {
         overall_tm.fd.reset(0, 0);
         overall_tm.show = false;
         Application::redraw();
     });
-    Application::self().add_fdpoll(status_tm.fd, [this]() {
+    Application::self().add_fdpoll(status_tm.fd, [this] {
         status.clear();
         status_tm.fd.reset(0, 0);
         status_tm.show = false;

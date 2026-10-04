@@ -31,14 +31,14 @@ void ThreadPool::wait()
     if (active.empty() && tasks.empty()) {
         return;
     }
-    complete.wait(lock, [this]() {
+    complete.wait(lock, [this] {
         return active.empty() && tasks.empty();
     });
 }
 
 void ThreadPool::wait(const size_t tid)
 {
-    auto completed = [this, tid]() {
+    auto completed = [this, tid] {
         if (active.contains(tid)) {
             return false;
         }
@@ -51,7 +51,7 @@ void ThreadPool::wait(const size_t tid)
     if (completed()) {
         return;
     }
-    complete.wait(lock, [&completed]() {
+    complete.wait(lock, [&completed] {
         return completed();
     });
 }
@@ -101,7 +101,7 @@ void ThreadPool::run()
 {
     while (!quit) {
         std::unique_lock lock(mutex);
-        tnotify.wait(lock, [this]() {
+        tnotify.wait(lock, [this] {
             return !tasks.empty() || quit;
         });
         if (quit) {

@@ -53,10 +53,12 @@ public:
         JxlDecoderCloseInput(jxl_dec.get());
 
         JxlBasicInfo jxl_inf;
-        const JxlPixelFormat jxl_fmt { .num_channels = 4, // ARBG
-                                       .data_type = JXL_TYPE_UINT8,
-                                       .endianness = JXL_NATIVE_ENDIAN,
-                                       .align = 0 };
+        const JxlPixelFormat jxl_fmt {
+            .num_channels = 4, // ARBG
+            .data_type = JXL_TYPE_UINT8,
+            .endianness = JXL_NATIVE_ENDIAN,
+            .align = 0,
+        };
 
         // docode image
         ImagePtr image = std::make_shared<Image>();

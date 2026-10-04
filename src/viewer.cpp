@@ -35,7 +35,7 @@ Viewer::Viewer()
     , tr_chessboard(Defaults::viewer::tr_chessboard)
     , tr_cbsize(Defaults::viewer::tr_cbsize)
     , tr_cbcolor { Defaults::viewer::tr_cbcolor0,
-                   Defaults::viewer::tr_cbcolor1 }
+                   Defaults::viewer::tr_cbcolor1, }
     , tr_bgcolor(Defaults::viewer::tr_bgcolor)
     , animation(Defaults::viewer::animation)
 {
@@ -380,14 +380,14 @@ void Viewer::set_history_limit(const size_t size)
 void Viewer::bind_image_drag(const InputMouse& input)
 {
     drag = input;
-    bind_input(drag, []() {
+    bind_input(drag, [] {
         Application::get_ui()->set_cursor(Ui::CursorShape::Drag);
     });
 }
 
 void Viewer::initialize()
 {
-    Application::self().add_fdpoll(animation_timer, [this]() {
+    Application::self().add_fdpoll(animation_timer, [this] {
         size_t index = frame_index + 1;
         if (index >= image->frames.size()) {
             index = 0;

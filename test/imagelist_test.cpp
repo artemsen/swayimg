@@ -103,8 +103,10 @@ TEST(ImageListTest, AddDuplicates)
     ImageList il;
 
     const auto added0 = il.add({ "exec://1", "exec://2", "exec://2" });
-    const std::vector<std::filesystem::path> expected0 = { "exec://1",
-                                                           "exec://2" };
+    const std::vector<std::filesystem::path> expected0 = {
+        "exec://1",
+        "exec://2",
+    };
     EXPECT_ILEQ(added0, expected0);
     EXPECT_ILEQ(il.get_all(), expected0);
 
@@ -650,8 +652,10 @@ TEST(ImageListTest, RemoveOne)
     il.remove(entry);
     EXPECT_TRUE(entry->removed);
 
-    const std::vector<std::filesystem::path> expected = { "exec://1",
-                                                          "exec://3" };
+    const std::vector<std::filesystem::path> expected = {
+        "exec://1",
+        "exec://3",
+    };
     EXPECT_ILEQ(il.get_all(), expected);
 }
 
@@ -683,9 +687,11 @@ TEST(ImageListTest, RemoveMultiple)
         EXPECT_TRUE(it->removed);
     }
 
-    const std::vector<std::filesystem::path> expected = { "exec://1",
-                                                          "exec://3",
-                                                          "exec://4" };
+    const std::vector<std::filesystem::path> expected = {
+        "exec://1",
+        "exec://3",
+        "exec://4",
+    };
     EXPECT_ILEQ(il.get_all(), expected);
 }
 

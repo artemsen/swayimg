@@ -140,9 +140,9 @@ public:
 
 private:
     // JP2 signatures
-    static constexpr const uint8_t JP2_RFC3745[] = { 0x00, 0x00, 0x00, 0x0c,
-                                                     0x6a, 0x50, 0x20, 0x20,
-                                                     0x0d, 0x0a, 0x87, 0x0a };
+    static constexpr const uint8_t JP2_RFC3745[] = {
+        0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a,
+    };
     static constexpr const uint8_t JP2_MAGIC[] = { 0x0d, 0x0a, 0x87, 0x0a };
     static constexpr const uint8_t J2K_STREAM[] = { 0xff, 0x4f, 0xff, 0x51 };
 
@@ -163,7 +163,7 @@ private:
         YUV422,
         YUV444,
         EYCC,
-        CMYK
+        CMYK,
     };
 
 private:

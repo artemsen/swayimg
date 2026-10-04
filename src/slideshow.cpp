@@ -31,7 +31,7 @@ void Slideshow::initialize()
 {
     Viewer::initialize();
 
-    Application::self().add_fdpoll(timer, [this]() {
+    Application::self().add_fdpoll(timer, [this] {
         open(ImageList::Dir::Next);
     });
 }

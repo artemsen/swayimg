@@ -329,7 +329,7 @@ Ui* Application::ui_init_drm() const
 void Application::event_loop()
 {
     // register app event handler
-    add_fdpoll(event_notify, [this]() {
+    add_fdpoll(event_notify, [this] {
         AppEvent::Holder event;
         {
             const std::scoped_lock lock(event_mutex);
@@ -345,17 +345,17 @@ void Application::event_loop()
     });
 
     // register signal handlers
-    add_fdpoll(signal_fds[0], [this]() {
+    add_fdpoll(signal_fds[0], [this] {
         signal_fds[0].reset();
         Application::self().add_event(AppEvent::Signal { InputSignal::USR1 });
     });
-    add_fdpoll(signal_fds[1], [this]() {
+    add_fdpoll(signal_fds[1], [this] {
         signal_fds[1].reset();
         Application::self().add_event(AppEvent::Signal { InputSignal::USR2 });
     });
 
     // register exit handler
-    add_fdpoll(exit_event, [this]() {
+    add_fdpoll(exit_event, [this] {
         stop_flag = true;
     });
 

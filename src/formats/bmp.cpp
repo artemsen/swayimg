@@ -391,9 +391,10 @@ private:
                     }
                 } else {
                     // 4 bpp
-                    const uint8_t index[] = { static_cast<uint8_t>(rle2 >> 4),
-                                              static_cast<uint8_t>(rle2 &
-                                                                   0x0f) };
+                    const uint8_t index[] = {
+                        static_cast<uint8_t>(rle2 >> 4),
+                        static_cast<uint8_t>(rle2 & 0x0f),
+                    };
                     if (index[0] >= palette.size || index[1] >= palette.size) {
                         return false;
                     }

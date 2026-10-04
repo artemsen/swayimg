@@ -54,11 +54,13 @@ public:
     void add(const char short_opt, const char* long_opt, const char* format,
              const char* help, const Handler& handler)
     {
-        const Arg arg { .short_opt = short_opt,
-                        .long_opt = long_opt,
-                        .format = format,
-                        .help = help,
-                        .handler = handler };
+        const Arg arg {
+            .short_opt = short_opt,
+            .long_opt = long_opt,
+            .format = format,
+            .help = help,
+            .handler = handler,
+        };
         assert(std::find_if(arguments.begin(), arguments.end(),
                             [arg](const Arg& exist) {
                                 return (arg.short_opt &&

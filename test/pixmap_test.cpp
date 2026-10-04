@@ -45,7 +45,7 @@ std::string to_string(const Pixmap& pm)
     for (size_t y = 0; y < pm.height(); ++y) {
         for (size_t x = 0; x < pm.width(); ++x) {
             res += std::format(
-                " {}", *reinterpret_cast<const uint32_t*>((pm.ptr(x, y))));
+                " {}", *reinterpret_cast<const uint32_t*>(pm.ptr(x, y)));
         }
         res += '\n';
     }

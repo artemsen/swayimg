@@ -51,7 +51,7 @@ void FsMonitor::initialize()
     if (fd == -1) {
         Log::error(errno, "Unable to initialize FS monitor");
     } else {
-        Application::self().add_fdpoll(fd, [this]() {
+        Application::self().add_fdpoll(fd, [this] {
             while (true) {
                 uint8_t buffer[PATH_MAX];
                 const ssize_t len = read(fd, buffer, sizeof(buffer));

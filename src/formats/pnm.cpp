@@ -85,8 +85,10 @@ public:
             pm.create(Pixmap::RGB, width, height);
 
             // decode image
-            const Data px_data = { .data = data.data + offset,
-                                   .size = data.size - offset };
+            const Data px_data = {
+                .data = data.data + offset,
+                .size = data.size - offset,
+            };
             switch (fmt) {
                 case Format::BitMap:
                     decode_pbm(px_data, enc, pm);

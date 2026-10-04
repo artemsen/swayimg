@@ -72,8 +72,10 @@ namespace NN { // nearest-neighbor
         std::vector<size_t> tids;
         tids.reserve(threads);
 
-        const Point src_start { .x = visible.x - image.x,
-                                .y = visible.y - image.y };
+        const Point src_start {
+            .x = visible.x - image.x,
+            .y = visible.y - image.y,
+        };
         const size_t step = visible.height / threads;
 
         for (size_t i = 0; i < threads; ++i) {
@@ -841,22 +843,22 @@ void Render::fill_inverse(Pixmap& pm, const Rectangle& rect,
     tids.reserve(4); // one per each side
 
     if (top) {
-        tids.push_back(tpool.add([&pm, &top, &color]() {
+        tids.push_back(tpool.add([&pm, &top, &color] {
             pm.fill(top, color);
         }));
     }
     if (bottom) {
-        tids.push_back(tpool.add([&pm, &bottom, &color]() {
+        tids.push_back(tpool.add([&pm, &bottom, &color] {
             pm.fill(bottom, color);
         }));
     }
     if (left) {
-        tids.push_back(tpool.add([&pm, &left, &color]() {
+        tids.push_back(tpool.add([&pm, &left, &color] {
             pm.fill(left, color);
         }));
     }
     if (right) {
-        tids.push_back(tpool.add([&pm, &right, &color]() {
+        tids.push_back(tpool.add([&pm, &right, &color] {
             pm.fill(right, color);
         }));
     }

@@ -124,7 +124,7 @@ private:
     {
         Error* err = reinterpret_cast<Error*>(jpg->err);
         char msg[JMSG_LENGTH_MAX] = { 0 };
-        (*(jpg->err->format_message))(jpg, msg);
+        (*jpg->err->format_message)(jpg, msg);
         Log::error("JPEG: {}", msg);
         longjmp(err->jump, 1);
     }

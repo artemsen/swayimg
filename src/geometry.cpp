@@ -21,8 +21,10 @@ Size Size::operator*(double factor) const
     if (factor <= 0.0) {
         return {};
     }
-    return { .width = static_cast<size_t>(factor * width),
-             .height = static_cast<size_t>(factor * height) };
+    return {
+        .width = static_cast<size_t>(factor * width),
+        .height = static_cast<size_t>(factor * height),
+    };
 }
 
 Rectangle::Rectangle(const ssize_t x, const ssize_t y, const size_t width,

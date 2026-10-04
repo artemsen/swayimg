@@ -115,8 +115,10 @@ public:
         const double scale =
             static_cast<double>(ui->scale) / UiWayland::FRACTION_SCALE_DEN;
 
-        const Point new_pos { .x = wl_fixed_to_int(surface_x * scale),
-                              .y = wl_fixed_to_int(surface_y * scale) };
+        const Point new_pos {
+            .x = wl_fixed_to_int(surface_x * scale),
+            .y = wl_fixed_to_int(surface_y * scale),
+        };
         const Point delta = new_pos - ui->mouse_pos;
         ui->mouse_pos = new_pos;
 
@@ -126,9 +128,9 @@ public:
 
         Application::self().add_event(AppEvent::MouseMove {
             .mouse = { .buttons = ui->mouse_buttons,
-                      .mods = ui->xkb.get_modifiers() },
+                      .mods = ui->xkb.get_modifiers(), },
             .pointer = ui->mouse_pos,
-            .delta = delta
+            .delta = delta,
         });
     }
 
@@ -148,11 +150,15 @@ public:
             ui->set_cursor(Ui::CursorShape::Default);
         } else {
             ui->mouse_buttons |= btn;
-            const InputMouse input { .buttons = ui->mouse_buttons,
-                                     .mods = ui->xkb.get_modifiers() };
+            const InputMouse input {
+                .buttons = ui->mouse_buttons,
+                .mods = ui->xkb.get_modifiers(),
+            };
             if (ui->dnd != input || !ui->wl.datadev_mgr) {
                 Application::self().add_event(AppEvent::MouseClick {
-                    .mouse = input, .pointer = ui->mouse_pos });
+                    .mouse = input,
+                    .pointer = ui->mouse_pos,
+                });
             } else {
                 // start drag-and-drop
                 ui->mouse_buttons = InputMouse();
@@ -239,10 +245,11 @@ public:
     {
         UiWayland* ui = reinterpret_cast<UiWayland*>(data);
         if (ui->scroll_h || ui->scroll_v) {
-            Application::self().add_event(
-                AppEvent::Scroll { .kmods = ui->xkb.get_modifiers(),
-                                   .delta_h = ui->scroll_h,
-                                   .delta_v = ui->scroll_v });
+            Application::self().add_event(AppEvent::Scroll {
+                .kmods = ui->xkb.get_modifiers(),
+                .delta_h = ui->scroll_h,
+                .delta_v = ui->scroll_v,
+            });
             ui->scroll_hires = false;
             ui->scroll_h = 0;
             ui->scroll_v = 0;
@@ -296,9 +303,9 @@ public:
                                         window.height)) {
                 return;
             }
-            Application::self().add_event(
-                AppEvent::WindowRescale { static_cast<double>(ui->scale) /
-                                          UiWayland::FRACTION_SCALE_DEN });
+            Application::self().add_event(AppEvent::WindowRescale {
+                static_cast<double>(ui->scale) / UiWayland::FRACTION_SCALE_DEN,
+            });
             Application::self().add_event(
                 AppEvent::WindowResize { ui->get_window_size() });
             Application::self().add_event(AppEvent::WindowRedraw {});
@@ -624,7 +631,7 @@ public:
     }
 
     static constexpr const wl_callback_listener frame_listener = {
-        .done = on_frame_done
+        .done = on_frame_done,
     };
 
     /***************************************************************************
@@ -693,7 +700,7 @@ public:
     }
 
     static constexpr const xdg_surface_listener xdgsurface_listener = {
-        .configure = on_xdg_surface_configure
+        .configure = on_xdg_surface_configure,
     };
 
     static void on_xdg_ping(void*, struct xdg_wm_base* base, uint32_t serial)
@@ -702,7 +709,7 @@ public:
     }
 
     static constexpr const xdg_wm_base_listener xdgbase_listener = {
-        .ping = on_xdg_ping
+        .ping = on_xdg_ping,
     };
 
     /***************************************************************************
