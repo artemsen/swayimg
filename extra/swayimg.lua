@@ -479,6 +479,16 @@ function swayimg_appmode.on_image_change(fn) end
 ---Write-only field.
 ---@field drag_button mbutton_t
 ---
+---Focus area radius in pixels (0 to disable focus mode).
+---Since 5.7.
+---Write-only field.
+---@field focus_radius integer
+---
+---Dimming factor for unfocused area (0.0=black, 1.0=transparent).
+---Since 5.7.
+---Write-only field.
+---@field focus_factor number
+---
 ---Max number of images to preload in background thread.
 ---Since 5.5.
 ---Write-only field.

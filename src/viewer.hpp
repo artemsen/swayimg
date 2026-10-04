@@ -198,6 +198,18 @@ public:
                               const argb_t& color2);
 
     /**
+     * Set focus area radius.
+     * @param radius focus area radius in pixels
+     */
+    void set_focus_radius(const size_t radius);
+
+    /**
+     * Set focus dimming factor.
+     * @param factor dimming factor (0=black, 1=transparent)
+     */
+    void set_focus_factor(const double factor);
+
+    /**
      * Set number of images to preload in a separate thread.
      * @param size number of images to preload
      */
@@ -332,6 +344,9 @@ protected:
     bool animation;          ///< Flag to start animation automatically
     FdTimer animation_timer; ///< Animation timer
     size_t frame_index;      ///< Index of the currently displayed frame
+
+    size_t focus_radius; ///< Radius of focused area (0 to disable)
+    double focus_factor; ///< Dimming factor outside focus
 
     InputMouse drag; ///< Mouse state for dragging an image across the canvas
 

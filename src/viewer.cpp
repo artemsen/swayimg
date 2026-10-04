@@ -38,6 +38,8 @@ Viewer::Viewer()
                    Defaults::viewer::tr_cbcolor1, }
     , tr_bgcolor(Defaults::viewer::tr_bgcolor)
     , animation(Defaults::viewer::animation)
+    , focus_radius(Defaults::viewer::focus_radius)
+    , focus_factor(Defaults::viewer::focus_factor)
 {
     image_pool.preload.capacity = Defaults::viewer::preload;
     image_pool.history.capacity = Defaults::viewer::history;
@@ -367,6 +369,23 @@ void Viewer::set_image_chessboard(const size_t size, const argb_t& color1,
     }
 }
 
+void Viewer::set_focus_radius(const size_t radius)
+{
+    focus_radius =
+        std::clamp(radius, static_cast<size_t>(0), static_cast<size_t>(1000));
+    if (is_active()) {
+        Application::redraw();
+    }
+}
+
+void Viewer::set_focus_factor(const double factor)
+{
+    focus_factor = std::clamp(factor, 0.0, 1.0);
+    if (is_active()) {
+        Application::redraw();
+    }
+}
+
 void Viewer::set_preload_limit(const size_t size)
 {
     image_pool.preload.capacity = size;
@@ -384,6 +403,14 @@ void Viewer::bind_image_drag(const InputMouse& input)
         Application::get_ui()->set_cursor(Ui::CursorShape::Drag);
     });
 }
+
+// void Viewer::set_focus(const bool enable)
+// {
+//     focus = enable;
+//     if (is_active()) {
+//         Application::redraw();
+//     }
+// }
 
 void Viewer::initialize()
 {
@@ -529,6 +556,15 @@ void Viewer::window_redraw(Pixmap& wnd)
             static_cast<ssize_t>(Resource::mark.height()) - margin;
         wnd.mask(Resource::mark, { .x = x, .y = y }, mark_color);
     }
+
+    // focus mode: dim everything except a circle around the pointer
+    if (focus_radius) {
+        const Point pointer = Application::get_ui()->get_mouse();
+        if (pointer) {
+            Render::self().dim_outside(wnd, pointer, focus_radius,
+                                       focus_factor);
+        }
+    }
 }
 
 void Viewer::handle_mmove(const InputMouse& input, const Point& pos,
@@ -544,8 +580,8 @@ void Viewer::handle_mmove(const InputMouse& input, const Point& pos,
         double pt_x = static_cast<double>(pos.x) / window_size.width;
         double pt_y = static_cast<double>(pos.y) / window_size.height;
         constexpr double margin = 0.05; // margin 5%
-        pt_x += pt_x > 0.5 ? margin : -margin;
-        pt_y += pt_y > 0.5 ? margin : -margin;
+        pt_x = pt_x * (margin * 2 + 1) - margin;
+        pt_y = pt_y * (margin * 2 + 1) - margin;
 
         // change position
         if (scaled.width > window_size.width) {
@@ -559,6 +595,11 @@ void Viewer::handle_mmove(const InputMouse& input, const Point& pos,
     }
 
     set_position(new_pos);
+
+    if (focus_radius) {
+        // force redraw even if image position was not changed
+        Application::redraw();
+    }
 }
 
 void Viewer::handle_pinch(const double scale_delta)

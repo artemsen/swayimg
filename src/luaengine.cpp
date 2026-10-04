@@ -1326,6 +1326,22 @@ void LuaEngine::bind_viewer_api(const char* name)
                 return mode->get_frame();
             })
         .addProperty(
+            "focus_radius",
+            [] {
+                return nullptr;
+            },
+            [mode](const size_t value) {
+                mode->set_focus_radius(value);
+            })
+        .addProperty(
+            "focus_factor",
+            [] {
+                return nullptr;
+            },
+            [mode](const double value) {
+                mode->set_focus_factor(value);
+            })
+        .addProperty(
             "drag_button",
             [] {
                 return nullptr;

@@ -81,6 +81,8 @@ namespace viewer {
     constexpr argb_t tr_cbcolor1 = { argb_t::max, 0x4c, 0x4c, 0x4c };
     constexpr argb_t tr_bgcolor = { argb_t::max, 0, 0, 0 };
     constexpr bool animation = true;
+    constexpr size_t focus_radius = 0;
+    constexpr double focus_factor = 0.5;
     constexpr size_t preload = 1;
     constexpr size_t history = 1;
     constexpr double pinch_factor = 1.0;

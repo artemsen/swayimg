@@ -84,6 +84,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.animation](#swayimgvieweranimation): Stop/resume and get animation status
   * [swayimg.viewer.frame](#swayimgviewerframe): Currently displayed frame number
   * [swayimg.viewer.drag_button](#swayimgviewerdrag_button): Mouse button used for drag image around the window
+  * [swayimg.viewer.focus_radius](#swayimgviewerfocus_radius): Focus area radius in pixels (0 to disable focus mode)
+  * [swayimg.viewer.focus_factor](#swayimgviewerfocus_factor): Dimming factor for unfocused area (0.0=black, 1.0=transparent)
   * [swayimg.viewer.preload](#swayimgviewerpreload): Max number of images to preload in background thread
   * [swayimg.viewer.history](#swayimgviewerhistory): Max number of previously viewed images stored in the cache
   * [swayimg.viewer.mark_color](#swayimgviewermark_color): Mark icon color
@@ -126,6 +128,8 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.animation](#swayimgslideshowanimation): Stop/resume and get animation status
   * [swayimg.slideshow.frame](#swayimgslideshowframe): Currently displayed frame number
   * [swayimg.slideshow.drag_button](#swayimgslideshowdrag_button): Mouse button used for drag image around the window
+  * [swayimg.slideshow.focus_radius](#swayimgslideshowfocus_radius): Focus area radius in pixels (0 to disable focus mode)
+  * [swayimg.slideshow.focus_factor](#swayimgslideshowfocus_factor): Dimming factor for unfocused area (0.0=black, 1.0=transparent)
   * [swayimg.slideshow.preload](#swayimgslideshowpreload): Max number of images to preload in background thread
   * [swayimg.slideshow.history](#swayimgslideshowhistory): Max number of previously viewed images stored in the cache
   * [swayimg.slideshow.mark_color](#swayimgslideshowmark_color): Mark icon color
@@ -828,6 +832,30 @@ Write-only field.
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
 
+### swayimg.viewer.focus_radius
+
+```lua
+swayimg.viewer.focus_radius: integer
+```
+
+Focus area radius in pixels (0 to disable focus mode).
+
+Since 5.7.
+
+Write-only field.
+
+### swayimg.viewer.focus_factor
+
+```lua
+swayimg.viewer.focus_factor: number
+```
+
+Dimming factor for unfocused area (0.0=black, 1.0=transparent).
+
+Since 5.7.
+
+Write-only field.
+
 ### swayimg.viewer.preload
 
 ```lua
@@ -1466,6 +1494,30 @@ Write-only field.
 * `"MouseMiddle"`: Middle mouse button
 * `"MouseSide"`: Side mouse button
 * `"MouseExtra"`: Extra mouse button
+
+### swayimg.slideshow.focus_radius
+
+```lua
+swayimg.slideshow.focus_radius: integer
+```
+
+Focus area radius in pixels (0 to disable focus mode).
+
+Since 5.7.
+
+Write-only field.
+
+### swayimg.slideshow.focus_factor
+
+```lua
+swayimg.slideshow.focus_factor: number
+```
+
+Dimming factor for unfocused area (0.0=black, 1.0=transparent).
+
+Since 5.7.
+
+Write-only field.
 
 ### swayimg.slideshow.preload
 

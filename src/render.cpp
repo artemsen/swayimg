@@ -801,6 +801,43 @@ namespace Mirror { // mirroring
 
 } // namespace Mirror
 
+namespace Dim { // dimming area
+    /**
+     * Dim area outside the specified point.
+     * @param pm target pixmap
+     * @param start_y starting line
+     * @param height number of lines to precess
+     * @param pt preserved point coordinates
+     * @param radius preserved radius in pixels
+     * @param dim dimming factor to apply (0=black, 1=transparent)
+     */
+    void apply(Pixmap& pm, const size_t start_y, const size_t height,
+               const Point& pt, const size_t radius, const double dim)
+    {
+        const ssize_t radius2 = radius * radius;
+
+        const size_t max_x = pm.width();
+        const size_t max_y = start_y + height;
+
+        for (size_t y = start_y; y < max_y; ++y) {
+            const ssize_t pty = static_cast<ssize_t>(y) - pt.y;
+            const ssize_t pty2 = pty * pty;
+
+            for (size_t x = 0; x < max_x; ++x) {
+                const ssize_t ptx = static_cast<ssize_t>(x) - pt.x;
+                const ssize_t ptx2 = ptx * ptx;
+                if (ptx2 + pty2 > radius2) {
+                    argb_t& px = pm.at(x, y);
+                    px.r *= dim;
+                    px.g *= dim;
+                    px.b *= dim;
+                }
+            }
+        }
+    }
+
+} // namespace Dim
+
 } // anonymous namespace
 
 Render& Render::self()
@@ -949,4 +986,29 @@ void Render::mirror_background(Pixmap& pm, const Rectangle& preserve)
 
     // blur mirrored area
     Blur::apply(pm, exclude, tpool);
+}
+
+void Render::dim_outside(Pixmap& pm, const Point& pt, const size_t radius,
+                         const double dim)
+{
+    // callulate number of used threads
+    const size_t total_pixels = pm.width() * pm.height();
+    const size_t threads = std::clamp(total_pixels / MIN_PIXELS_PER_THREAD,
+                                      static_cast<size_t>(1), tpool.size());
+
+    const size_t step = pm.height() / threads;
+
+    std::vector<size_t> tids;
+    tids.reserve(threads);
+
+    for (size_t i = 0; i < threads; ++i) {
+        const size_t y = step * i;
+        size_t height = step;
+        if (i == threads - 1) {
+            height += pm.height() - step * threads;
+        }
+        tids.push_back(tpool.add(Dim::apply, pm, y, height, pt, radius, dim));
+    }
+
+    tpool.wait(tids);
 }

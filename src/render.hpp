@@ -50,6 +50,16 @@ public:
      */
     void mirror_background(Pixmap& pm, const Rectangle& preserve);
 
+    /**
+     * Dim area outside the specified point.
+     * @param pm target pixmap
+     * @param pt preserved point coordinates
+     * @param radius preserved radius in pixels
+     * @param dim dimming factor to apply (0=black, 1=transparent)
+     */
+    void dim_outside(Pixmap& pm, const Point& pt, const size_t radius,
+                     const double dim);
+
 public:
     bool antialiasing; ///< Flag to use anti-aliasing
 
