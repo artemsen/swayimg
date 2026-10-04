@@ -83,6 +83,10 @@ public:
         }
 
         const Jp2ColorSpace cspace = get_colorspace(*opj_image.get());
+        if (!check_components(*opj_image.get(), cspace)) {
+            Log::error("{}: Unsupported component layout", LOG_PREFIX);
+            return nullptr;
+        }
 
         // scale precision to 8 bit per component
         const OPJ_UINT32 origin_prec = opj_image->comps[0].prec;
@@ -222,6 +226,79 @@ private:
         }
         // NOLINTEND(bugprone-branch-clone)
         return cspace;
+    }
+
+    /**
+     * Check that the components read by the loader exist and are big enough.
+     * Loaders index components with the size of the first one, but JPEG 2000
+     * components may differ in size and number.
+     * @param img JP2 image
+     * @param cspace color space of the image
+     * @return true if the image can be loaded
+     */
+    static bool check_components(const opj_image_t& img,
+                                 const Jp2ColorSpace cspace)
+    {
+        size_t count;
+        bool same_size;
+        switch (cspace) {
+            case Jp2ColorSpace::Grayscale:
+                count = 1;
+                same_size = false;
+                break;
+            case Jp2ColorSpace::SRGB:
+                count = img.numcomps > 3 ? 4 : 3;
+                same_size = true;
+                break;
+            case Jp2ColorSpace::YUV444:
+                count = 3;
+                same_size = true;
+                break;
+            case Jp2ColorSpace::YUV420:
+            case Jp2ColorSpace::YUV422:
+                count = 3;
+                same_size = false;
+                break;
+            default:
+                return true; // not loaded
+        }
+
+        if (!img.comps || img.numcomps < count) {
+            return false;
+        }
+        const opj_image_comp_t& comp0 = img.comps[0];
+        for (size_t i = 0; i < count; ++i) {
+            const opj_image_comp_t& comp = img.comps[i];
+            if (!comp.data || comp.w == 0 || comp.h == 0 || comp.prec == 0 ||
+                comp.prec > 31) {
+                return false;
+            }
+            if (same_size && (comp.w != comp0.w || comp.h != comp0.h)) {
+                return false;
+            }
+        }
+
+        if (cspace == Jp2ColorSpace::YUV420 ||
+            cspace == Jp2ColorSpace::YUV422) {
+            // Cb and Cr are read together: up to (width + 1) / 2 samples per
+            // row, one row per luma row (4:2:2) or per two luma rows (4:2:0)
+            const opj_image_comp_t& cb = img.comps[1];
+            const opj_image_comp_t& cr = img.comps[2];
+            if (cb.w != cr.w || cb.h != cr.h) {
+                return false;
+            }
+            const size_t max_w = comp0.w - (img.x0 & 1);
+            size_t rows = comp0.h;
+            if (cspace == Jp2ColorSpace::YUV420) {
+                rows = (comp0.h - (img.y0 & 1) + 1) / 2;
+            }
+            const size_t samples = static_cast<size_t>(cb.w) * cb.h;
+            if (samples < std::max<size_t>(1, rows * ((max_w + 1) / 2))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
