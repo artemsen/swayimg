@@ -259,11 +259,15 @@ private:
         size_t pos = 0;
 
         while (pixel < pm_end) {
+            if (pos >= size) {
+                return false; // truncated input
+            }
             const uint8_t pack = data[pos++];
             const bool is_rle = (pack & TGA_PACKET_RLE);
             size_t len = (pack & TGA_PACKET_LEN) + 1;
 
-            while (len--) {
+            // packet may be longer than the rest of the pixmap
+            while (len-- && pixel < pm_end) {
                 if (pos + bytes_per_pixel > size) {
                     return false;
                 }
@@ -279,9 +283,7 @@ private:
                     *pixel = get_pixel(entry, tga->cm_bpc);
                 }
 
-                if (pixel++ >= pm_end) {
-                    break;
-                }
+                ++pixel;
                 if (!is_rle) {
                     pos += bytes_per_pixel;
                 }
@@ -315,9 +317,12 @@ private:
         // check image type
         switch (tga->image_type) {
             case TGA_UNC_CM:
+            case TGA_RLE_CM:
+                // color map entry size must be one that get_pixel() reads
+                return tga->cm_bpc == 8 || tga->cm_bpc == 15 ||
+                    tga->cm_bpc == 16 || tga->cm_bpc == 24 || tga->cm_bpc == 32;
             case TGA_UNC_TC:
             case TGA_UNC_GS:
-            case TGA_RLE_CM:
             case TGA_RLE_TC:
             case TGA_RLE_GS:
                 return true;
