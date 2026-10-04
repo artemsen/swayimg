@@ -34,6 +34,9 @@ public:
         if (DGifSlurp(gif) != GIF_OK) {
             return nullptr;
         }
+        if (gif->ImageCount <= 0 || gif->SWidth <= 0 || gif->SHeight <= 0) {
+            return nullptr; // no frames or empty canvas
+        }
 
         // allocate image and frames
         ImagePtr image = std::make_shared<Image>();
@@ -132,14 +135,25 @@ private:
             return;
         }
 
-        const size_t width = std::min(static_cast<size_t>(desc->Width),
-                                      frame.pm.width() - desc->Left);
-        const size_t height = std::min(static_cast<size_t>(desc->Height),
-                                       frame.pm.height() - desc->Top);
+        // clip the frame rectangle to the canvas: position and size of the
+        // frame come from the file and may lie partly or fully outside it,
+        // the raster (Width x Height bytes) is never read past its end
+        const bool valid = gif_img->RasterBits && desc->Left >= 0 &&
+            desc->Top >= 0 && desc->Width > 0 && desc->Height > 0;
+        const size_t left = valid ? desc->Left : 0;
+        const size_t top = valid ? desc->Top : 0;
+        const size_t raster_width = valid ? desc->Width : 0;
+        const size_t raster_height = valid ? desc->Height : 0;
+        const size_t width = left < frame.pm.width()
+            ? std::min(raster_width, frame.pm.width() - left)
+            : 0;
+        const size_t height = top < frame.pm.height()
+            ? std::min(raster_height, frame.pm.height() - top)
+            : 0;
         for (size_t y = 0; y < height; ++y) {
-            const uint8_t* raster = &gif_img->RasterBits[y * desc->Width];
+            const uint8_t* raster = &gif_img->RasterBits[y * raster_width];
             for (size_t x = 0; x < width; ++x) {
-                argb_t& pixel = frame.pm.at(x + desc->Left, y + desc->Top);
+                argb_t& pixel = frame.pm.at(x + left, y + top);
                 const uint8_t color = raster[x];
                 if (std::cmp_not_equal(color, ctl.TransparentColor) &&
                     std::cmp_less(color, color_map->ColorCount)) {
