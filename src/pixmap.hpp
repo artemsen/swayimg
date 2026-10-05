@@ -84,7 +84,7 @@ public:
      * Cast to Size object.
      * @return Size object
      */
-    operator Size() const { return { pm_width, pm_height }; }
+    operator Size() const { return { .width = pm_width, .height = pm_height }; }
 
     /**
      * Create attached submap from current pixmap.

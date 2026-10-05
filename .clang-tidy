@@ -29,6 +29,6 @@ Checks:
   - '-bugprone-empty-catch'
   - '-bugprone-signed-bitwise'
 
-HeaderFilterRegex: 'src/*.hpp'
-ExcludeHeaderFilterRegex: 'external/*'
+HeaderFilterRegex: 'src/.*\.hpp'
+ExcludeHeaderFilterRegex: 'external/.*'
 WarningsAsErrors: '*'

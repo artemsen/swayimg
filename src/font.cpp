@@ -112,9 +112,7 @@ FreeTypeLib ft_lib;
 } // anonymous namespace
 
 Font::Font()
-    : ft_face(nullptr)
-    , size(Defaults::text::size)
-    , scale(1.0)
+    : size(Defaults::text::size)
 {
 }
 

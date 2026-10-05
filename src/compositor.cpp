@@ -515,7 +515,6 @@ private:
 } // anonymous namespace
 
 Compositor::Compositor()
-    : type(None)
 {
     if (SwayIpc::available()) {
         type = Sway;

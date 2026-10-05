@@ -43,7 +43,8 @@ public:
         template <typename T> void set(const std::string& name, const T& value)
         {
             params.insert({
-                name, { .value = value, .status = Unhandled }
+                name,
+                { .value = value, .status = Unhandled },
             });
         }
 
@@ -174,8 +175,9 @@ protected:
      * @return true if signature exists
      */
     template <size_t S>
-    bool check_signature(const Data& data, const uint8_t (&signature)[S],
-                         const size_t offset = 0) const
+    [[nodiscard]] bool check_signature(const Data& data,
+                                       const uint8_t (&signature)[S],
+                                       const size_t offset = 0) const
     {
         return data.size > offset + S &&
             std::memcmp(data.data + offset, signature, S) == 0;
@@ -192,7 +194,7 @@ protected:
                              const bool fill);
 
 public:
-    Priority priority; ///< Format priority
-    bool enable;       ///< Enable/disable decoder
-    const char* name;  ///< Short format name
+    Priority priority;    ///< Format priority
+    bool enable { true }; ///< Enable/disable decoder
+    const char* name;     ///< Short format name
 };

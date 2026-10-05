@@ -19,7 +19,10 @@ namespace Defaults {
 // general app
 namespace app {
     constexpr AppMode::Type mode = AppMode::Viewer;
-    constexpr InputMouse dnd = { InputMouse::BUTTON_RIGHT, KEYMOD_NONE };
+    constexpr InputMouse dnd = {
+        .buttons = InputMouse::BUTTON_RIGHT,
+        .mods = KEYMOD_NONE,
+    };
     constexpr bool use_overlay = false;
     constexpr bool fullscreen = false;
     constexpr bool decoration = true;
@@ -94,12 +97,12 @@ namespace viewer {
         "File size:\t{sizehr}",
         "File time:\t{time}",
         "EXIF date:\t{meta.Exif.Photo.DateTimeOriginal}",
-        "EXIF camera:\t{meta.Exif.Image.Model}"
+        "EXIF camera:\t{meta.Exif.Image.Model}",
     };
     constexpr std::array text_scheme_tr = {
         "Image:\t{list.index} of {list.total}",
         "Frame:\t{frame.index} of {frame.total}",
-        "Size:\t{frame.width}x{frame.height}"
+        "Size:\t{frame.width}x{frame.height}",
     };
     constexpr std::array text_scheme_bl = { "Scale: {scale}" };
 

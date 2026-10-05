@@ -6,8 +6,6 @@
 
 #include "fdevent.hpp"
 #include "image.hpp"
-#include "log.hpp"
-#include "text.hpp"
 
 // clang-format off
 // lua headers must be included in this order
@@ -19,6 +17,7 @@
 
 #include <filesystem>
 #include <format>
+#include <stdexcept>
 #include <vector>
 
 /** Lua integration. */
@@ -81,7 +80,8 @@ private:
     {
         const std::string message =
             std::vformat(fmt.get(), std::make_format_args(args...));
-        throw luabridge::raise_lua_error(lua_state, "%s", message.c_str());
+        luabridge::raise_lua_error(lua_state, "%s", message.c_str());
+        throw std::runtime_error(message.c_str());
     }
 
     /**

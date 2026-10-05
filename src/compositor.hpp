@@ -33,5 +33,5 @@ public:
      */
     void set_overlay(const Rectangle& wnd, std::string& app_id) const;
 
-    Type type; ///< Currently running compositor
+    Type type { None }; ///< Currently running compositor
 };

@@ -64,6 +64,7 @@ struct WaylandDisplay : public WaylandObject<wl_display> {
     };
 };
 
+// NOLINTBEGIN(bugprone-macro-parentheses)
 /** Macro to declare wayland object with RAII. */
 #define WLOBJ_DECLARE(T)                                                    \
     struct WaylandObject##T : public WaylandObject<T> {                     \
@@ -86,6 +87,7 @@ struct WaylandDisplay : public WaylandObject<wl_display> {
                 wl_registry_bind(registry, name, &T##_interface, version)); \
         }                                                                   \
     }
+// NOLINTEND(bugprone-macro-parentheses)
 
 /** Wayland window buffer. */
 struct WaylandBuffer {

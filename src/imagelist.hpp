@@ -21,7 +21,7 @@ public:
         Numeric, ///< Numeric sort
         Mtime,   ///< Modification time sort
         Size,    ///< Size sort
-        Random   ///< Random order
+        Random,  ///< Random order
     };
 
     /** Direction of the next entry. */
@@ -32,7 +32,7 @@ public:
         Prev,       ///< Previous entry
         NextParent, ///< Next entry with different parent
         PrevParent, ///< Previous entry with different parent
-        Random      ///< Random entry
+        Random,     ///< Random entry
     };
 
     using EntriesArray = std::vector<ImageEntryPtr>;

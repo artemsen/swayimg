@@ -15,7 +15,6 @@
 ImageFormat::ImageFormat(const Priority load_priority,
                          const char* format_name) noexcept
     : priority(load_priority)
-    , enable(true)
     , name(format_name)
 {
     FormatFactory::self().add(this);

@@ -48,8 +48,10 @@ public:
         assert(!quit);
 
         size_t task_id;
-        auto task_fn =
-            std::bind(std::forward<F>(fn), std::forward<Args>(args)...);
+        const auto task_fn = [fn = std::forward<F>(fn),
+                              ... args = std::forward<Args>(args)]() mutable {
+            return std::invoke(fn, args...);
+        };
 
         {
             const std::scoped_lock lock(mutex);

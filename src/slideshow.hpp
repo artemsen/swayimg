@@ -22,7 +22,7 @@ public:
     void activate(const ImageEntryPtr& entry, const Size& wnd) override;
     void deactivate() override;
 
-private:
+protected:
     void switch_current() override;
 
 public:
