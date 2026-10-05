@@ -47,6 +47,8 @@ public:
             return nullptr;
         }
 
+        ImagePtr image = std::make_shared<Image>();
+
         // setup error handling
         if (setjmp(png_jmpbuf(png))) {
             return nullptr;
@@ -86,8 +88,6 @@ public:
         png_set_expand(png);
 
         png_read_update_info(png, png);
-
-        ImagePtr image = std::make_shared<Image>();
 
         // decode image
 #ifdef PNG_APNG_SUPPORTED

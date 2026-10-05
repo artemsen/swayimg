@@ -25,6 +25,7 @@ public:
             return nullptr;
         }
 
+        ImagePtr image = std::make_shared<Image>();
         jpeg_decompress_struct jpg;
 
         // setup error handling
@@ -56,8 +57,7 @@ public:
 
         jpeg_start_decompress(&jpg);
 
-        // allocate image and frame
-        ImagePtr image = std::make_shared<Image>();
+        // allocate frame
         image->frames.resize(1);
         Pixmap& pm = image->frames[0].pm;
         pm.create(Pixmap::RGB, jpg.output_width, jpg.output_height);
