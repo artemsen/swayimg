@@ -76,8 +76,21 @@ public:
         }
         OpjImage opj_image(opj_imgptr, &opj_image_destroy);
         if (!opj_set_decode_area(opj_codec.get(), opj_image.get(), 0, 0,
-                                 opj_image->x1, opj_image->y1) ||
-            !opj_decode(opj_codec.get(), opj_stream.get(), opj_image.get()) ||
+                                 opj_image->x1, opj_image->y1)) {
+            return nullptr;
+        }
+
+        // check the pixmap size before decoding: OpenJPEG allocates buffers
+        // for all components first, the pixmap size limit applies too late
+        if (!opj_image->comps || opj_image->numcomps == 0 ||
+            opj_image->comps[0].w > MAX_SIZE ||
+            opj_image->comps[0].h > MAX_SIZE) {
+            Log::error("{}: Image size is over the limit ({}x{})", LOG_PREFIX,
+                       opj_image->comps[0].w, opj_image->comps[0].h);
+            return nullptr;
+        }
+
+        if (!opj_decode(opj_codec.get(), opj_stream.get(), opj_image.get()) ||
             !opj_end_decompress(opj_codec.get(), opj_stream.get())) {
             return nullptr;
         }
@@ -149,6 +162,9 @@ private:
     };
     static constexpr const uint8_t JP2_MAGIC[] = { 0x0d, 0x0a, 0x87, 0x0a };
     static constexpr const uint8_t J2K_STREAM[] = { 0xff, 0x4f, 0xff, 0x51 };
+
+    // Max size of image
+    static constexpr const size_t MAX_SIZE = 65536;
 
     // Prefix used in log output
     static constexpr const char* LOG_PREFIX = "JPEG2000";
