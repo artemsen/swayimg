@@ -9,10 +9,10 @@
 // freetype stuff
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include FT_GLYPH_H
 
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 
 /** Font render. */
 class Font {
@@ -81,6 +81,20 @@ private:
     void set_face(FT_Face face);
 
     /**
+     * Get glyph image for the character.
+     * @param ch character to render
+     * @return glyph image: advance wide, line height tall, its left edge
+     * at the pen position (from cache if already rendered before)
+     */
+    const Pixmap& get_glyph(wchar_t ch);
+
+    /**
+     * Rasterize the glyph currently loaded in the font face slot.
+     * @param raster cache entry to fill with the glyph image
+     */
+    void rasterize(Pixmap& raster);
+
+    /**
      * Convert text to wide-character string and trim to min acceptable lenght.
      * @param text string to encode
      * @return wide string
@@ -91,4 +105,6 @@ private:
     FT_Face ft_face { nullptr }; ///< Font face instance
     size_t size;                 ///< Font size in pixels
     double scale { 1.0 };        ///< Font scale
+
+    std::unordered_map<wchar_t, Pixmap> glyph_cache; ///< Rendered glyph images
 };
