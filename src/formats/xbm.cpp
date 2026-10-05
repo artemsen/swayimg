@@ -34,7 +34,8 @@ public:
                 height = read_size(line, "height");
             }
         }
-        if (width == 0 || height == 0) {
+        if (width == 0 || height == 0 || width > MAX_SIZE ||
+            height > MAX_SIZE) {
             return nullptr;
         }
 
@@ -46,7 +47,7 @@ public:
 
         // read bitmap data
         std::vector<uint8_t> bitmap;
-        bitmap.reserve(((width + 7) / 8) * height);
+        bitmap.reserve(std::min(((width + 7) / 8) * height, data.size));
         while (pos < data.size) {
             while (pos < data.size && data.data[pos] != '0') {
                 ++pos;
@@ -54,8 +55,7 @@ public:
             if (pos >= data.size) {
                 break;
             }
-            const char* num = reinterpret_cast<const char*>(data.data + pos);
-            bitmap.push_back(std::strtoul(num, nullptr, 16));
+            bitmap.push_back(read_hex(data, pos));
             while (pos < data.size && data.data[pos] != ',') {
                 ++pos;
             }
@@ -76,6 +76,9 @@ private:
     /** Max lenght of the header. */
     static constexpr const size_t MAX_HEADER_LEN = 512;
 
+    /** Max size of the image. */
+    static constexpr const size_t MAX_SIZE = 65536;
+
     /**
      * Read size value from text line.
      * @param line source text line
@@ -86,9 +89,44 @@ private:
     {
         const size_t pos = line.find(type);
         if (pos != std::string::npos) {
-            return std::strtoul(line.data() + pos + type.length(), nullptr, 0);
+            // signed: strtoul() turns "-8" into 2^64 - 8
+            const long long val =
+                std::strtoll(line.data() + pos + type.length(), nullptr, 0);
+            return val > 0 ? static_cast<size_t>(val) : 0;
         }
         return 0;
+    }
+
+    /**
+     * Read hex number ("0x..") from the bitmap data.
+     * The data buffer is not null-terminated, so strtoul() can't be used.
+     * @param data source data
+     * @param pos position of the number in the data buffer
+     * @return the lowest byte of the number
+     */
+    static uint8_t read_hex(const Data& data, size_t pos)
+    {
+        ++pos; // skip leading '0'
+        if (pos < data.size &&
+            (data.data[pos] == 'x' || data.data[pos] == 'X')) {
+            ++pos;
+        }
+        uint8_t value = 0;
+        while (pos < data.size) {
+            const uint8_t chr = data.data[pos++];
+            uint8_t digit;
+            if (chr >= '0' && chr <= '9') {
+                digit = chr - '0';
+            } else if (chr >= 'a' && chr <= 'f') {
+                digit = chr - 'a' + 10;
+            } else if (chr >= 'A' && chr <= 'F') {
+                digit = chr - 'A' + 10;
+            } else {
+                break;
+            }
+            value = (value << 4) | digit;
+        }
+        return value;
     }
 
     /**
