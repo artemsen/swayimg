@@ -1235,7 +1235,12 @@ void LuaEngine::bind_viewer_api(const char* name)
                 return mode->get_scale();
             },
             [mode](const double value) {
-                mode->set_scale(value);
+                Point pos { .x = 0, .y = 0 };
+                Ui* ui = Application::get_ui();
+                if (ui) {
+                    pos = ui->get_mouse();
+                }
+                mode->set_scale(value, pos);
             })
         .addFunction(
             "get_scale",
