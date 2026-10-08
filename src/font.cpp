@@ -219,6 +219,11 @@ const Pixmap& Font::get_glyph(const wchar_t ch)
 
 const Pixmap& Font::rasterize(const wchar_t ch)
 {
+    if (!ft_face && !load(std::string(Defaults::text::font))) {
+        static const Pixmap fallback;
+        return fallback;
+    }
+
     // load char
     const FT_UInt index = FT_Get_Char_Index(ft_face, ch);
     if (index == 0 ||

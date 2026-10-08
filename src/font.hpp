@@ -21,12 +21,6 @@ public:
     ~Font();
 
     /**
-     * Check if font was loaded.
-     * @return true if font was loaded
-     */
-    operator bool() const { return ft_face; }
-
-    /**
      * Load font by name.
      * @param name font face name
      * @return false if font wasn't loaded
