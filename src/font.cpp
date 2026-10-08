@@ -27,15 +27,6 @@ public:
     using FcPatternPtr =
         std::unique_ptr<FcPattern, decltype(&FcPatternDestroy)>;
 
-    FontConfig()
-    {
-        if (!FcInit()) {
-            Log::error("Unable to initialize FontConfig");
-        }
-    }
-
-    ~FontConfig() { FcFini(); }
-
     /**
      * Get path to the font file by its name.
      * @param name font name
@@ -43,24 +34,19 @@ public:
      */
     static std::filesystem::path get_font_file(const char* name)
     {
-        const FcConfigPtr fc =
-            FcConfigPtr(FcInitLoadConfigAndFonts(), &FcConfigDestroy);
-        if (!fc) {
-            return {};
-        }
-
         const FcPatternPtr fc_name =
             FcPatternPtr(FcNameParse(reinterpret_cast<const FcChar8*>(name)),
                          FcPatternDestroy);
-        if (!fc_name) {
+        if (!fc_name || !config()) {
             return {};
         }
-        FcConfigSubstitute(fc.get(), fc_name.get(), FcMatchPattern);
+
+        FcConfigSubstitute(config(), fc_name.get(), FcMatchPattern);
         FcDefaultSubstitute(fc_name.get());
 
         FcResult result;
         const FcPatternPtr fc_font = FcPatternPtr(
-            FcFontMatch(fc.get(), fc_name.get(), &result), FcPatternDestroy);
+            FcFontMatch(config(), fc_name.get(), &result), FcPatternDestroy);
         if (fc_font) {
             FcChar8* path = nullptr;
             if (FcPatternGetString(fc_font.get(), FC_FILE, 0, &path) ==
@@ -70,6 +56,16 @@ public:
         }
 
         return {};
+    }
+
+private:
+    // config loading parses all fontconfig rules and costs milliseconds,
+    // so it is loaded once and shared
+    static FcConfig* config()
+    {
+        static const FcConfigPtr fc(FcInitLoadConfigAndFonts(),
+                                    &FcConfigDestroy);
+        return fc.get();
     }
 };
 
@@ -132,14 +128,21 @@ bool Font::load(const std::string& name)
     }
 
     // get font file via FontConfig
-    const FontConfig fcinit;
     const std::filesystem::path path = FontConfig::get_font_file(name.c_str());
     if (path.empty()) {
         Log::error("Unable to find font {}", name);
         return false;
     }
 
-    return load(path);
+    if (!load(path)) {
+        return false;
+    }
+
+    // fallback queries use the requested name as context, so the user's
+    // fontconfig fallback order for it (e.g. monospace) applies
+    font_name = name;
+
+    return true;
 }
 
 bool Font::load(const std::filesystem::path& path)
@@ -183,6 +186,10 @@ void Font::set_face(FT_Face face)
         FT_Done_Face(ft_face);
     }
     ft_face = face;
+
+    // the face family is the fallback query context,
+    // load(name) overrides it with the requested font
+    font_name = face && face->family_name ? face->family_name : "";
 
     set_size(size);
 }
@@ -229,6 +236,9 @@ const Pixmap& Font::rasterize(const wchar_t ch)
     if (index == 0 ||
         FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
         // fallback glyph is used for absent or broken characters
+        if (const Pixmap* glyph = rasterize_fallback(ch)) {
+            return *glyph;
+        }
         const auto it = glyph_cache.find(FALLBACK_CHR);
         if (it != glyph_cache.end()) {
             return it->second;
@@ -241,7 +251,52 @@ const Pixmap& Font::rasterize(const wchar_t ch)
         return rasterize(FALLBACK_CHR);
     }
 
-    FT_GlyphSlot slot = ft_face->glyph;
+    auto [it, _] = glyph_cache.insert({ ch, Pixmap {} });
+    rasterize(it->second, ft_face->glyph);
+
+    return it->second;
+}
+
+const Pixmap* Font::rasterize_fallback(const wchar_t ch)
+{
+    // without a primary font there is no line geometry for the cell
+    if (!ft_face) {
+        return nullptr;
+    }
+
+    // query fontconfig for any font that covers the character, in the
+    // context of the font name, so the user's fallback order applies
+    char charset[16];
+    std::snprintf(charset, sizeof(charset), ":charset=%x",
+                  static_cast<unsigned>(ch));
+    const std::filesystem::path path =
+        FontConfig::get_font_file((font_name + charset).c_str());
+    if (path.empty()) {
+        return nullptr;
+    }
+
+    FT_Face face;
+    if (FT_New_Face(ft_lib, path.c_str(), 0, &face) != FT_Err_Ok) {
+        return nullptr;
+    }
+
+    FT_Set_Pixel_Sizes(face, 0, size * scale);
+    const FT_UInt index = FT_Get_Char_Index(face, ch);
+    const Pixmap* glyph = nullptr;
+    if (index != 0 && FT_Load_Glyph(face, index, FT_LOAD_RENDER) == FT_Err_Ok) {
+        // rasterize() places the glyph on the primary font's line
+        auto [it, _] = glyph_cache.insert({ ch, Pixmap {} });
+        rasterize(it->second, face->glyph);
+        glyph = &it->second;
+    }
+    // the face is not kept in memory: the cache holds the pixels
+    FT_Done_Face(face);
+
+    return glyph;
+}
+
+void Font::rasterize(Pixmap& raster, FT_GlyphSlot slot) const
+{
     const FT_Bitmap& bitmap = slot->bitmap;
 
     // calculate pixmap size in pixels
@@ -250,8 +305,6 @@ const Pixmap& Font::rasterize(const wchar_t ch)
     const size_t height = height_base + height_base / 3; // dirty hack
 
     // create raster pixmap
-    auto [it, _] = glyph_cache.insert({ ch, Pixmap {} });
-    Pixmap& raster = it->second;
     raster.create(Pixmap::GS, width, height);
 
     // pixels left of the pen (e.g. italic overhangs) have no room in
@@ -274,6 +327,4 @@ const Pixmap& Font::rasterize(const wchar_t ch)
             src += bitmap.pitch;
         }
     }
-
-    return raster;
 }

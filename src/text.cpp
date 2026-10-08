@@ -454,6 +454,11 @@ Pixmap Text::render(const std::string& text)
         return {};
     }
 
+    if (!font.operator bool() &&
+        !font.load(std::string(Defaults::text::font))) {
+        return {};
+    }
+
     const std::wstring wide = to_wide(text);
 
     // calculate total width and height in pixels
