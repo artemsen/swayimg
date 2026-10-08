@@ -155,7 +155,7 @@ bool ImageFormat::read_metadata(const Data& data, ImagePtr& image)
     return false;
 }
 
-void ImageFormat::Config::get(const std::string& name, bool& value)
+bool ImageFormat::Config::get(const std::string& name, bool& value)
 {
     const auto it = params.find(name);
     if (it != params.end()) {
@@ -163,13 +163,14 @@ void ImageFormat::Config::get(const std::string& name, bool& value)
         if (std::holds_alternative<bool>(pval.value)) {
             value = std::get<bool>(pval.value);
             pval.status = Handled;
-        } else {
-            pval.status = Invalid;
+            return true;
         }
+        pval.status = Invalid;
     }
+    return false;
 }
 
-void ImageFormat::Config::get(const std::string& name, argb_t& value)
+bool ImageFormat::Config::get(const std::string& name, argb_t& value)
 {
     const auto it = params.find(name);
     if (it != params.end()) {
@@ -180,12 +181,14 @@ void ImageFormat::Config::get(const std::string& name, argb_t& value)
             if (nval <= 0xffffffff) {
                 value = nval;
                 pval.status = Handled;
+                return true;
             }
         }
     }
+    return false;
 }
 
-void ImageFormat::Config::get(const std::string& name, size_t& value,
+bool ImageFormat::Config::get(const std::string& name, size_t& value,
                               const size_t min_val, const size_t max_val)
 {
     const auto it = params.find(name);
@@ -197,12 +200,14 @@ void ImageFormat::Config::get(const std::string& name, size_t& value,
             if (nval >= min_val && nval <= max_val) {
                 value = nval;
                 pval.status = Handled;
+                return true;
             }
         }
     }
+    return false;
 }
 
-void ImageFormat::Config::get(const std::string& name, std::string& value,
+bool ImageFormat::Config::get(const std::string& name, std::string& value,
                               const size_t min_len)
 {
     const auto it = params.find(name);
@@ -214,9 +219,11 @@ void ImageFormat::Config::get(const std::string& name, std::string& value,
             if (sval.length() >= min_len) {
                 value = sval;
                 pval.status = Handled;
+                return true;
             }
         }
     }
+    return false;
 }
 
 std::vector<std::string> ImageFormat::Config::get(const Status status) const

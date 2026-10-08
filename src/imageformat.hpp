@@ -53,22 +53,24 @@ public:
          * @param name parameter name
          * @param value parameter value to write
          */
-        void get(const std::string& name, bool& value);
+        bool get(const std::string& name, bool& value);
 
         /**
          * Get configuration parameter and change its status.
          * @param name parameter name
          * @param value parameter value to write
+         * @return true if new value was read
          */
-        void get(const std::string& name, argb_t& value);
+        bool get(const std::string& name, argb_t& value);
 
         /**
          * Get configuration parameter and change its status.
          * @param name parameter name
          * @param value parameter value to write
          * @param min_val, max_val valid value range
+         * @return true if new value was read
          */
-        void get(const std::string& name, size_t& value, const size_t min_val,
+        bool get(const std::string& name, size_t& value, const size_t min_val,
                  const size_t max_val);
 
         /**
@@ -76,8 +78,9 @@ public:
          * @param name parameter name
          * @param value parameter value to write
          * @param min_len min lenght of the value
+         * @return true if new value was read
          */
-        void get(const std::string& name, std::string& value,
+        bool get(const std::string& name, std::string& value,
                  const size_t min_len);
 
         /**
