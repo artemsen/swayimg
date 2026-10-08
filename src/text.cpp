@@ -12,6 +12,12 @@
 #include <ctime>
 #include <format>
 
+// max length of text line (characters)
+constexpr size_t MAX_TEXT_LEN = 120;
+
+// character used for unsupported chars with broken locale
+constexpr wchar_t FALLBACK_CHR = L'?';
+
 Text& Text::self()
 {
     static Text singleton;
@@ -174,10 +180,10 @@ void Text::set_status(const std::string& msg)
     size_t last = 0;
     size_t next = 0;
     while ((next = msg.find('\n', last)) != std::string::npos) {
-        status.emplace_back(font.render(msg.substr(last, next - last)));
+        status.emplace_back(render(msg.substr(last, next - last)));
         last = next + 1;
     }
-    status.emplace_back(font.render(msg.substr(last)));
+    status.emplace_back(render(msg.substr(last)));
 
     status_tm.show = true;
     status_tm.fd.reset(status_tm.delay, 0);
@@ -252,8 +258,8 @@ void Text::update()
 {
     for (auto& block : blocks) {
         for (auto& kv : block) {
-            kv.key.update(font, fields);
-            kv.value.update(font, fields);
+            kv.key.update(*this, fields);
+            kv.value.update(*this, fields);
         }
     }
 }
@@ -301,10 +307,10 @@ void Text::refresh()
     for (auto& block : blocks) {
         for (auto& [key, value] : block) {
             if (!key.display.empty()) {
-                key.pm = font.render(key.display);
+                key.pm = render(key.display);
             }
             if (!value.display.empty()) {
-                value.pm = font.render(value.display);
+                value.pm = render(value.display);
             }
         }
     }
@@ -417,13 +423,77 @@ void Text::draw(const Pixmap& text, Pixmap& target, const Point& pos) const
     target.mask(text, pos, foreground);
 }
 
+std::wstring Text::to_wide(const std::string& text)
+{
+    size_t len = text.length();
+    std::wstring wide(len + 1, 0);
+
+    len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
+    if (len != std::wstring::npos) {
+        wide.resize(len);
+    } else {
+        // something wrong with locale, try to convert ASCII
+        wide.clear();
+        for (const auto chr : text) {
+            wide += chr < ' ' || chr > '~' ? FALLBACK_CHR : chr;
+        }
+        len = wide.length();
+    }
+
+    if (len > MAX_TEXT_LEN) {
+        wide.resize(MAX_TEXT_LEN - 1);
+        wide += L'…';
+    }
+
+    return wide;
+}
+
+Pixmap Text::render(const std::string& text)
+{
+    if (text.empty()) {
+        return {};
+    }
+
+    const std::wstring wide = to_wide(text);
+
+    // calculate total width and height in pixels
+    size_t width = 0;
+    size_t height = 0;
+    for (const wchar_t ch : wide) {
+        const Pixmap& glyph = font.get_glyph(ch);
+        width += glyph.width();
+        if (height == 0) {
+            height = glyph.height();
+        }
+    }
+
+    const size_t hpadding = height / 5;
+
+    Pixmap pm;
+    pm.create(Pixmap::GS, width + hpadding * 2, height);
+
+    // draw glyphs
+    size_t x = hpadding;
+    for (const wchar_t ch : wide) {
+        const Pixmap& glyph = font.get_glyph(ch);
+        if (glyph) {
+            for (size_t y = 0; y < height; ++y) {
+                std::memcpy(pm.ptr(x, y), glyph.ptr(0, y), glyph.width());
+            }
+            x += glyph.width();
+        }
+    }
+
+    return pm;
+}
+
 void Text::Line::clear()
 {
     display.clear();
     pm.free();
 }
 
-void Text::Line::update(Font& font,
+void Text::Line::update(Text& text,
                         const std::map<std::string, std::string>& fields)
 {
     std::string output = scheme;
@@ -463,7 +533,7 @@ void Text::Line::update(Font& font,
         if (display.empty()) {
             pm.free();
         } else {
-            pm = font.render(display);
+            pm = text.render(display);
         }
     }
 }

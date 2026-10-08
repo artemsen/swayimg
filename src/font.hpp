@@ -67,11 +67,11 @@ public:
     void set_scale(const double scale);
 
     /**
-     * Render single text line.
-     * @param text string to print
-     * @return masked surface
+     * Get glyph pixmap (grascale mask) for the character.
+     * @param ch character to render
+     * @return glyph pixmap
      */
-    [[nodiscard]] Pixmap render(const std::string& text);
+    const Pixmap& get_glyph(const wchar_t ch);
 
 private:
     /**
@@ -81,25 +81,11 @@ private:
     void set_face(FT_Face face);
 
     /**
-     * Get glyph image for the character.
-     * @param ch character to render
-     * @return glyph image: advance wide, line height tall, its left edge
-     * at the pen position (from cache if already rendered before)
+     * Rasterize the glyph for the specified character.
+     * @param ch character to rasterize
+     * @return glyph pixmap
      */
-    const Pixmap& get_glyph(wchar_t ch);
-
-    /**
-     * Rasterize the glyph currently loaded in the font face slot.
-     * @param raster cache entry to fill with the glyph image
-     */
-    void rasterize(Pixmap& raster);
-
-    /**
-     * Convert text to wide-character string and trim to min acceptable lenght.
-     * @param text string to encode
-     * @return wide string
-     */
-    static std::wstring to_wide(const std::string& text);
+    const Pixmap& rasterize(const wchar_t ch);
 
 private:
     FT_Face ft_face { nullptr }; ///< Font face instance

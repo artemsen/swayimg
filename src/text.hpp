@@ -198,10 +198,10 @@ private:
 
         /**
          * Update line.
-         * @param font font instance
+         * @param text text instance
          * @param fields fields values
          */
-        void update(Font& font,
+        void update(Text& text,
                     const std::map<std::string, std::string>& fields);
 
         std::string scheme;  ///< Line scheme
@@ -224,7 +224,7 @@ private:
         size_t total_width;   ///< Total block width in pixels
         size_t total_height;  ///< Total block height in pixels
         size_t line_height;   ///< Height of single line
-        ssize_t line_spacing; ///< Line spaceing in pixels
+        ssize_t line_spacing; ///< Line spacing in pixels
     };
 
     /**
@@ -253,6 +253,21 @@ private:
      * @param pos text position on target pixmap
      */
     void draw(const Pixmap& text, Pixmap& target, const Point& pos) const;
+
+    /**
+     * Convert text to wide-character string and trim to min acceptable lenght.
+     * @param text string to encode
+     * @return wide string
+     */
+    static std::wstring to_wide(const std::string& text);
+
+    /**
+     * Render single text line.
+     * @param text string to print
+
+     * @return masked surface
+     */
+    Pixmap render(const std::string& text);
 
 private:
     /** Text hide timeout. */

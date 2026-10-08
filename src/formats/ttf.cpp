@@ -47,9 +47,31 @@ public:
         size_t y = 0;
         for (size_t i = 1; y < pm.height(); ++i) {
             font.set_size(12 + i * i);
-            const Pixmap pm_text = font.render(text);
-            pm.mask(pm_text, { .x = 0, .y = static_cast<ssize_t>(y) }, color);
-            y += pm_text.height();
+
+            size_t height = 0;
+            size_t x = 0;
+            for (const wchar_t ch : text) {
+                const Pixmap& glyph = font.get_glyph(ch);
+                if (!glyph) {
+                    continue;
+                }
+                const Point pos {
+                    .x = static_cast<ssize_t>(x),
+                    .y = static_cast<ssize_t>(y),
+                };
+                pm.mask(glyph, pos, color);
+
+                if (height == 0) {
+                    height = glyph.height();
+                }
+
+                x += glyph.width();
+                if (x > pm.width()) {
+                    break;
+                }
+            }
+
+            y += height;
         }
 
         image->format = "Font";
@@ -65,14 +87,26 @@ public:
     void set_config(Config& params) override
     {
         ImageFormat::set_config(params);
-        params.get("text", text, 1);
         params.get("color", color);
         params.get("background", bkg);
+
+        std::string srctext;
+        if (params.get("text", srctext, 1)) {
+            size_t len = srctext.length();
+            std::wstring wide(len + 1, 0);
+            len = std::mbstowcs(wide.data(), srctext.c_str(),
+                                len * sizeof(wide[0]));
+            if (len != std::wstring::npos) {
+                wide.resize(len);
+                text = wide;
+            }
+        }
     }
 
 private:
     // Text and its color
-    std::string text = "The quick brown fox jumps over the lazy dog 0123456789";
+    std::wstring text =
+        L"The quick brown fox jumps over the lazy dog 0123456789";
     argb_t color = { argb_t::max, argb_t::max, argb_t::max, argb_t::max };
     argb_t bkg = { argb_t::min, argb_t::min, argb_t::min, argb_t::min };
 };
