@@ -87,10 +87,27 @@ private:
      */
     const Pixmap& rasterize(const wchar_t ch);
 
+    /**
+     * Rasterize the glyph loaded in the glyph slot.
+     * @param raster cache entry to fill with the glyph image
+     * @param slot glyph slot with the loaded glyph
+     */
+    void rasterize(Pixmap& raster, FT_GlyphSlot slot) const;
+
+    /**
+     * Rasterize a character not covered by the primary font, using any
+     * font that fontconfig finds for it. The font is closed afterwards,
+     * the cache keeps the pixels.
+     * @param ch character to render
+     * @return the glyph or nullptr if no font was found
+     */
+    const Pixmap* rasterize_fallback(const wchar_t ch);
+
 private:
     FT_Face ft_face { nullptr }; ///< Font face instance
     size_t size;                 ///< Font size in pixels
     double scale { 1.0 };        ///< Font scale
+    std::string font_name;       ///< Font name used as fallback query context
 
     std::unordered_map<wchar_t, Pixmap> glyph_cache; ///< Rendered glyph images
 };
