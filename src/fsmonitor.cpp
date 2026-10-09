@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <climits>
 #include <ranges>
 
 #ifdef HAVE_INOTIFY
