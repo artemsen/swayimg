@@ -17,7 +17,7 @@
 /** Font render. */
 class Font {
 public:
-    Font();
+    Font() noexcept;
     ~Font();
 
     /**
@@ -86,5 +86,5 @@ private:
     size_t size;                 ///< Font size in pixels
     double scale { 1.0 };        ///< Font scale
 
-    std::unordered_map<wchar_t, Pixmap> glyph_cache; ///< Rendered glyph images
+    std::unordered_map<wchar_t, Pixmap> glyphs; ///< Rendered glyph images
 };

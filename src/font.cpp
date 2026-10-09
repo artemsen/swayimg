@@ -113,7 +113,7 @@ FreeTypeLib ft_lib;
 
 } // anonymous namespace
 
-Font::Font()
+Font::Font() noexcept
     : size(Defaults::text::size)
 {
 }
@@ -198,7 +198,7 @@ void Font::set_size(const size_t size)
 
     // all rendering changes (font face, size, scale) go through here,
     // so the cache must be emptied to match the new pixel sizes
-    glyph_cache.clear();
+    glyphs.clear();
 
     if (ft_face) {
         FT_Set_Pixel_Sizes(ft_face, 0, size * scale);
@@ -213,8 +213,8 @@ void Font::set_scale(const double scale)
 
 const Pixmap& Font::get_glyph(const wchar_t ch)
 {
-    const auto it = glyph_cache.find(ch);
-    return it == glyph_cache.end() ? rasterize(ch) : it->second;
+    const auto it = glyphs.find(ch);
+    return it == glyphs.end() ? rasterize(ch) : it->second;
 }
 
 const Pixmap& Font::rasterize(const wchar_t ch)
@@ -229,13 +229,13 @@ const Pixmap& Font::rasterize(const wchar_t ch)
     if (index == 0 ||
         FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
         // fallback glyph is used for absent or broken characters
-        const auto it = glyph_cache.find(FALLBACK_CHR);
-        if (it != glyph_cache.end()) {
+        const auto it = glyphs.find(FALLBACK_CHR);
+        if (it != glyphs.end()) {
             return it->second;
         }
         if (ch == FALLBACK_CHR) {
             // fallback is not applicable
-            auto [it, _] = glyph_cache.insert({ FALLBACK_CHR, Pixmap {} });
+            auto [it, _] = glyphs.insert({ FALLBACK_CHR, Pixmap {} });
             return it->second;
         }
         return rasterize(FALLBACK_CHR);
@@ -250,7 +250,7 @@ const Pixmap& Font::rasterize(const wchar_t ch)
     const size_t height = height_base + height_base / 3; // dirty hack
 
     // create raster pixmap
-    auto [it, _] = glyph_cache.insert({ ch, Pixmap {} });
+    auto [it, _] = glyphs.insert({ ch, Pixmap {} });
     Pixmap& raster = it->second;
     raster.create(Pixmap::GS, width, height);
 
