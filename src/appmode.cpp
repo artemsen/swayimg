@@ -74,9 +74,9 @@ void AppMode::handle_imagelist(const ImageListEvent,
     const ImageEntryPtr entry = get_current();
     Text& text = Text::self();
     text.set_field(Text::FIELD_LIST_INDEX,
-                   entry ? std::to_string(entry->index + 1) : "");
+                   entry ? std::to_wstring(entry->index + 1) : L"");
     text.set_field(Text::FIELD_LIST_TOTAL,
-                   std::to_string(ImageList::self().size()));
+                   std::to_wstring(ImageList::self().size()));
     text.update();
 }
 

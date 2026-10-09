@@ -6,17 +6,58 @@
 
 #include "application.hpp"
 #include "defaults.hpp"
+#include "font.hpp"
 #include "imagelist.hpp"
 
 #include <algorithm>
 #include <ctime>
 #include <format>
 
-// max length of text line (characters)
-constexpr size_t MAX_TEXT_LEN = 120;
+namespace {
 
-// character used for unsupported chars with broken locale
+/** Max length of text line (characters). */
+constexpr size_t MAX_TEXT_LEN = 120;
+/** Character used for unsupported chars with broken locale. */
 constexpr wchar_t FALLBACK_CHR = L'?';
+/** Text shadow offset factor. */
+constexpr size_t SHADOW_FACTOR = 24;
+/** Factor used to calculate horizontal margin for text line. */
+constexpr size_t MARGIN_FACTOR = 6;
+
+/** Global font instance. */
+Font font;
+
+/**
+ * Convert text to wide-character string and trim to min acceptable lenght.
+ * @param text string to encode
+ * @return wide string
+ */
+std::wstring to_wide(const std::string& text)
+{
+    size_t len = text.length();
+    std::wstring wide(len + 1, 0);
+
+    len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
+    if (len != std::wstring::npos) {
+        wide.resize(len);
+    } else {
+        // something wrong with locale, try to convert ASCII
+        wide.clear();
+        for (const auto chr : text) {
+            wide += chr < ' ' || chr > '~' ? FALLBACK_CHR : chr;
+        }
+        len = wide.length();
+    }
+
+    if (len > MAX_TEXT_LEN) {
+        wide.resize(MAX_TEXT_LEN - 1);
+        wide += L'…';
+    }
+
+    return wide;
+}
+
+} // anonymous namespace
 
 Text& Text::self()
 {
@@ -55,47 +96,33 @@ void Text::initialize()
 
 void Text::set_scheme(const Position pos, const Scheme& scheme)
 {
-    Block& block = blocks[static_cast<size_t>(pos)];
-    block.clear();
-    block.reserve(scheme.size());
-
-    for (const auto& line : scheme) {
-        std::string key;
-        std::string value;
-        const size_t delim = line.find('\t');
-        if (delim == std::string::npos) {
-            value = line;
-        } else {
-            key = line.substr(0, delim);
-            value = line.substr(delim + 1);
-        }
-        block.emplace_back(Line(std::move(key)), Line(std::move(value)));
-    }
+    KeyValBlock& block = blocks[static_cast<size_t>(pos)];
+    block.set_scheme(scheme);
 }
 
 void Text::set_font(const std::string& name)
 {
     if (font.load(name)) {
-        refresh();
+        recalc();
     }
 }
 
 void Text::set_size(const size_t size)
 {
     font.set_size(size);
-    refresh();
+    recalc();
 }
 
 void Text::set_spacing(const ssize_t size)
 {
     spacing = size;
-    Application::redraw();
+    recalc();
 }
 
 void Text::set_scale(const double scale)
 {
     font.set_scale(scale);
-    refresh();
+    recalc();
 }
 
 void Text::set_padding(const size_t pad)
@@ -157,36 +184,20 @@ void Text::hide()
 void Text::clear()
 {
     fields.clear();
-
-    for (auto& block : blocks) {
-        for (auto& kv : block) {
-            kv.key.clear();
-            kv.value.clear();
-        }
-    }
 }
 
 void Text::set_status(const std::string& msg)
 {
-    status.clear();
-
     if (msg.empty()) {
-        // force hide status message
+        status.clear();
         status_tm.fd.reset(0, 0);
         status_tm.show = false;
-        return;
+    } else {
+        status.set(msg);
+        status.recalc(spacing);
+        status_tm.show = true;
+        status_tm.fd.reset(status_tm.delay, 0);
     }
-
-    size_t last = 0;
-    size_t next = 0;
-    while ((next = msg.find('\n', last)) != std::string::npos) {
-        status.emplace_back(render(msg.substr(last, next - last)));
-        last = next + 1;
-    }
-    status.emplace_back(render(msg.substr(last)));
-
-    status_tm.show = true;
-    status_tm.fd.reset(status_tm.delay, 0);
 
     Application::redraw();
 }
@@ -198,7 +209,7 @@ void Text::reset(const ImagePtr& image)
     reset(image->entry);
 
     set_field(FIELD_IMAGE_FORMAT, image->format);
-    set_field(FIELD_FRAME_TOTAL, std::to_string(image->frames.size()));
+    set_field(FIELD_FRAME_TOTAL, std::to_wstring(image->frames.size()));
 
     // import meta info
     for (const auto& [key, value] : image->meta) {
@@ -218,22 +229,22 @@ void Text::reset(const ImageEntryPtr& entry)
     set_field(FIELD_FILE_PATH, entry->path);
     set_field(FIELD_FILE_DIR, entry->path.parent_path().filename());
     set_field(FIELD_FILE_NAME, entry->path.filename());
-    set_field(FIELD_FILE_SIZE, std::to_string(entry->size));
-    set_field(FIELD_LIST_INDEX, std::to_string(entry->index + 1));
-    set_field(FIELD_LIST_TOTAL, std::to_string(ImageList::self().size()));
+    set_field(FIELD_FILE_SIZE, std::to_wstring(entry->size));
+    set_field(FIELD_LIST_INDEX, std::to_wstring(entry->index + 1));
+    set_field(FIELD_LIST_TOTAL, std::to_wstring(ImageList::self().size()));
 
     // human readable file size
     const size_t mib = 1024UL * 1024UL;
     set_field(FIELD_FILE_SIZE_HR,
-              std::format("{:.02f} {}iB",
+              std::format(L"{:.02f} {}iB",
                           static_cast<float>(entry->size) /
                               (entry->size >= mib ? mib : 1024),
-                          entry->size >= mib ? 'M' : 'K'));
+                          entry->size >= mib ? L'M' : L'K'));
 
     // human readable file modification time
     const std::tm* local_tm = localtime(&entry->mtime);
-    char time_buff[32];
-    std::strftime(time_buff, sizeof(time_buff), "%Y-%m-%d %H:%M:%S", local_tm);
+    wchar_t time_buff[32];
+    std::wcsftime(time_buff, sizeof(time_buff), L"%Y-%m-%d %H:%M:%S", local_tm);
     set_field(FIELD_FILE_TIME, time_buff);
 
     // restart timer
@@ -245,7 +256,7 @@ void Text::reset(const ImageEntryPtr& entry)
     update();
 }
 
-void Text::set_field(const std::string& field, const std::string& value)
+void Text::set_field(const std::wstring& field, const std::wstring& value)
 {
     if (!value.empty()) {
         fields.insert_or_assign(field, value);
@@ -254,43 +265,35 @@ void Text::set_field(const std::string& field, const std::string& value)
     }
 }
 
+void Text::set_field(const std::string& field, const std::string& value)
+{
+    set_field(to_wide(field), to_wide(value));
+}
+
 void Text::update()
 {
     for (auto& block : blocks) {
-        for (auto& kv : block) {
-            kv.key.update(*this, fields);
-            kv.value.update(*this, fields);
-        }
+        block.update(fields);
+        block.recalc(spacing);
     }
 }
 
 void Text::draw(Pixmap& target) const
 {
     // show status message
-    if (status_tm.show && !status.empty()) {
-        // calculate line spacing
-        const ssize_t lspacing =
-            std::clamp(spacing, -static_cast<ssize_t>(status.front().height()),
-                       static_cast<ssize_t>(status.front().height()));
-        // calculate height of a single line
-        size_t line_height = 0;
-        for (const auto& line : status) {
-            if (line && !line_height) {
-                line_height = line.height();
-                break;
-            }
+    if (status_tm.show && !status.lines.empty()) {
+        Point pos(0, target.height() - status.height - padding);
+        if (background.a != argb_t::min) {
+            // draw background
+            pos.x = target.width() / 2 - status.width / 2;
+            target.fill_blend({ pos.x, pos.y, status.width, status.height },
+                              background);
         }
-        // calculate total height
-        const size_t height =
-            line_height * status.size() + lspacing * (status.size() - 1);
         // draw status text
-        Point pos(0, target.height() - height - padding);
-        for (const auto& line : status) {
+        for (const auto& line : status.lines) {
             pos.x = target.width() / 2 - line.width() / 2;
-            if (line) {
-                draw(line, target, pos);
-            }
-            pos.y += line_height + lspacing;
+            line.draw(target, pos, foreground);
+            pos.y += status.line_height;
         }
     }
 
@@ -302,84 +305,54 @@ void Text::draw(Pixmap& target) const
     }
 }
 
-void Text::refresh()
+void Text::recalc()
 {
     for (auto& block : blocks) {
-        for (auto& [key, value] : block) {
-            if (!key.display.empty()) {
-                key.pm = render(key.display);
-            }
-            if (!value.display.empty()) {
-                value.pm = render(value.display);
-            }
-        }
+        block.recalc(spacing);
     }
+    status.recalc(spacing);
     Application::redraw();
 }
 
-Text::Dimension Text::get_dimension(const Block& block) const
+void Text::draw(const TextLine& line, Pixmap& target, const Point& pos) const
 {
-    Dimension dim {};
+    assert(!line.text.empty());
 
-    size_t visible_lines = 0;
-    size_t max_val_width = 0;
-    size_t max_line_width = 0;
-
-    for (const auto& [key, value] : block) {
-        if (value.pm) {
-            ++visible_lines;
-            if (key.pm) {
-                dim.max_key_width = std::max(dim.max_key_width, key.pm.width());
-                max_val_width = std::max(max_val_width, value.pm.width());
-            } else {
-                max_line_width = std::max(max_line_width, value.pm.width());
-            }
-            if (!dim.line_height) {
-                dim.line_height = value.pm.height();
-            }
-        }
+    if (shadow.a != argb_t::min) {
+        const ssize_t offset =
+            std::max<ssize_t>(line.height() / SHADOW_FACTOR, 1);
+        line.draw(target, pos + Point { .x = offset, .y = offset }, shadow);
     }
 
-    if (visible_lines) {
-        dim.line_spacing =
-            std::clamp(spacing, -static_cast<ssize_t>(dim.line_height),
-                       static_cast<ssize_t>(dim.line_height));
-        dim.total_width =
-            std::max(max_line_width, dim.max_key_width + max_val_width);
-        dim.total_height = dim.line_height * visible_lines;
-        dim.total_height += dim.line_spacing * (visible_lines - 1);
-    }
-
-    return dim;
+    line.draw(target, pos, foreground);
 }
 
-void Text::draw(const Position pos, Pixmap& target) const
+void Text::draw(const Position blkpos, Pixmap& target) const
 {
-    const Block& block = blocks[static_cast<size_t>(pos)];
-    const Dimension dim = get_dimension(block);
+    const KeyValBlock& block = blocks[static_cast<size_t>(blkpos)];
 
     // calculate initial position
     ssize_t x = 0;
     ssize_t y = 0;
-    switch (pos) {
+    switch (blkpos) {
         case Position::TopLeft:
             x = padding;
             y = padding;
             break;
         case Position::TopRight:
-            x = static_cast<ssize_t>(target.width()) - dim.total_width -
+            x = static_cast<ssize_t>(target.width()) - block.total_width -
                 padding;
             y = padding;
             break;
         case Position::BottomLeft:
             x = padding;
-            y = static_cast<ssize_t>(target.height()) - dim.total_height -
+            y = static_cast<ssize_t>(target.height()) - block.total_height -
                 padding;
             break;
         case Position::BottomRight:
-            x = static_cast<ssize_t>(target.width()) - dim.total_width -
+            x = static_cast<ssize_t>(target.width()) - block.total_width -
                 padding;
-            y = static_cast<ssize_t>(target.height()) - dim.total_height -
+            y = static_cast<ssize_t>(target.height()) - block.total_height -
                 padding;
             break;
     }
@@ -388,152 +361,234 @@ void Text::draw(const Position pos, Pixmap& target) const
 
     // draw background
     if (background.a != argb_t::min) {
-        target.fill_blend({ x, y, dim.total_width, dim.total_height },
+        target.fill_blend({ x, y, block.total_width, block.total_height },
                           background);
     }
 
-    for (const auto& [key, value] : block) {
-        if (!value.pm) {
-            continue; // skip empty lines
+    // calculate shadow offset
+    const ssize_t shadow_diff =
+        std::max<ssize_t>(block.line_height / SHADOW_FACTOR, 1);
+    const Point shadow_offset { .x = shadow_diff, .y = shadow_diff };
+
+    // draw text lines
+    for (const auto& line : block.lines) {
+        if (line.value.text.empty()) {
+            continue;
         }
 
-        Point tpos { .x = x, .y = y };
-        if (key.pm) {
-            draw(key.pm, target, tpos);
-            tpos.x += dim.max_key_width;
-        }
-        if (value.pm) {
-            draw(value.pm, target, tpos);
+        Point pos { .x = x, .y = y };
+
+        // key
+        if (!line.key.text.empty()) {
+            if (shadow.a != argb_t::min) {
+                line.key.draw(target, pos + shadow_offset, shadow);
+            }
+            line.key.draw(target, pos, foreground);
+            pos.x += block.key_width;
         }
 
-        y += dim.line_height;
-        y += dim.line_spacing;
+        // value
+        if (shadow.a != argb_t::min) {
+            line.value.draw(target, pos + shadow_offset, shadow);
+        }
+        line.value.draw(target, pos, foreground);
+
+        y += block.line_height;
     }
 }
 
-void Text::draw(const Pixmap& text, Pixmap& target, const Point& pos) const
+size_t Text::TextLine::width() const
 {
-    // draw shadow
-    if (shadow.a != argb_t::min) {
-        const size_t offset =
-            std::max(text.height() / 24, static_cast<size_t>(1));
-        target.mask(text, pos + Point(offset, offset), shadow);
-    }
-    // draw text with foreground color
-    target.mask(text, pos, foreground);
-}
-
-std::wstring Text::to_wide(const std::string& text)
-{
-    size_t len = text.length();
-    std::wstring wide(len + 1, 0);
-
-    len = std::mbstowcs(wide.data(), text.c_str(), len * sizeof(wide[0]));
-    if (len != std::wstring::npos) {
-        wide.resize(len);
-    } else {
-        // something wrong with locale, try to convert ASCII
-        wide.clear();
-        for (const auto chr : text) {
-            wide += chr < ' ' || chr > '~' ? FALLBACK_CHR : chr;
-        }
-        len = wide.length();
-    }
-
-    if (len > MAX_TEXT_LEN) {
-        wide.resize(MAX_TEXT_LEN - 1);
-        wide += L'…';
-    }
-
-    return wide;
-}
-
-Pixmap Text::render(const std::string& text)
-{
-    if (text.empty()) {
-        return {};
-    }
-
-    const std::wstring wide = to_wide(text);
-
-    // calculate total width and height in pixels
     size_t width = 0;
-    size_t height = 0;
-    for (const wchar_t ch : wide) {
-        const Pixmap& glyph = font.get_glyph(ch);
-        width += glyph.width();
-        if (height == 0) {
-            height = glyph.height();
+    for (const wchar_t ch : text) {
+        width += font.get_glyph(ch).width();
+    }
+    if (width) {
+        width += margin() * 2;
+    }
+    return width;
+}
+
+size_t Text::TextLine::height() const
+{
+    for (const wchar_t ch : text) {
+        const size_t height = font.get_glyph(ch).height();
+        if (height) {
+            return height;
         }
     }
+    return 0;
+}
 
-    const size_t hpadding = height / 5;
+size_t Text::TextLine::margin() const
+{
+    return height() / MARGIN_FACTOR;
+}
 
-    Pixmap pm;
-    pm.create(Pixmap::GS, width + hpadding * 2, height);
+void Text::TextLine::draw(Pixmap& target, const Point& pos,
+                          const argb_t color) const
+{
+    const ssize_t max_x = target.width();
 
-    // draw glyphs
-    size_t x = hpadding;
-    for (const wchar_t ch : wide) {
+    Point pt = pos;
+    pt.x += margin();
+
+    for (const wchar_t ch : text) {
         const Pixmap& glyph = font.get_glyph(ch);
         if (glyph) {
-            for (size_t y = 0; y < height; ++y) {
-                std::memcpy(pm.ptr(x, y), glyph.ptr(0, y), glyph.width());
+            target.mask(glyph, pt, color);
+            pt.x += glyph.width();
+            if (pt.x > max_x) {
+                break;
             }
-            x += glyph.width();
         }
     }
-
-    return pm;
 }
 
-void Text::Line::clear()
+void Text::KeyValBlock::TemplateLine::update(const Fields& fields)
 {
-    display.clear();
-    pm.free();
-}
-
-void Text::Line::update(Text& text,
-                        const std::map<std::string, std::string>& fields)
-{
-    std::string output = scheme;
+    text = templ;
 
     size_t br_open = 0;
-    while ((br_open = output.find('{', br_open)) != std::string::npos) {
+    while ((br_open = text.find(L'{', br_open)) != std::wstring::npos) {
         // handle escaping case
-        if (br_open + 1 < output.length() && output[br_open + 1] == '{') {
-            output.erase(br_open, 1);
+        if (br_open + 1 < text.length() && text[br_open + 1] == L'{') {
+            text.erase(br_open, 1);
             br_open += 1;
             continue;
         }
 
         // get position of closing bracket
-        const size_t br_close = output.find('}', br_open + 1);
+        const size_t br_close = text.find(L'}', br_open + 1);
         if (br_close == std::string::npos) {
             break;
         }
 
         // get field name
         const size_t len = br_close - br_open;
-        const std::string name = output.substr(br_open + 1, len - 1);
+        const std::wstring name = text.substr(br_open + 1, len - 1);
 
         // replace field value inside output string
         const auto it = fields.find(name);
         if (it != fields.end()) {
-            output.replace(br_open, len + 1, it->second);
+            text.replace(br_open, len + 1, it->second);
             br_open += it->second.length();
         } else {
-            output.erase(br_open, len + 1);
+            text.erase(br_open, len + 1);
+        }
+    }
+}
+
+void Text::KeyValBlock::set_scheme(const Scheme& scheme)
+{
+    lines.clear();
+    lines.reserve(scheme.size());
+
+    for (const auto& line : scheme) {
+        if (line.empty()) {
+            continue;
+        }
+        BlockLine kv;
+        const size_t delim = line.find('\t');
+        if (delim == std::string::npos) {
+            kv.value.templ = to_wide(line);
+        } else {
+            kv.key.templ = to_wide(line.substr(0, delim));
+            kv.value.templ = to_wide(line.substr(delim + 1));
+        }
+        lines.emplace_back(kv);
+    }
+}
+
+void Text::KeyValBlock::update(const Fields& fields)
+{
+    for (auto& [key, value] : lines) {
+        key.update(fields);
+        value.update(fields);
+    }
+}
+
+void Text::KeyValBlock::recalc(const ssize_t spacing)
+{
+    key_width = 0;
+    value_width = 0;
+    total_width = 0;
+    total_height = 0;
+    line_height = 0;
+
+    size_t total_lines = 0;
+    size_t glyph_height = 0;
+
+    for (const auto& line : lines) {
+        if (!line.value.text.empty()) {
+            ++total_lines;
+            key_width = std::max(key_width, line.key.width());
+            value_width = std::max(value_width, line.value.width());
+            if (glyph_height == 0) {
+                glyph_height = line.value.height();
+            }
         }
     }
 
-    // update pixmap
-    if (output != display) {
-        display = output;
-        if (display.empty()) {
-            pm.free();
-        } else {
-            pm = text.render(display);
+    if (total_lines) {
+        const ssize_t line_offset =
+            std::clamp(spacing, -static_cast<ssize_t>(glyph_height),
+                       static_cast<ssize_t>(glyph_height));
+        line_height = glyph_height + line_offset;
+        total_width = value_width + key_width;
+        total_height = glyph_height * total_lines;
+        total_height += line_offset * (total_lines - 1);
+    }
+}
+
+void Text::StatusBlock::clear()
+{
+    lines.clear();
+    width = 0;
+    height = 0;
+    line_height = 0;
+}
+
+void Text::StatusBlock::set(const std::string& msg)
+{
+    assert(!msg.empty());
+
+    clear();
+
+    size_t last = 0;
+    size_t next = 0;
+    while ((next = msg.find('\n', last)) != std::string::npos) {
+        lines.emplace_back(to_wide(msg.substr(last, next - last)));
+        last = next + 1;
+    }
+    lines.emplace_back(to_wide(msg.substr(last)));
+}
+
+void Text::StatusBlock::recalc(const ssize_t spacing)
+{
+    width = 0;
+    height = 0;
+    line_height = 0;
+
+    if (lines.empty()) {
+        return;
+    }
+
+    size_t total_lines = 0;
+    size_t glyph_height = 0;
+    for (const auto& line : lines) {
+        ++total_lines;
+        width = std::max(width, line.width());
+        if (glyph_height == 0) {
+            glyph_height = line.height();
         }
     }
+
+    const ssize_t line_offset =
+        std::clamp(spacing, -static_cast<ssize_t>(glyph_height),
+                   static_cast<ssize_t>(glyph_height));
+    line_height = glyph_height + line_offset;
+
+    height = glyph_height * total_lines;
+    height += line_offset * (total_lines - 1);
 }

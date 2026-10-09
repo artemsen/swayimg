@@ -726,17 +726,17 @@ void Viewer::update_text(const TextUpdate what) const
     if (what == TextUpdate::All || what == TextUpdate::Frame) {
         const Pixmap& pm = image->frames[frame_index].pm;
         text.set_field(Text::FIELD_FRAME_INDEX,
-                       std::to_string(frame_index + 1));
-        text.set_field(Text::FIELD_FRAME_WIDTH, std::to_string(pm.width()));
-        text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_string(pm.height()));
+                       std::to_wstring(frame_index + 1));
+        text.set_field(Text::FIELD_FRAME_WIDTH, std::to_wstring(pm.width()));
+        text.set_field(Text::FIELD_FRAME_HEIGHT, std::to_wstring(pm.height()));
     }
 
     if (what == TextUpdate::All || what == TextUpdate::Scale) {
-        std::string tscale;
+        std::wstring tscale;
         if (scale >= 0.1) {
-            tscale = std::format("{}%", static_cast<size_t>(scale * 100));
+            tscale = std::format(L"{}%", static_cast<size_t>(scale * 100));
         } else {
-            tscale = std::format("{:.02}%", scale * 100);
+            tscale = std::format(L"{:.02}%", scale * 100);
         }
         text.set_field(Text::FIELD_SCALE, tscale);
     }
