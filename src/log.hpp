@@ -4,9 +4,9 @@
 
 #pragma once
 
+#include <cstdio>
 #include <cstring>
 #include <format>
-#include <iostream>
 #include <string>
 
 class Log {
@@ -24,9 +24,9 @@ public:
             try {
                 const std::string msg = sanitize(
                     std::vformat(fmt.get(), std::make_format_args(args...)));
-                std::cout << msg << '\n';
+                printf("%s\n", msg.c_str());
             } catch (const std::format_error& ex) {
-                std::cerr << ex.what() << '\n';
+                fprintf(stderr, "%s\n", ex.what());
             }
         }
     }
@@ -43,9 +43,9 @@ public:
         try {
             const std::string msg = sanitize(
                 std::vformat(fmt.get(), std::make_format_args(args...)));
-            std::cout << msg << '\n';
+            printf("%s\n", msg.c_str());
         } catch (const std::format_error& ex) {
-            std::cerr << ex.what() << '\n';
+            fprintf(stderr, "%s\n", ex.what());
         }
     }
 
@@ -58,12 +58,11 @@ public:
     static void warning(const std::format_string<Args...> fmt, Args&&... args)
     {
         try {
-            const std::string msg = "WARNING: " +
-                sanitize(std::vformat(fmt.get(),
-                                      std::make_format_args(args...)));
-            std::cerr << msg << '\n';
+            const std::string msg = sanitize(
+                std::vformat(fmt.get(), std::make_format_args(args...)));
+            fprintf(stderr, "WARNING: %s\n", msg.c_str());
         } catch (const std::format_error& ex) {
-            std::cerr << ex.what() << '\n';
+            fprintf(stderr, "%s\n", ex.what());
         }
     }
 
@@ -77,12 +76,11 @@ public:
                       Args&&... args) noexcept
     {
         try {
-            const std::string msg = "ERROR: " +
-                sanitize(std::vformat(fmt.get(),
-                                      std::make_format_args(args...)));
-            std::cerr << msg << '\n';
+            const std::string msg = sanitize(
+                std::vformat(fmt.get(), std::make_format_args(args...)));
+            fprintf(stderr, "ERROR: %s\n", msg.c_str());
         } catch (const std::format_error& ex) {
-            std::cerr << ex.what() << '\n';
+            fprintf(stderr, "%s\n", ex.what());
         }
     }
 
@@ -97,16 +95,15 @@ public:
                       Args&&... args) noexcept
     {
         try {
-            std::string msg = "ERROR: " +
-                sanitize(std::vformat(fmt.get(),
-                                      std::make_format_args(args...)));
+            std::string msg = sanitize(
+                std::vformat(fmt.get(), std::make_format_args(args...)));
             if (code) {
                 msg += std::format(", error code [{}] {}", code,
                                    std::strerror(code));
             }
-            std::cerr << msg << '\n';
+            fprintf(stderr, "ERROR: %s\n", msg.c_str());
         } catch (const std::format_error& ex) {
-            std::cerr << ex.what() << '\n';
+            fprintf(stderr, "%s\n", ex.what());
         }
     }
 
