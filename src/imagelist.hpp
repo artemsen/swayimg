@@ -9,6 +9,7 @@
 #include <ctime>
 #include <filesystem>
 #include <shared_mutex>
+#include <unordered_map>
 #include <vector>
 
 /** Thread-safe list of images. */
