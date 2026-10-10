@@ -102,16 +102,14 @@ void Pixmap::flip_horizontal()
 {
     assert(format() == Format::RGB || format() == Format::ARGB);
 
-    const size_t x_end = pm_width / 2;
-    uint8_t swap[sizeof(argb_t)];
+    argb_t* pixdata = reinterpret_cast<argb_t*>(ptr(0, 0));
+    const size_t stride = pm_stride / sizeof(argb_t);
 
     for (size_t y = 0; y < pm_height; ++y) {
+        argb_t* row = pixdata + y * stride;
+        const size_t x_end = pm_width / 2;
         for (size_t x = 0; x < x_end; ++x) {
-            void* left = ptr(x, y);
-            void* right = ptr(pm_width - x - 1, y);
-            std::memcpy(&swap, left, pm_bpp);
-            std::memcpy(left, right, pm_bpp);
-            std::memcpy(right, &swap, pm_bpp);
+            std::swap(row[x], row[pm_width - x - 1]);
         }
     }
 }
@@ -193,11 +191,31 @@ void Pixmap::fill_blend(const Rectangle& rect, const argb_t& color)
         return; // out of pixmap
     }
 
-    const size_t x_end = visible.x + visible.width;
-    const size_t y_end = visible.y + visible.height;
-    for (size_t y = visible.y; y < y_end; ++y) {
-        for (size_t x = visible.x; x < x_end; ++x) {
-            at(x, y).blend(color);
+    const uint32_t alpha = color.a;
+    if (alpha == argb_t::min) {
+        return; // fully transparent, nothing changes
+    }
+
+    const size_t width = visible.width;
+    const size_t stride = pm_stride / sizeof(argb_t);
+    argb_t* base = reinterpret_cast<argb_t*>(ptr(visible.x, visible.y));
+
+    // fully opaque: equivalent to a plain fill
+    if (alpha == argb_t::max) {
+        for (size_t y = 0; y < visible.height; ++y) {
+            argb_t* row = base + y * stride;
+            for (size_t x = 0; x < width; ++x) {
+                row[x] = color;
+            }
+        }
+        return;
+    }
+
+    // general case: constant blend factors, hoisted once
+    for (size_t y = 0; y < visible.height; ++y) {
+        argb_t* row = base + y * stride;
+        for (size_t x = 0; x < width; ++x) {
+            row[x].blend(color);
         }
     }
 }
@@ -279,16 +297,18 @@ void Pixmap::mask(const Pixmap& pm, const Point& pos, const argb_t& color)
 
     argb_t over { argb_t::min, color.r, color.g, color.b };
 
+    const uint8_t* srow0 = reinterpret_cast<const uint8_t*>(pm.ptr(0, 0));
+    const size_t sstride = pm.pm_stride;
+    argb_t* drow0 = reinterpret_cast<argb_t*>(ptr(visible.x, visible.y));
+    const size_t dstride = pm_stride / sizeof(argb_t);
+    const size_t width = visible.width;
+
     for (size_t y = 0; y < visible.height; ++y) {
-        const ssize_t src_y = diff_y + y;
-        const ssize_t dst_y = visible.y + y;
-        for (size_t x = 0; x < visible.width; ++x) {
-            const ssize_t src_x = diff_x + x;
-            const ssize_t dst_x = visible.x + x;
-            const uint8_t a =
-                *reinterpret_cast<const uint8_t*>(pm.ptr(src_x, src_y));
-            over.a = std::min(a, color.a);
-            at(dst_x, dst_y).blend(over);
+        const uint8_t* srow = srow0 + (diff_y + y) * sstride + diff_x;
+        argb_t* drow = drow0 + y * dstride;
+        for (size_t x = 0; x < width; ++x) {
+            over.a = std::min(srow[x], color.a);
+            drow[x].blend(over);
         }
     }
 }
@@ -330,10 +350,18 @@ void Pixmap::blend(const Pixmap& pm, const Point& pos)
     const size_t diff_x = visible.x - image.x;
     const size_t diff_y = visible.y - image.y;
 
+    const size_t width = visible.width;
+
+    const argb_t* srow0 = reinterpret_cast<const argb_t*>(pm.ptr(0, 0));
+    const size_t sstride = pm.pm_stride / sizeof(argb_t);
+    argb_t* drow0 = reinterpret_cast<argb_t*>(ptr(visible.x, visible.y));
+    const size_t dstride = pm_stride / sizeof(argb_t);
+
     for (size_t y = 0; y < visible.height; ++y) {
-        for (size_t x = 0; x < visible.width; ++x) {
-            argb_t& pixel = at(visible.x + x, visible.y + y);
-            pixel.blend(pm.at(diff_x + x, diff_y + y));
+        const argb_t* srow = srow0 + (diff_y + y) * sstride + diff_x;
+        argb_t* drow = drow0 + y * dstride;
+        for (size_t x = 0; x < width; ++x) {
+            drow[x].blend(srow[x]);
         }
     }
 }
@@ -342,9 +370,14 @@ void Pixmap::foreach(const std::function<void(argb_t&)>& fn)
 {
     assert(format() == Format::RGB || format() == Format::ARGB);
 
+    argb_t* pixdata = reinterpret_cast<argb_t*>(ptr(0, 0));
+    const size_t stride = pm_stride / sizeof(argb_t);
+    const size_t width = pm_width;
+
     for (size_t y = 0; y < pm_height; ++y) {
-        for (size_t x = 0; x < pm_width; ++x) {
-            fn(at(x, y));
+        argb_t* row = pixdata + y * stride;
+        for (size_t x = 0; x < width; ++x) {
+            fn(row[x]);
         }
     }
 }
