@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+#include <vector>
 
 /** Minimal number of pixel per thread. */
 constexpr size_t MIN_PIXELS_PER_THREAD = 300UL * 300UL;
@@ -29,18 +30,33 @@ namespace NN { // nearest-neighbor
                 const double src_scale, Pixmap* dst_pm,
                 const Rectangle dst_rect)
     {
-        for (size_t y = 0; y < dst_rect.height; ++y) {
-            const size_t src_y = static_cast<double>(src_pt.y + y) / src_scale;
-            const size_t dst_y = dst_rect.y + y;
-            for (size_t x = 0; x < dst_rect.width; ++x) {
-                const size_t src_x =
-                    static_cast<double>(src_pt.x + x) / src_scale;
-                const argb_t src = src_pm->at(src_x, src_y);
-                argb_t& dst = dst_pm->at(dst_rect.x + x, dst_y);
-                if (src_pm->format() == Pixmap::ARGB) {
-                    dst.blend(src);
-                } else {
-                    dst = src;
+        // Replace per-pixel division with a single reciprocal multiply
+        const double inv_scale = 1.0 / src_scale;
+        const size_t src_pos_x = static_cast<size_t>(src_pt.x);
+        const size_t src_pos_y = static_cast<size_t>(src_pt.y);
+
+        if (src_pm->format() == Pixmap::ARGB) {
+            for (size_t y = 0; y < dst_rect.height; ++y) {
+                const size_t src_y =
+                    static_cast<size_t>((src_pos_y + y) * inv_scale);
+                const size_t dst_y = dst_rect.y + y;
+                for (size_t x = 0; x < dst_rect.width; ++x) {
+                    const size_t src_x =
+                        static_cast<size_t>((src_pos_x + x) * inv_scale);
+                    dst_pm->at(dst_rect.x + x, dst_y)
+                        .blend(src_pm->at(src_x, src_y));
+                }
+            }
+        } else {
+            for (size_t y = 0; y < dst_rect.height; ++y) {
+                const size_t src_y =
+                    static_cast<size_t>((src_pos_y + y) * inv_scale);
+                const size_t dst_y = dst_rect.y + y;
+                for (size_t x = 0; x < dst_rect.width; ++x) {
+                    const size_t src_x =
+                        static_cast<size_t>((src_pos_x + x) * inv_scale);
+                    dst_pm->at(dst_rect.x + x, dst_y) =
+                        src_pm->at(src_x, src_y);
                 }
             }
         }
@@ -69,15 +85,21 @@ namespace NN { // nearest-neighbor
         const size_t threads = std::clamp(total_pixels / MIN_PIXELS_PER_THREAD,
                                           static_cast<size_t>(1), tpool.size());
 
-        std::vector<size_t> tids;
-        tids.reserve(threads);
-
         const Point src_start {
             .x = visible.x - image.x,
             .y = visible.y - image.y,
         };
+
+        if (threads == 1) {
+            // single-thread fast path: avoid the thread pool round-trip
+            mix_pm(&src, src_start, scale, &dst, visible);
+            return;
+        }
+
         const size_t step = visible.height / threads;
 
+        std::vector<size_t> tids;
+        tids.reserve(threads);
         for (size_t i = 0; i < threads; ++i) {
             const size_t src_offset = step * i;
 
@@ -254,40 +276,39 @@ namespace AA { // anti-aliasing
     void apply_hk(const Pixmap* src, Pixmap* dst, const Kernel* kernel,
                   const size_t y_low, const size_t y_high, const size_t yoff)
     {
+        const size_t width = dst->width();
+        const size_t rows = y_high - y_low;
+        const argb_t* srow0 =
+            reinterpret_cast<const argb_t*>(src->ptr(0, y_low + yoff));
+        argb_t* drow0 = reinterpret_cast<argb_t*>(dst->ptr(0, y_low));
+        const size_t sstride = src->stride() / sizeof(argb_t);
+        const size_t dstride = dst->stride() / sizeof(argb_t);
+
         if (src->format() == Pixmap::ARGB) {
-            // Although this duplicates some code (the loop over y and x), doing
-            // the check for alpha outside gave better performance (likely due
-            // to fewer instructions in the loop body or fewer branch
-            // mispredictions)
-            for (size_t y = y_low; y < y_high; ++y) {
-                for (size_t x = 0; x < dst->width(); ++x) {
+            for (size_t y = 0; y < rows; ++y) {
+                const argb_t* srow = srow0 + static_cast<ssize_t>(y) * sstride;
+                argb_t* drow = drow0 + static_cast<ssize_t>(y) * dstride;
+                for (size_t x = 0; x < width; ++x) {
                     const Output& output = kernel->outputs[x];
+                    const argb_t* cp = srow + output.first;
+                    const int16_t* wp = &kernel->weights[output.index];
                     int64_t a = 0;
                     int64_t r = 0;
                     int64_t g = 0;
                     int64_t b = 0;
-                    for (size_t i = 0; i < output.n; ++i) {
-                        const argb_t& c = src->at(output.first + i, y + yoff);
-                        const int64_t wa =
-                            static_cast<int64_t>(
-                                kernel->weights[output.index + i]) *
-                            c.a;
+                    for (size_t i = 0; i < output.n; ++i, ++cp, ++wp) {
+                        const int64_t wa = static_cast<int64_t>(*wp) * cp->a;
                         a += wa;
-                        r += c.r * wa;
-                        g += c.g * wa;
-                        b += c.b * wa;
+                        r += cp->r * wa;
+                        g += cp->g * wa;
+                        b += cp->b * wa;
                     }
-                    // XXX if we want more accuracy (without sacrificing speed),
-                    // we could save more than 8 bits between the passes
                     const uint8_t ua =
                         std::clamp(a >> FIXED_BITS, static_cast<int64_t>(0),
                                    static_cast<int64_t>(255));
                     if (a == 0) {
                         a = (1 << FIXED_BITS);
                     }
-                    // TODO irrespective of the above, saving the intermediate
-                    // with premultiplied alpha would almost certainly improve
-                    // performance
                     const uint8_t ur =
                         std::clamp(r / a, static_cast<int64_t>(0),
                                    static_cast<int64_t>(255));
@@ -297,22 +318,25 @@ namespace AA { // anti-aliasing
                     const uint8_t ub =
                         std::clamp(b / a, static_cast<int64_t>(0),
                                    static_cast<int64_t>(255));
-                    dst->at(x, y).blend(argb_t(ua, ur, ug, ub));
+                    drow[x].blend(argb_t(ua, ur, ug, ub));
                 }
             }
         } else {
-            for (size_t y = y_low; y < y_high; ++y) {
-                for (size_t x = 0; x < dst->width(); ++x) {
+            for (size_t y = 0; y < rows; ++y) {
+                const argb_t* srow = srow0 + static_cast<ssize_t>(y) * sstride;
+                argb_t* drow = drow0 + static_cast<ssize_t>(y) * dstride;
+                for (size_t x = 0; x < width; ++x) {
                     const Output& output = kernel->outputs[x];
+                    const argb_t* cp = srow + output.first;
+                    const int16_t* wp = &kernel->weights[output.index];
                     int64_t r = 0;
                     int64_t g = 0;
                     int64_t b = 0;
-                    for (size_t i = 0; i < output.n; ++i) {
-                        const int64_t w = kernel->weights[output.index + i];
-                        const argb_t& c = src->at(output.first + i, y + yoff);
-                        r += c.r * w;
-                        g += c.g * w;
-                        b += c.b * w;
+                    for (size_t i = 0; i < output.n; ++i, ++cp, ++wp) {
+                        const int64_t w = static_cast<int64_t>(*wp);
+                        r += cp->r * w;
+                        g += cp->g * w;
+                        b += cp->b * w;
                     }
                     const uint8_t ur =
                         std::clamp(r >> FIXED_BITS, static_cast<int64_t>(0),
@@ -323,83 +347,144 @@ namespace AA { // anti-aliasing
                     const uint8_t ub =
                         std::clamp(b >> FIXED_BITS, static_cast<int64_t>(0),
                                    static_cast<int64_t>(255));
-                    dst->at(x, y) = argb_t(0xff, ur, ug, ub);
+                    drow[x] = argb_t(0xff, ur, ug, ub);
                 }
             }
         }
     }
 
-    // Apply a vertical kernel; the input pixmap is assumed to be only as tall
-    // as needed - xoff indicates where it should go in the destination
+    /** Zero the scratch accumulators for one output row. */
+    inline void reset_accum(int64_t* sum, const size_t count)
+    {
+        for (size_t x = 0; x < count; ++x) {
+            sum[x] = 0;
+        }
+    }
+
+    /** Accumulate one contributing input row into the scratch buffers. */
+    inline void accum_row(const argb_t* cp, const int64_t w, const size_t width,
+                          int64_t* sum_a, int64_t* sum_r, int64_t* sum_g,
+                          int64_t* sum_b)
+    {
+        for (size_t x = 0; x < width; ++x, ++cp) {
+            const int64_t wa = w * cp->a;
+            sum_a[x] += wa;
+            sum_r[x] += cp->r * wa;
+            sum_g[x] += cp->g * wa;
+            sum_b[x] += cp->b * wa;
+        }
+    }
+
+    /** Accumulate one contributing input row (premultiplied alpha absent). */
+    inline void accum_row_rgb(const argb_t* cp, const int64_t w,
+                              const size_t width, int64_t* sum_r,
+                              int64_t* sum_g, int64_t* sum_b)
+    {
+        for (size_t x = 0; x < width; ++x, ++cp) {
+            sum_r[x] += cp->r * w;
+            sum_g[x] += cp->g * w;
+            sum_b[x] += cp->b * w;
+        }
+    }
+
+    /** Un-premultiply and blend the accumulated row into the destination. */
+    inline void finalize_accum(argb_t* drow, const int64_t* sum_a,
+                               const int64_t* sum_r, const int64_t* sum_g,
+                               const int64_t* sum_b, const size_t width)
+    {
+        for (size_t x = 0; x < width; ++x) {
+            int64_t a = sum_a[x];
+            const uint8_t ua =
+                std::clamp(a >> FIXED_BITS, static_cast<int64_t>(0),
+                           static_cast<int64_t>(255));
+            if (a == 0) {
+                a = (1 << FIXED_BITS);
+            }
+            const uint8_t ur = std::clamp(sum_r[x] / a, static_cast<int64_t>(0),
+                                          static_cast<int64_t>(255));
+            const uint8_t ug = std::clamp(sum_g[x] / a, static_cast<int64_t>(0),
+                                          static_cast<int64_t>(255));
+            const uint8_t ub = std::clamp(sum_b[x] / a, static_cast<int64_t>(0),
+                                          static_cast<int64_t>(255));
+            drow[x].blend(argb_t(ua, ur, ug, ub));
+        }
+    }
+
+    /** Convert the accumulated row to the destination (opaque output). */
+    inline void finalize_accum_rgb(argb_t* drow, const int64_t* sum_r,
+                                   const int64_t* sum_g, const int64_t* sum_b,
+                                   const size_t width)
+    {
+        for (size_t x = 0; x < width; ++x) {
+            const uint8_t ur =
+                std::clamp(sum_r[x] >> FIXED_BITS, static_cast<int64_t>(0),
+                           static_cast<int64_t>(255));
+            const uint8_t ug =
+                std::clamp(sum_g[x] >> FIXED_BITS, static_cast<int64_t>(0),
+                           static_cast<int64_t>(255));
+            const uint8_t ub =
+                std::clamp(sum_b[x] >> FIXED_BITS, static_cast<int64_t>(0),
+                           static_cast<int64_t>(255));
+            drow[x] = argb_t(0xff, ur, ug, ub);
+        }
+    }
+
+    /** Apply a vertical kernel; the input pixmap is assumed to be only as tall
+        as needed - xoff indicates where it should go in the destination. */
     void apply_vk(const Pixmap* src, Pixmap* dst, const struct Kernel* kernel,
                   const size_t y_low, const size_t y_high, const size_t xoff)
     {
-        if (src->format() == Pixmap::ARGB) {
-            for (size_t y = y_low; y < y_high; ++y) {
-                for (size_t x = 0; x < src->width(); ++x) {
-                    const Output& output = kernel->outputs[y];
-                    int64_t a = 0;
-                    int64_t r = 0;
-                    int64_t g = 0;
-                    int64_t b = 0;
-                    for (size_t i = 0; i < output.n; ++i) {
-                        const argb_t& c =
-                            src->at(x, output.first + i - kernel->start_in);
-                        const int64_t wa =
-                            static_cast<int64_t>(
-                                kernel->weights[output.index + i]) *
-                            c.a;
-                        a += wa;
-                        r += c.r * wa;
-                        g += c.g * wa;
-                        b += c.b * wa;
-                    }
-                    const uint8_t ua =
-                        std::clamp(a >> FIXED_BITS, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    if (a == 0) {
-                        a = (1 << FIXED_BITS);
-                    }
-                    const uint8_t ur =
-                        std::clamp(r / a, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    const uint8_t ug =
-                        std::clamp(g / a, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    const uint8_t ub =
-                        std::clamp(b / a, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    dst->at(x + xoff, y + kernel->start_out)
-                        .blend(argb_t(ua, ur, ug, ub));
+        const size_t width = src->width();
+        const argb_t* srow0 = reinterpret_cast<const argb_t*>(src->ptr(0, 0));
+        argb_t* drow0 = reinterpret_cast<argb_t*>(dst->ptr(0, 0));
+        const ssize_t sstride =
+            static_cast<ssize_t>(src->stride() / sizeof(argb_t));
+        const ssize_t dstride =
+            static_cast<ssize_t>(dst->stride() / sizeof(argb_t));
+        const bool alpha = src->format() == Pixmap::ARGB;
+
+        // row-major scratch accumulators, one per output column
+        std::vector<int64_t> sum_a(width);
+        std::vector<int64_t> sum_r(width);
+        std::vector<int64_t> sum_g(width);
+        std::vector<int64_t> sum_b(width);
+
+        // to keep the inner loop over source columns contiguous (cache
+        // friendly), iterate over contributing input rows rather than jumping
+        // between strided rows for every output pixel
+        for (size_t y = y_low; y < y_high; ++y) {
+            const Output& output = kernel->outputs[y];
+            const ssize_t first_row = static_cast<ssize_t>(output.first) -
+                static_cast<ssize_t>(kernel->start_in);
+            const int16_t* wp = &kernel->weights[output.index];
+            const argb_t* srow = srow0 + first_row * sstride;
+            argb_t* drow = drow0 +
+                (static_cast<ssize_t>(y) +
+                 static_cast<ssize_t>(kernel->start_out)) *
+                    dstride +
+                static_cast<ssize_t>(xoff);
+            if (alpha) {
+                reset_accum(sum_a.data(), width);
+                reset_accum(sum_r.data(), width);
+                reset_accum(sum_g.data(), width);
+                reset_accum(sum_b.data(), width);
+                for (size_t i = 0; i < output.n; ++i, ++wp, srow += sstride) {
+                    accum_row(srow, static_cast<int64_t>(*wp), width,
+                              sum_a.data(), sum_r.data(), sum_g.data(),
+                              sum_b.data());
                 }
-            }
-        } else {
-            for (size_t y = y_low; y < y_high; ++y) {
-                for (size_t x = 0; x < src->width(); ++x) {
-                    const Output& output = kernel->outputs[y];
-                    int64_t r = 0;
-                    int64_t g = 0;
-                    int64_t b = 0;
-                    for (size_t i = 0; i < output.n; ++i) {
-                        const argb_t& c =
-                            src->at(x, output.first + i - kernel->start_in);
-                        const int64_t w = kernel->weights[output.index + i];
-                        r += c.r * w;
-                        g += c.g * w;
-                        b += c.b * w;
-                    }
-                    const uint8_t ur =
-                        std::clamp(r >> FIXED_BITS, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    const uint8_t ug =
-                        std::clamp(g >> FIXED_BITS, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    const uint8_t ub =
-                        std::clamp(b >> FIXED_BITS, static_cast<int64_t>(0),
-                                   static_cast<int64_t>(255));
-                    dst->at(x + xoff, y + kernel->start_out) =
-                        argb_t(0xff, ur, ug, ub);
+                finalize_accum(drow, sum_a.data(), sum_r.data(), sum_g.data(),
+                               sum_b.data(), width);
+            } else {
+                reset_accum(sum_r.data(), width);
+                reset_accum(sum_g.data(), width);
+                reset_accum(sum_b.data(), width);
+                for (size_t i = 0; i < output.n; ++i, ++wp, srow += sstride) {
+                    accum_row_rgb(srow, static_cast<int64_t>(*wp), width,
+                                  sum_r.data(), sum_g.data(), sum_b.data());
                 }
+                finalize_accum_rgb(drow, sum_r.data(), sum_g.data(),
+                                   sum_b.data(), width);
             }
         }
     }
@@ -437,6 +522,16 @@ namespace AA { // anti-aliasing
         const size_t total_pixels = visible.width * visible.height;
         const size_t threads = std::clamp(total_pixels / MIN_PIXELS_PER_THREAD,
                                           static_cast<size_t>(1), tpool.size());
+
+        if (threads == 1) {
+            // single-thread fast path: avoid the thread pool round-trip
+            apply_hk(&src, &tmp, &kernel_hor, 0, kernel_ver.n_in,
+                     kernel_ver.start_in);
+            apply_vk(&tmp, &dst, &kernel_ver, 0, kernel_ver.n_out,
+                     kernel_hor.start_out);
+            return;
+        }
+
         // per thread ranges to render
         const size_t hlen = kernel_ver.n_in / threads;
         const size_t vlen = kernel_ver.n_out / threads;
@@ -474,7 +569,7 @@ namespace Blur {
     constexpr size_t BLUR_SIZE = 3;
     constexpr size_t BLUR_SIGMA = 16;
 
-    /** Color accumulator. */
+    /** Color accumulator (integer channels). */
     struct ColorAccum {
 
         /**
@@ -482,10 +577,10 @@ namespace Blur {
          * @param color RGB color to set
          * @param factor color factor
          */
-        ColorAccum(const argb_t& color, const double factor)
-            : r(factor * color.r)
-            , g(factor * color.g)
-            , b(factor * color.b)
+        ColorAccum(const argb_t& color, const size_t factor)
+            : r(static_cast<int64_t>(factor) * color.r)
+            , g(static_cast<int64_t>(factor) * color.g)
+            , b(static_cast<int64_t>(factor) * color.b)
         {
         }
 
@@ -517,24 +612,25 @@ namespace Blur {
 
         /**
          * Create ARGB color from accumulator.
-         * @param weight weight of the components
+         * @param divisor divisor of the components
          * @return ARGB color
          */
-        [[nodiscard]] argb_t argb(const double weight) const
+        [[nodiscard]] argb_t argb(const int64_t divisor) const
         {
+            const int64_t div = divisor != 0 ? divisor : 1;
             const argb_t::channel cr =
-                std::clamp(r * weight, static_cast<double>(argb_t::min),
-                           static_cast<double>(argb_t::max));
+                std::clamp(r / div, static_cast<int64_t>(argb_t::min),
+                           static_cast<int64_t>(argb_t::max));
             const argb_t::channel cg =
-                std::clamp(g * weight, static_cast<double>(argb_t::min),
-                           static_cast<double>(argb_t::max));
+                std::clamp(g / div, static_cast<int64_t>(argb_t::min),
+                           static_cast<int64_t>(argb_t::max));
             const argb_t::channel cb =
-                std::clamp(b * weight, static_cast<double>(argb_t::min),
-                           static_cast<double>(argb_t::max));
+                std::clamp(b / div, static_cast<int64_t>(argb_t::min),
+                           static_cast<int64_t>(argb_t::max));
             return { argb_t::max, cr, cg, cb };
         }
 
-        double r, g, b;
+        int64_t r, g, b;
     };
 
     /**
@@ -544,35 +640,36 @@ namespace Blur {
      */
     void apply_hor(Pixmap& pm, const size_t radius)
     {
+        const size_t width = pm.width();
         const size_t radius_plus = radius + 1;
-        const double weight = 1.0 / (radius + radius_plus);
+        const int64_t divisor = static_cast<int64_t>(radius + radius_plus);
 
         for (size_t y = 0; y < pm.height(); ++y) {
             const argb_t px_first = pm.at(0, y);
-            const argb_t px_last = pm.at(pm.width() - 1, y);
+            const argb_t px_last = pm.at(width - 1, y);
 
             ColorAccum cacc(px_first, radius_plus);
-            for (size_t x = 0; x < radius && x < pm.width(); ++x) {
+            for (size_t x = 0; x < radius && x < width; ++x) {
                 cacc += pm.at(x, y);
             }
 
-            for (size_t x = 0; x <= radius && x + radius < pm.width(); ++x) {
+            for (size_t x = 0; x <= radius && x + radius < width; ++x) {
                 cacc += pm.at(x + radius, y);
                 cacc -= px_first;
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
 
-            for (size_t x = radius_plus; x + radius < pm.width(); ++x) {
+            for (size_t x = radius_plus; x + radius < width; ++x) {
                 cacc += pm.at(x + radius, y);
                 cacc -= pm.at(x - radius_plus, y);
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
 
-            for (size_t x = pm.width() - radius;
-                 x < pm.width() && x >= radius_plus; ++x) {
+            for (size_t x = width - radius; x < width && x >= radius_plus;
+                 ++x) {
                 cacc += px_last;
                 cacc -= pm.at(x - radius_plus, y);
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
         }
     }
@@ -584,35 +681,36 @@ namespace Blur {
      */
     void apply_ver(Pixmap& pm, const size_t radius)
     {
+        const size_t height = pm.height();
         const size_t radius_plus = radius + 1;
-        const double weight = 1.0 / (radius + radius_plus);
+        const int64_t divisor = static_cast<int64_t>(radius + radius_plus);
 
         for (size_t x = 0; x < pm.width(); ++x) {
             const argb_t px_first = pm.at(x, 0);
-            const argb_t px_last = pm.at(x, pm.height() - 1);
+            const argb_t px_last = pm.at(x, height - 1);
 
             ColorAccum cacc(px_first, radius_plus);
-            for (size_t y = 0; y < radius && y < pm.height(); ++y) {
+            for (size_t y = 0; y < radius && y < height; ++y) {
                 cacc += pm.at(x, y);
             }
 
-            for (size_t y = 0; y <= radius && y + radius < pm.height(); ++y) {
+            for (size_t y = 0; y <= radius && y + radius < height; ++y) {
                 cacc += pm.at(x, y + radius);
                 cacc -= px_first;
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
 
-            for (size_t y = radius_plus; y + radius < pm.height(); ++y) {
+            for (size_t y = radius_plus; y + radius < height; ++y) {
                 cacc += pm.at(x, y + radius);
                 cacc -= pm.at(x, y - radius_plus);
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
 
-            for (size_t y = pm.height() - radius;
-                 y < pm.height() && y >= radius_plus; ++y) {
+            for (size_t y = height - radius; y < height && y >= radius_plus;
+                 ++y) {
                 cacc += px_last;
                 cacc -= pm.at(x, y - radius_plus);
-                pm.at(x, y) = cacc.argb(weight);
+                pm.at(x, y) = cacc.argb(divisor);
             }
         }
     }
@@ -695,6 +793,19 @@ namespace Mirror { // mirroring
         const size_t img_h = image.height();
         const size_t img_w = image.width();
         const size_t off_y = img_h - (exclude.y % img_h);
+
+        // precompute horizontal source indexes
+        const size_t off_x = img_w - (exclude.x % img_w);
+        const size_t ex_par_x = (exclude.x / img_w) % 2;
+        std::vector<size_t> src_x(fill.width);
+        for (size_t x = 0; x < fill.width; ++x) {
+            size_t img_x = (x + off_x) % img_w;
+            if (((off_x + x) / img_w) % 2 == ex_par_x) {
+                img_x = img_w - img_x - 1;
+            }
+            src_x[x] = img_x;
+        }
+
         for (size_t y = 0; y < fill.height; ++y) {
             const bool flip_y =
                 ((off_y + y) / img_h) % 2 == (exclude.y / img_h) % 2;
@@ -703,14 +814,7 @@ namespace Mirror { // mirroring
                 img_y = img_h - img_y - 1;
             }
             for (size_t x = 0; x < fill.width; ++x) {
-                const size_t off_x = img_w - (exclude.x % img_w);
-                const bool flip_x =
-                    ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                size_t img_x = (x + off_x) % img_w;
-                if (flip_x) {
-                    img_x = img_w - img_x - 1;
-                }
-                mirror.at(x, y) = image.at(img_x, img_y);
+                mirror.at(x, y) = image.at(src_x[x], img_y);
             }
         }
     }
@@ -728,6 +832,19 @@ namespace Mirror { // mirroring
         Pixmap mirror = pm.submap(fill);
         const size_t img_h = image.height();
         const size_t img_w = image.width();
+
+        // precompute horizontal source indexes
+        const size_t off_x = img_w - (exclude.x % img_w);
+        const size_t ex_par_x = (exclude.x / img_w) % 2;
+        std::vector<size_t> src_x(fill.width);
+        for (size_t x = 0; x < fill.width; ++x) {
+            size_t img_x = (x + off_x) % img_w;
+            if (((off_x + x) / img_w) % 2 == ex_par_x) {
+                img_x = img_w - img_x - 1;
+            }
+            src_x[x] = img_x;
+        }
+
         for (size_t y = 0; y < fill.height; ++y) {
             const bool flip_y = (y / img_h) % 2 == 0;
             size_t img_y = y % img_h;
@@ -735,14 +852,7 @@ namespace Mirror { // mirroring
                 img_y = img_h - img_y - 1;
             }
             for (size_t x = 0; x < fill.width; ++x) {
-                const size_t off_x = img_w - (exclude.x % img_w);
-                const bool flip_x =
-                    ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                size_t img_x = (x + off_x) % img_w;
-                if (flip_x) {
-                    img_x = img_w - img_x - 1;
-                }
-                mirror.at(x, y) = image.at(img_x, img_y);
+                mirror.at(x, y) = image.at(src_x[x], img_y);
             }
         }
     }
@@ -760,17 +870,23 @@ namespace Mirror { // mirroring
         Pixmap mirror = pm.submap(fill);
         const size_t img_h = image.height();
         const size_t img_w = image.width();
+
+        // precompute horizontal source indexes
+        const size_t off_x = img_w - (exclude.x % img_w);
+        const size_t ex_par_x = (exclude.x / img_w) % 2;
+        std::vector<size_t> src_x(fill.width);
+        for (size_t x = 0; x < fill.width; ++x) {
+            size_t img_x = (x + off_x) % img_w;
+            if (((off_x + x) / img_w) % 2 == ex_par_x) {
+                img_x = img_w - img_x - 1;
+            }
+            src_x[x] = img_x;
+        }
+
         for (size_t y = 0; y < fill.height; ++y) {
             const size_t img_y = y % img_h;
             for (size_t x = 0; x < fill.width; ++x) {
-                const size_t off_x = img_w - (exclude.x % img_w);
-                const bool flip_x =
-                    ((off_x + x) / img_w) % 2 == (exclude.x / img_w) % 2;
-                size_t img_x = (x + off_x) % img_w;
-                if (flip_x) {
-                    img_x = img_w - img_x - 1;
-                }
-                mirror.at(x, y) = image.at(img_x, img_y);
+                mirror.at(x, y) = image.at(src_x[x], img_y);
             }
         }
     }
@@ -786,15 +902,21 @@ namespace Mirror { // mirroring
         Pixmap mirror = pm.submap(fill);
         const size_t img_h = image.height();
         const size_t img_w = image.width();
+
+        // precompute horizontal source indexes
+        std::vector<size_t> src_x(fill.width);
+        for (size_t x = 0; x < fill.width; ++x) {
+            size_t img_x = x % img_w;
+            if ((x / img_w) % 2 == 0) {
+                img_x = img_w - img_x - 1;
+            }
+            src_x[x] = img_x;
+        }
+
         for (size_t y = 0; y < fill.height; ++y) {
             const size_t img_y = y % img_h;
             for (size_t x = 0; x < fill.width; ++x) {
-                const bool flip_x = (x / img_w) % 2 == 0;
-                size_t img_x = x % img_w;
-                if (flip_x) {
-                    img_x = img_w - img_x - 1;
-                }
-                mirror.at(x, y) = image.at(img_x, img_y);
+                mirror.at(x, y) = image.at(src_x[x], img_y);
             }
         }
     }
@@ -814,10 +936,14 @@ namespace Dim { // dimming area
     void apply(Pixmap& pm, const size_t start_y, const size_t height,
                const Point& pt, const size_t radius, const double dim)
     {
-        const ssize_t radius2 = radius * radius;
+        const ssize_t radius2 =
+            static_cast<ssize_t>(radius) * static_cast<ssize_t>(radius);
 
         const size_t max_x = pm.width();
         const size_t max_y = start_y + height;
+
+        // integer dimming factor in [0, 256] (0 = black, 256 = unchanged)
+        const uint32_t scale = static_cast<uint32_t>(dim * 256.0);
 
         for (size_t y = start_y; y < max_y; ++y) {
             const ssize_t pty = static_cast<ssize_t>(y) - pt.y;
@@ -825,12 +951,11 @@ namespace Dim { // dimming area
 
             for (size_t x = 0; x < max_x; ++x) {
                 const ssize_t ptx = static_cast<ssize_t>(x) - pt.x;
-                const ssize_t ptx2 = ptx * ptx;
-                if (ptx2 + pty2 > radius2) {
+                if (ptx * ptx + pty2 > radius2) {
                     argb_t& px = pm.at(x, y);
-                    px.r *= dim;
-                    px.g *= dim;
-                    px.b *= dim;
+                    px.r = (px.r * scale) >> 8;
+                    px.g = (px.g * scale) >> 8;
+                    px.b = (px.b * scale) >> 8;
                 }
             }
         }
@@ -995,6 +1120,11 @@ void Render::dim_outside(Pixmap& pm, const Point& pt, const size_t radius,
     const size_t total_pixels = pm.width() * pm.height();
     const size_t threads = std::clamp(total_pixels / MIN_PIXELS_PER_THREAD,
                                       static_cast<size_t>(1), tpool.size());
+    if (threads == 1) {
+        // single-thread fast path: avoid the thread pool round-trip
+        Dim::apply(pm, 0, pm.height(), pt, radius, dim);
+        return;
+    }
 
     const size_t step = pm.height() / threads;
 
