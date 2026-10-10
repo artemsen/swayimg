@@ -10,16 +10,17 @@
 #include <deque>
 #include <functional>
 #include <mutex>
-#include <set>
 #include <thread>
 #include <vector>
 
 /** Thread pool. */
 class ThreadPool {
 public:
+    using TaskId = size_t;
+
     /** Task description. */
     struct Task {
-        size_t id;                      ///< Task id
+        TaskId id;                      ///< Task id
         std::function<void()> executor; ///< Task function
     };
 
@@ -43,7 +44,7 @@ public:
      * @param args function arguments
      * @return task id
      */
-    template <typename F, typename... Args> size_t add(F&& fn, Args&&... args)
+    template <typename F, typename... Args> TaskId add(F&& fn, Args&&... args)
     {
         assert(!quit);
 
@@ -73,13 +74,13 @@ public:
      * Wait for specified task to complete.
      * @param tid task id for waiting
      */
-    void wait(const size_t tid);
+    void wait(const TaskId tid);
 
     /**
      * Wait for specified tasks to complete.
      * @param tids tasks id for waiting
      */
-    void wait(const std::vector<size_t>& tids);
+    void wait(const std::vector<TaskId>& tids);
 
     /**
      * Cancel all queued tasks.
@@ -104,7 +105,7 @@ private:
 
 private:
     size_t threads;                   ///< Size of the poll (number of threads)
-    size_t last_id = 0;               ///< Last task id
+    TaskId last_id = 0;               ///< Last task id
     std::vector<std::thread> workers; ///< Array of threads
 
     std::deque<Task> tasks;          ///< Task queue
@@ -112,6 +113,6 @@ private:
     std::mutex mutex;                ///< Task queue mutex
     std::atomic<bool> quit;          ///< Stop execution flag
 
-    std::set<size_t> active;          ///< Set of currently executing tasks
+    std::vector<TaskId> active;       ///< Currently executing tasks
     std::condition_variable complete; ///< Task complete notification
 };

@@ -36,10 +36,10 @@ void ThreadPool::wait()
     });
 }
 
-void ThreadPool::wait(const size_t tid)
+void ThreadPool::wait(const TaskId tid)
 {
     auto completed = [this, tid] {
-        if (active.contains(tid)) {
+        if (std::ranges::find(active, tid) != active.end()) {
             return false;
         }
         return std::ranges::none_of(tasks, [tid](const auto& it) {
@@ -56,7 +56,7 @@ void ThreadPool::wait(const size_t tid)
     });
 }
 
-void ThreadPool::wait(const std::vector<size_t>& tids)
+void ThreadPool::wait(const std::vector<TaskId>& tids)
 {
     for (const auto& it : tids) {
         wait(it);
@@ -78,6 +78,7 @@ void ThreadPool::start()
     quit = false;
 
     workers.reserve(threads);
+    active.reserve(threads);
     for (size_t i = 0; i < threads; ++i) {
         workers.emplace_back(&ThreadPool::run, this);
     }
@@ -110,14 +111,19 @@ void ThreadPool::run()
         if (!tasks.empty()) {
             const Task task = std::move(tasks.front());
             tasks.pop_front();
-            active.insert(task.id);
+            active.push_back(task.id);
             lock.unlock();
 
             task.executor();
 
             lock.lock();
-            active.erase(task.id);
+            const auto it = std::ranges::find(active, task.id);
+            if (it != active.end()) {
+                *it = active.back();
+                active.pop_back();
+            }
             lock.unlock();
+
             complete.notify_all();
         }
     }
