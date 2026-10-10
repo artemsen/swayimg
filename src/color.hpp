@@ -70,12 +70,15 @@ struct argb_t {
             return fg; // fully opaque
         }
 
-        const double alpha = static_cast<double>(fg.a) / argb_t::max;
-        const double alpha_inv = 1.0 - alpha;
+        const uint32_t alpha = fg.a;
+        const uint32_t alpha_inv = argb_t::max - alpha;
         return { std::max(bg.a, fg.a),
-                 static_cast<channel>(alpha * fg.r + alpha_inv * bg.r),
-                 static_cast<channel>(alpha * fg.g + alpha_inv * bg.g),
-                 static_cast<channel>(alpha * fg.b + alpha_inv * bg.b) };
+                 static_cast<channel>((alpha * fg.r + alpha_inv * bg.r) /
+                                      argb_t::max),
+                 static_cast<channel>((alpha * fg.g + alpha_inv * bg.g) /
+                                      argb_t::max),
+                 static_cast<channel>((alpha * fg.b + alpha_inv * bg.b) /
+                                      argb_t::max) };
     }
 
     // Min and max channel color value
