@@ -9,7 +9,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <functional>
 #include <vector>
 
 class Pixmap {
@@ -215,9 +214,25 @@ public:
 
     /**
      * Apply filter to transform the entire pixmap.
-     * @param fn filter function
+     * @param fn filter function (called for every pixel)
      */
-    void foreach(const std::function<void(argb_t&)>& fn);
+    template <typename Fn> void foreach(Fn&& fn)
+    {
+        assert(pm_ext || !pm_data.empty());
+        assert(format() == Format::RGB || format() == Format::ARGB);
+
+        argb_t* pixdata =
+            reinterpret_cast<argb_t*>(pm_ext ? pm_ext : pm_data.data());
+        const size_t stride = pm_stride / sizeof(argb_t);
+        const size_t width = pm_width;
+
+        for (size_t y = 0; y < pm_height; ++y) {
+            argb_t* row = pixdata + y * stride;
+            for (size_t x = 0; x < width; ++x) {
+                fn(row[x]);
+            }
+        }
+    }
 
     /**
      * Convert ABGR to ARGB.

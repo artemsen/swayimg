@@ -366,22 +366,6 @@ void Pixmap::blend(const Pixmap& pm, const Point& pos)
     }
 }
 
-void Pixmap::foreach(const std::function<void(argb_t&)>& fn)
-{
-    assert(format() == Format::RGB || format() == Format::ARGB);
-
-    argb_t* pixdata = reinterpret_cast<argb_t*>(ptr(0, 0));
-    const size_t stride = pm_stride / sizeof(argb_t);
-    const size_t width = pm_width;
-
-    for (size_t y = 0; y < pm_height; ++y) {
-        argb_t* row = pixdata + y * stride;
-        for (size_t x = 0; x < width; ++x) {
-            fn(row[x]);
-        }
-    }
-}
-
 void Pixmap::abgr_to_argb()
 {
     foreach([](argb_t& color) {
