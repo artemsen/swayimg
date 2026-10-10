@@ -163,9 +163,9 @@ private:
         std::string result;
         result.reserve(msg.length());
 
-        for (const char c : msg) {
+        for (const unsigned char c : msg) {
             if (c != 0x7f /* DEL */ && (c >= ' ' || c == '\n' || c == '\t')) {
-                result += c;
+                result += static_cast<char>(c);
             }
         }
 
