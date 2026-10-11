@@ -71,6 +71,9 @@ public:
                 }
             }
 
+            if (height == 0) {
+                break; // no one glyph loaded
+            }
             y += height;
         }
 
