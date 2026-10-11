@@ -9,7 +9,6 @@
 
 #include <fontconfig/fontconfig.h>
 
-#include <algorithm>
 #include <memory>
 
 namespace {
@@ -110,6 +109,48 @@ private:
 };
 
 FreeTypeLib ft_lib;
+
+/**
+ * Rasterize the glyph from the loaded slot.
+ * @param glyph loaded glyph slot
+ * @return rasterized pixmap
+ */
+Pixmap rasterize_glyph(FT_GlyphSlot glyph)
+{
+    const FT_Bitmap& bitmap = glyph->bitmap;
+
+    // color glyphs are stored as BGRA (blue, green, red, alpha) bitmaps,
+    // which matches the native argb_t layout, everything else is a mask
+    const bool color = bitmap.pixel_mode == FT_PIXEL_MODE_BGRA;
+
+    // calculate pixmap size in pixels
+    const size_t width = glyph->advance.x / POINT_FACTOR;
+    const size_t base_h = glyph->face->size->metrics.height / POINT_FACTOR;
+    const size_t height = base_h + base_h / 3; // dirty hack
+
+    // calculate intersection glyph bitmap with destination pixmap
+    const Rectangle rc_glyph(glyph->bitmap_left,
+                             static_cast<ssize_t>(base_h) - glyph->bitmap_top,
+                             bitmap.width, bitmap.rows);
+    const Rectangle rc_pm = rc_glyph.intersect({ 0, 0, width, height });
+    if (!rc_pm) {
+        assert(false && "glyph is out of pixmap");
+        return {};
+    }
+
+    Pixmap pm;
+    pm.create(color ? Pixmap::ARGB : Pixmap::GS, width, height);
+
+    // copy bitmap to the target pixmap
+    const size_t copy_width = rc_pm.width * (color ? sizeof(argb_t) : 1);
+    for (size_t y = 0; y < rc_pm.height; ++y) {
+        const uint8_t* src = &bitmap.buffer[y * bitmap.pitch];
+        uint8_t* dst = static_cast<uint8_t*>(pm.ptr(rc_pm.x, rc_pm.y + y));
+        std::memcpy(dst, src, copy_width);
+    }
+
+    return pm;
+}
 
 } // anonymous namespace
 
@@ -227,7 +268,8 @@ const Pixmap& Font::rasterize(const wchar_t ch)
     // load char
     const FT_UInt index = FT_Get_Char_Index(ft_face, ch);
     if (index == 0 ||
-        FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER) != FT_Err_Ok) {
+        FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER | FT_LOAD_COLOR) !=
+            FT_Err_Ok) {
         // fallback glyph is used for absent or broken characters
         const auto it = glyphs.find(FALLBACK_CHR);
         if (it != glyphs.end()) {
@@ -241,39 +283,6 @@ const Pixmap& Font::rasterize(const wchar_t ch)
         return rasterize(FALLBACK_CHR);
     }
 
-    FT_GlyphSlot slot = ft_face->glyph;
-    const FT_Bitmap& bitmap = slot->bitmap;
-
-    // calculate pixmap size in pixels
-    const size_t width = slot->advance.x / POINT_FACTOR;
-    const size_t height_base = ft_face->size->metrics.height / POINT_FACTOR;
-    const size_t height = height_base + height_base / 3; // dirty hack
-
-    // create raster pixmap
-    auto [it, _] = glyphs.insert({ ch, Pixmap {} });
-    Pixmap& raster = it->second;
-    raster.create(Pixmap::GS, width, height);
-
-    // pixels left of the pen (e.g. italic overhangs) have no room in
-    // a pen-stamped image, clamp them to the pen position
-    const size_t x_start = slot->bitmap_left > 0 ? slot->bitmap_left : 0;
-    const ssize_t y_start =
-        static_cast<ssize_t>(height_base) - slot->bitmap_top;
-
-    // copy the visible part of the bitmap, ink outside the cell is cut
-    const ssize_t first = std::max<ssize_t>(y_start, 0);
-    const ssize_t last = std::min<ssize_t>(y_start + bitmap.rows, height);
-    if (first < last && x_start < width) {
-        const size_t copy_width =
-            std::min<size_t>(bitmap.width, width - x_start);
-        const uint8_t* src = &bitmap.buffer[(first - y_start) * bitmap.pitch];
-        uint8_t* dst = static_cast<uint8_t*>(raster.ptr(x_start, first));
-        for (ssize_t y = first; y < last; ++y) {
-            std::memcpy(dst, src, copy_width);
-            dst += raster.stride();
-            src += bitmap.pitch;
-        }
-    }
-
-    return raster;
+    auto [it, _] = glyphs.insert({ ch, rasterize_glyph(ft_face->glyph) });
+    return it->second;
 }

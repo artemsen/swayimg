@@ -436,7 +436,11 @@ void Text::TextLine::draw(Pixmap& target, const Point& pos,
     for (const wchar_t ch : text) {
         const Pixmap& glyph = font.get_glyph(ch);
         if (glyph) {
-            target.mask(glyph, pt, color);
+            if (glyph.format() == Pixmap::GS) {
+                target.mask(glyph, pt, color);
+            } else {
+                target.blend(glyph, pt);
+            }
             pt.x += glyph.width();
             if (pt.x > max_x) {
                 break;

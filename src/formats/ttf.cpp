@@ -59,7 +59,11 @@ public:
                     .x = static_cast<ssize_t>(x),
                     .y = static_cast<ssize_t>(y),
                 };
-                pm.mask(glyph, pos, color);
+                if (glyph.format() == Pixmap::GS) {
+                    pm.mask(glyph, pos, color);
+                } else {
+                    pm.blend(glyph, pos);
+                }
 
                 if (height == 0) {
                     height = glyph.height();
