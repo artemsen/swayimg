@@ -11,14 +11,15 @@
 #include FT_FREETYPE_H
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
-/** Font render. */
+/** Single font. */
 class Font {
 public:
     Font() noexcept;
-    ~Font();
 
     /**
      * Load font by name.
@@ -46,7 +47,7 @@ public:
      * Get font name.
      * @return font name
      */
-    [[nodiscard]] const char* name() const;
+    const char* name() const;
 
     /**
      * Set font size.
@@ -61,11 +62,17 @@ public:
     void set_scale(const double scale);
 
     /**
-     * Get glyph pixmap (grascale mask) for the character.
+     * Get glyph pixmap for the character.
      * @param ch character to render
-     * @return glyph pixmap
+     * @return glyph pixmap, nullptr if not found
      */
-    const Pixmap& get_glyph(const wchar_t ch);
+    const Pixmap* get_glyph(const wchar_t ch);
+
+    /**
+     * Check if font is loaded.
+     * @return true if font is loaded
+     */
+    operator bool() const { return !!ft_face; }
 
 private:
     /**
@@ -74,17 +81,49 @@ private:
      */
     void set_face(FT_Face face);
 
-    /**
-     * Rasterize the glyph for the specified character.
-     * @param ch character to rasterize
-     * @return glyph pixmap
-     */
-    const Pixmap& rasterize(const wchar_t ch);
-
 private:
     FT_Face ft_face { nullptr }; ///< Font face instance
     size_t size;                 ///< Font size in pixels
     double scale { 1.0 };        ///< Font scale
 
     std::unordered_map<wchar_t, Pixmap> glyphs; ///< Rendered glyph images
+};
+
+/** Set of fonts. */
+class FontSet {
+public:
+    FontSet() noexcept;
+
+    /**
+     * Replace default font.
+     * @param name font face name
+     * @return false if font wasn't loaded
+     */
+    bool replace(const std::string& name);
+
+    /**
+     * Set font size.
+     * @param size new font size in pixels
+     */
+    void set_size(const size_t size);
+
+    /**
+     * Set font scale based on Wayland scale.
+     * @param scale the scale factor to multiply by
+     */
+    void set_scale(const double scale);
+
+    /**
+     * Get glyph pixmap for the character.
+     * @param ch character to render
+     * @return glyph pixmap, nullptr if not found
+     */
+    const Pixmap* get_glyph(const wchar_t ch);
+
+private:
+    using FontPtr = std::unique_ptr<Font>;
+
+    std::vector<FontPtr> fonts; ///< Additional fonts
+    size_t size;                ///< Font size in pixels
+    double scale { 1.0 };       ///< Font scale
 };

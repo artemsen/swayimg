@@ -217,8 +217,10 @@ private:
          * @param target destination pixmap (window)
          * @param pos text position on target pixmap
          * @param color text color
+         * @param shadow shadow color
          */
-        void draw(Pixmap& target, const Point& pos, const argb_t color) const;
+        void draw(Pixmap& target, const Point& pos, const argb_t color,
+                  const argb_t shadow) const;
 
         std::wstring text; ///< Displayed text
     };
@@ -304,14 +306,6 @@ private:
      * @param target destination pixmap (window)
      */
     void draw(const Position blkpos, Pixmap& target) const;
-
-    /**
-     * Draw text line.
-     * @param line text line to draw
-     * @param target destination pixmap (window)
-     * @param pos text position on target pixmap
-     */
-    void draw(const TextLine& line, Pixmap& target, const Point& pos) const;
 
 private:
     /** Text hide timeout. */

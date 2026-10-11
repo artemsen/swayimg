@@ -51,7 +51,7 @@ public:
             size_t height = 0;
             size_t x = 0;
             for (const wchar_t ch : text) {
-                const Pixmap& glyph = font.get_glyph(ch);
+                const Pixmap* glyph = font.get_glyph(ch);
                 if (!glyph) {
                     continue;
                 }
@@ -59,17 +59,17 @@ public:
                     .x = static_cast<ssize_t>(x),
                     .y = static_cast<ssize_t>(y),
                 };
-                if (glyph.format() == Pixmap::GS) {
-                    pm.mask(glyph, pos, color);
+                if (glyph->format() == Pixmap::GS) {
+                    pm.mask(*glyph, pos, color);
                 } else {
-                    pm.blend(glyph, pos);
+                    pm.blend(*glyph, pos);
                 }
 
                 if (height == 0) {
-                    height = glyph.height();
+                    height = glyph->height();
                 }
 
-                x += glyph.width();
+                x += glyph->width();
                 if (x > pm.width()) {
                     break;
                 }

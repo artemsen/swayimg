@@ -24,11 +24,11 @@ constexpr size_t SHADOW_FACTOR = 24;
 /** Factor used to calculate horizontal margin for text line. */
 constexpr size_t MARGIN_FACTOR = 6;
 
-/** Global font instance. */
-Font font;
+/** Global font set instance. */
+FontSet fonts;
 
 /**
- * Convert text to wide-character string and trim to min acceptable lenght.
+ * Convert text to wide-character string and trim to min acceptable length.
  * @param text string to encode
  * @return wide string
  */
@@ -102,14 +102,14 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
 
 void Text::set_font(const std::string& name)
 {
-    if (font.load(name)) {
+    if (fonts.replace(name)) {
         recalc();
     }
 }
 
 void Text::set_size(const size_t size)
 {
-    font.set_size(size);
+    fonts.set_size(size);
     recalc();
 }
 
@@ -121,7 +121,7 @@ void Text::set_spacing(const ssize_t size)
 
 void Text::set_scale(const double scale)
 {
-    font.set_scale(scale);
+    fonts.set_scale(scale);
     recalc();
 }
 
@@ -292,7 +292,7 @@ void Text::draw(Pixmap& target) const
         // draw status text
         for (const auto& line : status.lines) {
             pos.x = target.width() / 2 - line.width() / 2;
-            line.draw(target, pos, foreground);
+            line.draw(target, pos, foreground, shadow);
             pos.y += status.line_height;
         }
     }
@@ -312,19 +312,6 @@ void Text::recalc()
     }
     status.recalc(spacing);
     Application::redraw();
-}
-
-void Text::draw(const TextLine& line, Pixmap& target, const Point& pos) const
-{
-    assert(!line.text.empty());
-
-    if (shadow.a != argb_t::min) {
-        const ssize_t offset =
-            std::max<ssize_t>(line.height() / SHADOW_FACTOR, 1);
-        line.draw(target, pos + Point { .x = offset, .y = offset }, shadow);
-    }
-
-    line.draw(target, pos, foreground);
 }
 
 void Text::draw(const Position blkpos, Pixmap& target) const
@@ -365,11 +352,6 @@ void Text::draw(const Position blkpos, Pixmap& target) const
                           background);
     }
 
-    // calculate shadow offset
-    const ssize_t shadow_diff =
-        std::max<ssize_t>(block.line_height / SHADOW_FACTOR, 1);
-    const Point shadow_offset { .x = shadow_diff, .y = shadow_diff };
-
     // draw text lines
     for (const auto& line : block.lines) {
         if (line.value.text.empty()) {
@@ -378,20 +360,11 @@ void Text::draw(const Position blkpos, Pixmap& target) const
 
         Point pos { .x = x, .y = y };
 
-        // key
         if (!line.key.text.empty()) {
-            if (shadow.a != argb_t::min) {
-                line.key.draw(target, pos + shadow_offset, shadow);
-            }
-            line.key.draw(target, pos, foreground);
+            line.key.draw(target, pos, foreground, shadow);
             pos.x += block.key_width;
         }
-
-        // value
-        if (shadow.a != argb_t::min) {
-            line.value.draw(target, pos + shadow_offset, shadow);
-        }
-        line.value.draw(target, pos, foreground);
+        line.value.draw(target, pos, foreground, shadow);
 
         y += block.line_height;
     }
@@ -401,7 +374,10 @@ size_t Text::TextLine::width() const
 {
     size_t width = 0;
     for (const wchar_t ch : text) {
-        width += font.get_glyph(ch).width();
+        const Pixmap* glyph = fonts.get_glyph(ch);
+        if (glyph) {
+            width += glyph->width();
+        }
     }
     if (width) {
         width += margin() * 2;
@@ -412,9 +388,12 @@ size_t Text::TextLine::width() const
 size_t Text::TextLine::height() const
 {
     for (const wchar_t ch : text) {
-        const size_t height = font.get_glyph(ch).height();
-        if (height) {
-            return height;
+        const Pixmap* glyph = fonts.get_glyph(ch);
+        if (glyph) {
+            const size_t height = glyph->height();
+            if (height) {
+                return height;
+            }
         }
     }
     return 0;
@@ -425,23 +404,33 @@ size_t Text::TextLine::margin() const
     return height() / MARGIN_FACTOR;
 }
 
-void Text::TextLine::draw(Pixmap& target, const Point& pos,
-                          const argb_t color) const
+void Text::TextLine::draw(Pixmap& target, const Point& pos, const argb_t color,
+                          const argb_t shadow) const
 {
     const ssize_t max_x = target.width();
 
     Point pt = pos;
     pt.x += margin();
 
+    // calculate shadow offset
+    const ssize_t shoff = shadow.a == argb_t::min
+        ? 0
+        : std::max<ssize_t>(height() / SHADOW_FACTOR, 1);
+
+    // draw glyphs
     for (const wchar_t ch : text) {
-        const Pixmap& glyph = font.get_glyph(ch);
+        const Pixmap* glyph = fonts.get_glyph(ch);
         if (glyph) {
-            if (glyph.format() == Pixmap::GS) {
-                target.mask(glyph, pt, color);
+            if (glyph->format() == Pixmap::ARGB) {
+                target.blend(*glyph, pt);
             } else {
-                target.blend(glyph, pt);
+                if (shoff) {
+                    const Point sp = pt + Point { .x = shoff, .y = shoff };
+                    target.mask(*glyph, sp, shadow);
+                }
+                target.mask(*glyph, pt, color);
             }
-            pt.x += glyph.width();
+            pt.x += glyph->width();
             if (pt.x > max_x) {
                 break;
             }
