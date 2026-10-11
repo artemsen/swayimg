@@ -172,6 +172,10 @@ private:
 int main(int argc, char* argv[])
 {
     std::setlocale(LC_ALL, "");
+    if (MB_CUR_MAX <= 1) {
+        std::setlocale(LC_ALL, "C.UTF-8");
+    }
+
     std::srand(getpid());
 
     StartupParams& params = *Application::self().sparams;
