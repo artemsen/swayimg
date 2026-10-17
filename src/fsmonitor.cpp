@@ -120,8 +120,16 @@ void FsMonitor::clear()
 
 void FsMonitor::handle_event(const inotify_event* event)
 {
+    if (event->mask & IN_Q_OVERFLOW) {
+        // the event queue is full, some events were lost, wd is -1
+        Log::warning("FSMON: Event queue overflow, some changes were missed");
+        return;
+    }
+
     const auto it = fds.find(event->wd);
-    assert(it != fds.end());
+    if (it == fds.end()) {
+        return; // event for a watch that was already removed
+    }
 
     if (event->mask & IN_IGNORED) {
         paths.erase(it->second);
