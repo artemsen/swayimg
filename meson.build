@@ -25,7 +25,12 @@ if version == '0.0.0'
             check: false,
         )
         if git_ver.returncode() == 0
-            version = git_ver.stdout().strip().substring(1)
+            version = git_ver.stdout().strip()
+            # drop the "v" of the tag, but not the first character of a bare hash
+            # (git describe has no tag to use in a clone without tags)
+            if version.startswith('v')
+                version = version.substring(1)
+            endif
         endif
     endif
 endif
