@@ -4,7 +4,10 @@
 
 #include "threadpool.hpp"
 
+#include "log.hpp"
+
 #include <algorithm>
+#include <exception>
 
 // Thread pool limits
 constexpr size_t MIN_THREADS = 1;
@@ -114,7 +117,15 @@ void ThreadPool::run()
             active.push_back(task.id);
             lock.unlock();
 
-            task.executor();
+            // an exception in a worker thread terminates the whole process,
+            // so lose only the failed task
+            try {
+                task.executor();
+            } catch (const std::exception& ex) {
+                Log::error("Background task failed: {}", ex.what());
+            } catch (...) {
+                Log::error("Background task failed");
+            }
 
             lock.lock();
             const auto it = std::ranges::find(active, task.id);

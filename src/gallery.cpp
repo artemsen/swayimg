@@ -542,7 +542,9 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
     std::filesystem::path thumb_path = pstore_path;
     thumb_path.concat(entry->path.string());
 
-    if (!std::filesystem::exists(thumb_path)) {
+    // use non-throwing functions, this runs in a thread pool
+    std::error_code ec;
+    if (!std::filesystem::exists(thumb_path, ec)) {
         return {};
     }
 
@@ -581,7 +583,6 @@ Pixmap Gallery::pstore_load(const ImageEntryPtr& entry) const
     if (tlink_inode != st_image.st_ino ||
         std::cmp_not_equal(tlink_size, st_image.st_size)) {
         // remove thumbnail file
-        std::error_code ec;
         std::filesystem::remove(thumb_path, ec);
         return {};
     }
@@ -601,6 +602,11 @@ void Gallery::pstore_save(const ImageEntryPtr& entry, const Pixmap& thumb) const
     // save thumbnail
     std::filesystem::path thumb_path = pstore_path;
     thumb_path.concat(entry->path.string());
-    std::filesystem::create_directories(thumb_path.parent_path());
+    // use non-throwing functions, this runs in a thread pool
+    std::error_code ec;
+    std::filesystem::create_directories(thumb_path.parent_path(), ec);
+    if (ec) {
+        return; // no storage, no thumbnail
+    }
     FormatFactory::save(thumb, meta, thumb_path);
 }
