@@ -414,6 +414,10 @@ void Viewer::bind_image_drag(const InputMouse& input)
 void Viewer::initialize()
 {
     Application::self().add_fdpoll(animation_timer, [this] {
+        if (!image) {
+            animation_timer.reset(0, 0); // the last image has gone, stop timer
+            return;
+        }
         size_t index = frame_index + 1;
         if (index >= image->frames.size()) {
             index = 0;
@@ -658,6 +662,7 @@ void Viewer::set_image(const ImagePtr& img)
     frame_index = 0;
 
     if (!image) {
+        animation_timer.reset(0, 0); // no frames left to animate
         switch_current();
         return;
     }
