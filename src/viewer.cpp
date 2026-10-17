@@ -881,7 +881,11 @@ void Viewer::preloader_stop()
 
 void Viewer::Cache::trim(const size_t size)
 {
-    cache.resize(size);
+    // Only shrink: the main thread can take images out of the cache while the
+    // preloader works, and resize() would fill the gap with empty pointers.
+    if (cache.size() > size) {
+        cache.resize(size);
+    }
 }
 
 void Viewer::Cache::put(const ImagePtr& image)
