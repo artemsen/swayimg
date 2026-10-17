@@ -48,7 +48,7 @@ void FsMonitor::initialize()
 {
     assert(fd == -1);
 
-    fd = inotify_init1(IN_NONBLOCK);
+    fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (fd == -1) {
         Log::error(errno, "Unable to initialize FS monitor");
     } else {

@@ -19,7 +19,7 @@ Fd::~Fd()
 
 FdEvent::FdEvent()
 {
-    fd = eventfd(0, EFD_NONBLOCK);
+    fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 }
 
 void FdEvent::set()
