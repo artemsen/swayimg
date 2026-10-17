@@ -176,10 +176,11 @@ public:
                     ui->wl.datasrc, &WaylandHandler::datasrc_listener, ui);
                 wl_data_source_offer(ui->wl.datasrc, MIME_TEXT_PLAIN);
                 wl_data_source_offer(ui->wl.datasrc, URI_LIST_MIME);
+                // Offer copy only: with MOVE a file manager can move the
+                // original file out of its directory when the image is
+                // dropped on it, but a viewer must not change its files.
                 wl_data_source_set_actions(
-                    ui->wl.datasrc,
-                    WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY |
-                        WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE);
+                    ui->wl.datasrc, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
                 wl_data_device_start_drag(ui->wl.datadev, ui->wl.datasrc,
                                           ui->wl.surface, nullptr, serial);
             }
