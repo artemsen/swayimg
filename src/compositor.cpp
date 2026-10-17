@@ -55,7 +55,7 @@ public:
         sa.sun_family = AF_UNIX;
         memcpy(sa.sun_path, path, len);
 
-        fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
         if (fd == -1) {
             Log::error(errno, "Failed to open IPC socket {}", path);
             return false;
