@@ -487,7 +487,8 @@ ImageList::EntriesArray ImageList::add_any(const std::filesystem::path& path)
     }
 
     EntriesArray added;
-    if (!std::filesystem::is_directory(abs_path)) {
+    std::error_code dir_ec; // the path can vanish after the check above
+    if (!std::filesystem::is_directory(abs_path, dir_ec)) {
         const ImageEntryPtr entry = add_file(abs_path);
         if (entry) {
             added.emplace_back(entry);
@@ -546,19 +547,31 @@ ImageEntryPtr ImageList::add_file(const std::filesystem::path& path)
 {
     assert(path.is_absolute());
 
-    if (!std::filesystem::is_regular_file(path)) {
+    // Use non-throwing functions: the file can be removed or renamed at any
+    // moment (temporary files of a browser or an editor), and callers (file
+    // system event handlers) don't catch exceptions.
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec)) {
         Log::warning("File {} is not a regular, skipped", path.string());
         return nullptr;
     }
 
-    const auto fs_time = std::filesystem::last_write_time(path);
+    const auto fs_time = std::filesystem::last_write_time(path, ec);
+    if (ec) {
+        Log::warning("File {} skipped: {}", path.string(), ec.message());
+        return nullptr;
+    }
     const auto sys_time =
         std::chrono::time_point_cast<std::chrono::system_clock::duration>(
             fs_time - std::filesystem::file_time_type::clock::now() +
             std::chrono::system_clock::now());
     const std::time_t mtime = std::chrono::system_clock::to_time_t(sys_time);
 
-    const size_t size = std::filesystem::file_size(path);
+    const size_t size = std::filesystem::file_size(path, ec);
+    if (ec) {
+        Log::warning("File {} skipped: {}", path.string(), ec.message());
+        return nullptr;
+    }
 
     return add_entry(path, mtime, size);
 }
