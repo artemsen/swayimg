@@ -200,7 +200,8 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
             }
         }
 
-        if (std::filesystem::is_directory(abs_path)) {
+        std::error_code dir_ec;
+        if (std::filesystem::is_directory(abs_path, dir_ec)) {
             // remove all child entries
             for (const ImageEntryPtr& entry : get_child(abs_path)) {
                 entry->removed = true;
@@ -521,23 +522,31 @@ ImageList::EntriesArray ImageList::add_dir(const std::filesystem::path& path)
         FsMonitor::self().add(path);
     }
 
-    try {
-        for (const auto& it : std::filesystem::directory_iterator(path)) {
-            const std::filesystem::path& child_path = it.path();
-            if (std::filesystem::is_directory(child_path)) {
-                if (recursive) {
-                    EntriesArray entries = add_dir(child_path);
-                    added.reserve(added.size() + entries.size());
-                    added.insert(added.end(), entries.begin(), entries.end());
-                }
-            } else {
-                const ImageEntryPtr entry = add_file(child_path);
-                if (entry) {
-                    added.push_back(entry);
-                }
+    // Handle errors per entry: a single entry that can't be checked (a
+    // symlink loop, a link to an unreadable directory, an I/O error) must not
+    // hide all the other files of the directory.
+    std::error_code ec;
+    std::filesystem::directory_iterator it(path, ec);
+    const std::filesystem::directory_iterator end;
+    while (!ec && it != end) {
+        const std::filesystem::path child_path = it->path();
+        std::error_code child_ec;
+        if (std::filesystem::is_directory(child_path, child_ec)) {
+            if (recursive) {
+                EntriesArray entries = add_dir(child_path);
+                added.reserve(added.size() + entries.size());
+                added.insert(added.end(), entries.begin(), entries.end());
+            }
+        } else if (child_ec) {
+            Log::warning("File {} skipped: {}", child_path.string(),
+                         child_ec.message());
+        } else {
+            const ImageEntryPtr entry = add_file(child_path);
+            if (entry) {
+                added.push_back(entry);
             }
         }
-    } catch (const std::filesystem::filesystem_error&) {
+        it.increment(ec);
     }
 
     return added;
