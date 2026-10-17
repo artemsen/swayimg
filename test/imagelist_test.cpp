@@ -4,9 +4,14 @@
 #include "imagelist.hpp"
 
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <format>
+#include <fstream>
+#include <thread>
 
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 static const std::filesystem::path IMGLIST_TEST_DIR =
@@ -127,6 +132,42 @@ TEST(ImageListTest, AddUnexistent)
     ImageList il;
     EXPECT_TRUE(il.add({ "/not/exists" }).empty());
     EXPECT_ILEQ(il.get_all(), {});
+}
+
+TEST(ImageListTest, AddVanishingFile)
+{
+    // a file that is created and removed all the time (a temporary file of
+    // a browser) must not make ImageList::add() throw
+    const std::filesystem::path file = std::filesystem::temp_directory_path() /
+        std::format("swayimg_test_{}", getpid());
+    std::atomic<bool> stop = false;
+    std::thread churn([&file, &stop] {
+        while (!stop) {
+            std::ofstream(file).put('x');
+            std::error_code ec;
+            std::filesystem::remove(file, ec);
+        }
+    });
+
+    bool thrown = false;
+    const auto end =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(300);
+    while (!thrown && std::chrono::steady_clock::now() < end) {
+        ImageList il;
+        il.adjacent = false;
+        try {
+            il.add({ file });
+        } catch (const std::filesystem::filesystem_error&) {
+            thrown = true;
+        }
+    }
+
+    stop = true;
+    churn.join();
+    std::error_code ec;
+    std::filesystem::remove(file, ec);
+
+    EXPECT_FALSE(thrown);
 }
 
 TEST(ImageListTest, AdjacentOff)
