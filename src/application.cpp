@@ -533,7 +533,12 @@ void Application::handle_event(const AppEvent::DragAndDrop& event)
 void Application::handle_event(const AppEvent::FileCreate& event)
 {
     ImageList& il = ImageList::self();
-    if (!std::filesystem::is_directory(event.path) || il.recursive) {
+    // is_directory() throws on errors (e.g. a symlink loop), so use the
+    // non-throwing version here and in the handlers below: nobody catches
+    // exceptions in the main loop. An error means "not a directory", the
+    // image list skips such a path on its own.
+    std::error_code ec;
+    if (!std::filesystem::is_directory(event.path, ec) || il.recursive) {
         // Temporarily disable `adjacent` to prevent adding unnecessary files.
         const bool adjacent = il.adjacent;
         il.adjacent = false;
@@ -544,7 +549,8 @@ void Application::handle_event(const AppEvent::FileCreate& event)
 
 void Application::handle_event(const AppEvent::FileModify& event)
 {
-    if (!std::filesystem::is_directory(event.path)) {
+    std::error_code ec;
+    if (!std::filesystem::is_directory(event.path, ec)) {
         ImageList& il = ImageList::self();
         const ImageEntryPtr entry = il.find(event.path);
         if (entry) {
@@ -559,7 +565,8 @@ void Application::handle_event(const AppEvent::FileModify& event)
 void Application::handle_event(const AppEvent::FileRemove& event)
 {
     // ignore directories, files will be removed as standalone event
-    if (!std::filesystem::is_directory(event.path)) {
+    std::error_code ec;
+    if (!std::filesystem::is_directory(event.path, ec)) {
         remove_images({ event.path });
     }
 }

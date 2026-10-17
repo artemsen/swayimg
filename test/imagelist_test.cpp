@@ -4,9 +4,11 @@
 #include "imagelist.hpp"
 
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <format>
+#include <fstream>
 
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 static const std::filesystem::path IMGLIST_TEST_DIR =
@@ -127,6 +129,35 @@ TEST(ImageListTest, AddUnexistent)
     ImageList il;
     EXPECT_TRUE(il.add({ "/not/exists" }).empty());
     EXPECT_ILEQ(il.get_all(), {});
+}
+
+TEST(ImageListTest, AddDirWithBrokenEntries)
+{
+    // temporary directory with regular files and symlink loops (is_directory
+    // fails with ELOOP for them)
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() /
+        std::format("swayimg_test_{}", getpid());
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    constexpr size_t num_files = 20;
+    for (size_t i = 0; i < num_files; ++i) {
+        std::ofstream(dir / std::format("file_{}", i)).put('x');
+        // the order of directory entries is unspecified, so create enough
+        // loops to get some of them before the files
+        std::filesystem::create_symlink(std::format("loop_{}", i),
+                                        dir / std::format("loop_{}", i));
+    }
+
+    ImageList il;
+    il.adjacent = false;
+    il.add({ dir });
+    EXPECT_EQ(il.size(), num_files);
+
+    // the same for a path that was reported by file system monitor
+    EXPECT_NO_THROW(il.remove({ dir / "loop_0" }));
+    EXPECT_EQ(il.size(), num_files);
+
+    std::filesystem::remove_all(dir);
 }
 
 TEST(ImageListTest, AdjacentOff)
