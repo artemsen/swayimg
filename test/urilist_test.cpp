@@ -33,6 +33,23 @@ TEST(UriListTest, ParseBad)
     EXPECT_TRUE(paths.empty());
 }
 
+TEST(UriListTest, ParseLocalOnly)
+{
+    std::string ul;
+    ul += "file://exec://true\r\n";
+    ul += "file://exec%3A%2F%2Ftrue\r\n";
+    ul += "file://stdin://\r\n";
+    ul += "file://relative/name\r\n";
+    ul += "file://otherhost/a/1\r\n";
+    ul += "file://localhostile/a/2\r\n";
+    ul += "file://localhost/a/3\r\n";
+    ul += "file:///a/4";
+    const std::vector<std::filesystem::path> paths = urilist_parse(ul);
+    ASSERT_EQ(paths.size(), 2UL);
+    EXPECT_EQ(paths[0], "/a/3");
+    EXPECT_EQ(paths[1], "/a/4");
+}
+
 TEST(UriListTest, ParseSafe)
 {
     std::string ul;

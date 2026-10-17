@@ -10,6 +10,8 @@ constexpr const char* CRLF = "\r\n";
 constexpr const size_t CRLF_LEN = 2;
 constexpr const char* URI_FILE = "file://";
 constexpr const size_t URI_FILE_LEN = 7;
+constexpr const char* URI_LOCALHOST = "localhost";
+constexpr const size_t URI_LOCALHOST_LEN = 9;
 constexpr const char UNSAFE[] = {
     ' ', '<', '>', '"', '#', '%', '{', '}', '|', '\\', '^', '[', ']', '`',
 };
@@ -94,9 +96,21 @@ std::vector<std::filesystem::path> urilist_parse(const std::string& data)
             line = data.substr(start, end - start);
         }
         if (line.starts_with(URI_FILE)) {
-            const std::string path = decode_safe(line.substr(URI_FILE_LEN));
-            if (!path.empty()) {
-                paths.emplace_back(path);
+            // Only local absolute paths are allowed: file:///path or
+            // file://localhost/path (RFC 8089). Everything else must not
+            // reach the image list, e.g. "file://exec://cmd" would otherwise
+            // be handled as a special source and run a shell command.
+            // The check is done before decoding, so %-encoded text can't
+            // bypass it.
+            std::string rest = line.substr(URI_FILE_LEN);
+            if (rest.starts_with(URI_LOCALHOST)) {
+                rest.erase(0, URI_LOCALHOST_LEN);
+            }
+            if (rest.starts_with('/')) {
+                const std::string path = decode_safe(rest);
+                if (!path.empty()) {
+                    paths.emplace_back(path);
+                }
             }
         }
         if (end == std::string::npos) {
