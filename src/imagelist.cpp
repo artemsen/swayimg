@@ -238,9 +238,16 @@ ImageList::remove(const std::vector<std::filesystem::path>& sources)
 
 void ImageList::remove(const ImageEntryPtr& entry)
 {
-    assert(entry && !entry->removed);
+    assert(entry);
 
     const std::scoped_lock lock(mutex);
+
+    // The viewer and its preloader can both remove the same entry (when it
+    // can't be decoded). The second call must not touch the list: the stale
+    // index would point to another entry.
+    if (entry->removed) {
+        return;
+    }
 
     entries_map.erase(entry->path);
     entries_arr.erase(entries_arr.begin() + entry->index);
