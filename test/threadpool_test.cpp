@@ -8,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <set>
+#include <stdexcept>
 
 TEST(ThreadPoolTest, Size)
 {
@@ -84,6 +85,30 @@ TEST(ThreadPoolTest, WaitAll)
 
     tp.wait();
     EXPECT_EQ(counter, num_tasks);
+}
+
+TEST(ThreadPoolTest, TaskException)
+{
+    ThreadPool tp(1);
+
+    // a task that throws must not terminate the process, the pool must
+    // go on with the next tasks
+    tp.add([] {
+        throw std::runtime_error("test");
+    });
+    tp.add([] {
+        // not derived from std::exception on purpose: covers the catch-all
+        // NOLINTNEXTLINE(bugprone-std-exception-baseclass,hicpp-exception-baseclass)
+        throw 1;
+    });
+
+    std::atomic<bool> executed = false;
+    tp.add([&executed] {
+        executed = true;
+    });
+    tp.wait();
+
+    EXPECT_TRUE(executed);
 }
 
 TEST(ThreadPoolTest, TaskIdsUnique)
