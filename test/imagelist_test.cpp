@@ -659,6 +659,25 @@ TEST(ImageListTest, RemoveOne)
     EXPECT_ILEQ(il.get_all(), expected);
 }
 
+TEST(ImageListTest, RemoveSameEntryTwice)
+{
+    ImageList il;
+    il.set_order(ImageList::Order::None);
+    il.add({ "exec://1", "exec://2", "exec://3" });
+
+    const ImageEntryPtr entry = il.find("exec://2");
+    ASSERT_TRUE(entry);
+
+    il.remove(entry);
+    il.remove(entry); // must not remove any other entry
+
+    const std::vector<std::filesystem::path> expected = {
+        "exec://1",
+        "exec://3",
+    };
+    EXPECT_ILEQ(il.get_all(), expected);
+}
+
 TEST(ImageListTest, RemoveFromEmpty)
 {
     ImageList il;
