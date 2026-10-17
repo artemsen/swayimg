@@ -450,6 +450,7 @@ if get_option('tests').enabled()
             'test/luaengine_test.cpp',
             'test/pixmap_test.cpp',
             'test/threadpool_test.cpp',
+            'test/ui_test.cpp',
             'test/urilist_test.cpp',
         ],
         include_directories: ['src', 'src/external'],
