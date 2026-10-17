@@ -193,7 +193,7 @@ bool UiDrm::drm_open(const std::filesystem::path& path, const bool silent)
 {
     assert(fd == -1);
 
-    fd = open(path.c_str(), O_RDWR);
+    fd = open(path.c_str(), O_RDWR | O_CLOEXEC);
 
     if (fd == -1) {
         if (!silent) {

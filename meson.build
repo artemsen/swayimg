@@ -445,6 +445,7 @@ if get_option('tests').enabled()
         'swayimg_test',
         sources + [
             'test/color_test.cpp',
+            'test/fdevent_test.cpp',
             'test/geometry_test.cpp',
             'test/image_test.cpp',
             'test/imageformat_test.cpp',
