@@ -1069,7 +1069,7 @@ void UiWayland::stop()
 
 void UiWayland::set_title(const char* title)
 {
-    xdg_toplevel_set_title(wl.xtoplevel, title);
+    xdg_toplevel_set_title(wl.xtoplevel, sanitize_title(title).c_str());
 }
 
 void UiWayland::set_cursor(CursorShape shape)
