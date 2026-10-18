@@ -88,6 +88,7 @@ public:
             image->format += name;
         }
 
+        font.free();
         return image;
     }
 

@@ -44,6 +44,16 @@ public:
     bool load(const uint8_t* data, const size_t data_size);
 
     /**
+     * Free/release font handle.
+     * Swayimg contains an architectural flaw related to global static
+     * instances: the order in which destructors are called is undefined,
+     * which means that the automatic release of handles can lead to
+     * use-after-free errors.
+     * As a workaround, manual management is required (todo!).
+     */
+    void free();
+
+    /**
      * Get font name.
      * @return font name
      */
