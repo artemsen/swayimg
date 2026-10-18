@@ -102,7 +102,7 @@ void Text::set_scheme(const Position pos, const Scheme& scheme)
 
 void Text::set_font(const std::string& name)
 {
-    if (fonts.replace(name)) {
+    if (fonts.load(name)) {
         recalc();
     }
 }

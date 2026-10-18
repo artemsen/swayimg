@@ -20,6 +20,7 @@
 class Font {
 public:
     Font() noexcept;
+    virtual ~Font() = default;
 
     /**
      * Load font by name.
@@ -63,20 +64,20 @@ public:
      * Set font size.
      * @param size new font size in pixels
      */
-    void set_size(const size_t size);
+    virtual void set_size(const size_t size);
 
     /**
      * Set font scale based on Wayland scale.
      * @param scale the scale factor to multiply by
      */
-    void set_scale(const double scale);
+    virtual void set_scale(const double scale);
 
     /**
      * Get glyph pixmap for the character.
      * @param ch character to render
      * @return glyph pixmap, nullptr if not found
      */
-    const Pixmap* get_glyph(const wchar_t ch);
+    virtual const Pixmap* get_glyph(const wchar_t ch);
 
     /**
      * Check if font is loaded.
@@ -91,7 +92,7 @@ private:
      */
     void set_face(FT_Face face);
 
-private:
+protected:
     FT_Face ft_face { nullptr }; ///< Font face instance
     size_t size;                 ///< Font size in pixels
     double scale { 1.0 };        ///< Font scale
@@ -100,40 +101,28 @@ private:
 };
 
 /** Set of fonts. */
-class FontSet {
+class FontSet : public Font {
 public:
-    FontSet() noexcept;
-
-    /**
-     * Replace default font.
-     * @param name font face name
-     * @return false if font wasn't loaded
-     */
-    bool replace(const std::string& name);
-
     /**
      * Set font size.
      * @param size new font size in pixels
      */
-    void set_size(const size_t size);
+    void set_size(const size_t size) override;
 
     /**
      * Set font scale based on Wayland scale.
      * @param scale the scale factor to multiply by
      */
-    void set_scale(const double scale);
+    void set_scale(const double scale) override;
 
     /**
      * Get glyph pixmap for the character.
      * @param ch character to render
      * @return glyph pixmap, nullptr if not found
      */
-    const Pixmap* get_glyph(const wchar_t ch);
+    const Pixmap* get_glyph(const wchar_t ch) override;
 
 private:
     using FontPtr = std::unique_ptr<Font>;
-
     std::vector<FontPtr> fonts; ///< Additional fonts
-    size_t size;                ///< Font size in pixels
-    double scale { 1.0 };       ///< Font scale
 };

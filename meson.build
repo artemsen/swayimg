@@ -38,7 +38,7 @@ endif
 # mandatory dependencies
 xkb = dependency('xkbcommon')
 fontconfig = dependency('fontconfig')
-freetype = dependency('freetype2')
+freetype = dependency('freetype2', version: '>=2.13.1')
 threads = dependency('threads')
 lua = dependency(get_option('liblua'))
 

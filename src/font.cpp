@@ -358,9 +358,8 @@ const Pixmap* Font::get_glyph(const wchar_t ch)
 
     // load and rasterize glyph
     const FT_UInt index = FT_Get_Char_Index(ft_face, ch);
-    if (index != 0 &&
-        FT_Load_Glyph(ft_face, index, FT_LOAD_RENDER | FT_LOAD_COLOR) ==
-            FT_Err_Ok) {
+    constexpr FT_Int32 flags = FT_LOAD_RENDER | FT_LOAD_COLOR | FT_LOAD_NO_SVG;
+    if (index != 0 && FT_Load_Glyph(ft_face, index, flags) == FT_Err_Ok) {
         auto [it, _] = glyphs.insert({ ch, rasterize_glyph(ft_face->glyph) });
         return &it->second;
     }
@@ -368,33 +367,9 @@ const Pixmap* Font::get_glyph(const wchar_t ch)
     return nullptr; // glyph not found
 }
 
-FontSet::FontSet() noexcept
-    : size(Defaults::text::size)
-{
-}
-
-bool FontSet::replace(const std::string& name)
-{
-    if (!fonts.empty()) {
-        // update existing font instance
-        return fonts.front()->load(name);
-    }
-
-    // load new font instance
-    FontPtr font = std::make_unique<Font>();
-    if (font->load(name)) {
-        font->set_size(size);
-        font->set_scale(scale);
-        fonts.emplace_back(std::move(font));
-        return true;
-    }
-
-    return false;
-}
-
 void FontSet::set_size(const size_t size)
 {
-    this->size = size;
+    Font::set_size(size);
     for (auto& font : fonts) {
         font->set_size(size);
     }
@@ -402,7 +377,7 @@ void FontSet::set_size(const size_t size)
 
 void FontSet::set_scale(const double scale)
 {
-    this->scale = scale;
+    Font::set_scale(scale);
     for (auto& font : fonts) {
         font->set_scale(scale);
     }
@@ -410,14 +385,22 @@ void FontSet::set_scale(const double scale)
 
 const Pixmap* FontSet::get_glyph(const wchar_t ch)
 {
+    const Pixmap* glyph;
+
     // load the default font if it is not already loaded
-    if (fonts.empty()) {
-        replace(Defaults::text::font);
+    if (!ft_face) {
+        load(std::string(Defaults::text::font));
     }
 
-    // search in loaded fonts
+    // search in default font
+    glyph = Font::get_glyph(ch);
+    if (glyph) {
+        return glyph;
+    }
+
+    // search in additional fonts
     for (auto& font : fonts) {
-        const Pixmap* glyph = font->get_glyph(ch);
+        glyph = font->get_glyph(ch);
         if (glyph) {
             return glyph;
         }
@@ -431,7 +414,7 @@ const Pixmap* FontSet::get_glyph(const wchar_t ch)
             if (font->load(path)) {
                 font->set_size(size);
                 font->set_scale(scale);
-                const Pixmap* glyph = font->get_glyph(ch);
+                glyph = font->get_glyph(ch);
                 if (glyph) {
                     fonts.emplace_back(std::move(font));
                     return glyph;
@@ -441,5 +424,5 @@ const Pixmap* FontSet::get_glyph(const wchar_t ch)
     }
 
     // use fallback character from default font
-    return fonts.empty() ? nullptr : fonts.front()->get_glyph(FALLBACK_CHR);
+    return Font::get_glyph(FALLBACK_CHR);
 }
