@@ -61,8 +61,7 @@ struct argb_t {
         }
         constexpr uint32_t half = max / 2;
         const uint32_t alpha = a;
-        return { a,
-                 static_cast<channel>((alpha * r + half) / max),
+        return { a, static_cast<channel>((alpha * r + half) / max),
                  static_cast<channel>((alpha * g + half) / max),
                  static_cast<channel>((alpha * b + half) / max) };
     }
