@@ -59,6 +59,7 @@ struct argb_t {
         if (a == min || a == max) {
             return *this; // fully transparent or opaque
         }
+        constexpr uint32_t half = max / 2;
         const uint32_t alpha = a;
         return { a,
                  static_cast<channel>((alpha * r + half) / max),
@@ -101,6 +102,4 @@ struct argb_t {
     // Min and max channel color value
     static constexpr channel min = std::numeric_limits<channel>::min();
     static constexpr channel max = std::numeric_limits<channel>::max();
-    // Half of the max channel value, used for rounding
-    static constexpr uint32_t half = max / 2;
 };
