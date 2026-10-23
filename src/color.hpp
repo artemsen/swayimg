@@ -50,6 +50,23 @@ struct argb_t {
     operator uint32_t() const { return a << 24 | r << 16 | g << 8 | b; }
 
     /**
+     * Convert color to premultiplied alpha format.
+     * Wayland compositors expect premultiplied alpha in ARGB buffers.
+     * @return premultiplied color
+     */
+    [[nodiscard]] argb_t premultiplied() const
+    {
+        if (a == min || a == max) {
+            return *this; // fully transparent or opaque
+        }
+        const uint32_t alpha = a;
+        return { a,
+                 static_cast<channel>((alpha * r + half) / max),
+                 static_cast<channel>((alpha * g + half) / max),
+                 static_cast<channel>((alpha * b + half) / max) };
+    }
+
+    /**
      * Blend current color (background) with specified one.
      * @param color foreground color to add
      */
@@ -84,4 +101,6 @@ struct argb_t {
     // Min and max channel color value
     static constexpr channel min = std::numeric_limits<channel>::min();
     static constexpr channel max = std::numeric_limits<channel>::max();
+    // Half of the max channel value, used for rounding
+    static constexpr uint32_t half = max / 2;
 };
