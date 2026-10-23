@@ -168,11 +168,14 @@ void Pixmap::fill(const Rectangle& rect, const argb_t& color)
         return; // out of pixmap
     }
 
+    // Wayland compositors expect premultiplied alpha in ARGB buffers
+    const argb_t clr = format() == Format::ARGB ? color.premultiplied() : color;
+
     // create pattern
     const size_t pattern_sz = visible.width * sizeof(argb_t);
     argb_t* pattern = &at(visible.x, visible.y);
     for (size_t x = 0; x < visible.width; ++x) {
-        pattern[x] = color;
+        pattern[x] = clr;
     }
 
     // copy pattern
@@ -230,14 +233,16 @@ void Pixmap::grid(const Rectangle& rect, const size_t size, const argb_t& clr0,
         return; // out of pixmap
     }
 
-    // fill patterns
+    // fill patterns (premultiplied alpha, as required by Wayland)
+    const argb_t clr0_pm = clr0.premultiplied();
+    const argb_t clr1_pm = clr1.premultiplied();
     std::vector<argb_t> patterns[2];
     patterns[0].resize(visible.width);
     patterns[1].resize(visible.width);
     for (size_t i = 0; i < visible.width; ++i) {
         const size_t tile = (i / size) % 2;
-        patterns[0][i] = tile ? clr0 : clr1;
-        patterns[1][i] = tile ? clr1 : clr0;
+        patterns[0][i] = tile ? clr0_pm : clr1_pm;
+        patterns[1][i] = tile ? clr1_pm : clr0_pm;
     }
 
     // copy patterns

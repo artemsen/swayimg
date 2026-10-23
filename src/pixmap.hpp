@@ -159,9 +159,12 @@ public:
     void rotate(const size_t angle);
 
     /**
-     * Fill area with specified color (ARGB only).
+     * Fill area with specified color.
+     * The color is converted to premultiplied alpha for ARGB pixmaps,
+     * because Wayland compositors expect premultiplied alpha in shared
+     * buffers; RGB pixmaps (DRM) keep the straight color.
      * @param rect target rectangle area
-     * @param color color to set
+     * @param color color to set (straight alpha)
      */
     void fill(const Rectangle& rect, const argb_t& color);
 
