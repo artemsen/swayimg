@@ -168,11 +168,14 @@ void Pixmap::fill(const Rectangle& rect, const argb_t& color)
         return; // out of pixmap
     }
 
+    // Wayland compositors expect premultiplied alpha in ARGB buffers
+    const argb_t clr = format() == Format::ARGB ? color.premultiplied() : color;
+
     // create pattern
     const size_t pattern_sz = visible.width * sizeof(argb_t);
     argb_t* pattern = &at(visible.x, visible.y);
     for (size_t x = 0; x < visible.width; ++x) {
-        pattern[x] = color;
+        pattern[x] = clr;
     }
 
     // copy pattern
