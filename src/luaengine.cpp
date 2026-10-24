@@ -512,6 +512,29 @@ void LuaEngine::bind_root_api()
                 }
                 Application::self().sparams->dnd = input.value();
             })
+        .addFunction(
+            "on_dnd",
+            [this](const luabridge::LuaRef& cb) {
+                Application& app = Application::self();
+                if (cb.isNil()) {
+                    app.on_drag_and_drop = nullptr;
+                } else if (!cb.isFunction()) {
+                    raise_error("Invalid argument for {}.on_dnd: "
+                                "expected function, but got {}",
+                                NS_SWAYIMG, cb.tostring());
+                } else {
+                    const luabridge::LuaRef* ref = add_ref(&cb);
+                    app.on_drag_and_drop =
+                        [ref](const std::vector<std::filesystem::path>& paths) {
+                            std::vector<std::string> sp;
+                            sp.reserve(paths.size());
+                            for (const auto& it : paths) {
+                                sp.emplace_back(it);
+                            }
+                            call_lua(*ref, sp);
+                        };
+                }
+            })
         .addProperty(
             "overlay",
             [] {

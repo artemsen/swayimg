@@ -159,10 +159,15 @@ private:
     static void signal_handler(int signal);
 
 public:
+    // Drag-n-Drop callback function
+    using DnDCallback =
+        std::function<void(const std::vector<std::filesystem::path>&)>;
+
     std::unique_ptr<StartupParams> sparams;   ///< Startup parameters
     std::function<void()> on_init_complete;   ///< Init complete callback
     std::function<void()> on_wnd_resize;      ///< Window resize callback
     std::function<void()> on_redraw_complete; ///< Redraw complete callback
+    DnDCallback on_drag_and_drop;             ///< Drag-n-Drop callback
 
 private:
     std::unique_ptr<Ui> ui; ///< UI instance

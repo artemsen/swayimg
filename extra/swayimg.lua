@@ -223,6 +223,11 @@ function swayimg.on_initialized(fn) end
 ---@param fn function|nil Function to execute
 function swayimg.on_redrawn(fn) end
 
+---Set a callback function called on drag-and-drop operations.
+---Since 5.7.
+---@param fn function|nil DnD handler: `fn(files)`
+function swayimg.on_dnd(fn) end
+
 ---Execute deferred procedure.
 ---Since 5.5.
 ---@param seconds number Delay in seconds (can be fractional)
@@ -416,7 +421,7 @@ function swayimg_appmode.on_unassigned_key(fn) end
 
 ---Set handler for scrolling.
 ---Since 5.7.
----@param fn function Scroll handler: fn(keymod, horizontal, vertical)
+---@param fn function Scroll handler: `fn(keymod, horizontal, vertical)`
 function swayimg_appmode.on_scroll(fn) end
 
 ---Bind the mouse button press event to a handler.

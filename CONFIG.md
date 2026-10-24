@@ -51,6 +51,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.get_mouse_pos()](#swayimgget_mouse_pos): Get mouse pointer coordinates
   * [swayimg.on_initialized()](#swayimgon_initialized): Set a callback function called when all subsystems have been initialized
   * [swayimg.on_redrawn()](#swayimgon_redrawn): Set a callback function called after the window is drawn
+  * [swayimg.on_dnd()](#swayimgon_dnd): Set a callback function called on drag-and-drop operations
   * [swayimg.defer()](#swayimgdefer): Execute deferred procedure
 * Image list
   * [swayimg.imagelist.order](#swayimgimagelistorder): Sort order of the image list
@@ -438,6 +439,18 @@ Set a callback function called after the window is drawn.
 Since 5.5.
 
 @_param_ `fn` - Function to execute
+
+### swayimg.on_dnd
+
+```lua
+swayimg.on_dnd(fn: function|nil)
+```
+
+Set a callback function called on drag-and-drop operations.
+
+Since 5.7.
+
+@_param_ `fn` - DnD handler: `fn(files)`
 
 ### swayimg.defer
 
@@ -1317,7 +1330,7 @@ Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
 
 ### swayimg.viewer.on_mouse
 
@@ -1980,7 +1993,7 @@ Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
 
 ### swayimg.slideshow.on_mouse
 
@@ -2460,7 +2473,7 @@ Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: fn(keymod, horizontal, vertical)
+@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
 
 ### swayimg.gallery.on_mouse
 

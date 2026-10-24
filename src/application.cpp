@@ -519,10 +519,14 @@ void Application::handle_event(const AppEvent::Signal& event)
 
 void Application::handle_event(const AppEvent::DragAndDrop& event)
 {
-    remove_all_images();
-    const ImageEntryPtr first = add_images(event.paths);
-    if (first) {
-        current_mode()->set_current(first);
+    if (on_drag_and_drop) {
+        on_drag_and_drop(event.paths);
+    } else {
+        remove_all_images();
+        const ImageEntryPtr first = add_images(event.paths);
+        if (first) {
+            current_mode()->set_current(first);
+        }
     }
 }
 

@@ -15,7 +15,6 @@ swayimg.antialiasing = true                -- anti-aliasing
 swayimg.decoration = true                  -- window title/buttons/borders
 swayimg.overlay = false                    -- window overlay mode
 swayimg.exif_orientation = true            -- image orientation by EXIF
-swayimg.dnd_button = "MouseRight"          -- drag-and-drop mouse button
 
 -- Format specific configuration
 swayimg.format_conf = {
@@ -38,6 +37,16 @@ swayimg.format_conf = {
     label = 0x0affffff  -- label color in gallery mode
   },
 }
+
+-- drag-and-drop config
+swayimg.dnd_button = "MouseRight"
+swayimg.on_dnd(function(files)
+  swayimg.imagelist.clear()
+  swayimg.imagelist.add(files)
+  if swayimg.mode == 'viewer' then
+    swayimg.viewer.open_path(files[1])
+  end
+end)
 
 --------------------------------------------------------------------------------
 -- Image list configuration
