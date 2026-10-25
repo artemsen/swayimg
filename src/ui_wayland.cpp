@@ -684,6 +684,7 @@ public:
 
         if (window.width == ui->wnd_buffer.width() &&
             window.height == ui->wnd_buffer.height()) {
+            Application::self().add_event(AppEvent::WindowRedraw {});
             return; // reuse existing buffer
         }
 
