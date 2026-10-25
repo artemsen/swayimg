@@ -100,7 +100,11 @@ jp2 = dependency('libopenjp2', required: get_option('jp2'))
 jxl = dependency('libjxl', required: get_option('jxl'))
 jxl_threads = dependency('libjxl_threads', required: get_option('jxl'))
 zip = dependency('minizip-ng', required: get_option('krita'))
-png = dependency('libpng', required: get_option('png').enabled() or get_option('krita').enabled())
+if get_option('krita').enabled() or get_option('png').enabled()
+  png = dependency('libpng', required: true)
+else
+  png = dependency('libpng', required: get_option('png'))
+endif
 rsvg = dependency('librsvg-2.0', version: '>=2.46', required: get_option('svg'))
 tiff = dependency('libtiff-4', required: get_option('tiff'))
 sixel = dependency('libsixel', required: get_option('sixel'))
