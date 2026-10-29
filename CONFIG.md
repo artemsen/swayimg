@@ -364,7 +364,7 @@ Exit from application.
 
 Since 5.0.
 
-@_param_ `code` - Program exit code, `0` by default
+@_param_ `code?` - Program exit code, `0` by default
 
 ### swayimg.get_window_size
 
@@ -395,7 +395,7 @@ Since 5.0.
 ### swayimg.on_window_resize
 
 ```lua
-swayimg.on_window_resize(fn: function|nil)
+swayimg.on_window_resize(fn: function?)
 ```
 
 Set a callback function called when main window is resized.
@@ -431,7 +431,7 @@ Since 5.0.
 ### swayimg.on_redrawn
 
 ```lua
-swayimg.on_redrawn(fn: function|nil)
+swayimg.on_redrawn(fn: function?)
 ```
 
 Set a callback function called after the window is drawn.
@@ -443,7 +443,7 @@ Since 5.5.
 ### swayimg.on_dnd
 
 ```lua
-swayimg.on_dnd(fn: function|nil)
+swayimg.on_dnd(fn: function?)
 ```
 
 Set a callback function called on drag-and-drop operations.
@@ -1034,7 +1034,7 @@ This function adds a file to the image list and then opens it in the viewer.
 ### swayimg.viewer.get_image
 
 ```lua
-swayimg.viewer.get_image() -> swayimg.image|nil
+swayimg.viewer.get_image() -> swayimg.image?
 ```
 
 Get information about currently displayed image.
@@ -1065,9 +1065,9 @@ Since 5.0.
 
 @_param_ `scale` - Absolute value (1.0 = 100%)
 
-@_param_ `x` - X coordinate of center point, empty for window center
+@_param_ `x?` - X coordinate of center point, empty for window center
 
-@_param_ `y` - Y coordinate of center point, empty for window center
+@_param_ `y?` - Y coordinate of center point, empty for window center
 
 ### swayimg.viewer.set_fix_scale
 
@@ -1282,7 +1282,7 @@ Set, clear or toggle mark for currently viewed/selected image.
 
 Since 5.0.
 
-@_param_ `state` - Mark state to set, toggle if the state is not specified
+@_param_ `state?` - Mark state to set, toggle if the state is not specified
 
 ### swayimg.viewer.bind_reset
 
@@ -1323,14 +1323,14 @@ Since 5.6.
 ### swayimg.viewer.on_scroll
 
 ```lua
-swayimg.viewer.on_scroll(fn: function)
+swayimg.viewer.on_scroll(fn: fun(kmods: string, horizontal: number, vertical: number))
 ```
 
 Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
+@_param_ `fn` - Scroll handler
 
 ### swayimg.viewer.on_mouse
 
@@ -1370,7 +1370,7 @@ Since 5.0.
 ### swayimg.viewer.on_image_change
 
 ```lua
-swayimg.viewer.on_image_change(fn: function|nil)
+swayimg.viewer.on_image_change(fn: function?)
 ```
 
 Set a callback function called when a new image is opened/selected.
@@ -1697,7 +1697,7 @@ This function adds a file to the image list and then opens it in the viewer.
 ### swayimg.slideshow.get_image
 
 ```lua
-swayimg.slideshow.get_image() -> swayimg.image|nil
+swayimg.slideshow.get_image() -> swayimg.image?
 ```
 
 Get information about currently displayed image.
@@ -1728,9 +1728,9 @@ Since 5.0.
 
 @_param_ `scale` - Absolute value (1.0 = 100%)
 
-@_param_ `x` - X coordinate of center point, empty for window center
+@_param_ `x?` - X coordinate of center point, empty for window center
 
-@_param_ `y` - Y coordinate of center point, empty for window center
+@_param_ `y?` - Y coordinate of center point, empty for window center
 
 ### swayimg.slideshow.set_fix_scale
 
@@ -1945,7 +1945,7 @@ Set, clear or toggle mark for currently viewed/selected image.
 
 Since 5.0.
 
-@_param_ `state` - Mark state to set, toggle if the state is not specified
+@_param_ `state?` - Mark state to set, toggle if the state is not specified
 
 ### swayimg.slideshow.bind_reset
 
@@ -1986,14 +1986,14 @@ Since 5.6.
 ### swayimg.slideshow.on_scroll
 
 ```lua
-swayimg.slideshow.on_scroll(fn: function)
+swayimg.slideshow.on_scroll(fn: fun(kmods: string, horizontal: number, vertical: number))
 ```
 
 Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
+@_param_ `fn` - Scroll handler
 
 ### swayimg.slideshow.on_mouse
 
@@ -2033,7 +2033,7 @@ Since 5.0.
 ### swayimg.slideshow.on_image_change
 
 ```lua
-swayimg.slideshow.on_image_change(fn: function|nil)
+swayimg.slideshow.on_image_change(fn: function?)
 ```
 
 Set a callback function called when a new image is opened/selected.
@@ -2406,7 +2406,7 @@ Since 5.3.
 ### swayimg.gallery.get_image
 
 ```lua
-swayimg.gallery.get_image() -> swayimg.entry|nil
+swayimg.gallery.get_image() -> swayimg.entry?
 ```
 
 Get information about currently selected image entry.
@@ -2425,7 +2425,7 @@ Set, clear or toggle mark for currently viewed/selected image.
 
 Since 5.0.
 
-@_param_ `state` - Mark state to set, toggle if the state is not specified
+@_param_ `state?` - Mark state to set, toggle if the state is not specified
 
 ### swayimg.gallery.bind_reset
 
@@ -2466,14 +2466,14 @@ Since 5.6.
 ### swayimg.gallery.on_scroll
 
 ```lua
-swayimg.gallery.on_scroll(fn: function)
+swayimg.gallery.on_scroll(fn: fun(kmods: string, horizontal: number, vertical: number))
 ```
 
 Set handler for scrolling.
 
 Since 5.7.
 
-@_param_ `fn` - Scroll handler: `fn(keymod, horizontal, vertical)`
+@_param_ `fn` - Scroll handler
 
 ### swayimg.gallery.on_mouse
 
@@ -2513,7 +2513,7 @@ Since 5.0.
 ### swayimg.gallery.on_image_change
 
 ```lua
-swayimg.gallery.on_image_change(fn: function|nil)
+swayimg.gallery.on_image_change(fn: function?)
 ```
 
 Set a callback function called when a new image is opened/selected.

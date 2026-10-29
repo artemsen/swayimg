@@ -219,7 +219,7 @@ class LuaFunctionReturn:
     """Lua function return description."""
 
     RE_DECLARE = re.compile(
-        r'^---\s*@return\s+([\w\[\]\.\|]+|{.*})\s+#\s+(.*)$')
+        r'^---\s*@return\s+([\w\[\]\.\|]+\??|{.*})\s+#\s+(.*)$')
 
     def __new__(cls, line: str):
         match = LuaFunctionReturn.RE_DECLARE.search(line)
@@ -244,7 +244,7 @@ class LuaFunctionParam:
     """Lua function parameter description."""
 
     RE_DECLARE = re.compile(
-        r'^---\s*@param\s+(\w+)(\?)?\s+([\w\|\[\]\?]+)\s+(.*)$')
+        r'^---\s*@param\s+(\w+)(\?)?\s+([\w\|\[\]\?]+|fun\([\w:\s\?,]+\))\s+(.*)$')
 
     def __new__(cls, line: str):
         match = LuaFunctionParam.RE_DECLARE.search(line)
@@ -259,7 +259,7 @@ class LuaFunctionParam:
 
     def to_markdown(self, aliases: dict[str, LuaAlias]):
         """Convert function param description to markdown format."""
-        markdown = f'@_param_ `{self.name}` - {self.description}'
+        markdown = f'@_param_ `{self.name}{self.optional}` - {self.description}'
         names = re.sub(r'[\[\]]', '', self.luatype).split('|')
         aliases = [aliases[name] for name in names if name in aliases]
         if aliases:
