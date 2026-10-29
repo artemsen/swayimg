@@ -205,7 +205,7 @@ function swayimg.set_window_size(width, height) end
 
 ---Set a callback function called when main window is resized.
 ---Since 5.0.
----@param fn function|nil Window resize notification handler
+---@param fn function? Window resize notification handler
 function swayimg.on_window_resize(fn) end
 
 ---Get mouse pointer coordinates.
@@ -220,12 +220,12 @@ function swayimg.on_initialized(fn) end
 
 ---Set a callback function called after the window is drawn.
 ---Since 5.5.
----@param fn function|nil Function to execute
+---@param fn function? Function to execute
 function swayimg.on_redrawn(fn) end
 
 ---Set a callback function called on drag-and-drop operations.
 ---Since 5.7.
----@param fn function|nil DnD handler: `fn(files)`
+---@param fn function? DnD handler: `fn(files)`
 function swayimg.on_dnd(fn) end
 
 ---Execute deferred procedure.
@@ -421,7 +421,7 @@ function swayimg_appmode.on_unassigned_key(fn) end
 
 ---Set handler for scrolling.
 ---Since 5.7.
----@param fn function Scroll handler: `fn(keymod, horizontal, vertical)`
+---@param fn fun(kmods: string, horizontal: number, vertical: number) Scroll handler
 function swayimg_appmode.on_scroll(fn) end
 
 ---Bind the mouse button press event to a handler.
@@ -438,7 +438,7 @@ function swayimg_appmode.on_signal(signal, fn) end
 
 ---Set a callback function called when a new image is opened/selected.
 ---Since 5.0.
----@param fn function|nil Handler for notifications about changing the current image
+---@param fn function? Handler for notifications about changing the current image
 function swayimg_appmode.on_image_change(fn) end
 
 --------------------------------------------------------------------------------
@@ -531,7 +531,7 @@ function swayimg.viewer.open_path(path) end
 
 ---Get information about currently displayed image.
 ---Since 5.0.
----@return swayimg.image|nil # Currently displayed image
+---@return swayimg.image? # Currently displayed image
 function swayimg.viewer.get_image() end
 
 ---Reload current image.
@@ -744,5 +744,5 @@ function swayimg.gallery.reload() end
 
 ---Get information about currently selected image entry.
 ---Since 5.0.
----@return swayimg.entry|nil # Currently selected image entry
+---@return swayimg.entry? # Currently selected image entry
 function swayimg.gallery.get_image() end
