@@ -218,7 +218,7 @@ end)
 swayimg.viewer.on_scroll(function(kmods, horizontal, vertical)
   if kmods == "Ctrl" then
     -- zoom in/out
-    if vertical then
+    if vertical ~= 0 then
       local mouse = swayimg.get_mouse_pos()
       local scale = swayimg.viewer.scale
       swayimg.viewer.set_abs_scale(scale - scale * vertical / 10.0, mouse.x, mouse.y)
@@ -352,16 +352,16 @@ end)
 swayimg.gallery.on_scroll(function(kmods, horizontal, vertical)
   if kmods == "Ctrl" then
     -- zoom in/out
-    if vertical then
+    if vertical ~= 0 then
       swayimg.gallery.thumb_size = math.max(
         swayimg.gallery.thumb_size + math.floor(-vertical / 2), 0)
     end
   else
     -- select nearest thumbnail
-    if horizontal then
+    if horizontal ~= 0 then
       swayimg.gallery.select(horizontal > 0 and "left" or "right")
     end
-    if vertical then
+    if vertical ~= 0 then
       swayimg.gallery.select(vertical > 0 and "up" or "down")
     end
   end
