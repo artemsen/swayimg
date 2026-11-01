@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2018, Dmitry Tarakanov
 // SPDX-License-Identifier: MIT
 
@@ -15,10 +15,10 @@ namespace luabridge {
 /**
  * @brief Stack specialization for `std::vector`.
  */
-template <class T>
-struct Stack<std::vector<T>>
+template <class T, class Allocator>
+struct Stack<std::vector<T, Allocator>>
 {
-    using Type = std::vector<T>;
+    using Type = std::vector<T, Allocator>;
 
     [[nodiscard]] static Result push(lua_State* L, const Type& vector)
     {
@@ -30,16 +30,15 @@ struct Stack<std::vector<T>>
         StackRestore stackRestore(L);
 
         lua_createtable(L, static_cast<int>(vector.size()), 0);
+        const int tableIndex = lua_gettop(L);
 
         for (std::size_t i = 0; i < vector.size(); ++i)
         {
-            lua_pushinteger(L, static_cast<lua_Integer>(i + 1));
-            
             auto result = Stack<T>::push(L, vector[i]);
             if (! result)
                 return result;
 
-            lua_settable(L, -3);
+            lua_rawseti(L, tableIndex, static_cast<int>(i + 1));
         }
         
         stackRestore.reset();

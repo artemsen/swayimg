@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2021, Lucio Asnaghi
+// Copyright 2021, kunitoki
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // Copyright 2008, Nigel Atkinson <suprapilot+LuaCode@gmail.com>
 // SPDX-License-Identifier: MIT
@@ -23,13 +23,12 @@ class LuaException : public std::exception
 public:
     //=============================================================================================
     /**
-     * @brief Construct a LuaException after a lua_pcall().
-     *
-     * Assumes the error string is on top of the stack, but provides a generic error message otherwise.
+     * @brief Construct a LuaException from a LuaBridge error code.
      */
     LuaException(lua_State* L, std::error_code code)
         : m_L(L)
         , m_code(code)
+        , m_what(code.message())
     {
     }
 
@@ -50,7 +49,7 @@ public:
     /**
      * @brief Throw an exception or raises a luaerror when exceptions are disabled.
      */
-    static void raise(lua_State* L, std::error_code code)
+    [[noreturn]] static void raise(lua_State* L, std::error_code code)
     {
         LUABRIDGE_ASSERT(areExceptionsEnabled(L));
 
@@ -159,7 +158,7 @@ private:
         catch (const std::exception& e)
         {
             lua_pushstring(L, e.what());
-            return lua_error_x(L);
+            lua_error_x(L);
         }
     }
 #endif

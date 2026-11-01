@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2020, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // Copyright 2007, Nathan Reed
@@ -18,6 +18,7 @@
 
 #include "detail/CFunctions.h"
 #include "detail/ClassInfo.h"
+#include "detail/Coroutine.h"
 #include "detail/Enum.h"
 #include "detail/Errors.h"
 #include "detail/Expected.h"

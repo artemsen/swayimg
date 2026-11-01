@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2020, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // SPDX-License-Identifier: MIT
@@ -103,6 +103,15 @@ template <class T, auto = typeName<T>().find_first_of('.')>
 
 //=================================================================================================
 /**
+ * @brief The key of a type identity tag in class/const metatables.
+ */
+[[nodiscard]] inline const void* getTypeIdentityKey() noexcept
+{
+    return reinterpret_cast<void*>(0xc2c);
+}
+
+//=================================================================================================
+/**
  * @brief The key of a propget table in another metatable.
  */
 [[nodiscard]] inline const void* getPropgetKey() noexcept
@@ -139,6 +148,18 @@ template <class T, auto = typeName<T>().find_first_of('.')>
 
 //=================================================================================================
 /**
+ * @brief The key of a cast offset table in a derived class metatable.
+ *
+ * Maps base class registry keys to byte offsets for pointer adjustment when converting
+ * a derived class pointer to a base class pointer in multiple inheritance scenarios.
+ */
+[[nodiscard]] inline const void* getCastTableKey() noexcept
+{
+    return reinterpret_cast<void*>(0xca57);
+}
+
+//=================================================================================================
+/**
  * The key of the index fall back in another metatable.
  */
 [[nodiscard]] inline const void* getIndexFallbackKey()
@@ -163,6 +184,33 @@ template <class T, auto = typeName<T>().find_first_of('.')>
 [[nodiscard]] inline const void* getNewIndexExtensibleKey()
 {
     return reinterpret_cast<void*>(0x8108);
+}
+
+//=================================================================================================
+/**
+ * @brief The key of a ConverterRegistry userdata in a class metatable.
+ */
+[[nodiscard]] inline const void* getConvertersKey() noexcept
+{
+    return reinterpret_cast<void*>(0xc0de);
+}
+
+//=================================================================================================
+/**
+ * The key of the static index fall back in another metatable.
+ */
+[[nodiscard]] inline const void* getStaticIndexFallbackKey()
+{
+    return reinterpret_cast<void*>(0x81cc);
+}
+
+//=================================================================================================
+/**
+ * The key of the static new index fall back in another metatable.
+ */
+[[nodiscard]] inline const void* getStaticNewIndexFallbackKey()
+{
+    return reinterpret_cast<void*>(0x8109);
 }
 
 //=================================================================================================

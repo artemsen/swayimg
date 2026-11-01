@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2021, Lucio Asnaghi
+// Copyright 2021, kunitoki
 // SPDX-License-Identifier: MIT
 
 #pragma once
@@ -10,190 +10,117 @@
 #include "LuaRef.h"
 #include "LuaException.h"
 
-#include <vector>
 #include <functional>
-#include <optional>
-#include <variant>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace luabridge {
 
 //=================================================================================================
-/**
- * @brief Result of a lua invocation.
- */
-class LuaResult
+namespace detail {
+
+template <class F>
+bool is_handler_valid(const F& f) noexcept
 {
-public:
-    /**
-     * @brief Get if the result was ok and didn't raise a lua error.
-     */
-    explicit operator bool() const noexcept
-    {
-        return !m_ec;
-    }
+    if constexpr (std::is_pointer_v<remove_cvref_t<F>>)
+        return f != nullptr;
+    else if constexpr (std::is_constructible_v<bool, remove_cvref_t<F>>)
+        return static_cast<bool>(f);
+    else
+        return true;
+}
 
-    /**
-     * @brief Return if the invocation was ok and didn't raise a lua error.
-     */
-    bool wasOk() const noexcept
-    {
-        return !m_ec;
-    }
+template <class Tuple, std::size_t... Indices>
+TypeResult<Tuple> decode_tuple_result(lua_State* L, int first_result_index, std::index_sequence<Indices...>)
+{
+    auto results = std::make_tuple(
+        Stack<std::tuple_element_t<Indices, Tuple>>::get(L, first_result_index + static_cast<int>(Indices))...);
 
-    /**
-     * @brief Return if the invocation did raise a lua error.
-     */
-    bool hasFailed() const noexcept
-    {
-        return !!m_ec;
-    }
+    std::error_code ec;
 
-    /**
-     * @brief Return the error code, if any.
-     *
-     * In case the invcation didn't raise any lua error, the value returned equals to a
-     * default constructed std::error_code.
-     */
-    std::error_code errorCode() const noexcept
-    {
-        return m_ec;
-    }
-
-    /**
-     * @brief Return the error message, if any.
-     */
-    std::string errorMessage() const noexcept
-    {
-        if (std::holds_alternative<std::string>(m_data))
+    const bool ok =
+        (([&]()
         {
-            const auto& message = std::get<std::string>(m_data);
-            return message.empty() ? m_ec.message() : message;
-        }
+            const auto& element = std::get<Indices>(results);
+            if (! element)
+            {
+                ec = element.error();
+                return false;
+            }
+            return true;
+        }())
+            && ...);
+
+    if (! ok)
+        return ec;
+
+    return Tuple{ std::move(*std::get<Indices>(results))... };
+}
+
+template <class R>
+TypeResult<R> decode_call_result(lua_State* L, int first_result_index, int num_returned_values)
+{
+    if constexpr (std::is_same_v<R, void> || std::is_same_v<R, std::tuple<>>)
+    {
+        if (num_returned_values != 0)
+            return makeErrorCode(ErrorCode::InvalidTableSizeInCast);
 
         return {};
     }
-
-    /**
-     * @brief Return the number of return values.
-     */
-    std::size_t size() const noexcept
+    else if constexpr (is_tuple_v<R>)
     {
-        if (std::holds_alternative<std::vector<LuaRef>>(m_data))
-            return std::get<std::vector<LuaRef>>(m_data).size();
+        constexpr auto expected_size = static_cast<int>(std::tuple_size_v<R>);
+        if (num_returned_values != expected_size)
+            return makeErrorCode(ErrorCode::InvalidTableSizeInCast);
 
-        return 0;
+        return decode_tuple_result<R>(L, first_result_index, std::make_index_sequence<expected_size>{});
     }
-
-    /**
-     * @brief Get a return value at a specific index.
-     */
-    LuaRef operator[](std::size_t index) const
+    else
     {
-        LUABRIDGE_ASSERT(m_ec == std::error_code());
+        if (num_returned_values < 1)
+            return makeErrorCode(ErrorCode::InvalidTypeCast);
 
-        if (std::holds_alternative<std::vector<LuaRef>>(m_data))
-        {
-            const auto& values = std::get<std::vector<LuaRef>>(m_data);
-
-            LUABRIDGE_ASSERT(index < values.size());
-            return values[index];
-        }
-
-        return LuaRef(m_L);
+        return Stack<R>::get(L, first_result_index);
     }
+}
 
-private:
-    template <class... Args>
-    friend LuaResult call(const LuaRef&, Args&&...);
-
-    template <class F, class... Args>
-    friend LuaResult callWithHandler(const LuaRef&, F&&, Args&&...);
-
-    static LuaResult errorFromStack(lua_State* L, std::error_code ec)
-    {
-        auto errorString = lua_tostring(L, -1);
-        lua_pop(L, 1);
-
-        return LuaResult(L, ec, errorString ? errorString : ec.message());
-    }
-
-    static LuaResult valuesFromStack(lua_State* L, int stackTop)
-    {
-        std::vector<LuaRef> values;
-
-        const int numReturnedValues = lua_gettop(L) - stackTop;
-        if (numReturnedValues > 0)
-        {
-            values.reserve(numReturnedValues);
-
-            for (int index = numReturnedValues; index > 0; --index)
-                values.emplace_back(LuaRef::fromStack(L, -index));
-
-            lua_pop(L, numReturnedValues);
-        }
-
-        return LuaResult(L, std::move(values));
-    }
-
-    LuaResult(lua_State* L, std::error_code ec, std::string_view errorString)
-        : m_L(L)
-        , m_ec(ec)
-        , m_data(std::string(errorString))
-    {
-    }
-
-    explicit LuaResult(lua_State* L, std::vector<LuaRef> values) noexcept
-        : m_L(L)
-        , m_data(std::move(values))
-    {
-    }
-
-    lua_State* m_L = nullptr;
-    std::error_code m_ec;
-    std::variant<std::vector<LuaRef>, std::string> m_data;
-};
+} // namespace detail
 
 //=================================================================================================
 /**
- * @brief Safely call Lua code.
- *
- * These overloads allow Lua code to be called throught `lua_pcall`.  The return value is provided as
- * a `LuaResult` which will hold the return values or an error if the call failed.
- *
- * If an error occurs, a `LuaException` is thrown or if exceptions are disabled the function result will
- * contain a error code and evaluate false.
- *
- * @note The function might throw a `LuaException` if the application is compiled with exceptions on
- * and they are enabled globally by calling `enableExceptions` in two cases:
- * - one of the arguments passed cannot be pushed in the stack, for example a unregistered C++ class
- * - the lua invaction calls the panic handler, which is converted to a C++ exception
- *
- * @return A result object.
-*/
-template <class F, class... Args>
-LuaResult callWithHandler(const LuaRef& object, F&& errorHandler, Args&&... args)
+ * @brief Safely call Lua code and decode the return values to R.
+ */
+template <class R, class Ref, class F, class... Args>
+TypeResult<R> callWithHandler(const Ref& object, F&& errorHandler, Args&&... args)
 {
-    static constexpr bool isValidHandler = !std::is_same_v<detail::remove_cvref_t<F>, detail::remove_cvref_t<decltype(std::ignore)>>;
+    static_assert(std::is_same_v<detail::remove_cvref_t<F>, detail::remove_cvref_t<decltype(std::ignore)>> || std::is_invocable_r_v<int, F, lua_State*>);
+
+    static constexpr bool isValidHandler =
+        !std::is_same_v<detail::remove_cvref_t<F>, detail::remove_cvref_t<decltype(std::ignore)>>;
 
     lua_State* L = object.state();
-    const int stackTop = lua_gettop(L);
+    const StackRestore stackRestore(L);
+    const int initialTop = lua_gettop(L);
 
+    bool hasHandler = false;
     if constexpr (isValidHandler)
-        detail::push_function(L, std::forward<F>(errorHandler), ""); // Stack: error handler (eh)
-
-    object.push(); // Stack: eh, ref
-
     {
-        const auto [result, index] = detail::push_arguments(L, std::forward_as_tuple(args...)); // Stack: eh, ref, args...
-        if (! result)
-        {
-            lua_pop(L, static_cast<int>(index) + 1);
-            return LuaResult(L, result, result.message());
-        }
+        hasHandler = detail::is_handler_valid(errorHandler);
+        if (hasHandler)
+            detail::push_function(L, std::forward<F>(errorHandler), "");
     }
 
-    const int code = lua_pcall(L, sizeof...(Args), LUA_MULTRET, isValidHandler ? (-static_cast<int>(sizeof...(Args)) - 2) : 0);
+    object.push();
+
+    {
+        const auto [result, index] = detail::push_arguments(L, std::forward_as_tuple(args...));
+        if (! result)
+            return result.error();
+    }
+
+    const int messageHandlerIndex = hasHandler ? (initialTop + 1) : 0;
+    const int code = lua_pcall(L, sizeof...(Args), LUA_MULTRET, messageHandlerIndex);
     if (code != LUABRIDGE_LUA_OK)
     {
         auto ec = makeErrorCode(ErrorCode::LuaFunctionCallFailed);
@@ -206,17 +133,78 @@ LuaResult callWithHandler(const LuaRef& object, F&& errorHandler, Args&&... args
         }
 #endif
 
-        return LuaResult::errorFromStack(L, ec);
+        lua_pop(L, 1);
+        return ec;
     }
 
-    return LuaResult::valuesFromStack(L, stackTop);
+    if (hasHandler)
+        lua_remove(L, initialTop + 1);
+
+    const int firstResultIndex = initialTop + 1;
+    const int numReturnedValues = lua_gettop(L) - initialTop;
+    return detail::decode_call_result<R>(L, firstResultIndex, numReturnedValues);
 }
 
-template <class... Args>
-LuaResult call(const LuaRef& object, Args&&... args)
+template <class Ref, class F, class... Args>
+TypeResult<void> callWithHandler(const Ref& object, F&& errorHandler, Args&&... args)
 {
-    return callWithHandler(object, std::ignore, std::forward<Args>(args)...);
+    return callWithHandler<void, Ref, F, Args...>(object, std::forward<F>(errorHandler), std::forward<Args>(args)...);
 }
+
+template <class R = void, class Ref, class... Args>
+TypeResult<R> call(const Ref& object, Args&&... args)
+{
+    return callWithHandler<R>(object, std::ignore, std::forward<Args>(args)...);
+}
+
+template <class Signature>
+class LuaFunction;
+
+template <class R, class... Args>
+class LuaFunction<R(Args...)>
+{
+public:
+    LuaFunction() = default;
+
+    explicit LuaFunction(const LuaRef& function)
+        : m_function(function)
+    {
+    }
+
+    explicit LuaFunction(LuaRef&& function)
+        : m_function(std::move(function))
+    {
+    }
+
+    [[nodiscard]] TypeResult<R> operator()(Args... args) const
+    {
+        return call(std::forward<Args>(args)...);
+    }
+
+    [[nodiscard]] TypeResult<R> call(Args... args) const
+    {
+        return luabridge::call<R>(m_function, std::forward<Args>(args)...);
+    }
+
+    template <class F>
+    [[nodiscard]] TypeResult<R> callWithHandler(F&& errorHandler, Args... args) const
+    {
+        return luabridge::callWithHandler<R>(m_function, std::forward<F>(errorHandler), std::forward<Args>(args)...);
+    }
+
+    [[nodiscard]] bool isValid() const
+    {
+        return m_function.isCallable();
+    }
+
+    [[nodiscard]] const LuaRef& ref() const
+    {
+        return m_function;
+    }
+
+private:
+    LuaRef m_function;
+};
 
 //=============================================================================================
 /**
@@ -236,24 +224,40 @@ inline int pcall(lua_State* L, int nargs = 0, int nresults = 0, int msgh = 0)
 
 //=============================================================================================
 template <class Impl, class LuaRef>
-template <class... Args>
-LuaResult LuaRefBase<Impl, LuaRef>::operator()(Args&&... args) const
+template <class R, class... Args>
+TypeResult<R> LuaRefBase<Impl, LuaRef>::call(Args&&... args) const
 {
-    return luabridge::call(*this, std::forward<Args>(args)...);
+    return luabridge::call<R>(impl(), std::forward<Args>(args)...);
 }
 
 template <class Impl, class LuaRef>
 template <class... Args>
-LuaResult LuaRefBase<Impl, LuaRef>::call(Args&&... args) const
+TypeResult<void> LuaRefBase<Impl, LuaRef>::operator()(Args&&... args) const
 {
-    return luabridge::call(*this, std::forward<Args>(args)...);
+    return call<void>(std::forward<Args>(args)...);
+}
+
+template <class Impl, class LuaRef>
+template <class R, class F, class... Args>
+TypeResult<R> LuaRefBase<Impl, LuaRef>::callWithHandler(F&& errorHandler, Args&&... args) const
+{
+    return luabridge::callWithHandler<R>(impl(), std::forward<F>(errorHandler), std::forward<Args>(args)...);
 }
 
 template <class Impl, class LuaRef>
 template <class F, class... Args>
-LuaResult LuaRefBase<Impl, LuaRef>::callWithHandler(F&& errorHandler, Args&&... args) const
+TypeResult<void> LuaRefBase<Impl, LuaRef>::callWithHandler(F&& errorHandler, Args&&... args) const
 {
-    return luabridge::callWithHandler(*this, std::forward<F>(errorHandler), std::forward<Args>(args)...);
+    return callWithHandler<void>(std::forward<F>(errorHandler), std::forward<Args>(args)...);
+}
+
+template <class Impl, class LuaRef>
+template <class Signature>
+LuaFunction<Signature> LuaRefBase<Impl, LuaRef>::callable() const
+{
+    const StackRestore stackRestore(m_L);
+    impl().push(m_L);
+    return LuaFunction<Signature>(LuaRef::fromStack(m_L));
 }
 
 } // namespace luabridge

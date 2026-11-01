@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2021, Lucio Asnaghi
+// Copyright 2021, kunitoki
 // SPDX-License-Identifier: MIT
 
 #pragma once
@@ -35,7 +35,11 @@ enum class ErrorCode
 
     InvalidTypeCast,
 
-    InvalidTableSizeInCast
+    InvalidTableSizeInCast,
+
+    CoroutineYieldFromNonCoroutine,
+
+    CoroutineAlreadyDone
 };
 
 //=================================================================================================
@@ -48,6 +52,11 @@ struct ErrorCategory : std::error_category
     }
 
     std::string message(int ev) const override
+    {
+        return errorString(ev);
+    }
+
+    static const char* errorString(int ev) noexcept
     {
         switch (static_cast<ErrorCode>(ev))
         {
@@ -71,6 +80,12 @@ struct ErrorCategory : std::error_category
 
         case ErrorCode::InvalidTableSizeInCast:
             return "The lua table has different size than expected";
+
+        case ErrorCode::CoroutineYieldFromNonCoroutine:
+            return "Cannot yield from a non-coroutine Lua state";
+
+        case ErrorCode::CoroutineAlreadyDone:
+            return "The Lua coroutine has already finished execution";
 
         default:
             return "Unknown error";

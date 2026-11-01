@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2020, Dmitry Tarakanov
 // Copyright 2019, George Tokmaji
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>

@@ -1,11 +1,14 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2023, Lucio Asnaghi
+// Copyright 2023, kunitoki
 // SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Config.h"
 #include "Stack.h"
+
+#include <optional>
+#include <type_traits>
 
 namespace luabridge {
 
@@ -25,6 +28,32 @@ TypeResult<T> getGlobal(lua_State* L, const char* name)
     lua_pop(L, 1);
 
     return result;
+}
+
+//=================================================================================================
+/**
+ * @brief Try to get a field from a global table without creating a LuaRef.
+ *
+ * This is a fast-path helper for optional lookup patterns. It invokes normal Lua field access
+ * on the table, including metamethods, and returns std::nullopt when the global is not a table
+ * or the field cannot be converted to the requested type.
+ */
+template <class T>
+std::optional<T> tryGetGlobalField(lua_State* L, const char* globalName, const char* fieldName)
+{
+    const StackRestore stackRestore(L);
+
+    lua_getglobal(L, globalName);
+    if (! lua_istable(L, -1))
+        return std::nullopt;
+
+    lua_getfield(L, -1, fieldName);
+
+    auto result = Stack<std::decay_t<T>>::get(L, -1);
+    if (! result)
+        return std::nullopt;
+
+    return *result;
 }
 
 //=================================================================================================

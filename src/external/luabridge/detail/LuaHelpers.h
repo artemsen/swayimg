@@ -1,13 +1,14 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // Copyright 2007, Nathan Reed
 // SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "Config.h"
+#include "FuncTraits.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -25,141 +26,6 @@ constexpr void unused(Args&&...)
 {
 }
 
-// These functions and defines are for Luau.
-#if LUABRIDGE_ON_LUAU
-inline int luaL_ref(lua_State* L, int idx)
-{
-    LUABRIDGE_ASSERT(idx == LUA_REGISTRYINDEX);
-
-    const int ref = lua_ref(L, -1);
-
-    lua_pop(L, 1);
-
-    return ref;
-}
-
-inline void luaL_unref(lua_State* L, int idx, int ref)
-{
-    unused(idx);
-
-    lua_unref(L, ref);
-}
-
-template <class T>
-inline void* lua_newuserdata_x(lua_State* L, size_t sz)
-{
-    return lua_newuserdatadtor(L, sz, [](void* x)
-    {
-        T* object = static_cast<T*>(x);
-        object->~T();
-    });
-}
-
-inline void lua_pushcfunction_x(lua_State *L, lua_CFunction fn, const char* debugname)
-{
-    lua_pushcfunction(L, fn, debugname);
-}
-
-inline void lua_pushcclosure_x(lua_State* L, lua_CFunction fn, const char* debugname, int n)
-{
-    lua_pushcclosure(L, fn, debugname, n);
-}
-
-inline int lua_error_x(lua_State* L)
-{
-    lua_error(L);
-    return 0;
-}
-
-inline int lua_getstack_x(lua_State* L, int level, lua_Debug* ar)
-{
-    return lua_getinfo(L, level, "nlS", ar);
-}
-
-inline int lua_getstack_info_x(lua_State* L, int level, const char* what, lua_Debug* ar)
-{
-    return lua_getinfo(L, level, what, ar);
-}
-
-#else
-using ::luaL_ref;
-using ::luaL_unref;
-
-template <class T>
-inline void* lua_newuserdata_x(lua_State* L, size_t sz)
-{
-    return lua_newuserdata(L, sz);
-}
-
-inline void lua_pushcfunction_x(lua_State *L, lua_CFunction fn, const char* debugname)
-{
-    unused(debugname);
-
-    lua_pushcfunction(L, fn);
-}
-
-inline void lua_pushcclosure_x(lua_State* L, lua_CFunction fn, const char* debugname, int n)
-{
-    unused(debugname);
-
-    lua_pushcclosure(L, fn, n);
-}
-
-inline int lua_error_x(lua_State* L)
-{
-    return lua_error(L);
-}
-
-inline int lua_getstack_x(lua_State* L, int level, lua_Debug* ar)
-{
-    return lua_getstack(L, level, ar);
-}
-
-inline int lua_getstack_info_x(lua_State* L, int level, const char* what, lua_Debug* ar)
-{
-    lua_getstack(L, level, ar);
-    return lua_getinfo(L, what, ar);
-}
-
-#endif // LUABRIDGE_ON_LUAU
-
-// These are for Lua versions prior to 5.3.0.
-#if LUA_VERSION_NUM < 503
-inline lua_Number to_numberx(lua_State* L, int idx, int* isnum)
-{
-    lua_Number n = lua_tonumber(L, idx);
-
-    if (isnum)
-        *isnum = (n != 0 || lua_isnumber(L, idx));
-
-    return n;
-}
-
-inline lua_Integer to_integerx(lua_State* L, int idx, int* isnum)
-{
-    int ok = 0;
-    lua_Number n = to_numberx(L, idx, &ok);
-
-    if (ok)
-    {
-        const auto int_n = static_cast<lua_Integer>(n);
-        if (n == static_cast<lua_Number>(int_n))
-        {
-            if (isnum)
-                *isnum = 1;
-
-            return int_n;
-        }
-    }
-
-    if (isnum)
-        *isnum = 0;
-
-    return 0;
-}
-
-#endif // LUA_VERSION_NUM < 503
-
 // These are for Lua versions prior to 5.2.0.
 #if LUA_VERSION_NUM < 502
 using lua_Unsigned = std::make_unsigned_t<lua_Integer>;
@@ -173,24 +39,6 @@ inline int lua_absindex(lua_State* L, int idx)
         return idx;
 }
 #endif
-
-inline int lua_rawgetp(lua_State* L, int idx, const void* p)
-{
-    idx = lua_absindex(L, idx);
-    luaL_checkstack(L, 1, "not enough stack slots");
-    lua_pushlightuserdata(L, const_cast<void*>(p));
-    lua_rawget(L, idx);
-    return lua_type(L, -1);
-}
-
-inline void lua_rawsetp(lua_State* L, int idx, const void* p)
-{
-    idx = lua_absindex(L, idx);
-    luaL_checkstack(L, 1, "not enough stack slots");
-    lua_pushlightuserdata(L, const_cast<void*>(p));
-    lua_insert(L, -2);
-    lua_rawset(L, idx);
-}
 
 #define LUA_OPEQ 1
 #define LUA_OPLT 2
@@ -237,17 +85,243 @@ inline int get_length(lua_State* L, int idx)
 {
     return static_cast<int>(lua_objlen(L, idx));
 }
-
 #else // LUA_VERSION_NUM >= 502
 inline int get_length(lua_State* L, int idx)
 {
-    lua_len(L, idx);
-    const int len = static_cast<int>(luaL_checknumber(L, -1));
+    return static_cast<int>(lua_rawlen(L, idx));
+}
+#endif // LUA_VERSION_NUM < 502
+
+// These functions and defines are for Luau.
+#if LUABRIDGE_ON_LUAU
+inline int luaL_ref(lua_State* L, int idx)
+{
+    LUABRIDGE_ASSERT(idx == LUA_REGISTRYINDEX);
+
+    const int ref = lua_ref(L, -1);
+
     lua_pop(L, 1);
-    return len;
+
+    return ref;
 }
 
-#endif // LUA_VERSION_NUM < 502
+inline void luaL_unref(lua_State* L, int idx, int ref)
+{
+    unused(idx);
+
+    lua_unref(L, ref);
+}
+
+/**
+ * @brief Trampolines adapting a `void(void*)` destructor to the signature expected by `lua_newuserdatadtor`.
+ *
+ * Older Luau versions take `void (*)(void*)`, newer ones take `lua_Destructor` (`void (*)(lua_State*, void*)`).
+ * Overload resolution against the parameter type of `lua_newuserdatadtor` picks the right one.
+ */
+template <void (*Dtor)(void*)>
+inline void luau_userdata_dtor(void* x)
+{
+    Dtor(x);
+}
+
+template <void (*Dtor)(void*)>
+inline void luau_userdata_dtor(lua_State*, void* x)
+{
+    Dtor(x);
+}
+
+template <void (*Dtor)(void*)>
+inline void* lua_newuserdatadtor_x(lua_State* L, size_t sz)
+{
+    return lua_newuserdatadtor(L, sz, &luau_userdata_dtor<Dtor>);
+}
+
+template <class T>
+inline void luau_destroy_userdata(void* x)
+{
+    T* object = static_cast<T*>(x);
+    object->~T();
+}
+
+template <class T>
+inline void* lua_newuserdata_x(lua_State* L, size_t sz)
+{
+    return lua_newuserdatadtor_x<&luau_destroy_userdata<T>>(L, sz);
+}
+
+inline void lua_pushcfunction_x(lua_State *L, lua_CFunction fn, const char* debugname)
+{
+    lua_pushcfunction(L, fn, debugname);
+}
+
+inline void lua_pushcclosure_x(lua_State* L, lua_CFunction fn, const char* debugname, int n)
+{
+    lua_pushcclosure(L, fn, debugname, n);
+}
+
+[[noreturn]] inline void lua_error_x(lua_State* L)
+{
+    lua_error(L);
+
+    detail::unreachable();
+}
+
+inline int lua_getstack_x(lua_State* L, int level, lua_Debug* ar)
+{
+    return lua_getinfo(L, level, "nlS", ar);
+}
+
+inline int lua_getstack_info_x(lua_State* L, int level, const char* what, lua_Debug* ar)
+{
+    return lua_getinfo(L, level, what, ar);
+}
+
+inline int lua_rawgetp_x(lua_State* L, int idx, void* p)
+{
+    return lua_rawgetp(L, idx, p);
+}
+
+inline void lua_rawsetp_x(lua_State* L, int idx, void* p)
+{
+    lua_rawsetp(L, idx, p);
+}
+
+#else
+using ::luaL_ref;
+using ::luaL_unref;
+
+template <class T>
+inline void* lua_newuserdata_x(lua_State* L, size_t sz)
+{
+    return lua_newuserdata(L, sz);
+}
+
+inline void lua_pushcfunction_x(lua_State *L, lua_CFunction fn, const char* debugname)
+{
+    unused(debugname);
+
+    lua_pushcfunction(L, fn);
+}
+
+inline void lua_pushcclosure_x(lua_State* L, lua_CFunction fn, const char* debugname, int n)
+{
+    unused(debugname);
+
+    lua_pushcclosure(L, fn, n);
+}
+
+[[noreturn]] inline void lua_error_x(lua_State* L)
+{
+    lua_error(L);
+
+    detail::unreachable();
+}
+
+inline int lua_getstack_x(lua_State* L, int level, lua_Debug* ar)
+{
+    return lua_getstack(L, level, ar);
+}
+
+inline int lua_getstack_info_x(lua_State* L, int level, const char* what, lua_Debug* ar)
+{
+    lua_getstack(L, level, ar);
+    return lua_getinfo(L, what, ar);
+}
+
+inline int lua_rawgetp_x(lua_State* L, int idx, void* p)
+{
+#if LUA_VERSION_NUM < 503
+    idx = lua_absindex(L, idx);
+    luaL_checkstack(L, 1, "not enough stack slots");
+    lua_pushlightuserdata(L, p);
+    lua_rawget(L, idx);
+    return lua_type(L, -1);
+#else
+    return lua_rawgetp(L, idx, p);
+#endif
+}
+
+inline void lua_rawsetp_x(lua_State* L, int idx, void* p)
+{
+#if LUA_VERSION_NUM < 503
+    idx = lua_absindex(L, idx);
+    luaL_checkstack(L, 1, "not enough stack slots");
+    lua_pushlightuserdata(L, p);
+    lua_insert(L, -2);
+    lua_rawset(L, idx);
+#else
+    lua_rawsetp(L, idx, p);
+#endif
+}
+
+#endif // LUABRIDGE_ON_LUAU
+
+// These are for Lua versions prior to 5.5.0.
+#if LUA_VERSION_NUM < 505
+inline lua_State* lua_newstate_x(lua_Alloc f, void* ud, [[maybe_unused]] unsigned seed)
+{
+    return lua_newstate(f, ud);
+}
+#else
+inline lua_State* lua_newstate_x(lua_Alloc f, void* ud, unsigned seed)
+{
+    return lua_newstate(f, ud, seed);
+}
+#endif
+
+// These are for Lua versions prior to 5.3.0.
+#if LUA_VERSION_NUM < 503
+inline lua_Number to_numberx(lua_State* L, int idx, int* isnum)
+{
+    lua_Number n = lua_tonumber(L, idx);
+
+    if (isnum)
+        *isnum = (n != 0 || lua_isnumber(L, idx));
+
+    return n;
+}
+
+inline lua_Integer to_integerx(lua_State* L, int idx, int* isnum)
+{
+    int ok = 0;
+    lua_Number n = to_numberx(L, idx, &ok);
+
+    if (ok)
+    {
+        if (n < static_cast<lua_Number>(std::numeric_limits<lua_Integer>::min()) ||
+            n >= -static_cast<lua_Number>(std::numeric_limits<lua_Integer>::min()))
+        {
+            if (isnum)
+                *isnum = 0;
+            return 0;
+        }
+
+        const auto int_n = static_cast<lua_Integer>(n);
+        if (n == static_cast<lua_Number>(int_n))
+        {
+            if (isnum)
+                *isnum = 1;
+
+            return int_n;
+        }
+    }
+
+    if (isnum)
+        *isnum = 0;
+
+    return 0;
+}
+#endif // LUA_VERSION_NUM < 503
+
+inline int lua_rawgetp_x(lua_State* L, int idx, const void* p)
+{
+    return lua_rawgetp_x(L, idx, const_cast<void*>(p));
+}
+
+inline void lua_rawsetp_x(lua_State* L, int idx, const void* p)
+{
+    lua_rawsetp_x(L, idx, const_cast<void*>(p));
+}
 
 #ifndef LUA_OK
 #define LUABRIDGE_LUA_OK 0
@@ -487,6 +561,18 @@ int lua_deleteuserdata_aligned(lua_State* L)
     return 0;
 }
 
+#if LUABRIDGE_ON_LUAU
+/**
+ * @brief Destroy luau userdata taking into account alignment.
+ */
+template <class T>
+void luau_destroy_userdata_aligned(void* x)
+{
+    T* aligned = align<T>(x);
+    aligned->~T();
+}
+#endif
+
 /**
  * @brief Allocate lua userdata taking into account alignment.
  *
@@ -498,11 +584,7 @@ void* lua_newuserdata_aligned(lua_State* L, Args&&... args)
     using U = std::remove_reference_t<T>;
 
 #if LUABRIDGE_ON_LUAU
-    void* pointer = lua_newuserdatadtor(L, maximum_space_needed_to_align<U>(), [](void* x)
-    {
-        U* aligned = align<U>(x);
-        aligned->~U();
-    });
+    void* pointer = lua_newuserdatadtor_x<&luau_destroy_userdata_aligned<U>>(L, maximum_space_needed_to_align<U>());
 #else
     void* pointer = lua_newuserdata_x<U>(L, maximum_space_needed_to_align<U>());
 
@@ -522,7 +604,7 @@ void* lua_newuserdata_aligned(lua_State* L, Args&&... args)
 /**
  * @brief Safe error able to walk backwards for error reporting correctly.
  */
-inline int raise_lua_error(lua_State* L, const char* fmt, ...)
+[[noreturn]] inline void raise_lua_error(lua_State* L, const char* fmt, ...)
 {
     va_list argp;
     va_start(argp, fmt);
@@ -533,7 +615,7 @@ inline int raise_lua_error(lua_State* L, const char* fmt, ...)
     if (message != nullptr)
     {
         if (auto str = std::string_view(message); !str.empty() && str[0] == '[')
-            return lua_error_x(L);
+            lua_error_x(L);
     }
 
     bool pushed_error = false;
@@ -565,7 +647,7 @@ inline int raise_lua_error(lua_State* L, const char* fmt, ...)
     lua_remove(L, -3);
     lua_concat(L, 2);
 
-    return lua_error_x(L);
+    lua_error_x(L);
 }
 
 /**
@@ -580,26 +662,33 @@ constexpr bool is_integral_representable_by(T value)
     if constexpr (sizeof(T) == sizeof(U))
     {
         if constexpr (same_signedness)
+        {
             return true;
-
-        if constexpr (std::is_unsigned_v<T>)
+        }
+        else if constexpr (std::is_unsigned_v<T>)
+        {
             return value <= static_cast<T>((std::numeric_limits<U>::max)());
-
-        return value >= static_cast<T>((std::numeric_limits<U>::min)())
-            && static_cast<U>(value) <= (std::numeric_limits<U>::max)();
+        }
+        else
+        {
+            return value >= static_cast<T>((std::numeric_limits<U>::min)())
+                && static_cast<U>(value) <= (std::numeric_limits<U>::max)();
+        }
     }
-
-    if constexpr (sizeof(T) < sizeof(U))
+    else if constexpr (sizeof(T) < sizeof(U))
     {
         return static_cast<U>(value) >= (std::numeric_limits<U>::min)()
             && static_cast<U>(value) <= (std::numeric_limits<U>::max)();
     }
-
-    if constexpr (std::is_unsigned_v<T>)
+    else if constexpr (std::is_unsigned_v<T>)
+    {
         return value <= static_cast<T>((std::numeric_limits<U>::max)());
-
-    return value >= static_cast<T>((std::numeric_limits<U>::min)())
-        && value <= static_cast<T>((std::numeric_limits<U>::max)());
+    }
+    else
+    {
+        return value >= static_cast<T>((std::numeric_limits<U>::min)())
+            && value <= static_cast<T>((std::numeric_limits<U>::max)());
+    }
 }
 
 template <class U = lua_Integer>
@@ -616,17 +705,28 @@ bool is_integral_representable_by(lua_State* L, int index)
  * @brief Checks if the value on the stack is a number type and can fit into the corresponding c++ numerical type..
  */
 template <class U = lua_Number, class T>
-constexpr bool is_floating_point_representable_by(T value)
+bool is_floating_point_representable_by(T value)
 {
     if constexpr (sizeof(T) == sizeof(U))
+    {
         return true;
+    }
+    else if constexpr (sizeof(T) < sizeof(U))
+    {
+        if (std::isnan(value) || std::isinf(value))
+            return true;
 
-    if constexpr (sizeof(T) < sizeof(U))
         return static_cast<U>(value) >= -(std::numeric_limits<U>::max)()
             && static_cast<U>(value) <= (std::numeric_limits<U>::max)();
+    }
+    else
+    {
+        if (std::isnan(value) || std::isinf(value))
+            return true;
 
-    return value >= static_cast<T>(-(std::numeric_limits<U>::max)())
-        && value <= static_cast<T>((std::numeric_limits<U>::max)());
+        return value >= static_cast<T>(-(std::numeric_limits<U>::max)())
+            && value <= static_cast<T>((std::numeric_limits<U>::max)());
+    }
 }
 
 template <class U = lua_Number>
@@ -637,6 +737,57 @@ bool is_floating_point_representable_by(lua_State* L, int index)
     const auto value = tonumber(L, index, &isValid);
 
     return isValid ? is_floating_point_representable_by<U>(value) : false;
+}
+
+/**
+ * @brief Portable wrapper for lua_resume that normalises calling convention differences
+ * across Lua 5.1/LuaJIT (no from, no nresults), 5.2-5.3 (from but no nresults), and 5.4+ (from + nresults).
+ *
+ * @param L      The coroutine thread to resume.
+ * @param from   The thread doing the resuming (may be nullptr on older Lua).
+ * @param nargs  Number of arguments on L's stack to pass to the resumed function.
+ * @param nresults Output: number of values on L's stack after resume (yielded or returned).
+ *                 For Lua 5.4+, filled directly by lua_resume. For older versions, computed via lua_gettop.
+ * @returns LUA_OK, LUA_YIELD, or an error code.
+ */
+inline int lua_resume_x(lua_State* L, lua_State* from, int nargs, int* nresults = nullptr)
+{
+#if LUABRIDGE_ON_LUAJIT || LUA_VERSION_NUM == 501
+    unused(from);
+    int status = lua_resume(L, nargs);
+    if (nresults)
+        *nresults = lua_gettop(L);
+    return status;
+#elif LUABRIDGE_ON_LUAU || LUABRIDGE_ON_RAVI || LUA_VERSION_NUM < 504
+    int status = lua_resume(L, from, nargs);
+    if (nresults)
+        *nresults = lua_gettop(L);
+    return status;
+#else
+    int nr = 0;
+    int status = lua_resume(L, from, nargs, &nr);
+    if (nresults)
+        *nresults = nr;
+    return status;
+#endif
+}
+
+/**
+ * @brief Returns true if the currently running C function can yield via lua_yieldk.
+ *
+ * Returns false on Lua 5.1, LuaJIT, and Luau where lua_yieldk is unavailable.
+ */
+inline bool lua_isyieldable_x(lua_State* L)
+{
+#if LUABRIDGE_ON_LUAJIT || LUA_VERSION_NUM == 501 || LUABRIDGE_ON_LUAU
+    unused(L);
+    return false;
+#elif LUA_VERSION_NUM < 503
+    unused(L);
+    return true; // lua_yieldk exists in 5.2; assume yieldable when reached
+#else
+    return lua_isyieldable(L) != 0;
+#endif
 }
 
 } // namespace luabridge

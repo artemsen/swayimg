@@ -6,6 +6,8 @@
 
 #include "fdevent.hpp"
 #include "image.hpp"
+#include "log.hpp"
+#include "text.hpp"
 
 // clang-format off
 // lua headers must be included in this order
@@ -17,7 +19,7 @@
 
 #include <filesystem>
 #include <format>
-#include <stdexcept>
+#include <string>
 #include <vector>
 
 /** Lua integration. */
@@ -42,6 +44,24 @@ public:
      * @param script script to execute
      */
     void execute(const std::string& script);
+
+    /**
+     * Call a Lua function with debug.traceback as error handler.
+     * @param ref reference to the Lua function to call
+     * @param args arguments to pass
+     */
+    template <typename... Args>
+    void call(const luabridge::LuaRef& ref, Args&&... args)
+    {
+        const auto rc = ref.callWithHandler(LuaEngine::traceback_lua,
+                                            std::forward<Args>(args)...);
+        if (!rc) {
+            if (last_traceback.empty()) {
+                last_traceback = "Lua call failed";
+            }
+            print_error("{}", last_traceback);
+        }
+    }
 
 private:
     // Bind API to Lua
@@ -69,6 +89,22 @@ private:
     const luabridge::LuaRef* add_ref(const luabridge::LuaRef* obj);
 
     /**
+     * Print Lua error message.
+     * @param fmt error text format
+     * @param ... format arguments
+     */
+    template <typename... Args>
+    void print_error(const std::format_string<Args...> fmt, Args&&... args)
+    {
+        const std::string message =
+            std::vformat(fmt.get(), std::make_format_args(args...));
+        const std::string status =
+            message.substr(0, message.find_first_of('\n'));
+        Log::error("{}", message);
+        Text::self().set_status(status);
+    }
+
+    /**
      * Raise Lua error.
      * @param fmt error text format
      * @param ... format arguments
@@ -81,8 +117,13 @@ private:
         const std::string message =
             std::vformat(fmt.get(), std::make_format_args(args...));
         luabridge::raise_lua_error(lua_state, "%s", message.c_str());
-        throw std::runtime_error(message.c_str());
     }
+
+    /**
+      Handler used to get traceback of Lua call.
+      Called by Lua BEFORE the call stack unwinds.
+    */
+    static int traceback_lua(lua_State* lua);
 
     /**
      * Print warning about using a deprecated function.
@@ -94,6 +135,7 @@ private:
 private:
     lua_State* lua_state = nullptr;             ///< Lua state
     std::vector<const luabridge::LuaRef*> refs; ///< Own Lua references
+    std::string last_traceback;
 
     FdTimer defer_timer;                   ///< Timer for deferred call
     luabridge::LuaRef* defer_fn = nullptr; ///< Deferred callback

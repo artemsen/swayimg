@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2019, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // Copyright 2007, Nathan Reed
@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <string>
+#include <initializer_list>
 #include <type_traits>
 #include <utility>
 
@@ -35,6 +36,26 @@ namespace luabridge {
  * So there can be maximum one "active" registrar object.
  */
 namespace detail {
+
+struct BaseClassInfo
+{
+    const void* staticKey;
+    const void* classKey;
+    lua_Integer castOffset;
+};
+
+template <class Derived, class Base>
+lua_Integer computeCastOffset() noexcept
+{
+    static_assert(std::is_base_of_v<Base, Derived>);
+
+    alignas(Derived) std::byte buf[sizeof(Derived)] = {};
+
+    auto* derived = reinterpret_cast<Derived*>(buf);
+    auto* base = static_cast<Base*>(derived); // implicit upcast, purely pointer arithmetic
+
+    return static_cast<lua_Integer>(reinterpret_cast<char*>(base) - reinterpret_cast<char*>(derived));
+}
 
 class Registrar
 {
@@ -138,8 +159,6 @@ class Namespace : public detail::Registrar
         s = s + message;
 
         luaL_error(L, "%s", s.c_str());
-
-        return 0;
     }
 #endif
 
@@ -159,6 +178,115 @@ class Namespace : public detail::Registrar
         using Registrar::operator=;
 
     protected:
+        static void appendParentList(lua_State* L, int parentsIndex, int visitedIndex, int baseMetatableIndex)
+        {
+            parentsIndex = lua_absindex(L, parentsIndex);
+            visitedIndex = lua_absindex(L, visitedIndex);
+            baseMetatableIndex = lua_absindex(L, baseMetatableIndex);
+
+            LUABRIDGE_ASSERT(lua_istable(L, parentsIndex));
+            LUABRIDGE_ASSERT(lua_istable(L, visitedIndex));
+            LUABRIDGE_ASSERT(lua_istable(L, baseMetatableIndex));
+
+            const auto appendUnique = [=](int metatableIndex)
+            {
+                metatableIndex = lua_absindex(L, metatableIndex);
+
+                if (! lua_istable(L, metatableIndex))
+                    return;
+
+                auto* metatablePtr = const_cast<void*>(lua_topointer(L, metatableIndex));
+                LUABRIDGE_ASSERT(metatablePtr != nullptr);
+
+                lua_pushlightuserdata(L, metatablePtr);
+                lua_rawget(L, visitedIndex);
+                const bool alreadyVisited = ! lua_isnil(L, -1);
+                lua_pop(L, 1);
+
+                if (alreadyVisited)
+                    return;
+
+                lua_pushlightuserdata(L, metatablePtr);
+                lua_pushboolean(L, 1);
+                lua_rawset(L, visitedIndex);
+
+                lua_pushvalue(L, metatableIndex);
+                lua_rawseti(L, parentsIndex, static_cast<int>(static_cast<lua_Integer>(get_length(L, parentsIndex)) + 1));
+            };
+
+            appendUnique(baseMetatableIndex);
+
+            lua_rawgetp_x(L, baseMetatableIndex, detail::getParentKey()); // Stack: ..., parent list | nil
+            if (! lua_istable(L, -1))
+            {
+                lua_pop(L, 1);
+                return;
+            }
+
+            const int parentListIndex = lua_absindex(L, -1);
+            const int count = get_length(L, parentListIndex);
+
+            for (int i = 1; i <= count; ++i)
+            {
+                lua_rawgeti(L, parentListIndex, i);
+                appendUnique(-1);
+                lua_pop(L, 1);
+            }
+
+            lua_pop(L, 1);
+        }
+
+        void setObjectMetaMethods(int tableIndex, bool simple)
+        {
+            tableIndex = lua_absindex(L, tableIndex);
+
+            if (simple)
+            {
+                lua_rawgetp_x(L, tableIndex, detail::getPropgetKey()); // Stack: ..., pg | nil
+                lua_pushvalue(L, tableIndex); // Stack: ..., pg | nil, mt
+                lua_pushcclosure_x(L, &detail::index_metamethod_simple<true>, "__index", 2);
+                rawsetfield(L, tableIndex, "__index");
+
+                lua_rawgetp_x(L, tableIndex, detail::getPropsetKey()); // Stack: ..., ps | nil
+                lua_pushcclosure_x(L, &detail::newindex_metamethod_simple<true>, "__newindex", 1);
+                rawsetfield(L, tableIndex, "__newindex");
+            }
+            else
+            {
+                lua_pushcfunction_x(L, &detail::index_metamethod<true>, "__index");
+                rawsetfield(L, tableIndex, "__index");
+
+                lua_pushcfunction_x(L, &detail::newindex_metamethod<true>, "__newindex");
+                rawsetfield(L, tableIndex, "__newindex");
+            }
+        }
+
+        void setStaticMetaMethods(int tableIndex, bool simple)
+        {
+            tableIndex = lua_absindex(L, tableIndex);
+
+            if (simple)
+            {
+                lua_rawgetp_x(L, tableIndex, detail::getPropgetKey()); // Stack: ..., pg | nil
+                lua_rawgetp_x(L, tableIndex, detail::getClassKey()); // Stack: ..., pg | nil, cl | nil
+                lua_pushvalue(L, tableIndex); // Stack: ..., pg | nil, cl | nil, mt
+                lua_pushcclosure_x(L, &detail::index_metamethod_simple<false>, "__index", 3);
+                rawsetfield(L, tableIndex, "__index");
+
+                lua_rawgetp_x(L, tableIndex, detail::getPropsetKey()); // Stack: ..., ps | nil
+                lua_pushcclosure_x(L, &detail::newindex_metamethod_simple<false>, "__newindex", 1);
+                rawsetfield(L, tableIndex, "__newindex");
+            }
+            else
+            {
+                lua_pushcfunction_x(L, &detail::index_metamethod<false>, "__index");
+                rawsetfield(L, tableIndex, "__index");
+
+                lua_pushcfunction_x(L, &detail::newindex_metamethod<false>, "__newindex");
+                rawsetfield(L, tableIndex, "__newindex");
+            }
+        }
+
         //=========================================================================================
         /**
          * @brief Create the const table.
@@ -176,19 +304,15 @@ class Namespace : public detail::Registrar
             lua_setmetatable(L, -2); // co.__metatable = co. Stack: ns, co
 
             pushunsigned(L, options.toUnderlying()); // Stack: ns, co, options
-            lua_rawsetp(L, -2, detail::getClassOptionsKey()); // co [classOptionsKey] = options. Stack: ns, co
+            lua_rawsetp_x(L, -2, detail::getClassOptionsKey()); // co [classOptionsKey] = options. Stack: ns, co
 
             lua_pushstring(L, type_name.c_str()); // Stack: ns, co, name
-            lua_rawsetp(L, -2, detail::getTypeKey()); // co [typeKey] = name. Stack: ns, co
+            lua_rawsetp_x(L, -2, detail::getTypeKey()); // co [typeKey] = name. Stack: ns, co
 
-            lua_pushcfunction_x(L, &detail::index_metamethod<true>, "__index"); // Stack: ns, co, im
-            rawsetfield(L, -2, "__index"); // Stack: ns, co
+            lua_newtable(L); // Stack: ns, co, propget table (pg)
+            lua_rawsetp_x(L, -2, detail::getPropgetKey()); // Stack: ns, co
 
-            lua_pushcfunction_x(L, &detail::newindex_metamethod<true>, "__newindex"); // Stack: ns, co, nim
-            rawsetfield(L, -2, "__newindex"); // Stack: ns, co
-
-            lua_newtable(L); // Stack: ns, co, tb
-            lua_rawsetp(L, -2, detail::getPropgetKey()); // Stack: ns, co
+            setObjectMetaMethods(-1, ! options.test(extensibleClass)); // Stack: ns, co
 
             if (! options.test(visibleMetatables))
             {
@@ -213,13 +337,16 @@ class Namespace : public detail::Registrar
             createConstTable(name, false, options); // Stack: ns, co, cl
 
             lua_newtable(L); // Stack: ns, co, cl, propset table (ps)
-            lua_rawsetp(L, -2, detail::getPropsetKey()); // cl [propsetKey] = ps. Stack: ns, co, cl
+            lua_rawsetp_x(L, -2, detail::getPropsetKey()); // cl [propsetKey] = ps. Stack: ns, co, cl
 
             lua_pushvalue(L, -2); // Stack: ns, co, cl, co
-            lua_rawsetp(L, -2, detail::getConstKey()); // cl [constKey] = co. Stack: ns, co, cl
+            lua_rawsetp_x(L, -2, detail::getConstKey()); // cl [constKey] = co. Stack: ns, co, cl
 
             lua_pushvalue(L, -1); // Stack: ns, co, cl, cl
-            lua_rawsetp(L, -3, detail::getClassKey()); // co [classKey] = cl. Stack: ns, co, cl
+            lua_rawsetp_x(L, -3, detail::getClassKey()); // co [classKey] = cl. Stack: ns, co, cl
+
+            if (! options.test(extensibleClass))
+                setObjectMetaMethods(-1, true);
         }
 
         //=========================================================================================
@@ -240,22 +367,18 @@ class Namespace : public detail::Registrar
             rawsetfield(L, -5, name); // ns [name] = st. Stack: ns, co, cl, st, mt
 
             pushunsigned(L, options.toUnderlying()); // Stack: ns, co, cl, st, mt, options
-            lua_rawsetp(L, -2, detail::getClassOptionsKey()); // st [classOptionsKey] = options. Stack: ns, co, cl, st, mt
-
-            lua_pushcfunction_x(L, &detail::index_metamethod<false>, "__index");
-            rawsetfield(L, -2, "__index");
-
-            lua_pushcfunction_x(L, &detail::newindex_metamethod<false>, "__newindex");
-            rawsetfield(L, -2, "__newindex");
+            lua_rawsetp_x(L, -2, detail::getClassOptionsKey()); // st [classOptionsKey] = options. Stack: ns, co, cl, st, mt
 
             lua_newtable(L); // Stack: ns, co, cl, st, proget table (pg)
-            lua_rawsetp(L, -2, detail::getPropgetKey()); // st [propgetKey] = pg. Stack: ns, co, cl, st
+            lua_rawsetp_x(L, -2, detail::getPropgetKey()); // st [propgetKey] = pg. Stack: ns, co, cl, st
 
             lua_newtable(L); // Stack: ns, co, cl, st, propset table (ps)
-            lua_rawsetp(L, -2, detail::getPropsetKey()); // st [propsetKey] = pg. Stack: ns, co, cl, st
+            lua_rawsetp_x(L, -2, detail::getPropsetKey()); // st [propsetKey] = pg. Stack: ns, co, cl, st
 
             lua_pushvalue(L, -2); // Stack: ns, co, cl, st, cl
-            lua_rawsetp(L, -2, detail::getClassKey()); // st [classKey] = cl. Stack: ns, co, cl, st
+            lua_rawsetp_x(L, -2, detail::getClassKey()); // st [classKey] = cl. Stack: ns, co, cl, st
+
+            setStaticMetaMethods(-1, ! options.test(extensibleClass));
 
             if (! options.test(visibleMetatables))
             {
@@ -326,6 +449,12 @@ class Namespace : public detail::Registrar
 
                 createClassTable(name, options); // Stack: ns, co, class table (cl)
                 ++m_stackSize;
+
+                lua_pushlightuserdata(L, const_cast<void*>(detail::getConstRegistryKey<T>())); // Stack: ns, co, cl, id
+                lua_rawsetp_x(L, -3, detail::getTypeIdentityKey()); // co[typeIdentityKey] = const id. Stack: ns, co, cl
+                lua_pushlightuserdata(L, const_cast<void*>(detail::getClassRegistryKey<T>())); // Stack: ns, co, cl, id
+                lua_rawsetp_x(L, -2, detail::getTypeIdentityKey()); // cl[typeIdentityKey] = class id. Stack: ns, co, cl
+
 #if !defined(LUABRIDGE_ON_LUAU)
                 lua_pushcfunction_x(L, &detail::gc_metamethod<T>, "__gc"); // Stack: ns, co, cl, function
                 rawsetfield(L, -2, "__gc"); // cl ["__gc"] = function. Stack: ns, co, cl
@@ -338,17 +467,17 @@ class Namespace : public detail::Registrar
                 ++m_stackSize;
 
                 lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-                lua_rawsetp(L, -2, detail::getStaticKey()); // cl [staticKey] = st. Stack: ns, co, cl, st
+                lua_rawsetp_x(L, -2, detail::getStaticKey()); // cl [staticKey] = st. Stack: ns, co, cl, st
                 lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-                lua_rawsetp(L, -3, detail::getStaticKey()); // co [staticKey] = st. Stack: ns, co, cl, st
+                lua_rawsetp_x(L, -3, detail::getStaticKey()); // co [staticKey] = st. Stack: ns, co, cl, st
 
                 // Map T back to its tables.
                 lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-                lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getStaticRegistryKey<T>()); // Stack: ns, co, cl, st
+                lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getStaticRegistryKey<T>()); // Stack: ns, co, cl, st
                 lua_pushvalue(L, -2); // Stack: ns, co, cl, st, cl
-                lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, cl, st
+                lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, cl, st
                 lua_pushvalue(L, -3); // Stack: ns, co, cl, st, co
-                lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, co, cl, st
+                lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, co, cl, st
             }
             else
             {
@@ -360,12 +489,12 @@ class Namespace : public detail::Registrar
                 lua_pop(L, 1); // Stack: ns, st
 
                 // Map T back from its stored tables
-                lua_rawgetp(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, st, co
+                lua_rawgetp_x(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, st, co
                 LUABRIDGE_ASSERT(lua_istable(L, -1)); // Class was previously registered as table or namespace ?
                 lua_insert(L, -2); // Stack: ns, co, st
                 ++m_stackSize;
 
-                lua_rawgetp(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, st, cl
+                lua_rawgetp_x(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, st, cl
                 LUABRIDGE_ASSERT(lua_istable(L, -1)); // Class was previously registered as table or namespace ?
                 lua_insert(L, -2); // Stack: ns, co, cl, st
                 ++m_stackSize;
@@ -380,7 +509,7 @@ class Namespace : public detail::Registrar
          * @param parent A parent namespace object.
          * @param staticKey Key where the class is stored.
         */
-        Class(const char* name, Namespace parent, const void* const staticKey, Options options)
+        Class(const char* name, Namespace parent, std::initializer_list<detail::BaseClassInfo> bases, Options options)
             : ClassBase(name, std::move(parent))
         {
             LUABRIDGE_ASSERT(name != nullptr);
@@ -397,6 +526,12 @@ class Namespace : public detail::Registrar
 
             createClassTable(name, options); // Stack: ns, co, class table (cl)
             ++m_stackSize;
+
+            lua_pushlightuserdata(L, const_cast<void*>(detail::getConstRegistryKey<T>())); // Stack: ns, co, cl, id
+            lua_rawsetp_x(L, -3, detail::getTypeIdentityKey()); // co[typeIdentityKey] = const id. Stack: ns, co, cl
+            lua_pushlightuserdata(L, const_cast<void*>(detail::getClassRegistryKey<T>())); // Stack: ns, co, cl, id
+            lua_rawsetp_x(L, -2, detail::getTypeIdentityKey()); // cl[typeIdentityKey] = class id. Stack: ns, co, cl
+
 #if !defined(LUABRIDGE_ON_LUAU)
             lua_pushcfunction_x(L, &detail::gc_metamethod<T>, "__gc"); // Stack: ns, co, cl, function
             rawsetfield(L, -2, "__gc"); // cl ["__gc"] = function. Stack: ns, co, cl
@@ -408,37 +543,139 @@ class Namespace : public detail::Registrar
             ++m_stackSize;
 
             lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-            lua_rawsetp(L, -2, detail::getStaticKey()); // cl [staticKey] = st. Stack: ns, co, cl, st
+            lua_rawsetp_x(L, -2, detail::getStaticKey()); // cl [staticKey] = st. Stack: ns, co, cl, st
             lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-            lua_rawsetp(L, -3, detail::getStaticKey()); // co [staticKey] = st. Stack: ns, co, cl, st
+            lua_rawsetp_x(L, -3, detail::getStaticKey()); // co [staticKey] = st. Stack: ns, co, cl, st
 
-            lua_rawgetp(L, LUA_REGISTRYINDEX, staticKey); // Stack: ns, co, cl, st, parent st (pst) | nil
-            if (lua_isnil(L, -1)) // Stack: ns, co, cl, st, nil
+            const int coIndex = lua_absindex(L, -3);
+            const int clIndex = lua_absindex(L, -2);
+            const int stIndex = lua_absindex(L, -1);
+
+            lua_newtable(L); // Stack: ns, co, cl, st, cl parents
+            const int clParentsIndex = lua_absindex(L, -1);
+            lua_newtable(L); // Stack: ns, co, cl, st, cl parents, cast table
+            const int castTableIndex = lua_absindex(L, -1);
+            lua_newtable(L); // Stack: ns, co, cl, st, cl parents, cast table, visited
+            const int visitedIndex = lua_absindex(L, -1);
+
+            for (const detail::BaseClassInfo& base : bases)
             {
-                lua_pop(L, 1);
+                lua_rawgetp_x(L, LUA_REGISTRYINDEX, base.staticKey); // Stack: ..., visited, base st | nil
+                if (! lua_istable(L, -1))
+                {
+                    lua_pop(L, 4); // pop (nil), visited, cast table, cl parents. Stack: ns, co, cl, st
 
-                throw_or_assert<std::logic_error>("Base class is not registered");
-                return;
+                    throw_or_assert<std::logic_error>("Base class is not registered");
+#if !LUABRIDGE_HAS_EXCEPTIONS
+                    return;
+#endif
+                }
+
+                lua_rawgetp_x(L, -1, detail::getClassKey()); // Stack: ..., visited, base st, base cl | nil
+                if (! lua_istable(L, -1))
+                {
+                    lua_pop(L, 5); // pop (nil), base st, visited, cast table, cl parents. Stack: ns, co, cl, st
+
+                    throw_or_assert<std::logic_error>("Base class is not registered");
+#if !LUABRIDGE_HAS_EXCEPTIONS
+                    return;
+#endif
+                }
+
+                appendParentList(L, clParentsIndex, visitedIndex, -1);
+
+                // Store the direct pointer adjustment offset for this base class
+                lua_pushlightuserdata(L, const_cast<void*>(base.classKey));
+                lua_pushinteger(L, base.castOffset);
+                lua_rawset(L, castTableIndex);
+
+                // Compose and propagate ancestor offsets from the base's own cast table.
+                // offset(T → ancestor) = offset(T → base) + offset(base → ancestor)
+                lua_rawgetp_x(L, -1, detail::getCastTableKey()); // Stack: ..., base st, base cl, base cast table | nil
+                if (lua_istable(L, -1))
+                {
+                    lua_pushnil(L);
+                    while (lua_next(L, -2) != 0)
+                    {
+                        // Stack: ..., base cast table, ancestor key, ancestor offset
+                        const lua_Integer ancestorOffset = lua_tointeger(L, -1);
+
+                        lua_pushvalue(L, -2); // duplicate ancestor key to check presence
+                        lua_rawget(L, castTableIndex);
+                        const bool alreadyPresent = ! lua_isnil(L, -1);
+                        lua_pop(L, 1);
+
+                        if (! alreadyPresent)
+                        {
+                            lua_pushvalue(L, -2); // push ancestor key
+                            lua_pushinteger(L, base.castOffset + ancestorOffset);
+                            lua_rawset(L, castTableIndex);
+                        }
+
+                        lua_pop(L, 1); // pop ancestor offset; ancestor key stays for next()
+                    }
+                    lua_pop(L, 1); // pop base cast table
+                }
+                else
+                {
+                    lua_pop(L, 1); // pop nil
+                }
+
+                lua_pop(L, 2); // pop base cl and base st. Stack: ..., cast table, visited
             }
 
-            LUABRIDGE_ASSERT(lua_istable(L, -1)); // Stack: ns, co, cl, st, pst
+            lua_pop(L, 1); // pop visited. Stack: ns, co, cl, st, cl parents, cast table
 
-            lua_rawgetp(L, -1, detail::getClassKey()); // Stack: ns, co, cl, st, pst, parent cl (pcl)
-            LUABRIDGE_ASSERT(lua_istable(L, -1));
+            // Store the cast table in both class and const metatables
+            lua_pushvalue(L, castTableIndex);
+            lua_rawsetp_x(L, clIndex, detail::getCastTableKey()); // cl[castTableKey] = cast table
+            lua_pushvalue(L, castTableIndex);
+            lua_rawsetp_x(L, coIndex, detail::getCastTableKey()); // co[castTableKey] = cast table
+            lua_pop(L, 1); // pop cast table. Stack: ns, co, cl, st, cl parents
 
-            lua_rawgetp(L, -1, detail::getConstKey()); // Stack: ns, co, cl, st, pst, pcl, parent co (pco)
-            LUABRIDGE_ASSERT(lua_istable(L, -1));
+            lua_createtable(L, get_length(L, clParentsIndex), 0); // Stack: ns, co, cl, st, cl parents, co parents
+            const int coParentsIndex = lua_absindex(L, -1);
+            lua_createtable(L, get_length(L, clParentsIndex), 0); // Stack: ns, co, cl, st, cl parents, co parents, st parents
+            const int stParentsIndex = lua_absindex(L, -1);
 
-            lua_rawsetp(L, -6, detail::getParentKey()); // co [parentKey] = pco. Stack: ns, co, cl, st, pst, pcl
-            lua_rawsetp(L, -4, detail::getParentKey()); // cl [parentKey] = pcl. Stack: ns, co, cl, st, pst
-            lua_rawsetp(L, -2, detail::getParentKey()); // st [parentKey] = pst. Stack: ns, co, cl, st
+            const int parentCount = get_length(L, clParentsIndex);
+            for (int i = 1; i <= parentCount; ++i)
+            {
+                lua_rawgeti(L, clParentsIndex, i); // Stack: ..., st parents, parent cl
+                LUABRIDGE_ASSERT(lua_istable(L, -1));
+
+                lua_rawgetp_x(L, -1, detail::getConstKey()); // Stack: ..., parent cl, parent co
+                LUABRIDGE_ASSERT(lua_istable(L, -1));
+                lua_rawseti(L, coParentsIndex, i); // Stack: ..., parent cl
+
+                lua_rawgetp_x(L, -1, detail::getStaticKey()); // Stack: ..., parent cl, parent st
+                LUABRIDGE_ASSERT(lua_istable(L, -1));
+                lua_rawseti(L, stParentsIndex, i); // Stack: ..., parent cl
+
+                lua_pop(L, 1); // Stack: ..., st parents
+            }
+
+            lua_pushvalue(L, coParentsIndex);
+            lua_rawsetp_x(L, coIndex, detail::getParentKey());
+
+            lua_pushvalue(L, clParentsIndex);
+            lua_rawsetp_x(L, clIndex, detail::getParentKey());
+
+            lua_pushvalue(L, stParentsIndex);
+            lua_rawsetp_x(L, stIndex, detail::getParentKey());
+
+            lua_pop(L, 3); // Stack: ns, co, cl, st
+
+            setObjectMetaMethods(-3, false); // co
+            setObjectMetaMethods(-2, false); // cl
+            setStaticMetaMethods(-1, false); // st
 
             lua_pushvalue(L, -1); // Stack: ns, co, cl, st, st
-            lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getStaticRegistryKey<T>()); // Stack: ns, co, cl, st
+            lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getStaticRegistryKey<T>()); // Stack: ns, co, cl, st
             lua_pushvalue(L, -2); // Stack: ns, co, cl, st, cl
-            lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, cl, st
+            lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getClassRegistryKey<T>()); // Stack: ns, co, cl, st
             lua_pushvalue(L, -3); // Stack: ns, co, cl, st, co
-            lua_rawsetp(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, co, cl, st
+            lua_rawsetp_x(L, LUA_REGISTRYINDEX, detail::getConstRegistryKey<T>()); // Stack: ns, co, cl, st
         }
 
         //=========================================================================================
@@ -494,6 +731,12 @@ class Namespace : public detail::Registrar
             return *this;
         }
 
+        template <class Field>
+        Class<T>& addStaticPropertyReadWrite(const char* name, Field member)
+        {
+            return addStaticProperty(name, member, member);
+        }
+
         //=========================================================================================
         /**
          * @brief Add or replace a single static function or multiple overloaded functions.
@@ -520,33 +763,118 @@ class Namespace : public detail::Registrar
             }
             else
             {
-                // create new closure of try_overloads with new table
-                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+                // upvalue 1: OverloadSet (C++ struct with arity + type checker per overload)
+                auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+                ([&]
+                {
+                    detail::OverloadEntry entry;
+                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                    {
+                        entry.arity = -1;
+                        entry.checker = nullptr;
+                    }
+                    else
+                    {
+                        using ArgsPack = detail::function_arguments_t<Functions>;
+                        entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>);
+                        entry.checker = &detail::overload_type_checker<ArgsPack>;
+                    }
+                    overload_set->entries.push_back(entry);
+
+                } (), ...);
+
+                // upvalue 2: flat table of function closures indexed 1..N
+                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
                 int idx = 1;
 
                 ([&]
                 {
-                    lua_createtable(L, 2, 0); // reserve space for: function, arity
-                    lua_pushinteger(L, 1);
-                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                        lua_pushinteger(L, -1);
-                    else
-                        lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>));
-                    lua_settable(L, -3);
-                    lua_pushinteger(L, 2);
                     detail::push_function(L, std::move(functions), name);
-                    lua_settable(L, -3);
-
-                    lua_rawseti(L, -2, idx);
-                    ++idx;
+                    lua_rawseti(L, -2, idx++);
 
                 } (), ...);
 
-                lua_pushcclosure_x(L, &detail::try_overload_functions<false>, name, 1);
+                lua_pushcclosure_x(L, &detail::try_overload_functions<false>, name, 2);
             }
 
             rawsetfield(L, -2, name);
+
+            return *this;
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Add a static index metamethod function fallback that is triggered when no result is found in static functions, properties or any other static members.
+         *
+         * Let the user define a fallback index (__index) metamethod for the static class table.
+         */
+        template <class Function>
+        auto addStaticIndexMetaMethod(Function function)
+            -> std::enable_if_t<!std::is_pointer_v<Function>
+                && std::is_invocable_v<Function, const LuaRef&, lua_State*>, Class<T>&>
+        {
+            using FnType = decltype(function);
+
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            lua_newuserdata_aligned<FnType>(L, std::move(function)); // Stack: co, cl, st, function userdata (ud)
+            lua_pushcclosure_x(L, &detail::invoke_proxy_functor<FnType>, "__index", 1); // Stack: co, cl, st, function
+            lua_rawsetp_x(L, -2, detail::getStaticIndexFallbackKey());
+            setStaticMetaMethods(-1, false);
+
+            return *this;
+        }
+
+        Class<T>& addStaticIndexMetaMethod(LuaRef (*idxf)(const LuaRef&, lua_State*))
+        {
+            using FnType = decltype(idxf);
+
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            lua_pushlightuserdata(L, reinterpret_cast<void*>(idxf)); // Stack: co, cl, st, function ptr
+            lua_pushcclosure_x(L, &detail::invoke_proxy_function<FnType>, "__index", 1); // Stack: co, cl, st, function
+            lua_rawsetp_x(L, -2, detail::getStaticIndexFallbackKey());
+            setStaticMetaMethods(-1, false);
+
+            return *this;
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Add a static new index metamethod function fallback that is triggered when no result is found in static functions, properties or any other static members.
+         *
+         * Let the user define a fallback new index (__newindex) metamethod for the static class table.
+         */
+        template <class Function>
+        auto addStaticNewIndexMetaMethod(Function function)
+            -> std::enable_if_t<!std::is_pointer_v<Function>
+                && std::is_invocable_v<Function, const LuaRef&, const LuaRef&, lua_State*>, Class<T>&>
+        {
+            using FnType = decltype(function);
+
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            lua_newuserdata_aligned<FnType>(L, std::move(function)); // Stack: co, cl, st, function userdata (ud)
+            lua_pushcclosure_x(L, &detail::invoke_proxy_functor<FnType>, "__newindex", 1); // Stack: co, cl, st, function
+            lua_rawsetp_x(L, -2, detail::getStaticNewIndexFallbackKey());
+            setStaticMetaMethods(-1, false);
+
+            return *this;
+        }
+
+        Class<T>& addStaticNewIndexMetaMethod(LuaRef (*idxf)(const LuaRef&, const LuaRef&, lua_State*))
+        {
+            using FnType = decltype(idxf);
+
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            lua_pushlightuserdata(L, reinterpret_cast<void*>(idxf)); // Stack: co, cl, st, function ptr
+            lua_pushcclosure_x(L, &detail::invoke_proxy_function<FnType>, "__newindex", 1); // Stack: co, cl, st, function
+            lua_rawsetp_x(L, -2, detail::getStaticNewIndexFallbackKey());
+            setStaticMetaMethods(-1, false);
 
             return *this;
         }
@@ -592,6 +920,12 @@ class Namespace : public detail::Registrar
             return *this;
         }
 
+        template <class Field>
+        Class<T>& addPropertyReadWrite(const char* name, Field T::*member)
+        {
+            return addProperty(name, member, member);
+        }
+
         //=========================================================================================
         /**
          * @brief Add or replace a function that can operate on the class.
@@ -611,7 +945,18 @@ class Namespace : public detail::Registrar
             if (name == std::string_view("__gc"))
             {
                 throw_or_assert<std::logic_error>("__gc metamethod registration is forbidden");
+#if !LUABRIDGE_HAS_EXCEPTIONS
                 return *this;
+#endif
+            }
+
+            if constexpr ((detail::is_reversed_proxy_function_v<T, Functions> || ...))
+            {
+                if (!detail::is_binary_operator_metamethod(name))
+                {
+                    throw_or_assert<std::logic_error>("reversed functions are only allowed on binary operator metamethods");
+                    return *this;
+                }
             }
 
             if constexpr (sizeof...(Functions) == 1)
@@ -638,6 +983,46 @@ class Namespace : public detail::Registrar
                 // create new closure of const try_overload_functions with new table
                 if constexpr (detail::const_functions_count<T, Functions...> > 0)
                 {
+                    // upvalue 1: OverloadSet
+                    auto* overload_set_const_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                    auto* overload_set_const = align<detail::OverloadSet>(overload_set_const_unaligned);
+
+                    ([&]
+                    {
+                        if (!detail::is_const_function<T, Functions>)
+                            return;
+
+                        detail::OverloadEntry entry;
+                        if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                        {
+                            entry.arity = -1;
+                            entry.checker = nullptr;
+                        }
+                        else if constexpr (detail::is_proxy_member_function_v<T, Functions>)
+                        {
+                            using ArgsPack = detail::remove_first_type_t<detail::function_arguments_t<Functions>>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>);
+                            entry.checker = &detail::overload_type_checker<ArgsPack>;
+                        }
+                        else if constexpr (detail::is_reversed_proxy_function_v<T, Functions>)
+                        {
+                            using ArgsPack = detail::function_arguments_t<Functions>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>) - 1;
+                            entry.checker = &detail::reversed_overload_type_checker<ArgsPack>;
+                        }
+                        else
+                        {
+                            using ArgsPack = detail::function_arguments_t<Functions>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>);
+                            entry.checker = &detail::overload_type_checker<ArgsPack>;
+                        }
+                        overload_set_const->entries.push_back(entry);
+
+                    } (), ...);
+
+                    LUABRIDGE_ASSERT(!overload_set_const->entries.empty());
+
+                    // upvalue 2: flat table of function closures
                     lua_createtable(L, static_cast<int>(detail::const_functions_count<T, Functions...>), 0);
 
                     int idx = 1;
@@ -647,25 +1032,12 @@ class Namespace : public detail::Registrar
                         if (!detail::is_const_function<T, Functions>)
                             return;
 
-                        lua_createtable(L, 2, 0); // reserve space for: function, arity
-                        lua_pushinteger(L, 1);
-                        if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                            lua_pushinteger(L, -1);
-                        else
-                            lua_pushinteger(L, static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>));
-                        lua_settable(L, -3);
-                        lua_pushinteger(L, 2);
                         detail::push_member_function<T>(L, std::move(functions), name);
-                        lua_settable(L, -3);
-
-                        lua_rawseti(L, -2, idx);
-                        ++idx;
+                        lua_rawseti(L, -2, idx++);
 
                     } (), ...);
 
-                    LUABRIDGE_ASSERT(idx > 1);
-
-                    lua_pushcclosure_x(L, &detail::try_overload_functions<true>, name, 1);
+                    lua_pushcclosure_x(L, &detail::try_overload_functions<true>, name, 2);
                     lua_pushvalue(L, -1); // Stack: co, cl, st, function, function
                     rawsetfield(L, -4, name); // Stack: co, cl, st, function
                     rawsetfield(L, -4, name); // Stack: co, cl, st
@@ -674,6 +1046,46 @@ class Namespace : public detail::Registrar
                 // create new closure of non const try_overload_functions with new table
                 if constexpr (detail::non_const_functions_count<T, Functions...> > 0)
                 {
+                    // upvalue 1: OverloadSet
+                    auto* overload_set_nonconst_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                    auto* overload_set_nonconst = align<detail::OverloadSet>(overload_set_nonconst_unaligned);
+
+                    ([&]
+                    {
+                        if (detail::is_const_function<T, Functions>)
+                            return;
+
+                        detail::OverloadEntry entry;
+                        if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                        {
+                            entry.arity = -1;
+                            entry.checker = nullptr;
+                        }
+                        else if constexpr (detail::is_proxy_member_function_v<T, Functions>)
+                        {
+                            using ArgsPack = detail::remove_first_type_t<detail::function_arguments_t<Functions>>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>);
+                            entry.checker = &detail::overload_type_checker<ArgsPack>;
+                        }
+                        else if constexpr (detail::is_reversed_proxy_function_v<T, Functions>)
+                        {
+                            using ArgsPack = detail::function_arguments_t<Functions>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>) - 1;
+                            entry.checker = &detail::reversed_overload_type_checker<ArgsPack>;
+                        }
+                        else
+                        {
+                            using ArgsPack = detail::function_arguments_t<Functions>;
+                            entry.arity = static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>);
+                            entry.checker = &detail::overload_type_checker<ArgsPack>;
+                        }
+                        overload_set_nonconst->entries.push_back(entry);
+
+                    } (), ...);
+
+                    LUABRIDGE_ASSERT(!overload_set_nonconst->entries.empty());
+
+                    // upvalue 2: flat table of function closures
                     lua_createtable(L, static_cast<int>(detail::non_const_functions_count<T, Functions...>), 0);
 
                     int idx = 1;
@@ -683,31 +1095,90 @@ class Namespace : public detail::Registrar
                         if (detail::is_const_function<T, Functions>)
                             return;
 
-                        lua_createtable(L, 2, 0); // reserve space for: function, arity
-                        lua_pushinteger(L, 1);
-                        if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                            lua_pushinteger(L, -1);
-                        else
-                            lua_pushinteger(L, static_cast<int>(detail::member_function_arity_excluding_v<T, Functions, lua_State*>));
-                        lua_settable(L, -3);
-                        lua_pushinteger(L, 2);
                         detail::push_member_function<T>(L, std::move(functions), name);
-                        lua_settable(L, -3);
-
-                        lua_rawseti(L, -2, idx);
-                        ++idx;
+                        lua_rawseti(L, -2, idx++);
 
                     } (), ...);
 
-                    LUABRIDGE_ASSERT(idx > 1);
-
-                    lua_pushcclosure_x(L, &detail::try_overload_functions<true>, name, 1);
+                    lua_pushcclosure_x(L, &detail::try_overload_functions<true>, name, 2);
                     rawsetfield(L, -3, name); // Stack: co, cl, st
                 }
             }
 
             return *this;
         }
+
+#if LUABRIDGE_HAS_CXX20_COROUTINES
+        //=========================================================================================
+        /**
+         * @brief Add a C++20 coroutine as a static function to this class.
+         *
+         * The factory must be a callable returning CppCoroutine<R>. When Lua calls the registered
+         * function, a new C++ coroutine is created and run; co_yield sends values to the Lua caller
+         * and co_return sends the final return value.
+         *
+         * @param name    The function name to register.
+         * @param factory A callable returning CppCoroutine<R>.
+         *
+         * @returns This class registration object.
+         */
+        template <class F>
+        auto addStaticCoroutine(const char* name, F factory)
+            -> std::enable_if_t<detail::is_cpp_coroutine_factory_v<F>, Class<T>&>
+        {
+            LUABRIDGE_ASSERT(name != nullptr);
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            detail::push_coroutine_function(L, std::move(factory), name);
+            rawsetfield(L, -2, name); // Stack: co, cl, st  (into st)
+
+            return *this;
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Add a C++20 coroutine as a member function to this class.
+         *
+         * The factory must be a callable whose first argument is T* or const T*, followed by any
+         * additional arguments, and returning CppCoroutine<R>. When Lua calls the method on an
+         * object, a new C++ coroutine is created with the object as the first argument; co_yield
+         * sends values to the Lua caller and co_return sends the final return value.
+         *
+         * If the factory takes const T* as the first argument it is registered as a const method
+         * (accessible on both const and non-const objects); otherwise it is registered as a
+         * non-const method (accessible on non-const objects only).
+         *
+         * @param name    The method name to register.
+         * @param factory A callable taking T* or const T* as the first argument (the object
+         *                pointer), plus optional further arguments, returning CppCoroutine<R>.
+         *
+         * @returns This class registration object.
+         */
+        template <class F>
+        auto addCoroutine(const char* name, F factory)
+            -> std::enable_if_t<
+                detail::is_cpp_coroutine_factory_v<F> && detail::is_proxy_member_function_v<T, F>,
+                Class<T>&>
+        {
+            LUABRIDGE_ASSERT(name != nullptr);
+            assertStackState(); // Stack: const table (co), class table (cl), static table (st)
+
+            detail::push_coroutine_function(L, std::move(factory), name);
+
+            if constexpr (detail::is_const_function<T, F>)
+            {
+                lua_pushvalue(L, -1); // Stack: co, cl, st, func, func
+                rawsetfield(L, -4, name); // Stack: co, cl, st, func  (sets in cl)
+                rawsetfield(L, -4, name); // Stack: co, cl, st  (sets in co)
+            }
+            else
+            {
+                rawsetfield(L, -3, name); // Stack: co, cl, st  (sets in cl)
+            }
+
+            return *this;
+        }
+#endif // LUABRIDGE_HAS_CXX20_COROUTINES
 
         //=========================================================================================
         /**
@@ -734,26 +1205,33 @@ class Namespace : public detail::Registrar
             }
             else
             {
-                // create new closure of try_overloads with new table
-                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+                // upvalue 1: OverloadSet
+                auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+                ([&]
+                {
+                    using ArgsPack = detail::function_arguments_t<Functions>;
+                    detail::OverloadEntry entry;
+                    entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>);
+                    entry.checker = &detail::overload_type_checker<ArgsPack>;
+                    overload_set->entries.push_back(entry);
+
+                } (), ...);
+
+                // upvalue 2: flat table of function closures
+                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
                 int idx = 1;
 
                 ([&]
                 {
-                    lua_createtable(L, 2, 0); // reserve space for: function, arity
-                    lua_pushinteger(L, 1);
-                    lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>));
-                    lua_settable(L, -3);
-                    lua_pushinteger(L, 2);
                     lua_pushcclosure_x(L, &detail::constructor_placement_proxy<T, detail::function_arguments_t<Functions>>, className, 0);
-                    lua_settable(L, -3);
-                    lua_rawseti(L, -2, idx);
-                    ++idx;
+                    lua_rawseti(L, -2, idx++);
 
                 } (), ...);
 
-                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 1);
+                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 2);
             }
 
             rawsetfield(L, -2, "__call");
@@ -792,8 +1270,31 @@ class Namespace : public detail::Registrar
             }
             else
             {
-                // create new closure of try_overloads with new table
-                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+                // upvalue 1: OverloadSet
+                auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+                ([&]
+                {
+                    detail::OverloadEntry entry;
+                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                    {
+                        entry.arity = -1;
+                        entry.checker = nullptr;
+                    }
+                    else
+                    {
+                        // skip void* first arg (placement new destination, not a Lua argument)
+                        using ArgsPack = detail::remove_first_type_t<detail::function_arguments_t<Functions>>;
+                        entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>) - 1;
+                        entry.checker = &detail::overload_type_checker<ArgsPack>;
+                    }
+                    overload_set->entries.push_back(entry);
+
+                } (), ...);
+
+                // upvalue 2: flat table of function closures
+                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
                 int idx = 1;
 
@@ -801,23 +1302,13 @@ class Namespace : public detail::Registrar
                 {
                     using F = detail::constructor_forwarder<T, Functions>;
 
-                    lua_createtable(L, 2, 0); // reserve space for: function, arity
-                    lua_pushinteger(L, 1);
-                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                        lua_pushinteger(L, -1);
-                    else
-                        lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>) - 1); // 1: for void* ptr
-                    lua_settable(L, -3);
-                    lua_pushinteger(L, 2);
                     lua_newuserdata_aligned<F>(L, F(std::move(functions)));
                     lua_pushcclosure_x(L, &detail::invoke_proxy_constructor<F>, className, 1);
-                    lua_settable(L, -3);
-                    lua_rawseti(L, -2, idx);
-                    ++idx;
+                    lua_rawseti(L, -2, idx++);
 
                 } (), ...);
 
-                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 1);
+                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 2);
             }
 
             rawsetfield(L, -2, "__call"); // Stack: co, cl, st
@@ -845,26 +1336,33 @@ class Namespace : public detail::Registrar
             }
             else
             {
-                // create new closure of try_overloads with new table
-                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+                // upvalue 1: OverloadSet
+                auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+                ([&]
+                {
+                    using ArgsPack = detail::function_arguments_t<Functions>;
+                    detail::OverloadEntry entry;
+                    entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>);
+                    entry.checker = &detail::overload_type_checker<ArgsPack>;
+                    overload_set->entries.push_back(entry);
+
+                } (), ...);
+
+                // upvalue 2: flat table of function closures
+                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
                 int idx = 1;
 
                 ([&]
                 {
-                    lua_createtable(L, 2, 0); // reserve space for: function, arity
-                    lua_pushinteger(L, 1);
-                    lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>));
-                    lua_settable(L, -3);
-                    lua_pushinteger(L, 2);
                     lua_pushcclosure_x(L, &detail::constructor_container_proxy<C, detail::function_arguments_t<Functions>>, className, 0);
-                    lua_settable(L, -3);
-                    lua_rawseti(L, -2, idx);
-                    ++idx;
+                    lua_rawseti(L, -2, idx++);
 
                 } (), ...);
 
-                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 1);
+                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 2);
             }
 
             rawsetfield(L, -2, "__call");
@@ -899,8 +1397,30 @@ class Namespace : public detail::Registrar
             }
             else
             {
-                // create new closure of try_overloads with new table
-                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+                // upvalue 1: OverloadSet
+                auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+                auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+                ([&]
+                {
+                    detail::OverloadEntry entry;
+                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                    {
+                        entry.arity = -1;
+                        entry.checker = nullptr;
+                    }
+                    else
+                    {
+                        using ArgsPack = detail::function_arguments_t<Functions>;
+                        entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>);
+                        entry.checker = &detail::overload_type_checker<ArgsPack>;
+                    }
+                    overload_set->entries.push_back(entry);
+
+                } (), ...);
+
+                // upvalue 2: flat table of function closures
+                lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
                 int idx = 1;
 
@@ -908,23 +1428,13 @@ class Namespace : public detail::Registrar
                 {
                     using F = detail::container_forwarder<C, Functions>;
 
-                    lua_createtable(L, 2, 0); // reserve space for: function, arity
-                    lua_pushinteger(L, 1);
-                    if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                        lua_pushinteger(L, -1);
-                    else
-                        lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>));
-                    lua_settable(L, -3);
-                    lua_pushinteger(L, 2);
                     lua_newuserdata_aligned<F>(L, F(std::move(functions)));
                     lua_pushcclosure_x(L, &detail::invoke_proxy_constructor<F>, className, 1);
-                    lua_settable(L, -3);
-                    lua_rawseti(L, -2, idx);
-                    ++idx;
+                    lua_rawseti(L, -2, idx++);
 
                 } (), ...);
 
-                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 1);
+                lua_pushcclosure_x(L, &detail::try_overload_functions<true>, className, 2);
             }
 
             rawsetfield(L, -2, "__call"); // Stack: co, cl, st
@@ -992,7 +1502,8 @@ class Namespace : public detail::Registrar
 
             lua_newuserdata_aligned<FnType>(L, std::move(function)); // Stack: co, cl, st, function userdata (ud)
             lua_pushcclosure_x(L, &detail::invoke_proxy_functor<FnType>, "__index", 1); // Stack: co, cl, st, function
-            lua_rawsetp(L, -3, detail::getIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
 
             return *this;
         }
@@ -1005,7 +1516,8 @@ class Namespace : public detail::Registrar
 
             lua_pushlightuserdata(L, reinterpret_cast<void*>(idxf)); // Stack: co, cl, st, function ptr
             lua_pushcclosure_x(L, &detail::invoke_proxy_function<FnType>, "__index", 1); // Stack: co, cl, st, function
-            lua_rawsetp(L, -3, detail::getIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
 
             return *this;
         }
@@ -1018,7 +1530,8 @@ class Namespace : public detail::Registrar
 
             new (lua_newuserdata_x<MemFnPtr>(L, sizeof(MemFnPtr))) MemFnPtr(idxf);
             lua_pushcclosure_x(L, &detail::invoke_member_function<MemFnPtr, T>, "__index", 1);
-            lua_rawsetp(L, -3, detail::getIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
 
             return *this;
         }
@@ -1040,7 +1553,8 @@ class Namespace : public detail::Registrar
 
             lua_newuserdata_aligned<FnType>(L, std::move(function)); // Stack: co, cl, st, function userdata (ud)
             lua_pushcclosure_x(L, &detail::invoke_proxy_functor<FnType>, "__newindex", 1); // Stack: co, cl, st, function
-            lua_rawsetp(L, -3, detail::getNewIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getNewIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
 
             return *this;
         }
@@ -1053,7 +1567,8 @@ class Namespace : public detail::Registrar
 
             lua_pushlightuserdata(L, reinterpret_cast<void*>(idxf)); // Stack: co, cl, st, function ptr
             lua_pushcclosure_x(L, &detail::invoke_proxy_function<FnType>, "__newindex", 1); // Stack: co, cl, st, function
-            lua_rawsetp(L, -3, detail::getNewIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getNewIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
 
             return *this;
         }
@@ -1066,7 +1581,39 @@ class Namespace : public detail::Registrar
 
             new (lua_newuserdata_x<MemFnPtr>(L, sizeof(MemFnPtr))) MemFnPtr(idxf);
             lua_pushcclosure_x(L, &detail::invoke_member_function<MemFnPtr, T>, "__newindex", 1);
-            lua_rawsetp(L, -3, detail::getNewIndexFallbackKey());
+            lua_rawsetp_x(L, -3, detail::getNewIndexFallbackKey());
+            setObjectMetaMethods(-2, false);
+
+            return *this;
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Register a custom type converter from this class (T) to a target type (To).
+         *
+         * Stores a function pointer in the FROM class's (T's) Lua metatable under
+         * getConvertersKey() → getClassRegistryKey<To>(), for both the class table and
+         * the const table.  Phase 3 in Stack<To>::get reads it back during extraction.
+         *
+         * Requirements:
+         *   - StackConversion<To>::enabled must be true (user specializes to opt in).
+         *   - StackConverter<To, T> must provide: static To convert(const T&).
+         *
+         * @tparam To Target type. Stack<To> and Stack<const To&> gain Phase 3 fallback.
+         */
+        template <class To>
+        Class<T>& addConverter()
+        {
+            static_assert(StackConversion<To>::enabled,
+                "Specialize StackConversion<To> with enabled=true before calling addConverter<To>()");
+
+            using FnType = TypeResult<To>(*)(lua_State*, int);
+            static const FnType fn = &detail::convertFromStack<To, T>;
+
+            // Stack during Class<T> methods: ns, co, cl, st
+            // Store into both cl (-2) and co (-3) so both mutable and const userdatas work.
+            detail::getOrCreateConverterRegistry(L, lua_absindex(L, -2))->converters[detail::getClassRegistryKey<To>()] = &fn; // cl
+            detail::getOrCreateConverterRegistry(L, lua_absindex(L, -3))->converters[detail::getClassRegistryKey<To>()] = &fn; // co
 
             return *this;
         }
@@ -1174,10 +1721,10 @@ private:
         //rawsetfield(L, -2, "__newindex"); // Stack: pns, ns
 
         lua_newtable(L); // Stack: ns, mt, propget table (pg)
-        lua_rawsetp(L, -2, detail::getPropgetKey()); // ns [propgetKey] = pg. Stack: ns
+        lua_rawsetp_x(L, -2, detail::getPropgetKey()); // ns [propgetKey] = pg. Stack: ns
 
         lua_newtable(L); // Stack: ns, mt, propset table (ps)
-        lua_rawsetp(L, -2, detail::getPropsetKey()); // ns [propsetKey] = ps. Stack: ns
+        lua_rawsetp_x(L, -2, detail::getPropsetKey()); // ns [propsetKey] = ps. Stack: ns
 
         if (! options.test(visibleMetatables))
         {
@@ -1226,10 +1773,10 @@ private:
             rawsetfield(L, -2, "__newindex"); // Stack: pns, ns
 
             lua_newtable(L); // Stack: pns, ns, propget table (pg)
-            lua_rawsetp(L, -2, detail::getPropgetKey()); // ns [propgetKey] = pg. Stack: pns, ns
+            lua_rawsetp_x(L, -2, detail::getPropgetKey()); // ns [propgetKey] = pg. Stack: pns, ns
 
             lua_newtable(L); // Stack: pns, ns, propset table (ps)
-            lua_rawsetp(L, -2, detail::getPropsetKey()); // ns [propsetKey] = ps. Stack: pns, ns
+            lua_rawsetp_x(L, -2, detail::getPropsetKey()); // ns [propsetKey] = ps. Stack: pns, ns
 
             if (! options.test(visibleMetatables))
             {
@@ -1322,7 +1869,9 @@ public:
         {
             throw_or_assert<std::logic_error>("endNamespace() called on global namespace");
 
+#if !LUABRIDGE_HAS_EXCEPTIONS
             return Namespace(std::move(*this));
+#endif
         }
 
         LUABRIDGE_ASSERT(m_stackSize > 1);
@@ -1384,7 +1933,9 @@ public:
         {
             throw_or_assert<std::logic_error>("addProperty() called on global namespace");
 
+#if !LUABRIDGE_HAS_EXCEPTIONS
             return *this;
+#endif
         }
 
         detail::push_property_getter(L, std::move(getter), name); // Stack: ns, getter
@@ -1415,7 +1966,9 @@ public:
         {
             throw_or_assert<std::logic_error>("addProperty() called on global namespace");
 
+#if !LUABRIDGE_HAS_EXCEPTIONS
             return *this;
+#endif
         }
 
         detail::push_property_getter(L, std::move(getter), name); // Stack: ns, getter
@@ -1453,36 +2006,75 @@ public:
         }
         else
         {
-            // create new closure of try_overloads with new table
-            lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0); // reserve space for N overloads
+            // upvalue 1: OverloadSet (C++ struct with arity + type checker per overload)
+            auto* overload_set_unaligned = lua_newuserdata_aligned<detail::OverloadSet>(L);
+            auto* overload_set = align<detail::OverloadSet>(overload_set_unaligned);
+
+            ([&]
+            {
+                detail::OverloadEntry entry;
+                if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
+                {
+                    entry.arity = -1;
+                    entry.checker = nullptr;
+                }
+                else
+                {
+                    using ArgsPack = detail::function_arguments_t<Functions>;
+                    entry.arity = static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>);
+                    entry.checker = &detail::overload_type_checker<ArgsPack>;
+                }
+                overload_set->entries.push_back(entry);
+
+            } (), ...);
+
+            // upvalue 2: flat table of function closures indexed 1..N
+            lua_createtable(L, static_cast<int>(sizeof...(Functions)), 0);
 
             int idx = 1;
 
             ([&]
             {
-                lua_createtable(L, 2, 0); // reserve space for: function, arity
-                lua_pushinteger(L, 1);
-                if constexpr (detail::is_any_cfunction_pointer_v<Functions>)
-                    lua_pushinteger(L, -1);
-                else
-                    lua_pushinteger(L, static_cast<int>(detail::function_arity_excluding_v<Functions, lua_State*>));
-                lua_settable(L, -3);
-                lua_pushinteger(L, 2);
                 detail::push_function(L, std::move(functions), name);
-                lua_settable(L, -3);
-
-                lua_rawseti(L, -2, idx);
-                ++idx;
+                lua_rawseti(L, -2, idx++);
 
             } (), ...);
 
-            lua_pushcclosure_x(L, &detail::try_overload_functions<false>, name, 1);
+            lua_pushcclosure_x(L, &detail::try_overload_functions<false>, name, 2);
         }
 
         rawsetfield(L, -2, name);
 
         return *this;
     }
+
+#if LUABRIDGE_HAS_CXX20_COROUTINES
+    //=============================================================================================
+    /**
+     * @brief Add a C++20 coroutine function to this namespace.
+     *
+     * The factory must be a callable returning CppCoroutine<R>. When Lua calls the registered
+     * function, a new C++ coroutine is created and run; co_yield sends values to the Lua caller
+     * and co_return sends the final return value.
+     *
+     * @param name    The function name to register.
+     * @param factory A callable returning CppCoroutine<R>.
+     *
+     * @returns This namespace registration object.
+     */
+    template <class F>
+    auto addCoroutine(const char* name, F factory)
+        -> std::enable_if_t<detail::is_cpp_coroutine_factory_v<F>, Namespace&>
+    {
+        LUABRIDGE_ASSERT(name != nullptr);
+        LUABRIDGE_ASSERT(lua_istable(L, -1)); // Stack: namespace table (ns)
+
+        detail::push_coroutine_function(L, std::move(factory), name);
+        rawsetfield(L, -2, name);
+
+        return *this;
+    }
+#endif // LUABRIDGE_HAS_CXX20_COROUTINES
 
     //=============================================================================================
     /**
@@ -1525,11 +2117,25 @@ public:
      *
      * @returns A class registration object.
      */
-    template <class Derived, class Base>
+    template <class Derived, class Base1, class... Bases>
     Class<Derived> deriveClass(const char* name, Options options = defaultOptions)
     {
+        static_assert(std::is_base_of_v<Base1, Derived>, "Derived must inherit from Base1");
+        static_assert((std::is_base_of_v<Bases, Derived> && ...), "Derived must inherit from all specified base classes");
+
         assertIsActive();
-        return Class<Derived>(name, std::move(*this), detail::getStaticRegistryKey<Base>(), options);
+        return Class<Derived>(name, std::move(*this), {
+            detail::BaseClassInfo{
+                detail::getStaticRegistryKey<Base1>(),
+                detail::getClassRegistryKey<Base1>(),
+                detail::computeCastOffset<Derived, Base1>()
+            },
+            detail::BaseClassInfo{
+                detail::getStaticRegistryKey<Bases>(),
+                detail::getClassRegistryKey<Bases>(),
+                detail::computeCastOffset<Derived, Bases>()
+            }...
+        }, options);
     }
     
 private:
@@ -1540,7 +2146,7 @@ private:
     {
         if (m_stackSize == 1 && lua_istable(L, -1))
         {
-            lua_rawgetp(L, -1, detail::getPropgetKey());
+            lua_rawgetp_x(L, -1, detail::getPropgetKey());
             const bool propertyGetterTableIsValid = lua_istable(L, -1);
             lua_pop(L, 1);
 

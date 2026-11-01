@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2019, George Tokmaji
 // Copyright 2018, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
@@ -17,13 +17,15 @@
 #include <exception>
 #include <map>
 #include <string>
+#include <string_view>
 #include <optional>
 #include <type_traits>
 #include <vector>
 
 namespace luabridge {
 
-class LuaResult;
+template <class Signature>
+class LuaFunction;
 
 //=================================================================================================
 /**
@@ -298,7 +300,7 @@ public:
      *
      * @returns An optional string containing the name used to register the class with `beginClass`, nullopt in case it's not a registered class.
      */
-    std::optional<std::string> getClassName()
+    std::optional<std::string> getClassName() const
     {
         if (! isUserdata())
             return std::nullopt;
@@ -309,7 +311,7 @@ public:
         if (! lua_getmetatable(m_L, -1))
             return std::nullopt;
 
-        lua_rawgetp(m_L, -1, detail::getTypeKey());
+        lua_rawgetp_x(m_L, -1, detail::getTypeKey());
         if (lua_isstring(m_L, -1))
             return lua_tostring(m_L, -1);
 
@@ -555,7 +557,7 @@ public:
      * @returns True if the referred value is equal to the specified one.
      */
     template <class T>
-    bool rawequal(const T& v) const
+    [[nodiscard]] bool rawequal(const T& v) const
     {
         const StackRestore stackRestore(m_L);
 
@@ -575,7 +577,7 @@ public:
      *
      * @returns The length of the referred array.
      */
-    int length() const
+    [[nodiscard]] int length() const
     {
         const StackRestore stackRestore(m_L);
 
@@ -586,22 +588,69 @@ public:
 
     //=============================================================================================
     /**
-     * @brief Call Lua code.
+     * @brief Append one or more values to a referred table.
      *
-     * The return value is provided as a LuaRef (which may be LUA_REFNIL).
+     * If the table is a sequence this will add more elements to it.
      *
-     * If an error occurs, a LuaException is thrown (only if exceptions are enabled).
+     * @param vs Values to append.
      *
-     * @returns A result of the call.
+     * @returns True if all values were successfully appended.
+     */
+    template <class... Ts>
+    [[nodiscard]] bool append(const Ts&... vs) const
+    {
+        static_assert(sizeof...(vs) > 0);
+
+        const StackRestore stackRestore(m_L);
+
+        impl().push(m_L);
+
+        int index = get_length(m_L, -1) + 1;
+
+        auto appendOne = [&](const auto& v) -> bool
+        {
+            if (! Stack<std::decay_t<decltype(v)>>::push(m_L, v))
+                return false;
+
+            lua_rawseti(m_L, -2, index++);
+            return true;
+        };
+
+        return (appendOne(vs) && ...);
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Call Lua code and decode the first return value to R.
+     *
+     * For tuple types, each tuple element is decoded from a distinct Lua return value.
+     */
+    template <class R = void, class... Args>
+    TypeResult<R> call(Args&&... args) const;
+
+    /**
+     * @brief Call Lua code assuming no return values.
      */
     template <class... Args>
-    LuaResult operator()(Args&&... args) const;
+    TypeResult<void> operator()(Args&&... args) const;
 
-    template <class... Args>
-    LuaResult call(Args&&... args) const;
+    /**
+     * @brief Call Lua code with an explicit error handler and decode the return type.
+     */
+    template <class R, class F, class... Args>
+    TypeResult<R> callWithHandler(F&& errorHandler, Args&&... args) const;
 
+    /**
+     * @brief Call Lua code with an explicit error handler and no return values.
+     */
     template <class F, class... Args>
-    LuaResult callWithHandler(F&& errorHandler, Args&&... args) const;
+    TypeResult<void> callWithHandler(F&& errorHandler, Args&&... args) const;
+
+    /**
+     * @brief Build a typed callable wrapper from this Lua object.
+     */
+    template <class Signature>
+    LuaFunction<Signature> callable() const;
 
 protected:
     lua_State* m_L = nullptr;
@@ -628,7 +677,17 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
     {
         friend class LuaRef;
 
+        struct AdoptTableRef
+        {
+        };
+
+        struct ChainTableRef
+        {
+        };
+
     public:
+        // Table items own the table they reference so stored proxies remain valid after the parent LuaRef changes.
+        // Rvalue indexing can adopt the parent table ref and defer one chained lookup to avoid extra registry churn.
         //=========================================================================================
         /**
          * @brief Construct a TableItem from a table value.
@@ -642,6 +701,7 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
         TableItem(lua_State* L, int tableRef)
             : LuaRefBase(L)
             , m_keyRef(luaL_ref(L, LUA_REGISTRYINDEX))
+            , m_ownsTableRef(true)
         {
 #if LUABRIDGE_SAFE_STACK_CHECKS
             luaL_checkstack(m_L, 1, detail::error_lua_stack_overflow);
@@ -649,6 +709,58 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
 
             lua_rawgeti(m_L, LUA_REGISTRYINDEX, tableRef);
             m_tableRef = luaL_ref(L, LUA_REGISTRYINDEX);
+        }
+
+        template <std::size_t N>
+        TableItem(lua_State* L, int tableRef, const char (&key)[N])
+            : LuaRefBase(L)
+            , m_keyLiteral(key)
+            , m_ownsTableRef(true)
+        {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+            luaL_checkstack(m_L, 1, detail::error_lua_stack_overflow);
+#endif
+
+            lua_rawgeti(m_L, LUA_REGISTRYINDEX, tableRef);
+            m_tableRef = luaL_ref(L, LUA_REGISTRYINDEX);
+        }
+
+        TableItem(lua_State* L, int tableRef, AdoptTableRef)
+            : LuaRefBase(L)
+            , m_tableRef(tableRef)
+            , m_keyRef(luaL_ref(L, LUA_REGISTRYINDEX))
+            , m_ownsTableRef(true)
+        {
+        }
+
+        template <std::size_t N>
+        TableItem(lua_State* L, int tableRef, AdoptTableRef, const char (&key)[N])
+            : LuaRefBase(L)
+            , m_tableRef(tableRef)
+            , m_keyLiteral(key)
+            , m_ownsTableRef(true)
+        {
+        }
+
+        TableItem(TableItem&& table, ChainTableRef)
+            : LuaRefBase(table.m_L)
+            , m_tableRef(std::exchange(table.m_tableRef, LUA_NOREF))
+            , m_keyRef(luaL_ref(m_L, LUA_REGISTRYINDEX))
+            , m_parentKeyRef(std::exchange(table.m_keyRef, LUA_NOREF))
+            , m_parentKeyLiteral(std::exchange(table.m_keyLiteral, nullptr))
+            , m_ownsTableRef(std::exchange(table.m_ownsTableRef, false))
+        {
+        }
+
+        template <std::size_t N>
+        TableItem(TableItem&& table, ChainTableRef, const char (&key)[N])
+            : LuaRefBase(table.m_L)
+            , m_tableRef(std::exchange(table.m_tableRef, LUA_NOREF))
+            , m_parentKeyRef(std::exchange(table.m_keyRef, LUA_NOREF))
+            , m_keyLiteral(key)
+            , m_parentKeyLiteral(std::exchange(table.m_keyLiteral, nullptr))
+            , m_ownsTableRef(std::exchange(table.m_ownsTableRef, false))
+        {
         }
 
         //=========================================================================================
@@ -668,11 +780,16 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
                 return;
 #endif
 
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, other.m_tableRef);
+            other.pushTable(m_L);
             m_tableRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+            m_ownsTableRef = true;
 
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, other.m_keyRef);
-            m_keyRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+            m_keyLiteral = other.m_keyLiteral;
+            if (other.m_keyRef != LUA_NOREF)
+            {
+                other.pushKey(m_L);
+                m_keyRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+            }
         }
 
         //=========================================================================================
@@ -686,8 +803,90 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
             if (m_keyRef != LUA_NOREF)
                 luaL_unref(m_L, LUA_REGISTRYINDEX, m_keyRef);
 
-            if (m_tableRef != LUA_NOREF)
+            if (m_parentKeyRef != LUA_NOREF)
+                luaL_unref(m_L, LUA_REGISTRYINDEX, m_parentKeyRef);
+
+            if (m_ownsTableRef && m_tableRef != LUA_NOREF)
                 luaL_unref(m_L, LUA_REGISTRYINDEX, m_tableRef);
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Indicate whether this TableItem proxy is in a valid state.
+         *
+         * @returns True if the table reference is valid, false otherwise.
+         */
+        bool isValid() const { return m_tableRef != LUA_NOREF; }
+
+        //=========================================================================================
+        /**
+         * @brief Copy assignment operator (copy-and-swap idiom).
+         *
+         * Makes this TableItem refer to the same table slot as `other`.
+         *
+         * @param other Another Lua table item reference.
+         *
+         * @returns This reference.
+         */
+        TableItem& operator=(const TableItem& other)
+        {
+            if (this == &other)
+                return *this;
+            TableItem tmp(other);
+            swap(tmp);
+            return *this;
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Move constructor.
+         *
+         * Transfers ownership of the table and key refs from `other` to this.
+         *
+         * @param other Another Lua table item reference (moved-from).
+         */
+        TableItem(TableItem&& other) noexcept
+            : LuaRefBase(other.m_L)
+            , m_tableRef(std::exchange(other.m_tableRef, LUA_NOREF))
+            , m_keyRef(std::exchange(other.m_keyRef, LUA_NOREF))
+            , m_parentKeyRef(std::exchange(other.m_parentKeyRef, LUA_NOREF))
+            , m_keyLiteral(std::exchange(other.m_keyLiteral, nullptr))
+            , m_parentKeyLiteral(std::exchange(other.m_parentKeyLiteral, nullptr))
+            , m_ownsTableRef(std::exchange(other.m_ownsTableRef, false))
+        {
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Move assignment operator.
+         *
+         * Releases this TableItem's refs and takes ownership of `other`'s refs.
+         *
+         * @param other Another Lua table item reference (moved-from).
+         *
+         * @returns This reference.
+         */
+        TableItem& operator=(TableItem&& other) noexcept
+        {
+            if (this == &other)
+                return *this;
+
+            if (m_keyRef != LUA_NOREF)
+                luaL_unref(m_L, LUA_REGISTRYINDEX, m_keyRef);
+            if (m_parentKeyRef != LUA_NOREF)
+                luaL_unref(m_L, LUA_REGISTRYINDEX, m_parentKeyRef);
+            if (m_ownsTableRef && m_tableRef != LUA_NOREF)
+                luaL_unref(m_L, LUA_REGISTRYINDEX, m_tableRef);
+
+            m_L = other.m_L;
+            m_tableRef = std::exchange(other.m_tableRef, LUA_NOREF);
+            m_keyRef = std::exchange(other.m_keyRef, LUA_NOREF);
+            m_parentKeyRef = std::exchange(other.m_parentKeyRef, LUA_NOREF);
+            m_keyLiteral = std::exchange(other.m_keyLiteral, nullptr);
+            m_parentKeyLiteral = std::exchange(other.m_parentKeyLiteral, nullptr);
+            m_ownsTableRef = std::exchange(other.m_ownsTableRef, false);
+
+            return *this;
         }
 
         //=========================================================================================
@@ -706,19 +905,30 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
         TableItem& operator=(const T& v)
         {
 #if LUABRIDGE_SAFE_STACK_CHECKS
-            if (! lua_checkstack(m_L, 2))
+            if (! lua_checkstack(m_L, 3))
                 return *this;
 #endif
 
             const StackRestore stackRestore(m_L);
 
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_tableRef);
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_keyRef);
+            pushTable(m_L);
+            if (m_keyLiteral != nullptr)
+            {
+                if (! Stack<T>::push(m_L, v))
+                    return *this;
 
-            if (! Stack<T>::push(m_L, v))
-                return *this;
+                lua_setfield(m_L, -2, m_keyLiteral);
+            }
+            else
+            {
+                pushKey(m_L);
 
-            lua_settable(m_L, -3);
+                if (! Stack<T>::push(m_L, v))
+                    return *this;
+
+                lua_settable(m_L, -3);
+            }
+
             return *this;
         }
 
@@ -738,19 +948,32 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
         TableItem& rawset(const T& v)
         {
 #if LUABRIDGE_SAFE_STACK_CHECKS
-            if (! lua_checkstack(m_L, 2))
+            if (! lua_checkstack(m_L, 3))
                 return *this;
 #endif
 
             const StackRestore stackRestore(m_L);
 
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_tableRef);
-            lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_keyRef);
+            pushTable(m_L);
+            if (m_keyLiteral != nullptr)
+            {
+                lua_pushstring(m_L, m_keyLiteral);
 
-            if (! Stack<T>::push(m_L, v))
-                return *this;
+                if (! Stack<T>::push(m_L, v))
+                    return *this;
 
-            lua_rawset(m_L, -3);
+                lua_rawset(m_L, -3);
+            }
+            else
+            {
+                pushKey(m_L);
+
+                if (! Stack<T>::push(m_L, v))
+                    return *this;
+
+                lua_rawset(m_L, -3);
+            }
+
             return *this;
         }
 
@@ -772,9 +995,18 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
                 return;
 #endif
 
-            lua_rawgeti(L, LUA_REGISTRYINDEX, m_tableRef);
-            lua_rawgeti(L, LUA_REGISTRYINDEX, m_keyRef);
-            lua_gettable(L, -2);
+            pushTable(L);
+
+            if (m_keyLiteral != nullptr)
+            {
+                lua_getfield(L, -1, m_keyLiteral);
+            }
+            else
+            {
+                pushKey(L);
+                lua_gettable(L, -2);
+            }
+
             lua_remove(L, -2); // remove the table
         }
 
@@ -791,9 +1023,60 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
          * @returns A Lua table item reference.
          */
         template <class T>
-        TableItem operator[](const T& key) const
+        TableItem operator[](const T& key) const&
         {
-            return LuaRef(*this)[key];
+            const StackRestore stackRestore(m_L);
+
+            if (! Stack<T>::push(m_L, key))
+                lua_pushnil(m_L);
+
+            return materializedChildFromStackKey();
+        }
+
+        template <class T>
+        TableItem operator[](const T& key) &&
+        {
+            if (canChain())
+            {
+                if (! Stack<T>::push(m_L, key))
+                    lua_pushnil(m_L);
+
+                return TableItem(std::move(*this), ChainTableRef{});
+            }
+
+            const StackRestore stackRestore(m_L);
+
+            if (! Stack<T>::push(m_L, key))
+                lua_pushnil(m_L);
+
+            return materializedChildFromStackKey();
+        }
+
+        template <std::size_t N>
+        TableItem operator[](const char (&key)[N]) const&
+        {
+            const StackRestore stackRestore(m_L);
+
+            push(m_L);
+
+            const auto tableRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+
+            return TableItem(m_L, tableRef, AdoptTableRef{}, key);
+        }
+
+        template <std::size_t N>
+        TableItem operator[](const char (&key)[N]) &&
+        {
+            if (canChain())
+                return TableItem(std::move(*this), ChainTableRef{}, key);
+
+            const StackRestore stackRestore(m_L);
+
+            push(m_L);
+
+            const auto tableRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+
+            return TableItem(m_L, tableRef, AdoptTableRef{}, key);
         }
 
         //=========================================================================================
@@ -814,9 +1097,128 @@ class LuaRef : public LuaRefBase<LuaRef, LuaRef>
             return LuaRef(*this).rawget(key);
         }
 
+        //=========================================================================================
+        /**
+         * @brief Get a field from the table item value without metamethods in an unsafe fast path.
+         *
+         * @param key A field key.
+         *
+         * @returns The converted value.
+         */
+        template <class T>
+        T unsafeRawgetField(const char* key) const
+        {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+            luaL_checkstack(m_L, 3, detail::error_lua_stack_overflow);
+#endif
+
+            push(m_L);
+            lua_pushstring(m_L, key);
+            lua_rawget(m_L, -2);
+
+            auto result = Stack<T>::get(m_L, -1);
+            lua_pop(m_L, 2);
+
+            return result.value();
+        }
+
+        //=========================================================================================
+        /**
+         * @brief Set a field on the table item value without metamethods in an unsafe fast path.
+         *
+         * @param key A field key.
+         * @param value A value to assign.
+         */
+        template <class T>
+        void unsafeRawsetField(const char* key, T&& value) const
+        {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+            luaL_checkstack(m_L, 3, detail::error_lua_stack_overflow);
+#endif
+
+            push(m_L);
+            lua_pushstring(m_L, key);
+            [[maybe_unused]] const auto pushed = Stack<std::decay_t<T>>::push(m_L, std::forward<T>(value));
+            LUABRIDGE_ASSERT(static_cast<bool>(pushed));
+
+            lua_rawset(m_L, -3);
+            lua_pop(m_L, 1);
+        }
+
     private:
+        void swap(TableItem& other) noexcept
+        {
+            using std::swap;
+            swap(m_L, other.m_L);
+            swap(m_tableRef, other.m_tableRef);
+            swap(m_keyRef, other.m_keyRef);
+            swap(m_parentKeyRef, other.m_parentKeyRef);
+            swap(m_keyLiteral, other.m_keyLiteral);
+            swap(m_parentKeyLiteral, other.m_parentKeyLiteral);
+            swap(m_ownsTableRef, other.m_ownsTableRef);
+        }
+
+        bool hasParentKey() const
+        {
+            return m_parentKeyLiteral != nullptr || m_parentKeyRef != LUA_NOREF;
+        }
+
+        bool canChain() const
+        {
+            return m_ownsTableRef && ! hasParentKey();
+        }
+
+        TableItem materializedChildFromStackKey() const
+        {
+            push(m_L);
+            lua_insert(m_L, -2);
+
+            lua_pushvalue(m_L, -2);
+            const auto tableRef = luaL_ref(m_L, LUA_REGISTRYINDEX);
+            lua_remove(m_L, -2);
+
+            return TableItem(m_L, tableRef, AdoptTableRef{});
+        }
+
+        void pushTable(lua_State* L) const
+        {
+            if (m_tableRef == LUA_REFNIL)
+                lua_pushnil(L);
+            else
+                lua_rawgeti(L, LUA_REGISTRYINDEX, m_tableRef);
+
+            if (m_parentKeyLiteral != nullptr)
+            {
+                lua_getfield(L, -1, m_parentKeyLiteral);
+                lua_remove(L, -2);
+            }
+            else if (m_parentKeyRef != LUA_NOREF)
+            {
+                pushRef(L, m_parentKeyRef);
+                lua_gettable(L, -2);
+                lua_remove(L, -2);
+            }
+        }
+
+        void pushKey(lua_State* L) const
+        {
+            pushRef(L, m_keyRef);
+        }
+
+        void pushRef(lua_State* L, int ref) const
+        {
+            if (ref == LUA_REFNIL)
+                lua_pushnil(L);
+            else
+                lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+        }
+
         int m_tableRef = LUA_NOREF;
         int m_keyRef = LUA_NOREF;
+        int m_parentKeyRef = LUA_NOREF;
+        const char* m_keyLiteral = nullptr;
+        const char* m_parentKeyLiteral = nullptr;
+        bool m_ownsTableRef = false;
     };
 
     friend struct Stack<TableItem>;
@@ -950,13 +1352,13 @@ public:
 
     //=============================================================================================
     /**
-     * @brief Return a reference to a top Lua stack item.
+     * @brief Return a reference to the top Lua stack item and pop it.
      *
-     * The stack item is not popped.
+     * The stack item is popped.
      *
      * @param L A Lua state.
      *
-     * @returns A reference to a value on the top of a Lua stack.
+     * @returns A reference to a value that was on the top of the Lua stack.
      */
     static LuaRef fromStack(lua_State* L)
     {
@@ -1178,11 +1580,17 @@ public:
      */
     void moveTo(lua_State* newL)
     {
-        push();
+        push();                                              // push value onto m_L
 
-        lua_xmove(m_L, newL, 1);
+        lua_xmove(m_L, newL, 1);                            // move value from m_L to newL (pops m_L, pushes newL)
+
+        const int oldRef = m_ref;
+        lua_State* const oldL = m_L;
 
         m_L = newL;
+        m_ref = luaL_ref(newL, LUA_REGISTRYINDEX);          // register on newL (pops from newL's stack)
+
+        luaL_unref(oldL, LUA_REGISTRYINDEX, oldRef);        // release old registry entry
     }
 
     //=============================================================================================
@@ -1196,12 +1604,39 @@ public:
      * @returns A reference to the table item.
      */
     template <class T>
-    TableItem operator[](const T& key) const
+    TableItem operator[](const T& key) const&
     {
         if (! Stack<T>::push(m_L, key))
+        {
+            lua_pushnil(m_L);
             return TableItem(m_L, m_ref);
+        }
 
         return TableItem(m_L, m_ref);
+    }
+
+    template <class T>
+    TableItem operator[](const T& key) &&
+    {
+        if (! Stack<T>::push(m_L, key))
+        {
+            lua_pushnil(m_L);
+            return TableItem(m_L, m_ref);
+        }
+
+        return TableItem(m_L, std::exchange(m_ref, LUA_NOREF), typename TableItem::AdoptTableRef{});
+    }
+
+    template <std::size_t N>
+    TableItem operator[](const char (&key)[N]) const&
+    {
+        return TableItem(m_L, m_ref, key);
+    }
+
+    template <std::size_t N>
+    TableItem operator[](const char (&key)[N]) &&
+    {
+        return TableItem(m_L, std::exchange(m_ref, LUA_NOREF), typename TableItem::AdoptTableRef{}, key);
     }
 
     //=============================================================================================
@@ -1215,7 +1650,7 @@ public:
      * @returns A reference to the table item.
      */
     template <class T>
-    LuaRef rawget(const T& key) const
+    [[nodiscard]] LuaRef rawget(const T& key) const
     {
         const StackRestore stackRestore(m_L);
 
@@ -1228,43 +1663,260 @@ public:
         return LuaRef(m_L, FromStack());
     }
 
+
+    //=============================================================================================
+    /**
+     * @brief Get a table field by C-string key and convert to T.
+     *
+     * This invokes metamethods.
+     *
+     * @param key A field key.
+     *
+     * @returns A converted value or an error.
+     */
+    template <class T>
+    [[nodiscard]] TypeResult<T> getField(const char* key) const
+    {
+        const StackRestore stackRestore(m_L);
+
+        push(m_L);
+        lua_getfield(m_L, -1, key);
+
+        return Stack<T>::get(m_L, -1);
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Try to get a table field by C-string key and convert to T.
+     *
+     * This invokes metamethods and returns std::nullopt when the referred value is not a table
+     * or the field cannot be converted to the requested type.
+     */
+    template <class T>
+    [[nodiscard]] std::optional<T> tryGetField(const char* key) const
+    {
+        const StackRestore stackRestore(m_L);
+
+        push(m_L);
+        if (! lua_istable(m_L, -1))
+            return std::nullopt;
+
+        lua_getfield(m_L, -1, key);
+
+        auto result = Stack<std::decay_t<T>>::get(m_L, -1);
+        if (! result)
+            return std::nullopt;
+
+        return *result;
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Set a table field by C-string key.
+     *
+     * This invokes metamethods.
+     *
+     * @param key A field key.
+     * @param value A value to assign.
+     *
+     * @returns True if value push succeeded, false otherwise.
+     */
+    template <class T>
+    [[nodiscard]] bool setField(const char* key, T&& value) const
+    {
+        const StackRestore stackRestore(m_L);
+
+        push(m_L);
+
+        if (! Stack<std::decay_t<T>>::push(m_L, std::forward<T>(value)))
+            return false;
+
+        lua_setfield(m_L, -2, key);
+        return true;
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Get a table field by C-string key without metamethods.
+     *
+     * @param key A field key.
+     *
+     * @returns A converted value or an error.
+     */
+    template <class T>
+    [[nodiscard]] TypeResult<T> rawgetField(const char* key) const
+    {
+        const StackRestore stackRestore(m_L);
+
+        push(m_L);
+        lua_pushstring(m_L, key);
+        lua_rawget(m_L, -2);
+
+        return Stack<T>::get(m_L, -1);
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Set a table field by C-string key without metamethods.
+     *
+     * @param key A field key.
+     * @param value A value to assign.
+     *
+     * @returns True if key/value push succeeded, false otherwise.
+     */
+    template <class T>
+    [[nodiscard]] bool rawsetField(const char* key, T&& value) const
+    {
+        const StackRestore stackRestore(m_L);
+
+        push(m_L);
+        lua_pushstring(m_L, key);
+
+        if (! Stack<std::decay_t<T>>::push(m_L, std::forward<T>(value)))
+            return false;
+
+        lua_rawset(m_L, -3);
+        return true;
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Get a table field by C-string key without metamethods in an unsafe fast path.
+     *
+     * This helper is intended for hot loops where stack conversion is known to succeed.
+     *
+     * @param key A field key.
+     *
+     * @returns The converted value.
+     */
+    template <class T>
+    T unsafeRawgetField(const char* key) const
+    {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+        luaL_checkstack(m_L, 3, detail::error_lua_stack_overflow);
+#endif
+
+        push(m_L);
+        lua_pushstring(m_L, key);
+        lua_rawget(m_L, -2);
+
+        auto result = Stack<T>::get(m_L, -1);
+        lua_pop(m_L, 2);
+
+        return result.value();
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Set a table field by C-string key without metamethods in an unsafe fast path.
+     *
+     * @param key A field key.
+     * @param value A value to assign.
+     */
+    template <class T>
+    void unsafeRawsetField(const char* key, T&& value) const
+    {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+        luaL_checkstack(m_L, 3, detail::error_lua_stack_overflow);
+#endif
+
+        push(m_L);
+        lua_pushstring(m_L, key);
+        [[maybe_unused]] const auto pushed = Stack<std::decay_t<T>>::push(m_L, std::forward<T>(value));
+        LUABRIDGE_ASSERT(static_cast<bool>(pushed));
+
+        lua_rawset(m_L, -3);
+        lua_pop(m_L, 1);
+    }
+
+    //=============================================================================================
+    /**
+     * @brief Get the Lua pointer of the referenced value.
+     */
+    const void* getPointer() const
+    {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+        if (! lua_checkstack(m_L, 3))
+            return nullptr;
+#endif
+
+        lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_ref);
+
+        if (lua_isuserdata(m_L, -1) && lua_getmetatable(m_L, -1))
+        {
+            const void* key = static_cast<const void*>(detail::getTypeKey());
+            lua_pushlightuserdata(m_L, const_cast<void*>(key));
+            lua_rawget(m_L, -2);
+            const bool isLuaBridgeType = lua_isstring(m_L, -1);
+            lua_pop(m_L, 2);
+
+            if (isLuaBridgeType)
+            {
+                const auto* ud = static_cast<detail::Userdata*>(lua_touserdata(m_L, -1));
+                const void* ptr = ud->getPointer();
+                lua_pop(m_L, 1);
+                return ptr;
+            }
+        }
+
+        const void* ptr = lua_topointer(m_L, -1);
+        lua_pop(m_L, 1);
+
+        return ptr;
+    }
+
     //=============================================================================================
     /**
      * @brief Get the unique hash of a LuaRef.
      */
-    std::size_t hash() const
+    [[nodiscard]] std::size_t hash() const
     {
+#if LUABRIDGE_SAFE_STACK_CHECKS
+        if (! lua_checkstack(m_L, 1))
+            return 0;
+#endif
+
+        lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_ref);
+
+        const int t = lua_type(m_L, -1);
+
         std::size_t value;
-        switch (type())
+        switch (t)
         {
         case LUA_TNONE:
+        case LUA_TNIL:
             value = std::hash<std::nullptr_t>{}(nullptr);
             break;
 
         case LUA_TBOOLEAN:
-            value = std::hash<bool>{}(unsafe_cast<bool>());
+            value = std::hash<bool>{}(lua_toboolean(m_L, -1) != 0);
             break;
 
         case LUA_TNUMBER:
-            value = std::hash<lua_Number>{}(unsafe_cast<lua_Number>());
+            value = std::hash<lua_Number>{}(lua_tonumber(m_L, -1));
             break;
 
         case LUA_TSTRING:
-            value = std::hash<const char*>{}(unsafe_cast<const char*>());
+        {
+            std::size_t len = 0;
+            const char* s = lua_tolstring(m_L, -1, &len);
+            value = std::hash<std::string_view>{}(std::string_view(s, len));
             break;
+        }
 
-        case LUA_TNIL:
         case LUA_TTABLE:
         case LUA_TFUNCTION:
         case LUA_TTHREAD:
         case LUA_TUSERDATA:
         case LUA_TLIGHTUSERDATA:
         default:
-            value = static_cast<std::size_t>(m_ref);
+            value = reinterpret_cast<std::size_t>(lua_topointer(m_L, -1));
             break;
         }
 
-        const std::size_t seed = std::hash<int>{}(type());
+        lua_pop(m_L, 1);
+
+        const std::size_t seed = std::hash<int>{}(t == LUA_TNONE ? LUA_TNIL : t);
         return value + 0x9e3779b9u + (seed << 6) + (seed >> 2);
     }
 
@@ -1308,7 +1960,7 @@ template <class T>
 auto operator<(const T& lhs, const LuaRef& rhs)
     -> std::enable_if_t<!std::is_same_v<T, LuaRef> && !std::is_same_v<T, LuaRefBase<LuaRef, LuaRef>>, bool>
 {
-    return !(rhs >= lhs);
+    return rhs > lhs;
 }
 
 /**
@@ -1318,7 +1970,7 @@ template <class T>
 auto operator<=(const T& lhs, const LuaRef& rhs)
     -> std::enable_if_t<!std::is_same_v<T, LuaRef> && !std::is_same_v<T, LuaRefBase<LuaRef, LuaRef>>, bool>
 {
-    return !(rhs > lhs);
+    return rhs >= lhs;
 }
 
 /**
@@ -1328,7 +1980,7 @@ template <class T>
 auto operator>(const T& lhs, const LuaRef& rhs)
     -> std::enable_if_t<!std::is_same_v<T, LuaRef> && !std::is_same_v<T, LuaRefBase<LuaRef, LuaRef>>, bool>
 {
-    return rhs <= lhs;
+    return rhs < lhs;
 }
 
 /**
@@ -1338,7 +1990,7 @@ template <class T>
 auto operator>=(const T& lhs, const LuaRef& rhs)
     -> std::enable_if_t<!std::is_same_v<T, LuaRef> && !std::is_same_v<T, LuaRefBase<LuaRef, LuaRef>>, bool>
 {
-    return !(rhs > lhs);
+    return rhs <= lhs;
 }
 
 //=================================================================================================
@@ -1358,6 +2010,11 @@ struct Stack<LuaRef>
     [[nodiscard]] static TypeResult<LuaRef> get(lua_State* L, int index)
     {
         return LuaRef::fromStack(L, index);
+    }
+
+    [[nodiscard]] static bool isInstance(lua_State*, int)
+    {
+        return true;
     }
 };
 

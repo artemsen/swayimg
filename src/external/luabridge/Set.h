@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // SPDX-License-Identifier: MIT
 
 #pragma once
@@ -14,10 +14,10 @@ namespace luabridge {
 /**
  * @brief Stack specialization for `std::set`.
  */
-template <class K>
-struct Stack<std::set<K>>
+template <class K, class Compare, class Allocator>
+struct Stack<std::set<K, Compare, Allocator>>
 {
-    using Type = std::set<K>;
+    using Type = std::set<K, Compare, Allocator>;
     
     [[nodiscard]] static Result push(lua_State* L, const Type& set)
     {

@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2020, Dmitry Tarakanov
 // SPDX-License-Identifier: MIT
 
@@ -30,16 +30,15 @@ struct Stack<std::array<T, Size>>
         StackRestore stackRestore(L);
 
         lua_createtable(L, static_cast<int>(Size), 0);
+        const int tableIndex = lua_gettop(L);
 
         for (std::size_t i = 0; i < Size; ++i)
         {
-            lua_pushinteger(L, static_cast<lua_Integer>(i + 1));
-
             auto result = Stack<T>::push(L, array[i]);
             if (! result)
                 return result;
 
-            lua_settable(L, -3);
+            lua_rawseti(L, tableIndex, static_cast<int>(i + 1));
         }
         
         stackRestore.reset();

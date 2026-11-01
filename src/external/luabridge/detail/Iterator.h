@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2018, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // SPDX-License-Identifier: MIT
@@ -9,6 +9,11 @@
 #include "LuaRef.h"
 
 #include <utility>
+
+#if LUABRIDGE_HAS_CXX20_RANGES
+#include <iterator>
+#include <ranges>
+#endif
 
 namespace luabridge {
 
@@ -32,6 +37,12 @@ public:
             next(); // get the first (key, value) pair from table
         }
     }
+
+#if LUABRIDGE_HAS_CXX20_RANGES
+    using value_type = std::pair<LuaRef, LuaRef>;
+    using difference_type = std::ptrdiff_t;
+    using iterator_concept = std::input_iterator_tag;
+#endif
 
     /**
      * @brief Return an associated Lua state.
@@ -203,4 +214,43 @@ inline Range pairs(const LuaRef& table)
     return Range{ Iterator(table, false), Iterator(table, true) };
 }
 
+#if LUABRIDGE_HAS_CXX20_RANGES
+
+/**
+ * @brief Equality comparison for Iterator.
+ */
+inline bool operator==(const Iterator& lhs, const Iterator& rhs)
+{
+    if (lhs.isNil() && rhs.isNil())
+        return true;
+    if (lhs.isNil() != rhs.isNil())
+        return false;
+    return lhs.key().rawequal(rhs.key()) && lhs.value().rawequal(rhs.value());
+}
+
+/**
+ * @brief Sentinel type for Iterator end detection.
+ */
+struct IteratorSentinel {};
+
+/**
+ * @brief Sentinel equality: Iterator is at end when isNil().
+ */
+inline bool operator==(const Iterator& it, IteratorSentinel)
+{
+    return it.isNil();
+}
+
+inline bool operator==(IteratorSentinel, const Iterator& it)
+{
+    return it.isNil();
+}
+
+#endif // LUABRIDGE_HAS_CXX20_RANGES
+
 } // namespace luabridge
+
+#if LUABRIDGE_HAS_CXX20_RANGES
+template <>
+inline constexpr bool std::ranges::enable_borrowed_range<luabridge::Range> = false;
+#endif

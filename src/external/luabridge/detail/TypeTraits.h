@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2019, Dmitry Tarakanov
 // Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
 // SPDX-License-Identifier: MIT
@@ -9,6 +9,7 @@
 #include "Config.h"
 
 #include <memory>
+#include <tuple>
 
 namespace luabridge {
 namespace detail {
@@ -27,6 +28,18 @@ static inline constexpr bool is_base_of_template_v = is_base_of_template<T, C>::
 template <class... Args>
 constexpr bool dependent_false = false;
 
+template <class T>
+struct is_tuple : std::false_type
+{
+};
+
+template <class... Ts>
+struct is_tuple<std::tuple<Ts...>> : std::true_type
+{
+};
+
+template <class T>
+constexpr bool is_tuple_v = is_tuple<T>::value;
 } // namespace detail
 
 //=================================================================================================
@@ -94,6 +107,24 @@ struct ContainerTraits<std::shared_ptr<T>>
     }
 
     static T* get(const std::shared_ptr<T>& c)
+    {
+        return c.get();
+    }
+};
+
+/**
+ * @brief Register unique_ptr support as container.
+ *
+ * @note Lua gets a non-owning view of the object. The C++ owner must outlive any Lua reference.
+ *
+ * @tparam T Class that is held by the unique_ptr.
+ */
+template <class T>
+struct ContainerTraits<std::unique_ptr<T>>
+{
+    using Type = T;
+
+    static T* get(const std::unique_ptr<T>& c)
     {
         return c.get();
     }

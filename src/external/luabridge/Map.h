@@ -1,5 +1,5 @@
 // https://github.com/kunitoki/LuaBridge3
-// Copyright 2020, Lucio Asnaghi
+// Copyright 2020, kunitoki
 // Copyright 2018, Dmitry Tarakanov
 // SPDX-License-Identifier: MIT
 
@@ -15,10 +15,10 @@ namespace luabridge {
 /**
  * @brief Stack specialization for `std::map`.
  */
-template <class K, class V>
-struct Stack<std::map<K, V>>
+template <class K, class V, class Compare, class Allocator>
+struct Stack<std::map<K, V, Compare, Allocator>>
 {
-    using Type = std::map<K, V>;
+    using Type = std::map<K, V, Compare, Allocator>;
 
     [[nodiscard]] static Result push(lua_State* L, const Type& map)
     {
