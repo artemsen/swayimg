@@ -37,6 +37,13 @@ Application& Application::self()
 
 Application::Application()
     : sparams(new StartupParams())
+    , lua_bind_root(lua_engine)
+    , lua_bind_imglist(lua_engine, &ImageList::self())
+    , lua_bind_text(lua_engine, &Text::self())
+    , lua_bind_viewer(lua_engine, &Viewer::self())
+    , lua_bind_slideshow(lua_engine, &Slideshow::self())
+    , lua_bind_gallery(lua_engine, &Gallery::self())
+
 {
     sparams->app_id = Defaults::app::app_id;
     sparams->mode = Defaults::app::mode;
@@ -59,10 +66,17 @@ Application::Application()
 int Application::run()
 {
     // initialize and load Lua
-    LuaEngine& lua = LuaEngine::self();
-    lua.initialize(sparams->config);
+    lua_bind_root.init(nullptr);
+    lua_bind_imglist.init(LuaImageListApi::NS);
+    lua_bind_text.init(LuaTextApi::NS);
+    lua_bind_viewer.init(LuaViewerApi::NS);
+    lua_bind_slideshow.init(LuaSlideshowApi::NS);
+    lua_bind_gallery.init(LuaGalleryApi::NS);
+    if (!lua_engine.load(sparams->config)) {
+        return 1;
+    }
     if (!sparams->lua_exec.empty()) {
-        lua.execute(sparams->lua_exec);
+        lua_engine.execute(sparams->lua_exec);
     }
 
     // initialize filemon and image list

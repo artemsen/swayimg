@@ -7,6 +7,7 @@
 #include "appevent.hpp"
 #include "appmode.hpp"
 #include "fdevent.hpp"
+#include "luabinding.hpp"
 #include "sparam.hpp"
 #include "ui.hpp"
 
@@ -186,4 +187,12 @@ private:
     std::deque<AppEvent::Holder> event_queue; ///< Event queue
     std::mutex event_mutex;                   ///< Event queue mutex
     FdEvent event_notify;                     ///< Event queue notification
+
+    LuaEngine lua_engine;               ///< Lua engine instance
+    LuaRootApi lua_bind_root;           ///< Lua bindings for root namespace
+    LuaImageListApi lua_bind_imglist;   ///< Lua bindings for image list
+    LuaTextApi lua_bind_text;           ///< Lua bindings for text overlay
+    LuaViewerApi lua_bind_viewer;       ///< Lua bindings for viewer mode
+    LuaSlideshowApi lua_bind_slideshow; ///< Lua bindings for slideshow mode
+    LuaGalleryApi lua_bind_gallery;     ///< Lua bindings for gallery mode
 };

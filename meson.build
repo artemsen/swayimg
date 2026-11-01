@@ -327,6 +327,7 @@ sources = [
     'src/imagelist.cpp',
     'src/input.cpp',
     'src/layout.cpp',
+    'src/luabinding.cpp',
     'src/luaengine.cpp',
     'src/pixmap.cpp',
     'src/render.cpp',
