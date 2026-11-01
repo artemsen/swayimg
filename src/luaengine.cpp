@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdlib>
 #include <cstring>
+#include <string_view>
 
 namespace {
 
@@ -181,7 +182,31 @@ int LuaEngine::traceback_lua(lua_State* lua)
     if (lua_isstring(lua, -1)) {
         size_t len = 0;
         const char* str = lua_tolstring(lua, -1, &len);
-        traceback.assign(str, len);
+
+        // strip C function frames (e.g. "[C]: in function 'x'"), they only
+        // refer to internal native API and are of no interest to the user
+        const std::string_view source(str, len);
+        traceback.reserve(source.size());
+        size_t line_start = 0;
+        while (line_start < source.size()) {
+            const size_t line_end = source.find('\n', line_start);
+            const std::string_view line = source.substr(
+                line_start,
+                line_end == std::string_view::npos ? source.size() - line_start
+                                                   : line_end - line_start);
+
+            if (line.find("[C]:") == std::string_view::npos) {
+                traceback.append(line);
+                if (line_end != std::string_view::npos) {
+                    traceback.push_back('\n');
+                }
+            }
+
+            if (line_end == std::string_view::npos) {
+                break;
+            }
+            line_start = line_end + 1;
+        }
     }
 
     return 1;

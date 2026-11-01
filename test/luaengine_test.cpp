@@ -47,3 +47,20 @@ TEST_F(LuaTest, Load)
     lua_engine.load(TEST_DATA_DIR "/../../extra/example.lua");
     EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
 }
+
+TEST_F(LuaTest, ErrorTracebackFiltersCFrames)
+{
+    // calling a C-bound API that raises an error that propagates through Lua
+    // must not leak native function frames into the traceback
+    testing::internal::CaptureStderr();
+    lua_engine.execute("local function boom()\n"
+                       "    swayimg.appid = ''\n"
+                       "end\n"
+                       "local wrapped = function() boom() end\n"
+                       "wrapped()\n");
+    const std::string output = testing::internal::GetCapturedStderr();
+    EXPECT_NE(output.find("Application Id can not be empty"),
+              std::string::npos);
+    EXPECT_NE(output.find("in function 'boom'"), std::string::npos);
+    EXPECT_EQ(output.find("[C]:"), std::string::npos);
+}
