@@ -806,8 +806,6 @@ void Viewer::preloader_work()
 {
     assert(image);
 
-    image_pool.stop = false;
-
     ImageList& il = ImageList::self();
     ImagePtr current_image = image;
     ImageEntryPtr last_entry = image->entry;
@@ -875,6 +873,7 @@ void Viewer::preloader_start()
             return; // already in progress
         }
     }
+    image_pool.stop = false;
     image_pool.thread = std::thread(&Viewer::preloader_work, this);
 }
 
