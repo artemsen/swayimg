@@ -806,6 +806,8 @@ void Viewer::preloader_work()
 {
     assert(image);
 
+    image_pool.stop = false;
+
     ImageList& il = ImageList::self();
     ImagePtr current_image = image;
     ImageEntryPtr last_entry = image->entry;
