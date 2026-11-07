@@ -435,28 +435,33 @@ void Gallery::requeue_loading()
     const size_t index_first = scheme.front().img->index;
     const size_t index_last = scheme.back().img->index;
 
-    size_t preload_counter = preload ? cache_size : 0;
+    size_t preload_fwd = preload ? cache_size / 2 : 0;
+    size_t preload_back = preload_fwd;
 
     ImageList& il = ImageList::self();
     ImageEntryPtr fwd = layout.get_selected();
     ImageEntryPtr back = il.get(fwd, ImageList::Dir::Prev);
 
     // put thumbnail to loading queue, returns next thumb to load
-    const auto queue_thumbnail =
-        [&](const ImageEntryPtr& entry,
-            const ImageList::Dir dir) -> ImageEntryPtr {
+    const auto queue_thumbnail = [&](const ImageEntryPtr& entry,
+                                     const ImageList::Dir dir,
+                                     size_t& preload_left) -> ImageEntryPtr {
         if (!get_thumbnail(entry) && !crld_thumbs.contains(entry)) {
             tpool.add([this, entry] {
                 load_thumbnail(entry);
             });
         }
-        ImageEntryPtr next = nullptr;
-        if (--preload_counter) {
-            next = il.get(entry, dir);
-            if (next &&
-                ((dir == ImageList::Dir::Next && next->index > index_last) ||
-                 (dir == ImageList::Dir::Prev && next->index < index_first))) {
-                next = nullptr;
+        ImageEntryPtr next = il.get(entry, dir);
+        if (next) {
+            const bool beyond_window =
+                (dir == ImageList::Dir::Next && next->index > index_last) ||
+                (dir == ImageList::Dir::Prev && next->index < index_first);
+            if (beyond_window) {
+                if (preload_left == 0) {
+                    next = nullptr; // preload budget exhausted
+                } else {
+                    --preload_left;
+                }
             }
         }
         return next;
@@ -464,10 +469,10 @@ void Gallery::requeue_loading()
 
     while (fwd || back) {
         if (fwd) {
-            fwd = queue_thumbnail(fwd, ImageList::Dir::Next);
+            fwd = queue_thumbnail(fwd, ImageList::Dir::Next, preload_fwd);
         }
         if (back) {
-            back = queue_thumbnail(back, ImageList::Dir::Prev);
+            back = queue_thumbnail(back, ImageList::Dir::Prev, preload_back);
         }
     }
 }
