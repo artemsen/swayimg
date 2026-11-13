@@ -166,7 +166,9 @@ private:
             }
         }
 
-        if (ctl.DisposalMode == DISPOSE_DO_NOT && index + 1 < frames.size()) {
+        if ((ctl.DisposalMode == DISPOSE_DO_NOT ||
+             ctl.DisposalMode == DISPOSAL_UNSPECIFIED) &&
+            index + 1 < frames.size()) {
             const Pixmap& curr = frame.pm;
             Pixmap& next = frames[index + 1].pm;
             next.copy(curr, { .x = 0, .y = 0 });
