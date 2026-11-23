@@ -883,6 +883,7 @@ void LuaViewerApi::bind()
     add_property_wo("drag_button", &LuaViewerApi::set_drag_button);
     add_property_wo("preload", &LuaViewerApi::set_preload);
     add_property_wo("history", &LuaViewerApi::set_history);
+    add_property_wo("cache_memory", &LuaViewerApi::set_cache_memory);
     add_function("open", &LuaViewerApi::open);
     add_function("open_path", &LuaViewerApi::open_path);
     add_function("get_image", &LuaViewerApi::get_image);
@@ -1011,6 +1012,11 @@ void LuaViewerApi::set_preload(const size_t value)
 void LuaViewerApi::set_history(const size_t value)
 {
     static_cast<Viewer*>(mode)->set_history_limit(value);
+}
+
+void LuaViewerApi::set_cache_memory(const size_t value)
+{
+    static_cast<Viewer*>(mode)->set_cache_memory(value);
 }
 
 bool LuaViewerApi::open(const std::string& value)

@@ -19,6 +19,20 @@
 /** Max scale factor. */
 constexpr double MAX_SCALE = 100.0;
 
+namespace {
+
+/** Get total size of the image pixmaps. */
+size_t image_memory(const ImagePtr& image)
+{
+    size_t size = 0;
+    for (const auto& frame : image->frames) {
+        size += frame.pm.stride() * frame.pm.height();
+    }
+    return size;
+}
+
+} // anonymous namespace
+
 Viewer& Viewer::self()
 {
     static Viewer singleton;
@@ -41,7 +55,9 @@ Viewer::Viewer()
     , focus_factor(Defaults::viewer::focus_factor)
 {
     image_pool.preload.capacity = Defaults::viewer::preload;
+    image_pool.preload.memory_limit = Defaults::viewer::cache_memory;
     image_pool.history.capacity = Defaults::viewer::history;
+    image_pool.history.memory_limit = Defaults::viewer::cache_memory;
 
     mark_color = Defaults::viewer::mark_color;
     pinch_factor = Defaults::viewer::pinch_factor;
@@ -393,6 +409,12 @@ void Viewer::set_preload_limit(const size_t size)
 void Viewer::set_history_limit(const size_t size)
 {
     image_pool.history.capacity = size;
+}
+
+void Viewer::set_cache_memory(const size_t size)
+{
+    image_pool.preload.memory_limit = size;
+    image_pool.history.memory_limit = size;
 }
 
 void Viewer::bind_image_drag(const InputMouse& input)
@@ -896,12 +918,28 @@ void Viewer::Cache::trim(const size_t size)
 
 void Viewer::Cache::put(const ImagePtr& image)
 {
-    if (capacity) {
-        if (cache.size() == capacity) {
-            cache.pop_back();
-        }
-        cache.push_front(image);
+    if (!capacity) {
+        return;
     }
+
+    const size_t pixmaps = image_memory(image);
+    if (memory_limit && pixmaps > memory_limit) {
+        return; // the image alone exceeds the budget
+    }
+
+    size_t used = 0;
+    for (const auto& it : cache) {
+        used += image_memory(it);
+    }
+
+    while (!cache.empty() &&
+           (cache.size() >= capacity ||
+            (memory_limit && used + pixmaps > memory_limit))) {
+        used -= image_memory(cache.back());
+        cache.pop_back();
+    }
+
+    cache.push_front(image);
 }
 
 ImagePtr Viewer::Cache::get(const ImageEntryPtr& entry)

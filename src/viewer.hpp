@@ -222,6 +222,12 @@ public:
     void set_history_limit(const size_t size);
 
     /**
+     * Set maximum pixmap size for each image cache.
+     * @param size max size in bytes (0 to disable the limit)
+     */
+    void set_cache_memory(const size_t size);
+
+    /**
      * Bind mouse input state to image dragging.
      * @param input state description
      */
@@ -315,6 +321,7 @@ private:
         ImagePtr get(const ImageEntryPtr& entry);
 
         size_t capacity = 1;        ///< Cache capacity
+        size_t memory_limit = 0;    ///< Max pixmap size in bytes (0 = no limit)
         std::deque<ImagePtr> cache; ///< Cache container
     };
 
