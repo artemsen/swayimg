@@ -88,6 +88,7 @@ namespace viewer {
     constexpr double focus_factor = 0.5;
     constexpr size_t preload = 1;
     constexpr size_t history = 1;
+    constexpr size_t cache_memory = 0;
     constexpr double pinch_factor = 1.0;
     constexpr argb_t mark_color = { argb_t::max, 0x80, 0x80, 0x80 };
 

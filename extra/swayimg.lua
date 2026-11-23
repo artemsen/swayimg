@@ -504,6 +504,11 @@ function swayimg_appmode.on_image_change(fn) end
 ---Write-only field.
 ---@field history integer
 ---
+---Max total size of image pixmaps in each cache, in bytes (0 to disable the limit).
+---Since 5.8.
+---Write-only field.
+---@field cache_memory integer
+---
 swayimg.viewer = {}
 
 ---Open the next file in the specified direction.

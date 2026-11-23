@@ -186,6 +186,7 @@ private:
     void set_drag_button(const std::string& value);
     void set_preload(const size_t value);
     void set_history(const size_t value);
+    void set_cache_memory(const size_t value);
     bool open(const std::string& value);
     bool open_path(const std::string& value);
     luabridge::LuaRef get_image();

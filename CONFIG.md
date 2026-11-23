@@ -89,6 +89,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.viewer.focus_factor](#swayimgviewerfocus_factor): Dimming factor for unfocused area (0.0=black, 1.0=transparent)
   * [swayimg.viewer.preload](#swayimgviewerpreload): Max number of images to preload in background thread
   * [swayimg.viewer.history](#swayimgviewerhistory): Max number of previously viewed images stored in the cache
+  * [swayimg.viewer.cache_memory](#swayimgviewercache_memory): Max total size of image pixmaps in each cache, in bytes (0 to disable the limit)
   * [swayimg.viewer.mark_color](#swayimgviewermark_color): Mark icon color
   * [swayimg.viewer.pinch_factor](#swayimgviewerpinch_factor): Pinch gesture factor
   * [swayimg.viewer.text](#swayimgviewertext): Text layer scheme
@@ -133,6 +134,7 @@ or in the file `/usr/share/swayimg/example.lua` after installing the program.
   * [swayimg.slideshow.focus_factor](#swayimgslideshowfocus_factor): Dimming factor for unfocused area (0.0=black, 1.0=transparent)
   * [swayimg.slideshow.preload](#swayimgslideshowpreload): Max number of images to preload in background thread
   * [swayimg.slideshow.history](#swayimgslideshowhistory): Max number of previously viewed images stored in the cache
+  * [swayimg.slideshow.cache_memory](#swayimgslideshowcache_memory): Max total size of image pixmaps in each cache, in bytes (0 to disable the limit)
   * [swayimg.slideshow.mark_color](#swayimgslideshowmark_color): Mark icon color
   * [swayimg.slideshow.pinch_factor](#swayimgslideshowpinch_factor): Pinch gesture factor
   * [swayimg.slideshow.text](#swayimgslideshowtext): Text layer scheme
@@ -893,6 +895,18 @@ Since 5.5.
 
 Write-only field.
 
+### swayimg.viewer.cache_memory
+
+```lua
+swayimg.viewer.cache_memory: integer
+```
+
+Max total size of image pixmaps in each cache, in bytes (0 to disable the limit).
+
+Since 5.8.
+
+Write-only field.
+
 ### swayimg.viewer.mark_color
 
 ```lua
@@ -1553,6 +1567,18 @@ swayimg.slideshow.history: integer
 Max number of previously viewed images stored in the cache.
 
 Since 5.5.
+
+Write-only field.
+
+### swayimg.slideshow.cache_memory
+
+```lua
+swayimg.slideshow.cache_memory: integer
+```
+
+Max total size of image pixmaps in each cache, in bytes (0 to disable the limit).
+
+Since 5.8.
 
 Write-only field.
 

@@ -83,6 +83,7 @@ swayimg.viewer.focus_radius = 0            -- radius of focused area
 swayimg.viewer.focus_factor = 0.5          -- dimming factor for unfocused area
 swayimg.viewer.preload = 1                 -- number of images to preload
 swayimg.viewer.history = 1                 -- number of images in history cache
+swayimg.viewer.cache_memory = 1073741824   -- max pixmap bytes per image cache
 swayimg.viewer.mark_color = 0xff808080     -- mark icon color
 swayimg.viewer.pinch_factor = 1.0          -- pinch gesture factor
 swayimg.viewer.text = {                    -- text layer scheme
